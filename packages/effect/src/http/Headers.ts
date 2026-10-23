@@ -186,6 +186,7 @@ export const empty: Headers = Object.create(Proto)
  * **Details**
  *
  * Header names are normalized to lowercase. Array values in record input are joined with `", "`, and `undefined` values are omitted.
+ * An existing `Headers` value is returned unchanged, including the names marked by `setRedacted`.
  *
  * @stability unstable
  * @category constructors
@@ -194,6 +195,9 @@ export const empty: Headers = Object.create(Proto)
 export const fromInput: (input?: Input) => Headers = (input) => {
   if (input === undefined) {
     return empty
+  } else if (isHeaders(input)) {
+    // already normalized, and keeps the names marked by `setRedacted`
+    return input
   } else if (Symbol.iterator in input) {
     const out: Record<string, string> = Object.create(Proto)
     for (const [k, v] of input) {

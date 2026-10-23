@@ -29,7 +29,6 @@ import * as HttpMethod from "../http/HttpMethod.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
-import { redactedRegistry } from "../internal/redacted.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
@@ -542,17 +541,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                   const body = (yield* encodePayload(request.payload)) as HttpBody.HttpBody
                   httpRequest = HttpClientRequest.setBody(
                     httpRequest,
-                    body._tag === "Uint8Array" && collectRedacted(request.payload).size > 0
+                    body._tag === "Uint8Array" && containsRedacted(request.payload)
                       ? HttpBody.redact(body)
                       : body
                   )
                 }
               } else {
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
-                httpRequest = HttpClientRequest.appendUrlParams(
-                  httpRequest,
-                  redactUrlParams(urlParams, collectRedacted(request.payload)) as UrlParams.Input
-                )
+                httpRequest = appendUrlParams(httpRequest, urlParams, request.payload)
               }
             } else if (streamPayloadEncoder !== undefined) {
               return yield* new Schema.SchemaError(
@@ -563,16 +559,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             // headers
             if (encodeHeaders !== undefined) {
               const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
-              httpRequest = setHeaders(httpRequest, headers, collectRedacted(request.headers))
+              httpRequest = setHeaders(httpRequest, headers, request.headers)
             }
 
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
-              httpRequest = HttpClientRequest.appendUrlParams(
-                httpRequest,
-                redactUrlParams(query, collectRedacted(request.query)) as UrlParams.Input
-              )
+              httpRequest = appendUrlParams(httpRequest, query, request.query)
             }
           }
 
@@ -859,61 +852,61 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 // ----------------------------------------------------------------------------
 
-// Schema encoding unwraps `Redacted` values, so the plain values of the
-// `Redacted` values in a request input are collected first. Encoded query,
-// header and URL parameter values matching them are redacted again, and a body
-// encoded from such an input is hidden from inspection as a whole.
-const collectRedacted = (input: unknown): Set<unknown> => {
-  const out = new Set<unknown>()
+// Schema encoding unwraps `Redacted` values and may transform them, so the
+// encoded output of an input slot that contains a `Redacted` value is
+// redacted as a whole: every query, header and URL parameter value from that
+// slot, and the inspection of its serialized body.
+const containsRedacted = (input: unknown): boolean => {
   const visited = new Set<object>()
-  const loop = (value: unknown): void => {
-    if (Redacted.isRedacted(value)) {
-      // wiped values have nothing left to redact
-      if (!redactedRegistry.has(value)) return
-      const inner = redactedRegistry.get(value)
-      out.add(Predicate.isObject(inner) ? inner : String(inner))
-    } else if (Predicate.isObject(value) && !globalThis.ArrayBuffer.isView(value) && !visited.has(value)) {
-      visited.add(value)
-      for (const key in value) loop((value as Record<string, unknown>)[key])
+  const loop = (value: unknown): boolean => {
+    if (Redacted.isRedacted(value)) return true
+    if (!Predicate.isObject(value) || globalThis.ArrayBuffer.isView(value) || visited.has(value)) return false
+    visited.add(value)
+    for (const key in value) {
+      if (loop((value as Record<string, unknown>)[key])) return true
     }
+    return false
   }
-  loop(input)
-  return out
+  return loop(input)
 }
 
-const redactUrlParams = (value: unknown, secrets: Set<unknown>): unknown => {
-  if (secrets.size === 0) return value
+const redactUrlParams = (value: unknown): unknown => {
   if (
     typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean"
   ) {
-    return secrets.has(String(value)) ? Redacted.make(String(value)) : value
+    return Redacted.make(String(value))
   } else if (Array.isArray(value)) {
-    return value.map((item) => redactUrlParams(item, secrets))
+    return value.map(redactUrlParams)
   } else if (Predicate.isObject(value) && !Redacted.isRedacted(value)) {
     const out: Record<string, unknown> = {}
     for (const key in value) {
-      InternalRecord.assignProperty(out, key, redactUrlParams((value as Record<string, unknown>)[key], secrets))
+      InternalRecord.assignProperty(out, key, redactUrlParams((value as Record<string, unknown>)[key]))
     }
     return out
   }
   return value
 }
 
+const appendUrlParams = (
+  request: HttpClientRequest.HttpClientRequest,
+  params: Record<string, string>,
+  input: unknown
+): HttpClientRequest.HttpClientRequest =>
+  HttpClientRequest.appendUrlParams(
+    request,
+    containsRedacted(input) ? redactUrlParams(params) as UrlParams.Input : params
+  )
+
 const setHeaders = (
   request: HttpClientRequest.HttpClientRequest,
   headers: Record<string, string>,
-  secrets: Set<unknown>
+  input: unknown
 ): HttpClientRequest.HttpClientRequest => {
-  if (secrets.size === 0) return HttpClientRequest.setHeaders(request, headers)
-  const plain: Record<string, string> = {}
-  const redacted: Array<string> = []
-  for (const key in headers) {
-    if (secrets.has(headers[key])) redacted.push(key)
-    else InternalRecord.assignProperty(plain, key, headers[key])
-  }
+  if (!containsRedacted(input)) return HttpClientRequest.setHeaders(request, headers)
+  const normalized = Headers.fromInput(headers)
   return HttpClientRequest.updateHeaders(request, (current) => {
-    let out = Headers.setAll(current, plain)
-    for (const key of redacted) out = Headers.setRedacted(out, key, Redacted.make(headers[key]))
+    let out = current
+    for (const key in normalized) out = Headers.setRedacted(out, key, Redacted.make(normalized[key]))
     return out
   })
 }
