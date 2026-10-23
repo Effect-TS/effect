@@ -2388,26 +2388,6 @@ export const MutableJsonReviver: DeclarationReviver<null> = makeFixedDeclaration
   Schema.MutableJson
 )
 
-const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
-  JsonReviver,
-  isPatternReviver,
-  isFiniteReviver,
-  isGreaterThanReviver,
-  isGreaterThanOrEqualToReviver,
-  isLessThanReviver,
-  isLessThanOrEqualToReviver,
-  isMultipleOfReviver,
-  isIntReviver,
-  isMinLengthReviver,
-  isMaxLengthReviver,
-  isMinCodePointsReviver,
-  isMaxCodePointsReviver,
-  isMinPropertiesReviver,
-  isMaxPropertiesReviver,
-  isPropertyNamesReviver,
-  isUniqueReviver
-]
-
 /**
  * Options for importing JSON Schema Draft 2020-12 documents.
  *
@@ -3198,7 +3178,7 @@ export function fromRepresentations(
  *   external references are rejected with the supported reference format. Missing definitions are reported by name.
  *   References reached inside nested schema resources introduced by `$id` are rejected instead of resolved against the
  *   top-level definitions.
- * - Built-in declarations and checks are reconstructed with importer-owned revivers.
+ * - Imported constraints use built-in schemas and checks.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
  *   documents, or `patterns: "ignore"` to skip them. Ignoring patterns can both admit invalid values and reject valid
  *   values when `oneOf` branches start overlapping.
@@ -3216,7 +3196,7 @@ export function fromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: FromJsonSchemaOptions
 ): Schema.Top {
-  return InternalFromJsonSchemaDocument.fromJsonSchemaDocument(document, options, jsonSchemaRevivers)
+  return InternalFromJsonSchemaDocument.fromJsonSchemaDocument(document, options)
 }
 
 /**
@@ -3262,5 +3242,5 @@ export function fromJsonSchemaMultiDocument(
   document: JsonSchema.MultiDocument<"draft-2020-12">,
   options?: FromJsonSchemaOptions
 ): readonly [Schema.Top, ...Array<Schema.Top>] {
-  return InternalFromJsonSchemaDocument.fromJsonSchemaMultiDocument(document, options, jsonSchemaRevivers)
+  return InternalFromJsonSchemaDocument.fromJsonSchemaMultiDocument(document, options)
 }
