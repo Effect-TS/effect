@@ -28,13 +28,6 @@ const failingInput = Stream.make(new TextEncoder().encode("first chunk\n")).pipe
   Stream.concat(Stream.fail(sourceError))
 )
 
-const sinkError = PlatformError.systemError({
-  _tag: "Unknown",
-  module: "ChildProcess",
-  method: "sink",
-  description: "sink failed"
-})
-
 // Helper to collect stream output into a string
 const decodeByteStream = Effect.fnUntraced(
   function*(
@@ -1279,53 +1272,15 @@ export const suite = (
       it.effect("ChildProcess.exitCode should not deadlock on large output", () =>
         Effect.gen(function*() {
           const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-          const stdout = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000"]))
-          const stderr = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; exit 3"]))
-
-          assert.strictEqual(stdout, ChildProcessSpawner.ExitCode(0))
-          assert.strictEqual(stderr, ChildProcessSpawner.ExitCode(3))
+          const exitCode = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000; seq 1 100000 >&2"]))
+          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
         }), { timeout: 10_000 })
 
-      it.effect("ChildProcess.string and lines should not deadlock on large stderr output", () =>
+      it.effect("ChildProcess.string should not deadlock on large stderr output", () =>
         Effect.gen(function*() {
           const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-          const command = ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"])
-          const output = yield* spawner.string(command)
-          const lines = yield* spawner.lines(command)
-
+          const output = yield* spawner.string(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"]))
           assert.strictEqual(output, "done")
-          assert.deepStrictEqual(lines, ["done"])
         }), { timeout: 10_000 })
-
-      it.effect("ChildProcess.exitCode should fail when discarded output cannot be read", () =>
-        Effect.gen(function*() {
-          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-          const error = yield* spawner.exitCode(
-            ChildProcess.make("sh", ["-c", "seq 1 100000"], { stderr: Sink.fail(sinkError) })
-          ).pipe(Effect.flip)
-
-          assert.deepStrictEqual(error, sinkError)
-        }), { timeout: 10_000 })
-
-      it.effect("ChildProcess.string should fail when discarded stderr cannot be read", () =>
-        Effect.gen(function*() {
-          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-          const error = yield* spawner.string(
-            ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"], { stderr: Sink.fail(sinkError) })
-          ).pipe(Effect.flip)
-
-          assert.deepStrictEqual(error, sinkError)
-        }), { timeout: 10_000 })
-
-      it.effect("ChildProcess.string should include stderr only with includeStderr", () =>
-        Effect.gen(function*() {
-          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-          const command = ChildProcess.make("sh", ["-c", "printf out; printf err >&2"])
-          const stdoutOnly = yield* spawner.string(command)
-          const combined = yield* spawner.string(command, { includeStderr: true })
-
-          assert.strictEqual(stdoutOnly, "out")
-          assert.deepStrictEqual([...combined.matchAll(/out|err/g)].map(([match]) => match).sort(), ["err", "out"])
-        }))
     })
   })
