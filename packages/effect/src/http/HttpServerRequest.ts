@@ -1132,53 +1132,38 @@ const readArrayBufferLimited = async (
   // A constructed request can understate its content-length, so bytes are
   // counted on every runtime. Cancellation is not awaited, as the source's
   // cleanup may never settle.
+  const limit = contentLength ?? maxBytes
   const reader = source.body.getReader()
   const cancel = () => {
     reader.cancel().catch(() => {})
   }
   signal.addEventListener("abort", cancel, { once: true })
+  const chunks: Array<Uint8Array> = []
+  let bytes = 0
   try {
-    if (contentLength !== undefined) {
-      const buffer = new Uint8Array(contentLength)
-      let offset = 0
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        if (offset + value.byteLength > contentLength) {
-          cancel()
-          if (offset + value.byteLength > maxBytes) {
-            throw new BodyTooLargeError(maxBytes)
-          }
-          throw new Error(`Request body is longer than its content-length of ${contentLength}`)
-        }
-        buffer.set(value, offset)
-        offset += value.byteLength
-      }
-      return offset === contentLength ? buffer.buffer : buffer.buffer.slice(0, offset)
-    }
-    const chunks: Array<Uint8Array> = []
-    let bytes = 0
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       bytes += value.byteLength
-      if (bytes > maxBytes) {
+      if (bytes > limit) {
         cancel()
-        throw new BodyTooLargeError(maxBytes)
+        throw bytes > maxBytes
+          ? new BodyTooLargeError(maxBytes)
+          : new Error(`Request body is longer than its content-length of ${contentLength}`)
       }
       chunks.push(value)
     }
-    const buffer = new Uint8Array(bytes)
-    let offset = 0
-    for (const chunk of chunks) {
-      buffer.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    return buffer.buffer
   } finally {
     signal.removeEventListener("abort", cancel)
     reader.releaseLock()
   }
+  const buffer = new Uint8Array(bytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return buffer.buffer
 }
 
 /**
