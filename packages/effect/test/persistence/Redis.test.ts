@@ -81,6 +81,7 @@ describe("Redis", () => {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
       let scriptLoadAttempts = 0
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: (command, ...args) =>
           Effect.suspend(() => {
             commands.push([command, args])
@@ -119,6 +120,7 @@ describe("Redis", () => {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
       let evalShaAttempts = 0
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: (command, ...args) =>
           Effect.suspend(() => {
             commands.push([command, args])
@@ -156,6 +158,7 @@ describe("Redis", () => {
   it.effect("receives messages from a subscription", () =>
     Effect.gen(function*() {
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: (_channel, onMessage) =>
           Effect.sync(() => {
@@ -176,6 +179,7 @@ describe("Redis", () => {
     Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("subscription failed") })
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () => Effect.fail(error)
       })
@@ -189,6 +193,7 @@ describe("Redis", () => {
     Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("listener failed") })
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () => Effect.succeed(Effect.fail(error))
       })
@@ -202,6 +207,7 @@ describe("Redis", () => {
     Effect.gen(function*() {
       let released = false
       const redis = yield* Redis.make({
+        connect: Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () =>
           Effect.acquireRelease(
@@ -250,7 +256,7 @@ describe("Redis", () => {
             connects++
             const closed = Deferred.makeUnsafe<void>()
             return {
-              send: (command: string) => send(command, closed),
+              send: <A>(command: string) => send<A>(command, closed),
               close: Effect.suspend(() => Deferred.succeed(closed, void 0)).pipe(
                 Effect.map((first) => {
                   if (first) closes++
