@@ -991,6 +991,37 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         "Invalid TemplateLiteral part Boolean"
       )
     })
+
+    it.each(["Missing", "toString"])("rejects missing template-literal references: %s", ($ref) => {
+      expectError(
+        () =>
+          SchemaRepresentation.toJsonSchemaDocument({
+            representation: {
+              _tag: "TemplateLiteral",
+              parts: [{ _tag: "Reference", $ref }],
+              checks: []
+            },
+            references: {}
+          }),
+        `Invalid reference ${$ref}`
+      )
+    })
+
+    it("rejects recursive template-literal references", () => {
+      const template: SchemaRepresentation.Representation = {
+        _tag: "TemplateLiteral",
+        parts: [{ _tag: "Reference", $ref: "Segment" }],
+        checks: []
+      }
+      expectError(
+        () =>
+          SchemaRepresentation.toJsonSchemaDocument({
+            representation: template,
+            references: { Segment: template }
+          }),
+        "Invalid recursive TemplateLiteral part Segment"
+      )
+    })
   })
 
   describe("normalization", () => {

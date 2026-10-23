@@ -2556,6 +2556,35 @@ describe("toJsonSchemaDocument", () => {
       assertJsonSchemaAcceptsEffectValues(schema, ["abc.xyz", "."])
     })
 
+    it("resolves named nested templates and union segments", () => {
+      const named = Schema.String.annotate({ identifier: "Segment" })
+      const nested = Schema.TemplateLiteral(["item.", named]).annotate({ identifier: "Nested" })
+      const choice = Schema.Union([nested, Schema.Literal("other")]).annotate({ identifier: "Choice" })
+      const schema = Schema.TemplateLiteral([choice, ".", named])
+      const document = Schema.toJsonSchemaDocument(schema)
+
+      deepStrictEqual(document.schema, {
+        type: "string",
+        pattern: "^(?:item\\.[\\s\\S]*?|other)\\.[\\s\\S]*?$"
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, ["item.abc.xyz", "other.xyz"])
+    })
+
+    it("resolves named segments in record keys", () => {
+      const named = Schema.String.annotate({ identifier: "Segment" })
+      const schema = Schema.Record(Schema.TemplateLiteral(["item.", named]), Schema.Finite)
+
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          type: "object",
+          patternProperties: { "^item\\.[\\s\\S]*?$": { type: "number" } },
+          additionalProperties: false
+        },
+        definitions: { Segment: { type: "string" } }
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, [{ "item.abc": 1 }])
+    })
+
     it.each(
       [
         ["unnamed", segment],
