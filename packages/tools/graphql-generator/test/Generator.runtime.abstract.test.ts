@@ -3,7 +3,8 @@
  * `GraphQLClient` over a mock `GraphQLProtocol`: the GitHub timeline (`node`
  * on an interface, the `timelineItems` union and a fragment on the `Actor`
  * interface from another file), and the subscriptions set (a `Subscription`
- * root, a `@oneOf` input, nested interfaces and an enum).
+ * root, a `@oneOf` input, nested interfaces, an enum and mutually recursive
+ * input objects).
  */
 import { assert, describe, it } from "@effect/vitest"
 import * as DateTime from "effect/DateTime"
@@ -13,7 +14,9 @@ import { GraphQLClientError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import { Messages, MessagesGraphQLGroup } from "./generated/subscriptions/messages.graphql.ts"
 import { type Room, RoomEvents, RoomsGraphQLGroup } from "./generated/subscriptions/rooms.graphql.ts"
+import type { MemberMatch } from "./generated/subscriptions/shared.graphql.ts"
 import { importGitHub, type UntypedClient } from "./utils/generator.ts"
 
 interface Sent {
@@ -178,6 +181,68 @@ describe("Generated subscriptions client", () => {
       const client = yield* GraphQLClient.make(RoomsGraphQLGroup).pipe(Effect.provide(layer))
       const both = { id: "R_1", slug: "general" } as unknown as Room.Variables["by"]
       const error = yield* client.Room({ by: both }).pipe(Effect.flip)
+      assert.strictEqual(reasonTag(error), "EncodeError")
+      assert.deepStrictEqual(sent, [])
+    }))
+
+  it.effect("Messages encodes a nested and / or filter across mutually recursive inputs", () =>
+    Effect.gen(function*() {
+      const { layer, sent } = mock({ data: { messages: [{ id: "M_1", body: "hello" }] } })
+      const client = yield* GraphQLClient.make(MessagesGraphQLGroup).pipe(Effect.provide(layer))
+      const result = yield* client.Messages({
+        first: 10,
+        filter: {
+          or: [
+            { body: { contains: "hello" } },
+            {
+              and: [
+                { postedAt: { gt: DateTime.makeUnsafe(at) } },
+                {
+                  member: {
+                    role: { not: { in: ["GUEST"] } },
+                    match: { any: [{ posted: { postedAt: { lt: DateTime.makeUnsafe(at) } } }] }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      })
+
+      assert.deepStrictEqual(result, { messages: [{ id: "M_1", body: "hello" }] })
+      assert.deepStrictEqual(sent, [{
+        query: Messages.document,
+        operationName: "Messages",
+        variables: {
+          first: 10,
+          filter: {
+            or: [
+              { body: { contains: "hello" } },
+              {
+                and: [
+                  { postedAt: { gt: "2026-10-08T10:00:00.000Z" } },
+                  {
+                    member: {
+                      role: { not: { in: ["GUEST"] } },
+                      match: { any: [{ posted: { postedAt: { lt: "2026-10-08T10:00:00.000Z" } } }] }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }])
+    }))
+
+  it.effect("a nested @oneOf input with two keys fails with an EncodeError and nothing is sent", () =>
+    Effect.gen(function*() {
+      const { layer, sent } = mock({ data: { messages: [] } })
+      const client = yield* GraphQLClient.make(MessagesGraphQLGroup).pipe(Effect.provide(layer))
+      const both = { id: "U_1", any: [] } as unknown as MemberMatch
+      const error = yield* client.Messages({ first: 1, filter: { or: [{ member: { match: both } }] } }).pipe(
+        Effect.flip
+      )
       assert.strictEqual(reasonTag(error), "EncodeError")
       assert.deepStrictEqual(sent, [])
     }))

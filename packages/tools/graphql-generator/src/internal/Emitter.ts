@@ -1,8 +1,8 @@
 /**
  * Emits per-document and shared modules from validated documents. Paths and
  * import specifiers are supplied by the caller; output needs no formatter.
- * Recursive input objects and generated class names that can't be made
- * unique produce diagnostics instead of output.
+ * Generated class names that can't be made unique produce diagnostics instead
+ * of output.
  *
  * @internal
  */
@@ -423,7 +423,7 @@ class Emitter {
   // Checks
   // ---------------------------------------------------------------------------
 
-  /** Names generated code can't use, recursive input objects and import cycles, sorted by file and position. */
+  /** Names generated code can't use and import cycles, sorted by file and position. */
   check(): ReadonlyArray<Diagnostic> {
     const errors: Array<{ readonly file: number; readonly offset: number; readonly message: string }> = []
     this.options.files.forEach((file, fileIndex) => {
@@ -441,11 +441,6 @@ class Emitter {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
           } else if (name.value === group && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
-          }
-        }
-        if (definition._tag === "OperationDefinition") {
-          for (const variable of definition.variableDefinitions) {
-            this.checkVariable(variable, report)
           }
         }
       }
@@ -544,29 +539,6 @@ class Emitter {
           }. Move fragments between files so the imports don't form a cycle.`
       }
     })
-  }
-
-  checkVariable(variable: Ast.VariableDefinition, report: (offset: number, message: string) => void): void {
-    const visiting = new Set<string>()
-    const done = new Set<string>()
-    const visit = (name: string): string | undefined => {
-      const type = this.options.schema.types.get(name)
-      if (type === undefined || type._tag !== "InputObjectType") return undefined
-      if (visiting.has(name)) {
-        return `Variable "$${variable.variable.name.value}" uses the recursive input object "${name}"; recursive input objects are not supported yet.`
-      }
-      if (done.has(name)) return undefined
-      visiting.add(name)
-      for (const field of type.fields) {
-        const problem = visit(SchemaModel.namedTypeOf(field.type))
-        if (problem !== undefined) return problem
-      }
-      visiting.delete(name)
-      done.add(name)
-      return undefined
-    }
-    const problem = visit(SchemaModel.namedTypeOf(SchemaModel.fromAstType(variable.type)))
-    if (problem !== undefined) report(variable.loc.start, problem)
   }
 
   // ---------------------------------------------------------------------------
@@ -1375,15 +1347,58 @@ class Emitter {
   /** The shared module, and the custom scalars it holds without a mapping. */
   emitShared(): { readonly file: GeneratedFile; readonly unmapped: ReadonlyArray<string> } {
     // Close over input objects: each one reaches the types of all its fields.
+    // Inputs are declared after the inputs they use, and the members of a
+    // cycle together (Tarjan's strongly connected components).
     const inputs: Array<SchemaModel.InputObjectType> = []
     const all = new Set<string>()
+    /** The members of the cycle each recursive input object is on. */
+    const cycles = new Map<string, ReadonlySet<string>>()
+    /** Whether an input object's Encoded type differs from its Type. */
+    const transforms = new Map<string, boolean>()
+    const transformsLeaf = (name: string): boolean => {
+      const type = this.type(name)
+      if (type._tag === "InputObjectType") return transforms.get(name) ?? false
+      // A mapped codec may transform; the built-in `DateTime` default does.
+      return type._tag === "ScalarType" && (this.options.scalars.has(name) || name === "DateTime")
+    }
+    const index = new Map<string, number>()
+    const low = new Map<string, number>()
+    const stack: Array<SchemaModel.InputObjectType> = []
+    const onStack = new Set<string>()
     const visit = (name: string): void => {
       if (all.has(name)) return
       all.add(name)
       const type = this.type(name)
       if (type._tag !== "InputObjectType") return
-      for (const field of type.fields) visit(SchemaModel.namedTypeOf(field.type))
-      inputs.push(type)
+      index.set(name, index.size)
+      low.set(name, index.get(name)!)
+      stack.push(type)
+      onStack.add(name)
+      for (const field of type.fields) {
+        const child = SchemaModel.namedTypeOf(field.type)
+        if (!all.has(child)) {
+          visit(child)
+          if (index.has(child)) low.set(name, Math.min(low.get(name)!, low.get(child)!))
+        } else if (onStack.has(child)) {
+          low.set(name, Math.min(low.get(name)!, index.get(child)!))
+        }
+      }
+      if (low.get(name) !== index.get(name)) return
+      const component: Array<SchemaModel.InputObjectType> = []
+      let member: SchemaModel.InputObjectType
+      do {
+        member = stack.pop()!
+        onStack.delete(member.name)
+        component.unshift(member)
+      } while (member !== type)
+      const members = new Set(component.map((input) => input.name))
+      const fieldTypes = component.flatMap((input) => input.fields.map((field) => SchemaModel.namedTypeOf(field.type)))
+      if (members.size > 1 || fieldTypes.includes(name)) {
+        for (const input of members) cycles.set(input, members)
+      }
+      const transformed = fieldTypes.some((leaf) => !members.has(leaf) && transformsLeaf(leaf))
+      for (const input of members) transforms.set(input, transformed)
+      inputs.push(...component)
     }
     for (const name of Array.from(this.reached).sort()) visit(name)
     all.delete("String")
@@ -1471,8 +1486,27 @@ class Emitter {
         (b, e) => `${e}const ${b} = ${schema}.Literals([${literals}])\n${e}type ${b} = typeof ${b}.Type`
       ))
     }
+    // A recursive input object's Encoded interface, when it differs from the Type.
+    const encodedNames = new Map<string, string>()
+    for (const type of inputs) {
+      if (cycles.has(type.name) && transforms.get(type.name)) {
+        encodedNames.set(type.name, allocate(`${type.name}Encoded`))
+      }
+    }
     for (const type of inputs) {
       const doc = descriptionLines(type.description)
+      const cycle = cycles.get(type.name)
+      if (cycle !== undefined) {
+        const recursion: Recursion = {
+          encoded: encodedNames.get(type.name),
+          ref: (name) => cycle.has(name) ? `${schema}.suspend(() => ${alias(name)})` : alias(name),
+          typeLeaf: (name) => cycle.has(name) ? alias(name) : `typeof ${alias(name)}.Type`,
+          encodedLeaf: (name) =>
+            cycle.has(name) ? encodedNames.get(name) ?? alias(name) : `typeof ${alias(name)}.Encoded`
+        }
+        blocks.push(declare(type.name, doc, (b, e) => recursiveDeclaration(type, b, e, schema, recursion)))
+        continue
+      }
       if (type.oneOf) {
         blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, alias)))
         continue
@@ -1534,10 +1568,21 @@ const oneOfDeclaration = (
   exported: string,
   schema: string,
   ref: (name: string) => string
-): string => {
-  const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
-    field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
-  const structs = type.fields.map((selected) => {
+): string =>
+  `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
+    oneOfStructs(type, schema, ref).join(",\n")
+  }\n]))\n` +
+  `${exported}type ${binding} =\n${oneOfAlternatives(type, (name) => `typeof ${ref(name)}.Type`).join("\n")}`
+
+const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
+  field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
+
+const oneOfStructs = (
+  type: SchemaModel.InputObjectType,
+  schema: string,
+  ref: (name: string) => string
+): Array<string> =>
+  type.fields.map((selected) => {
     const members = type.fields.map((field) => {
       if (field !== selected) return `    ${propertyKey(field.name)}: ${schema}.optionalKey(${schema}.Never)`
       const doc = docLines(descriptionLines(field.description), deprecatedTag(field.deprecationReason))
@@ -1545,26 +1590,80 @@ const oneOfDeclaration = (
     })
     return `  ${struct(members, "  ", schema)}`
   })
-  const alternatives = type.fields.map((selected) =>
+
+const oneOfAlternatives = (type: SchemaModel.InputObjectType, leaf: (name: string) => string): Array<string> =>
+  type.fields.map((selected) =>
     `  | { ${
       type.fields.map((field) =>
         field === selected
-          ? `readonly ${propertyKey(field.name)}: ${inputTypeText(required(field), ref)}`
+          ? `readonly ${propertyKey(field.name)}: ${inputTypeText(required(field), leaf)}`
           : `readonly ${propertyKey(field.name)}?: never`
       ).join("; ")
     } }`
   )
-  return `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
-    structs.join(",\n")
-  }\n]))\n` +
-    `${exported}type ${binding} =\n${alternatives.join("\n")}`
+
+/** How a recursive input object refers to the types of its fields. */
+interface Recursion {
+  /** The name of the Encoded type, when it differs from the Type. */
+  readonly encoded: string | undefined
+  /** The Schema for a type, suspended when it is on the same cycle. */
+  readonly ref: (name: string) => string
+  readonly typeLeaf: (name: string) => string
+  readonly encodedLeaf: (name: string) => string
 }
 
-/** The decoded TypeScript type of an input, as written in the shared module. */
-const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string): string =>
+/**
+ * An input object on a cycle of input objects. TypeScript can't infer the
+ * type of a const read in its own initializer, so the Type, and the Encoded
+ * type when it differs, are written out and annotate a `Schema.Codec`. Every
+ * reference to a type on the same cycle is a `Schema.suspend`, since the
+ * cycle's later members aren't initialized yet.
+ */
+const recursiveDeclaration = (
+  type: SchemaModel.InputObjectType,
+  binding: string,
+  exported: string,
+  schema: string,
+  recursion: Recursion
+): string => {
+  const { encoded, encodedLeaf, ref, typeLeaf } = recursion
+  const codec = `${schema}.Codec<${binding}${encoded === undefined ? "" : `, ${encoded}`}>`
+  if (type.oneOf) {
+    return `${exported}const ${binding}: ${codec} = ${schema}.Union([\n${
+      oneOfStructs(type, schema, ref).join(",\n")
+    }\n])\n` +
+      `${exported}type ${binding} =\n${oneOfAlternatives(type, typeLeaf).join("\n")}` +
+      (encoded === undefined ? "" : `\nexport type ${encoded} =\n${oneOfAlternatives(type, encodedLeaf).join("\n")}`)
+  }
+  const members = type.fields.map((field) =>
+    `  ${propertyKey(field.name)}: ${inputSchema(field.type, field.defaultValue !== undefined, ref, schema)}`
+  )
+  const fields = (leaf: (name: string) => string, documented: boolean): string => {
+    if (type.fields.length === 0) return "{}"
+    const lines = type.fields.map((field) => {
+      const doc = documented
+        ? docLines(
+          descriptionLines(field.description),
+          [...deprecatedTag(field.deprecationReason), ...defaultTag(field.defaultValue)]
+        )
+        : []
+      const optional = field.defaultValue !== undefined || field.type._tag !== "NonNullTypeRef"
+      return `${jsdoc(doc, "  ")}  readonly ${propertyKey(field.name)}${optional ? "?" : ""}: ${
+        inputTypeText(field.type, leaf)
+      }${optional ? " | undefined" : ""}`
+    })
+    return `{\n${lines.join("\n")}\n}`
+  }
+  return `${exported}const ${binding}: ${codec} = ${struct(members, "", schema)}\n` +
+    `${exported}interface ${binding} ${fields(typeLeaf, true)}` +
+    (encoded === undefined ? "" : `\nexport interface ${encoded} ${fields(encodedLeaf, false)}`)
+}
+
+/** The TypeScript type of an input, as written in the shared module, with `leaf` for each named type. */
+const inputTypeText = (type: SchemaModel.TypeRef, leaf: (name: string) => string): string =>
   typeRef(
     type,
-    (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : `typeof ${ref(name)}.Type`,
+    (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : leaf(name),
     (element) => `ReadonlyArray<${element}>`,
     (inner) => `${inner} | null`
   )

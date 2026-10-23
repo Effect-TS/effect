@@ -22,7 +22,7 @@ const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url))
 describe("Generator snapshots", () => {
   it.effect("subscriptions", (ctx) =>
     Effect.gen(function*() {
-      const files = ["rooms.graphql.ts", "shared.graphql.ts"]
+      const files = ["messages.graphql.ts", "rooms.graphql.ts", "shared.graphql.ts"]
       const generated = yield* generateSubscriptions
       assert.deepStrictEqual(generated.result.diagnostics, [])
       assert.deepStrictEqual(generated.paths, files.map((name) => `subscriptions/${name}`))
