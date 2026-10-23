@@ -545,6 +545,50 @@ describe("HttpApiClient", () => {
         >
       >()
     })
+
+    it("does not infer payload services from the contextual type", () => {
+      type Item = { readonly n: number }
+
+      const Item = hole<Schema.Codec<Item, Item, never, "ItemEncoding">>()
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: Schema.String
+              }),
+              HttpApiEndpoint.get("b", "/b", {
+                success: Schema.Number
+              }),
+              HttpApiEndpoint.post("ndjson", "/ndjson", {
+                payload: HttpApiSchema.StreamNdjson({ schema: Item })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      // Effect.all contextually types each element as Effect<any, any, any>
+      expect(Effect.all([client.group.a(), client.group.b()])).type.toBe<
+        Effect.Effect<[string, number], HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+      expect(Effect.all({ a: client.group.a(), b: client.group.b() })).type.toBe<
+        Effect.Effect<{ a: string; b: number }, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+      expect(
+        Effect.all([
+          client.group.a(),
+          client.group.ndjson({ payload: hole<Stream.Stream<Item, "ItemError", "ItemSource">>() })
+        ])
+      ).type.toBe<
+        Effect.Effect<
+          [string, void],
+          HttpClientError.HttpClientError | Schema.SchemaError,
+          "ItemSource" | "ItemEncoding"
+        >
+      >()
+    })
   })
 
   describe("success", () => {
