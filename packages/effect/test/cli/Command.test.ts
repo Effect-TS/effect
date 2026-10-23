@@ -953,7 +953,7 @@ describe("Command", () => {
         class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
           path: Schema.String
         }) {
-          get [CliError.userMessage]() {
+          override get [CliError.userMessage]() {
             return `${this.path} already exists. Re-run with --force to replace it.`
           }
         }
