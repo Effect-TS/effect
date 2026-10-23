@@ -499,6 +499,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           (schema) => Schema.encodeUnknownEffect(schema, parseOptions.query)
         )
 
+        const redactPayload = payloadSchemas.some((schema) => containsRedactedSchema(schema.ast))
+        const redactHeaders = endpoint.headers !== undefined && containsRedactedSchema(endpoint.headers.ast)
+        const redactQuery = endpoint.query !== undefined && containsRedactedSchema(endpoint.query.ast)
+
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
         const endpointFn = Effect.fnUntraced(function*(
@@ -541,14 +545,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                   const body = (yield* encodePayload(request.payload)) as HttpBody.HttpBody
                   httpRequest = HttpClientRequest.setBody(
                     httpRequest,
-                    body._tag === "Uint8Array" && containsRedacted(request.payload)
+                    body._tag === "Uint8Array" && redactPayload
                       ? HttpBody.redact(body)
                       : body
                   )
                 }
               } else {
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
-                httpRequest = appendUrlParams(httpRequest, urlParams, request.payload)
+                httpRequest = appendUrlParams(httpRequest, urlParams, redactPayload)
               }
             } else if (streamPayloadEncoder !== undefined) {
               return yield* new Schema.SchemaError(
@@ -559,13 +563,13 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             // headers
             if (encodeHeaders !== undefined) {
               const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
-              httpRequest = setHeaders(httpRequest, headers, request.headers)
+              httpRequest = setHeaders(httpRequest, headers, redactHeaders)
             }
 
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
-              httpRequest = appendUrlParams(httpRequest, query, request.query)
+              httpRequest = appendUrlParams(httpRequest, query, redactQuery)
             }
           }
 
@@ -853,42 +857,38 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 // ----------------------------------------------------------------------------
 
 // Schema encoding unwraps `Redacted` values and may transform them, so the
-// encoded output of an input slot that contains a `Redacted` value is
+// encoded output of an input slot whose schema declares a `Redacted` value is
 // redacted as a whole: every query, header and URL parameter value from that
 // slot, and the inspection of its serialized body.
 //
-// Callers check the input only after it has been encoded. Schemas can read
-// symbol and non-enumerable own fields, so every own key is visited once, then
-// inherited enumerable fields. Collections such as `Map`, `Set` and `Chunk`
-// keep their contents outside properties, so iterables are walked too, except
-// one-shot iterators, which return themselves from `[Symbol.iterator]` and
-// would be consumed by the walk.
-const containsRedacted = (input: unknown): boolean => {
-  const visited = new Set<object>()
-  const loop = (value: unknown): boolean => {
-    if (Redacted.isRedacted(value)) return true
-    if (!Predicate.isObjectOrArray(value) || globalThis.ArrayBuffer.isView(value) || visited.has(value)) return false
-    visited.add(value)
-    const record = value as Record<PropertyKey, unknown>
-    for (const key of Reflect.ownKeys(value)) {
-      if (loop(record[key])) return true
-    }
-    for (const key in value) {
-      if (!Object.hasOwn(value, key) && loop(record[key])) return true
-    }
-    if (!Array.isArray(value) && Predicate.isIterable(value)) {
-      const iterator = value[Symbol.iterator]()
-      if ((iterator as unknown) === value) return false
-      for (let next = iterator.next(); !next.done; next = iterator.next()) {
-        if (loop(next.value)) {
-          iterator.return?.()
-          return true
-        }
+// Only the type side of the schema is walked, since it describes what the
+// caller supplies. Declarations are followed through their type parameters
+// (`Option`, `Map`, `Schema.Class`, ...); a custom declaration that holds a
+// `Redacted` value without exposing it as a type parameter is not detected.
+const containsRedactedSchema = (ast: SchemaAST.AST): boolean => {
+  const visited = new Set<SchemaAST.AST>()
+  const loop = (ast: SchemaAST.AST): boolean => {
+    if (visited.has(ast)) return false
+    visited.add(ast)
+    switch (ast._tag) {
+      case "Declaration": {
+        const annotations = ast.annotations as Schema.Annotations.Declaration<unknown> | undefined
+        return annotations?.representation?.id === "effect/schema/Redacted" || ast.typeParameters.some(loop)
       }
+      case "Objects":
+        return ast.propertySignatures.some((ps) => loop(ps.type)) ||
+          ast.indexSignatures.some((is) => loop(is.parameter) || loop(is.type))
+      case "Arrays":
+        return ast.elements.some(loop) || ast.rest.some(loop)
+      case "Union":
+        return ast.types.some(loop)
+      case "Suspend":
+        return loop(ast.thunk())
+      default:
+        return false
     }
-    return false
   }
-  return loop(input)
+  return loop(ast)
 }
 
 const redactUrlParams = (value: unknown): unknown => {
@@ -911,19 +911,16 @@ const redactUrlParams = (value: unknown): unknown => {
 const appendUrlParams = (
   request: HttpClientRequest.HttpClientRequest,
   params: Record<string, string>,
-  input: unknown
+  redact: boolean
 ): HttpClientRequest.HttpClientRequest =>
-  HttpClientRequest.appendUrlParams(
-    request,
-    containsRedacted(input) ? redactUrlParams(params) as UrlParams.Input : params
-  )
+  HttpClientRequest.appendUrlParams(request, redact ? redactUrlParams(params) as UrlParams.Input : params)
 
 const setHeaders = (
   request: HttpClientRequest.HttpClientRequest,
   headers: Record<string, string>,
-  input: unknown
+  redact: boolean
 ): HttpClientRequest.HttpClientRequest => {
-  if (!containsRedacted(input)) return HttpClientRequest.setHeaders(request, headers)
+  if (!redact) return HttpClientRequest.setHeaders(request, headers)
   const normalized = Headers.fromInput(headers)
   return HttpClientRequest.updateHeaders(request, (current) => {
     let out = current
