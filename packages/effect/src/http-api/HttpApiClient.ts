@@ -856,14 +856,29 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 // encoded output of an input slot that contains a `Redacted` value is
 // redacted as a whole: every query, header and URL parameter value from that
 // slot, and the inspection of its serialized body.
+//
+// Callers check the input only after it has been encoded. Collections such as
+// `Map`, `Set` and `Chunk` keep their contents outside enumerable properties,
+// so iterables are walked too, except one-shot iterators, which return
+// themselves from `[Symbol.iterator]` and would be consumed by the walk.
 const containsRedacted = (input: unknown): boolean => {
   const visited = new Set<object>()
   const loop = (value: unknown): boolean => {
     if (Redacted.isRedacted(value)) return true
-    if (!Predicate.isObject(value) || globalThis.ArrayBuffer.isView(value) || visited.has(value)) return false
+    if (!Predicate.isObjectOrArray(value) || globalThis.ArrayBuffer.isView(value) || visited.has(value)) return false
     visited.add(value)
     for (const key in value) {
       if (loop((value as Record<string, unknown>)[key])) return true
+    }
+    if (!Array.isArray(value) && Predicate.isIterable(value)) {
+      const iterator = value[Symbol.iterator]()
+      if ((iterator as unknown) === value) return false
+      for (let next = iterator.next(); !next.done; next = iterator.next()) {
+        if (loop(next.value)) {
+          iterator.return?.()
+          return true
+        }
+      }
     }
     return false
   }
