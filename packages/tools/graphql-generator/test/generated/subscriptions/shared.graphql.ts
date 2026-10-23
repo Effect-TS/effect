@@ -31,14 +31,14 @@ export interface MessageFilter {
   readonly postedAfter?: typeof DateTime.Type | null | undefined
   readonly member?: MemberMatch | null | undefined
   /** Any of these filters. */
-  readonly or?: ReadonlyArray<MessageFilter> | null | undefined
+  readonly or?: readonly MessageFilter[] | null | undefined
   /** A type named like a TypeScript global, which generated code must not shadow. */
   readonly shadow?: ReadonlyArray | null | undefined
 }
 export interface MessageFilterEncoded {
   readonly postedAfter?: typeof DateTime.Encoded | null | undefined
   readonly member?: MemberMatchEncoded | null | undefined
-  readonly or?: ReadonlyArray<MessageFilterEncoded> | null | undefined
+  readonly or?: readonly MessageFilterEncoded[] | null | undefined
   readonly shadow?: typeof ReadonlyArray.Encoded | null | undefined
 }
 

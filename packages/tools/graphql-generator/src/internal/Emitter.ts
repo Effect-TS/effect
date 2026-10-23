@@ -1684,12 +1684,16 @@ const recursiveDeclaration = (
     (encoded === undefined ? "" : `\nexport interface ${encoded} ${fields(encodedLeaf, false)}`)
 }
 
-/** The TypeScript type of an input, as written in the shared module, with `leaf` for each named type. */
+/**
+ * The TypeScript type of an input, as written in the shared module, with
+ * `leaf` for each named type. Lists are `readonly T[]`, since a generated
+ * type can be named `ReadonlyArray`.
+ */
 const inputTypeText = (type: SchemaModel.TypeRef, leaf: (name: string) => string): string =>
   typeRef(
     type,
     (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : leaf(name),
-    (element) => `ReadonlyArray<${element}>`,
+    (element) => `readonly ${/^[\w$]+$/.test(element) ? element : `(${element})`}[]`,
     (inner) => `${inner} | null`
   )
 
