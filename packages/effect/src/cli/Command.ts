@@ -1863,10 +1863,10 @@ const showUserError = (error: CliError.UserFacing): Effect.Effect<void> =>
  * entry point.
  *
  * Help documents are always rendered. By default, parse error details and
- * user-facing handler failures (`CliError.UserError` or any error that
- * implements `CliError.UserFacing`) are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * `CliError.UserFacing` failures, including `CliError.UserError`, are also
+ * rendered with the installed `CliOutput.Formatter` before the error is
+ * rethrown. Set `renderErrors` to `false` when the host application owns
+ * error rendering.
  *
  * **Example** (Running commands with standard input)
  *
@@ -1954,10 +1954,10 @@ export const run: {
  * commands with specific arguments.
  *
  * Help documents are always rendered. By default, parse error details and
- * user-facing handler failures (`CliError.UserError` or any error that
- * implements `CliError.UserFacing`) are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * `CliError.UserFacing` failures, including `CliError.UserError`, are also
+ * rendered with the installed `CliOutput.Formatter` before the error is
+ * rethrown. Set `renderErrors` to `false` when the host application owns
+ * error rendering.
  *
  * **Example** (Running commands with explicit arguments)
  *

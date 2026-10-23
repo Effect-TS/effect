@@ -72,10 +72,9 @@ export type UserFacingTypeId = typeof UserFacingTypeId
  *
  * **Details**
  *
- * `Command.run` renders `userMessage` through the installed formatter, sets
- * `Runtime.errorReported` to `false` on the original error, and rethrows that
- * same value. Tests, telemetry, and exit-code derivation therefore still see
- * the domain tag.
+ * `Command.run` renders `userMessage` with the installed formatter, sets
+ * `Runtime.errorReported` to `false`, and rethrows the original error, so its
+ * tag is preserved.
  *
  * **Example** (Opting a tagged error into user-facing rendering)
  *
@@ -619,10 +618,8 @@ export class ValidationError extends Schema.TaggedError<ValidationError>(
  * **Details**
  *
  * `userMessage` can provide safe, user-facing text independently of the
- * underlying cause. The field is always a string, so `UserError` structurally
- * implements {@link UserFacing}. Construction may omit it, in which case it is
- * `""` and `message` uses a non-empty string cause or `Error.message`, then
- * falls back to `"An error occurred"`.
+ * underlying cause. When empty (the default), `message` uses a non-empty
+ * string cause or `Error.message`, then falls back to `"An error occurred"`.
  *
  * **Example** (Wrapping user errors)
  *

@@ -2,6 +2,6 @@
 "effect": patch
 ---
 
-Add a UserFacing protocol so Command.run can render tagged handler errors
+Add `CliError.UserFacing` so `Command.run` renders tagged handler errors without wrapping them in `CliError.UserError`.
 
-`CliError.UserError` implements the protocol, so its `userMessage` now defaults to `""` and is always present in encoded output.
+`CliError.UserError` now implements the protocol, so `userMessage` defaults to `""` and is always included in encoded output.
