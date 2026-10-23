@@ -28,6 +28,7 @@ import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -1836,14 +1837,18 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
     // A raw JSON Schema given to a dynamic tool is sent unchanged
-    (jsonSchema) => jsonSchema.type === "object" || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    (jsonSchema) => isObjectOrObjectUnion(jsonSchema) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
     (jsonSchema) =>
       toolParametersError(
         tool,
-        `expected a JSON Schema with type "object", received ${JSON.stringify(jsonSchema)}`,
+        `expected a JSON Schema with type "object" or an "anyOf" of them, received ${JSON.stringify(jsonSchema)}`,
         method
       )
   ))
+
+const isObjectOrObjectUnion = (jsonSchema: JsonSchema.JsonSchema): boolean =>
+  jsonSchema.type === "object" ||
+  (Array.isArray(jsonSchema.anyOf) && jsonSchema.anyOf.every((member) => member?.type === "object"))
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service
