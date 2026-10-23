@@ -2379,6 +2379,47 @@ describe.concurrent("Sharding defect recovery", () => {
       assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
     }))
 
+  it.effect("replays a durable caller abandoned when only its target registration closes", () =>
+    Effect.gen(function*() {
+      const storage = yield* makeSharedMemoryStorage
+      const queued = yield* Latch.make()
+      const state = { children: 0, continued: [] as Array<string> }
+      const config = { preemptiveShutdown: false }
+      const runnerScope = yield* Scope.make()
+      const targetScope = yield* Scope.make()
+      const runner = yield* Layer.buildWithScope(
+        RestartSharding(ClosingTargetCallerLayer(state), unreadStorage(storage, "Child", queued), config),
+        runnerScope
+      )
+      yield* Effect.gen(function*() {
+        yield* Layer.buildWithScope(ClosingTargetLayer(state), targetScope)
+        // The target entity is resident while the caller waits on its queued request.
+        yield* advanceUntil((yield* ClosingTarget.client)("1").Warm())
+        yield* (yield* ClosingTargetCaller.client)("1").Call({ id: "call" }, { discard: true })
+        yield* queued.await
+      }).pipe(Effect.provide(runner))
+      // Only the target registration closes; the caller stays active.
+      yield* advanceUntil(Scope.close(targetScope, Exit.void))
+      // Without preemptive shutdown, the parked caller may wait out `entityTerminationTimeout`.
+      const closing = yield* Effect.forkChild(Scope.close(runnerScope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1000)
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(state, { children: 0, continued: [] })
+
+      const exit = yield* Effect.gen(function*() {
+        const client = (yield* ClosingTargetCaller.client)("1")
+        return yield* advanceUntil(Effect.exit(client.Call({ id: "call" })))
+      }).pipe(Effect.provide(
+        RestartSharding(
+          Layer.merge(ClosingTargetCallerLayer(state), ClosingTargetLayer(state)),
+          storage,
+          config
+        )
+      ))
+      assert.deepStrictEqual(exit, Exit.succeed("child"))
+      assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
+    }))
+
   it.effect("releases the caller of a request admitted during replacement acquisition on shutdown", () => {
     const registry: Metric.MetricRegistry = new Map()
     return Effect.gen(function*() {
@@ -4490,7 +4531,8 @@ const unreadStorage = (storage: MessageStorage.MessageStorage["Service"], tag: s
 
 const RestartSharding = <R>(
   entityLayer: Layer.Layer<never, never, R>,
-  storage: MessageStorage.MessageStorage["Service"]
+  storage: MessageStorage.MessageStorage["Service"],
+  config?: Partial<ShardingConfig.ShardingConfig["Service"]>
 ) =>
   entityLayer.pipe(
     Layer.provideMerge(Sharding.layer),
@@ -4498,7 +4540,7 @@ const RestartSharding = <R>(
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(Runners.layerNoop),
     Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage)),
-    Layer.provide(ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 60_000 }))
+    Layer.provide(ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 60_000, ...config }))
   )
 
 // Closes a runner, failing if shutdown waits for `entityTerminationTimeout`.
@@ -4540,6 +4582,40 @@ const AbandonedCallerLayer = (state: { children: number; readonly continued: Arr
     }),
     { concurrency: "unbounded" }
   )
+
+const ClosingTarget = Entity.make("ClosingTarget", [
+  Rpc.make("Warm").annotate(ClusterSchema.Persisted, false),
+  Rpc.make("Child", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
+    .annotate(ClusterSchema.Persisted, true)
+])
+
+const ClosingTargetLayer = (state: { children: number }) =>
+  ClosingTarget.toLayer({
+    Warm: () => Effect.void,
+    Child: () =>
+      Effect.sync(() => {
+        state.children++
+        return "child"
+      })
+  })
+
+const ClosingTargetCaller = Entity.make("ClosingTargetCaller", [
+  Rpc.make("Call", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
+    .annotate(ClusterSchema.Persisted, true)
+])
+
+// `Call` is an ordinary durable handler that continues after a `ClosingTarget` request.
+const ClosingTargetCallerLayer = (state: { readonly continued: Array<string> }) =>
+  ClosingTargetCaller.toLayer(Effect.gen(function*() {
+    const target = yield* ClosingTarget.client
+    return ClosingTargetCaller.of({
+      Call: () =>
+        Effect.tap(target("1").Child({ id: "child" }), (value) =>
+          Effect.sync(() => {
+            state.continued.push(value)
+          }))
+    })
+  }))
 
 const AcquisitionShutdown = Entity.make("AcquisitionShutdown", [
   Rpc.make("Crash", { payload: { id: Schema.String }, primaryKey: ({ id }) => id })
