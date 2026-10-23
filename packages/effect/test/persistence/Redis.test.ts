@@ -222,7 +222,11 @@ describe("Redis", () => {
     }))
 
   describe("reserve", () => {
-    const makeHarness = Effect.fnUntraced(function*(pool?: Redis.PoolOptions) {
+    const makeHarness = Effect.fnUntraced(function*(options: {
+      readonly pool?: Redis.PoolOptions
+      // runs before a connection opens, standing in for the socket handshake
+      readonly handshake?: Effect.Effect<void, Redis.RedisError>
+    } = {}) {
       const blocked = yield* Deferred.make<void>()
       const shared = yield* Semaphore.make(1)
       let connects = 0
@@ -240,19 +244,22 @@ describe("Redis", () => {
       const redis = yield* Redis.make({
         send: (command) => shared.withPermit(send(command, sharedClosed)),
         subscribe: () => Effect.succeed(Effect.never),
-        connect: Effect.sync(() => {
-          connects++
-          const closed = Deferred.makeUnsafe<void>()
-          return {
-            send: (command: string) => send(command, closed),
-            close: Effect.suspend(() => Deferred.succeed(closed, void 0)).pipe(
-              Effect.map((first) => {
-                if (first) closes++
-              })
-            )
-          }
-        }),
-        pool
+        connect: Effect.andThen(
+          options.handshake ?? Effect.void,
+          Effect.sync(() => {
+            connects++
+            const closed = Deferred.makeUnsafe<void>()
+            return {
+              send: (command: string) => send(command, closed),
+              close: Effect.suspend(() => Deferred.succeed(closed, void 0)).pipe(
+                Effect.map((first) => {
+                  if (first) closes++
+                })
+              )
+            }
+          })
+        ),
+        pool: options.pool
       })
       return { redis, blocked, connects: () => connects, closes: () => closes }
     })
@@ -313,7 +320,7 @@ describe("Redis", () => {
 
     it.effect("waits for a free connection at maxConnections and fails after acquireTimeout", () =>
       Effect.gen(function*() {
-        const { connects, redis } = yield* makeHarness({ maxConnections: 1, acquireTimeout: "1 second" })
+        const { connects, redis } = yield* makeHarness({ pool: { maxConnections: 1, acquireTimeout: "1 second" } })
         const first = yield* Scope.make()
         yield* redis.reserve.pipe(Scope.provide(first))
 
@@ -326,6 +333,81 @@ describe("Redis", () => {
 
         assert.strictEqual(yield* Fiber.join(waiting), "PING")
         assert.strictEqual(connects(), 1)
+      }))
+
+    it.effect("retries a failed connect on the next reserve", () =>
+      Effect.gen(function*() {
+        let handshakes = 0
+        const { connects, redis } = yield* makeHarness({
+          handshake: Effect.suspend(() =>
+            ++handshakes === 1 ? Effect.fail(new Redis.RedisError({ cause: new Error("ECONNREFUSED") })) : Effect.void
+          )
+        })
+
+        assert.instanceOf(yield* ping(redis).pipe(Effect.flip), Redis.RedisError)
+        assert.strictEqual(yield* ping(redis), "PING")
+        assert.strictEqual(handshakes, 2)
+        assert.strictEqual(connects(), 1)
+      }))
+
+    it.effect("does not leak a connection when reserve is interrupted during connect", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const handshake = yield* Deferred.make<void>()
+        const scope = yield* Scope.make()
+        const { closes, connects, redis } = yield* makeHarness({
+          // a promise keeps resolving after its fiber is interrupted, like a socket handshake
+          handshake: Deferred.succeed(started, void 0).pipe(
+            Effect.andThen(Effect.promise(() => Effect.runPromise(Deferred.await(handshake))))
+          )
+        }).pipe(Scope.provide(scope))
+
+        const fiber = yield* ping(redis).pipe(Effect.forkChild)
+        yield* Deferred.await(started)
+        const interrupted = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(handshake, void 0)
+        yield* Fiber.join(interrupted)
+        yield* Scope.close(scope, Exit.void)
+
+        assert.strictEqual(connects(), 1)
+        assert.strictEqual(closes(), 1)
+      }))
+
+    it.effect("evaluates scripts on a reserved connection, loading them through the shared connection", () =>
+      Effect.gen(function*() {
+        const shared: Array<string> = []
+        const reserved: Array<string> = []
+        const redis = yield* Redis.make({
+          send: (command) =>
+            Effect.sync(() => {
+              shared.push(command)
+              return "sha" as any
+            }),
+          subscribe: () => Effect.succeed(Effect.never),
+          connect: Effect.succeed({
+            send: (command: string) =>
+              Effect.suspend(() => {
+                reserved.push(command)
+                return reserved.length === 1
+                  ? Effect.fail(new Redis.RedisError({ cause: new Error("NOSCRIPT No matching script") }))
+                  : Effect.succeed("ok" as any)
+              }),
+            close: Effect.void
+          })
+        })
+        const evalScript = Redis.script((key: string) => [key], {
+          lua: "return KEYS[1]",
+          numberOfKeys: 1
+        }).withReturnType<string>()
+
+        const result = yield* redis.reserve.pipe(
+          Effect.flatMap((connection) => connection.eval(evalScript)("key")),
+          Effect.scoped
+        )
+
+        assert.strictEqual(result, "ok")
+        assert.deepStrictEqual(shared, ["SCRIPT", "SCRIPT"])
+        assert.deepStrictEqual(reserved, ["EVALSHA", "EVALSHA"])
       }))
   })
 })
