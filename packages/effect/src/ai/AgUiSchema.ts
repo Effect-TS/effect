@@ -69,22 +69,32 @@ const subagentEventFields = {
 
 const TokenCount = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
-// AG-UI consumers remove union members they do not recognise, such as members
-// added by a newer protocol version, instead of rejecting the value holding
-// them. Recognised but malformed members still fail to decode.
-const withoutUnknownMembers = <S extends Schema.Constraint>(item: S, isUnknown: (value: unknown) => boolean) =>
-  Schema.Array(Schema.Unknown).pipe(
+// AG-UI consumers remove list elements they do not recognise, such as union
+// members or closed-set values added by a newer protocol version, instead of
+// rejecting the value holding them. Recognised but malformed elements still
+// fail to decode.
+const withoutUnknownMembers = <S extends Schema.Constraint>(item: S, isUnknown: (value: unknown) => boolean) => {
+  // Accepts only unrecognised material, so it never hides a malformed item and
+  // the item schema stays visible to JSON Schema and OpenAPI
+  const Unrecognised = Schema.Unknown.check(Schema.makeFilter(isUnknown, {
+    description: "A member from a newer protocol version, removed during decoding",
+    toJsonSchema: () => [{}, true]
+  }))
+  return Schema.Array(Schema.Union([item, Unrecognised])).pipe(
     Schema.decodeTo(
-      Schema.Array(item),
+      Schema.Array(Schema.toType(item)),
       SchemaTransformation.transform({
-        decode: (values) => values.filter((value) => !isUnknown(value)) as ReadonlyArray<S["Encoded"]>,
+        decode: (values) => values.filter((value) => !isUnknown(value)) as ReadonlyArray<S["Type"]>,
         encode: identity
       })
     )
   )
+}
 
+// Only a string outside the closed set is unrecognised; a missing or
+// mistyped value is malformed
 const hasUnknownTag = (value: unknown, key: string, tags: ReadonlySet<string>): boolean =>
-  Predicate.isObject(value) && !(typeof value[key] === "string" && tags.has(value[key]))
+  Predicate.isObject(value) && typeof value[key] === "string" && !tags.has(value[key])
 
 // =============================================================================
 // Content
@@ -395,6 +405,8 @@ export const ToolCall = Schema.Struct({
  */
 export type ToolCall = typeof ToolCall.Type
 
+const toolCallTypes: ReadonlySet<string> = new Set(["function"])
+
 /**
  * Schema for a message from the agent.
  *
@@ -410,7 +422,9 @@ export const AssistantMessage = Schema.Struct({
   encryptedValue: Schema.optionalKey(Schema.String),
   metadata: Schema.optionalKey(Metadata),
   content: Schema.optionalKey(Schema.String),
-  toolCalls: Schema.optionalKey(Schema.Array(ToolCall))
+  toolCalls: Schema.optionalKey(
+    withoutUnknownMembers(ToolCall, (value) => hasUnknownTag(value, "type", toolCallTypes))
+  )
 })
 
 /**
@@ -645,6 +659,8 @@ export const ResumeEntry = Schema.Struct({
  */
 export type ResumeEntry = typeof ResumeEntry.Type
 
+const resumeStatuses: ReadonlySet<string> = new Set(["resolved", "cancelled"])
+
 /**
  * Schema for the request body that starts an agent run.
  *
@@ -652,9 +668,9 @@ export type ResumeEntry = typeof ResumeEntry.Type
  *
  * `messages` is the complete conversation so far, which lets an agent serve
  * runs without keeping its own history. Missing `tools` and `context` decode
- * to empty arrays. As AG-UI requires, messages and content parts of kinds this
- * version does not recognise are removed during decoding rather than
- * rejected.
+ * to empty arrays. As AG-UI requires, messages, content parts, tool calls,
+ * and resume entries of kinds or statuses this version does not recognise are
+ * removed during decoding rather than rejected.
  *
  * **Gotchas**
  *
@@ -675,7 +691,9 @@ export const RunAgentInput = Schema.Struct({
   tools: Schema.Array(Tool).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([]))),
   context: Schema.Array(Context).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([]))),
   forwardedProps: Schema.optionalKey(Schema.Unknown),
-  resume: Schema.optionalKey(Schema.Array(ResumeEntry))
+  resume: Schema.optionalKey(
+    withoutUnknownMembers(ResumeEntry, (value) => hasUnknownTag(value, "status", resumeStatuses))
+  )
 })
 
 /**

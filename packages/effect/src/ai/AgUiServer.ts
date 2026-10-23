@@ -100,9 +100,10 @@ export const handler = <E, R>(
   Effect.map(Effect.context<R>(), (context) =>
     HttpApiSchema.withHeaders({
       body: run(payload).pipe(
-        // Encode here so an unencodable event becomes a sanitized RUN_ERROR
-        // rather than an HttpApi stream failure frame
-        Stream.tap(encodeEvent),
+        // Serialize here so an unencodable event becomes a sanitized RUN_ERROR
+        // rather than an HttpApi stream failure frame. The parsed result is
+        // plain JSON data, so HttpApi encoding it again cannot fail.
+        Stream.mapEffect(normalizeEvent),
         AgUi.withRunLifecycle(payload),
         Stream.provideContext(context)
       ),
@@ -110,6 +111,9 @@ export const handler = <E, R>(
     }))
 
 const encodeEvent = Schema.encodeUnknownEffect(Schema.fromJsonString(AgUiSchema.Event))
+
+const normalizeEvent = (event: AgUiSchema.Event) =>
+  Effect.map(encodeEvent(event), (json): AgUiSchema.Event => JSON.parse(json))
 
 /**
  * Creates a layer that serves AG-UI runs at `path` on the current
