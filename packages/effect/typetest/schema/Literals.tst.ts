@@ -55,6 +55,13 @@ describe("Literals", () => {
     const omitted: ReadonlyArray<"a" | "b"> = ["a"]
     expect(schema.omit(omitted)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
 
+    // likewise for an omitted tuple element typed as a union
+    const ab = "a" as "a" | "b"
+    expect(schema.omit([ab])).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+
+    // a parent element typed as a union may or may not be omitted at runtime
+    expect(Schema.Literals([ab, "c"]).omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
+
     const widened = Schema.Literals(["a", "b", "c"] as ReadonlyArray<"a" | "b" | "c">)
     expect(widened.omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
   })
