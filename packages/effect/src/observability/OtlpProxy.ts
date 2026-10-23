@@ -18,6 +18,8 @@
  *   forwarded from the client. Configured `headers` are applied last, so a
  *   client cannot override them.
  * - Bodies are buffered up to `maxBodySize` and rejected with `413` beyond it.
+ * - Upstream requests send `accept-encoding: identity`, and the client's
+ *   `accept-encoding` is never forwarded.
  * - The upstream status and body are returned with only the `content-type` and
  *   `retry-after` headers, so client SDK back-off keeps working and upstream
  *   cookies are dropped. Transport failures return `502` and timeouts `504`.
@@ -25,9 +27,19 @@
  *
  * **Gotchas**
  *
- * Anyone who can reach the routes can send telemetry with the configured
- * credentials. Compose authentication, CORS, and rate limiting around the
- * layer as the application requires.
+ * - Anyone who can reach the routes can send telemetry with the configured
+ *   credentials. Compose authentication, CORS, and rate limiting around the
+ *   layer as the application requires.
+ * - The response body is returned as the `HttpClient` provides it, without a
+ *   `content-encoding` header. Setting `accept-encoding` in `headers` can
+ *   invalidate this, as can an upstream that compresses despite
+ *   `accept-encoding: identity`: clients that do not decode responses, such as
+ *   `NodeHttpClient.makeUndici`, then return compressed bytes.
+ * - Requests to the proxy routes are traced by the HTTP server like any other
+ *   route. To suppress those spans, provide `HttpMiddleware.TracerDisabledWhen`
+ *   with a predicate matching the routes, or use
+ *   `HttpMiddleware.layerTracerDisabledForUrls`, which matches exact URLs, so
+ *   list each route.
  *
  * @stability unstable
  * @since 4.0.7
@@ -254,6 +266,9 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
         outbound = HttpClientRequest.setHeader(outbound, name, value)
       }
     }
+    // The response is returned without content-encoding, so request it
+    // uncompressed. Configured headers can still override this.
+    outbound = HttpClientRequest.setHeader(outbound, "accept-encoding", "identity")
     return yield* upstream.execute(HttpClientRequest.setHeaders(outbound, headers)).pipe(
       Effect.flatMap((response) => Effect.map(response.arrayBuffer, (body) => toServerResponse(response, body))),
       Effect.timeout(timeout),
