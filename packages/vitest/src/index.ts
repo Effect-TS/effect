@@ -281,8 +281,8 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * per block. Each test gets new services, released when the test finishes,
  * while services from an enclosing `layer` block stay shared. A build failure
  * fails only that test. Blocks nested inside a per-test block are built per
- * test as well, and `timeout` has no effect on them, since the test's own
- * timeout covers the build.
+ * test as well. `timeout` has no effect on a per-test block, since the test's
+ * own timeout covers the build.
  *
  * **Example** (Sharing layers between tests)
  *
