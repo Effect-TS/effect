@@ -2127,6 +2127,44 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("interruptUnsafe during a later activity closes the superseded run and compensates once", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("UnsafeInterruptCompensateOnce", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const compensations: Array<Cause.Cause<unknown>> = []
+      const finalizers: Array<Exit.Exit<unknown, unknown>> = []
+      let attempts = 0
+      const layer = workflow.toLayer(Effect.fnUntraced(function*() {
+        attempts++
+        yield* Workflow.addFinalizer((exit) => Effect.sync(() => finalizers.push(exit)))
+        yield* Activity.make({ name: "first", execute: Effect.void }).pipe(
+          workflow.withCompensation((_, cause) => Effect.sync(() => compensations.push(cause)))
+        )
+        yield* Activity.make({ name: "second", execute: started.open.pipe(Effect.andThen(release.await)) })
+        yield* Activity.make({ name: "third", execute: Effect.void })
+      })).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      yield* Effect.gen(function*() {
+        const engine = yield* WorkflowEngine
+        yield* TestClock.adjust(1)
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* started.await
+        yield* engine.interruptUnsafe(workflow, executionId)
+        yield* release.open
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(compensations.length, 1, "the compensation must run only in the final run")
+        assert.isTrue(Cause.hasInterrupts(compensations[0]))
+        // Every attempt's scope is closed; superseded attempts observe success.
+        assert.strictEqual(finalizers.length, attempts, "every run scope must be closed")
+        assert.strictEqual(finalizers.filter(Exit.hasInterrupts).length, 1, "only the final run observes the interrupt")
+        assert.strictEqual(finalizers.filter(Exit.isSuccess).length, attempts - 1)
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("applies a persisted interrupt when a fresh owner replays a failure-suspended workflow", () =>
     Effect.gen(function*() {
       let attempts = 0
