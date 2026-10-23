@@ -145,6 +145,14 @@ export const layerIndexedDb = (options?: {
             () => store.count()
           )
         }),
+        keys: Effect.suspend(() => {
+          const store = getKvsEntriesStore(db, "readonly")
+          return idbRequest(
+            { method: "keys", message: "Failed to get backing store keys" },
+            // keys are always strings since `set` only accepts string keys
+            () => store.getAllKeys() as IDBRequest<Array<string>>
+          )
+        }),
         remove: (key: string) =>
           Effect.asVoid(Effect.suspend(() => {
             return idbWriteRequest(
