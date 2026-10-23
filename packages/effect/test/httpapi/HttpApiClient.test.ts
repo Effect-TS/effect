@@ -1375,6 +1375,41 @@ describe("HttpApiClient", () => {
         false
       ])
     }))
+
+  it.effect("keeps Redacted values in symbol and non-enumerable fields out of failed request inspection", () =>
+    Effect.gen(function*() {
+      const Secret = Schema.RedactedFromValue(Schema.String)
+      const key = Symbol("token")
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("g").add(
+          HttpApiEndpoint.post("symbol", "/symbol", {
+            payload: Schema.Struct({ [key]: Secret }).pipe(Schema.encodeKeys({ [key]: "token" }))
+          }),
+          HttpApiEndpoint.post("nonEnumerable", "/non-enumerable", { payload: Schema.Struct({ token: Secret }) })
+        )
+      )
+      const wire: Array<string> = []
+      const httpClient = HttpClient.make((request) => {
+        wire.push(request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : "")
+        return Effect.fail(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      })
+      const client = yield* HttpApiClient.makeWith(Api, { httpClient, baseUrl: "http://x" })
+      const secret = Redacted.make("s3cret")
+
+      const errors = [
+        yield* Effect.flip(client.g.symbol({ payload: { [key]: secret } })),
+        yield* Effect.flip(
+          client.g.nonEnumerable({
+            payload: Object.defineProperty({} as { token: typeof secret }, "token", { value: secret })
+          })
+        )
+      ]
+
+      assert.deepStrictEqual(wire, ["{\"token\":\"s3cret\"}", "{\"token\":\"s3cret\"}"])
+      assert.deepStrictEqual(errors.map((error) => JSON.stringify(error.toJSON()).includes("s3cret")), [false, false])
+    }))
 })
 
 const textEncoder = new TextEncoder()
