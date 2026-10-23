@@ -46,6 +46,7 @@
 import * as ByteSize from "../ByteSize.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import { constTrue } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
@@ -232,8 +233,9 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
 }): Handler => {
+  // Skips the outbound span and trace headers in one step.
   const upstream = client.pipe(
-    HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
+    HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, constTrue))
   )
   const headers = Headers.fromInput(options.headers)
   const maxBodySize = options.maxBodySize === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBodySize)
@@ -242,14 +244,17 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
   return Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const contentType = request.headers["content-type"]
-    if (contentType === undefined || !contentTypes.has(contentType.split(";")[0].trim().toLowerCase())) {
-      return HttpServerResponse.empty({ status: 415 })
+    if (!isSupportedContentType(contentType)) {
+      return unsupportedMediaType
     }
     const limit = Number(maxBodySize ?? (yield* HttpIncomingMessage.MaxBodySize) ?? defaultMaxBodySize)
-    if (Number(request.headers["content-length"]) > limit) {
-      return HttpServerResponse.empty({ status: 413 })
+    const contentLength = parseContentLength(request.headers["content-length"])
+    if (contentLength !== undefined && contentLength > limit) {
+      return contentTooLarge
     }
-    const body = yield* readBody(request, limit)
+    // The HTTP parser stops a declared-length body at that length, so only
+    // chunked uploads need their bytes counted.
+    const body = yield* (contentLength === undefined ? readBody(request, limit) : readDeclaredBody(request, limit))
     if (HttpServerResponse.isHttpServerResponse(body)) {
       return body
     }
@@ -266,13 +271,24 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
       Effect.flatMap((response) => Effect.map(response.arrayBuffer, (body) => toServerResponse(response, body))),
       Effect.timeout(timeout),
       Effect.catchTags({
-        TimeoutError: () => Effect.succeed(HttpServerResponse.empty({ status: 504 })),
-        HttpClientError: () => Effect.succeed(HttpServerResponse.empty({ status: 502 }))
-      }),
-      Effect.withTracerEnabled(false)
+        TimeoutError: () => Effect.succeed(gatewayTimeout),
+        HttpClientError: () => Effect.succeed(badGateway)
+      })
     )
   })
 }
+
+const unsupportedMediaType = HttpServerResponse.empty({ status: 415 })
+const contentTooLarge = HttpServerResponse.empty({ status: 413 })
+const badGateway = HttpServerResponse.empty({ status: 502 })
+const gatewayTimeout = HttpServerResponse.empty({ status: 504 })
+
+const isSupportedContentType = (contentType: string | undefined): contentType is string =>
+  contentType !== undefined &&
+  (contentTypes.has(contentType) || contentTypes.has(contentType.split(";")[0].trim().toLowerCase()))
+
+const parseContentLength = (contentLength: string | undefined): number | undefined =>
+  contentLength !== undefined && /^\d+$/.test(contentLength) ? Number(contentLength) : undefined
 
 const toServerResponse = (
   response: HttpClientResponse.HttpClientResponse,
@@ -291,6 +307,19 @@ const toServerResponse = (
     })
 }
 
+const readDeclaredBody = (
+  request: HttpServerRequest.HttpServerRequest,
+  limit: number
+): Effect.Effect<Uint8Array | HttpServerResponse.HttpServerResponse> =>
+  Effect.catch(
+    Effect.map(
+      request.arrayBuffer,
+      (body): Uint8Array | HttpServerResponse.HttpServerResponse =>
+        body.byteLength > limit ? contentTooLarge : new Uint8Array(body)
+    ),
+    HttpServerRespondable.toResponse
+  )
+
 // Counts bytes on the stream because only some platforms apply MaxBodySize to
 // buffered reads.
 const readBody = (
@@ -307,7 +336,7 @@ const readBody = (
       return Effect.succeed(true)
     }).pipe(
       Effect.map(() => {
-        if (size > limit) return HttpServerResponse.empty({ status: 413 })
+        if (size > limit) return contentTooLarge
         const body = new Uint8Array(size)
         let offset = 0
         for (const chunk of chunks) {
