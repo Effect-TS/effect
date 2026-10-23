@@ -203,19 +203,65 @@ const underscoreAliases = (names: Iterable<string>, taken: ReadonlySet<string>):
 /** Names every per-file module imports, which operations and fragments can't take. */
 const importedNames: ReadonlySet<string> = new Set(["Schema", "Shared", "GraphQL", "GraphQLGroup"])
 
-const builtInSharedScalars: ReadonlyArray<string> = ["Int", "Float", "ID", "DateTime", "URI"]
+interface BuiltInScalar {
+  readonly codec: (schema: string) => string
+  /** Whether the codec's Encoded type differs from its Type. */
+  readonly transforms: boolean
+}
 
-const builtInScalarCodec = (name: string, schema: string): string => {
-  switch (name) {
-    case "Int":
-      return `${schema}.Number.check(${schema}.isInt32())`
-    case "Float":
-      return `${schema}.Finite`
-    case "DateTime":
-      return `${schema}.DateTimeUtcFromString`
-    default:
-      return `${schema}.String`
+/** The scalars with a default codec in the shared module, in declaration order. */
+const builtInSharedScalars: ReadonlyMap<string, BuiltInScalar> = new Map([
+  ["Int", { codec: (schema) => `${schema}.Number.check(${schema}.isInt32())`, transforms: false }],
+  ["Float", { codec: (schema) => `${schema}.Finite`, transforms: false }],
+  ["ID", { codec: (schema) => `${schema}.String`, transforms: false }],
+  ["DateTime", { codec: (schema) => `${schema}.DateTimeUtcFromString`, transforms: true }],
+  ["URI", { codec: (schema) => `${schema}.String`, transforms: false }]
+])
+
+/**
+ * Whether a shared-module scalar's Encoded type may differ from its Type. A
+ * mapped codec may transform; an unmapped custom scalar is `Schema.Json`.
+ */
+const scalarTransforms = (name: string, scalars: ReadonlyMap<string, ScalarMapping>): boolean =>
+  scalars.has(name) || builtInSharedScalars.get(name)?.transforms === true
+
+/**
+ * The strongly connected components of the graph reached from `roots`, each
+ * after every component it has an edge to (Tarjan's algorithm). A
+ * component's nodes are in the order they were reached.
+ */
+const stronglyConnectedComponents = (
+  roots: Iterable<string>,
+  successors: (node: string) => Iterable<string>
+): Array<ReadonlyArray<string>> => {
+  const index = new Map<string, number>()
+  const low = new Map<string, number>()
+  const stack: Array<string> = []
+  const onStack = new Set<string>()
+  const components: Array<ReadonlyArray<string>> = []
+  const visit = (node: string): void => {
+    const nodeIndex = index.size
+    index.set(node, nodeIndex)
+    low.set(node, nodeIndex)
+    stack.push(node)
+    onStack.add(node)
+    for (const next of successors(node)) {
+      if (!index.has(next)) {
+        visit(next)
+        low.set(node, Math.min(low.get(node)!, low.get(next)!))
+      } else if (onStack.has(next)) {
+        low.set(node, Math.min(low.get(node)!, index.get(next)!))
+      }
+    }
+    if (low.get(node) !== nodeIndex) return
+    const component = stack.splice(stack.lastIndexOf(node))
+    for (const member of component) onStack.delete(member)
+    components.push(component)
   }
+  for (const root of roots) {
+    if (!index.has(root)) visit(root)
+  }
+  return components
 }
 
 // -----------------------------------------------------------------------------
@@ -1348,67 +1394,41 @@ class Emitter {
   emitShared(): { readonly file: GeneratedFile; readonly unmapped: ReadonlyArray<string> } {
     // Close over input objects: each one reaches the types of all its fields.
     // Inputs are declared after the inputs they use, and the members of a
-    // cycle together (Tarjan's strongly connected components).
-    const inputs: Array<SchemaModel.InputObjectType> = []
-    const all = new Set<string>()
+    // cycle together.
+    const fieldTypes = (name: string): ReadonlyArray<string> => {
+      const type = this.type(name)
+      return type._tag === "InputObjectType" ? type.fields.map((field) => SchemaModel.namedTypeOf(field.type)) : []
+    }
+    const components = stronglyConnectedComponents(Array.from(this.reached).sort(), fieldTypes)
+    const all = new Set(components.flat())
+    const inputs = components.flat().flatMap((name) => {
+      const type = this.type(name)
+      return type._tag === "InputObjectType" ? [type] : []
+    })
     /** The members of the cycle each recursive input object is on. */
     const cycles = new Map<string, ReadonlySet<string>>()
-    /** Whether an input object's Encoded type differs from its Type. */
-    const transforms = new Map<string, boolean>()
-    const transformsLeaf = (name: string): boolean => {
-      const type = this.type(name)
-      if (type._tag === "InputObjectType") return transforms.get(name) ?? false
-      // A mapped codec may transform; the built-in `DateTime` default does.
-      return type._tag === "ScalarType" && (this.options.scalars.has(name) || name === "DateTime")
-    }
-    const index = new Map<string, number>()
-    const low = new Map<string, number>()
-    const stack: Array<SchemaModel.InputObjectType> = []
-    const onStack = new Set<string>()
-    const visit = (name: string): void => {
-      if (all.has(name)) return
-      all.add(name)
-      const type = this.type(name)
-      if (type._tag !== "InputObjectType") return
-      index.set(name, index.size)
-      low.set(name, index.get(name)!)
-      stack.push(type)
-      onStack.add(name)
-      for (const field of type.fields) {
-        const child = SchemaModel.namedTypeOf(field.type)
-        if (!all.has(child)) {
-          visit(child)
-          if (index.has(child)) low.set(name, Math.min(low.get(name)!, low.get(child)!))
-        } else if (onStack.has(child)) {
-          low.set(name, Math.min(low.get(name)!, index.get(child)!))
-        }
+    /** The input objects whose Encoded type differs from their Type. */
+    const transforms = new Set<string>()
+    const transformsLeaf = (name: string): boolean =>
+      this.type(name)._tag === "ScalarType" ? scalarTransforms(name, this.options.scalars) : transforms.has(name)
+    for (const component of components) {
+      const members = new Set(component)
+      const leaves = component.flatMap(fieldTypes)
+      if (members.size > 1 || leaves.includes(component[0])) {
+        for (const name of component) cycles.set(name, members)
       }
-      if (low.get(name) !== index.get(name)) return
-      const component: Array<SchemaModel.InputObjectType> = []
-      let member: SchemaModel.InputObjectType
-      do {
-        member = stack.pop()!
-        onStack.delete(member.name)
-        component.unshift(member)
-      } while (member !== type)
-      const members = new Set(component.map((input) => input.name))
-      const fieldTypes = component.flatMap((input) => input.fields.map((field) => SchemaModel.namedTypeOf(field.type)))
-      if (members.size > 1 || fieldTypes.includes(name)) {
-        for (const input of members) cycles.set(input, members)
+      if (leaves.some((leaf) => !members.has(leaf) && transformsLeaf(leaf))) {
+        for (const name of component) transforms.add(name)
       }
-      const transformed = fieldTypes.some((leaf) => !members.has(leaf) && transformsLeaf(leaf))
-      for (const input of members) transforms.set(input, transformed)
-      inputs.push(...component)
     }
-    for (const name of Array.from(this.reached).sort()) visit(name)
     all.delete("String")
     all.delete("Boolean")
 
     const byName = Array.from(all).sort()
-    const builtIns = builtInSharedScalars.filter((name) => all.has(name) && this.type(name)._tag === "ScalarType")
-    const scalars = byName.filter((name) =>
-      this.type(name)._tag === "ScalarType" && !builtInSharedScalars.includes(name)
+    const builtIns = Array.from(builtInSharedScalars.keys()).filter((name) =>
+      all.has(name) && this.type(name)._tag === "ScalarType"
     )
+    const scalars = byName.filter((name) => this.type(name)._tag === "ScalarType" && !builtInSharedScalars.has(name))
     const enums = byName.flatMap((name) => {
       const type = this.type(name)
       return type._tag === "EnumType" ? [type] : []
@@ -1468,7 +1488,7 @@ class Emitter {
 
     const blocks: Array<string> = []
     for (const name of [...builtIns, ...scalars]) {
-      const codec = scalarCodec(name, builtIns.includes(name) ? builtInScalarCodec(name, schema) : `${schema}.Json`)
+      const codec = scalarCodec(name, builtInSharedScalars.get(name)?.codec(schema) ?? `${schema}.Json`)
       blocks.push(declare(name, descriptionLines(this.type(name).description), (b, e) => `${e}const ${b} = ${codec}`))
     }
     for (const type of enums) {
@@ -1489,7 +1509,7 @@ class Emitter {
     // A recursive input object's Encoded interface, when it differs from the Type.
     const encodedNames = new Map<string, string>()
     for (const type of inputs) {
-      if (cycles.has(type.name) && transforms.get(type.name)) {
+      if (cycles.has(type.name) && transforms.has(type.name)) {
         encodedNames.set(type.name, allocate(`${type.name}Encoded`))
       }
     }
