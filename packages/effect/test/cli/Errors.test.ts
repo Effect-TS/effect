@@ -447,11 +447,11 @@ describe("Command errors", () => {
     })
   })
 
-  describe("UserFacing", () => {
-    it("isUserFacing accepts UserError and rejects values without the protocol marker", () => {
-      assert.isTrue(CliError.isUserFacing(new CliError.UserError({ cause: "failed" })))
-      assert.isFalse(CliError.isUserFacing({ userMessage: "nope" }))
-      assert.isFalse(CliError.isUserFacing(new Error("nope")))
+  describe("userMessage", () => {
+    it("getUserMessage reads UserError messages and ignores values without the annotation", () => {
+      assert.strictEqual(CliError.getUserMessage(new CliError.UserError({ cause: "failed" })), "failed")
+      assert.isUndefined(CliError.getUserMessage({ userMessage: "nope" }))
+      assert.isUndefined(CliError.getUserMessage(new Error("nope")))
     })
   })
 })

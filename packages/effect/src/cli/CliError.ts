@@ -5,7 +5,7 @@
  * flags or arguments, unexpected positional arguments, invalid values, unknown
  * subcommands, rejected input combinations, user handler failures, and
  * requests to show command help. This module includes the `CliError` union,
- * the `isCliError` guard, the `UserFacing` protocol for tagged handler
+ * the `isCliError` guard, the `userMessage` annotation for rendering handler
  * failures, schema-backed error classes with display messages, and the
  * `NonShowHelpErrors` union used when parse or validation errors should be
  * shown with help output.
@@ -13,7 +13,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Effect from "../Effect.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Runtime from "../Runtime.ts"
 import * as Schema from "../Schema.ts"
@@ -49,34 +48,36 @@ const TypeId = "~effect/cli/CliError"
 export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
 
 /**
- * Type identifier for the {@link UserFacing} protocol.
+ * Defines the string property key used to give an object error a user-facing
+ * message.
+ *
+ * **When to use**
+ *
+ * Use to type the property key that marks handler failures for rendering by
+ * `Command.run`.
  *
  * @stability unstable
- * @category type IDs
+ * @category annotations
  * @since 4.0.0
  */
-export const UserFacingTypeId = "~effect/cli/CliError/UserFacing"
+export type userMessage = "~effect/cli/CliError/userMessage"
 
 /**
- * Type of {@link UserFacingTypeId}.
+ * Defines the runtime property key used to give an object error a user-facing
+ * message.
  *
- * @stability unstable
- * @category type IDs
- * @since 4.0.0
- */
-export type UserFacingTypeId = typeof UserFacingTypeId
-
-/**
- * Protocol for handler failures that should be rendered as user-facing CLI
- * errors while keeping their original tagged type.
+ * **When to use**
+ *
+ * Use when a handler fails with a domain error that should be shown to the
+ * user without wrapping it in {@link UserError}.
  *
  * **Details**
  *
- * `Command.run` renders `userMessage` with the installed formatter, sets
- * `Runtime.errorReported` to `false`, and rethrows the original error, so its
- * tag is preserved.
+ * When a handler failure has a string `[CliError.userMessage]`, `Command.run`
+ * renders it with the installed formatter, sets `Runtime.errorReported` to
+ * `false`, and rethrows the original error, so its tag is preserved.
  *
- * **Example** (Opting a tagged error into user-facing rendering)
+ * **Example** (Rendering a tagged handler failure)
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
@@ -84,36 +85,36 @@ export type UserFacingTypeId = typeof UserFacingTypeId
  *
  * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
  *   path: Schema.String
- * }) implements CliError.UserFacing {
- *   readonly [CliError.UserFacingTypeId]: CliError.UserFacingTypeId = CliError.UserFacingTypeId
- *   get userMessage() {
- *     return `${this.path} already exists. Re-run with --force to replace it.`
+ * }) {
+ *   get [CliError.userMessage]() {
+ *     return `${this.path} already exists`
  *   }
  * }
  *
  * const error = new Occupied({ path: "config.yaml" })
- * CliError.isUserFacing(error) // => true
- * error._tag // => "Occupied"
+ * CliError.getUserMessage(error) // => "config.yaml already exists"
  * ```
  *
- * @stability unstable
- * @category errors
- * @since 4.0.0
- */
-export interface UserFacing {
-  readonly [UserFacingTypeId]: UserFacingTypeId
-  readonly userMessage: string
-  [Runtime.errorReported]?: boolean
-}
-
-/**
- * Returns `true` when a value implements the {@link UserFacing} protocol.
+ * @see {@link getUserMessage} for reading the message stored under this key
  *
  * @stability unstable
- * @category guards
+ * @category annotations
  * @since 4.0.0
  */
-export const isUserFacing = (u: unknown): u is UserFacing => Predicate.hasProperty(u, UserFacingTypeId)
+export const userMessage: userMessage = "~effect/cli/CliError/userMessage"
+
+/**
+ * Reads the `CliError.userMessage` annotation from an error object, returning
+ * `undefined` when it is unset or not a string.
+ *
+ * @see {@link userMessage} for the annotation key this getter reads
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.0
+ */
+export const getUserMessage = (error: object): string | undefined =>
+  userMessage in error && typeof error[userMessage] === "string" ? error[userMessage] : undefined
 
 /**
  * Union type representing all possible CLI error conditions.
@@ -618,8 +619,8 @@ export class ValidationError extends Schema.TaggedError<ValidationError>(
  * **Details**
  *
  * `userMessage` can provide safe, user-facing text independently of the
- * underlying cause. When empty (the default), `message` uses a non-empty
- * string cause or `Error.message`, then falls back to `"An error occurred"`.
+ * underlying cause. When omitted or empty, `message` uses a non-empty string
+ * cause or `Error.message`, then falls back to `"An error occurred"`.
  *
  * **Example** (Wrapping user errors)
  *
@@ -662,11 +663,8 @@ export class UserError extends Schema.TaggedError<UserError>(
   `${TypeId}/UserError`
 )("UserError", {
   cause: Schema.Defect(),
-  userMessage: Schema.String.pipe(
-    Schema.withConstructorDefault(Effect.succeed("")),
-    Schema.withDecodingDefaultKey(Effect.succeed(""))
-  )
-}) implements UserFacing {
+  userMessage: Schema.optionalKey(Schema.String)
+}) {
   /**
    * Marks this value as a user handler error for runtime guards.
    *
@@ -674,14 +672,6 @@ export class UserError extends Schema.TaggedError<UserError>(
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
-
-  /**
-   * Marks this value as a user-facing CLI failure.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
-  readonly [UserFacingTypeId]: UserFacingTypeId = UserFacingTypeId
 
   /**
    * Controls whether the runtime logger should report this error. The CLI
@@ -703,6 +693,16 @@ export class UserError extends Schema.TaggedError<UserError>(
     if (typeof this.cause === "string" && this.cause) return this.cause
     if (this.cause instanceof Error && this.cause.message) return this.cause.message
     return "An error occurred"
+  }
+
+  /**
+   * Exposes `message` as the user-facing message rendered by `Command.run`.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  get [userMessage]() {
+    return this.message
   }
 }
 

@@ -948,13 +948,12 @@ describe("Command", () => {
         assert.isEmpty(yield* TestConsole.logLines)
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("should render UserFacing tagged handler failures and rethrow the original error", () =>
+    it.effect("should render tagged handler failures with a userMessage and rethrow the original error", () =>
       Effect.gen(function*() {
         class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
           path: Schema.String
-        }) implements CliError.UserFacing {
-          readonly [CliError.UserFacingTypeId]: CliError.UserFacingTypeId = CliError.UserFacingTypeId
-          get userMessage() {
+        }) {
+          get [CliError.userMessage]() {
             return `${this.path} already exists. Re-run with --force to replace it.`
           }
         }
