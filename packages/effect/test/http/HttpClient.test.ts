@@ -631,7 +631,7 @@ Missing key
         for (const output of [JSON.stringify(error), String(error), inspect(error, { depth: 10 })]) {
           assert.notInclude(output, "param-secret")
         }
-        assert.include(JSON.stringify(error), "visible")
+        assert.include(JSON.stringify(error), "http://test/path")
       }))
 
     it.effect("does not expose request headers, query params or body in toJSON", () =>
