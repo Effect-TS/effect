@@ -20,7 +20,7 @@
  * })
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 import * as Effect from "../Effect.ts"
@@ -58,7 +58,7 @@ import * as AgUiSchema from "./AgUiSchema.ts"
  * @see {@link handler} for implementing the endpoint
  * @see {@link layerHttp} for serving a single agent without declaring an `HttpApi`
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.0
  */
@@ -89,7 +89,7 @@ export const endpoint = <const Name extends string, const Path extends HttpRoute
  *
  * @see {@link endpoint} for declaring the endpoint
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.0
  */
@@ -132,7 +132,7 @@ const normalizeEvent = (event: AgUiSchema.Event) =>
  *
  * @see {@link endpoint} for adding an AG-UI agent to an existing `HttpApi`
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.0
  */

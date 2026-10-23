@@ -22,7 +22,7 @@
  *   )
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 import * as Cause from "../Cause.ts"
@@ -63,7 +63,7 @@ import type * as Response from "./Response.ts"
  * keep them: `system` and `developer` messages then become system messages in
  * place, and `context` becomes a leading system message.
  *
- * @stability unstable
+ * @stability experimental
  * @category converting
  * @since 4.1.0
  */
@@ -207,7 +207,7 @@ const defaultMediaType = {
  *
  * @see {@link withRunLifecycle} for wrapping the events in a run
  *
- * @stability unstable
+ * @stability experimental
  * @category converting
  * @since 4.1.0
  */
@@ -340,7 +340,7 @@ const modelErrorMessage = "The model reported an error."
  *
  * @see {@link fromStreamParts} for producing events from a model response
  *
- * @stability unstable
+ * @stability experimental
  * @category combinators
  * @since 4.1.0
  */

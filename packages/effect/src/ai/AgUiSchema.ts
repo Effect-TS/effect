@@ -10,7 +10,7 @@
  *
  * @see https://docs.ag-ui.com
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 import * as Effect from "../Effect.ts"
@@ -22,7 +22,7 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 /**
  * AG-UI protocol version implemented by these schemas.
  *
- * @stability unstable
+ * @stability experimental
  * @category constants
  * @since 4.1.0
  */
@@ -40,7 +40,7 @@ export const protocolVersion = "1.0"
  *
  * The `ag-ui` key is reserved for the protocol's own use.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -50,7 +50,7 @@ export const Metadata = Schema.Record(Schema.String, Schema.Unknown)
  * Open-ended metadata attached to events, messages, tools, and other protocol
  * values.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -104,7 +104,7 @@ const hasUnknownTag = (value: unknown, key: string, tags: ReadonlySet<string>): 
 /**
  * Schema for media bytes carried inline as base64 data.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -117,7 +117,7 @@ export const DataSource = Schema.Struct({
 /**
  * Media bytes carried inline as base64 data.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -126,7 +126,7 @@ export type DataSource = typeof DataSource.Type
 /**
  * Schema for media bytes referenced by URL.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -139,7 +139,7 @@ export const UrlSource = Schema.Struct({
 /**
  * Media bytes referenced by URL.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -149,7 +149,7 @@ export type UrlSource = typeof UrlSource.Type
  * Schema for media bytes already stored at a provider and named by a handle
  * that provider issued.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -164,7 +164,7 @@ export const FileSource = Schema.Struct({
  * Media bytes already stored at a provider and named by a handle that provider
  * issued.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -173,7 +173,7 @@ export type FileSource = typeof FileSource.Type
 /**
  * Schema for the source of a media content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -182,7 +182,7 @@ export const PartSource = Schema.Union([DataSource, UrlSource, FileSource])
 /**
  * Source of a media content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -191,7 +191,7 @@ export type PartSource = typeof PartSource.Type
 /**
  * Schema for a text content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -205,7 +205,7 @@ export const TextPart = Schema.Struct({
 /**
  * A text content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -222,7 +222,7 @@ const mediaPart = <Type extends string>(type: Type) =>
 /**
  * Schema for an image content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -231,7 +231,7 @@ export const ImagePart = mediaPart("image")
 /**
  * An image content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -240,7 +240,7 @@ export type ImagePart = typeof ImagePart.Type
 /**
  * Schema for an audio content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -249,7 +249,7 @@ export const AudioPart = mediaPart("audio")
 /**
  * An audio content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -258,7 +258,7 @@ export type AudioPart = typeof AudioPart.Type
 /**
  * Schema for a video content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -267,7 +267,7 @@ export const VideoPart = mediaPart("video")
 /**
  * A video content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -276,7 +276,7 @@ export type VideoPart = typeof VideoPart.Type
 /**
  * Schema for a document content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -285,7 +285,7 @@ export const DocumentPart = mediaPart("document")
 /**
  * A document content part.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -294,7 +294,7 @@ export type DocumentPart = typeof DocumentPart.Type
 /**
  * Schema for any content part of a user or tool message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -303,7 +303,7 @@ export const ContentPart = Schema.Union([TextPart, ImagePart, AudioPart, VideoPa
 /**
  * Any content part of a user or tool message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -336,7 +336,7 @@ const messageFields = {
 /**
  * Schema for instructions from the application developer.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -351,7 +351,7 @@ export const DeveloperMessage = Schema.Struct({
 /**
  * Instructions from the application developer.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -360,7 +360,7 @@ export type DeveloperMessage = typeof DeveloperMessage.Type
 /**
  * Schema for instructions from the system.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -375,7 +375,7 @@ export const SystemMessage = Schema.Struct({
 /**
  * Instructions from the system.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -388,7 +388,7 @@ export type SystemMessage = typeof SystemMessage.Type
  *
  * `function.arguments` is the JSON text of the call's arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -406,7 +406,7 @@ export const ToolCall = Schema.Struct({
 /**
  * A tool call made by an assistant message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -417,7 +417,7 @@ const toolCallTypes: ReadonlySet<string> = new Set(["function"])
 /**
  * Schema for a message from the agent.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -435,7 +435,7 @@ export const AssistantMessage = Schema.Struct({
 /**
  * A message from the agent.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -444,7 +444,7 @@ export type AssistantMessage = typeof AssistantMessage.Type
 /**
  * Schema for a message from the person using the application.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -459,7 +459,7 @@ export const UserMessage = Schema.Struct({
 /**
  * A message from the person using the application.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -472,7 +472,7 @@ export type UserMessage = typeof UserMessage.Type
  *
  * `error` is present when the tool call failed.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -488,7 +488,7 @@ export const ToolMessage = Schema.Struct({
 /**
  * The result of a tool call, as a message in the conversation.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -497,7 +497,7 @@ export type ToolMessage = typeof ToolMessage.Type
 /**
  * Schema for structured progress kept in the conversation as a message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -511,7 +511,7 @@ export const ActivityMessage = Schema.Struct({
 /**
  * Structured progress kept in the conversation as a message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -521,7 +521,7 @@ export type ActivityMessage = typeof ActivityMessage.Type
  * Schema for a span of the agent's reasoning, kept in the conversation as a
  * message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -535,7 +535,7 @@ export const ReasoningMessage = Schema.Struct({
 /**
  * A span of the agent's reasoning, kept in the conversation as a message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -544,7 +544,7 @@ export type ReasoningMessage = typeof ReasoningMessage.Type
 /**
  * Schema for any message in an AG-UI conversation, discriminated by `role`.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -561,7 +561,7 @@ export const Message = Schema.Union([
 /**
  * Any message in an AG-UI conversation, discriminated by `role`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -590,7 +590,7 @@ const Messages = withoutUnknownMembers(Message, (value) => hasUnknownTag(value, 
  *
  * `parameters` is a JSON Schema describing the tool's arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -604,7 +604,7 @@ export const Tool = Schema.Struct({
 /**
  * A tool the application offers to the agent.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -614,7 +614,7 @@ export type Tool = typeof Tool.Type
  * Schema for a named piece of ambient information given to the agent for a
  * run.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -626,7 +626,7 @@ export const Context = Schema.Struct({
 /**
  * A named piece of ambient information given to the agent for a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -636,7 +636,7 @@ export type Context = typeof Context.Type
  * Schema for an answer to an interrupt, sent on the run that continues from
  * it.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -650,7 +650,7 @@ export const ResumeEntry = Schema.Struct({
 /**
  * An answer to an interrupt, sent on the run that continues from it.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -674,7 +674,7 @@ const resumeStatuses: ReadonlySet<string> = new Set(["resolved", "cancelled"])
  * Every field comes from the client. Treat messages, tools, and context as
  * untrusted input.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -696,7 +696,7 @@ export const RunAgentInput = Schema.Struct({
 /**
  * The request body that starts an agent run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -709,7 +709,7 @@ export type RunAgentInput = typeof RunAgentInput.Type
 /**
  * Schema for the role of a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -718,7 +718,7 @@ export const TextMessageRole = Schema.Literals(["developer", "system", "assistan
 /**
  * The role of a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -727,7 +727,7 @@ export type TextMessageRole = typeof TextMessageRole.Type
 /**
  * Schema for the event that opens a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -742,7 +742,7 @@ export const TextMessageStartEvent = Schema.Struct({
 /**
  * Opens a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -751,7 +751,7 @@ export type TextMessageStartEvent = typeof TextMessageStartEvent.Type
 /**
  * Schema for the event that appends a fragment to a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -765,7 +765,7 @@ export const TextMessageContentEvent = Schema.Struct({
 /**
  * Appends a fragment to a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -774,7 +774,7 @@ export type TextMessageContentEvent = typeof TextMessageContentEvent.Type
 /**
  * Schema for the event that closes a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -787,7 +787,7 @@ export const TextMessageEndEvent = Schema.Struct({
 /**
  * Closes a streamed text message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -797,7 +797,7 @@ export type TextMessageEndEvent = typeof TextMessageEndEvent.Type
  * Schema for the shorthand event that stands in for a text message's start,
  * content, and end sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -814,7 +814,7 @@ export const TextMessageChunkEvent = Schema.Struct({
  * Shorthand that stands in for a text message's start, content, and end
  * sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -827,7 +827,7 @@ export type TextMessageChunkEvent = typeof TextMessageChunkEvent.Type
 /**
  * Schema for the event that opens a tool call.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -842,7 +842,7 @@ export const ToolCallStartEvent = Schema.Struct({
 /**
  * Opens a tool call.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -852,7 +852,7 @@ export type ToolCallStartEvent = typeof ToolCallStartEvent.Type
  * Schema for the event that appends a fragment of a tool call's JSON
  * arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -866,7 +866,7 @@ export const ToolCallArgsEvent = Schema.Struct({
 /**
  * Appends a fragment of a tool call's JSON arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -876,7 +876,7 @@ export type ToolCallArgsEvent = typeof ToolCallArgsEvent.Type
  * Schema for the event that closes a tool call once its arguments are
  * complete.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -889,7 +889,7 @@ export const ToolCallEndEvent = Schema.Struct({
 /**
  * Closes a tool call once its arguments are complete.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -899,7 +899,7 @@ export type ToolCallEndEvent = typeof ToolCallEndEvent.Type
  * Schema for the shorthand event that stands in for a tool call's start,
  * arguments, and end sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -916,7 +916,7 @@ export const ToolCallChunkEvent = Schema.Struct({
  * Shorthand that stands in for a tool call's start, arguments, and end
  * sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -926,7 +926,7 @@ export type ToolCallChunkEvent = typeof ToolCallChunkEvent.Type
  * Schema for the event that delivers the result of a tool call as a new tool
  * message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -942,7 +942,7 @@ export const ToolCallResultEvent = Schema.Struct({
 /**
  * Delivers the result of a tool call as a new tool message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -955,7 +955,7 @@ export type ToolCallResultEvent = typeof ToolCallResultEvent.Type
 /**
  * Schema for one RFC 6902 JSON Patch operation.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -971,7 +971,7 @@ export const JsonPatchOperation = Schema.Union([
 /**
  * One RFC 6902 JSON Patch operation.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -980,7 +980,7 @@ export type JsonPatchOperation = typeof JsonPatchOperation.Type
 /**
  * Schema for the event that replaces the agent state.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -993,7 +993,7 @@ export const StateSnapshotEvent = Schema.Struct({
 /**
  * Replaces the agent state.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1002,7 +1002,7 @@ export type StateSnapshotEvent = typeof StateSnapshotEvent.Type
 /**
  * Schema for the event that applies a JSON Patch to the agent state.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1015,7 +1015,7 @@ export const StateDeltaEvent = Schema.Struct({
 /**
  * Applies a JSON Patch to the agent state.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1024,7 +1024,7 @@ export type StateDeltaEvent = typeof StateDeltaEvent.Type
 /**
  * Schema for the event that replaces the conversation the agent owns.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1037,7 +1037,7 @@ export const MessagesSnapshotEvent = Schema.Struct({
 /**
  * Replaces the conversation the agent owns.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1046,7 +1046,7 @@ export type MessagesSnapshotEvent = typeof MessagesSnapshotEvent.Type
 /**
  * Schema for the event that sets the content of an activity message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1062,7 +1062,7 @@ export const ActivitySnapshotEvent = Schema.Struct({
 /**
  * Sets the content of an activity message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1071,7 +1071,7 @@ export type ActivitySnapshotEvent = typeof ActivitySnapshotEvent.Type
 /**
  * Schema for the event that applies a JSON Patch to an activity message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1086,7 +1086,7 @@ export const ActivityDeltaEvent = Schema.Struct({
 /**
  * Applies a JSON Patch to an activity message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1099,7 +1099,7 @@ export type ActivityDeltaEvent = typeof ActivityDeltaEvent.Type
 /**
  * Schema for the event that passes through an event from an external system.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1113,7 +1113,7 @@ export const RawEvent = Schema.Struct({
 /**
  * Passes through an event from an external system.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1122,7 +1122,7 @@ export type RawEvent = typeof RawEvent.Type
 /**
  * Schema for an application-defined event.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1136,7 +1136,7 @@ export const CustomEvent = Schema.Struct({
 /**
  * An application-defined event.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1149,7 +1149,7 @@ export type CustomEvent = typeof CustomEvent.Type
 /**
  * Schema for the event that opens a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1166,7 +1166,7 @@ export const RunStartedEvent = Schema.Struct({
 /**
  * Opens a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1176,7 +1176,7 @@ export type RunStartedEvent = typeof RunStartedEvent.Type
  * Schema for something a run needs from outside before it can continue, such
  * as an approval.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1195,7 +1195,7 @@ export const Interrupt = Schema.Struct({
  * Something a run needs from outside before it can continue, such as an
  * approval.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1210,7 +1210,7 @@ export type Interrupt = typeof Interrupt.Type
  * to answer. An `interrupt` outcome pauses the run until a later run resumes
  * it.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1231,7 +1231,7 @@ export const RunFinishedOutcome = Schema.Union([
 /**
  * Why a run ended.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1240,7 +1240,7 @@ export type RunFinishedOutcome = typeof RunFinishedOutcome.Type
 /**
  * Schema for token counts reported for one provider and model.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1258,7 +1258,7 @@ export const TokenUsage = Schema.Struct({
 /**
  * Token counts reported for one provider and model.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1267,7 +1267,7 @@ export type TokenUsage = typeof TokenUsage.Type
 /**
  * Schema for the event that closes a run that did not fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1284,7 +1284,7 @@ export const RunFinishedEvent = Schema.Struct({
 /**
  * Closes a run that did not fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1293,7 +1293,7 @@ export type RunFinishedEvent = typeof RunFinishedEvent.Type
 /**
  * Schema for the event that ends a run that failed.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1308,7 +1308,7 @@ export const RunErrorEvent = Schema.Struct({
 /**
  * Ends a run that failed.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1317,7 +1317,7 @@ export type RunErrorEvent = typeof RunErrorEvent.Type
 /**
  * Schema for the event that opens a named step within a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1330,7 +1330,7 @@ export const StepStartedEvent = Schema.Struct({
 /**
  * Opens a named step within a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1339,7 +1339,7 @@ export type StepStartedEvent = typeof StepStartedEvent.Type
 /**
  * Schema for the event that closes a named step.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1352,7 +1352,7 @@ export const StepFinishedEvent = Schema.Struct({
 /**
  * Closes a named step.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1365,7 +1365,7 @@ export type StepFinishedEvent = typeof StepFinishedEvent.Type
 /**
  * Schema for the event that opens a span of reasoning.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1378,7 +1378,7 @@ export const ReasoningStartEvent = Schema.Struct({
 /**
  * Opens a span of reasoning.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1387,7 +1387,7 @@ export type ReasoningStartEvent = typeof ReasoningStartEvent.Type
 /**
  * Schema for the event that opens a streamed reasoning message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1401,7 +1401,7 @@ export const ReasoningMessageStartEvent = Schema.Struct({
 /**
  * Opens a streamed reasoning message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1411,7 +1411,7 @@ export type ReasoningMessageStartEvent = typeof ReasoningMessageStartEvent.Type
  * Schema for the event that appends a fragment to a streamed reasoning
  * message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1425,7 +1425,7 @@ export const ReasoningMessageContentEvent = Schema.Struct({
 /**
  * Appends a fragment to a streamed reasoning message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1434,7 +1434,7 @@ export type ReasoningMessageContentEvent = typeof ReasoningMessageContentEvent.T
 /**
  * Schema for the event that closes a streamed reasoning message.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1447,7 +1447,7 @@ export const ReasoningMessageEndEvent = Schema.Struct({
 /**
  * Closes a streamed reasoning message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1457,7 +1457,7 @@ export type ReasoningMessageEndEvent = typeof ReasoningMessageEndEvent.Type
  * Schema for the shorthand event that stands in for a reasoning message's
  * start, content, and end sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1472,7 +1472,7 @@ export const ReasoningMessageChunkEvent = Schema.Struct({
  * Shorthand that stands in for a reasoning message's start, content, and end
  * sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1481,7 +1481,7 @@ export type ReasoningMessageChunkEvent = typeof ReasoningMessageChunkEvent.Type
 /**
  * Schema for the event that closes a span of reasoning.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1494,7 +1494,7 @@ export const ReasoningEndEvent = Schema.Struct({
 /**
  * Closes a span of reasoning.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1504,7 +1504,7 @@ export type ReasoningEndEvent = typeof ReasoningEndEvent.Type
  * Schema for the event that attaches provider-encrypted reasoning to a message
  * or tool call.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1519,7 +1519,7 @@ export const ReasoningEncryptedValueEvent = Schema.Struct({
 /**
  * Attaches provider-encrypted reasoning to a message or tool call.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1532,7 +1532,7 @@ export type ReasoningEncryptedValueEvent = typeof ReasoningEncryptedValueEvent.T
 /**
  * Schema for the event that opens a subagent invocation within a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1550,7 +1550,7 @@ export const SubagentStartedEvent = Schema.Struct({
 /**
  * Opens a subagent invocation within a run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1559,7 +1559,7 @@ export type SubagentStartedEvent = typeof SubagentStartedEvent.Type
 /**
  * Schema for the event that closes a subagent invocation that did not fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1580,7 +1580,7 @@ export const SubagentFinishedEvent = Schema.Struct({
 /**
  * Closes a subagent invocation that did not fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1590,7 +1590,7 @@ export type SubagentFinishedEvent = typeof SubagentFinishedEvent.Type
  * Schema for the event that reports a failed subagent invocation without
  * ending the run.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1605,7 +1605,7 @@ export const SubagentErrorEvent = Schema.Struct({
 /**
  * Reports a failed subagent invocation without ending the run.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -1618,7 +1618,7 @@ export type SubagentErrorEvent = typeof SubagentErrorEvent.Type
 /**
  * Schema for any AG-UI event, discriminated by `type`.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.1.0
  */
@@ -1659,7 +1659,7 @@ export const Event = Schema.Union([
 /**
  * Any AG-UI event, discriminated by `type`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */

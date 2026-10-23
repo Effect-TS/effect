@@ -6,19 +6,19 @@
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 export * as AgUi from "./AgUi.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 export * as AgUiSchema from "./AgUiSchema.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.0
  */
 export * as AgUiServer from "./AgUiServer.ts"
