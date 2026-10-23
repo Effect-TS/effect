@@ -857,18 +857,24 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 // redacted as a whole: every query, header and URL parameter value from that
 // slot, and the inspection of its serialized body.
 //
-// Callers check the input only after it has been encoded. Collections such as
-// `Map`, `Set` and `Chunk` keep their contents outside enumerable properties,
-// so iterables are walked too, except one-shot iterators, which return
-// themselves from `[Symbol.iterator]` and would be consumed by the walk.
+// Callers check the input only after it has been encoded. Schemas can read
+// symbol and non-enumerable own fields, so every own key is visited once, then
+// inherited enumerable fields. Collections such as `Map`, `Set` and `Chunk`
+// keep their contents outside properties, so iterables are walked too, except
+// one-shot iterators, which return themselves from `[Symbol.iterator]` and
+// would be consumed by the walk.
 const containsRedacted = (input: unknown): boolean => {
   const visited = new Set<object>()
   const loop = (value: unknown): boolean => {
     if (Redacted.isRedacted(value)) return true
     if (!Predicate.isObjectOrArray(value) || globalThis.ArrayBuffer.isView(value) || visited.has(value)) return false
     visited.add(value)
+    const record = value as Record<PropertyKey, unknown>
+    for (const key of Reflect.ownKeys(value)) {
+      if (loop(record[key])) return true
+    }
     for (const key in value) {
-      if (loop((value as Record<string, unknown>)[key])) return true
+      if (!Object.hasOwn(value, key) && loop(record[key])) return true
     }
     if (!Array.isArray(value) && Predicate.isIterable(value)) {
       const iterator = value[Symbol.iterator]()
