@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Redacted, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Redacted, Schema, SchemaTransformation, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1281,6 +1281,53 @@ describe("HttpApiClient", () => {
         false,
         false
       ])
+    }))
+
+  it.effect("keeps Redacted request values out of failed request inspection when encoding changes them", () =>
+    Effect.gen(function*() {
+      const Prefixed = Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transform({ decode: (s) => s.slice("prefix:".length), encode: (s) => `prefix:${s}` })
+      ))
+      const fields = {
+        "x-token": Schema.RedactedFromValue(Prefixed),
+        "x-date": Schema.RedactedFromValue(Schema.DateFromString)
+      }
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("g").add(
+          HttpApiEndpoint.get("query", "/query", { query: fields }),
+          HttpApiEndpoint.get("headers", "/headers", { headers: fields }),
+          HttpApiEndpoint.get("payload", "/payload", { payload: Schema.Struct(fields) })
+        )
+      )
+      const wire: Array<Array<[string, string]>> = []
+      const httpClient = HttpClient.make((request, url) => {
+        wire.push([
+          ...url.searchParams,
+          ...Object.entries(request.headers).filter(([name]) => name.startsWith("x-"))
+        ])
+        return Effect.fail(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      })
+      const client = yield* HttpApiClient.makeWith(Api, { httpClient, baseUrl: "http://x" })
+      const values = { "x-token": Redacted.make("s3cret"), "x-date": Redacted.make(new Date(0)) }
+
+      const errors = [
+        yield* Effect.flip(client.g.query({ query: values })),
+        yield* Effect.flip(client.g.headers({ headers: values })),
+        yield* Effect.flip(client.g.payload({ payload: values }))
+      ]
+
+      const sent: Array<[string, string]> = [["x-token", "prefix:s3cret"], ["x-date", "1970-01-01T00:00:00.000Z"]]
+      assert.deepStrictEqual(wire, [sent, sent, sent])
+      assert.deepStrictEqual(
+        errors.map((error) => {
+          const json = JSON.stringify(error.toJSON())
+          return ["s3cret", "1970-01-01"].filter((value) => json.includes(value))
+        }),
+        [[], [], []]
+      )
     }))
 })
 

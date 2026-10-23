@@ -8,7 +8,7 @@ import {
   doesNotThrow,
   strictEqual
 } from "@effect/vitest/utils"
-import { DateTime, Duration, Redacted, Result, Schema } from "effect"
+import { DateTime, Duration, Record, Redacted, Result, Schema } from "effect"
 import { Headers } from "effect/http"
 import { assertSuccess, throws } from "../utils/assert.ts"
 
@@ -111,6 +111,37 @@ describe("Headers", () => {
 
     strictEqual(redactPattern.lastIndex, 3)
     strictEqual(namePattern.lastIndex, 4)
+  })
+
+  it("setRedacted keeps the header redacted in derived collections until it is replaced", () => {
+    const marked = Headers.setRedacted(Headers.empty, "X-Token", Redacted.make("s3cret"))
+    const plain = Headers.fromInput({ "x-token": "s3cret" })
+    const collections = {
+      marked,
+      set: Headers.set(marked, "a", "1"),
+      setAll: Headers.setAll(Headers.empty, marked),
+      merge: Headers.merge(plain, marked),
+      remove: Headers.remove(marked, "a"),
+      removeMany: Headers.removeMany(marked, ["a"]),
+      fromInput: Headers.fromInput(marked),
+      overwritten: Headers.set(marked, "x-token", "s3cret"),
+      mergedOver: Headers.merge(marked, plain),
+      unrelated: plain
+    }
+
+    strictEqual(marked["x-token"], "s3cret")
+    deepStrictEqual(Record.map(collections, (headers) => JSON.stringify(headers).includes("s3cret")), {
+      marked: false,
+      set: false,
+      setAll: false,
+      merge: false,
+      remove: false,
+      removeMany: false,
+      fromInput: false,
+      overwritten: true,
+      mergedOver: true,
+      unrelated: true
+    })
   })
 })
 

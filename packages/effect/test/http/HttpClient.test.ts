@@ -15,7 +15,15 @@ import {
   Schema,
   Stream
 } from "effect"
-import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
+import {
+  Cookies,
+  Headers,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  UrlParams
+} from "effect/http"
 import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -435,12 +443,14 @@ Missing key
           )
         )
 
-        yield* client.get("http://test/", {
-          headers: {
-            "x-request-drop": "drop",
-            "x-request-keep": "keep"
-          }
-        }).pipe(
+        yield* client.execute(
+          HttpClientRequest.get("http://test/", {
+            headers: {
+              "x-request-drop": "drop",
+              "x-request-keep": "keep"
+            }
+          }).pipe(HttpClientRequest.updateHeaders(Headers.setRedacted("x-secret-keep", Redacted.make("secret"))))
+        ).pipe(
           Effect.provideService(HttpClient.TracerHeaderFilter, (name) => name.endsWith("-keep")),
           Effect.provideService(Tracer.Tracer, tracer)
         )
@@ -448,6 +458,7 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-drop"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-keep"), "keep")
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-secret-keep"), "<redacted>")
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-drop"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), "keep")
       }))
