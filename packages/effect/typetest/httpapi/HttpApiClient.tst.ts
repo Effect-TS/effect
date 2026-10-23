@@ -546,7 +546,7 @@ describe("HttpApiClient", () => {
       >()
     })
 
-    it("does not infer payload services from the contextual type", () => {
+    it("infers payload services only from the payload argument", () => {
       type Item = { readonly n: number }
 
       const Item = hole<Schema.Codec<Item, Item, never, "ItemEncoding">>()
@@ -569,7 +569,6 @@ describe("HttpApiClient", () => {
         HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
       )
 
-      // Effect.all contextually types each element as Effect<any, any, any>
       expect(Effect.all([client.group.a(), client.group.b()])).type.toBe<
         Effect.Effect<[string, number], HttpClientError.HttpClientError | Schema.SchemaError>
       >()
