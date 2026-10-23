@@ -1244,7 +1244,7 @@ export const suite = (
             const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
             const exitCode = yield* spawner.exitCode(
               ChildProcess.make("sh", ["-c", "sh -c 'while :; do sleep 0.1; done' \"$0\" &", marker])
-            ).pipe(Effect.ensuring(killMatchingProcesses(marker)))
+            ).pipe(Effect.ensuring(Effect.ignore(killMatchingProcesses(marker))))
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
           }).pipe(Effect.provide(layer)))
