@@ -216,7 +216,8 @@ export interface Tool<
     readonly failure: Schema.Constraint
     readonly failureMode: FailureMode
   },
-  out Requirements = never
+  out Requirements = never,
+  out ExecutionMode extends Execution = Execution
 > {
   readonly [TypeId]: {
     readonly _Requirements: Types.Covariant<Requirements>
@@ -300,14 +301,14 @@ export interface Tool<
    * never resolves them, and the tool needs no handler. When `undefined` or
    * `"server"`, the tool's handler resolves its calls.
    */
-  readonly execution?: Execution | undefined
+  readonly execution?: ExecutionMode | undefined
 
   /**
    * Set whether user approval is required before executing this tool.
    */
   setNeedsApproval(
     needsApproval: NeedsApproval<Config["parameters"]>
-  ): Tool<Name, Config, Requirements>
+  ): Tool<Name, Config, Requirements, ExecutionMode>
 
   /**
    * Adds a _request-level_ dependency which must be provided before the tool
@@ -321,7 +322,7 @@ export interface Tool<
    */
   addDependency<Identifier, Service>(
     tag: Context.Key<Identifier, Service>
-  ): Tool<Name, Config, Identifier | Requirements>
+  ): Tool<Name, Config, Identifier | Requirements, ExecutionMode>
 
   /**
    * Set the schema to use to validate the result of a tool call when successful.
@@ -336,7 +337,8 @@ export interface Tool<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
@@ -352,7 +354,8 @@ export interface Tool<
       readonly failure: FailureSchema
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
@@ -368,18 +371,19 @@ export interface Tool<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
    * Add an annotation to the tool.
    */
-  annotate<I, S>(tag: Context.Key<I, S>, value: S): Tool<Name, Config, Requirements>
+  annotate<I, S>(tag: Context.Key<I, S>, value: S): Tool<Name, Config, Requirements, ExecutionMode>
 
   /**
    * Add many annotations to the tool.
    */
-  annotateMerge<I>(context: Context.Context<I>): Tool<Name, Config, Requirements>
+  annotateMerge<I>(context: Context.Context<I>): Tool<Name, Config, Requirements, ExecutionMode>
 }
 
 /**
@@ -527,7 +531,8 @@ export interface Dynamic<
     readonly failure: Schema.Constraint
     readonly failureMode: FailureMode
   },
-  out Requirements = never
+  out Requirements = never,
+  out ExecutionMode extends Execution = Execution
 > extends
   Tool<
     Name,
@@ -537,7 +542,8 @@ export interface Dynamic<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 {
   readonly [DynamicTypeId]: typeof DynamicTypeId
@@ -1117,12 +1123,22 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
   infer _Config,
   infer _RequiresHandler
 > ? _RequiresHandler
-  : Tool extends ClientExecuted ? false
+  : [ExecutionOf<Tool>] extends ["client"] ? false
   : true
+
+// The execution modes a tool's type allows. A tool type that allows both,
+// such as `Tool.Any`, requires a handler.
+type ExecutionOf<T> = T extends { readonly execution?: infer E } ? Exclude<E, undefined> : never
 
 /**
  * Where calls to a tool are executed: by its handler on the `"server"`, or
  * by the application that sent the request on the `"client"`.
+ *
+ * **Details**
+ *
+ * A tool's type records its execution mode as its last type parameter, which
+ * defaults to either mode. Tools created with `execution: "client"` carry
+ * `"client"` through every combinator, so they keep needing no handler.
  *
  * @stability unstable
  * @category models
@@ -1131,8 +1147,8 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
 export type Execution = "server" | "client"
 
 /**
- * Marks a tool whose calls are executed by the application that sent the
- * request, so it needs no handler.
+ * Narrows a tool to one whose calls are executed by the application that sent
+ * the request.
  *
  * @see {@link isClientExecuted} for checking a tool at runtime
  *
@@ -1323,7 +1339,7 @@ export const make = <
   Failure extends Schema.Constraint = typeof Schema.Never,
   Mode extends FailureMode | undefined = undefined,
   Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>> = [],
-  const Exec extends Execution = "server"
+  const Exec extends Execution = Execution
 >(name: Name, options?: {
   /**
    * An optional description explaining what the tool does.
@@ -1381,17 +1397,15 @@ export const make = <
    * resolved, and it needs no handler. Defaults to `"server"`.
    */
   readonly execution?: Exec | undefined
-}): WithExecution<
-  Tool<
-    Name,
-    {
-      readonly parameters: Parameters
-      readonly success: Success
-      readonly failure: Failure
-      readonly failureMode: Mode extends undefined ? "error" : Mode
-    },
-    Context.Service.Identifier<Dependencies[number]>
-  >,
+}): Tool<
+  Name,
+  {
+    readonly parameters: Parameters
+    readonly success: Success
+    readonly failure: Failure
+    readonly failureMode: Mode extends undefined ? "error" : Mode
+  },
+  Context.Service.Identifier<Dependencies[number]>,
   Exec
 > => {
   const successSchema = options?.success ?? Schema.Void
@@ -1408,10 +1422,6 @@ export const make = <
     execution: options?.execution
   }) as any
 }
-
-// Adds the `ClientExecuted` marker to tools constructed with
-// `execution: "client"`
-type WithExecution<T, E extends Execution> = E extends "client" ? T & ClientExecuted : T
 
 /**
  * Creates a dynamic tool that can accept either an Effect Schema or a raw
@@ -1475,22 +1485,21 @@ export const dynamic: {
   >(
     name: Name,
     options?: Options
-  ): WithExecution<
-    Dynamic<
-      Name,
-      {
-        readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
-          : P extends JsonSchema.JsonSchema ? P
-          : typeof Schema.Unknown
-          : typeof Schema.Unknown
-        readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
-          : typeof Schema.Unknown
-        readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
-          : typeof Schema.Never
-        readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
-      }
-    >,
-    Options extends { readonly execution: infer E extends Execution } ? E : "server"
+  ): Dynamic<
+    Name,
+    {
+      readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
+        : P extends JsonSchema.JsonSchema ? P
+        : typeof Schema.Unknown
+        : typeof Schema.Unknown
+      readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
+        : typeof Schema.Unknown
+      readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
+        : typeof Schema.Never
+      readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
+    },
+    never,
+    Options extends { readonly execution: infer E extends Execution } ? E : Execution
   >
 } = <
   const Name extends string,
