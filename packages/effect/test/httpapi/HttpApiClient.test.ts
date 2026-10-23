@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Redacted, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1232,6 +1232,55 @@ describe("HttpApiClient", () => {
 
       assert.deepStrictEqual(urls, [])
       assert.isTrue(exits.every(Exit.hasDies))
+    }))
+
+  it.effect("keeps Redacted request values out of failed request inspection", () =>
+    Effect.gen(function*() {
+      const Secret = Schema.RedactedFromValue(Schema.String)
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("g").add(
+          HttpApiEndpoint.post("join", "/join", {
+            query: { token: Secret },
+            headers: { "x-token": Secret },
+            payload: Schema.Struct({ JoinToken: Secret })
+          }),
+          HttpApiEndpoint.get("search", "/search", {
+            payload: Schema.Struct({ token: Secret })
+          }),
+          HttpApiEndpoint.post("form", "/form", {
+            payload: Schema.Struct({ token: Secret }).pipe(HttpApiSchema.asFormUrlEncoded())
+          })
+        )
+      )
+      const wire: Array<string> = []
+      const httpClient = HttpClient.make((request, url) => {
+        const body = request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : ""
+        wire.push(`${url.search} ${request.headers["x-token"] ?? ""} ${body}`)
+        return Effect.fail(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      })
+      const client = yield* HttpApiClient.makeWith(Api, { httpClient, baseUrl: "http://x" })
+      const secret = Redacted.make("s3cret")
+
+      const errors = [
+        yield* Effect.flip(
+          client.g.join({ query: { token: secret }, headers: { "x-token": secret }, payload: { JoinToken: secret } })
+        ),
+        yield* Effect.flip(client.g.search({ payload: { token: secret } })),
+        yield* Effect.flip(client.g.form({ payload: { token: secret } }))
+      ]
+
+      assert.deepStrictEqual(wire, [
+        "?token=s3cret s3cret {\"JoinToken\":\"s3cret\"}",
+        "?token=s3cret  ",
+        "  token=s3cret"
+      ])
+      assert.deepStrictEqual(errors.map((error) => JSON.stringify(error.toJSON()).includes("s3cret")), [
+        false,
+        false,
+        false
+      ])
     }))
 })
 
