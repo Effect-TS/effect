@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Layer, Queue, Scope } from "effect"
+import { Deferred, Duration, Effect, Exit, Fiber, Layer, Queue, Scope, Semaphore } from "effect"
 import { Persistence, Redis } from "effect/persistence"
+import * as TestClock from "effect/testing/TestClock"
 
 describe("Redis", () => {
   it("preserves __proto__ as an own script option", () => {
@@ -217,4 +218,112 @@ describe("Redis", () => {
       assert.isTrue(released)
       assert.isTrue(Exit.hasInterrupts(yield* Queue.take(subscription).pipe(Effect.exit)))
     }))
+
+  describe("reserve", () => {
+    const makeHarness = Effect.fnUntraced(function*(pool?: Redis.PoolOptions) {
+      const blocked = yield* Deferred.make<void>()
+      const shared = yield* Semaphore.make(1)
+      let connects = 0
+      let closes = 0
+      // XREAD only returns once its connection is closed, so anything queued
+      // behind it on the same connection waits
+      const send = <A>(command: string, closed: Deferred.Deferred<void>): Effect.Effect<A, Redis.RedisError> =>
+        command === "XREAD"
+          ? Deferred.succeed(blocked, void 0).pipe(
+            Effect.andThen(Deferred.await(closed)),
+            Effect.andThen(Effect.fail(new Redis.RedisError({ cause: new Error("connection closed") })))
+          )
+          : Effect.succeed(command as A)
+      const sharedClosed = yield* Deferred.make<void>()
+      const redis = yield* Redis.make({
+        send: (command) => shared.withPermit(send(command, sharedClosed)),
+        subscribe: () => Effect.succeed(Effect.never),
+        connect: Effect.sync(() => {
+          connects++
+          const closed = Deferred.makeUnsafe<void>()
+          return {
+            send: (command: string) => send(command, closed),
+            close: Effect.suspend(() => Deferred.succeed(closed, void 0)).pipe(
+              Effect.map((first) => {
+                if (first) closes++
+              })
+            )
+          }
+        }),
+        pool
+      })
+      return { redis, blocked, connects: () => connects, closes: () => closes }
+    })
+
+    const blockingRead = (redis: Redis.Redis["Service"]) =>
+      redis.reserve.pipe(
+        Effect.flatMap((connection) => connection.send("XREAD", "BLOCK", "0", "STREAMS", "events", "$")),
+        Effect.scoped,
+        Effect.forkChild
+      )
+
+    const ping = (redis: Redis.Redis["Service"]) =>
+      redis.reserve.pipe(
+        Effect.flatMap((connection) => connection.send("PING")),
+        Effect.scoped
+      )
+
+    it.effect("blocking commands on a reserved connection do not delay shared commands", () =>
+      Effect.gen(function*() {
+        const { blocked, redis } = yield* makeHarness()
+
+        const fiber = yield* blockingRead(redis)
+        yield* Deferred.await(blocked)
+
+        assert.strictEqual(yield* redis.send("XADD", "events", "*", "key", "value"), "XADD")
+        yield* Fiber.interrupt(fiber)
+      }))
+
+    it.effect("reuses idle connections and closes idle and in-flight connections with the service scope", () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make()
+        const { blocked, closes, connects, redis } = yield* makeHarness().pipe(Scope.provide(scope))
+
+        yield* blockingRead(redis)
+        yield* Deferred.await(blocked)
+        assert.strictEqual(yield* ping(redis), "PING")
+        assert.strictEqual(yield* ping(redis), "PING")
+        assert.strictEqual(connects(), 2)
+        assert.strictEqual(closes(), 0)
+
+        yield* Scope.close(scope, Exit.void)
+
+        assert.strictEqual(closes(), 2)
+      }))
+
+    it.effect("closes instead of reusing a connection released with a command in flight", () =>
+      Effect.gen(function*() {
+        const { blocked, closes, connects, redis } = yield* makeHarness()
+
+        const fiber = yield* blockingRead(redis)
+        yield* Deferred.await(blocked)
+        yield* Fiber.interrupt(fiber)
+
+        assert.strictEqual(yield* ping(redis), "PING")
+        assert.strictEqual(connects(), 2)
+        assert.strictEqual(closes(), 1)
+      }))
+
+    it.effect("waits for a free connection at maxConnections and fails after acquireTimeout", () =>
+      Effect.gen(function*() {
+        const { connects, redis } = yield* makeHarness({ maxConnections: 1, acquireTimeout: "1 second" })
+        const first = yield* Scope.make()
+        yield* redis.reserve.pipe(Scope.provide(first))
+
+        const timedOut = yield* Effect.scoped(redis.reserve).pipe(Effect.flip, Effect.forkChild)
+        yield* TestClock.adjust("1 second")
+        assert.instanceOf(yield* Fiber.join(timedOut), Redis.RedisError)
+
+        const waiting = yield* ping(redis).pipe(Effect.forkChild)
+        yield* Scope.close(first, Exit.void)
+
+        assert.strictEqual(yield* Fiber.join(waiting), "PING")
+        assert.strictEqual(connects(), 1)
+      }))
+  })
 })
