@@ -5041,8 +5041,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
   ): Union<{ [I in keyof L]: decodeTo<Literal<L2[I]>, Literal<L[I]>> }>
 }
 
-type IsLiteralUnit<T> = [T] extends [never] ? false
-  : IsUnion<T> extends true ? false
+type IsLiteralUnit<T> = IsUnion<T> extends true ? false
   // `${T}` is a single key only for one value, e.g. not for `string`, `number`, brands, or patterns
   : T extends string | number | bigint ? {} extends Record<`${T}`, 0> ? false : true
   : true
