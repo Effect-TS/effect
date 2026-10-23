@@ -4577,7 +4577,7 @@ const AbandonedCallerLayer = (state: { children: number; readonly continued: Arr
       const self = (yield* AbandonedCaller.client)(address.entityId)
       return AbandonedCaller.of({
         Call: () =>
-          Effect.tap(self.Child({ id: "child" }), (value) =>
+          Effect.tap(Effect.orDie(self.Child({ id: "child" })), (value) =>
             Effect.sync(() => {
               state.continued.push(value)
             })),
@@ -4618,7 +4618,7 @@ const ClosingTargetCallerLayer = (state: { readonly continued: Array<string> }) 
     const target = yield* ClosingTarget.client
     return ClosingTargetCaller.of({
       Call: () =>
-        Effect.tap(target("1").Child({ id: "child" }), (value) =>
+        Effect.tap(Effect.orDie(target("1").Child({ id: "child" })), (value) =>
           Effect.sync(() => {
             state.continued.push(value)
           }))
@@ -4656,8 +4656,10 @@ const AcquisitionShutdownLayer = (state: {
   )
 
 const mailboxSizeMax = (registry: Metric.MetricRegistry, type: string) => {
-  const series = entityMailboxSizeMaxSeries(registry).find(([attributes]) => attributes?.type === type)
-  return series ? Number((series[1] as { readonly value: bigint }).value) : 0
+  const series = Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry)).find((metric) =>
+    metric.id === ClusterMetrics.entityMailboxSizeMax.id && metric.attributes?.type === type
+  )
+  return series ? Number((series.state as { readonly value: bigint }).value) : 0
 }
 
 const entityMailboxSizeMaxSeries = (registry: Metric.MetricRegistry) =>
