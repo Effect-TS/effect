@@ -78,12 +78,16 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     })
 
-  const redis = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+  const sendWith =
+    (client: RedisClient) =>
+    <A = unknown>(command: string, ...args: ReadonlyArray<string>): Effect.Effect<A, Redis.RedisError> =>
       Effect.tryPromise({
         try: () => client.sendCommand(command, args as Array<string>) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
-      }),
+      })
+
+  const redis = yield* Redis.make({
+    send: sendWith(client),
     connect: Effect.tryPromise({
       // @db/redis re-executes commands after a reconnect, which could repeat
       // a destructive blocking command whose reply was lost.
@@ -91,11 +95,7 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     }).pipe(
       Effect.map((connection) => ({
-        send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-          Effect.tryPromise({
-            try: () => connection.sendCommand(command, args as Array<string>) as Promise<A>,
-            catch: (cause) => new Redis.RedisError({ cause })
-          }),
+        send: sendWith(connection),
         close: Effect.sync(() => connection.close())
       }))
     ),

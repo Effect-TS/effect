@@ -49,12 +49,16 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     })
 
-  const redis = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+  const sendWith =
+    (client: RedisClient) =>
+    <A = unknown>(command: string, ...args: ReadonlyArray<string>): Effect.Effect<A, Redis.RedisError> =>
       Effect.tryPromise({
         try: () => client.send(command, args as Array<string>) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
-      }),
+      })
+
+  const redis = yield* Redis.make({
+    send: sendWith(client),
     // Reserved connections do not reconnect: a dropped socket fails the
     // in-flight command and the connection leaves the pool.
     connect: Effect.tryPromise({
@@ -71,11 +75,7 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     }).pipe(
       Effect.map((connection) => ({
-        send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-          Effect.tryPromise({
-            try: () => connection.send(command, args as Array<string>) as Promise<A>,
-            catch: (cause) => new Redis.RedisError({ cause })
-          }),
+        send: sendWith(connection),
         close: Effect.sync(() => connection.close())
       }))
     ),

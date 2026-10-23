@@ -87,12 +87,16 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     })
 
-  const redis = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+  const sendWith =
+    (client: NodeRedisClient) =>
+    <A = unknown>(command: string, ...args: ReadonlyArray<string>): Effect.Effect<A, Redis.RedisError> =>
       Effect.tryPromise({
         try: () => client.sendCommand([command, ...args]) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
-      }),
+      })
+
+  const redis = yield* Redis.make({
+    send: sendWith(client),
     // Reserved connections do not reconnect: a dropped socket fails the
     // in-flight command and the connection leaves the pool.
     connect: Effect.tryPromise({
@@ -112,11 +116,7 @@ const make = Effect.fnUntraced(function*(
       catch: (cause) => new Redis.RedisError({ cause })
     }).pipe(
       Effect.map((connection) => ({
-        send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-          Effect.tryPromise({
-            try: () => connection.sendCommand([command, ...args]) as Promise<A>,
-            catch: (cause) => new Redis.RedisError({ cause })
-          }),
+        send: sendWith(connection),
         // `destroy` rejects in-flight commands instead of waiting for their
         // replies like `close` does.
         close: Effect.sync(() => {
