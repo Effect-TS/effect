@@ -957,62 +957,7 @@ const prepareMessages = Effect.fnUntraced(
                     }
 
                     case "file": {
-                      if (part.mediaType.startsWith("image/")) {
-                        const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
-                          (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
-
-                        const source = isUrlData(part.data)
-                          ? { type: "url", url: getUrlString(part.data) } as const
-                          : {
-                            type: "base64",
-                            media_type: mediaType,
-                            data: typeof part.data === "string"
-                              ? part.data.replace(/^data:[^;]+;base64,/, "")
-                              : Base64.encode(part.data)
-                          } as const
-
-                        content.push({ type: "image", source, cache_control: cacheControl })
-                      } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
-                        betas.add("pdfs-2024-09-25")
-
-                        const enableCitations = areCitationsEnabled(part)
-                        const documentOptions = getDocumentMetadata(part)
-
-                        const source = isUrlData(part.data)
-                          ? {
-                            type: "url",
-                            url: getUrlString(part.data)
-                          } as const
-                          : part.mediaType === "application/pdf"
-                          ? {
-                            type: "base64",
-                            media_type: "application/pdf",
-                            data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
-                          } as const
-                          : {
-                            type: "text",
-                            media_type: "text/plain",
-                            data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
-                          } as const
-
-                        content.push({
-                          type: "document",
-                          source,
-                          title: documentOptions?.title ?? part.fileName ?? null,
-                          cache_control: cacheControl,
-                          ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
-                          ...(enableCitations ? { citations: { enabled: true } } : undefined)
-                        })
-                      } else {
-                        return yield* new AiError.AiError({
-                          module: "AnthropicLanguageModel",
-                          method: "prepareMessages",
-                          reason: new AiError.InvalidUserInputError({
-                            description: `Detected unsupported media type for file: '${part.mediaType}'`
-                          })
-                        })
-                      }
-
+                      content.push(yield* prepareFilePart(part, cacheControl, betas))
                       break
                     }
                   }
@@ -1039,10 +984,27 @@ const prepareMessages = Effect.fnUntraced(
                     isLastPart ? getCacheControl(message) : null
                   )
 
+                  const toolResultContent: Array<
+                    | typeof Generated.BetaRequestTextBlock.Encoded
+                    | typeof Generated.BetaRequestImageBlock.Encoded
+                    | typeof Generated.BetaRequestDocumentBlock.Encoded
+                  > = []
+                  for (const outputPart of part.modelOutput ?? []) {
+                    toolResultContent.push(
+                      outputPart.type === "text"
+                        ? { type: "text", text: outputPart.text, cache_control: getCacheControl(outputPart) }
+                        : yield* prepareFilePart(outputPart, getCacheControl(outputPart), betas)
+                    )
+                  }
+
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
-                    content: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+                    content: toolResultContent.length > 0
+                      ? toolResultContent
+                      : typeof part.result === "string"
+                      ? part.result
+                      : JSON.stringify(part.result),
                     is_error: part.isFailure,
                     cache_control: cacheControl
                   })
@@ -1362,6 +1324,73 @@ export type AnthropicProviderDefinedTool =
   | typeof Generated.BetaToolSearchToolRegex_20251119.Encoded
   | typeof Generated.BetaWebFetchTool_20250910.Encoded
   | typeof Generated.BetaWebSearchTool_20250305.Encoded
+
+const prepareFilePart = Effect.fnUntraced(function*(
+  part: Prompt.FilePart,
+  cacheControl: typeof Generated.CacheControlEphemeral.Encoded | null,
+  betas: Set<string>
+): Effect.fn.Return<
+  typeof Generated.BetaRequestImageBlock.Encoded | typeof Generated.BetaRequestDocumentBlock.Encoded,
+  AiError.AiError
+> {
+  if (part.mediaType.startsWith("image/")) {
+    const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
+      (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
+
+    const source = isUrlData(part.data)
+      ? { type: "url", url: getUrlString(part.data) } as const
+      : {
+        type: "base64",
+        media_type: mediaType,
+        data: typeof part.data === "string"
+          ? part.data.replace(/^data:[^;]+;base64,/, "")
+          : Base64.encode(part.data)
+      } as const
+
+    return { type: "image", source, cache_control: cacheControl }
+  }
+
+  if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
+    betas.add("pdfs-2024-09-25")
+
+    const enableCitations = areCitationsEnabled(part)
+    const documentOptions = getDocumentMetadata(part)
+
+    const source = isUrlData(part.data)
+      ? {
+        type: "url",
+        url: getUrlString(part.data)
+      } as const
+      : part.mediaType === "application/pdf"
+      ? {
+        type: "base64",
+        media_type: "application/pdf",
+        data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
+      } as const
+      : {
+        type: "text",
+        media_type: "text/plain",
+        data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
+      } as const
+
+    return {
+      type: "document",
+      source,
+      title: documentOptions?.title ?? part.fileName ?? null,
+      cache_control: cacheControl,
+      ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
+      ...(enableCitations ? { citations: { enabled: true } } : undefined)
+    }
+  }
+
+  return yield* new AiError.AiError({
+    module: "AnthropicLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidUserInputError({
+      description: `Detected unsupported media type for file: '${part.mediaType}'`
+    })
+  })
+})
 
 const prepareTools = Effect.fnUntraced(
   function*({ betas, capabilities, config, options }: {
@@ -3028,7 +3057,7 @@ const getDocumentMetadata = (part: Prompt.FilePart): {
 
 const areCitationsEnabled = (part: Prompt.FilePart): boolean => part.options.anthropic?.citations?.enabled ?? false
 
-const isCitationPart = (part: Prompt.UserMessagePart): part is Prompt.FilePart =>
+const isCitationPart = (part: Prompt.UserMessagePart | Prompt.ToolModelOutputPart): part is Prompt.FilePart =>
   part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")
     ? areCitationsEnabled(part)
     : false
@@ -3042,15 +3071,23 @@ interface CitableDocument {
 const extractCitableDocuments = (prompt: Prompt.Prompt): Array<CitableDocument> => {
   const citableDocuments: Array<CitableDocument> = []
 
+  const addCitableDocument = (part: Prompt.UserMessagePart | Prompt.ToolModelOutputPart) => {
+    if (isCitationPart(part)) {
+      citableDocuments.push({
+        title: part.fileName ?? "Untitled Document",
+        fileName: part.fileName,
+        mediaType: part.mediaType
+      })
+    }
+  }
+
   for (const message of prompt.content) {
     if (message.role === "user") {
+      message.content.forEach(addCitableDocument)
+    } else if (message.role === "tool") {
       for (const part of message.content) {
-        if (isCitationPart(part)) {
-          citableDocuments.push({
-            title: part.fileName ?? "Untitled Document",
-            fileName: part.fileName,
-            mediaType: part.mediaType
-          })
+        if (part.type === "tool-result") {
+          part.modelOutput?.forEach(addCitableDocument)
         }
       }
     }

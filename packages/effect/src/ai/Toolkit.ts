@@ -525,7 +525,10 @@ const Proto = {
             ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            return { ...output, encodedResult }
+            if (output.isFailure || output.preliminary || tool.toModelOutput === undefined) {
+              return { ...output, encodedResult }
+            }
+            return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
           })),
           Stream.ensuring(Fiber.interrupt(fiber))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>

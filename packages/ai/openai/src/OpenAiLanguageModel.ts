@@ -932,52 +932,8 @@ const prepareMessages = Effect.fnUntraced(
               }
 
               case "file": {
-                const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
-                if (part.mediaType.startsWith("image/")) {
-                  const detail = getImageDetail(part)
-                  const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
-
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint })
-                  } else {
-                    const imageUrl = part.data instanceof URL
-                      ? part.data.toString()
-                      : part.data instanceof Uint8Array
-                      ? `data:${mediaType};base64,${Base64.encode(part.data)}`
-                      : /^(data:|https?:\/\/)/i.test(part.data)
-                      ? part.data
-                      : `data:${mediaType};base64,${part.data}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint })
-                  }
-                } else if (part.mediaType === "application/pdf") {
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_file", file_id: part.data, ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Base64.encode(part.data)
-                    const fileName = part.fileName ?? `part-${index}.pdf`
-                    const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({
-                      type: "input_file",
-                      filename: fileName,
-                      file_data: fileData,
-                      ...promptCacheBreakpoint
-                    })
-                  }
-                } else {
-                  return yield* AiError.make({
-                    module: "OpenAiLanguageModel",
-                    method: "prepareMessages",
-                    reason: new AiError.InvalidRequestError({
-                      description: `Detected unsupported media type for file: '${part.mediaType}'`
-                    })
-                  })
-                }
+                content.push(yield* prepareFilePart(part, index, config))
+                break
               }
             }
           }
@@ -1367,10 +1323,25 @@ const prepareMessages = Effect.fnUntraced(
               continue
             }
 
+            const output: Array<typeof OpenAiSchema.InputContent.Encoded> = []
+            const modelOutput = part.modelOutput ?? []
+            for (let index = 0; index < modelOutput.length; index++) {
+              const outputPart = modelOutput[index]
+              output.push(
+                outputPart.type === "text"
+                  ? { type: "input_text", text: outputPart.text, ...getPromptCacheBreakpoint(outputPart) }
+                  : yield* prepareFilePart(outputPart, index, config)
+              )
+            }
+
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+              output: output.length > 0
+                ? output
+                : typeof part.result === "string"
+                ? part.result
+                : JSON.stringify(part.result),
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
@@ -3117,6 +3088,62 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   }
 
   return { tools, toolChoice }
+})
+
+const prepareFilePart = Effect.fnUntraced(function*(
+  part: Prompt.FilePart,
+  index: number,
+  config: typeof Config.Service
+): Effect.fn.Return<typeof OpenAiSchema.InputContent.Encoded, AiError.AiError> {
+  const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
+
+  if (part.mediaType.startsWith("image/")) {
+    const detail = getImageDetail(part)
+    const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
+
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      return { type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint }
+    }
+
+    const imageUrl = part.data instanceof URL
+      ? part.data.toString()
+      : part.data instanceof Uint8Array
+      ? `data:${mediaType};base64,${Base64.encode(part.data)}`
+      : /^(data:|https?:\/\/)/i.test(part.data)
+      ? part.data
+      : `data:${mediaType};base64,${part.data}`
+    return { type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint }
+  }
+
+  if (part.mediaType === "application/pdf") {
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      return { type: "input_file", file_id: part.data, ...promptCacheBreakpoint }
+    }
+
+    if (part.data instanceof URL || (typeof part.data === "string" && /^https?:\/\//i.test(part.data))) {
+      return { type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint }
+    }
+
+    const fileData = part.data instanceof Uint8Array
+      ? `data:application/pdf;base64,${Base64.encode(part.data)}`
+      : /^data:/i.test(part.data)
+      ? part.data
+      : `data:application/pdf;base64,${part.data}`
+    return {
+      type: "input_file",
+      filename: part.fileName ?? `part-${index}.pdf`,
+      file_data: fileData,
+      ...promptCacheBreakpoint
+    }
+  }
+
+  return yield* AiError.make({
+    module: "OpenAiLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidRequestError({
+      description: `Detected unsupported media type for file: '${part.mediaType}'`
+    })
+  })
 })
 
 // =============================================================================
