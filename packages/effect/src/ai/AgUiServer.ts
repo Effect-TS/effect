@@ -64,9 +64,10 @@ import * as Toolkit from "./Toolkit.ts"
  * **Details**
  *
  * The payload is a JSON `RunAgentInput`, so an invalid body is rejected with
- * `400` before the event stream opens, as is input an {@link agent} rejects. The success response is a
- * `text/event-stream` of AG-UI events sent as `data:` lines, with
- * `Cache-Control: no-cache` and a keepalive comment every 15 seconds.
+ * `400` before the event stream opens, as is input an {@link agent} rejects.
+ * The success response is a `text/event-stream` of AG-UI events sent as
+ * `data:` lines, with `Cache-Control: no-cache` and a keepalive comment every
+ * 15 seconds.
  *
  * @see {@link handler} for implementing the endpoint
  * @see {@link layerHttp} for serving a single agent without declaring an `HttpApi`
@@ -174,15 +175,18 @@ export const layerHttp: {
     never,
     HttpRouter.HttpRouter | Etag.Generator | FileSystem.FileSystem | HttpPlatform.HttpPlatform | Path.Path | R
   >
-} = (options: {
-  readonly path: HttpRouter.PathInput
-  readonly agent?: Agent<any> | undefined
-  readonly run?: ((input: AgUiSchema.RunAgentInput) => Stream.Stream<AgUiSchema.Event, unknown, any>) | undefined
-}): Layer.Layer<never, never, any> => {
+} = (
+  options:
+    & { readonly path: HttpRouter.PathInput }
+    & (
+      | { readonly agent: Agent<any> }
+      | { readonly run: (input: AgUiSchema.RunAgentInput) => Stream.Stream<AgUiSchema.Event, unknown, any> }
+    )
+): Layer.Layer<never, never, any> => {
   const api = HttpApi.make("effect/ai/AgUiServer").add(
     HttpApiGroup.make("agUi").add(endpoint("run", options.path))
   )
-  const agent = options.agent ?? fromRun(options.run!)
+  const agent = "agent" in options ? options.agent : fromRun(options.run)
   return HttpApiBuilder.layer(api).pipe(
     Layer.provide(HttpApiBuilder.group(
       api,
@@ -333,12 +337,11 @@ export const agent = <Tools extends Record<string, Tool.Any>>(options: {
       })
     )
     const toolkit = Toolkit.merge(options.toolkit, Toolkit.make(...frontendTools))
-    const chat = yield* Chat.fromPrompt(Prompt.concat(
-      options.system === undefined ? Prompt.empty : Prompt.make([{ role: "system", content: options.system }]),
-      AgUi.toPrompt(input)
-    ))
+    const conversation = AgUi.toPrompt(input)
+    const prompt = options.system === undefined ? conversation : Prompt.prependSystem(conversation, options.system)
+    const chat = yield* Chat.empty
     const run = makeRunSummary(input, toolkit.tools)
-    const parts = chat.streamText({ prompt: [], toolkit, maxSteps: options.maxSteps }) as Stream.Stream<
+    const parts = chat.streamText({ prompt, toolkit, maxSteps: options.maxSteps }) as Stream.Stream<
       Response.AnyPart,
       unknown,
       never
