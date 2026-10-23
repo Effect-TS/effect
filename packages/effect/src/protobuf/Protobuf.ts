@@ -42,7 +42,7 @@
  * decode to one shared, frozen `Uint8Array`, array, and record.
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Arr from "../Array.ts"
 import * as Bytes from "../Bytes.ts"
@@ -144,7 +144,7 @@ interface FieldOptions {
  *
  * @stability experimental
  * @category annotations
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const field = (number: number, options?: FieldOptions) => {
   ProtobufSchema.checkFieldNumber(number)
@@ -186,7 +186,7 @@ const fieldAnnotation = (number: number, options: FieldOptions | undefined): Pro
  *
  * @stability experimental
  * @category unknown fields
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const unknown = "$unknown" as const
 
@@ -198,7 +198,7 @@ const UnknownFieldsBytes = Schema.Uint8Array.annotate({ [ProtobufSchema.UNKNOWN]
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type UnknownFields = {
   readonly [unknown]: Schema.optionalKey<Schema.Uint8Array>
@@ -251,7 +251,7 @@ type Message<Fields extends Schema.Struct.Fields> = Schema.Struct<Fields & Unkno
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Message = <const Fields extends Schema.Struct.Fields>(name: string, fields: Fields): Message<Fields> => {
   return Schema.Struct({ ...fields, [unknown]: Schema.optionalKey(UnknownFieldsBytes) }).annotate({
@@ -273,7 +273,7 @@ export const Message = <const Fields extends Schema.Struct.Fields>(name: string,
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MessageSet = (name: string): Message<{}> => {
   return Schema.Struct({ [unknown]: Schema.optionalKey(UnknownFieldsBytes) }).annotate({
@@ -323,7 +323,7 @@ type Oneof<Cases extends Readonly<Record<string, Schema.Constraint>>> = Schema.o
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Oneof = <const Cases extends Readonly<Record<string, Schema.Constraint>>>(cases: Cases): Oneof<Cases> => {
   const fields: Record<string, { readonly value: Schema.Constraint }> = {}
@@ -366,7 +366,7 @@ export const Oneof = <const Cases extends Readonly<Record<string, Schema.Constra
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Enum = <const Values extends Readonly<Record<string, number>>>(
   name: string,
@@ -404,7 +404,7 @@ export const Enum = <const Values extends Readonly<Record<string, number>>>(
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const OpenEnum = <
   const Values extends Readonly<Record<string, number>>
@@ -470,7 +470,7 @@ export {
    *
    * @stability experimental
    * @category constructors
-   * @since 4.0.6
+   * @since 4.0.7
    */
   Map_ as Map
 }
@@ -517,7 +517,7 @@ const scalarBigInt = (scalar: ProtobufSchema.ScalarName): Schema.BigInt => {
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Double: Schema.Number = scalarNumber("double")
 
@@ -532,7 +532,7 @@ export const Double: Schema.Number = scalarNumber("double")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Float: Schema.Number = scalarNumber("float")
 
@@ -541,7 +541,7 @@ export const Float: Schema.Number = scalarNumber("float")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int32: Schema.Number = scalarNumber("int32", Schema.isInt32(PROVEN))
 
@@ -550,7 +550,7 @@ export const Int32: Schema.Number = scalarNumber("int32", Schema.isInt32(PROVEN)
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt32: Schema.Number = scalarNumber("uint32", Schema.isUint32(PROVEN))
 
@@ -560,7 +560,7 @@ export const UInt32: Schema.Number = scalarNumber("uint32", Schema.isUint32(PROV
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SInt32: Schema.Number = scalarNumber("sint32", Schema.isInt32(PROVEN))
 
@@ -569,7 +569,7 @@ export const SInt32: Schema.Number = scalarNumber("sint32", Schema.isInt32(PROVE
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Fixed32: Schema.Number = scalarNumber("fixed32", Schema.isUint32(PROVEN))
 
@@ -578,7 +578,7 @@ export const Fixed32: Schema.Number = scalarNumber("fixed32", Schema.isUint32(PR
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SFixed32: Schema.Number = scalarNumber("sfixed32", Schema.isInt32(PROVEN))
 
@@ -589,7 +589,7 @@ export const SFixed32: Schema.Number = scalarNumber("sfixed32", Schema.isInt32(P
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int64: Schema.BigInt = scalarBigInt("int64")
 
@@ -600,7 +600,7 @@ export const Int64: Schema.BigInt = scalarBigInt("int64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt64: Schema.BigInt = scalarBigInt("uint64")
 
@@ -610,7 +610,7 @@ export const UInt64: Schema.BigInt = scalarBigInt("uint64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SInt64: Schema.BigInt = scalarBigInt("sint64")
 
@@ -620,7 +620,7 @@ export const SInt64: Schema.BigInt = scalarBigInt("sint64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Fixed64: Schema.BigInt = scalarBigInt("fixed64")
 
@@ -630,7 +630,7 @@ export const Fixed64: Schema.BigInt = scalarBigInt("fixed64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SFixed64: Schema.BigInt = scalarBigInt("sfixed64")
 
@@ -647,7 +647,7 @@ export const SFixed64: Schema.BigInt = scalarBigInt("sfixed64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int64Number: Schema.Number = scalarNumber("int64", Schema.isInt(PROVEN))
 
@@ -664,7 +664,7 @@ export const Int64Number: Schema.Number = scalarNumber("int64", Schema.isInt(PRO
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt64Number: Schema.Number = scalarNumber(
   "uint64",
@@ -680,7 +680,7 @@ export const UInt64Number: Schema.Number = scalarNumber(
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SInt64Number: Schema.Number = scalarNumber("sint64", Schema.isInt(PROVEN))
 
@@ -692,7 +692,7 @@ export const SInt64Number: Schema.Number = scalarNumber("sint64", Schema.isInt(P
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Fixed64Number: Schema.Number = scalarNumber(
   "fixed64",
@@ -708,7 +708,7 @@ export const Fixed64Number: Schema.Number = scalarNumber(
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SFixed64Number: Schema.Number = scalarNumber("sfixed64", Schema.isInt(PROVEN))
 
@@ -723,7 +723,7 @@ export const SFixed64Number: Schema.Number = scalarNumber("sfixed64", Schema.isI
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int64String: Schema.String = scalarString("int64")
 
@@ -735,7 +735,7 @@ export const Int64String: Schema.String = scalarString("int64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt64String: Schema.String = scalarString("uint64")
 
@@ -747,7 +747,7 @@ export const UInt64String: Schema.String = scalarString("uint64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SInt64String: Schema.String = scalarString("sint64")
 
@@ -759,7 +759,7 @@ export const SInt64String: Schema.String = scalarString("sint64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Fixed64String: Schema.String = scalarString("fixed64")
 
@@ -771,7 +771,7 @@ export const Fixed64String: Schema.String = scalarString("fixed64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SFixed64String: Schema.String = scalarString("sfixed64")
 
@@ -780,7 +780,7 @@ export const SFixed64String: Schema.String = scalarString("sfixed64")
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BoolKey: Schema.String = Schema.String.annotate({ [ProtobufSchema.SCALAR]: "bool" }).check(
   Schema.isPattern(/^(?:true|false)$/, PROVEN)
@@ -811,7 +811,7 @@ const wellKnown =
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Timestamp: Schema.DateTimeUtc = Schema.DateTimeUtc.pipe(wellKnown(Wkt.Timestamp))
 
@@ -834,7 +834,7 @@ export const Timestamp: Schema.DateTimeUtc = Schema.DateTimeUtc.pipe(wellKnown(W
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TimestampParts: Message<{
   readonly seconds: Schema.BigInt
@@ -856,7 +856,7 @@ export const TimestampParts: Message<{
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Duration: Schema.Duration = Schema.Duration.pipe(wellKnown(Wkt.Duration))
 
@@ -873,7 +873,7 @@ export const Duration: Schema.Duration = Schema.Duration.pipe(wellKnown(Wkt.Dura
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DurationParts: Message<{
   readonly seconds: Schema.BigInt
@@ -888,7 +888,7 @@ export const DurationParts: Message<{
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Empty: Message<{}> = Message("google.protobuf.Empty", {})
 
@@ -897,7 +897,7 @@ export const Empty: Message<{}> = Message("google.protobuf.Empty", {})
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NullValue: Schema.Union<readonly [Schema.Literals<ReadonlyArray<"NULL_VALUE">>, Schema.Number]> = OpenEnum(
   "google.protobuf.NullValue",
@@ -910,7 +910,7 @@ export const NullValue: Schema.Union<readonly [Schema.Literals<ReadonlyArray<"NU
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Struct = Message("google.protobuf.Struct", {
   fields: Map_(Schema.String, Schema.suspend((): Schema.Codec<Value> => Value)).pipe(field(1))
@@ -921,7 +921,7 @@ export const Struct = Message("google.protobuf.Struct", {
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Struct extends Schema.Schema.Type<typeof Struct> {}
 
@@ -937,7 +937,7 @@ export interface Struct extends Schema.Schema.Type<typeof Struct> {}
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Value = Message("google.protobuf.Value", {
   kind: Oneof({
@@ -955,7 +955,7 @@ export const Value = Message("google.protobuf.Value", {
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Value extends Schema.Schema.Type<typeof Value> {}
 
@@ -965,7 +965,7 @@ export interface Value extends Schema.Schema.Type<typeof Value> {}
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ListValue = Message("google.protobuf.ListValue", {
   values: Schema.Array(Schema.suspend((): Schema.Codec<Value> => Value)).pipe(field(1))
@@ -976,7 +976,7 @@ export const ListValue = Message("google.protobuf.ListValue", {
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ListValue extends Schema.Schema.Type<typeof ListValue> {}
 
@@ -987,7 +987,7 @@ export interface ListValue extends Schema.Schema.Type<typeof ListValue> {}
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Any: Message<{
   readonly typeUrl: Schema.String
@@ -1002,7 +1002,7 @@ export const Any: Message<{
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldMask: Schema.$Array<Schema.String> = Schema.Array(Schema.String).pipe(
   wellKnown(Wkt.FieldMask)
@@ -1013,7 +1013,7 @@ export const FieldMask: Schema.$Array<Schema.String> = Schema.Array(Schema.Strin
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const StringValue: Schema.String = Schema.String.pipe(wellKnown(Wkt.StringValue))
 
@@ -1022,7 +1022,7 @@ export const StringValue: Schema.String = Schema.String.pipe(wellKnown(Wkt.Strin
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BoolValue: Schema.Boolean = Schema.Boolean.pipe(wellKnown(Wkt.BoolValue))
 
@@ -1031,7 +1031,7 @@ export const BoolValue: Schema.Boolean = Schema.Boolean.pipe(wellKnown(Wkt.BoolV
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BytesValue: Schema.Uint8Array = Schema.Uint8Array.pipe(
   wellKnown(Wkt.BytesValue)
@@ -1042,7 +1042,7 @@ export const BytesValue: Schema.Uint8Array = Schema.Uint8Array.pipe(
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DoubleValue: Schema.Number = Double.pipe(wellKnown(Wkt.DoubleValue))
 
@@ -1051,7 +1051,7 @@ export const DoubleValue: Schema.Number = Double.pipe(wellKnown(Wkt.DoubleValue)
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FloatValue: Schema.Number = Float.pipe(wellKnown(Wkt.FloatValue))
 
@@ -1060,7 +1060,7 @@ export const FloatValue: Schema.Number = Float.pipe(wellKnown(Wkt.FloatValue))
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int32Value: Schema.Number = Int32.pipe(wellKnown(Wkt.Int32Value))
 
@@ -1069,7 +1069,7 @@ export const Int32Value: Schema.Number = Int32.pipe(wellKnown(Wkt.Int32Value))
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt32Value: Schema.Number = UInt32.pipe(wellKnown(Wkt.UInt32Value))
 
@@ -1078,7 +1078,7 @@ export const UInt32Value: Schema.Number = UInt32.pipe(wellKnown(Wkt.UInt32Value)
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Int64Value: Schema.BigInt = Int64.pipe(wellKnown(Wkt.Int64Value))
 
@@ -1087,7 +1087,7 @@ export const Int64Value: Schema.BigInt = Int64.pipe(wellKnown(Wkt.Int64Value))
  *
  * @stability experimental
  * @category well-known types
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UInt64Value: Schema.BigInt = UInt64.pipe(wellKnown(Wkt.UInt64Value))
 
@@ -1100,7 +1100,7 @@ export const UInt64Value: Schema.BigInt = UInt64.pipe(wellKnown(Wkt.UInt64Value)
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Extension<in out E extends Schema.Top, S extends Schema.Codec<any, any>> {
   readonly extendee: E
@@ -1161,7 +1161,7 @@ interface ExtensionOptions extends Omit<FieldOptions, "name" | "jsonName"> {
  *
  * @stability experimental
  * @category extensions
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const extension = <E extends Schema.Top, S extends Schema.Codec<any, any>>(
   extendee: E,
@@ -1216,7 +1216,7 @@ export const extension = <E extends Schema.Top, S extends Schema.Codec<any, any>
  *
  * @stability experimental
  * @category extensions
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const getExtension = <E extends Schema.Top, S extends Schema.Codec<any, any>>(
   message: E["Type"],
@@ -1234,7 +1234,7 @@ export const getExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
  *
  * @stability experimental
  * @category extensions
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const setExtension = <E extends Schema.Top, S extends Schema.Codec<any, any>>(
   message: E["Type"],
@@ -1253,7 +1253,7 @@ export const setExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
  *
  * @stability experimental
  * @category extensions
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const clearExtension = <E extends Schema.Top, S extends Schema.Codec<any, any>>(
   message: E["Type"],
@@ -1270,7 +1270,7 @@ export const clearExtension = <E extends Schema.Top, S extends Schema.Codec<any,
  *
  * @stability experimental
  * @category extensions
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const hasExtension = <E extends Schema.Top, S extends Schema.Codec<any, any>>(
   message: E["Type"],
@@ -1333,7 +1333,7 @@ const selectExtension = (bytes: Uint8Array, extension: Extension<any, any>, keep
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Registry {
   readonly messages: ReadonlyMap<string, Schema.Top>
@@ -1352,7 +1352,7 @@ export interface Registry {
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const registry = (...items: ReadonlyArray<Schema.Top | Extension<any, any> | Registry>): Registry => {
   const messages = new Map<string, Schema.Top>()
@@ -1414,7 +1414,7 @@ const TYPE_URL_PREFIX = "type.googleapis.com/"
  *
  * @stability experimental
  * @category Any
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const anyPack = <S extends Schema.Codec<any, any>>(schema: S, value: S["Type"]): typeof Any.Type => {
   const name = messageName(schema)
@@ -1435,7 +1435,7 @@ export const anyPack = <S extends Schema.Codec<any, any>>(schema: S, value: S["T
  *
  * @stability experimental
  * @category Any
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const anyUnpack: {
   <S extends Schema.Codec<any, any>>(any: typeof Any.Type, schema: S): Option.Option<S["Type"]>
@@ -1454,7 +1454,7 @@ export const anyUnpack: {
  *
  * @stability experimental
  * @category Any
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const anyIs = (any: typeof Any.Type, schema: Schema.Top): boolean => {
   return typeName(any.typeUrl) === messageName(schema)
@@ -1477,7 +1477,7 @@ const messageName = (schema: Schema.Top): string | undefined => {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface toCodec<S extends Schema.Constraint> extends
   Schema.Codec<
@@ -1547,7 +1547,7 @@ const registryCodecCache = new WeakMap<Registry, WeakMap<Schema.Constraint, toCo
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const toCodec = <S extends Schema.Constraint>(schema: S, options?: ToCodecOptions): toCodec<S> => {
   const registry = options?.registry

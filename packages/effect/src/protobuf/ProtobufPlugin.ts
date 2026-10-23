@@ -12,7 +12,7 @@
  * protoc 36.2.
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Schema from "../Schema.ts"
 import * as Protobuf from "./Protobuf.ts"
@@ -23,7 +23,7 @@ import * as ProtobufDescriptor from "./ProtobufDescriptor.ts"
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Version = Protobuf.Message("google.protobuf.compiler.Version", {
   major: Schema.optionalKey(Protobuf.Int32).pipe(Protobuf.field(1)),
@@ -40,7 +40,7 @@ export const Version = Protobuf.Message("google.protobuf.compiler.Version", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Version extends Schema.Schema.Type<typeof Version> {}
 
@@ -49,7 +49,7 @@ export interface Version extends Schema.Schema.Type<typeof Version> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CodeGeneratorRequest = Protobuf.Message("google.protobuf.compiler.CodeGeneratorRequest", {
   /**
@@ -100,7 +100,7 @@ export const CodeGeneratorRequest = Protobuf.Message("google.protobuf.compiler.C
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface CodeGeneratorRequest extends Schema.Schema.Type<typeof CodeGeneratorRequest> {}
 
@@ -109,7 +109,7 @@ export interface CodeGeneratorRequest extends Schema.Schema.Type<typeof CodeGene
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CodeGeneratorResponse_File = Protobuf.Message("google.protobuf.compiler.CodeGeneratorResponse.File", {
   /**
@@ -182,7 +182,7 @@ export const CodeGeneratorResponse_File = Protobuf.Message("google.protobuf.comp
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface CodeGeneratorResponse_File extends Schema.Schema.Type<typeof CodeGeneratorResponse_File> {}
 
@@ -191,7 +191,7 @@ export interface CodeGeneratorResponse_File extends Schema.Schema.Type<typeof Co
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CodeGeneratorResponse = Protobuf.Message("google.protobuf.compiler.CodeGeneratorResponse", {
   /**
@@ -231,7 +231,7 @@ export const CodeGeneratorResponse = Protobuf.Message("google.protobuf.compiler.
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface CodeGeneratorResponse extends Schema.Schema.Type<typeof CodeGeneratorResponse> {}
 
@@ -240,7 +240,7 @@ export interface CodeGeneratorResponse extends Schema.Schema.Type<typeof CodeGen
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CodeGeneratorResponse_Feature = Protobuf.Enum("google.protobuf.compiler.CodeGeneratorResponse.Feature", {
   FEATURE_NONE: 0,
@@ -253,7 +253,7 @@ export const CodeGeneratorResponse_Feature = Protobuf.Enum("google.protobuf.comp
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type CodeGeneratorResponse_Feature = typeof CodeGeneratorResponse_Feature.Type
 
@@ -262,7 +262,7 @@ export type CodeGeneratorResponse_Feature = typeof CodeGeneratorResponse_Feature
  *
  * @stability experimental
  * @category registries
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const registry = Protobuf.registry(
   Version,

@@ -31,7 +31,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Schema from "../Schema.ts"
 import * as Protobuf from "./Protobuf.ts"
@@ -41,7 +41,7 @@ import * as Protobuf from "./Protobuf.ts"
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldDescriptorProto_Label = Protobuf.Enum("google.protobuf.FieldDescriptorProto.Label", {
   /**
@@ -62,7 +62,7 @@ export const FieldDescriptorProto_Label = Protobuf.Enum("google.protobuf.FieldDe
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldDescriptorProto_Label = typeof FieldDescriptorProto_Label.Type
 
@@ -71,7 +71,7 @@ export type FieldDescriptorProto_Label = typeof FieldDescriptorProto_Label.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldDescriptorProto_Type = Protobuf.Enum("google.protobuf.FieldDescriptorProto.Type", {
   /**
@@ -130,7 +130,7 @@ export const FieldDescriptorProto_Type = Protobuf.Enum("google.protobuf.FieldDes
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldDescriptorProto_Type = typeof FieldDescriptorProto_Type.Type
 
@@ -139,7 +139,7 @@ export type FieldDescriptorProto_Type = typeof FieldDescriptorProto_Type.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_CType = Protobuf.Enum("google.protobuf.FieldOptions.CType", {
   /**
@@ -163,7 +163,7 @@ export const FieldOptions_CType = Protobuf.Enum("google.protobuf.FieldOptions.CT
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldOptions_CType = typeof FieldOptions_CType.Type
 
@@ -172,7 +172,7 @@ export type FieldOptions_CType = typeof FieldOptions_CType.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_JSType = Protobuf.Enum("google.protobuf.FieldOptions.JSType", {
   /**
@@ -194,7 +194,7 @@ export const FieldOptions_JSType = Protobuf.Enum("google.protobuf.FieldOptions.J
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldOptions_JSType = typeof FieldOptions_JSType.Type
 
@@ -203,7 +203,7 @@ export type FieldOptions_JSType = typeof FieldOptions_JSType.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_OptionRetention = Protobuf.Enum("google.protobuf.FieldOptions.OptionRetention", {
   RETENTION_UNKNOWN: 0,
@@ -216,7 +216,7 @@ export const FieldOptions_OptionRetention = Protobuf.Enum("google.protobuf.Field
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldOptions_OptionRetention = typeof FieldOptions_OptionRetention.Type
 
@@ -227,7 +227,7 @@ export type FieldOptions_OptionRetention = typeof FieldOptions_OptionRetention.T
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_OptionTargetType = Protobuf.Enum("google.protobuf.FieldOptions.OptionTargetType", {
   TARGET_TYPE_UNKNOWN: 0,
@@ -247,7 +247,7 @@ export const FieldOptions_OptionTargetType = Protobuf.Enum("google.protobuf.Fiel
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FieldOptions_OptionTargetType = typeof FieldOptions_OptionTargetType.Type
 
@@ -256,7 +256,7 @@ export type FieldOptions_OptionTargetType = typeof FieldOptions_OptionTargetType
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Edition = Protobuf.Enum("google.protobuf.Edition", {
   /**
@@ -310,7 +310,7 @@ export const Edition = Protobuf.Enum("google.protobuf.Edition", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Edition = typeof Edition.Type
 
@@ -319,7 +319,7 @@ export type Edition = typeof Edition.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_EditionDefault = Protobuf.Message("google.protobuf.FieldOptions.EditionDefault", {
   edition: Schema.optionalKey(Edition).pipe(Protobuf.field(3)),
@@ -333,7 +333,7 @@ export const FieldOptions_EditionDefault = Protobuf.Message("google.protobuf.Fie
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FieldOptions_EditionDefault extends Schema.Schema.Type<typeof FieldOptions_EditionDefault> {}
 
@@ -342,7 +342,7 @@ export interface FieldOptions_EditionDefault extends Schema.Schema.Type<typeof F
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_FieldPresence = Protobuf.Enum("google.protobuf.FeatureSet.FieldPresence", {
   FIELD_PRESENCE_UNKNOWN: 0,
@@ -356,7 +356,7 @@ export const FeatureSet_FieldPresence = Protobuf.Enum("google.protobuf.FeatureSe
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_FieldPresence = typeof FeatureSet_FieldPresence.Type
 
@@ -365,7 +365,7 @@ export type FeatureSet_FieldPresence = typeof FeatureSet_FieldPresence.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_EnumType = Protobuf.Enum("google.protobuf.FeatureSet.EnumType", {
   ENUM_TYPE_UNKNOWN: 0,
@@ -378,7 +378,7 @@ export const FeatureSet_EnumType = Protobuf.Enum("google.protobuf.FeatureSet.Enu
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_EnumType = typeof FeatureSet_EnumType.Type
 
@@ -387,7 +387,7 @@ export type FeatureSet_EnumType = typeof FeatureSet_EnumType.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_RepeatedFieldEncoding = Protobuf.Enum("google.protobuf.FeatureSet.RepeatedFieldEncoding", {
   REPEATED_FIELD_ENCODING_UNKNOWN: 0,
@@ -400,7 +400,7 @@ export const FeatureSet_RepeatedFieldEncoding = Protobuf.Enum("google.protobuf.F
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_RepeatedFieldEncoding = typeof FeatureSet_RepeatedFieldEncoding.Type
 
@@ -409,7 +409,7 @@ export type FeatureSet_RepeatedFieldEncoding = typeof FeatureSet_RepeatedFieldEn
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_Utf8Validation = Protobuf.Enum("google.protobuf.FeatureSet.Utf8Validation", {
   UTF8_VALIDATION_UNKNOWN: 0,
@@ -422,7 +422,7 @@ export const FeatureSet_Utf8Validation = Protobuf.Enum("google.protobuf.FeatureS
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_Utf8Validation = typeof FeatureSet_Utf8Validation.Type
 
@@ -431,7 +431,7 @@ export type FeatureSet_Utf8Validation = typeof FeatureSet_Utf8Validation.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_MessageEncoding = Protobuf.Enum("google.protobuf.FeatureSet.MessageEncoding", {
   MESSAGE_ENCODING_UNKNOWN: 0,
@@ -444,7 +444,7 @@ export const FeatureSet_MessageEncoding = Protobuf.Enum("google.protobuf.Feature
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_MessageEncoding = typeof FeatureSet_MessageEncoding.Type
 
@@ -453,7 +453,7 @@ export type FeatureSet_MessageEncoding = typeof FeatureSet_MessageEncoding.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_JsonFormat = Protobuf.Enum("google.protobuf.FeatureSet.JsonFormat", {
   JSON_FORMAT_UNKNOWN: 0,
@@ -466,7 +466,7 @@ export const FeatureSet_JsonFormat = Protobuf.Enum("google.protobuf.FeatureSet.J
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_JsonFormat = typeof FeatureSet_JsonFormat.Type
 
@@ -475,7 +475,7 @@ export type FeatureSet_JsonFormat = typeof FeatureSet_JsonFormat.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_EnforceNamingStyle = Protobuf.Enum("google.protobuf.FeatureSet.EnforceNamingStyle", {
   ENFORCE_NAMING_STYLE_UNKNOWN: 0,
@@ -489,7 +489,7 @@ export const FeatureSet_EnforceNamingStyle = Protobuf.Enum("google.protobuf.Feat
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_EnforceNamingStyle = typeof FeatureSet_EnforceNamingStyle.Type
 
@@ -498,7 +498,7 @@ export type FeatureSet_EnforceNamingStyle = typeof FeatureSet_EnforceNamingStyle
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_VisibilityFeature_DefaultSymbolVisibility = Protobuf.Enum(
   "google.protobuf.FeatureSet.VisibilityFeature.DefaultSymbolVisibility",
@@ -530,7 +530,7 @@ export const FeatureSet_VisibilityFeature_DefaultSymbolVisibility = Protobuf.Enu
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_VisibilityFeature_DefaultSymbolVisibility =
   typeof FeatureSet_VisibilityFeature_DefaultSymbolVisibility.Type
@@ -540,7 +540,7 @@ export type FeatureSet_VisibilityFeature_DefaultSymbolVisibility =
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_ProtoLimitsFeature_EnforceProtoLimits = Protobuf.Enum(
   "google.protobuf.FeatureSet.ProtoLimitsFeature.EnforceProtoLimits",
@@ -566,7 +566,7 @@ export const FeatureSet_ProtoLimitsFeature_EnforceProtoLimits = Protobuf.Enum(
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FeatureSet_ProtoLimitsFeature_EnforceProtoLimits =
   typeof FeatureSet_ProtoLimitsFeature_EnforceProtoLimits.Type
@@ -581,7 +581,7 @@ export type FeatureSet_ProtoLimitsFeature_EnforceProtoLimits =
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet = Protobuf.Message("google.protobuf.FeatureSet", {
   fieldPresence: Schema.optionalKey(FeatureSet_FieldPresence).pipe(Protobuf.field(1)),
@@ -601,7 +601,7 @@ export const FeatureSet = Protobuf.Message("google.protobuf.FeatureSet", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FeatureSet extends Schema.Schema.Type<typeof FeatureSet> {}
 
@@ -610,7 +610,7 @@ export interface FeatureSet extends Schema.Schema.Type<typeof FeatureSet> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions_FeatureSupport = Protobuf.Message("google.protobuf.FieldOptions.FeatureSupport", {
   /**
@@ -646,7 +646,7 @@ export const FieldOptions_FeatureSupport = Protobuf.Message("google.protobuf.Fie
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FieldOptions_FeatureSupport extends Schema.Schema.Type<typeof FieldOptions_FeatureSupport> {}
 
@@ -659,7 +659,7 @@ export interface FieldOptions_FeatureSupport extends Schema.Schema.Type<typeof F
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UninterpretedOption_NamePart = Protobuf.Message("google.protobuf.UninterpretedOption.NamePart", {
   namePart: Schema.String.pipe(Protobuf.field(1, { required: true, validateUtf8: false })),
@@ -670,7 +670,7 @@ export const UninterpretedOption_NamePart = Protobuf.Message("google.protobuf.Un
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface UninterpretedOption_NamePart extends Schema.Schema.Type<typeof UninterpretedOption_NamePart> {}
 
@@ -684,7 +684,7 @@ export interface UninterpretedOption_NamePart extends Schema.Schema.Type<typeof 
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UninterpretedOption = Protobuf.Message("google.protobuf.UninterpretedOption", {
   name: Schema.Array(UninterpretedOption_NamePart).pipe(Protobuf.field(2)),
@@ -704,7 +704,7 @@ export const UninterpretedOption = Protobuf.Message("google.protobuf.Uninterpret
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface UninterpretedOption extends Schema.Schema.Type<typeof UninterpretedOption> {}
 
@@ -713,7 +713,7 @@ export interface UninterpretedOption extends Schema.Schema.Type<typeof Uninterpr
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldOptions = Protobuf.Message("google.protobuf.FieldOptions", {
   /**
@@ -834,7 +834,7 @@ export const FieldOptions = Protobuf.Message("google.protobuf.FieldOptions", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FieldOptions extends Schema.Schema.Type<typeof FieldOptions> {}
 
@@ -843,7 +843,7 @@ export interface FieldOptions extends Schema.Schema.Type<typeof FieldOptions> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FieldDescriptorProto = Protobuf.Message("google.protobuf.FieldDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -917,7 +917,7 @@ export const FieldDescriptorProto = Protobuf.Message("google.protobuf.FieldDescr
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FieldDescriptorProto extends Schema.Schema.Type<typeof FieldDescriptorProto> {}
 
@@ -926,7 +926,7 @@ export interface FieldDescriptorProto extends Schema.Schema.Type<typeof FieldDes
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EnumValueOptions = Protobuf.Message("google.protobuf.EnumValueOptions", {
   /**
@@ -967,7 +967,7 @@ export const EnumValueOptions = Protobuf.Message("google.protobuf.EnumValueOptio
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface EnumValueOptions extends Schema.Schema.Type<typeof EnumValueOptions> {}
 
@@ -976,7 +976,7 @@ export interface EnumValueOptions extends Schema.Schema.Type<typeof EnumValueOpt
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EnumValueDescriptorProto = Protobuf.Message("google.protobuf.EnumValueDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -988,7 +988,7 @@ export const EnumValueDescriptorProto = Protobuf.Message("google.protobuf.EnumVa
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface EnumValueDescriptorProto extends Schema.Schema.Type<typeof EnumValueDescriptorProto> {}
 
@@ -997,7 +997,7 @@ export interface EnumValueDescriptorProto extends Schema.Schema.Type<typeof Enum
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EnumOptions = Protobuf.Message("google.protobuf.EnumOptions", {
   /**
@@ -1042,7 +1042,7 @@ export const EnumOptions = Protobuf.Message("google.protobuf.EnumOptions", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface EnumOptions extends Schema.Schema.Type<typeof EnumOptions> {}
 
@@ -1058,7 +1058,7 @@ export interface EnumOptions extends Schema.Schema.Type<typeof EnumOptions> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EnumDescriptorProto_EnumReservedRange = Protobuf.Message(
   "google.protobuf.EnumDescriptorProto.EnumReservedRange",
@@ -1078,7 +1078,7 @@ export const EnumDescriptorProto_EnumReservedRange = Protobuf.Message(
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface EnumDescriptorProto_EnumReservedRange
   extends Schema.Schema.Type<typeof EnumDescriptorProto_EnumReservedRange>
@@ -1093,7 +1093,7 @@ export interface EnumDescriptorProto_EnumReservedRange
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SymbolVisibility = Protobuf.Enum("google.protobuf.SymbolVisibility", {
   VISIBILITY_UNSET: 0,
@@ -1106,7 +1106,7 @@ export const SymbolVisibility = Protobuf.Enum("google.protobuf.SymbolVisibility"
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SymbolVisibility = typeof SymbolVisibility.Type
 
@@ -1115,7 +1115,7 @@ export type SymbolVisibility = typeof SymbolVisibility.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EnumDescriptorProto = Protobuf.Message("google.protobuf.EnumDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -1142,7 +1142,7 @@ export const EnumDescriptorProto = Protobuf.Message("google.protobuf.EnumDescrip
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface EnumDescriptorProto extends Schema.Schema.Type<typeof EnumDescriptorProto> {}
 
@@ -1151,7 +1151,7 @@ export interface EnumDescriptorProto extends Schema.Schema.Type<typeof EnumDescr
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExtensionRangeOptions_Declaration = Protobuf.Message("google.protobuf.ExtensionRangeOptions.Declaration", {
   /**
@@ -1186,7 +1186,7 @@ export const ExtensionRangeOptions_Declaration = Protobuf.Message("google.protob
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ExtensionRangeOptions_Declaration
   extends Schema.Schema.Type<typeof ExtensionRangeOptions_Declaration>
@@ -1197,7 +1197,7 @@ export interface ExtensionRangeOptions_Declaration
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExtensionRangeOptions_VerificationState = Protobuf.Enum(
   "google.protobuf.ExtensionRangeOptions.VerificationState",
@@ -1215,7 +1215,7 @@ export const ExtensionRangeOptions_VerificationState = Protobuf.Enum(
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExtensionRangeOptions_VerificationState = typeof ExtensionRangeOptions_VerificationState.Type
 
@@ -1224,7 +1224,7 @@ export type ExtensionRangeOptions_VerificationState = typeof ExtensionRangeOptio
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExtensionRangeOptions = Protobuf.Message("google.protobuf.ExtensionRangeOptions", {
   /**
@@ -1257,7 +1257,7 @@ export const ExtensionRangeOptions = Protobuf.Message("google.protobuf.Extension
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ExtensionRangeOptions extends Schema.Schema.Type<typeof ExtensionRangeOptions> {}
 
@@ -1266,7 +1266,7 @@ export interface ExtensionRangeOptions extends Schema.Schema.Type<typeof Extensi
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DescriptorProto_ExtensionRange = Protobuf.Message("google.protobuf.DescriptorProto.ExtensionRange", {
   /**
@@ -1284,7 +1284,7 @@ export const DescriptorProto_ExtensionRange = Protobuf.Message("google.protobuf.
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface DescriptorProto_ExtensionRange extends Schema.Schema.Type<typeof DescriptorProto_ExtensionRange> {}
 
@@ -1293,7 +1293,7 @@ export interface DescriptorProto_ExtensionRange extends Schema.Schema.Type<typeo
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const OneofOptions = Protobuf.Message("google.protobuf.OneofOptions", {
   /**
@@ -1313,7 +1313,7 @@ export const OneofOptions = Protobuf.Message("google.protobuf.OneofOptions", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface OneofOptions extends Schema.Schema.Type<typeof OneofOptions> {}
 
@@ -1322,7 +1322,7 @@ export interface OneofOptions extends Schema.Schema.Type<typeof OneofOptions> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const OneofDescriptorProto = Protobuf.Message("google.protobuf.OneofDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -1333,7 +1333,7 @@ export const OneofDescriptorProto = Protobuf.Message("google.protobuf.OneofDescr
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface OneofDescriptorProto extends Schema.Schema.Type<typeof OneofDescriptorProto> {}
 
@@ -1342,7 +1342,7 @@ export interface OneofDescriptorProto extends Schema.Schema.Type<typeof OneofDes
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MessageOptions = Protobuf.Message("google.protobuf.MessageOptions", {
   /**
@@ -1441,7 +1441,7 @@ export const MessageOptions = Protobuf.Message("google.protobuf.MessageOptions",
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface MessageOptions extends Schema.Schema.Type<typeof MessageOptions> {}
 
@@ -1452,7 +1452,7 @@ export interface MessageOptions extends Schema.Schema.Type<typeof MessageOptions
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DescriptorProto_ReservedRange = Protobuf.Message("google.protobuf.DescriptorProto.ReservedRange", {
   /**
@@ -1469,7 +1469,7 @@ export const DescriptorProto_ReservedRange = Protobuf.Message("google.protobuf.D
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface DescriptorProto_ReservedRange extends Schema.Schema.Type<typeof DescriptorProto_ReservedRange> {}
 
@@ -1478,7 +1478,7 @@ export interface DescriptorProto_ReservedRange extends Schema.Schema.Type<typeof
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DescriptorProto = Protobuf.Message("google.protobuf.DescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -1507,7 +1507,7 @@ export const DescriptorProto = Protobuf.Message("google.protobuf.DescriptorProto
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface DescriptorProto extends Schema.Schema.Type<typeof DescriptorProto> {}
 
@@ -1518,7 +1518,7 @@ export interface DescriptorProto extends Schema.Schema.Type<typeof DescriptorPro
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MethodOptions_IdempotencyLevel = Protobuf.Enum("google.protobuf.MethodOptions.IdempotencyLevel", {
   IDEMPOTENCY_UNKNOWN: 0,
@@ -1537,7 +1537,7 @@ export const MethodOptions_IdempotencyLevel = Protobuf.Enum("google.protobuf.Met
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type MethodOptions_IdempotencyLevel = typeof MethodOptions_IdempotencyLevel.Type
 
@@ -1546,7 +1546,7 @@ export type MethodOptions_IdempotencyLevel = typeof MethodOptions_IdempotencyLev
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MethodOptions = Protobuf.Message("google.protobuf.MethodOptions", {
   /**
@@ -1581,7 +1581,7 @@ export const MethodOptions = Protobuf.Message("google.protobuf.MethodOptions", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface MethodOptions extends Schema.Schema.Type<typeof MethodOptions> {}
 
@@ -1590,7 +1590,7 @@ export interface MethodOptions extends Schema.Schema.Type<typeof MethodOptions> 
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MethodDescriptorProto = Protobuf.Message("google.protobuf.MethodDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -1619,7 +1619,7 @@ export const MethodDescriptorProto = Protobuf.Message("google.protobuf.MethodDes
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface MethodDescriptorProto extends Schema.Schema.Type<typeof MethodDescriptorProto> {}
 
@@ -1628,7 +1628,7 @@ export interface MethodDescriptorProto extends Schema.Schema.Type<typeof MethodD
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceOptions = Protobuf.Message("google.protobuf.ServiceOptions", {
   /**
@@ -1657,7 +1657,7 @@ export const ServiceOptions = Protobuf.Message("google.protobuf.ServiceOptions",
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ServiceOptions extends Schema.Schema.Type<typeof ServiceOptions> {}
 
@@ -1666,7 +1666,7 @@ export interface ServiceOptions extends Schema.Schema.Type<typeof ServiceOptions
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceDescriptorProto = Protobuf.Message("google.protobuf.ServiceDescriptorProto", {
   name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(1, { validateUtf8: false })),
@@ -1678,7 +1678,7 @@ export const ServiceDescriptorProto = Protobuf.Message("google.protobuf.ServiceD
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ServiceDescriptorProto extends Schema.Schema.Type<typeof ServiceDescriptorProto> {}
 
@@ -1687,7 +1687,7 @@ export interface ServiceDescriptorProto extends Schema.Schema.Type<typeof Servic
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FileOptions_OptimizeMode = Protobuf.Enum("google.protobuf.FileOptions.OptimizeMode", {
   /**
@@ -1711,7 +1711,7 @@ export const FileOptions_OptimizeMode = Protobuf.Enum("google.protobuf.FileOptio
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FileOptions_OptimizeMode = typeof FileOptions_OptimizeMode.Type
 
@@ -1720,7 +1720,7 @@ export type FileOptions_OptimizeMode = typeof FileOptions_OptimizeMode.Type
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FileOptions = Protobuf.Message("google.protobuf.FileOptions", {
   /**
@@ -1878,7 +1878,7 @@ export const FileOptions = Protobuf.Message("google.protobuf.FileOptions", {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FileOptions extends Schema.Schema.Type<typeof FileOptions> {}
 
@@ -1887,7 +1887,7 @@ export interface FileOptions extends Schema.Schema.Type<typeof FileOptions> {}
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SourceCodeInfo_Location = Protobuf.Message("google.protobuf.SourceCodeInfo.Location", {
   /**
@@ -1999,7 +1999,7 @@ export const SourceCodeInfo_Location = Protobuf.Message("google.protobuf.SourceC
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface SourceCodeInfo_Location extends Schema.Schema.Type<typeof SourceCodeInfo_Location> {}
 
@@ -2009,7 +2009,7 @@ export interface SourceCodeInfo_Location extends Schema.Schema.Type<typeof Sourc
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SourceCodeInfo = Protobuf.Message("google.protobuf.SourceCodeInfo", {
   /**
@@ -2064,7 +2064,7 @@ export const SourceCodeInfo = Protobuf.Message("google.protobuf.SourceCodeInfo",
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface SourceCodeInfo extends Schema.Schema.Type<typeof SourceCodeInfo> {}
 
@@ -2073,7 +2073,7 @@ export interface SourceCodeInfo extends Schema.Schema.Type<typeof SourceCodeInfo
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FileDescriptorProto = Protobuf.Message("google.protobuf.FileDescriptorProto", {
   /**
@@ -2140,7 +2140,7 @@ export const FileDescriptorProto = Protobuf.Message("google.protobuf.FileDescrip
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FileDescriptorProto extends Schema.Schema.Type<typeof FileDescriptorProto> {}
 
@@ -2150,7 +2150,7 @@ export interface FileDescriptorProto extends Schema.Schema.Type<typeof FileDescr
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FileDescriptorSet = Protobuf.Message("google.protobuf.FileDescriptorSet", {
   file: Schema.Array(FileDescriptorProto).pipe(Protobuf.field(1))
@@ -2160,7 +2160,7 @@ export const FileDescriptorSet = Protobuf.Message("google.protobuf.FileDescripto
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FileDescriptorSet extends Schema.Schema.Type<typeof FileDescriptorSet> {}
 
@@ -2169,7 +2169,7 @@ export interface FileDescriptorSet extends Schema.Schema.Type<typeof FileDescrip
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_VisibilityFeature = Protobuf.Message("google.protobuf.FeatureSet.VisibilityFeature", {})
 /**
@@ -2177,7 +2177,7 @@ export const FeatureSet_VisibilityFeature = Protobuf.Message("google.protobuf.Fe
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FeatureSet_VisibilityFeature extends Schema.Schema.Type<typeof FeatureSet_VisibilityFeature> {}
 
@@ -2186,7 +2186,7 @@ export interface FeatureSet_VisibilityFeature extends Schema.Schema.Type<typeof 
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSet_ProtoLimitsFeature = Protobuf.Message("google.protobuf.FeatureSet.ProtoLimitsFeature", {})
 /**
@@ -2194,7 +2194,7 @@ export const FeatureSet_ProtoLimitsFeature = Protobuf.Message("google.protobuf.F
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FeatureSet_ProtoLimitsFeature extends Schema.Schema.Type<typeof FeatureSet_ProtoLimitsFeature> {}
 
@@ -2206,7 +2206,7 @@ export interface FeatureSet_ProtoLimitsFeature extends Schema.Schema.Type<typeof
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSetDefaults_FeatureSetEditionDefault = Protobuf.Message(
   "google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault",
@@ -2227,7 +2227,7 @@ export const FeatureSetDefaults_FeatureSetEditionDefault = Protobuf.Message(
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FeatureSetDefaults_FeatureSetEditionDefault
   extends Schema.Schema.Type<typeof FeatureSetDefaults_FeatureSetEditionDefault>
@@ -2241,7 +2241,7 @@ export interface FeatureSetDefaults_FeatureSetEditionDefault
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FeatureSetDefaults = Protobuf.Message("google.protobuf.FeatureSetDefaults", {
   defaults: Schema.Array(FeatureSetDefaults_FeatureSetEditionDefault).pipe(Protobuf.field(1)),
@@ -2261,7 +2261,7 @@ export const FeatureSetDefaults = Protobuf.Message("google.protobuf.FeatureSetDe
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface FeatureSetDefaults extends Schema.Schema.Type<typeof FeatureSetDefaults> {}
 
@@ -2271,7 +2271,7 @@ export interface FeatureSetDefaults extends Schema.Schema.Type<typeof FeatureSet
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const GeneratedCodeInfo_Annotation_Semantic = Protobuf.Enum(
   "google.protobuf.GeneratedCodeInfo.Annotation.Semantic",
@@ -2296,7 +2296,7 @@ export const GeneratedCodeInfo_Annotation_Semantic = Protobuf.Enum(
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type GeneratedCodeInfo_Annotation_Semantic = typeof GeneratedCodeInfo_Annotation_Semantic.Type
 
@@ -2305,7 +2305,7 @@ export type GeneratedCodeInfo_Annotation_Semantic = typeof GeneratedCodeInfo_Ann
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const GeneratedCodeInfo_Annotation = Protobuf.Message("google.protobuf.GeneratedCodeInfo.Annotation", {
   /**
@@ -2335,7 +2335,7 @@ export const GeneratedCodeInfo_Annotation = Protobuf.Message("google.protobuf.Ge
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface GeneratedCodeInfo_Annotation extends Schema.Schema.Type<typeof GeneratedCodeInfo_Annotation> {}
 
@@ -2346,7 +2346,7 @@ export interface GeneratedCodeInfo_Annotation extends Schema.Schema.Type<typeof 
  *
  * @stability experimental
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const GeneratedCodeInfo = Protobuf.Message("google.protobuf.GeneratedCodeInfo", {
   /**
@@ -2360,7 +2360,7 @@ export const GeneratedCodeInfo = Protobuf.Message("google.protobuf.GeneratedCode
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface GeneratedCodeInfo extends Schema.Schema.Type<typeof GeneratedCodeInfo> {}
 
@@ -2369,7 +2369,7 @@ export interface GeneratedCodeInfo extends Schema.Schema.Type<typeof GeneratedCo
  *
  * @stability experimental
  * @category registries
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const registry = Protobuf.registry(
   FileDescriptorSet,

@@ -38,7 +38,7 @@
  * - `Any` values and extensions need the `registry` that holds their schemas.
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Schema from "../Schema.ts"
 import * as Compile from "./internal/compile.ts"
@@ -52,7 +52,7 @@ import type * as Protobuf from "./Protobuf.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Options {
   /**
@@ -94,7 +94,7 @@ export interface Options {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface toCodec<S extends Schema.Constraint> extends
   Schema.Codec<
@@ -141,7 +141,7 @@ export interface toCodec<S extends Schema.Constraint> extends
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const toCodec = <S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> => {
   const registry = options?.registry
