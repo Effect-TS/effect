@@ -14,9 +14,8 @@
  *   string never reach it.
  * - Only `application/json` and `application/x-protobuf` bodies are accepted;
  *   other content types get `415`. Payloads are not decoded or validated.
- * - Only `content-type` and `content-encoding`, plus any `forwardHeaders`, are
- *   forwarded from the client. Configured `headers` are applied last, so a
- *   client cannot override them.
+ * - Only `content-type` and `content-encoding` are forwarded from the client.
+ *   Configured `headers` are applied last, so a client cannot override them.
  * - Bodies are buffered up to `maxBodySize` and rejected with `413` beyond it.
  * - Upstream requests send `accept-encoding: identity`, and the client's
  *   `accept-encoding` is never forwarded.
@@ -70,8 +69,8 @@ import * as OtlpEnv from "./internal/otlpEnv.ts"
 export type Signal = "traces" | "logs" | "metrics"
 
 /**
- * Creates a request handler for each OTLP signal that forwards to the
- * configured upstream.
+ * Creates a record of request handlers, one for each OTLP signal, that forward
+ * to the configured upstream.
  *
  * **When to use**
  *
@@ -94,15 +93,10 @@ export const make = (options: {
   readonly baseUrl: string
   readonly urls?: Partial<Record<Signal, string>> | undefined
   readonly headers?: Headers.Input | undefined
-  readonly forwardHeaders?: ReadonlyArray<string> | undefined
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
 }): Effect.Effect<
-  (signal: Signal) => Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    never,
-    HttpServerRequest.HttpServerRequest
-  >,
+  Record<Signal, Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpServerRequest.HttpServerRequest>>,
   never,
   HttpClient.HttpClient
 > =>
@@ -116,7 +110,7 @@ export const make = (options: {
         url: options.urls?.[signal] ?? HttpClientRequest.appendUrl(base, `/v1/${signal}`).url
       })
     }
-    return (signal: Signal) => handlers[signal]
+    return handlers
   })
 
 /**
@@ -153,17 +147,16 @@ export const layer = (options: {
   readonly baseUrl: string
   readonly urls?: Partial<Record<Signal, string>> | undefined
   readonly headers?: Headers.Input | undefined
-  readonly forwardHeaders?: ReadonlyArray<string> | undefined
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
   readonly prefix?: string | undefined
   readonly signals?: ReadonlyArray<Signal> | undefined
 }): Layer.Layer<never, never, HttpRouter.HttpRouter | HttpClient.HttpClient> =>
   Layer.effectDiscard(Effect.gen(function*() {
-    const handler = yield* make(options)
+    const handlers = yield* make(options)
     yield* addRoutes(
       options.prefix,
-      (options.signals ?? allSignals).map((signal) => [signal, handler(signal)] as const)
+      (options.signals ?? allSignals).map((signal) => [signal, handlers[signal]] as const)
     )
   }))
 
@@ -186,7 +179,6 @@ export const layer = (options: {
  */
 export const layerFromConfig = (options?: {
   readonly headers?: Headers.Input | undefined
-  readonly forwardHeaders?: ReadonlyArray<string> | undefined
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
   readonly prefix?: string | undefined
@@ -237,7 +229,6 @@ const addRoutes = Effect.fnUntraced(function*(
 const makeHandler = (client: HttpClient.HttpClient, options: {
   readonly url: string
   readonly headers?: Headers.Input | undefined
-  readonly forwardHeaders?: ReadonlyArray<string> | undefined
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
 }): Handler => {
@@ -245,7 +236,6 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
   )
   const headers = Headers.fromInput(options.headers)
-  const forwardHeaders = ["content-encoding", ...(options.forwardHeaders ?? []).map((name) => name.toLowerCase())]
   const maxBodySize = options.maxBodySize === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBodySize)
   const timeout = options.timeout ?? Duration.seconds(10)
 
@@ -265,11 +255,9 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
     }
 
     let outbound = HttpClientRequest.bodyUint8Array(HttpClientRequest.post(options.url), body, contentType)
-    for (const name of forwardHeaders) {
-      const value = request.headers[name]
-      if (value !== undefined) {
-        outbound = HttpClientRequest.setHeader(outbound, name, value)
-      }
+    const contentEncoding = request.headers["content-encoding"]
+    if (contentEncoding !== undefined) {
+      outbound = HttpClientRequest.setHeader(outbound, "content-encoding", contentEncoding)
     }
     // The response is returned without content-encoding, so request it
     // uncompressed. Configured headers can still override this.
