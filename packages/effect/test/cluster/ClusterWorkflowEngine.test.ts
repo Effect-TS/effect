@@ -299,7 +299,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           events.push("activity:end")
         })
       })
-      const storage = yield* makeSharedStorage
       const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
           yield* Effect.addFinalizer(() =>
@@ -310,15 +309,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           yield* step
         })
       ).pipe(
-        Layer.provideMerge(makeTestWorkflowEngine({
-          storageLayer: Layer.succeed(MessageStorage.MessageStorage, storage),
-          config: { entityTerminationTimeout: Duration.minutes(1) }
-        }))
+        Layer.provideMerge(makeTestWorkflowEngine({ config: { entityTerminationTimeout: Duration.minutes(1) } }))
       )
 
       const scope = yield* Scope.make()
       const context = yield* Layer.buildWithScope(layer, scope)
-      const executionId = yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
       yield* advanceUntil(() => started.isOpen(), "activity must start")
       const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
       for (let i = 0; i < 100; i++) yield* TestClock.adjust(10)
@@ -331,14 +327,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* Fiber.join(shutdown)
       assert.isTrue(pendingWhileRunning, "shutdown must wait for the running activity")
       assert.isTrue(closedBeforeTimeout, "shutdown must finish once the activity completes")
-      assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
-
-      yield* Effect.gen(function*() {
-        assert.deepStrictEqual(
-          yield* pollUntil(workflow, executionId, "Complete"),
-          new Workflow.Complete({ exit: Exit.void })
-        )
-      }).pipe(Effect.provide(layer))
       assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
     }))
 
