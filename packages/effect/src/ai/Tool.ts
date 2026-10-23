@@ -956,6 +956,20 @@ export type ResultDecodingServices<T> = T extends Tool<
   : never
 
 /**
+ * Extracts the services required to decode tool parameters.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ParametersDecodingServices<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Config["parameters"]["DecodingServices"]
+  : never
+
+/**
  * Extracts the services required to encode tool parameters.
  *
  * @stability unstable

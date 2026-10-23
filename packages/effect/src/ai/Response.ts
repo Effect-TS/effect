@@ -224,8 +224,10 @@ export const AllParts: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
     AllParts<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
     AllPartsEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ParametersDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
+    | Tool.ParametersEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
   >
   (): Schema.Codec<AllParts<{}> | AnyToolParts, AllPartsEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -315,8 +317,10 @@ export const Part: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
     Part<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
     PartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ParametersDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
+    | Tool.ParametersEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
   >
   (): Schema.Codec<Part<{}> | AnyToolParts, PartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -409,8 +413,10 @@ export const StreamPart: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
     StreamPart<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
     StreamPartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ParametersDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
+    | Tool.ParametersEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    | Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
   >
   (): Schema.Codec<StreamPart<{}> | AnyToolParts, StreamPartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
