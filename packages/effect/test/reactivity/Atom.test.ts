@@ -3404,7 +3404,8 @@ describe("Atom", { concurrent: false }, () => {
               storage.delete(key)
             }),
           clear: Effect.sync(() => storage.clear()),
-          size: Effect.sync(() => storage.size)
+          size: Effect.sync(() => storage.size),
+          keys: Effect.sync(() => Array.from(storage.keys()))
         })
       )
 
@@ -3455,7 +3456,8 @@ describe("Atom", { concurrent: false }, () => {
               storage.delete(key)
             }),
           clear: Effect.sync(() => storage.clear()),
-          size: Effect.sync(() => storage.size)
+          size: Effect.sync(() => storage.size),
+          keys: Effect.sync(() => Array.from(storage.keys()))
         })
       )
 
@@ -3507,7 +3509,8 @@ describe("Atom", { concurrent: false }, () => {
               storage.delete(key)
             }),
           clear: Effect.sync(() => storage.clear()),
-          size: Effect.sync(() => storage.size)
+          size: Effect.sync(() => storage.size),
+          keys: Effect.sync(() => Array.from(storage.keys()))
         })
       )
 
