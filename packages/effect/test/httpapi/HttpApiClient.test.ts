@@ -860,6 +860,21 @@ describe("HttpApiClient", () => {
         assert.strictEqual(error, "NoContentError")
       }))
 
+    it.effect("reports undeclared statuses as a StatusCodeError", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient(() =>
+          new Response(JSON.stringify({ message: "valid but undeclared" }), {
+            status: 418,
+            headers: { "content-type": "application/json" }
+          })
+        )
+
+        const error = yield* Effect.flip(client.test.textFirst({}))
+        assert.ok(HttpClientError.isHttpClientError(error))
+        assert.strictEqual(error.reason._tag, "StatusCodeError")
+        assert.strictEqual(error.response?.status, 418)
+      }))
+
     it.effect("groups schemas by normalized declared content type", () =>
       Effect.gen(function*() {
         const client = yield* makeClient(() =>
