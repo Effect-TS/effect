@@ -49,7 +49,12 @@ describe("request body", () => {
   for (const accessor of ["arrayBuffer", "text"] as const) {
     describe(`MaxBodySize via ${accessor}`, () => {
       const handler = HttpEffect.toWebHandler(
-        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request[accessor], HttpServerResponse.empty()))
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.gen(function*() {
+            yield* request[accessor]
+            return HttpServerResponse.empty()
+          })
+        )
           .pipe(Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4)))
       )
 
