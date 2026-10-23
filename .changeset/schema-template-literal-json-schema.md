@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Schema.toJsonSchemaDocument` failures for named template-literal segments and incorrect validation involving segment checks, exclusive unions, and empty unions.
+Fix `Schema.toJsonSchemaDocument` throwing for named template-literal segments and emitting incorrect schemas for segment checks, exclusive unions, and empty unions.

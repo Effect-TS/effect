@@ -702,7 +702,7 @@ function compileJsonSchema(
     return { pattern, exact }
 
     function getPartPattern(part: SchemaRepresentation.Representation): string {
-      // Segment checks are omitted, even when they have a JSON Schema exporter.
+      // A segment check cannot generally be embedded in the enclosing pattern, even when it has a JSON Schema exporter.
       if (part._tag !== "Reference" && part.checks.length > 0) exact = false
       switch (part._tag) {
         case "Reference": {
