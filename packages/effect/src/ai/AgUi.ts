@@ -328,8 +328,10 @@ const modelErrorMessage = "The model reported an error."
  * - `RUN_STARTED` is emitted first, with the run's ids and the protocol
  *   version. `RUN_STARTED` events from the input stream are dropped.
  * - When the input stream ends, any text message, tool call, reasoning span,
- *   or step it left open is closed, most recently opened first, and
- *   `RUN_FINISHED` is emitted.
+ *   step, or subagent it left open is closed, most recently opened first, and
+ *   `RUN_FINISHED` is emitted. Closing events keep the `subagentRunId` of the
+ *   event they close, steps are matched by name within each subagent, and a
+ *   subagent left running ends with a `SUBAGENT_ERROR`.
  * - A `RUN_FINISHED` from the input stream ends the run, after closing
  *   anything left open, so a stream can report its own outcome. A `RUN_ERROR`
  *   from the input stream also ends the run.
@@ -366,6 +368,10 @@ export const withRunLifecycle = (run: {
       return events
     }
 
+    // Steps are named rather than identified, so they are keyed by owner too
+    const stepKey = (event: AgUiSchema.StepStartedEvent | AgUiSchema.StepFinishedEvent) =>
+      `step:${JSON.stringify([event.subagentRunId ?? null, event.stepName])}`
+
     const track = (event: AgUiSchema.Event): ReadonlyArray<AgUiSchema.Event> => {
       if (ended) return []
       switch (event.type) {
@@ -380,7 +386,10 @@ export const withRunLifecycle = (run: {
           return [event]
         }
         case "TEXT_MESSAGE_START": {
-          open.set(`text:${event.messageId}`, { type: "TEXT_MESSAGE_END", messageId: event.messageId })
+          open.set(
+            `text:${event.messageId}`,
+            attributed({ type: "TEXT_MESSAGE_END", messageId: event.messageId }, event.subagentRunId)
+          )
           break
         }
         case "TEXT_MESSAGE_END": {
@@ -388,7 +397,10 @@ export const withRunLifecycle = (run: {
           break
         }
         case "TOOL_CALL_START": {
-          open.set(`tool:${event.toolCallId}`, { type: "TOOL_CALL_END", toolCallId: event.toolCallId })
+          open.set(
+            `tool:${event.toolCallId}`,
+            attributed({ type: "TOOL_CALL_END", toolCallId: event.toolCallId }, event.subagentRunId)
+          )
           break
         }
         case "TOOL_CALL_END": {
@@ -396,7 +408,10 @@ export const withRunLifecycle = (run: {
           break
         }
         case "REASONING_START": {
-          open.set(`reasoning:${event.messageId}`, { type: "REASONING_END", messageId: event.messageId })
+          open.set(
+            `reasoning:${event.messageId}`,
+            attributed({ type: "REASONING_END", messageId: event.messageId }, event.subagentRunId)
+          )
           break
         }
         case "REASONING_END": {
@@ -404,10 +419,10 @@ export const withRunLifecycle = (run: {
           break
         }
         case "REASONING_MESSAGE_START": {
-          open.set(`reasoning-message:${event.messageId}`, {
-            type: "REASONING_MESSAGE_END",
-            messageId: event.messageId
-          })
+          open.set(
+            `reasoning-message:${event.messageId}`,
+            attributed({ type: "REASONING_MESSAGE_END", messageId: event.messageId }, event.subagentRunId)
+          )
           break
         }
         case "REASONING_MESSAGE_END": {
@@ -415,11 +430,24 @@ export const withRunLifecycle = (run: {
           break
         }
         case "STEP_STARTED": {
-          open.set(`step:${event.stepName}`, { type: "STEP_FINISHED", stepName: event.stepName })
+          open.set(stepKey(event), attributed({ type: "STEP_FINISHED", stepName: event.stepName }, event.subagentRunId))
           break
         }
         case "STEP_FINISHED": {
-          open.delete(`step:${event.stepName}`)
+          open.delete(stepKey(event))
+          break
+        }
+        case "SUBAGENT_STARTED": {
+          open.set(`subagent:${event.subagentRunId}`, {
+            type: "SUBAGENT_ERROR",
+            subagentRunId: event.subagentRunId,
+            message: subagentUnfinishedMessage
+          })
+          break
+        }
+        case "SUBAGENT_FINISHED":
+        case "SUBAGENT_ERROR": {
+          open.delete(`subagent:${event.subagentRunId}`)
           break
         }
       }
@@ -450,3 +478,8 @@ export const withRunLifecycle = (run: {
   })
 
 const runErrorMessage = "The agent run failed."
+
+const subagentUnfinishedMessage = "The subagent did not finish."
+
+const attributed = <A extends AgUiSchema.Event>(event: A, subagentRunId: string | undefined): A =>
+  subagentRunId === undefined ? event : { ...event, subagentRunId }

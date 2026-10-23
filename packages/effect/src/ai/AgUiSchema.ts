@@ -14,7 +14,10 @@
  * @since 4.1.0
  */
 import * as Effect from "../Effect.ts"
+import { identity } from "../Function.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaTransformation from "../SchemaTransformation.ts"
 
 /**
  * AG-UI protocol version implemented by these schemas.
@@ -65,6 +68,23 @@ const subagentEventFields = {
 }
 
 const TokenCount = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
+
+// AG-UI consumers remove union members they do not recognise, such as members
+// added by a newer protocol version, instead of rejecting the value holding
+// them. Recognised but malformed members still fail to decode.
+const withoutUnknownMembers = <S extends Schema.Constraint>(item: S, isUnknown: (value: unknown) => boolean) =>
+  Schema.Array(Schema.Unknown).pipe(
+    Schema.decodeTo(
+      Schema.Array(item),
+      SchemaTransformation.transform({
+        decode: (values) => values.filter((value) => !isUnknown(value)) as ReadonlyArray<S["Encoded"]>,
+        encode: identity
+      })
+    )
+  )
+
+const hasUnknownTag = (value: unknown, key: string, tags: ReadonlySet<string>): boolean =>
+  Predicate.isObject(value) && !(typeof value[key] === "string" && tags.has(value[key]))
 
 // =============================================================================
 // Content
@@ -278,7 +298,15 @@ export const ContentPart = Schema.Union([TextPart, ImagePart, AudioPart, VideoPa
  */
 export type ContentPart = typeof ContentPart.Type
 
-const Content = Schema.Union([Schema.String, Schema.Array(ContentPart)])
+const contentPartTypes: ReadonlySet<string> = new Set(["text", "image", "audio", "video", "document"])
+const partSourceTypes: ReadonlySet<string> = new Set(["data", "url", "file"])
+
+// A media part whose required source is unrecognised is removed with it
+const isUnknownContentPart = (value: unknown): boolean =>
+  hasUnknownTag(value, "type", contentPartTypes) ||
+  (Predicate.isObject(value) && value.type !== "text" && hasUnknownTag(value.source, "type", partSourceTypes))
+
+const Content = Schema.Union([Schema.String, withoutUnknownMembers(ContentPart, isUnknownContentPart)])
 
 // =============================================================================
 // Messages
@@ -528,6 +556,18 @@ export const Message = Schema.Union([
  */
 export type Message = typeof Message.Type
 
+const messageRoles: ReadonlySet<string> = new Set([
+  "developer",
+  "system",
+  "assistant",
+  "user",
+  "tool",
+  "activity",
+  "reasoning"
+])
+
+const Messages = withoutUnknownMembers(Message, (value) => hasUnknownTag(value, "role", messageRoles))
+
 // =============================================================================
 // Run input
 // =============================================================================
@@ -612,7 +652,9 @@ export type ResumeEntry = typeof ResumeEntry.Type
  *
  * `messages` is the complete conversation so far, which lets an agent serve
  * runs without keeping its own history. Missing `tools` and `context` decode
- * to empty arrays.
+ * to empty arrays. As AG-UI requires, messages and content parts of kinds this
+ * version does not recognise are removed during decoding rather than
+ * rejected.
  *
  * **Gotchas**
  *
@@ -629,7 +671,7 @@ export const RunAgentInput = Schema.Struct({
   protocolVersion: Schema.optionalKey(Schema.String),
   parentRunId: Schema.optionalKey(Schema.String),
   state: Schema.optionalKey(Schema.Unknown),
-  messages: Schema.Array(Message),
+  messages: Messages,
   tools: Schema.Array(Tool).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([]))),
   context: Schema.Array(Context).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([]))),
   forwardedProps: Schema.optionalKey(Schema.Unknown),
@@ -974,7 +1016,7 @@ export type StateDeltaEvent = typeof StateDeltaEvent.Type
 export const MessagesSnapshotEvent = Schema.Struct({
   type: Schema.Literal("MESSAGES_SNAPSHOT"),
   ...baseEventFields,
-  messages: Schema.Array(Message)
+  messages: Messages
 })
 
 /**

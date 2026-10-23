@@ -82,8 +82,9 @@ export const endpoint = <const Name extends string, const Path extends HttpRoute
  *
  * The stream returned by `run` is wrapped with `AgUi.withRunLifecycle`, so the
  * client receives `RUN_STARTED` first and exactly one `RUN_FINISHED` or
- * `RUN_ERROR` last. Failures of the stream are logged and reported, and reach
- * the client as a `RUN_ERROR` without error details. The stream runs with the
+ * `RUN_ERROR` last. Failures of the stream, including events that cannot be
+ * encoded as JSON, are logged and reported, and reach the client as a
+ * `RUN_ERROR` without error details. The stream runs with the
  * services available to the handler.
  *
  * @see {@link endpoint} for declaring the endpoint
@@ -99,11 +100,16 @@ export const handler = <E, R>(
   Effect.map(Effect.context<R>(), (context) =>
     HttpApiSchema.withHeaders({
       body: run(payload).pipe(
+        // Encode here so an unencodable event becomes a sanitized RUN_ERROR
+        // rather than an HttpApi stream failure frame
+        Stream.tap(encodeEvent),
         AgUi.withRunLifecycle(payload),
         Stream.provideContext(context)
       ),
       headers: { "cache-control": "no-cache" as const }
     }))
+
+const encodeEvent = Schema.encodeUnknownEffect(Schema.fromJsonString(AgUiSchema.Event))
 
 /**
  * Creates a layer that serves AG-UI runs at `path` on the current
