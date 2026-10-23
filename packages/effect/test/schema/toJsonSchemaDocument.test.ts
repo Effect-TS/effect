@@ -2660,6 +2660,48 @@ describe("toJsonSchemaDocument", () => {
       if (name === "named") assert.isDefined(document.definitions.Segment.oneOf)
     })
 
+    describe("empty union segments", () => {
+      const anyOf = Schema.Union([])
+      const oneOf = Schema.Union([], { mode: "oneOf" })
+      const segments = [
+        ["unnamed anyOf", anyOf],
+        ["named anyOf", anyOf.annotate({ identifier: "EmptySegment" })],
+        ["unnamed oneOf", oneOf],
+        ["named oneOf", oneOf.annotate({ identifier: "EmptySegment" })]
+      ] as const
+
+      it.each(segments)("preserves surrounding oneOf for %s", (_, part) => {
+        const template = Schema.TemplateLiteral(["item.", part])
+        const schema = Schema.Union([template, Schema.Literal("item.")], { mode: "oneOf" })
+        assert.strictEqual(Schema.is(template)("item."), false)
+        assert.strictEqual(Schema.is(schema)("item."), true)
+        assert.strictEqual(Schema.is(schema)("item.abc"), false)
+
+        const document = Schema.toJsonSchemaDocument(schema)
+        const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+        assert.strictEqual(validate("item."), true)
+        assert.strictEqual(validate("item.abc"), false)
+        assert.isDefined(document.schema.oneOf)
+        assert.isUndefined(document.schema.anyOf)
+      })
+
+      it.each(segments)("does not select record keys for %s", (_, part) => {
+        const schema = Schema.Record(Schema.TemplateLiteral(["item.", part]), Schema.Finite)
+        const input = { "item.": "ignored" }
+        deepStrictEqual(Schema.decodeUnknownSync(schema)(input), {})
+
+        const document = Schema.toJsonSchemaDocument(schema)
+        const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+        assert.strictEqual(validate(input), true)
+        assert.isDefined(document.schema.patternProperties)
+
+        const strict = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+        const validateStrict = ajvDraft2020_12.compile({ ...strict.schema, $defs: strict.definitions })
+        assert.strictEqual(validateStrict({}), true)
+        assert.strictEqual(validateStrict({ "item.": 1 }), false)
+      })
+    })
+
     it.each(
       [
         ["string", Schema.String],

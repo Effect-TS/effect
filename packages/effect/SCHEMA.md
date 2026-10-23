@@ -6321,8 +6321,9 @@ branches match. Unions whose branches are all exact retain `oneOf`.
 Checks on individual `Schema.TemplateLiteral` segments are omitted from the
 generated pattern. These omissions count as approximations, including checks in
 named segments, nested templates, and unions. Checks on the whole template are
-compiled normally. Segment unions using `oneOf` are also approximated, because
-regular expression alternatives do not require exactly one branch to match.
+compiled normally. Nonempty segment unions using `oneOf` are also approximated,
+because regular expression alternatives do not require exactly one branch to match.
+Empty segment unions produce a pattern that matches no strings.
 
 The default `onExcessProperty: "ignore"` emits
 `additionalProperties: true`; use `onExcessProperty: "error"` in both
