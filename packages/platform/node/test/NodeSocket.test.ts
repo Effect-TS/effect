@@ -214,6 +214,23 @@ describe("Socket", { concurrent: false }, () => {
       }
     }))
 
+  it.live("fails writes to a destroyed duplex instead of waiting for drain", () =>
+    Effect.gen(function*() {
+      const duplex = yield* makePassThrough
+      const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex))
+      yield* socket.reader
+      const writer = yield* socket.writer
+      // A destroyed stream emits no further `drain` or `close` events.
+      yield* Effect.callback<void>((resume) => {
+        duplex.once("close", () => resume(Effect.void))
+        duplex.destroy()
+      })
+      for (const write of [writer.write("late"), writer.writeAll(["late"])]) {
+        const error = yield* write.pipe(Effect.flip, Effect.timeout("1 second"))
+        assert.strictEqual(error.reason._tag, "SocketWriteError")
+      }
+    }))
+
   it.live("handles reader scope closure during a parked pull read", () =>
     Effect.gen(function*() {
       const duplex = yield* makePassThrough
