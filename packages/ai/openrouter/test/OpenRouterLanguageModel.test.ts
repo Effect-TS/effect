@@ -398,13 +398,10 @@ describe("OpenRouterLanguageModel", () => {
       it.effect("passes raw JSON schema for dynamic tools", () =>
         Effect.gen(function*() {
           const inputSchema = {
-            type: "object",
-            properties: {
-              query: { type: "string" },
-              limit: { type: "number" }
-            },
-            required: ["query"],
-            additionalProperties: false
+            anyOf: [
+              { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+              { type: "object", properties: { id: { type: "number" } }, required: ["id"] }
+            ]
           } as const
 
           const DynamicTool = Tool.dynamic("DynamicTool", {
@@ -427,6 +424,34 @@ describe("OpenRouterLanguageModel", () => {
           assert.isDefined(tool)
           strictEqual(tool.function.description, "A dynamic tool")
           deepStrictEqual(tool.function.parameters, inputSchema)
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("passes object union parameters through", () =>
+        Effect.gen(function*() {
+          const UnionTool = Tool.make("UnionTool", {
+            parameters: Schema.Union([Schema.Struct({ query: Schema.String }), Schema.Struct({ id: Schema.String })])
+          })
+
+          yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(UnionTool),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.tools[0].function.parameters, {
+            anyOf: [
+              {
+                type: "object",
+                properties: { query: { type: "string" } },
+                required: ["query"],
+                additionalProperties: true
+              },
+              { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: true }
+            ]
+          })
         }).pipe(Effect.provide(makeTestLayer())))
 
       it.effect("names the tool when its parameters are not an object schema", () =>
