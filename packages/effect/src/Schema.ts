@@ -6904,8 +6904,8 @@ export function isPattern(
   const flags = regExp.flags
   const canExport = /^[dg]*uy?$/.test(flags)
   const runtimeRegExp = flags === ""
-    ? `new RegExp(${format(source)})`
-    : `new RegExp(${format(source)}, ${format(flags)})`
+    ? `new globalThis.RegExp(${format(source)})`
+    : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
   return SchemaAST.isPattern(regExp, {
     toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : [{}, true],
     toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
@@ -8068,7 +8068,7 @@ function encodeDatePayload(date: globalThis.Date): string {
 }
 
 function formatDateRuntime(date: globalThis.Date): string {
-  return `new Date(${format(date.getTime())})`
+  return `new globalThis.Date(${format(date.getTime())})`
 }
 /**
  * Validates that a Date is greater than the specified value (exclusive).

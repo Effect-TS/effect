@@ -26,7 +26,7 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
   ) return format(input)
   if (typeof input === "symbol") {
     const key = globalThis.Symbol.keyFor(input)
-    return key === undefined ? undefined : `Symbol.for(${format(key)})`
+    return key === undefined ? undefined : `globalThis.Symbol.for(${format(key)})`
   }
   if (typeof input !== "object") return undefined
   if (Array.isArray(input)) {
@@ -230,7 +230,7 @@ export function toCodeDocument(
   const artifacts: Array<SchemaRepresentation.Artifact> = []
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, string>()
-  const uniqueIdentifiers = new Set<string>()
+  const uniqueIdentifiers = new Set<string>(["Schema"])
   let compilingRecursiveDefinition = false
   let explicitSuspendDepth = 0
 
@@ -289,8 +289,8 @@ export function toCodeDocument(
       identifier,
       code: makeCode(
         key === undefined
-          ? `Symbol(${description === undefined ? "" : format(description)})`
-          : `Symbol.for(${format(key)})`,
+          ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
+          : `globalThis.Symbol.for(${format(key)})`,
         `typeof ${identifier}`
       )
     })

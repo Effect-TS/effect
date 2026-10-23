@@ -172,7 +172,7 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },
           {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new Date(0)))`, "globalThis.Date")
+            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)))`, "globalThis.Date")
           }
         )
       })
@@ -342,6 +342,18 @@ describe("toCodeDocument", () => {
               code: makeCode(`Schema.String.annotate({ "identifier": "ID" })`, "string")
             }
           ]
+        }
+      })
+    })
+
+    it("renames an identifier that collides with the Schema import", () => {
+      assertSchema({ schema: Schema.String.annotate({ identifier: "Schema" }) }, {
+        codes: makeCode("Schema1", "Schema1"),
+        references: {
+          nonRecursives: [{
+            $ref: "Schema1",
+            code: makeCode(`Schema.String.annotate({ "identifier": "Schema" })`, "string")
+          }]
         }
       })
     })
@@ -627,7 +639,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            code: makeCode(`Symbol("a")`, `typeof _symbol`)
+            code: makeCode(`globalThis.Symbol("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -638,7 +650,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            code: makeCode(`Symbol()`, `typeof _symbol`)
+            code: makeCode(`globalThis.Symbol()`, `typeof _symbol`)
           }]
         }
       )
@@ -652,7 +664,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -666,7 +678,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -1422,7 +1434,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -1784,7 +1796,7 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },
           {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new Date(0)))`, "globalThis.Date")
+            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)))`, "globalThis.Date")
           }
         )
       })
@@ -1793,7 +1805,10 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new Date(0))) },
           {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new Date(0)))`, "globalThis.Date")
+            codes: makeCode(
+              `Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new globalThis.Date(0)))`,
+              "globalThis.Date"
+            )
           }
         )
       })
@@ -1802,7 +1817,7 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isLessThanDate(new Date(0))) },
           {
-            codes: makeCode(`Schema.Date.check(Schema.isLessThanDate(new Date(0)))`, "globalThis.Date")
+            codes: makeCode(`Schema.Date.check(Schema.isLessThanDate(new globalThis.Date(0)))`, "globalThis.Date")
           }
         )
       })
@@ -1811,7 +1826,10 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isLessThanOrEqualToDate(new Date(0))) },
           {
-            codes: makeCode(`Schema.Date.check(Schema.isLessThanOrEqualToDate(new Date(0)))`, "globalThis.Date")
+            codes: makeCode(
+              `Schema.Date.check(Schema.isLessThanOrEqualToDate(new globalThis.Date(0)))`,
+              "globalThis.Date"
+            )
           }
         )
       })
@@ -1821,7 +1839,7 @@ describe("toCodeDocument", () => {
           { schema: Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1) })) },
           {
             codes: makeCode(
-              `Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1), exclusiveMinimum: undefined, exclusiveMaximum: undefined }))`,
+              `Schema.Date.check(Schema.isBetweenDate({ minimum: new globalThis.Date(0), maximum: new globalThis.Date(1), exclusiveMinimum: undefined, exclusiveMaximum: undefined }))`,
               "globalThis.Date"
             )
           }
