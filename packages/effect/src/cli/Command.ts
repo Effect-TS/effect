@@ -1847,14 +1847,12 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 const showUserError = (error: CliError.UserFacing): Effect.Effect<void> =>
   Effect.gen(function*() {
     const formatter = yield* resolveFormatter
-    const rendered = CliError.isCliError(error) && error._tag === "UserError"
-      ? error
-      : new CliError.UserError({
-        cause: error,
-        userMessage: error.userMessage
-      })
-    yield* Console.error(formatter.formatError(rendered))
-    ;(error as unknown as { [Runtime.errorReported]: boolean })[Runtime.errorReported] = false
+    yield* Console.error(formatter.formatError(
+      error instanceof CliError.UserError
+        ? error
+        : new CliError.UserError({ cause: error, userMessage: error.userMessage })
+    ))
+    error[Runtime.errorReported] = false
   })
 
 /**

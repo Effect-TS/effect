@@ -49,27 +49,22 @@ const TypeId = "~effect/cli/CliError"
 export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
 
 /**
- * Type identifier for user-facing CLI failures.
- *
- * **Details**
- *
- * Domain errors implement {@link UserFacing} with this identifier so
- * `Command.run` can render them without wrapping them in {@link UserError}.
+ * Type identifier for the {@link UserFacing} protocol.
  *
  * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
-export const UserErrorTypeId: unique symbol = Symbol.for("~effect/cli/CliError/UserFacing")
+export const UserFacingTypeId = "~effect/cli/CliError/UserFacing"
 
 /**
- * Type of {@link UserErrorTypeId}.
+ * Type of {@link UserFacingTypeId}.
  *
  * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
-export type UserErrorTypeId = typeof UserErrorTypeId
+export type UserFacingTypeId = typeof UserFacingTypeId
 
 /**
  * Protocol for handler failures that should be rendered as user-facing CLI
@@ -77,9 +72,10 @@ export type UserErrorTypeId = typeof UserErrorTypeId
  *
  * **Details**
  *
- * `Command.run` renders `userMessage` through the installed formatter, marks
- * the original error as already reported, and rethrows that same value. Tests,
- * telemetry, and exit-code derivation therefore still see the domain tag.
+ * `Command.run` renders `userMessage` through the installed formatter, sets
+ * `Runtime.errorReported` to `false` on the original error, and rethrows that
+ * same value. Tests, telemetry, and exit-code derivation therefore still see
+ * the domain tag.
  *
  * **Example** (Opting a tagged error into user-facing rendering)
  *
@@ -90,7 +86,7 @@ export type UserErrorTypeId = typeof UserErrorTypeId
  * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
  *   path: Schema.String
  * }) implements CliError.UserFacing {
- *   readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
+ *   readonly [CliError.UserFacingTypeId]: CliError.UserFacingTypeId = CliError.UserFacingTypeId
  *   get userMessage() {
  *     return `${this.path} already exists. Re-run with --force to replace it.`
  *   }
@@ -106,27 +102,19 @@ export type UserErrorTypeId = typeof UserErrorTypeId
  * @since 4.0.0
  */
 export interface UserFacing {
-  readonly [UserErrorTypeId]: UserErrorTypeId
+  readonly [UserFacingTypeId]: UserFacingTypeId
   readonly userMessage: string
+  [Runtime.errorReported]?: boolean
 }
 
 /**
- * Returns `true` when a failure implements the {@link UserFacing} protocol.
- *
- * **Details**
- *
- * {@link UserError} implements the protocol, so existing handler failures keep
- * working. Other tagged errors opt in by setting {@link UserErrorTypeId} and
- * a string `userMessage`.
+ * Returns `true` when a value implements the {@link UserFacing} protocol.
  *
  * @stability unstable
  * @category guards
  * @since 4.0.0
  */
-export const isUserFacing = (u: unknown): u is UserFacing =>
-  Predicate.hasProperty(u, UserErrorTypeId) &&
-  Predicate.hasProperty(u, "userMessage") &&
-  typeof u.userMessage === "string"
+export const isUserFacing = (u: unknown): u is UserFacing => Predicate.hasProperty(u, UserFacingTypeId)
 
 /**
  * Union type representing all possible CLI error conditions.
@@ -693,9 +681,10 @@ export class UserError extends Schema.TaggedError<UserError>(
   /**
    * Marks this value as a user-facing CLI failure.
    *
+   * @stability unstable
    * @since 4.0.0
    */
-  readonly [UserErrorTypeId]: UserErrorTypeId = UserErrorTypeId
+  readonly [UserFacingTypeId]: UserFacingTypeId = UserFacingTypeId
 
   /**
    * Controls whether the runtime logger should report this error. The CLI
