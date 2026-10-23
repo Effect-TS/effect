@@ -230,6 +230,8 @@ export const ndjson: RpcSerialization["Service"] = makeNdjson()
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
  * additional message framing.
  *
+ * **Details**
+ *
  * Set `controlMessages` to `false` for plain JSON-RPC peers, so
  * `@effect/rpc/*` methods are not decoded as RPC control messages.
  *
@@ -269,6 +271,8 @@ export const jsonRpc = (options?: {
 /**
  * Creates a newline-delimited JSON-RPC 2.0 serialization for RPC protocol
  * messages.
+ *
+ * **Details**
  *
  * Set `controlMessages` to `false` for plain JSON-RPC peers, so
  * `@effect/rpc/*` methods are not decoded as RPC control messages.
