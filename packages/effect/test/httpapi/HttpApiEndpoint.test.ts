@@ -547,9 +547,19 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         message: "HEAD endpoints cannot declare an upgrade"
       },
       {
-        name: "with a payload",
-        make: () => HttpApiEndpoint.post("attach", "/attach", { payload: Schema.String, success: upgrade }),
-        message: "Upgrade endpoints cannot declare a payload"
+        name: "with a byte stream payload",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", { payload: HttpApiSchema.StreamUint8Array(), success: upgrade }),
+        message: "Upgrade endpoints cannot declare a streaming payload"
+      },
+      {
+        name: "with a multipart stream payload",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            payload: Schema.Struct({ file: Schema.String }).pipe(HttpApiSchema.asMultipartStream()),
+            success: upgrade
+          }),
+        message: "Upgrade endpoints cannot declare a streaming payload"
       },
       {
         name: "as an error",

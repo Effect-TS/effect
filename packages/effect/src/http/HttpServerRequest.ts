@@ -77,7 +77,9 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * creating adjusted request views. `upgrade` completes a WebSocket handshake
  * for `Upgrade: websocket`. Platforms that can hand over the connection, such
  * as Node, answer other protocols with `101 Switching Protocols` and expose
- * the raw connection.
+ * the raw connection. `upgradeWith` does the same and adds custom headers to
+ * the `101` response; `upgrade` is `upgradeWith({})`. WebSocket upgrades fail
+ * when custom headers are given.
  *
  * @stability unstable
  * @category models
@@ -99,6 +101,9 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
   readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
 
   readonly upgrade: Effect.Effect<Socket.Socket, HttpServerError>
+  readonly upgradeWith: (options: {
+    readonly headers?: Headers.Input | undefined
+  }) => Effect.Effect<Socket.Socket, HttpServerError>
 
   /**
    * Address of the directly connected peer. Trusted proxy middleware replaces
@@ -702,6 +707,12 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
+    return this.upgradeWith({})
+  }
+
+  upgradeWith(
+    _options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, HttpServerError> {
     return Effect.fail(
       new HttpServerError({
         reason: new RequestParseError({
@@ -916,6 +927,12 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
+    return this.upgradeWith({})
+  }
+
+  upgradeWith(
+    _options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, HttpServerError> {
     return Effect.fail(requestParseError(this, "Not an upgradeable ServerRequest"))
   }
 }

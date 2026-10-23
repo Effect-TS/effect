@@ -130,9 +130,16 @@ jobs:
       matrix:
         include:
           - runtime: Node
+            node: ""
             deno: ""
             bun: ""
             command: pnpm test --max-concurrency=10
+          # Node 25 and older handle upgrade request bodies differently.
+          - runtime: Node 24 (platform-node)
+            node: 24
+            deno: ""
+            bun: ""
+            command: pnpm vitest run --project @effect/platform-node --max-concurrency=10
           - runtime: Deno
             deno: v2.9.6
             bun: ""
@@ -157,6 +164,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
+          node-version: ${{ matrix.node }}
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
