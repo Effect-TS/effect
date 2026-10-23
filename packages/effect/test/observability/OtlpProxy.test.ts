@@ -132,9 +132,17 @@ describe("OtlpProxy", () => {
       assert.strictEqual(upstream.requests.length, 0)
     }))
 
-  it.effect("rejects bodies over maxBodySize with 413 without contacting upstream", () =>
+  it.effect("accepts a body at maxBodySize and rejects larger ones with 413 without contacting upstream", () =>
     Effect.gen(function*() {
       const upstream = makeUpstream()
+      const atLimit = yield* serve(
+        OtlpProxy.layer({ baseUrl: "https://otlp.example", maxBodySize: 4 }),
+        upstream.client,
+        post("/v1/traces", new Uint8Array([1, 2, 3, 4]), { "content-length": "4" })
+      )
+      assert.strictEqual(atLimit.status, 200)
+      assert.strictEqual(upstream.requests.length, 1)
+
       const response = yield* serve(
         OtlpProxy.layer({ baseUrl: "https://otlp.example", maxBodySize: 4 }),
         upstream.client,
@@ -142,7 +150,36 @@ describe("OtlpProxy", () => {
       )
 
       assert.strictEqual(response.status, 413)
-      assert.strictEqual(upstream.requests.length, 0)
+      assert.strictEqual(upstream.requests.length, 1)
+    }))
+
+  it.effect("stops reading at maxBodySize when content-length understates the body", () =>
+    Effect.gen(function*() {
+      for (const contentLength of ["0", "1"]) {
+        const upstream = makeUpstream()
+        let pulls = 0
+        const body = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (++pulls > 10) return controller.close()
+            controller.enqueue(new Uint8Array([1, 2]))
+          }
+        })
+        const response = yield* serve(
+          OtlpProxy.layer({ baseUrl: "https://otlp.example", maxBodySize: 4 }),
+          upstream.client,
+          new Request("http://localhost/v1/traces", {
+            method: "POST",
+            body,
+            duplex: "half",
+            headers: { "content-type": "application/x-protobuf", "content-length": contentLength }
+          } as RequestInit)
+        )
+
+        assert.strictEqual(response.status, 413)
+        assert.strictEqual(upstream.requests.length, 0)
+        // Reading stops once the limit is crossed instead of buffering all ten chunks.
+        assert.isAtMost(pulls, 4, `content-length: ${contentLength}`)
+      }
     }))
 
   it.effect("maps upstream transport failures to 502 and timeouts to 504", () =>
