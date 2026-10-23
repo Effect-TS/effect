@@ -55,6 +55,19 @@ describe("Literals", () => {
     expect(schema.omit(["a", "b", "c", "d"])).type.toBe<Schema.Literals<readonly []>>()
     expect(schema.omit).type.not.toBeCallableWith(["x"])
 
+    // literals are omitted by runtime value, so enum members match equal literals, but strings never match numbers
+    enum S {
+      One = "1"
+    }
+    expect(Schema.Literals(["1", 1, "b"]).omit([S.One])).type.toBe<Schema.Literals<readonly [1, "b"]>>()
+    enum N1 {
+      A = 1
+    }
+    enum N2 {
+      A = 1
+    }
+    expect(Schema.Literals([N1.A, N2.A, "1"]).omit([N1.A])).type.toBe<Schema.Literals<readonly ["1"]>>()
+
     // a widened omission array may not contain every member of its union at runtime
     const omitted: ReadonlyArray<"a" | "b"> = ["a"]
     expect(schema.omit(omitted)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
