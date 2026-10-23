@@ -498,9 +498,6 @@ interface Overlay {
   readonly parent: Overlay | undefined
 }
 
-// NaN or Infinity would never trigger a rebase, so fall back to the default
-const normalizeMaxDepth = (maxDepth = 8): number => Number.isInteger(maxDepth) && maxDepth >= 0 ? maxDepth : 8
-
 // Keep small bases cheap to read; larger bases are worth copying only after
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
@@ -614,7 +611,11 @@ const lookup = (self: Context<any>, key: string): unknown => {
 export const makeUnsafe = <Services = never>(
   mapUnsafe: ReadonlyMap<string, any>,
   options?: { readonly maxDepth?: number }
-): Context<Services> => makeImpl(undefined, mapUnsafe, undefined, 0, normalizeMaxDepth(options?.maxDepth))
+): Context<Services> => {
+  const maxDepth = options?.maxDepth
+  // NaN or Infinity would never trigger a rebase, so fall back to the default
+  return makeImpl(undefined, mapUnsafe, undefined, 0, Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8)
+}
 
 const Proto: Omit<
   ContextImpl<never>,
@@ -1288,7 +1289,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
       const value = lookup(self, key)
       if (value !== notFound) map.set(key, value)
     }
-    return makeUnsafe(map)
+    return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
   }
   const keep = new Set(services.map((key) => key.key))
   return withFlat(self, (map) =>
