@@ -3983,6 +3983,12 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  *
  * **Gotchas**
  *
+ * Dynamic records reject value schemas wrapped with {@link optionalKey} or
+ * {@link optional}. Index signatures already allow keys to be absent; use
+ * {@link UndefinedOr} when existing entries may contain `undefined`. Optional
+ * value schemas remain valid for finite literal keys, which become declared
+ * properties.
+ *
  * When decoded or encoded key transformations produce the same property key,
  * sequential parsing applies selected own properties in selection order, so
  * the later selected property overwrites the earlier value. Dynamic key
