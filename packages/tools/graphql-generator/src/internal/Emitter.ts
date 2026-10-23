@@ -1,8 +1,8 @@
 /**
  * Emits per-document and shared modules from validated documents. Paths and
  * import specifiers are supplied by the caller; output needs no formatter.
- * Recursive input objects and generated class names that can't be made
- * unique produce diagnostics instead of output.
+ * Generated class names that can't be made unique produce diagnostics instead
+ * of output.
  *
  * @internal
  */
@@ -203,19 +203,58 @@ const underscoreAliases = (names: Iterable<string>, taken: ReadonlySet<string>):
 /** Names every per-file module imports, which operations and fragments can't take. */
 const importedNames: ReadonlySet<string> = new Set(["Schema", "Shared", "GraphQL", "GraphQLGroup"])
 
-const builtInSharedScalars: ReadonlyArray<string> = ["Int", "Float", "ID", "DateTime", "URI"]
+interface BuiltInScalar {
+  readonly codec: (schema: string) => string
+  /** Whether the codec's Encoded type differs from its Type. */
+  readonly transforms: boolean
+}
 
-const builtInScalarCodec = (name: string, schema: string): string => {
-  switch (name) {
-    case "Int":
-      return `${schema}.Number.check(${schema}.isInt32())`
-    case "Float":
-      return `${schema}.Finite`
-    case "DateTime":
-      return `${schema}.DateTimeUtcFromString`
-    default:
-      return `${schema}.String`
+/** The scalars with a default codec in the shared module, in declaration order. */
+const builtInSharedScalars: ReadonlyMap<string, BuiltInScalar> = new Map([
+  ["Int", { codec: (schema) => `${schema}.Number.check(${schema}.isInt32())`, transforms: false }],
+  ["Float", { codec: (schema) => `${schema}.Finite`, transforms: false }],
+  ["ID", { codec: (schema) => `${schema}.String`, transforms: false }],
+  ["DateTime", { codec: (schema) => `${schema}.DateTimeUtcFromString`, transforms: true }],
+  ["URI", { codec: (schema) => `${schema}.String`, transforms: false }]
+])
+
+/**
+ * Tarjan's strongly connected components of the graph reached from `roots`,
+ * in dependency order. Each component's nodes are in the order they were
+ * reached.
+ */
+const stronglyConnectedComponents = (
+  roots: Iterable<string>,
+  successors: (node: string) => Iterable<string>
+): Array<ReadonlyArray<string>> => {
+  const index = new Map<string, number>()
+  const low = new Map<string, number>()
+  const stack: Array<string> = []
+  const onStack = new Set<string>()
+  const components: Array<ReadonlyArray<string>> = []
+  const visit = (node: string): void => {
+    const nodeIndex = index.size
+    index.set(node, nodeIndex)
+    low.set(node, nodeIndex)
+    stack.push(node)
+    onStack.add(node)
+    for (const next of successors(node)) {
+      if (!index.has(next)) {
+        visit(next)
+        low.set(node, Math.min(low.get(node)!, low.get(next)!))
+      } else if (onStack.has(next)) {
+        low.set(node, Math.min(low.get(node)!, index.get(next)!))
+      }
+    }
+    if (low.get(node) !== nodeIndex) return
+    const component = stack.splice(stack.lastIndexOf(node))
+    for (const member of component) onStack.delete(member)
+    components.push(component)
   }
+  for (const root of roots) {
+    if (!index.has(root)) visit(root)
+  }
+  return components
 }
 
 // -----------------------------------------------------------------------------
@@ -423,7 +462,7 @@ class Emitter {
   // Checks
   // ---------------------------------------------------------------------------
 
-  /** Names generated code can't use, recursive input objects and import cycles, sorted by file and position. */
+  /** Names generated code can't use and import cycles, sorted by file and position. */
   check(): ReadonlyArray<Diagnostic> {
     const errors: Array<{ readonly file: number; readonly offset: number; readonly message: string }> = []
     this.options.files.forEach((file, fileIndex) => {
@@ -441,11 +480,6 @@ class Emitter {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
           } else if (name.value === group && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
-          }
-        }
-        if (definition._tag === "OperationDefinition") {
-          for (const variable of definition.variableDefinitions) {
-            this.checkVariable(variable, report)
           }
         }
       }
@@ -544,29 +578,6 @@ class Emitter {
           }. Move fragments between files so the imports don't form a cycle.`
       }
     })
-  }
-
-  checkVariable(variable: Ast.VariableDefinition, report: (offset: number, message: string) => void): void {
-    const visiting = new Set<string>()
-    const done = new Set<string>()
-    const visit = (name: string): string | undefined => {
-      const type = this.options.schema.types.get(name)
-      if (type === undefined || type._tag !== "InputObjectType") return undefined
-      if (visiting.has(name)) {
-        return `Variable "$${variable.variable.name.value}" uses the recursive input object "${name}"; recursive input objects are not supported yet.`
-      }
-      if (done.has(name)) return undefined
-      visiting.add(name)
-      for (const field of type.fields) {
-        const problem = visit(SchemaModel.namedTypeOf(field.type))
-        if (problem !== undefined) return problem
-      }
-      visiting.delete(name)
-      done.add(name)
-      return undefined
-    }
-    const problem = visit(SchemaModel.namedTypeOf(SchemaModel.fromAstType(variable.type)))
-    if (problem !== undefined) report(variable.loc.start, problem)
   }
 
   // ---------------------------------------------------------------------------
@@ -1374,26 +1385,46 @@ class Emitter {
 
   /** The shared module, and the custom scalars it holds without a mapping. */
   emitShared(): { readonly file: GeneratedFile; readonly unmapped: ReadonlyArray<string> } {
-    // Close over input objects: each one reaches the types of all its fields.
-    const inputs: Array<SchemaModel.InputObjectType> = []
-    const all = new Set<string>()
-    const visit = (name: string): void => {
-      if (all.has(name)) return
-      all.add(name)
+    // Close over input objects in dependency order, keeping each cycle's
+    // members together.
+    const fieldTypes = (name: string): ReadonlyArray<string> => {
       const type = this.type(name)
-      if (type._tag !== "InputObjectType") return
-      for (const field of type.fields) visit(SchemaModel.namedTypeOf(field.type))
-      inputs.push(type)
+      return type._tag === "InputObjectType" ? type.fields.map((field) => SchemaModel.namedTypeOf(field.type)) : []
     }
-    for (const name of Array.from(this.reached).sort()) visit(name)
+    const components = stronglyConnectedComponents(Array.from(this.reached).sort(), fieldTypes)
+    const order = components.flat()
+    const all = new Set(order)
+    const inputs = order.flatMap((name) => {
+      const type = this.type(name)
+      return type._tag === "InputObjectType" ? [type] : []
+    })
+    /** Each recursive input object's cycle. */
+    const cycles = new Map<string, ReadonlySet<string>>()
+    /** The input objects whose Encoded type differs from their Type. */
+    const transforms = new Set<string>()
+    // A mapped scalar codec may transform; an unmapped custom scalar is `Schema.Json`.
+    const transformsLeaf = (name: string): boolean =>
+      this.type(name)._tag === "ScalarType"
+        ? this.options.scalars.has(name) || builtInSharedScalars.get(name)?.transforms === true
+        : transforms.has(name)
+    for (const component of components) {
+      const members = new Set(component)
+      const leaves = component.flatMap(fieldTypes)
+      if (members.size > 1 || leaves.includes(component[0])) {
+        for (const name of component) cycles.set(name, members)
+      }
+      if (leaves.some((leaf) => !members.has(leaf) && transformsLeaf(leaf))) {
+        for (const name of component) transforms.add(name)
+      }
+    }
     all.delete("String")
     all.delete("Boolean")
 
     const byName = Array.from(all).sort()
-    const builtIns = builtInSharedScalars.filter((name) => all.has(name) && this.type(name)._tag === "ScalarType")
-    const scalars = byName.filter((name) =>
-      this.type(name)._tag === "ScalarType" && !builtInSharedScalars.includes(name)
+    const builtIns = Array.from(builtInSharedScalars.keys()).filter((name) =>
+      all.has(name) && this.type(name)._tag === "ScalarType"
     )
+    const scalars = byName.filter((name) => this.type(name)._tag === "ScalarType" && !builtInSharedScalars.has(name))
     const enums = byName.flatMap((name) => {
       const type = this.type(name)
       return type._tag === "EnumType" ? [type] : []
@@ -1453,7 +1484,7 @@ class Emitter {
 
     const blocks: Array<string> = []
     for (const name of [...builtIns, ...scalars]) {
-      const codec = scalarCodec(name, builtIns.includes(name) ? builtInScalarCodec(name, schema) : `${schema}.Json`)
+      const codec = scalarCodec(name, builtInSharedScalars.get(name)?.codec(schema) ?? `${schema}.Json`)
       blocks.push(declare(name, descriptionLines(this.type(name).description), (b, e) => `${e}const ${b} = ${codec}`))
     }
     for (const type of enums) {
@@ -1471,10 +1502,33 @@ class Emitter {
         (b, e) => `${e}const ${b} = ${schema}.Literals([${literals}])\n${e}type ${b} = typeof ${b}.Type`
       ))
     }
+    // Recursive input objects whose Encoded type differs from their Type.
+    const encodedNames = new Map<string, string>()
+    for (const type of inputs) {
+      if (cycles.has(type.name) && transforms.has(type.name)) {
+        encodedNames.set(type.name, allocate(`${type.name}Encoded`))
+      }
+    }
+    // Enums and input objects declare a type under their name; scalars don't.
+    const typeLeaf = (name: string): string =>
+      this.type(name)._tag === "ScalarType" ? `typeof ${alias(name)}.Type` : alias(name)
+    const encodedLeaf = (name: string): string =>
+      cycles.has(name) ? encodedNames.get(name) ?? alias(name) : `typeof ${alias(name)}.Encoded`
     for (const type of inputs) {
       const doc = descriptionLines(type.description)
+      const cycle = cycles.get(type.name)
+      if (cycle !== undefined) {
+        const recursion: Recursion = {
+          encoded: encodedNames.get(type.name),
+          ref: (name) => cycle.has(name) ? `${schema}.suspend(() => ${alias(name)})` : alias(name),
+          typeLeaf,
+          encodedLeaf
+        }
+        blocks.push(declare(type.name, doc, (b, e) => recursiveDeclaration(type, b, e, schema, recursion)))
+        continue
+      }
       if (type.oneOf) {
-        blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, alias)))
+        blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, alias, typeLeaf)))
         continue
       }
       const members = type.fields.map((field) => {
@@ -1533,11 +1587,23 @@ const oneOfDeclaration = (
   binding: string,
   exported: string,
   schema: string,
+  ref: (name: string) => string,
+  typeLeaf: (name: string) => string
+): string =>
+  `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
+    oneOfStructs(type, schema, ref).join(",\n")
+  }\n]))\n` +
+  `${exported}type ${binding} =\n${oneOfAlternatives(type, typeLeaf).join("\n")}`
+
+const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
+  field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
+
+const oneOfStructs = (
+  type: SchemaModel.InputObjectType,
+  schema: string,
   ref: (name: string) => string
-): string => {
-  const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
-    field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
-  const structs = type.fields.map((selected) => {
+): Array<string> =>
+  type.fields.map((selected) => {
     const members = type.fields.map((field) => {
       if (field !== selected) return `    ${propertyKey(field.name)}: ${schema}.optionalKey(${schema}.Never)`
       const doc = docLines(descriptionLines(field.description), deprecatedTag(field.deprecationReason))
@@ -1545,27 +1611,83 @@ const oneOfDeclaration = (
     })
     return `  ${struct(members, "  ", schema)}`
   })
-  const alternatives = type.fields.map((selected) =>
+
+const oneOfAlternatives = (type: SchemaModel.InputObjectType, leaf: (name: string) => string): Array<string> =>
+  type.fields.map((selected) =>
     `  | { ${
       type.fields.map((field) =>
         field === selected
-          ? `readonly ${propertyKey(field.name)}: ${inputTypeText(required(field), ref)}`
+          ? `readonly ${propertyKey(field.name)}: ${inputTypeText(required(field), leaf)}`
           : `readonly ${propertyKey(field.name)}?: never`
       ).join("; ")
     } }`
   )
-  return `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
-    structs.join(",\n")
-  }\n]))\n` +
-    `${exported}type ${binding} =\n${alternatives.join("\n")}`
+
+/** How a recursive input object refers to the types of its fields. */
+interface Recursion {
+  /** The name of the Encoded type, when it differs from the Type. */
+  readonly encoded: string | undefined
+  /** The Schema for a type, suspended when it is on the same cycle. */
+  readonly ref: (name: string) => string
+  readonly typeLeaf: (name: string) => string
+  readonly encodedLeaf: (name: string) => string
 }
 
-/** The decoded TypeScript type of an input, as written in the shared module. */
-const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string): string =>
+/**
+ * An input object on a cycle. TypeScript can't infer a const read in its own
+ * initializer, so the Type, and the Encoded type when it differs, are written
+ * out to annotate a `Schema.Codec`. References within the cycle are
+ * suspended, since later members aren't initialized yet.
+ */
+const recursiveDeclaration = (
+  type: SchemaModel.InputObjectType,
+  binding: string,
+  exported: string,
+  schema: string,
+  recursion: Recursion
+): string => {
+  const { encoded, encodedLeaf, ref, typeLeaf } = recursion
+  const codec = `${schema}.Codec<${binding}${encoded === undefined ? "" : `, ${encoded}`}>`
+  if (type.oneOf) {
+    return `${exported}const ${binding}: ${codec} = ${schema}.Union([\n${
+      oneOfStructs(type, schema, ref).join(",\n")
+    }\n])\n` +
+      `${exported}type ${binding} =\n${oneOfAlternatives(type, typeLeaf).join("\n")}` +
+      (encoded === undefined ? "" : `\nexport type ${encoded} =\n${oneOfAlternatives(type, encodedLeaf).join("\n")}`)
+  }
+  const members = type.fields.map((field) =>
+    `  ${propertyKey(field.name)}: ${inputSchema(field.type, field.defaultValue !== undefined, ref, schema)}`
+  )
+  const fields = (leaf: (name: string) => string, documented: boolean): string => {
+    if (type.fields.length === 0) return "{}"
+    const lines = type.fields.map((field) => {
+      const doc = documented
+        ? docLines(
+          descriptionLines(field.description),
+          [...deprecatedTag(field.deprecationReason), ...defaultTag(field.defaultValue)]
+        )
+        : []
+      const optional = field.defaultValue !== undefined || field.type._tag !== "NonNullTypeRef"
+      return `${jsdoc(doc, "  ")}  readonly ${propertyKey(field.name)}${optional ? "?" : ""}: ${
+        inputTypeText(field.type, leaf)
+      }${optional ? " | undefined" : ""}`
+    })
+    return `{\n${lines.join("\n")}\n}`
+  }
+  return `${exported}const ${binding}: ${codec} = ${struct(members, "", schema)}\n` +
+    `${exported}interface ${binding} ${fields(typeLeaf, true)}` +
+    (encoded === undefined ? "" : `\nexport interface ${encoded} ${fields(encodedLeaf, false)}`)
+}
+
+/**
+ * The TypeScript type of an input, with `leaf` for each named type. Lists are
+ * `readonly T[]`, since a generated type can be named `ReadonlyArray`.
+ */
+const inputTypeText = (type: SchemaModel.TypeRef, leaf: (name: string) => string): string =>
   typeRef(
     type,
-    (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : `typeof ${ref(name)}.Type`,
-    (element) => `ReadonlyArray<${element}>`,
+    (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : leaf(name),
+    (element) => `readonly ${/^[\w$]+$/.test(element) ? element : `(${element})`}[]`,
     (inner) => `${inner} | null`
   )
 
