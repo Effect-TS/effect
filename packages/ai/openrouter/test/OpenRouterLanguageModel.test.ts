@@ -398,10 +398,9 @@ describe("OpenRouterLanguageModel", () => {
       it.effect("passes raw JSON schema for dynamic tools", () =>
         Effect.gen(function*() {
           const inputSchema = {
-            anyOf: [
-              { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
-              { type: "object", properties: { id: { type: "number" } }, required: ["id"] }
-            ]
+            properties: {
+              query: { type: "string" }
+            }
           } as const
 
           const DynamicTool = Tool.dynamic("DynamicTool", {
@@ -429,7 +428,10 @@ describe("OpenRouterLanguageModel", () => {
       it.effect("passes object union parameters through", () =>
         Effect.gen(function*() {
           const UnionTool = Tool.make("UnionTool", {
-            parameters: Schema.Union([Schema.Struct({ query: Schema.String }), Schema.Struct({ id: Schema.String })])
+            parameters: Schema.Union([
+              Schema.Struct({ query: Schema.String }).annotate({ identifier: "Query" }),
+              Schema.Struct({ id: Schema.String })
+            ])
           })
 
           yield* LanguageModel.generateText({
@@ -443,14 +445,17 @@ describe("OpenRouterLanguageModel", () => {
 
           deepStrictEqual(body.tools[0].function.parameters, {
             anyOf: [
-              {
+              { $ref: "#/$defs/Query" },
+              { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: true }
+            ],
+            $defs: {
+              Query: {
                 type: "object",
                 properties: { query: { type: "string" } },
                 required: ["query"],
                 additionalProperties: true
-              },
-              { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: true }
-            ]
+              }
+            }
           })
         }).pipe(Effect.provide(makeTestLayer())))
 

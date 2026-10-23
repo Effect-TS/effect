@@ -1173,13 +1173,9 @@ describe("AnthropicLanguageModel", () => {
         )
 
         const inputSchema = {
-          type: "object",
           properties: {
-            query: { type: "string" },
-            limit: { type: "number" }
-          },
-          required: ["query"],
-          additionalProperties: false
+            query: { type: "string" }
+          }
         } as const
 
         const DynamicTool = Tool.dynamic("DynamicTool", {
