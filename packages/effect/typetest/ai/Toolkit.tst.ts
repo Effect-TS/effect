@@ -69,4 +69,31 @@ describe("Toolkit", () => {
     const Lookup = Tool.make("Lookup").setSuccess(Schema.String)
     expect<Tool.RequiresHandler<typeof Lookup>>().type.toBe<true>()
   })
+
+  it("requires a handler unless a tool is definitely client-executed", () => {
+    // `undefined` creates a server-executed tool, so a possibly undefined
+    // execution must keep the handler requirement
+    const make = (execution: "client" | undefined) => Tool.make("Ask", { execution })
+    const dynamic = (execution: "client" | undefined) =>
+      Tool.dynamic("Confirm", { parameters: { type: "object", properties: {} }, execution })
+    expect<Tool.RequiresHandler<ReturnType<typeof make>>>().type.toBe<true>()
+    expect<Tool.RequiresHandler<ReturnType<typeof dynamic>>>().type.toBe<true>()
+    expect(Toolkit.make(make(undefined)).toLayer).type.not.toBeCallableWith({})
+
+    // A runtime check establishes client execution, and configuring the
+    // narrowed tool keeps it
+    const widened: Tool.Tool<"Ask", {
+      readonly parameters: typeof Tool.EmptyParams
+      readonly success: typeof Schema.Void
+      readonly failure: typeof Schema.Never
+      readonly failureMode: "error"
+    }> = Tool.make("Ask", { execution: "client" })
+    expect<Tool.RequiresHandler<typeof widened>>().type.toBe<true>()
+    if (Tool.isClientExecuted(widened)) {
+      const configured = widened.setSuccess(Schema.Number)
+      expect<Tool.RequiresHandler<typeof widened>>().type.toBe<false>()
+      expect<Tool.RequiresHandler<typeof configured>>().type.toBe<false>()
+      expect(Toolkit.make(configured).toLayer).type.toBeCallableWith({})
+    }
+  })
 })
