@@ -60,9 +60,18 @@ describe("AgUiSchema", () => {
     })
 
     it("rejects a malformed recognised union member", () => {
-      const exit = decodeInput(input([{ id: "1", role: "user", content: [{ type: "text" }] }]))
+      // A missing or non-string discriminator is malformed, even when a nested
+      // value is unrecognised
+      const malformedContents = [
+        [{ type: "text" }],
+        [{ source: { type: "future" } }],
+        [{ type: 123, source: { type: "future" } }]
+      ]
+      for (const content of malformedContents) {
+        const exit = decodeInput(input([{ id: "1", role: "user", content }]))
 
-      assert.strictEqual(exit._tag, "Failure")
+        assert.strictEqual(exit._tag, "Failure", JSON.stringify(content))
+      }
     })
   })
 })

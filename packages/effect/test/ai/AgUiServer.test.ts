@@ -160,13 +160,27 @@ describe("AgUiServer", () => {
     const payload = spec.paths["/agent"].post.requestBody.content["application/json"].schema
 
     // Every array in the payload, including messages and nested content
-    // parts, must describe its items
+    // parts, must describe its items, and no union may have a branch that
+    // accepts anything: generated clients would reduce the union to `unknown`
+    const annotationKeys = new Set(["title", "description", "examples", "default", "$comment", "deprecated"])
+    const isUnconstrained = (schema: unknown) =>
+      typeof schema !== "object" || schema === null ||
+      Object.keys(schema).every((key) => annotationKeys.has(key))
     const arraysWithoutItems: Array<string> = []
+    const unconstrainedBranches: Array<string> = []
     const visit = (schema: unknown, path: string): void => {
       if (typeof schema !== "object" || schema === null) return
       const node = schema as Record<string, unknown>
-      if (node.type === "array" && (typeof node.items !== "object" || Object.keys(node.items ?? {}).length === 0)) {
+      if (node.type === "array" && isUnconstrained(node.items)) {
         arraysWithoutItems.push(path)
+      }
+      for (const key of ["anyOf", "oneOf"]) {
+        const branches = node[key]
+        if (Array.isArray(branches)) {
+          branches.forEach((branch, index) => {
+            if (isUnconstrained(branch)) unconstrainedBranches.push(`${path}/${key}/${index}`)
+          })
+        }
       }
       for (const [key, child] of Object.entries(node)) visit(child, `${path}/${key}`)
     }
@@ -174,5 +188,6 @@ describe("AgUiServer", () => {
 
     assert.isDefined(payload.properties.messages.items)
     assert.deepStrictEqual(arraysWithoutItems, [])
+    assert.deepStrictEqual(unconstrainedBranches, [])
   })
 })
