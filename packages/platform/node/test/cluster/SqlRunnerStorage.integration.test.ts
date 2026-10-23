@@ -377,13 +377,15 @@ describe("SqlRunnerStorage", () => {
             ], { concurrency: "unbounded" })
             assert(exits.every(Exit.isFailure))
             yield* waitUntil(() => partitioned.reservedConnections > reserved)
+            // count before retrying: a retry that misses its deadline under load
+            // rightly replaces the connection again
+            yield* Effect.sleep(lockOperationInterval / 2)
+            expect(partitioned.reservedConnections, partitionDiagnostics(partitioned)).toEqual(reserved + 1)
             expect(
               yield* storage.refresh(runnerAddress1, shards).pipe(
                 Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
               )
             ).toEqual(shards)
-            yield* Effect.sleep(lockOperationInterval / 2)
-            expect(partitioned.reservedConnections, partitionDiagnostics(partitioned)).toEqual(reserved + 1)
           })
         ),
       60_000
