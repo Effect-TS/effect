@@ -634,6 +634,26 @@ Missing key
         assert.include(JSON.stringify(error), "visible")
       }))
 
+    it.effect("does not expose request headers, query params or body in toJSON", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.fail(new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }))
+        )
+        const request = HttpClientRequest.post("http://test/join").pipe(
+          HttpClientRequest.setHeader("x-token", "header-secret"),
+          HttpClientRequest.setUrlParam("token", "query-secret"),
+          HttpClientRequest.bodyJsonUnsafe({ JoinToken: "body-secret" })
+        )
+
+        const error = yield* client.execute(request).pipe(Effect.flip)
+
+        const json = JSON.stringify(error.toJSON())
+        for (const secret of ["header-secret", "query-secret", "body-secret"]) {
+          assert.notInclude(json, secret)
+        }
+        strictEqual(error.message, "Transport error (POST http://test/join)")
+      }))
+
     it.effect("redacts query params in messages using the current redacted names", () =>
       Effect.gen(function*() {
         const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
