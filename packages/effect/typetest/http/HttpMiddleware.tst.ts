@@ -38,4 +38,18 @@ describe("HttpMiddleware", () => {
       >()
     })
   })
+
+  describe("xForwardedHeaders", () => {
+    it("preserves app types", () => {
+      const middleware = HttpMiddleware.xForwardedHeaders({ trustedProxies: () => true })
+
+      expect(middleware(app)).type.toBe<
+        Effect.Effect<
+          HttpServerResponse.HttpServerResponse,
+          "app-error",
+          "app-service" | HttpServerRequest.HttpServerRequest
+        >
+      >()
+    })
+  })
 })
