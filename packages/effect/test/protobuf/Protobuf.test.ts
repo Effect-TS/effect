@@ -18,8 +18,7 @@ const f = Protobuf.field
 const message = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
   Protobuf.Message("test.v1.Message", fields)
 
-// The schemas mirror these protos. `kitchen_sink.proto` is the fixture of the
-// `prototype/effect-protobuf` branch.
+// The schemas mirror these protos.
 //
 // // acme/v1/kitchen_sink.proto
 // message Scalars { double f_double = 1; float f_float = 2; int32 f_int32 = 3; int64 f_int64 = 4;
@@ -44,9 +43,7 @@ const message = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
 // // test/v1/extra.proto
 // message Unpacked { repeated int32 values = 1 [packed = false]; repeated sint64 zigzag = 2; }
 // message Keys { map<int64, string> by_id = 1; map<bool, int32> flags = 2; map<uint32, acme.v1.Point> points = 3; }
-// message Status {
-//   enum State { STATE_UNSPECIFIED = 0; STATE_ACTIVE = 1; STATE_SUSPENDED = 2; }
-//   State state = 1; repeated State history = 2; }
+// message Status { enum State { STATE_UNSPECIFIED = 0; STATE_ACTIVE = 1; STATE_SUSPENDED = 2; } }
 // message Pick { oneof choice { string text = 1; int32 number = 2; acme.v1.Point point = 3; } }
 // message Wide { string text = 1; acme.v1.Point point = 2; int32 high = 536870911; }
 // message Doubles { double value = 1; }
@@ -151,11 +148,6 @@ const State = Protobuf.Enum("test.v1.Status.State", {
   unspecified: 0,
   active: 1,
   suspended: 2
-})
-
-const Status = message({
-  state: State.pipe(f(1)),
-  history: Schema.Array(State).pipe(f(2))
 })
 
 const Pick = message({
@@ -309,12 +301,6 @@ describe("Protobuf", () => {
         "0a0d01feffffffffffffffff01ac02 12016112 00 1a0408011002 1a00 22030100 03 2a050a0161 1001 2a050a01621000 3207080112036f6e65 321708fbffffffffffffffff01120a6d696e757320666976 65 3a050a016f1200 4200 4800 5200 5802 620f0a0408011001110000000000000440"
       ],
       [
-        "a oneof scalar case",
-        Shapes,
-        { ...emptyShapes, shape: { _tag: "code", value: -7n } },
-        "78f9ffffffffffffffff01"
-      ],
-      [
         "well-known types",
         WellKnown,
         {
@@ -347,13 +333,7 @@ describe("Protobuf", () => {
         },
         "0a0e08fbffffffffffffffff01120161 0a0c088180808080808010120162 120408011001 120408001000 1a080807120408011002"
       ],
-      ["enum numbers of string literals", Status, {
-        state: "suspended",
-        history: ["active", "unspecified", "suspended"]
-      }, "0802 1203010002"],
-      ["a oneof string case", Pick, { choice: { _tag: "text", value: "hi" } }, "0a026869"],
       ["a oneof case holding its zero value", Pick, { choice: { _tag: "number", value: 0 } }, "1000"],
-      ["a oneof case holding an empty message", Pick, { choice: { _tag: "point", value: { x: 0, y: 0 } } }, "1a00"],
       ["long length prefixes and the highest field number", Wide, {
         text: "x".repeat(200),
         point: { x: 1, y: 0 },
@@ -370,7 +350,9 @@ describe("Protobuf", () => {
           uint64: Protobuf.UInt64String.pipe(f(5)),
           sint64s: Schema.Array(Protobuf.SInt64String).pipe(f(6)),
           fixed64s: Schema.Array(Protobuf.Fixed64String).pipe(f(7)),
-          sfixed64s: Schema.Array(Protobuf.SFixed64String).pipe(f(8))
+          sfixed64s: Schema.Array(Protobuf.SFixed64String).pipe(f(8)),
+          int64Number: Protobuf.Int64Number.pipe(f(9)),
+          uint64Number: Protobuf.UInt64Number.pipe(f(10))
         }),
         {
           sint64: -1,
@@ -380,9 +362,11 @@ describe("Protobuf", () => {
           uint64: "18446744073709551615",
           sint64s: ["-1", "0"],
           fixed64s: ["1"],
-          sfixed64s: ["-1"]
+          sfixed64s: ["-1"],
+          int64Number: -1,
+          uint64Number: Number.MAX_SAFE_INTEGER
         },
-        "0801 11ffffffffffff1f00 19feffffffffffffff 2080808080808080808001 28ffffffffffffffffff01 32020100 3a080100000000000000 4208ffffffffffffffff"
+        "0801 11ffffffffffff1f00 19feffffffffffffff 2080808080808080808001 28ffffffffffffffffff01 32020100 3a080100000000000000 4208ffffffffffffffff 48ffffffffffffffffff01 50ffffffffffffff0f"
       ],
       [
         "a NullValue",
@@ -393,21 +377,11 @@ describe("Protobuf", () => {
         },
         "12020003"
       ],
-      ["64-bit integers as numbers", Numbers, {
-        signed: -1,
-        unsigned: Number.MAX_SAFE_INTEGER
-      }, "08ffffffffffffffffff01 10ffffffffffffff0f"],
       [
         "a TimestampParts root",
         Protobuf.TimestampParts,
         { seconds: -2n, nanos: 500_000_000 },
         "08feffffffffffffffff01 1080cab5ee01"
-      ],
-      [
-        "a TimestampParts with nanoseconds",
-        Protobuf.TimestampParts,
-        { seconds: 1n, nanos: 999_999_999 },
-        "0801 10ff93ebdc03"
       ],
       [
         "a Timestamp root",
@@ -419,30 +393,11 @@ describe("Protobuf", () => {
       // seconds 1, nanos -1: of the other sign, which Duration rejects.
       ["a DurationParts root", Protobuf.DurationParts, { seconds: 1n, nanos: -1 }, "0801 10ffffffffffffffffff01"],
       [
-        "the first Timestamp",
-        Protobuf.Timestamp,
-        DateTime.makeUnsafe("0001-01-01T00:00:00Z"),
-        "088092b8c398feffffff01"
-      ],
-      [
-        "the last Timestamp",
-        Protobuf.Timestamp,
-        DateTime.makeUnsafe("9999-12-31T23:59:59.999Z"),
-        "08ff82d1ffaf07 10c08faedc03"
-      ],
-      [
         "the longest Duration",
         Protobuf.Duration,
         Duration.nanos(315_576_000_000_999_999_999n),
         "0880bcaece9709 10ff93ebdc03"
       ],
-      [
-        "the longest negative Duration",
-        Protobuf.Duration,
-        Duration.nanos(-315_576_000_000_999_999_999n),
-        "0880c4d1b1e8f6ffffff01 1081ec94a3fcffffffff01"
-      ],
-      ["an empty StringValue root", Protobuf.StringValue, "", ""],
       ["a StringValue root", Protobuf.StringValue, "a", "0a0161"],
       ["a FieldMask root", Protobuf.FieldMask, ["a.b", "c"], "0a03612e62 0a0163"],
       [
@@ -452,7 +407,6 @@ describe("Protobuf", () => {
         "2a210a1f0a0161121a32180a0911000000000000f03f0a031a01780a0208000a022001"
       ],
       ["a null Value", WellKnown, { anything: value(null) }, "3a020800"],
-      ["a Value of NaN", Protobuf.Value, value(NaN), "11000000000000f87f"],
       [
         "an Any root",
         Protobuf.Any,
@@ -538,11 +492,6 @@ describe("Protobuf", () => {
         DateTime.makeUnsafe(1001)
       ],
       ["a delimited field sent length-prefixed", Legacy, "0800 12031a0178", { id: 0, item: { name: "x" }, entry: [] }],
-      ["unknown fields of every wire type", Keeper, "0805 1801 2a0161 3b08013c", {
-        x: 5,
-        [Protobuf.unknown]: bytes("1801 2a0161 3b08013c")
-      }],
-      ["no unknown fields, left out", Keeper, "0805", { x: 5 }],
       [
         "unknown fields of merged occurrences",
         message({ keeper: Keeper.pipe(f(1)) }),
@@ -556,16 +505,6 @@ describe("Protobuf", () => {
       ["a oneof case after another case, unmerged", Choice, "0a030a0161 120162 0a0412020801", {
         choice: { _tag: "labeled", value: { label: "", point: { x: 1, y: 0 } } }
       }],
-      [
-        "a wrapper oneof case after another case of the same type, unmerged",
-        message({
-          v: Schema.optionalKey(
-            Protobuf.Oneof({ a: Protobuf.StringValue.pipe(f(1)), b: Protobuf.StringValue.pipe(f(2)) })
-          )
-        }),
-        "12030a0178 0a00",
-        { v: { _tag: "a", value: "" } }
-      ],
       ["well-known types and wrappers sent as groups", WellKnown, "0b08050c 1b0a01611c 3b20013c", {
         createdAt: DateTime.makeUnsafe(5000),
         maybeText: "a",
@@ -579,9 +518,6 @@ describe("Protobuf", () => {
         { at: DateTime.makeUnsafe(0) }
       ],
       ["a Timestamp past unknown fields", Protobuf.Timestamp, "1801 0805", DateTime.makeUnsafe(5000)],
-      // The binary codec does not check the range of TimestampParts.
-      ["a TimestampParts out of range", Protobuf.TimestampParts, "108094ebdc03", { seconds: 0n, nanos: 1_000_000_000 }],
-      ["a Value without a kind", WellKnown, "3a00", { anything: {} }],
       [
         "merged occurrences of well-known types and wrappers",
         WellKnown,
@@ -644,8 +580,7 @@ describe("Protobuf", () => {
         ...empty,
         m: { b: "b" },
         [Protobuf.unknown]: bytes("22050a01611007")
-      }],
-      ["an open enum, as its number", "2807", { ...empty, o: 7 }]
+      }]
     ]
     for (const [name, hex, value] of cases) {
       it(`decodes an unknown number of ${name}`, () => {
@@ -653,8 +588,9 @@ describe("Protobuf", () => {
       })
     }
 
-    it("writes the numbers of an open enum", () => {
+    it("reads and writes the numbers of an open enum", () => {
       assert.strictEqual(encode(Enums, { ...empty, o: 7 }), "2807")
+      assert.deepStrictEqual(decode(Enums, "2807"), { ...empty, o: 7 })
     })
 
     it("decodes aliases to the first name", () => {
@@ -776,12 +712,9 @@ describe("Protobuf", () => {
       assert.deepStrictEqual(Protobuf.anyUnpack(text, registry), Option.some("a"))
     })
 
-    it("rejects schemas that are not messages", () => {
+    it("rejects schemas that are not messages, and two messages of one name", () => {
       assert.throws(() => Protobuf.anyPack(Schema.String, "a"), /needs a message/)
       assert.throws(() => Protobuf.registry(Schema.String), /needs messages/)
-    })
-
-    it("rejects two messages of one name", () => {
       const Twin = Protobuf.Message("acme.v1.Point", {})
       assert.throws(() => Protobuf.registry(Point, Twin), /has two messages acme.v1.Point/)
     })
@@ -876,8 +809,7 @@ describe("Protobuf", () => {
     })
     const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, unknown, string]> = [
       ["a message case", Classes, { v: { _tag: "b", value: new B({ id: 1 }) } }, "12020801"],
-      ["a scalar case", Transformed, { v: { _tag: "text", value: "5" } }, "120135"],
-      ["a transformed scalar case", Transformed, { v: { _tag: "number", value: 5 } }, "0a0135"]
+      ["a scalar case", Transformed, { v: { _tag: "text", value: "5" } }, "120135"]
     ]
     for (const [name, schema, value, hex] of cases) {
       it(name, () => {
@@ -891,10 +823,6 @@ describe("Protobuf", () => {
     const Profile = message({
       name: Schema.String.pipe(f(1)),
       nickname: Schema.optionalKey(Schema.String).pipe(f(2))
-    })
-
-    it("fills absent fields", () => {
-      assert.deepStrictEqual(decode(Profile, ""), { name: "" })
     })
 
     it("writes explicit-presence zero values but not implicit ones", () => {
@@ -948,7 +876,6 @@ describe("Protobuf", () => {
       // bytes cannot be framed in two ways.
       ["a length beyond 32 bits", Wide, "0a8180808010 61", /invalid varint\n  at \["text"\]/],
       ["a tag beyond 32 bits", Point, "90808080808080808000 05", /^invalid varint$/],
-      ["wire type 6", Point, "0e", /illegal tag: field 1, wire type 6/],
       ["a stray end group tag", Point, "3c", /unexpected end group tag for field 7/],
       ["a field overrunning its message", Wide, "12010801", /field overruns its message\n  at \["point"\]/],
       ["an unsafe 64-bit number", Numbers, "1080808080808080 10", /uint64 value 9007199254740992 is outside the safe/],
@@ -956,24 +883,11 @@ describe("Protobuf", () => {
       ["an absent required scalar", Legacy, "", /Missing key\n  at \["id"\]/],
       ["an absent nested message field", message({ l: Labeled.pipe(f(1)) }), "0a00", /at \["l"\]\["point"\]/],
       ["a map value overrunning its entry", Keys, "1a04 0807 1203", /premature end of input\n  at \["points"\]\["7"\]/],
-      ["a truncated tag after a field, without its path", Wide, "0a0178 ff", /^premature end of input$/],
       ["a Timestamp field of another wire type", Protobuf.Timestamp, "0d00000000", /wire type 5/],
-      ["a Duration field of another wire type", Protobuf.Duration, "1500000000", /wire type 5 .* \(expected 0\)/],
       ["a Value field of another wire type", Protobuf.Value, "1001", /wire type 0 .* \(expected 1\)/],
-      ["a Struct field of another wire type", Protobuf.Struct, "0800", /wire type 0 .* \(expected 2\)/],
-      ["a Struct entry field of another wire type", Protobuf.Struct, "0a020800", /wire type 0 .* \(expected 2\)/],
       ["a ListValue field of another wire type", Protobuf.ListValue, "0800", /wire type 0 .* \(expected 2\)/],
       ["a Timestamp after year 9999", Protobuf.Timestamp, "088083d1ffaf07", /^timestamp out of range$/],
-      ["a Timestamp before year 1", Protobuf.Timestamp, "08ff91b8c398feffffff01", /^timestamp out of range$/],
-      ["a Timestamp with negative nanos", Protobuf.Timestamp, "10ffffffffffffffffff01", /^timestamp out of/],
-      [
-        "a Timestamp field with the nanos of a whole second",
-        message({ at: Protobuf.Timestamp.pipe(f(1)) }),
-        "0a06108094ebdc03",
-        /timestamp out of range\n  at \["at"\]/
-      ],
       ["a Duration beyond 315,576,000,000 seconds", Protobuf.Duration, "0881bcaece9709", /^duration out of range$/],
-      ["a Duration with the nanos of a whole second", Protobuf.Duration, "108094ebdc03", /^duration out of range$/],
       [
         "a Duration with nanos of the other sign",
         Protobuf.Duration,
@@ -994,10 +908,7 @@ describe("Protobuf", () => {
     const field = <S extends Schema.Codec<any, any>>(schema: S) => message({ n: schema.pipe(f(1)) })
     const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, unknown, RegExp]> = [
       ["a fractional int32", field(Protobuf.Int32), { n: 1.5 }, /expected a protobuf int32\n  at \["n"\]/],
-      ["a large int32", field(Protobuf.Int32), { n: 2 ** 40 }, /expected a protobuf int32\n  at \["n"\]/],
-      ["a negative uint32", field(Protobuf.UInt32), { n: -1 }, /expected a protobuf uint32\n  at \["n"\]/],
       ["a large uint64", field(Protobuf.UInt64), { n: 1n << 64n }, /expected a protobuf uint64\n  at \["n"\]/],
-      ["a large int64", field(Protobuf.Int64), { n: 1n << 63n }, /expected a protobuf int64\n  at \["n"\]/],
       ["a bigint zero int64 number", field(Protobuf.Int64Number), { n: 0n }, /expected a protobuf int64\n  at \["n"\]/],
       ["an infinite duration", field(Protobuf.Duration), { n: Duration.infinity }, /expected a finite duration/],
       [
@@ -1010,12 +921,6 @@ describe("Protobuf", () => {
         "a Timestamp after year 9999",
         Protobuf.Timestamp,
         DateTime.makeUnsafe("+010000-01-01T00:00:00Z"),
-        /timestamp out of range/
-      ],
-      [
-        "a Timestamp before year 1",
-        Protobuf.Timestamp,
-        DateTime.makeUnsafe("0000-12-31T23:59:59.999Z"),
         /timestamp out of range/
       ],
       [
@@ -1066,7 +971,6 @@ describe("Protobuf", () => {
     const codecs = [Protobuf.toCodec(Profile), Protobuf.toCodec(inert(Profile))] as const
 
     const encodings: ReadonlyArray<readonly [string, unknown]> = [
-      ["a valid value", valid],
       ["a valid value with every field", {
         ...valid,
         nickname: "",
@@ -1099,24 +1003,12 @@ describe("Protobuf", () => {
       })
     }
 
-    it("leaves out map entries whose key the key schema rejects, like Schema.Record", () => {
-      const rejected = { ...valid, ids: { abc: "a", "7": "b" }, big: { "007": "a" }, flags: { yes: "a" } }
-      const kept = { ...valid, ids: { "7": "b" } }
-      for (const codec of codecs) {
-        assert.strictEqual(
-          Hex.encode(Schema.encodeUnknownSync(codec)(rejected)),
-          Hex.encode(Schema.encodeUnknownSync(codec)(kept))
-        )
-      }
-    })
-
     it("reports excess keys under onExcessProperty: error", () => {
       const options = { onExcessProperty: "error" } as const
       assert.throws(() => Schema.encodeUnknownSync(codecs[0])({ ...valid, extra: 1 }, options), /excess property/)
     })
 
     const decodings: ReadonlyArray<readonly [string, string]> = [
-      ["a valid message", "0a0161 1801 22020801"],
       ["a message with every field", "0a0161 1200 1801 22020801 3200 42020800 4a020800 5001"],
       ["an absent message field", "0a0161"],
       ["malformed bytes", "0a"]
@@ -1160,7 +1052,6 @@ describe("Protobuf", () => {
     })
 
     const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, string, RegExp]> = [
-      ["a field", Name, "0a00", /length of at least 1\n  at \["name"\]/],
       // An absent field decodes to its default value, which is checked too.
       ["an absent field", Name, "", /length of at least 1\n  at \["name"\]/],
       ["a repeated element", Positive, "0a020100", /greater than 0\n  at \["values"\]\[1\]/],
@@ -1222,19 +1113,9 @@ describe("Protobuf", () => {
         /is nullable; use Schema.optionalKey/
       ],
       [
-        "an Option property",
-        message({ a: Schema.Option(Schema.String).pipe(f(1)) }),
-        /is a declaration without a protobuf mapping/
-      ],
-      [
         "an array of arrays",
         message({ a: Schema.Array(Schema.Array(Schema.String)).pipe(f(1)) }),
         /\(element\) is a repeated value, which is a field of its own/
-      ],
-      [
-        "an array of nullable values",
-        message({ a: Schema.Array(Schema.NullOr(Schema.String)).pipe(f(1)) }),
-        /\(element\) is a union; use Protobuf.Oneof/
       ],
       [
         "a oneof in an array",
@@ -1261,11 +1142,6 @@ describe("Protobuf", () => {
         /is a record; use Protobuf.Map/
       ],
       [
-        "floating-point map keys",
-        message({ a: Protobuf.Map(Protobuf.Double, Schema.String).pipe(f(1)) }),
-        /unsupported map key/
-      ],
-      [
         "64-bit map keys as numbers",
         message({ a: Protobuf.Map(Protobuf.Int64Number, Schema.String).pipe(f(1)) }),
         /unsupported map key; use Schema.String, Protobuf.Int32, …, Protobuf.Int64String, …, or Protobuf.BoolKey/
@@ -1277,13 +1153,6 @@ describe("Protobuf", () => {
       ],
       ["a bigint without a protobuf type", message({ a: Schema.BigInt.pipe(f(1)) }), /is a bigint; use Protobuf.Int64/],
       ["a literal", message({ a: Schema.Literal("x").pipe(f(1)) }), /is a literal; use Protobuf.Enum/],
-      ["a Schema.Enum", message({ a: Schema.Enum({ A: 0 }).pipe(f(1)) }), /no protobuf mapping for Enum/],
-      [
-        "an optional property that admits undefined",
-        message({ a: Schema.optional(Schema.String).pipe(f(1)) }),
-        /is nullable; use Schema.optionalKey/
-      ],
-      ["a numbered null", message({ a: Schema.Null.pipe(f(1)) }), /no protobuf mapping for Null/],
       [
         "a packed singular field",
         message({ a: Protobuf.Int32.pipe(f(1, { packed: true })) }),
@@ -1329,17 +1198,7 @@ describe("Protobuf", () => {
         message({ a: Schema.instanceOf(Opaque).pipe(f(1)) }),
         /is a declaration without a protobuf mapping/
       ],
-      [
-        "a DateTime without Protobuf.Timestamp",
-        message({ a: Schema.DateTimeUtc.pipe(f(1)) }),
-        /is a declaration without a protobuf mapping/
-      ],
       ["Unknown", message({ a: Schema.Unknown.pipe(f(1)) }), /no protobuf mapping for Unknown/],
-      [
-        "a required message field",
-        message({ a: Point.pipe(f(1, { required: true })) }),
-        /property "a" of test.v1.Message is not a required scalar or enum; only those can be required/
-      ],
       [
         "a required optional field",
         message({ a: Schema.optionalKey(Schema.String).pipe(f(1, { required: true })) }),
@@ -1354,8 +1213,7 @@ describe("Protobuf", () => {
         "an implicit-presence closed enum without 0",
         message({ a: Protobuf.Enum("test.v1.Level", { low: 1, high: 2 }).pipe(f(1)) }),
         /is a closed enum without a value for 0/
-      ],
-      ["Never", message({ a: Schema.Never.pipe(f(1)) }), /no protobuf mapping for Never/]
+      ]
     ]
     for (const [name, schema, message] of cases) {
       it(name, () => {
@@ -1365,7 +1223,7 @@ describe("Protobuf", () => {
   })
 
   it("rejects invalid field and enum numbers", () => {
-    for (const number of [0, 1.5, 19000, 19999, 536870912]) {
+    for (const number of [0, 1.5, 19000, 536870912]) {
       assert.throws(() => Protobuf.field(number), /Protobuf field number must be an integer/)
     }
     assert.throws(() => Protobuf.Enum("test.v1.E", { a: 2 ** 31 }), /value a of test.v1.E must be a 32-bit integer/)

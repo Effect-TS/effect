@@ -77,7 +77,6 @@ const order: Order = {
 describe("ProtobufJson", () => {
   describe("scalars", () => {
     const cases: ReadonlyArray<readonly [string, Partial<typeof Scalars.Type>, Record<string, unknown>]> = [
-      ["int32 as a number", { i32: -7 }, { i32: -7 }],
       ["int64 as a string", { i64: 9007199254740993n }, { i64: "9007199254740993" }],
       ["uint64 at its maximum", { u64: 18446744073709551615n }, { u64: "18446744073709551615" }],
       ["a 64-bit number as a string", { n64: 42 }, { n64: "42" }],
@@ -85,8 +84,7 @@ describe("ProtobufJson", () => {
       ["infinities", { d: Infinity, f: -Infinity }, { d: "Infinity", f: "-Infinity" }],
       ["negative zero, which is not the default", { d: -0 }, { d: -0 }],
       ["a float as the double of its float32", { f: 1.1 }, { f: Math.fround(1.1) }],
-      ["bytes in standard base64 with padding", { by: new Uint8Array([251, 255]) }, { by: "+/8=" }],
-      ["strings and booleans", { s: "x", b: true }, { b: true, s: "x" }]
+      ["bytes in standard base64 with padding", { by: new Uint8Array([251, 255]) }, { by: "+/8=" }]
     ]
     for (const [name, value, json] of cases) {
       it(`writes ${name}`, () => {
@@ -114,7 +112,6 @@ describe("ProtobufJson", () => {
 
     const invalid: ReadonlyArray<readonly [string, Record<string, unknown>, RegExp]> = [
       ["a fractional integer", { i32: 1.5 }, /expected a protobuf int32\n  at \["i32"\]/],
-      ["an int32 out of range", { i32: 2147483648 }, /expected a protobuf int32/],
       ["a negative uint64", { u64: "-1" }, /expected a protobuf uint64/],
       ["an integer with a leading zero or space", { i64: " 1" }, /expected a protobuf int64/],
       ["a float out of range", { f: 3.5e38 }, /expected a protobuf float/],

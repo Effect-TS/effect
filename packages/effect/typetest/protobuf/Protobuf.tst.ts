@@ -95,7 +95,7 @@ describe("Protobuf", () => {
     expect<Expr[typeof Protobuf.unknown]>().type.toBe<Uint8Array<ArrayBufferLike> | undefined>()
   })
 
-  it("Message keeps unknown fields at a symbol key", () => {
+  it("Message keeps unknown fields at the $unknown key", () => {
     const Kept = Protobuf.Message("acme.v1.Kept", { name: Schema.String.pipe(Protobuf.field(1)) })
     expect<typeof Kept["Type"]>().type.toBe<
       { readonly name: string; readonly [Protobuf.unknown]?: Uint8Array<ArrayBufferLike> }
