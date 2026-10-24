@@ -116,7 +116,7 @@ it.effect("caches remote key sets, coalesces concurrent refreshes, and refreshes
     assert.strictEqual(requests, 4)
   }).pipe(Effect.provide(layer)))
 
-it.effect("accepts only the configured HTTPS document and never follows redirects", () =>
+it.effect("accepts only a 200 document from the configured HTTPS URL", () =>
   Effect.gen(function*() {
     const resolve = (client: Layer.Layer<HttpClient.HttpClient>, options?: Partial<Jwks.RemoteOptions>) =>
       Layer.build(Jwks.layerRemote({ url, ...options }).pipe(Layer.provide(client))).pipe(
@@ -151,8 +151,8 @@ it.effect("accepts only the configured HTTPS document and never follows redirect
     assertReason(yield* resolve(redirected), "KeySetUnavailable")
     assert.strictEqual(followed, 1)
 
-    // The fetch client never sends a request past the first hop, and keeps the
-    // RequestInit configured on its layer. This fake follows like `fetch`
+    // A fetch client configured with `redirect: "manual"` sends no request past
+    // the first hop and keeps its other options. This fake follows like `fetch`
     // unless the request asks for manual redirects.
     const destinations: Array<string> = []
     const inits: Array<RequestInit | undefined> = []
@@ -167,6 +167,7 @@ it.effect("accepts only the configured HTTPS document and never follows redirect
     }) as typeof globalThis.fetch
     const configured = FetchHttpClient.layer.pipe(
       Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, {
+        redirect: "manual",
         credentials: "include",
         cache: "no-store",
         integrity: "sha256-configured",
@@ -178,7 +179,12 @@ it.effect("accepts only the configured HTTPS document and never follows redirect
       "KeySetUnavailable"
     )
     assert.deepStrictEqual(destinations, [url])
-    assert.deepInclude(inits[0], { credentials: "include", cache: "no-store", integrity: "sha256-configured" })
+    assert.deepInclude(inits[0], {
+      redirect: "manual",
+      credentials: "include",
+      cache: "no-store",
+      integrity: "sha256-configured"
+    })
     assert.strictEqual(new Headers(inits[0]?.headers).get("authorization"), "Bearer configured")
 
     // A redirect status is a failed response, not a hop.
