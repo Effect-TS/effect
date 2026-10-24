@@ -467,14 +467,14 @@ describe("RpcServer", () => {
         _tag: "Request" as const,
         id: RpcMessage.RequestId(id),
         tag,
-        payload: {},
+        payload: undefined,
         headers: Headers.empty
       })
       yield* server.write(1, request("1", "pending"))
       yield* Deferred.await(started)
       yield* server.write(1, request("2", "throws"))
       yield* server.write(1, request("3", "throwsStream"))
-      const summarize = (message: RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>) =>
+      const summarize = (message: RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>): ReadonlyArray<unknown> =>
         message._tag === "Exit"
           ? [
             message.requestId,
