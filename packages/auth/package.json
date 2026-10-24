@@ -1,0 +1,69 @@
+{
+  "name": "@effect/auth",
+  "version": "4.0.6",
+  "type": "module",
+  "license": "MIT",
+  "description": "JOSE keys, signatures, encryption and schema-typed JWTs for Effect",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "keywords": ["typescript", "effect", "auth", "jose", "jwt", "jwks"],
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./jose": "./src/jose/index.ts",
+    "./jose/JoseError": "./src/jose/JoseError.ts",
+    "./jose/Jwe": "./src/jose/Jwe.ts",
+    "./jose/Jwk": "./src/jose/Jwk.ts",
+    "./jose/Jwks": "./src/jose/Jwks.ts",
+    "./jose/Jws": "./src/jose/Jws.ts",
+    "./jose/Jwt": "./src/jose/Jwt.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./jose": "./dist/jose/index.js",
+      "./jose/JoseError": "./dist/jose/JoseError.js",
+      "./jose/Jwe": "./dist/jose/Jwe.js",
+      "./jose/Jwk": "./dist/jose/Jwk.js",
+      "./jose/Jwks": "./dist/jose/Jwks.js",
+      "./jose/Jws": "./dist/jose/Jws.js",
+      "./jose/Jwt": "./dist/jose/Jwt.js"
+    }
+  },
+  "scripts": {
+    "codegen": "effect-utils codegen",
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^",
+    "jose": "6.2.12"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^"
+  }
+}
