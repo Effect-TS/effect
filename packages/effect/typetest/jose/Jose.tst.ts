@@ -1,6 +1,6 @@
 import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter } from "effect"
 import type { Aead, CryptoError, Mac, SecureRandom, Signature } from "effect/crypto"
-import { Jwe, Jwk, type JoseError, type Jwks, Jws, Jwt } from "effect/jose"
+import { type JoseError, Jwe, Jwk, type Jwks, Jws, Jwt } from "effect/jose"
 import { describe, expect, it } from "tstyche"
 
 declare const hmac: Jwk.SecretKey<"HS256">
@@ -44,7 +44,7 @@ describe("Jwk", () => {
       Effect.Effect<Jwk.KeyPair, JoseError.JoseError, Signature.Signature>
     >()
     expect<Extract<JoseError.JoseError, CryptoError.CryptoError>>().type.toBe<never>()
-    expect(Jwk.importPublic({ kty: "EC", crv: "P-256", x: "", y: "" }, "HS256")).type.toRaiseError()
+    expect(Jwk.importPublic).type.not.toBeCallableWith({ kty: "EC", crv: "P-256", x: "", y: "" }, "HS256")
   })
 
   it("exposes the crypto key object", () => {
@@ -61,10 +61,10 @@ describe("Jws and Jwe", () => {
     expect(Jws.sign(payload, hmac)).type.toBe<
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Jws.Requirements>
     >()
-    expect(Jws.sign(payload, privateKey, { kid: "k", typ: "JWT" })).type.not.toRaiseError()
-    expect(Jws.sign(payload, hmac, { alg: "HS256" })).type.toRaiseError()
-    expect(Jws.sign(payload, dir)).type.toRaiseError()
-    expect(Jwe.encrypt(payload, hmac)).type.toRaiseError()
+    expect(Jws.sign).type.toBeCallableWith(payload, privateKey, { kid: "k", typ: "JWT" })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { alg: "HS256" })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, dir)
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, hmac)
     expect(Jwe.encrypt(payload, dir)).type.toBe<
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom>
     >()
@@ -75,8 +75,8 @@ describe("Jws and Jwe", () => {
     expect(Jws.verify("a.b.c", publicKey)).type.toBe<
       Effect.Effect<Jws.Verified, JoseError.JoseError, Jws.Requirements>
     >()
-    expect(Jws.verify(token, publicKey)).type.not.toRaiseError()
-    expect(Jws.verify(token, publicKey, { algorithms: ["ES256"] })).type.toRaiseError()
+    expect(Jws.verify).type.toBeCallableWith(token, publicKey)
+    expect(Jws.verify).type.not.toBeCallableWith(token, publicKey, { algorithms: ["ES256"] })
     expect(Jws.verifyWithKeySet(token, { algorithms: ["ES256"] })).type.toBe<
       Effect.Effect<
         Jws.Verified & { readonly key: Jwk.PublicKey },
@@ -84,7 +84,7 @@ describe("Jws and Jwe", () => {
         Jwks.Jwks | Signature.Signature
       >
     >()
-    expect(Jws.verifyWithKeySet(token, { algorithms: ["HS256"] })).type.toRaiseError()
+    expect(Jws.verifyWithKeySet).type.not.toBeCallableWith(token, { algorithms: ["HS256"] })
     expect(Jwe.decrypt(token, dir)).type.toBe<Effect.Effect<Jwe.Decrypted, JoseError.JoseError, Aead.Aead>>()
     expect<Jws.Verified["payload"]>().type.toBe<Uint8Array>()
     expect<Jws.Verified["protectedHeader"]>().type.toBe<Jws.ProtectedHeader>()
@@ -108,8 +108,8 @@ describe("Jwt", () => {
     expect<Jwt.VerifyOptions["clockTolerance"]>().type.toBe<Duration.Input | undefined>()
     expect<Jwt.VerifyOptions["maxTokenAge"]>().type.toBe<Duration.Input | undefined>()
     expect<Jwks.RemoteOptions["timeToLive"]>().type.toBe<Duration.Input | undefined>()
-    expect(Jwt.verify(Claims, token, hmac, { algorithms: ["HS256"] })).type.toRaiseError()
-    expect(Jwt.verifyWithKeySet(Claims, token, {})).type.toRaiseError()
+    expect(Jwt.verify).type.not.toBeCallableWith(Claims, token, hmac, { algorithms: ["HS256"] })
+    expect(Jwt.verifyWithKeySet).type.not.toBeCallableWith(Claims, token, {})
     const resolved = Jwt.verifyWithKeySet(Claims, token, { algorithms: ["ES256"] })
     expect<Effect.Services<typeof resolved>>().type.toBe<Decode | Jwks.Jwks | Signature.Signature>()
     expect<Effect.Success<typeof resolved>>().type.toBe<
