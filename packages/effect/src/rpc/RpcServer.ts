@@ -278,7 +278,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       headers: request.headers,
       payload: request.payload
     }
-    const result = entry.handler(request.payload, metadata)
+    const result = runHandler(entry, request.payload, metadata, isStream)
 
     // if the handler requested forking, then we skip the concurrency control
     const isWrapper = Rpc.isWrapper(result)
@@ -572,6 +572,21 @@ const handlerContext = (
     cache.set(fiberContext, merged)
   }
   return merged
+}
+
+// route synchronous throws through the request exit handling, so they are
+// treated like a returned defect
+const runHandler = (
+  entry: Rpc.Handler<any>,
+  payload: unknown,
+  metadata: Parameters<Rpc.Handler<any>["handler"]>[1],
+  isStream: boolean
+): ReturnType<Rpc.Handler<any>["handler"]> => {
+  try {
+    return entry.handler(payload, metadata)
+  } catch (defect) {
+    return isStream ? Stream.die(defect) : Effect.die(defect)
+  }
 }
 
 const applyMiddleware = <A, E, R>(
