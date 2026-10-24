@@ -20,7 +20,6 @@ import * as Headers from "./Headers.ts"
 import * as HttpClient from "./HttpClient.ts"
 import * as HttpClientError from "./HttpClientError.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
-import { ManualRedirect } from "./internal/manualRedirect.ts"
 
 /**
  * Context reference for the `fetch` implementation used by the fetch-based HTTP client.
@@ -133,7 +132,6 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
         try: () =>
           fetch(url, {
             ...options,
-            ...(fiber.getRef(ManualRedirect) ? { redirect: "manual" } : undefined),
             method: request.method,
             headers,
             body,

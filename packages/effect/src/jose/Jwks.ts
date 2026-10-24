@@ -21,7 +21,6 @@ import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as HttpClient from "../http/HttpClient.ts"
-import { ManualRedirect } from "../http/internal/manualRedirect.ts"
 import * as Layer from "../Layer.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
@@ -257,15 +256,16 @@ const readUrl = (input: string) => {
  * fails every caller until `cooldown` passes; there is no fallback to an
  * expired set.
  *
- * Only a 200 response from the configured URL is accepted. With
- * `FetchHttpClient` requests use `redirect: "manual"`, keeping the client's
- * other `RequestInit` options, so a redirect fails before any further request.
+ * Only a 200 response from the configured URL is accepted, so a redirected
+ * key set is rejected. The check runs on the response, so it cannot stop a
+ * client from sending the redirected request.
  *
  * **Gotchas**
  *
- * Other clients, including ones wrapped with `HttpClient.followRedirects`,
- * must not follow redirects: by the time a response from another URL is
- * rejected, the request to it has already been sent.
+ * Supply a client that does not follow redirects. `FetchHttpClient` follows
+ * them by default: provide `FetchHttpClient.RequestInit` with
+ * `{ redirect: "manual" }` on its layer so a redirect fails before any further
+ * request. Clients wrapped with `HttpClient.followRedirects` also follow them.
  *
  * Closing the layer interrupts any request in flight.
  *
@@ -328,7 +328,6 @@ export const layerRemote = (
         return { keySet, expiresAt: (yield* Clock.currentTimeMillis) + timeToLive }
       }).pipe(
         Effect.scoped,
-        Effect.provideService(ManualRedirect, true),
         Effect.catchTag("HttpClientError", (cause) => Effect.fail(unavailable("The key set request failed", cause))),
         Effect.timeoutOrElse({
           duration: timeout,
