@@ -114,7 +114,7 @@ const candidates = (keySet: KeySet, selection: Selection): ReadonlyArray<PublicJ
   )
 }
 
-// Imports each JWK once per algorithm. Weak keys let replaced key sets go.
+// Imports each JWK once per algorithm. Keyed weakly so replaced key sets can be collected.
 const makeImporter = () => {
   const imported = new WeakMap<PublicJwk, Map<AsymmetricAlgorithm, PublicKey>>()
   return (
@@ -257,17 +257,15 @@ const readUrl = (input: string) => {
  * fails every caller until `cooldown` passes; there is no fallback to an
  * expired set.
  *
- * Only a 200 response from the configured URL is accepted, and redirects are
- * never followed. With `FetchHttpClient` the layer sends requests with
- * `redirect: "manual"`, keeping the client's other `RequestInit` options, so a
- * redirect fails before any further request.
+ * Only a 200 response from the configured URL is accepted. With
+ * `FetchHttpClient` requests use `redirect: "manual"`, keeping the client's
+ * other `RequestInit` options, so a redirect fails before any further request.
  *
  * **Gotchas**
  *
- * The layer cannot stop other clients from following redirects, including
- * clients wrapped with `HttpClient.followRedirects`. Supply a client that does
- * not follow them: a followed redirect has already sent a request to the new
- * location by the time its response is rejected for coming from another URL.
+ * Other clients, including ones wrapped with `HttpClient.followRedirects`,
+ * must not follow redirects: by the time a response from another URL is
+ * rejected, the request to it has already been sent.
  *
  * Closing the layer interrupts any request in flight.
  *

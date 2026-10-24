@@ -83,4 +83,4 @@ const program = Effect.gen(function*() {
 )
 ```
 
-See [third-party notices](THIRD_PARTY_NOTICES.md) for test fixture attribution.
+See [third-party notices](THIRD_PARTY_NOTICES.md) for test attribution.

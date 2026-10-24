@@ -34,8 +34,8 @@ key selection in `src/jose/Jwt.ts`, `src/jose/Jws.ts`, `src/jose/Jwk.ts`, `src/j
 No panva/jose runtime implementation is bundled or required.
 
 The wire formats follow RFC 7515, RFC 7516, RFC 7517, RFC 7518, RFC 7519,
-and RFC 8037; policy follows RFC 8725. No RFC code or example vectors are copied.
-Cryptographic primitives use Effect’s native algorithm services; JWE nonces use `SecureRandom`.
+and RFC 8037; policy follows RFC 8725. The only RFC material copied is the
+RFC 7515 Appendix A example keys and tokens used as test vectors.
 
 ### panva/jose — MIT
 
