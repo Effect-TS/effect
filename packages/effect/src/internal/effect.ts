@@ -1353,6 +1353,17 @@ const makeFn = (
     : (pipeables.shift()!).bind(bodyOrOptions.self)
   const definitionName = `${name} (definition)`
   const definitionStack = defError ? fnStackCleaner(() => defError.stack) : constUndefined
+  // Built outside the traced function so the frame cannot capture its `arguments`,
+  // which forked fibers inheriting the frame would otherwise keep alive.
+  const makeCallFrame = (callError: Error | undefined) => (prev: StackFrame | undefined): StackFrame => ({
+    name,
+    stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
+    parent: {
+      name: definitionName,
+      stack: definitionStack,
+      parent: prev
+    }
+  })
 
   return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
     let result = suspend(() => {
@@ -1377,28 +1388,10 @@ const makeFn = (
         useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
         result,
       CurrentStackFrame,
-      makeCallFrame(name, callError, definitionName, definitionStack)
+      makeCallFrame(callError)
     )
   })
 }
-
-// Built outside the traced function so the frame's `stack` closure cannot capture that call's `arguments`.
-// Frames outlive the call in forked fibers, which would otherwise keep every argument alive.
-const makeCallFrame = (
-  name: string,
-  callError: Error | undefined,
-  definitionName: string,
-  definitionStack: () => string | undefined
-) =>
-(prev: StackFrame | undefined): StackFrame => ({
-  name,
-  stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
-  parent: {
-    name: definitionName,
-    stack: definitionStack,
-    parent: prev
-  }
-})
 
 /** @internal */
 export const fnUntracedEager: Effect.fn.Untraced = (
