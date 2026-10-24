@@ -932,6 +932,53 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(toolOutput.output, JSON.stringify({ output: "result" }))
           }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
 
+        it.effect("sends tool result content as function_call_output content", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Take a screenshot" },
+                {
+                  role: "assistant",
+                  content: [
+                    Prompt.toolCallPart({
+                      id: "call_image",
+                      name: "TestTool",
+                      params: { input: "test" },
+                      providerExecuted: false
+                    })
+                  ]
+                },
+                {
+                  role: "tool",
+                  content: [
+                    Prompt.toolResultPart({
+                      id: "call_image",
+                      name: "TestTool",
+                      isFailure: false,
+                      result: { title: "Home page" },
+                      content: [
+                        Prompt.textPart({ text: "Home page" }),
+                        Prompt.filePart({ mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) })
+                      ],
+                      providerExecuted: false
+                    })
+                  ]
+                }
+              ]),
+              toolkit: TestToolkit
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            const toolOutput = body.input.find((m: any) => m.type === "function_call_output")
+            assert.isDefined(toolOutput)
+            deepStrictEqual(toolOutput.output, [
+              { type: "input_text", text: "Home page" },
+              { type: "input_image", image_url: "data:image/png;base64,iVBORw==", detail: "auto" }
+            ])
+          }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
+
         it.effect("preserves string tool results", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({

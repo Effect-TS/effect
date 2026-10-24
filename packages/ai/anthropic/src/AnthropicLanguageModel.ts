@@ -946,76 +946,11 @@ const prepareMessages = Effect.fnUntraced(
                     isLastPart ? getCacheControl(message) : null
                   )
 
-                  switch (part.type) {
-                    case "text": {
-                      content.push({
-                        type: "text",
-                        text: part.text,
-                        cache_control: cacheControl
-                      })
-                      break
-                    }
-
-                    case "file": {
-                      if (part.mediaType.startsWith("image/")) {
-                        const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
-                          (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
-
-                        const source = isUrlData(part.data)
-                          ? { type: "url", url: getUrlString(part.data) } as const
-                          : {
-                            type: "base64",
-                            media_type: mediaType,
-                            data: typeof part.data === "string"
-                              ? part.data.replace(/^data:[^;]+;base64,/, "")
-                              : Base64.encode(part.data)
-                          } as const
-
-                        content.push({ type: "image", source, cache_control: cacheControl })
-                      } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
-                        betas.add("pdfs-2024-09-25")
-
-                        const enableCitations = areCitationsEnabled(part)
-                        const documentOptions = getDocumentMetadata(part)
-
-                        const source = isUrlData(part.data)
-                          ? {
-                            type: "url",
-                            url: getUrlString(part.data)
-                          } as const
-                          : part.mediaType === "application/pdf"
-                          ? {
-                            type: "base64",
-                            media_type: "application/pdf",
-                            data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
-                          } as const
-                          : {
-                            type: "text",
-                            media_type: "text/plain",
-                            data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
-                          } as const
-
-                        content.push({
-                          type: "document",
-                          source,
-                          title: documentOptions?.title ?? part.fileName ?? null,
-                          cache_control: cacheControl,
-                          ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
-                          ...(enableCitations ? { citations: { enabled: true } } : undefined)
-                        })
-                      } else {
-                        return yield* new AiError.AiError({
-                          module: "AnthropicLanguageModel",
-                          method: "prepareMessages",
-                          reason: new AiError.InvalidUserInputError({
-                            description: `Detected unsupported media type for file: '${part.mediaType}'`
-                          })
-                        })
-                      }
-
-                      break
-                    }
+                  const block = makeContentBlock(part, cacheControl, betas)
+                  if (Predicate.isUndefined(block)) {
+                    return yield* unsupportedFileError(part)
                   }
+                  content.push(block)
                 }
                 break
               }
@@ -1039,10 +974,26 @@ const prepareMessages = Effect.fnUntraced(
                     isLastPart ? getCacheControl(message) : null
                   )
 
+                  // Send content from the tool's `toModelContent` as content
+                  // blocks, so the model can see images and documents
+                  let resultContent: string | Array<ContentBlock>
+                  if (Predicate.isNotUndefined(part.content)) {
+                    resultContent = []
+                    for (const contentPart of part.content) {
+                      const block = makeContentBlock(contentPart, null, betas)
+                      if (Predicate.isUndefined(block)) {
+                        return yield* unsupportedFileError(contentPart)
+                      }
+                      resultContent.push(block)
+                    }
+                  } else {
+                    resultContent = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+                  }
+
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
-                    content: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+                    content: resultContent,
                     is_error: part.isFailure,
                     cache_control: cacheControl
                   })
@@ -2970,6 +2921,81 @@ const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
 /**
  * Checks whether data is a URL (either a URL object or a URL string).
  */
+// Converts a text or file part to an Anthropic content block. Returns
+// `undefined` for a file media type that Anthropic does not support.
+const makeContentBlock = (
+  part: Prompt.TextPart | Prompt.FilePart,
+  cacheControl: typeof Generated.CacheControlEphemeral.Encoded | null,
+  betas: Set<string>
+): ContentBlock | undefined => {
+  if (part.type === "text") {
+    return { type: "text", text: part.text, cache_control: cacheControl }
+  }
+  if (part.mediaType.startsWith("image/")) {
+    const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
+      (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
+
+    const source = isUrlData(part.data)
+      ? { type: "url", url: getUrlString(part.data) } as const
+      : {
+        type: "base64",
+        media_type: mediaType,
+        data: typeof part.data === "string"
+          ? part.data.replace(/^data:[^;]+;base64,/, "")
+          : Base64.encode(part.data)
+      } as const
+
+    return { type: "image", source, cache_control: cacheControl }
+  }
+  if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
+    betas.add("pdfs-2024-09-25")
+
+    const enableCitations = areCitationsEnabled(part)
+    const documentOptions = getDocumentMetadata(part)
+
+    const source = isUrlData(part.data)
+      ? {
+        type: "url",
+        url: getUrlString(part.data)
+      } as const
+      : part.mediaType === "application/pdf"
+      ? {
+        type: "base64",
+        media_type: "application/pdf",
+        data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
+      } as const
+      : {
+        type: "text",
+        media_type: "text/plain",
+        data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
+      } as const
+
+    return {
+      type: "document",
+      source,
+      title: documentOptions?.title ?? part.fileName ?? null,
+      cache_control: cacheControl,
+      ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
+      ...(enableCitations ? { citations: { enabled: true } } : undefined)
+    }
+  }
+  return undefined
+}
+
+type ContentBlock = Extract<
+  typeof Generated.BetaInputContentBlock.Encoded,
+  { readonly type: "text" | "image" | "document" }
+>
+
+const unsupportedFileError = (part: Prompt.TextPart | Prompt.FilePart): AiError.AiError =>
+  new AiError.AiError({
+    module: "AnthropicLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidUserInputError({
+      description: `Detected unsupported media type for file: '${part.type === "file" ? part.mediaType : "text"}'`
+    })
+  })
+
 const isUrlData = (
   data: typeof Prompt.FilePart.Type["data"]
 ): data is URL => data instanceof URL || isUrlString(data)

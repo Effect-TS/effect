@@ -684,6 +684,39 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
 // =============================================================================
 
 /**
+ * A part that a tool can give to the model as its result, such as text or an
+ * image.
+ *
+ * @see {@link ToolResultPart} for the part that holds this content
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type ToolResultContentPart = TextPart | FilePart
+
+/**
+ * Encoded representation of a tool result content part.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type ToolResultContentPartEncoded = TextPartEncoded | FilePartEncoded
+
+/**
+ * Schema for tool result content parts.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const ToolResultContentPart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
+  TextPart,
+  FilePart
+])
+
+/**
  * Content part representing the result of a tool call.
  *
  * **Example** (Creating tool result parts)
@@ -727,6 +760,15 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    */
   readonly result: unknown
   /**
+   * Content for the model, made by the tool's `toModelContent` function.
+   *
+   * **Details**
+   *
+   * When this is set, providers that support rich tool results send these
+   * parts (for example, images) instead of the JSON text of `result`.
+   */
+  readonly content?: ReadonlyArray<ToolResultContentPart> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted: boolean
@@ -757,6 +799,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
+   * Content for the model, made by the tool's `toModelContent` function.
+   */
+  readonly content?: ReadonlyArray<ToolResultContentPartEncoded> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted?: boolean | undefined
@@ -785,6 +831,7 @@ export const ToolResultPart: Schema.Struct<{
   readonly name: Schema.String
   readonly isFailure: Schema.Boolean
   readonly result: Schema.Unknown
+  readonly content: Schema.optional<Schema.$Array<typeof ToolResultContentPart>>
   readonly providerExecuted: Schema.withDecodingDefault<Schema.Boolean>
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
@@ -800,6 +847,7 @@ export const ToolResultPart: Schema.Struct<{
   name: Schema.String,
   isFailure: Schema.Boolean,
   result: Schema.Unknown,
+  content: Schema.optional(Schema.Array(ToolResultContentPart)),
   providerExecuted: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false)))
 }).annotate({ identifier: "ToolResultPart" })
 
@@ -2266,6 +2314,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
             name: part.name,
             isFailure: part.isFailure,
             result: part.encodedResult,
+            ...(part.content !== undefined ? { content: part.content } : undefined),
             providerExecuted: part.providerExecuted ?? false,
             options: part.metadata
           }))

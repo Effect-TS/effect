@@ -1553,6 +1553,7 @@ export const make: (params: {
             preliminary: false,
             result: r.encodedResult,
             encodedResult: r.encodedResult,
+            ...(r.content !== undefined ? { content: r.content } : undefined),
             isFailure: r.isFailure
           }) as Response.StreamPart<Tools>
         )
@@ -1680,6 +1681,7 @@ export const make: (params: {
             providerExecuted: false,
             result: result.result,
             encodedResult: result.encodedResult,
+            ...(result.content !== undefined ? { content: result.content } : undefined),
             isFailure: result.isFailure,
             preliminary: result.preliminary
           }) as Response.StreamPart<Tools>
@@ -2268,6 +2270,7 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
       name: toolCall.name,
       result: terminalResult.result,
       encodedResult: terminalResult.encodedResult,
+      ...(terminalResult.content !== undefined ? { content: terminalResult.content } : undefined),
       isFailure: terminalResult.isFailure,
       preliminary: terminalResult.preliminary,
       providerExecuted: false
@@ -2417,6 +2420,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
                 providerExecuted: false,
                 result: result.result,
                 encodedResult: result.encodedResult,
+                ...(result.content !== undefined ? { content: result.content } : undefined),
                 isFailure: result.isFailure,
                 preliminary: result.preliminary
               }) as ToolResolutionResult<Tools>
@@ -2446,6 +2450,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
               providerExecuted: false,
               result: result.result,
               encodedResult: result.encodedResult,
+              ...(result.content !== undefined ? { content: result.content } : undefined),
               isFailure: result.isFailure,
               preliminary: result.preliminary
             }) as ToolResolutionResult<Tools>

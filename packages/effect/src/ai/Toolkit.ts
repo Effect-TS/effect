@@ -525,7 +525,23 @@ const Proto = {
             ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            return { ...output, encodedResult }
+            if (output.isFailure || output.preliminary || Predicate.isUndefined(tool.toModelContent)) {
+              return { ...output, encodedResult }
+            }
+            const content = yield* Effect.try({
+              try: () => tool.toModelContent!(output.result),
+              catch: (cause) =>
+                AiError.make({
+                  module: "Toolkit",
+                  method: `${name}.handle`,
+                  reason: new AiError.ToolResultEncodingError({
+                    toolName: name,
+                    toolResult: output.result,
+                    description: `toModelContent failed: ${cause instanceof Error ? cause.message : String(cause)}`
+                  })
+                })
+            })
+            return { ...output, encodedResult, content }
           })),
           Stream.ensuring(Fiber.interrupt(fiber))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
