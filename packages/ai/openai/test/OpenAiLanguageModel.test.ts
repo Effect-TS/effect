@@ -1191,6 +1191,19 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(tool.parameters, inputSchema)
         }).pipe(Effect.provide(makeTestLayer())))
 
+      it.effect("names the tool when its parameters are not an object schema", () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")), Effect.flip)
+
+          strictEqual(error.reason._tag, "UnsupportedSchemaError")
+          assert.include(error.message, `"NoParams"`)
+          assert.include(error.message, "Tool.EmptyParams")
+        }).pipe(Effect.provide(makeTestLayer())))
+
       it.effect("empty object on properties for empty parameters", () =>
         Effect.gen(function*() {
           const EmptyTool = Tool.make("EmptyParamsTool", {
