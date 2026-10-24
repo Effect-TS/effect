@@ -75,6 +75,12 @@ export * as DockerPlugins from "./DockerPlugins.ts"
  * @stability unstable
  * @since 4.2.0
  */
+export * as DockerRegistryAuth from "./DockerRegistryAuth.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
 export * as DockerSchema from "./DockerSchema.ts"
 
 /**
