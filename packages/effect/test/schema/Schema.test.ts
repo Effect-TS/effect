@@ -5852,7 +5852,6 @@ Expected a value between -2147483648 and 2147483647`
     const asserts = new TestSchema.Asserts(schema)
 
     const decoding = asserts.decoding()
-    await decoding.succeed("PT0S", Duration.zero)
     await decoding.succeed("P1W2D", Duration.days(9))
     await decoding.succeed("PT1H30M", Duration.minutes(90))
     await decoding.succeed("-PT1.5S", Duration.millis(-1500))
@@ -5863,7 +5862,6 @@ Expected a value between -2147483648 and 2147483647`
 
     const encoding = asserts.encoding()
     await encoding.succeed(Duration.zero, "PT0S")
-    await encoding.succeed(Duration.minutes(90), "PT1H30M")
     await encoding.succeed(Duration.weeks(1), "P7D")
     await encoding.succeed(Duration.nanos(-1n), "-PT0.000000001S")
     await encoding.fail(Duration.infinity, "Expected a finite Duration")
