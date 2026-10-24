@@ -32,11 +32,16 @@ const retryAfter = (raw: string | undefined, now: number): Duration.Duration | u
   return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
 }
 
-const fail = (reason: AiError.AiErrorReason) =>
-  Effect.fail(AiError.make({ module: "CloudflareClient", method: "createDecisions", reason }))
+export type Method = "createDecisions" | "createExtractions"
+
+const fail = (method: Method, reason: AiError.AiErrorReason) =>
+  Effect.fail(AiError.make({ module: "CloudflareClient", method, reason }))
 
 export const mapResponseError = Effect.fnUntraced(
-  function*(response: HttpClientResponse.HttpClientResponse): Effect.fn.Return<never, AiError.AiError> {
+  function*(
+    method: Method,
+    response: HttpClientResponse.HttpClientResponse
+  ): Effect.fn.Return<never, AiError.AiError> {
     const { request, status } = response
     const body = yield* response.text.pipe(Effect.orElseSucceed(() => undefined))
     const parsed = yield* Effect.try(() => JSON.parse(body ?? "")).pipe(Effect.orElseSucceed(() => undefined))
@@ -57,6 +62,7 @@ export const mapResponseError = Effect.fnUntraced(
     })
     if (status === 429) {
       return yield* fail(
+        method,
         new AiError.RateLimitError({
           retryAfter: retryAfter(response.headers["retry-after"], yield* Clock.currentTimeMillis),
           http,
@@ -65,23 +71,24 @@ export const mapResponseError = Effect.fnUntraced(
       )
     }
     if (status === 404 || status === 422) {
-      return yield* fail(new AiError.InvalidRequestError({ description, http }))
+      return yield* fail(method, new AiError.InvalidRequestError({ description, http }))
     }
     if (status >= 200 && status < 300) {
-      return yield* fail(new AiError.InternalProviderError({ description, http }))
+      return yield* fail(method, new AiError.InternalProviderError({ description, http }))
     }
-    return yield* fail(AiError.reasonFromHttpStatus({ status, description, http }))
+    return yield* fail(method, AiError.reasonFromHttpStatus({ status, description, http }))
   }
 )
 
 export const mapHttpClientError = Effect.fnUntraced(
-  function*(error: HttpClientError.HttpClientError): Effect.fn.Return<never, AiError.AiError> {
+  function*(method: Method, error: HttpClientError.HttpClientError): Effect.fn.Return<never, AiError.AiError> {
     const source = error.reason
     switch (source._tag) {
       case "TransportError":
       case "EncodeError":
       case "InvalidUrlError":
         return yield* fail(
+          method,
           new AiError.NetworkError({
             reason: source._tag,
             description: source.description,
@@ -91,12 +98,13 @@ export const mapHttpClientError = Effect.fnUntraced(
       case "DecodeError":
       case "EmptyBodyError":
         return yield* fail(
+          method,
           new AiError.InvalidOutputError({
             description: source.description ?? "Failed to decode Cloudflare response"
           })
         )
       case "StatusCodeError":
-        return yield* mapResponseError(source.response)
+        return yield* mapResponseError(method, source.response)
     }
   }
 )

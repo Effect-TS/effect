@@ -43,6 +43,18 @@ export * as EmbeddingModel from "./EmbeddingModel.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.6
+ */
+export * as Extraction from "./Extraction.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as ExtractionModel from "./ExtractionModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as IdGenerator from "./IdGenerator.ts"

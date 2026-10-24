@@ -1,6 +1,6 @@
 # @effect/ai-cloudflare
 
-Cloudflare Workers AI provider for Effect's `DecisionModel`. Supports text and JSON classification, ordered ratings, and probabilities with Clef and Clef-flash over REST.
+Cloudflare Workers AI provider for Effect's `DecisionModel` and `ExtractionModel`. Supports text and JSON classification, ordered ratings, and probabilities with Clef and Clef-flash, and typed extraction, estimates, and forecasts with Clairic, over REST.
 
 ## Installation
 
@@ -57,6 +57,43 @@ Instructions and descriptions can be strings, JSON objects, or JSON arrays. A ra
 The client unwraps Cloudflare's REST envelope and maps failures to `AiError`. It does not retry automatically. Rate-limit errors include `Retry-After` when provided. The decision model validates answers and rescales small probability drift from four-decimal rounding.
 
 Cloudflare limits each request to 64 questions, classification to 2–255 choices, and ratings to 2–10 levels. See the [Clef API documentation](https://developers.cloudflare.com/workers-ai/models/clef/) for request limits.
+
+## Extraction with Clairic
+
+`CloudflareExtractionModel` answers typed fields about a text with [Clairic](https://developers.cloudflare.com/workers-ai/models/clairic/):
+
+```ts
+import { CloudflareClient, CloudflareExtractionModel } from "@effect/ai-cloudflare"
+import { Effect, Layer } from "effect"
+import { Extraction, ExtractionModel } from "effect/ai"
+import { FetchHttpClient } from "effect/http"
+
+const Invoice = Extraction.make({
+  fields: {
+    invoice_number: Extraction.text(),
+    total: Extraction.number({ decimals: 2, unit: "USD", instructions: "Amount due including shipping" }),
+    po_number: Extraction.text({ instructions: "Purchase order number" }),
+    days_to_pay: Extraction.estimate({ min: 0, max: 120, step: 1, instructions: "Days after issue until paid" })
+  }
+})
+
+const Clairic = CloudflareExtractionModel.layer({ model: "clairic" }).pipe(
+  Layer.provide(CloudflareClient.layerConfig()),
+  Layer.provide(FetchHttpClient.layer)
+)
+
+const program = Effect.gen(function*() {
+  const { answers } = yield* ExtractionModel.extract(Invoice, {
+    text:
+      "Invoice INV-2291 from Northwind Supply, issued 2026-09-02, net 30. 4 pallets at $250.00 each, shipping $80.00."
+  })
+  // answers.po_number is Absent: the invoice has no PO number
+  // answers.days_to_pay has a median and an 80% interval (p10 to p90)
+  return answers
+}).pipe(Effect.provide(Clairic))
+```
+
+Field names must match `^[A-Za-z_][A-Za-z0-9_.-]{0,63}$`. Clairic drops time zones from date-time answers, even when the text states one. Images follow the same rules as Clef, with a 16 MiB request body limit.
 
 ## AI Gateway
 
