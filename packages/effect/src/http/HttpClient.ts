@@ -2012,7 +2012,18 @@ export const followRedirects: {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
               }
-              return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
+              // Request the Location as sent: setUrl with a URL object would re-encode its query
+              const hash = url.hash === "" ? Option.none() : Option.some(url.hash.slice(1))
+              url.hash = ""
+              nextRequest = HttpClientRequest.makeWith(
+                nextRequest.method,
+                url.href,
+                UrlParams.empty,
+                hash,
+                nextRequest.headers,
+                nextRequest.body
+              )
+              return loop(Effect.succeed(nextRequest), redirects + 1)
             }
           )
         })
