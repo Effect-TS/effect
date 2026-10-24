@@ -4621,26 +4621,23 @@ describe("Effect", () => {
   })
 
   describe("Effect.fn", () => {
-    it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-      "does not retain arguments through the stack frame of a forked fiber",
-      async () => {
-        const start = Effect.fn("start")(function*(input: { readonly payload: string }) {
-          yield* Effect.annotateCurrentSpan("payload", input.payload.length)
-          return yield* Effect.forkDetach(Effect.never)
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "does not retain arguments in the stack frame of forked fibers",
+      () =>
+        Effect.gen(function*() {
+          const start = Effect.fn("start")(function*(_input: object) {
+            yield* Effect.forkChild(Effect.never)
+          })
+          let reference: WeakRef<object> | undefined
+          const makeInput = () => {
+            const input = {}
+            reference = new WeakRef(input)
+            return input
+          }
+          yield* start(makeInput())
+          yield* collectGarbage
+          assert.isUndefined(reference!.deref())
         })
-        let reference: WeakRef<{ readonly payload: string }> | undefined
-        const fiber = await (async () => {
-          const input = { payload: "x".repeat(1024) }
-          reference = new WeakRef(input)
-          return Effect.runPromise(start(input))
-        })()
-
-        await Effect.runPromise(collectGarbage)
-
-        assert.isDefined(reference)
-        assert.isUndefined(reference!.deref())
-        await Effect.runPromise(Fiber.interrupt(fiber))
-      }
     )
 
     it.effect("should support pipeable arguments", () => {
