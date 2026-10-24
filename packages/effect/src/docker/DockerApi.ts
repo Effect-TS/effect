@@ -16,8 +16,6 @@
  *   `0`, which the Docker CLI sends.
  * - Fields that carry secrets are `Redacted`; requests send them
  *   unwrapped.
- * - Starting an exec isn't declared: it upgrades a request with a body,
- *   which `HttpApi` can't declare. `DockerExec` sends it itself.
  *
  * @stability unstable
  * @since 4.0.6
@@ -838,9 +836,9 @@ export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fi
 export type ExecConfig = typeof ExecConfig.Type
 
 /**
- * The Engine's exec endpoints, which `DockerExec` is a client of. Starting
- * an exec isn't one: it upgrades a request with a body, which `HttpApi`
- * can't declare.
+ * The Engine's exec endpoints, which `DockerExec` is a client of. Starting an
+ * exec upgrades its request, which carries the start options, to the exec's
+ * stdio.
  *
  * @stability unstable
  * @category groups
@@ -855,6 +853,11 @@ export const Exec = HttpApiGroup.make("exec").add(
   HttpApiEndpoint.get("inspect", "/exec/:id/json", {
     params: id,
     success: Schema.toCodecGoJson(DockerSchema.ExecInspectResponse)
+  }),
+  HttpApiEndpoint.post("start", "/exec/:id/start", {
+    params: id,
+    payload: DockerSchema.ExecStartConfig,
+    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
   }),
   HttpApiEndpoint.post("resize", "/exec/:id/resize", {
     params: id,
