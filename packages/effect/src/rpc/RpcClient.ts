@@ -777,9 +777,9 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
               write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
                 Effect.andThen(
                   Cause.hasInterrupts(cause) ? Effect.void : Effect.raceFirst(
-                    Effect.interruptible(Effect.ignore(interruptRequest(requestId))),
-                    // The Interrupt is best-effort once the client closes, as a
-                    // disconnected transport can wait for a reconnect that never comes.
+                    Effect.ignore(interruptRequest(requestId)),
+                    // Best-effort once the client closes: a disconnected transport
+                    // can wait for a reconnect that never comes.
                     Deferred.await(closing)
                   )
                 )
