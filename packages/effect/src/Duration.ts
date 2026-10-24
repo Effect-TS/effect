@@ -1875,12 +1875,10 @@ export const format = (self: Duration): string => {
  *
  * **Details**
  *
- * The duration is balanced into days (24 hours), hours, minutes, and
- * seconds, with up to nine fractional second digits. Weeks, months, and years
- * are never produced. Negative durations get a leading `-`, and zero is
- * formatted as `"PT0S"`.
- *
- * Returns `Option.none()` if the duration is infinite.
+ * The duration is balanced into days (24 hours), hours, minutes and seconds,
+ * with up to nine fractional second digits. Weeks, months and years are never
+ * produced. Negative durations get a leading `-`, zero is `"PT0S"` and
+ * infinite durations return `Option.none()`.
  *
  * **Example** (Formatting durations as ISO 8601)
  *
@@ -1904,8 +1902,7 @@ export const formatIso = (self: Duration): Option.Option<string> => {
     return Option.none()
   }
   const n = toNanosUnsafe(self)
-  const neg = n < bigint0
-  const a = neg ? -n : n
+  const a = n < bigint0 ? -n : n
   const days = a / bigintNanosPerDay
   const hours = a % bigintNanosPerDay / bigintNanosPerHour
   const minutes = a % bigintNanosPerHour / bigintNanosPerMinute
@@ -1915,19 +1912,22 @@ export const formatIso = (self: Duration): Option.Option<string> => {
   let time = ""
   if (hours !== bigint0) time += `${hours}H`
   if (minutes !== bigint0) time += `${minutes}M`
-  if (seconds !== bigint0 || fraction !== bigint0) {
-    time += fraction === bigint0
-      ? `${seconds}S`
-      : `${seconds}.${fraction.toString().padStart(9, "0").replace(/0+$/, "")}S`
+  if (fraction !== bigint0) {
+    time += `${seconds}.${fraction.toString().padStart(9, "0").replace(/0+$/, "")}S`
+  } else if (seconds !== bigint0) {
+    time += `${seconds}S`
   }
-  const date = days === bigint0 ? "" : `${days}D`
-  const body = date === "" && time === "" ? "T0S" : time === "" ? date : `${date}T${time}`
-  return Option.some(`${neg ? "-" : ""}P${body}`)
+
+  let out = n < bigint0 ? "-P" : "P"
+  if (days !== bigint0) out += `${days}D`
+  if (time !== "") out += `T${time}`
+  return Option.some(out === "P" ? "PT0S" : out)
 }
 
 const DURATION_ISO_REGEXP =
   /^([+-])?P(?!$)(?:(\d+)W)?(?:(\d+)D)?(?:T(?!$)(?:(\d+)(?:[.,](\d{1,9}))?H)?(?:(\d+)(?:[.,](\d{1,9}))?M)?(?:(\d+)(?:[.,](\d{1,9}))?S)?)?$/
 
+// `scale` is the number of nanoseconds in one unit
 const parseIsoComponent = (whole: string | undefined, fraction: string | undefined, scale: bigint): bigint =>
   (whole === undefined ? bigint0 : BigInt(whole) * scale) +
   (fraction === undefined ? bigint0 : BigInt(fraction.padEnd(9, "0")) * (scale / bigint1e9))
@@ -1938,15 +1938,14 @@ const parseIsoComponent = (whole: string | undefined, fraction: string | undefin
  * **Details**
  *
  * Accepts an optional `+` or `-` sign followed by weeks (`W`), days (`D`),
- * hours (`H`), minutes (`M`), and seconds (`S`). A day is 24 hours and a week
- * is 7 days. The last time component may have a fraction of up to nine digits,
- * using `.` or `,` as the separator.
+ * hours (`H`), minutes (`M`) and seconds (`S`). A day is 24 hours and a week
+ * is 7 days. Only the last time component may have a fraction, of up to nine
+ * digits, separated by `.` or `,`.
  *
  * **Gotchas**
  *
  * Years (`Y`) and months (`M` before `T`) are rejected because they have no
- * fixed length. Fractional weeks or days are rejected, as in
- * `Temporal.Duration.from`.
+ * fixed length. Fractional weeks and days are rejected.
  *
  * **Example** (Parsing ISO 8601 durations)
  *
@@ -1971,7 +1970,7 @@ export const fromIso = (input: string): Option.Option<Duration> => {
     return Option.none()
   }
   const [, sign, w, d, h, hf, m, mf, s, sf] = match
-  // only the last time component may have a fraction
+  // a fraction is only allowed on the last time component
   if ((hf !== undefined && (m !== undefined || s !== undefined)) || (mf !== undefined && s !== undefined)) {
     return Option.none()
   }
