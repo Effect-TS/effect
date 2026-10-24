@@ -1,7 +1,9 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scope, Stream } from "effect"
 import type { SqlError } from "effect/sql/SqlError"
+import * as TestClock from "effect/testing/TestClock"
+import * as Net from "node:net"
 import { PgContainer, waitUntilAdvisoryLock } from "./utils.ts"
 
 const makeConnection = Effect.fnUntraced(function*(options?: PgConnection.Config) {
@@ -38,6 +40,27 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const notifications = yield* Scope.provide(connection.listen("closed_listener"), scope)
       yield* assertInterruptedOnClose(scope, notifications)
     }))
+
+  it.effect("closes a listener whose connection stops responding", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const sockets: Array<Net.Socket> = []
+      const connection = yield* makeConnection({
+        stream: () => {
+          const socket = Net.connect({ host: container.getHost(), port: container.getMappedPort(5432) })
+          sockets.push(socket)
+          return socket
+        }
+      })
+      const scope = yield* Scope.make()
+      yield* Scope.provide(connection.listen("unanswered_listener"), scope)
+      for (const socket of sockets) socket.pause()
+
+      const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("10 seconds"))
+      for (const socket of sockets) socket.destroy()
+      assert.isTrue(Option.isSome(closed), "listener scope did not close within 10 seconds")
+    }).pipe(TestClock.withLive), 30_000)
 
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
