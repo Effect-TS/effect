@@ -80,6 +80,24 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
     }).pipe(TestClock.withLive), { timeout: 30000 })
 
+  it.effect("skips UNLISTEN queued behind a pin release", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const pinScope = yield* Scope.make()
+      const pinned = yield* Scope.provide(connection.pin, pinScope)
+      const listenScope = yield* Scope.make()
+      yield* Scope.provide(pinned.listen("released_listener"), listenScope)
+      // Queue the listener cleanup behind a statement that holds the wire.
+      const closing = yield* Effect.forkDetach(Effect.andThen(Effect.yieldNow, Scope.close(listenScope, Exit.void)))
+      yield* pinned.query("SELECT pg_sleep(0.05)")
+
+      yield* Scope.close(pinScope, Exit.void)
+      const next = yield* Effect.forkDetach(connection.query("SELECT 1 AS one"))
+      const result = yield* Fiber.join(next).pipe(Effect.timeout("2 seconds"))
+      assert.deepStrictEqual(result.rows, [{ one: 1 }])
+      yield* Fiber.join(closing)
+    }).pipe(TestClock.withLive))
+
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
