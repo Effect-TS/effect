@@ -569,3 +569,129 @@ export const loadContext = (client: McpClient.McpClient) =>
     }
   })
 ```
+
+## Tasks
+
+`McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an
+`McpTasks.Execution` layer to create, retrieve, update, and cancel tasks. Ordinary
+inline tools use `McpServer.toolkit`.
+
+### Workflow execution
+
+```ts
+import { Effect, Layer, Schema } from "effect"
+import { McpTasks, Tool, Toolkit } from "effect/ai"
+import { Activity, WorkflowEngine } from "effect/workflow"
+
+const Reports = Toolkit.make(Tool.make("workspace_report", {
+  parameters: Schema.Struct({ workspaceId: Schema.String }),
+  success: Schema.String
+}))
+
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) =>
+  McpTasks.layerWorkflow(tools, {
+    workspace_report: ({ workspaceId }) =>
+      Activity.make({
+        name: "build-report",
+        success: Schema.String,
+        execute: Effect.succeed(`Report for ${workspaceId}`)
+      })
+  }, { name: "workspace-reports-v1" })).pipe(Layer.provide(WorkflowEngine.layerMemory))
+
+// Provide McpServer when composing ReportsLive with the server layer.
+```
+
+The optional callback receives the toolkit and returns a layer providing
+`Execution`. It runs once when constructing the registration layer. The
+execution layer uses ordinary Layer scope and dependency management. The
+two-argument form remains available for separately composed execution layers:
+
+```ts
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+  Layer.provide(ReportsExecution)
+)
+```
+
+The example uses Workflow's memory engine for tests. For durable recovery, provide
+an existing SQL-backed `ClusterWorkflowEngine`. Keep the Workflow name stable for
+compatible handlers and change it for replay-incompatible changes. Completed
+Activities reuse their recorded results. Code outside Activities can run again.
+
+Workflow owns execution, results, interruption, and history cleanup. The MCP
+implementation stores two immutable facts through `DurableDeferred`: owner and
+creation time, and a finished timestamp recorded by a Workflow finalizer. A normal
+active read uses two engine lookups. A terminal read uses three. Neither scans
+history or starts a background poller. After submission, creation waits until the
+identity is readable before returning its handle. It does not report a retryable
+creation error for work already accepted by Workflow. Terminal reads briefly
+retry a missing finished timestamp, then return a retryable error for that handle.
+
+### Memory execution
+
+For process-local execution, provide scoped Effect fibers instead:
+
+```ts
+const ReportsExecution = McpTasks.layerMemory(Reports, {
+  workspace_report: ({ workspaceId }) => Effect.succeed(`Report for ${workspaceId}`)
+})
+```
+
+This layer has no Workflow dependency. It interrupts its fibers and clears task
+records when its scope closes. It does not survive a restart or provide durable
+task creation, so use it for development and tests.
+
+### External jobs
+
+Applications can implement `Execution` directly. Its methods accept serializable
+requests and have no Workflow requirements:
+
+```ts
+const ReportsExecution = Layer.effect(
+  McpTasks.Execution,
+  Effect.gen(function*() {
+    const jobs = yield* ReportJobs
+    return McpTasks.Execution.of({
+      create: (request) => jobs.submit(request).pipe(Effect.map(toTask)),
+      get: (request) => jobs.getOwned(request).pipe(Effect.map(toTask)),
+      update: (request) => jobs.respondOwned(request),
+      cancel: (request) => jobs.cancelOwned(request)
+    })
+  })
+)
+```
+
+Here `ReportJobs` is an application service, and `toTask` maps its state to an
+`McpTasks.Task`. The application owns durable creation, unguessable task IDs,
+retention, and authorization on every operation. A completed task contains an MCP
+`CallToolResult`. A failed task contains a JSON-RPC error. Tool failures expressed
+as `isError: true` remain completed results.
+
+The tested example in `test/ai/McpServer/TestUtils/McpExternalJobs.ts` maps a job
+API to MCP, including an input request and a response through `tasks/update`.
+It runs without a Workflow engine.
+
+### Ownership and protocol behavior
+
+`owner: "shared"` allows every client to access tasks. For isolation, supply an
+Effect resolving a trusted application principal. Client-provided names and
+metadata are not proof of identity. The resolver runs for creation, retrieval,
+updates, and cancellation. Execution implementations must enforce the resolved
+owner. The protocol routes opaque handles to the registered tool and backend,
+without interpreting backend-specific identifiers.
+
+The July client must declare the Tasks extension on each request. Earlier clients
+do not see task tools. Creation returns a handle only after the backend accepts
+the task and makes it readable. Repeated tool calls are separate creations, with
+no automatic request deduplication.
+
+The full `Task` union supports `working`, `input_required`, `completed`, `failed`,
+and `cancelled`. Input-required tasks expose `inputRequests`. `tasks/update`
+forwards keyed responses to the execution service. Workflow and memory layers
+issue no input requests, so they authorize updates and ignore response keys.
+
+Cancellation acknowledges intent. It does not guarantee termination, and later
+reads report the actual outcome. Each backend supplies `ttlMs`, optional
+`pollIntervalMs`, and optional `statusMessage`. Workflow and memory layers use
+`ttlMs: null`. Workflow history retention still determines handle availability.
+Notifications, automatic inline fallback, and task-specific deadlines remain
+outside this implementation.

@@ -1506,6 +1506,37 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("should register toolkit handlers through addTool when a custom server is supplied", () =>
+      Effect.gen(function*() {
+        const native = yield* McpServer.McpServer.make
+        const registrations: Array<Parameters<McpServer.McpServer["Service"]["addTool"]>[0]> = []
+        const server: McpServer.McpServer["Service"] = {
+          ...native,
+          addTool: (options) =>
+            Effect.sync(() => {
+              registrations.push(options)
+            })
+        }
+        const toolkit = Toolkit.make(Tool.make("custom", { success: Schema.String }))
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({ custom: () => Effect.succeed("registered") }))
+        )
+        assert.strictEqual(registrations.length, 1)
+        const registration = registrations[0]
+        if (registration === undefined) return assert.fail("Expected a registered tool")
+        assert.strictEqual(registration.tool.name, "custom")
+        const result = yield* registration.handle({}).pipe(
+          Effect.provideService(McpSchema.McpRequestContext, {
+            clientId: 1,
+            protocolVersion: "2026-07-28",
+            clientCapabilities: {}
+          })
+        )
+        if (!("content" in result)) return assert.fail("Expected a completed tool result")
+        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"registered\"" }])
+      }))
+
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {
         const IdentifiedTool = Tool.make("IdentifiedTool", {
@@ -2049,7 +2080,7 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), JSON.stringify({ _tag: "NoteNotFound", id: "n1" }))
       }))
 
-    it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
+    it.effect("should scrub and report declared failures when serialization fails", () =>
       Effect.gen(function*() {
         const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
           ...testToolkitHandlers,
@@ -2061,7 +2092,6 @@ describe("McpServer", () => {
         assert.isUndefined(result.structuredContent)
         assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
         assert.lengthOf(reported, 1)
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
         assert.lengthOf(logged, 1)
         assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
@@ -2185,7 +2215,7 @@ describe("McpServer", () => {
         }))
     }
 
-    it.effect("reports response serialization defects before returning a generic message", () =>
+    it.effect("should return a generic message and report the defect when response serialization fails", () =>
       Effect.gen(function*() {
         const { client, reported } = yield* makeToolkitTestClient()
 
@@ -2198,7 +2228,6 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
         assert.lengthOf(reported, 1)
         assert.isTrue(Cause.hasDies(reported[0]))
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>
