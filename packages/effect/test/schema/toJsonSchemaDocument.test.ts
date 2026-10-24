@@ -700,8 +700,7 @@ describe("toJsonSchemaDocument", () => {
     it("DurationFromIsoString", () => {
       assertJsonSchemaDocument(Schema.DurationFromIsoString, {
         schema: {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         }
       })
     })

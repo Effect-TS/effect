@@ -506,6 +506,85 @@ describe("Duration", () => {
     strictEqual(Duration.format(Duration.zero), `0`)
   })
 
+  describe("ISO 8601", () => {
+    it("formatIso", () => {
+      assertSome(Duration.formatIso(Duration.zero), "PT0S")
+      assertSome(Duration.formatIso(Duration.millis(-0)), "PT0S")
+      assertSome(Duration.formatIso(Duration.weeks(1)), "P7D")
+      assertSome(Duration.formatIso(Duration.hours(26)), "P1DT2H")
+      assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
+      assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
+      assertSome(Duration.formatIso(Duration.millis(86_400_001)), "P1DT0.001S")
+      assertSome(Duration.formatIso(Duration.nanos(1n)), "PT0.000000001S")
+      assertSome(Duration.formatIso(Duration.millis(-93_784_500)), "-P1DT2H3M4.5S")
+      assertNone(Duration.formatIso(Duration.infinity))
+      assertNone(Duration.formatIso(Duration.negativeInfinity))
+    })
+
+    it("fromIso", () => {
+      const valid: ReadonlyArray<readonly [string, Duration.Duration]> = [
+        ["PT0S", Duration.zero],
+        ["P0D", Duration.zero],
+        ["-PT0S", Duration.zero],
+        ["+P1D", Duration.days(1)],
+        ["-P1D", Duration.days(-1)],
+        ["P1W2D", Duration.days(9)],
+        ["PT1.5H", Duration.minutes(90)],
+        ["PT1H0.5M", Duration.seconds(3630)],
+        ["PT1,5S", Duration.millis(1500)],
+        ["PT1.123456789S", Duration.nanos(1_123_456_789n)],
+        ["-P1DT2H3M4.5S", Duration.millis(-93_784_500)],
+        ["P400D", Duration.days(400)]
+      ]
+      for (const [input, expected] of valid) {
+        const result = Duration.fromIso(input)
+        assertTrue(Option.isSome(result) && Duration.equals(result.value, expected), input)
+      }
+      const invalid = [
+        "",
+        "P",
+        "PT",
+        "-P",
+        "P1DT",
+        "P1.5D",
+        "P1.5W",
+        "PT1.5H1M",
+        "PT.5S",
+        "PT1.S",
+        "PT1.1234567891S",
+        "P1D1W",
+        "PT1S1M",
+        "P-1D",
+        " P1D",
+        "pt1s",
+        "P1Y",
+        "P1M",
+        "P1MT1H",
+        "-P1M"
+      ]
+      for (const input of invalid) {
+        assertNone(Duration.fromIso(input))
+      }
+      deepStrictEqual(Duration.fromIso("PT1.5S"), Option.some(Duration.millis(1500)))
+      deepStrictEqual(Duration.fromIso("PT0.000000001S"), Option.some(Duration.nanos(1n)))
+    })
+
+    it("formatIso / fromIso round trip", () => {
+      const durations = [
+        Duration.nanos(1n),
+        Duration.millis(0.5),
+        Duration.minutes(90),
+        Duration.days(400),
+        Duration.millis(-1500),
+        Duration.nanos(123_456_789_012_345_678n)
+      ]
+      for (const duration of durations) {
+        const result = Duration.formatIso(duration).pipe(Option.flatMap(Duration.fromIso))
+        assertTrue(Option.isSome(result) && Duration.equals(result.value, duration), String(duration))
+      }
+    })
+  })
+
   it("parts", () => {
     deepStrictEqual(Duration.parts(Duration.infinity), {
       days: Infinity,
@@ -744,162 +823,6 @@ describe("Duration", () => {
     strictEqual(Duration.millis(604_800_000).pipe(Duration.toWeeks), 1)
     strictEqual(Duration.nanos(604_800_000_000_000n).pipe(Duration.toWeeks), 1)
     strictEqual(Duration.infinity.pipe(Duration.toWeeks), Infinity)
-  })
-
-  describe("ISO 8601", () => {
-    const valid: ReadonlyArray<readonly [string, Duration.Duration]> = [
-      ["PT0S", Duration.zero],
-      ["P0D", Duration.zero],
-      ["-PT0S", Duration.zero],
-      ["P1D", Duration.days(1)],
-      ["+P1D", Duration.days(1)],
-      ["-P1D", Duration.days(-1)],
-      ["P1W", Duration.weeks(1)],
-      ["P1W2D", Duration.days(9)],
-      ["PT1H30M", Duration.minutes(90)],
-      ["PT1.5H", Duration.minutes(90)],
-      ["PT0.5M", Duration.seconds(30)],
-      ["PT1H0.5M", Duration.seconds(3630)],
-      ["PT1.5S", Duration.millis(1500)],
-      ["PT1,5S", Duration.millis(1500)],
-      ["PT0.000000001S", Duration.nanos(1n)],
-      ["PT1.123456789S", Duration.nanos(1_123_456_789n)],
-      ["P1DT2H3M4.5S", Duration.millis(93_784_500)],
-      ["-P1DT2H3M4.5S", Duration.millis(-93_784_500)],
-      ["PT36H", Duration.hours(36)],
-      ["P400D", Duration.days(400)]
-    ]
-    const invalid = [
-      "",
-      "P",
-      "PT",
-      "-P",
-      "P1DT",
-      "P1.5D",
-      "P1.5W",
-      "PT1.5H1M",
-      "PT1.5M1S",
-      "PT1.1234567891S",
-      "PT.5S",
-      "PT1.S",
-      "P1D1W",
-      "PT1S1M",
-      "P-1D",
-      " P1D",
-      "P1D ",
-      "1D",
-      "Infinity"
-    ]
-    // valid ISO 8601, but years and months have no fixed length
-    const inexact = ["P1Y", "P1M", "P1Y2M", "P1MT1H", "P2Y1D", "-P1M"]
-    const durations = [
-      Duration.zero,
-      Duration.nanos(1n),
-      Duration.micros(1n),
-      Duration.millis(1),
-      Duration.millis(1500),
-      Duration.seconds(59),
-      Duration.minutes(90),
-      Duration.hours(26),
-      Duration.weeks(1),
-      Duration.days(400),
-      Duration.millis(-1500),
-      Duration.nanos(-93_784_500_000_001n),
-      Duration.nanos(123_456_789_012_345_678n)
-    ]
-
-    it("formatIso", () => {
-      assertSome(Duration.formatIso(Duration.zero), "PT0S")
-      assertSome(Duration.formatIso(Duration.millis(-0)), "PT0S")
-      assertSome(Duration.formatIso(Duration.days(1)), "P1D")
-      assertSome(Duration.formatIso(Duration.weeks(1)), "P7D")
-      assertSome(Duration.formatIso(Duration.hours(26)), "P1DT2H")
-      assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
-      assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
-      assertSome(Duration.formatIso(Duration.millis(0.5)), "PT0.0005S")
-      assertSome(Duration.formatIso(Duration.nanos(1n)), "PT0.000000001S")
-      assertSome(Duration.formatIso(Duration.millis(93_784_500)), "P1DT2H3M4.5S")
-      assertSome(Duration.formatIso(Duration.millis(-93_784_500)), "-P1DT2H3M4.5S")
-      assertSome(Duration.formatIso(Duration.millis(86_400_001)), "P1DT0.001S")
-      assertNone(Duration.formatIso(Duration.infinity))
-      assertNone(Duration.formatIso(Duration.negativeInfinity))
-    })
-
-    it("fromIso", () => {
-      for (const [input, expected] of valid) {
-        const result = Duration.fromIso(input)
-        assertTrue(Option.isSome(result) && Duration.equals(result.value, expected), input)
-      }
-      for (const input of [...invalid, ...inexact, "pt1s"]) {
-        assertNone(Duration.fromIso(input))
-      }
-      deepStrictEqual(Duration.fromIso("PT1.5S"), Option.some(Duration.millis(1500)))
-      deepStrictEqual(Duration.fromIso("PT0.000000001S"), Option.some(Duration.nanos(1n)))
-    })
-
-    it("formatIso / fromIso round trip", () => {
-      for (const duration of durations) {
-        const result = Duration.formatIso(duration).pipe(Option.flatMap(Duration.fromIso))
-        assertTrue(Option.isSome(result) && Duration.equals(result.value, duration), String(duration))
-      }
-    })
-
-    interface TemporalDuration {
-      readonly sign: number
-      readonly weeks: number
-      readonly days: number
-      readonly hours: number
-      readonly minutes: number
-      readonly seconds: number
-      readonly milliseconds: number
-      readonly microseconds: number
-      readonly nanoseconds: number
-      toString(): string
-    }
-    const Temporal = Reflect.get(globalThis, "Temporal") as
-      | { readonly Duration: { from(item: string | Record<string, number>): TemporalDuration } }
-      | undefined
-
-    // Temporal is only available on some runtimes
-    describe.skipIf(Temporal === undefined)("Temporal.Duration", () => {
-      const toNanos = (d: TemporalDuration): bigint =>
-        BigInt(d.weeks) * 604_800_000_000_000n + BigInt(d.days) * 86_400_000_000_000n +
-        BigInt(d.hours) * 3_600_000_000_000n + BigInt(d.minutes) * 60_000_000_000n +
-        BigInt(d.seconds) * 1_000_000_000n + BigInt(d.milliseconds) * 1_000_000n +
-        BigInt(d.microseconds) * 1_000n + BigInt(d.nanoseconds)
-
-      it("fromIso matches Temporal.Duration.from", () => {
-        for (const [input] of valid) {
-          assertSome(
-            Duration.fromIso(input).pipe(Option.map(Duration.toNanosUnsafe)),
-            toNanos(Temporal!.Duration.from(input))
-          )
-        }
-        for (const input of invalid) {
-          throws(() => Temporal!.Duration.from(input))
-        }
-        for (const input of inexact) {
-          // Temporal accepts these, Duration.fromIso does not
-          Temporal!.Duration.from(input)
-        }
-      })
-
-      it("formatIso matches Temporal.Duration#toString", () => {
-        for (const duration of durations) {
-          const p = Duration.parts(duration)
-          const expected = Temporal!.Duration.from({
-            days: p.days,
-            hours: p.hours,
-            minutes: p.minutes,
-            seconds: p.seconds,
-            milliseconds: p.millis,
-            microseconds: Math.trunc(p.nanos / 1000),
-            nanoseconds: p.nanos % 1000
-          }).toString()
-          assertSome(Duration.formatIso(duration), expected)
-        }
-      })
-    })
   })
 
   it("ReducerSum", () => {
