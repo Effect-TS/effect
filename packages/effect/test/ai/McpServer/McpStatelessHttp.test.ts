@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -58,18 +59,15 @@ const serverLayer = (
   allowSessionTermination = false,
   registration: Layer.Layer<never, never, McpServer.McpServer> = Layer.empty
 ) =>
-  Layer.merge(Layer.effectDiscard(McpServer.registerToolkit(toolkit)), registration).pipe(
-    Layer.provide(McpServer.McpServer.layer),
-    Layer.provide(handlers),
-    Layer.provide(McpServer.layerHttp({
-      name: "stateless-test",
-      version: "1",
-      path: "/mcp",
-      protocols,
-      sessionMode,
-      allowSessionTermination
-    }))
-  )
+  McpServer.layerHttp({
+    name: "stateless-test",
+    version: "1",
+    path: "/mcp",
+    protocols,
+    sessionMode,
+    allowSessionTermination,
+    registrations: Layer.merge(McpServer.toolkit(toolkit), registration).pipe(Layer.provide(handlers))
+  })
 
 const initialize = (protocolVersion: string) => ({
   jsonrpc: "2.0",
@@ -176,6 +174,45 @@ describe("legacy stateless Streamable HTTP", () => {
           const response = yield* server.post(inspect(version), { "Mcp-Protocol-Version": version })
           assert.deepStrictEqual(yield* readMcpHttpResponse(response), expectedResult(version, version))
         }), { concurrency: "unbounded" })
+    }))
+
+  it.effect("resolves HTTP middleware services and visibility independently for every stateless POST", () =>
+    Effect.gen(function*() {
+      class CurrentUser extends Context.Service<CurrentUser, string>()("test/stateless/CurrentUser") {}
+      const HttpAuth = HttpRouter.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.flatMap(
+          HttpServerRequest.HttpServerRequest,
+          (request) => Effect.provideService(effect, CurrentUser, request.headers["x-user"] ?? "guest")
+        )
+      )
+      const identity = Toolkit.make(Tool.make("identity", { success: Schema.String, dependencies: [CurrentUser] }))
+      const registrations = McpServer.toolkit(identity).pipe(
+        Layer.provide(McpServer.visibility(() => Effect.map(CurrentUser, (user) => user === "admin")).layer),
+        Layer.provide(identity.toLayer({ identity: () => Effect.map(CurrentUser, (user) => user) }))
+      )
+      const server = yield* makeHttpHarness(
+        McpServer.layerHttp({
+          name: "stateless-auth",
+          version: "1",
+          path: "/mcp",
+          protocols: [McpProtocol.v2025_11_25],
+          sessionMode: "stateless",
+          registrations
+        }).pipe(Layer.provide(HttpAuth.layer))
+      )
+      const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+      const listed = yield* server.post({ jsonrpc: "2.0", id: 1, method: "tools/list" }, headers)
+      assert.deepStrictEqual(((yield* readMcpHttpResponse(listed)) as any).result.tools, [])
+      const request = { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "identity" } }
+      const allowed = yield* server.post(request, { ...headers, "x-user": "admin" })
+      assert.deepStrictEqual(((yield* readMcpHttpResponse(allowed)) as any).result.content, [
+        { type: "text", text: "admin" }
+      ])
+      const denied = yield* server.post(request, headers)
+      assert.deepStrictEqual(((yield* readMcpHttpResponse(denied)) as any).error, {
+        code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+        message: "Tool 'identity' not found"
+      })
     }))
 
   it.effect("rejects logging changes after another request has created a batch binding", () =>

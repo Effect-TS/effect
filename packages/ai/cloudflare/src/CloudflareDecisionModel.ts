@@ -8,8 +8,8 @@ import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
-import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
+import type * as Schema from "effect/Schema"
 import { CloudflareClient } from "./CloudflareClient.ts"
 import type * as CloudflareSchema from "./CloudflareSchema.ts"
 
@@ -39,8 +39,10 @@ export const model = (
  *
  * **Details**
  *
- * Byte arrays and base64 strings are sent as base64 with their media type.
- * `data:` URLs are sent unchanged. The API enforces image limits.
+ * Base64 data is sent with its media type, and `data:` URLs are sent
+ * unchanged. Clef shows images before the state, so with images the state is
+ * sent as text that first lists each image's reference in order. The API
+ * enforces image limits.
  *
  * **Gotchas**
  *
@@ -78,7 +80,7 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
+        if (images?.some(({ image }) => image.data instanceof URL && image.data.protocol !== "data:")) {
           return yield* Effect.fail(AiError.make({
             module: "CloudflareDecisionModel",
             method: "decide",
@@ -89,9 +91,9 @@ export const make = Effect.fnUntraced(
         }
         const response = yield* client.createDecisions({
           model: options.model,
-          state,
+          state: images === undefined ? state : labelImages(state, images),
           questions,
-          ...(images === undefined ? undefined : { images: images.map(encodeImage) })
+          ...(images === undefined ? undefined : { images: images.map(({ image }) => encodeImage(image)) })
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
@@ -129,11 +131,15 @@ export const make = Effect.fnUntraced(
   }
 )
 
-const encodeImage = (image: DecisionModel.Image): typeof CloudflareSchema.Image.Encoded =>
-  image.data instanceof URL ? image.data.href : {
-    content_type: image.mediaType,
-    base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
-  }
+const encodeImage = (image: DecisionModel.ProviderImage["image"]): typeof CloudflareSchema.Image.Encoded =>
+  image.data instanceof URL ? image.data.href : { content_type: image.mediaType, base64: image.data }
+
+const labelImages = (state: Schema.Json, images: ReadonlyArray<DecisionModel.ProviderImage>): string =>
+  [
+    ...images.map(({ reference }, index) => `Image ${index + 1}: ${reference}`),
+    "",
+    typeof state === "string" ? state : JSON.stringify(state)
+  ].join("\n")
 
 /**
  * Provides DecisionModel using an existing CloudflareClient.

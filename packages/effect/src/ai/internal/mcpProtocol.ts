@@ -96,6 +96,18 @@ export const invocationFromClient = (
 })
 
 /**
+ * Runs a core list operation for the legacy client of the current request.
+ *
+ * @internal
+ */
+export const listForClient = <A>(
+  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
+): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
+  PublicMcpSchema.McpServerClient.use((request) =>
+    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+  )
+
+/**
  * @internal
  */
 export const invocationFromRequestContext = (
@@ -212,6 +224,9 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
   static fromTool(
     error: McpCore.ToolError | McpCore.UnsupportedByProtocol
   ): ProtocolError {
+    if (error._tag === "RequestRejected") {
+      return new ProtocolError({ code: error.code, message: error.message, data: error.data })
+    }
     const message = Match.value(error).pipe(
       Match.tag("ToolNotFound", (error) => `Tool '${error.name}' not found`),
       Match.tag(
