@@ -1,8 +1,11 @@
 import { assert, it } from "@effect/vitest"
+import { CryptoError, Mac } from "effect/crypto"
 import * as Effect from "effect/Effect"
-import { Jwk, Jwks, Jws } from "effect/jose"
+import { JoseError, Jwk, Jwks, Jws } from "effect/jose"
+import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as jose from "jose"
+import * as NodeUtil from "node:util"
 import { assertReason, base64url, es256PublicJwk, layer, rfc7515, rs256PublicJwk, text, utf8 } from "./utils.ts"
 
 it.effect("verifies the RFC 7515 Appendix A compact serializations", () =>
@@ -115,4 +118,35 @@ it.effect("resolves the verification key from the Jwks service by algorithm and 
       yield* Jws.verifyWithKeySet(symmetric, { algorithms: ["ES256"] }).pipe(Effect.provide(keySet), Effect.flip),
       "AlgorithmNotAllowed"
     )
+  }).pipe(Effect.provide(layer)))
+
+it.effect("never exposes crypto backend diagnostics", () =>
+  Effect.gen(function*() {
+    const marker = "backend-secret-marker"
+    const failure = Effect.fail(
+      new CryptoError.CryptoError({
+        module: "Mac",
+        method: "verify",
+        reason: new CryptoError.InvalidArgument({ description: marker, cause: new Error(marker) })
+      })
+    )
+    const failing = Layer.succeed(
+      Mac.Mac,
+      Mac.Mac.of({
+        generateKey: () => failure,
+        sign: () => failure,
+        verify: () => failure
+      })
+    )
+    const key = yield* Jwk.importSecret(Redacted.make(rfc7515.hs256.jwk), "HS256")
+
+    const operations: Array<Effect.Effect<unknown, JoseError.JoseError, Jws.Requirements>> = [
+      Jws.verify(rfc7515.hs256.token, key),
+      Jws.sign(utf8("payload"), key)
+    ]
+    for (const operation of operations) {
+      const error = yield* operation.pipe(Effect.provide(failing), Effect.flip)
+      assert.isTrue(JoseError.isJoseError(error))
+      assert.notInclude(NodeUtil.inspect(error, { depth: Infinity }), marker)
+    }
   }).pipe(Effect.provide(layer)))
