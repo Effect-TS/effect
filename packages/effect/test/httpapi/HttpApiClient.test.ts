@@ -1102,8 +1102,13 @@ describe("HttpApiClient", () => {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.post("join", "/join", {
-            query: { token: Schema.RedactedFromValue(Schema.String), page: Schema.String },
-            headers: { "x-token": Schema.RedactedFromValue(Schema.String), "x-page": Schema.String }
+            query: Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), page: Schema.String }).pipe(
+              Schema.encodeKeys({ token: "auth_token" })
+            ),
+            headers: Schema.Struct({ "x-token": Schema.RedactedFromValue(Schema.String), "x-page": Schema.String })
+              .pipe(
+                Schema.encodeKeys({ "x-token": "x-auth-token" })
+              )
           })
         )
       )
@@ -1135,12 +1140,12 @@ describe("HttpApiClient", () => {
       )
 
       assert(clientSpan !== undefined)
-      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
-      strictEqual(clientSpan.attributes.get("url.query"), "token=REDACTED&page=1")
-      strictEqual(clientSpan.attributes.get("http.request.header.x-token"), "<redacted>")
+      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?auth_token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("url.query"), "auth_token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("http.request.header.x-auth-token"), "<redacted>")
       strictEqual(clientSpan.attributes.get("http.request.header.x-page"), "1")
-      strictEqual(sent?.url, "http://test/join?token=s3cret&page=1")
-      strictEqual(sent?.headers["x-token"], "s3cret")
+      strictEqual(sent?.url, "http://test/join?auth_token=s3cret&page=1")
+      strictEqual(sent?.headers["x-auth-token"], "s3cret")
     }))
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>

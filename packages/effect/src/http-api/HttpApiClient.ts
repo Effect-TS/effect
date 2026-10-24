@@ -18,6 +18,7 @@ import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
@@ -33,6 +34,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
@@ -865,17 +867,47 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 // ----------------------------------------------------------------------------
 
+// Names are collected on the decoded side, where `Redacted` is visible, then
+// mapped to encoded keys by encoding a marker through the key transformations.
 const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> => {
   if (schema === undefined) return []
   const ast = SchemaAST.toType(schema.ast)
   if (!SchemaAST.isObjects(ast)) return []
+  const marker = {}
+  const probe: Record<PropertyKey, unknown> = {}
   const names: Array<string> = []
   for (const ps of ast.propertySignatures) {
-    if (typeof ps.name === "string" && containsRedacted(ps.type)) {
+    const redacted = containsRedacted(ps.type)
+    InternalRecord.assignProperty(probe, ps.name, redacted ? marker : null)
+    if (redacted && typeof ps.name === "string") {
       names.push(ps.name)
     }
   }
-  return names
+  if (names.length === 0) return names
+  const keys = toKeysAST(schema.ast)
+  if (keys === undefined) return names
+  const exit = SchemaParser.encodeUnknownExit(Schema.make<Schema.Codec<unknown>>(keys))(probe)
+  if (Exit.isFailure(exit)) return names
+  const encoded = exit.value as Record<string, unknown>
+  return Object.keys(encoded).filter((key) => encoded[key] === marker)
+}
+
+// Keeps the property names and key transformations of a struct, ignoring property types.
+const toKeysAST = (ast: SchemaAST.AST): SchemaAST.Objects | undefined => {
+  if (!SchemaAST.isObjects(ast)) return undefined
+  const links: Array<SchemaAST.Link> = []
+  for (const link of ast.encoding ?? []) {
+    const to = toKeysAST(link.to)
+    if (to === undefined) return undefined
+    links.push(new SchemaAST.Link(to, link.transformation))
+  }
+  return new SchemaAST.Objects(
+    ast.propertySignatures.map((ps) => new SchemaAST.PropertySignature(ps.name, SchemaAST.unknown)),
+    [],
+    undefined,
+    undefined,
+    Arr.isArrayNonEmpty(links) ? links : undefined
+  )
 }
 
 const containsRedacted = (ast: SchemaAST.AST): boolean => {
