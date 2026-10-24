@@ -2013,7 +2013,7 @@ export const followRedirects: {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
               }
               // Request the Location as sent: setUrl with a URL object would re-encode its query
-              const hash = url.hash === "" ? nextRequest.hash : Option.some(url.hash.slice(1))
+              const hash = url.hash === "" ? Option.none() : Option.some(url.hash.slice(1))
               url.hash = ""
               nextRequest = HttpClientRequest.makeWith(
                 nextRequest.method,
