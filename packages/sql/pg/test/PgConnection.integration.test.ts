@@ -57,10 +57,12 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       for (const socket of sockets) socket.pause()
 
       const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
-      const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("10 seconds"))
-      for (const socket of sockets) socket.destroy()
-      assert.isTrue(Option.isSome(closed), "listener scope did not close within 10 seconds")
-    }).pipe(TestClock.withLive), 30_000)
+      yield* Effect.gen(function*() {
+        const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("10 seconds"))
+        assert.isTrue(Option.isSome(closed), "listener scope did not close within 10 seconds")
+        assert.isTrue(Exit.isFailure(yield* Effect.exit(connection.query("SELECT 1"))))
+      }).pipe(Effect.ensuring(Effect.sync(() => sockets.forEach((socket) => socket.destroy()))))
+    }).pipe(TestClock.withLive), { timeout: 30000 })
 
   it.effect("keeps a busy pinned session when a listener closes", () =>
     Effect.gen(function*() {
@@ -76,7 +78,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       yield* Fiber.join(slow)
       const result = yield* pinned.query("SELECT 1 AS one")
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
-    }).pipe(TestClock.withLive), 30_000)
+    }).pipe(TestClock.withLive), { timeout: 30000 })
 
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
