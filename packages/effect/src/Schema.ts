@@ -11554,6 +11554,82 @@ function timeZoneArbitrarySchema(): Codec<number | string> {
   ])
 }
 /**
+ * Schema for exact signed Unix epoch nanoseconds with the `DateTime.UnixNano` brand.
+ *
+ * **Details**
+ *
+ * Accepts every `bigint` without a date-range restriction. Strings and numbers
+ * fail decoding with `SchemaError`.
+ *
+ * **Example** (Decoding exact nanoseconds)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, Schema } from "effect"
+ *
+ * Result.getOrThrow(Schema.decodeUnknownResult(Schema.UnixNano)(123n)) // => 123n
+ * ```
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.7
+ */
+export const UnixNano = BigInt.pipe(brand("UnixNano"))
+
+/**
+ * Schema for a Unix nanosecond conversion failure's reason, direction, and unit.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.7
+ */
+export const UnixNanoConversionReason = Struct({
+  reason: Literals(["InvalidInput", "OutOfRange", "PrecisionLoss"]),
+  direction: Literals(["toUnixNano", "fromUnixNano"]),
+  unit: Literals(["nanoseconds", "seconds", "milliseconds", "Date", "DateTime"])
+})
+
+/**
+ * Type-level representation of {@link UnixNanoConversionError}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export interface UnixNanoConversionError extends
+  decodeTo<
+    instanceOf<DateTime.UnixNanoConversionError>,
+    TaggedStruct<"ConversionError", typeof UnixNanoConversionReason.fields>
+  >
+{
+  readonly "Rebuild": UnixNanoConversionError
+}
+
+/**
+ * Schema that decodes tagged fields into a `DateTime.UnixNanoConversionError`.
+ *
+ * **Details**
+ *
+ * Encoding returns the error's tag, reason, direction, and unit. Input objects
+ * and stack traces are not included.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.7
+ */
+export const UnixNanoConversionError: UnixNanoConversionError = TaggedStruct(
+  "ConversionError",
+  UnixNanoConversionReason.fields
+).pipe(
+  decodeTo(
+    instanceOf(DateTime.UnixNanoConversionError),
+    SchemaTransformation.transform({
+      decode: (fields) => new DateTime.UnixNanoConversionError(fields),
+      encode: (error) => ({ _tag: error._tag, reason: error.reason, direction: error.direction, unit: error.unit })
+    })
+  )
+)
+
+/**
  * Type-level representation of {@link DateTimeUtc}.
  *
  * @stability stable
