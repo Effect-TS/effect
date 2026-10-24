@@ -32,6 +32,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
+import { collectGarbage } from "./utils/gc.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
 
@@ -4620,6 +4621,25 @@ describe("Effect", () => {
   })
 
   describe("Effect.fn", () => {
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "does not retain arguments in the stack frame of forked fibers",
+      () =>
+        Effect.gen(function*() {
+          const start = Effect.fn("start")(function*(_input: object) {
+            yield* Effect.forkChild(Effect.never)
+          })
+          let reference: WeakRef<object> | undefined
+          const makeInput = () => {
+            const input = {}
+            reference = new WeakRef(input)
+            return input
+          }
+          yield* start(makeInput())
+          yield* collectGarbage
+          assert.isUndefined(reference!.deref())
+        })
+    )
+
     it.effect("should support pipeable arguments", () => {
       const fn = Effect.fn(function*(s: string) {
         return s.length
