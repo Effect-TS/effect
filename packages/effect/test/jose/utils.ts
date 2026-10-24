@@ -2,9 +2,10 @@ import { assert } from "@effect/vitest"
 import { Aead, Mac, SecureRandom, Signature } from "effect/crypto"
 import * as Base64Url from "effect/encoding/Base64Url"
 import type { Jwk } from "effect/jose"
-import type * as JoseError from "effect/jose/JoseError"
+import * as JoseError from "effect/jose/JoseError"
 import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
+import type * as Schema from "effect/Schema"
 
 export const layer = Layer.mergeAll(
   Aead.layerWebCrypto,
@@ -16,9 +17,14 @@ export const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text)
 export const text = (bytes: Uint8Array): string => new TextDecoder().decode(bytes)
 export const base64url = (encoded: string): Uint8Array => Result.getOrThrow(Base64Url.decode(encoded))
 
-export const assertReason = (error: JoseError.JoseError, reason: JoseError.JoseErrorReason["_tag"]) => {
-  assert.strictEqual(error._tag, "JoseError")
-  assert.strictEqual(error.reason._tag, reason)
+export function assertReason<Tag extends JoseError.JoseErrorReason["_tag"]>(
+  error: JoseError.JoseError | Schema.SchemaError,
+  reason: Tag
+): asserts error is JoseError.JoseError & {
+  readonly reason: Extract<JoseError.JoseErrorReason, { readonly _tag: Tag }>
+} {
+  assert.isTrue(JoseError.isJoseError(error))
+  assert.strictEqual((error as JoseError.JoseError).reason._tag, reason)
 }
 
 // RFC 7515, Appendix A. Every example signs the same payload.

@@ -48,7 +48,7 @@ it.effect("interoperates with jose for every supported algorithm and carries the
         const pair = yield* Jwk.generateKeyPair({ algorithm, kid: "k1" })
         signingKey = yield* Jwk.importPrivate(pair.privateKey, algorithm)
         verificationKey = yield* Jwk.importPublic(pair.publicKey, algorithm)
-        theirKey = yield* Effect.promise(() => jose.importJWK(pair.publicKey, algorithm))
+        theirKey = yield* Effect.promise(() => jose.importJWK(pair.publicKey as unknown as jose.JWK, algorithm))
       }
 
       const ours = yield* Jws.sign(utf8("hello"), signingKey, { typ: "JOSE" })
