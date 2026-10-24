@@ -9,6 +9,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Option,
   Redacted,
   Ref,
   Schedule,
@@ -744,6 +745,20 @@ Missing key
         const redirected = (yield* Ref.get(requests))[2]
         assert.strictEqual(redirected.url, "https://origin.test/next/destination")
         assert.strictEqual(redirected.headers.authorization, "Bearer secret")
+      }))
+
+    it.effect("follows the location URL as sent", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(
+          302,
+          "https://origin.test/dest?q=caf%E9&sig=a%20b&flag#part"
+        )
+        yield* client.get("https://origin.test/start", { urlParams: { x: "1" } })
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.url, "https://origin.test/dest?q=caf%E9&sig=a%20b&flag")
+        assert.strictEqual(UrlParams.toString(redirected.urlParams), "")
+        assert.deepStrictEqual(redirected.hash, Option.some("part"))
       }))
 
     it.effect("returns the redirect response when the location is invalid", () =>
