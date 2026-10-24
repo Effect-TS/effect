@@ -118,6 +118,23 @@ describe("SchemaJITCompiler", () => {
     strictEqual(reads, 1)
   })
 
+  it("treats declared fields named after Object.prototype members as absent from a plain object", () => {
+    const schema = Schema.Struct({
+      constructor: Schema.optionalKey(Schema.String),
+      toString: Schema.optional(Schema.String),
+      valueOf: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default")))
+    })
+
+    deepStrictEqual<unknown>(SchemaParser.decodeUnknownSync(schema)({}), { valueOf: "default" })
+    strictEqual(SchemaParser.is(Schema.Struct({ constructor: Schema.optionalKey(Schema.String) }))({}), true)
+  })
+
+  it("reports a missing required Object.prototype field", () => {
+    throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.String }))({}), (error) => {
+      assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
+    })
+  })
+
   it("does not confuse a valid value with the invalid sentinel", () => {
     const schemas = [
       Schema.Union([Schema.Symbol, Schema.String]),

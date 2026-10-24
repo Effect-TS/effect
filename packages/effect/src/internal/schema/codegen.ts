@@ -185,7 +185,7 @@ const propertyKey = (emitter: Emitter, key: PropertyKey, reference: string): str
   typeof key === "string" ? JSON.stringify(key) : constant(emitter, key, reference)
 
 const propertyPresence = (input: string, key: string, name: PropertyKey): string =>
-  name === "__proto__" ? `Object.hasOwn(${input},${key})` : `${key} in ${input}`
+  SchemaAST.requiresOwnProperty(name) ? `Object.hasOwn(${input},${key})` : `${key} in ${input}`
 
 const assignProperty = (output: string, key: string, value: string, name: PropertyKey): string =>
   name === "__proto__"
@@ -216,7 +216,7 @@ const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
 }
 
 const propertyNeedsPresenceCheck = (name: PropertyKey, ast: SchemaAST.AST): boolean =>
-  name === "__proto__" || needsPresenceCheck(ast)
+  SchemaAST.requiresOwnProperty(name) || needsPresenceCheck(ast)
 
 /** @internal */
 export const shouldCompileParser = (ast: SchemaAST.AST, local = false): boolean => {
@@ -867,7 +867,7 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   ]
   ast.propertySignatures.forEach((property, index) => {
     const key = typeof property.name === "symbol" ? `properties[${index}].name` : JSON.stringify(String(property.name))
-    const present = property.name === "__proto__" ? `Object.hasOwn(i,${key})` : `${key} in i`
+    const present = propertyPresence("i", key, property.name)
     const handle = `if(r===R.sameExit){if(h${index}){${assignProperty("out", key, `v${index}`, property.name)}}}else{` +
       `if(!R.effectIsExit(r))return resume(state,${index},r);` +
       `if(r._tag==="Success"&&(value=r[R.args])!==R.missing){${assignProperty("out", key, "value", property.name)}}` +
