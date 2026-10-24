@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
+import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
 import { PersistedQueue, Persistence } from "effect/persistence"
@@ -12,6 +13,8 @@ it.layer(MysqlContainer.layerClient, { timeout: "90 seconds" })("Persistence", (
   PersistedCacheTest.suiteWith("sql-mysql2-multi", Persistence.layerSqlMultiTable, it)
 
   PersistedQueueTest.suiteWith("sql-mysql2", PersistedQueue.layerStoreSql(), it)
+
+  PersistedQueueSqlTest.suiteWith(it)
 
   // elements are stored in a MEDIUMTEXT column, so payloads must survive the
   // 64KB TEXT limit

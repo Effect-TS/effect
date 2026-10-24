@@ -6,7 +6,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import { vi } from "vitest"
+import { TestClock } from "effect/testing"
 const systemOneRequest = {
   state: "My card was charged twice.",
   model: "jev-latest",
@@ -259,18 +259,14 @@ describe("TypeSafeClient", () => {
       ) {
         it.effect("honors a " + name + " HTTP-date Retry-After", () =>
           Effect.gen(function*() {
-            const now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-18T12:00:00Z"))
-            try {
-              const client = yield* TypeSafeClient.TypeSafeClient
-              const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
+            yield* TestClock.setTime(Date.parse("2026-09-18T12:00:00Z"))
+            const client = yield* TypeSafeClient.TypeSafeClient
+            const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
 
-              assert.strictEqual(result.reason._tag, "RateLimitError")
-              if (result.reason._tag === "RateLimitError") {
-                assert.isDefined(result.reason.retryAfter)
-                assert.strictEqual(Duration.toMillis(result.reason.retryAfter!), expected)
-              }
-            } finally {
-              now.mockRestore()
+            assert.strictEqual(result.reason._tag, "RateLimitError")
+            if (result.reason._tag === "RateLimitError") {
+              assert.isDefined(result.reason.retryAfter)
+              assert.strictEqual(Duration.toMillis(result.reason.retryAfter!), expected)
             }
           }).pipe(Effect.provide(makeTestLayer(undefined, {
             status: 429,
@@ -435,14 +431,14 @@ describe("TypeSafeClient", () => {
         body: { message: "Internal error" }
       }))))
 
-    it.effect("maps a malformed success body to InvalidOutputError reason", () =>
+    it.effect("maps a malformed success body to a non-retryable InvalidResponseError reason", () =>
       Effect.gen(function*() {
         const client = yield* TypeSafeClient.TypeSafeClient
         const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
 
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "systemOne")
-        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         status: 200,
         body: { model: "jev-latest", answers: { urgent: { type: "noul" } } }
@@ -557,12 +553,11 @@ const makeResponse = (
     })
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})

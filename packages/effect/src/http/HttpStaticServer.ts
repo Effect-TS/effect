@@ -10,11 +10,15 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
 import type { PlatformError } from "../PlatformError.ts"
+import * as Result from "../Result.ts"
+import * as Headers from "./Headers.ts"
 import * as HttpPlatform from "./HttpPlatform.ts"
 import * as HttpRouter from "./HttpRouter.ts"
 import * as HttpServerError from "./HttpServerError.ts"
@@ -206,6 +210,20 @@ export const make: (options: {
           return serveFile(request, resolvedPath, info.size)
         }
         if (info.type === "Directory" && index !== undefined) {
+          let originalUrl = request.originalUrl
+          if (!originalUrl.startsWith("/")) {
+            const url = new URL(originalUrl)
+            originalUrl = url.pathname + url.search
+          }
+          const pathname = stripQueryString(originalUrl)
+          if (!pathname.endsWith("/")) {
+            // Keep the redirect local even when the path starts with multiple separators.
+            const location = pathname.replace(/^\/+/, "/").replace(/\\/g, "%5C")
+            return Effect.succeed(HttpServerResponse.redirect(
+              `${location}/${originalUrl.slice(pathname.length)}`,
+              { status: 301 }
+            ))
+          }
           return serveFile(request, path.join(resolvedPath, index))
         }
         return Effect.fail(toRouteNotFoundError(request))
@@ -398,16 +416,9 @@ const resolveFilePath = (path: Path.Path, root: string, url: string): string | u
   if (decodedPath.includes("\u0000")) {
     return undefined
   }
-  const normalizedPath = path.normalize(decodedPath.startsWith("/") ? decodedPath.slice(1) : decodedPath)
-  if (normalizedPath === ".." || normalizedPath.startsWith(`..${path.sep}`)) {
-    return undefined
-  }
-  const resolvedPath = path.join(root, normalizedPath)
-  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`
-  if (resolvedPath !== root && !resolvedPath.startsWith(rootPrefix)) {
-    return undefined
-  }
-  return resolvedPath
+  // every leading separator is part of the URL, not a filesystem root
+  const relativePath = decodedPath.replace(path.sep === "\\" ? /^[/\\]+/ : /^\/+/, "")
+  return Option.getOrUndefined(path.resolveWithin(root, relativePath))
 }
 
 const toRouteNotFoundError = (request: HttpServerRequest.HttpServerRequest) =>
@@ -452,19 +463,18 @@ const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): bool
   return false
 }
 
+// An invalid date on either side disables the precondition (RFC 9110 §13.1.3).
 const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | undefined): boolean => {
   if (lastModified === undefined) {
     return false
   }
-  const ifModifiedSinceMs = Date.parse(ifModifiedSince)
-  if (Number.isNaN(ifModifiedSinceMs)) {
+  const ifModifiedSinceDate = Headers.parseHttpDate(ifModifiedSince)
+  if (Result.isFailure(ifModifiedSinceDate)) {
     return false
   }
-  const lastModifiedMs = Date.parse(lastModified)
-  if (Number.isNaN(lastModifiedMs)) {
-    return false
-  }
-  return lastModifiedMs <= ifModifiedSinceMs
+  const lastModifiedDate = Headers.parseHttpDate(lastModified)
+  return Result.isSuccess(lastModifiedDate) &&
+    DateTime.toEpochMillis(lastModifiedDate.success) <= DateTime.toEpochMillis(ifModifiedSinceDate.success)
 }
 
 // Only a strong entity-tag can match (RFC 9110 §13.1.5). Weak tags start

@@ -7,11 +7,12 @@
  * comparison builders, and helpers for marking objects that should compare only
  * by reference.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
+import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -49,6 +50,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * @see {@link Equal} — the interface that uses this symbol
  * @see {@link isEqual} — type guard for `Equal` implementors
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -103,6 +105,7 @@ export const symbol = "~effect/Equal"
  * @see {@link symbol} — the property key used by the equality method
  * @see {@link equals} — the main comparison function
  * @see {@link isEqual} — type guard for `Equal` implementors
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -167,6 +170,7 @@ export interface Equal extends Hash.Hash {
  * @see {@link Equal} — the interface for custom equality
  * @see {@link isEqual} — check whether a value implements `Equal`
  * @see {@link asEquivalence} — wrap `equals` as an `Equivalence`
+ * @stability stable
  * @category equality
  * @since 2.0.0
  */
@@ -253,6 +257,13 @@ function compareStructure(self: object, that: object): boolean {
       return false
     }
     return compareArrays(self, that)
+  } else if (isArrayBufferLike(self)) {
+    if (!isArrayBufferLike(that) || (self instanceof ArrayBuffer) !== (that instanceof ArrayBuffer)) {
+      return false
+    }
+    const selfBytes = bufferBytes(self)
+    const thatBytes = bufferBytes(that)
+    return selfBytes !== undefined && thatBytes !== undefined && compareTypedArrays(selfBytes, thatBytes)
   } else if (ArrayBuffer.isView(self)) {
     const selfIsDataView = self instanceof DataView
     if (
@@ -413,6 +424,7 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  *
  * @see {@link Equal} — the interface being checked
  * @see {@link symbol} — the property key that signals `Equal` support
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -441,6 +453,7 @@ export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
  * ```
  *
  * @see {@link equals} — the underlying comparison function
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -483,6 +496,7 @@ export const asEquivalence: <A>() => Equivalence<A> = () => equals
  * @see {@link byReferenceUnsafe} — same effect without a proxy (mutates the
  *   original)
  * @see {@link equals} — the comparison function affected by this opt-out
+ * @stability stable
  * @category equality
  * @since 4.0.0
  */
@@ -526,6 +540,7 @@ export const byReference = <T extends object>(obj: T): T => byReferenceUnsafe(ne
  *
  * @see {@link byReference} — safer alternative that creates a proxy
  * @see {@link equals} — the comparison function affected by this opt-out
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */

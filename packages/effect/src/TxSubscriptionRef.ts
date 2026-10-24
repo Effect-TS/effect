@@ -7,6 +7,7 @@
  * updates. This module includes constructors, reads, writes, update and modify
  * helpers, transactional-queue subscriptions, stream subscriptions, and a guard.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
@@ -61,6 +62,7 @@ const TypeId = "~effect/TxSubscriptionRef"
  * @see {@link changes} for subscribing through a transactional queue
  * @see {@link changesStream} for subscribing through a `Stream`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -114,6 +116,7 @@ const TxSubscriptionRefProto: Omit<TxSubscriptionRef<any>, typeof TypeId | "ref"
  *
  * @see {@link changes} for subscribing to the created reference
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -155,6 +158,7 @@ export const make = <A>(value: A): Effect.Effect<TxSubscriptionRef<A>> =>
  *
  * @see {@link changes} for reading the current value and subsequent updates
  *
+ * @stability stable
  * @category getters
  * @since 3.10.0
  */
@@ -190,6 +194,7 @@ export const get = <A>(self: TxSubscriptionRef<A>): Effect.Effect<A> => TxRef.ge
  * @see {@link update} for deriving the next value without a separate return value
  * @see {@link set} for replacing the value directly
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -241,6 +246,7 @@ export const modify: {
  * @see {@link update} for deriving the new value from the current value
  * @see {@link getAndSet} for setting while returning the previous value
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -278,6 +284,7 @@ export const set: {
  * @see {@link set} for replacing the value directly
  * @see {@link updateAndGet} for returning the new value after the update
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -316,6 +323,7 @@ export const update: {
  * @see {@link set} for setting without returning the previous value
  * @see {@link getAndUpdate} for deriving the new value from the previous value
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -353,6 +361,7 @@ export const getAndSet: {
  * @see {@link update} for updating without returning the previous value
  * @see {@link updateAndGet} for returning the new value instead
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -390,6 +399,7 @@ export const getAndUpdate: {
  * @see {@link update} for updating without returning the new value
  * @see {@link getAndUpdate} for returning the previous value instead
  *
+ * @stability stable
  * @category mutations
  * @since 3.10.0
  */
@@ -443,6 +453,7 @@ export const updateAndGet: {
  *
  * @see {@link changesStream} for subscribing through a `Stream`
  *
+ * @stability unstable
  * @category subscriptions
  * @since 3.10.0
  */
@@ -490,6 +501,7 @@ export const changes = <A>(
  *
  * @see {@link changes} for subscribing through a transactional queue
  *
+ * @stability stable
  * @category subscriptions
  * @since 3.10.0
  */
@@ -523,6 +535,7 @@ export const changesStream = <A>(self: TxSubscriptionRef<A>): Stream.Stream<A, n
  *
  * @see {@link make} for creating a `TxSubscriptionRef`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

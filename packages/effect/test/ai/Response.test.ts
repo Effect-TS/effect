@@ -199,6 +199,45 @@ describe("Response", () => {
     }
   })
 
+  describe("schemas without a toolkit", () => {
+    const parts = [
+      Response.toolCallPart({
+        id: "call-1",
+        name: "UnknownTool",
+        params: { path: "a.ts", options: [1, null] },
+        providerExecuted: false
+      }),
+      Response.makePart("tool-result", {
+        id: "call-1",
+        name: "UnknownTool",
+        isFailure: false,
+        result: { content: "hello" },
+        encodedResult: { content: "hello" },
+        providerExecuted: false,
+        preliminary: false
+      })
+    ]
+
+    for (
+      const [name, makeSchema] of [
+        ["AllParts", () => Response.AllParts()],
+        ["Part", () => Response.Part()],
+        ["StreamPart", () => Response.StreamPart()]
+      ] as const
+    ) {
+      it.effect(`${name} round trips tool parts with any tool name through JSON`, () =>
+        Effect.gen(function*() {
+          const schema = makeSchema()
+          for (const part of parts) {
+            const encoded = yield* Schema.encodeUnknownEffect(schema)(part)
+            const decoded = yield* Schema.decodeUnknownEffect(schema)(JSON.parse(JSON.stringify(encoded)))
+
+            deepStrictEqual<unknown>(decoded, part, `decoded ${part.type}`)
+          }
+        }))
+    }
+  })
+
   it.effect("decodes response metadata with omitted optional fields", () =>
     Effect.gen(function*() {
       const encoded: Response.ResponseMetadataPartEncoded = {

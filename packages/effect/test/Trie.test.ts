@@ -251,6 +251,16 @@ describe("Trie", () => {
     deepStrictEqual(result, ["abc", "bca", "cab"])
   })
 
+  it("entries stays exhausted while the trie remains reusable", () => {
+    const trie = Trie.make(["app", 1])
+    const iterator = Trie.entries(trie)
+
+    deepStrictEqual(Array.from(iterator), [["app", 1]])
+    deepStrictEqual(Array.from(iterator), [])
+    deepStrictEqual(Array.from(trie), [["app", 1]])
+    deepStrictEqual(Array.from(trie), [["app", 1]])
+  })
+
   it("keys orders nested prefixes alphabetically", () => {
     const trie = Trie.make(
       ["abc", 0],
@@ -346,6 +356,15 @@ describe("Trie", () => {
 
     const result = Array.from(Trie.valuesWithPrefix(trie, "she"))
     deepStrictEqual(result, [3, 0])
+  })
+
+  it("valuesWithPrefix resumes iteration with matching values", () => {
+    const trie = Trie.make(["app", 1], ["apple", 2], ["banana", 3])
+    const iterator = Trie.valuesWithPrefix(trie, "app")
+
+    deepStrictEqual(iterator.next(), { done: false, value: 1 })
+    deepStrictEqual(Array.from(iterator), [2])
+    deepStrictEqual(Array.from(iterator), [])
   })
 
   it("entriesWithPrefix returns matching entries in key order", () => {

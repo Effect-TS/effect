@@ -25,3 +25,6 @@
 "@effect/platform/HttpServerRequest#TypeId":
   replacement: "typeof HttpServerRequest.TypeId"
   note: "TypeId remains public but is now a string constant; use typeof in type position."
+"@effect/platform/HttpServerRequest#upgrade":
+  replacement: "HttpServerRequest.HttpServerRequest.use((request) => request.upgrade)"
+  note: "The top-level accessor was removed; read upgrade from the request service. It fails with HttpServerError instead of RequestError. HttpServerRequest.upgradeChannel remains for channel-based WebSocket handling."

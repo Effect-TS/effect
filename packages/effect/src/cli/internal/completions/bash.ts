@@ -7,6 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { negatedName, takesSeparateValue } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -21,8 +22,9 @@ const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> =
   for (const alias of flag.aliases) {
     names.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
   }
-  if (flag.type._tag === "Boolean") {
-    names.push(`--no-${flag.name}`)
+  const negation = negatedName(flag)
+  if (negation !== undefined) {
+    names.push(`--${negation}`)
   }
   return names
 }
@@ -164,7 +166,7 @@ const generateFunction = (
   lines.push(``)
 
   // Build flag-value dispatch
-  const flagsWithValues = descriptor.flags.filter((f) => f.type._tag !== "Boolean")
+  const flagsWithValues = descriptor.flags.filter(takesSeparateValue)
   if (flagsWithValues.length > 0) {
     lines.push(`  # Flag value completions`)
     lines.push(`  case "$prev" in`)
@@ -196,7 +198,7 @@ const generateFunction = (
     lines.push(`    fi`)
     lines.push(`    case "\${words[i]}" in`)
     for (const flag of descriptor.flags) {
-      if (flag.type._tag === "Boolean") continue
+      if (!takesSeparateValue(flag)) continue
       const forms = flagNamesForWordlist(flag)
       lines.push(`      ${forms.join("|")}) _skip_next=1 ;;`)
       lines.push(`      ${forms.map((form) => `${form}=*`).join("|")}) ;;`)
@@ -248,7 +250,7 @@ const generateFunction = (
     lines.push(`      --) _end_of_options=1 ;;`)
     for (const flag of descriptor.flags) {
       const forms = flagNamesForWordlist(flag)
-      if (flag.type._tag === "Boolean") {
+      if (!takesSeparateValue(flag)) {
         lines.push(`      ${forms.join("|")}) ;;`)
       } else {
         lines.push(`      ${forms.join("|")}) _skip_next=1 ;;`)

@@ -7,6 +7,7 @@
  * re-exports the shared socket client and server protocol layers and provides
  * `layerK8sHttpClient` for Kubernetes runner health checks.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { layerClientProtocol, layerSocketServer } from "@effect/platform-node-shared/NodeClusterSocket"
@@ -23,19 +24,20 @@ import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as RpcSerialization from "effect/rpc/RpcSerialization"
 import type * as SocketServer from "effect/socket/SocketServer"
 import type { SqlClient } from "effect/sql/SqlClient"
 import * as BunCrypto from "./BunCrypto.ts"
 import * as BunFileSystem from "./BunFileSystem.ts"
+import * as BunHttpClient from "./BunHttpClient.ts"
 
 export {
   /**
    * Provides the cluster `RpcClientProtocol` using the shared socket client
    * implementation.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -44,6 +46,7 @@ export {
    * Provides the socket server used by Bun cluster runners through the shared
    * socket server implementation.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -53,6 +56,7 @@ export {
 /**
  * Creates Bun socket cluster layers, configuring serialization, storage, runner health, and optional client-only mode.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -134,6 +138,7 @@ export const layer = <
 /**
  * Layer that provides `K8sHttpClient`, using the Kubernetes service-account CA certificate when it is available.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -144,16 +149,10 @@ export const layerK8sHttpClient: Layer.Layer<K8sHttpClient.K8sHttpClient> = K8sH
       Effect.option
     )
     if (caCertOption._tag === "None") {
-      return FetchHttpClient.layer
+      return BunHttpClient.layer
     }
 
-    return Layer.fresh(FetchHttpClient.layer).pipe(
-      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, {
-        tls: {
-          ca: caCertOption.value
-        }
-      } as any))
-    )
+    return BunHttpClient.layerOptions({ tls: { ca: caCertOption.value } })
   }))),
   Layer.provide(BunFileSystem.layer)
 )

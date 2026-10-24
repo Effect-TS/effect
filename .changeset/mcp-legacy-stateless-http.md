@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add opt-in stateless Streamable HTTP for legacy MCP protocols.
+Add `McpServer.layerHttp({ sessionMode: "stateless" })` for legacy MCP clients across independent HTTP requests.

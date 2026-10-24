@@ -7,6 +7,7 @@ import type * as NetAddress from "effect/net/NetAddress"
 import * as Scope from "effect/Scope"
 import { Socket } from "effect/socket"
 import * as Stream from "effect/Stream"
+import { TestClock } from "effect/testing"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
 import { Duplex, PassThrough } from "node:stream"
@@ -31,8 +32,8 @@ vi.mock("node:tls", async (importOriginal) => {
 const cert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
 const key = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
 
-const echoHandler = (socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOptions) =>
-  Effect.gen(function*() {
+const echoHandler = Effect.fnUntraced(
+  function*(socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOptions) {
     const writer = yield* socket.writer
     const { pull, upgrade } = yield* socket.reader
     if (upgradeOptions !== undefined) {
@@ -41,10 +42,10 @@ const echoHandler = (socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOp
     while (true) {
       yield* writer.writeAll(yield* pull)
     }
-  }).pipe(
-    Effect.scoped,
-    Effect.catchTag("SocketError", () => Effect.void)
-  )
+  },
+  (_) => Effect.scoped(_),
+  Effect.catchTag("SocketError", () => Effect.void)
+)
 
 const makePassThrough = Effect.acquireRelease(
   Effect.sync(() => new PassThrough()),
@@ -62,23 +63,22 @@ const parkedPull = Effect.gen(function*() {
 const decode = (batch: ReadonlyArray<Uint8Array | string>) =>
   Buffer.concat(batch.map((chunk) => Buffer.from(chunk))).toString()
 
-const sendHelloWorld = (socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOptions) =>
-  Effect.gen(function*() {
-    const writer = yield* socket.writer
-    const { pull, upgrade } = yield* socket.reader
-    if (upgradeOptions !== undefined) {
-      yield* upgrade(upgradeOptions)
+const sendHelloWorld = Effect.fnUntraced(function*(socket: Socket.Socket, upgradeOptions?: Socket.TlsUpgradeOptions) {
+  const writer = yield* socket.writer
+  const { pull, upgrade } = yield* socket.reader
+  if (upgradeOptions !== undefined) {
+    yield* upgrade(upgradeOptions)
+  }
+  yield* writer.writeAll(["Hello", "World"])
+  const decoder = new TextDecoder()
+  let text = ""
+  while (text.length < 10) {
+    for (const chunk of yield* pull) {
+      text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
     }
-    yield* writer.writeAll(["Hello", "World"])
-    const decoder = new TextDecoder()
-    let text = ""
-    while (text.length < 10) {
-      for (const chunk of yield* pull) {
-        text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
-      }
-    }
-    return text
-  }).pipe(Effect.scoped)
+  }
+  return text
+}, (_) => Effect.scoped(_))
 
 const makeServer = Effect.gen(function*() {
   const server = yield* NodeSocketServer.make({ port: 0 })
@@ -86,7 +86,8 @@ const makeServer = Effect.gen(function*() {
   return server
 })
 
-describe("Socket", () => {
+// Tests that mock native connection APIs must not overlap real connections.
+describe("Socket", { concurrent: false }, () => {
   it.live("preserves a native IPv6 listener address", () =>
     Effect.gen(function*() {
       const server = yield* NodeSocketServer.make({ host: "::1", port: 0 })
@@ -499,6 +500,37 @@ describe("Socket", () => {
         assert.strictEqual(received, "HelloWorld")
       }))
 
+    for (const servername of ["mail.example.test", undefined]) {
+      it.live(
+        servername === undefined
+          ? "preserves omitted client TLS upgrade servername"
+          : "forwards explicit client TLS upgrade servername",
+        () =>
+          Effect.gen(function*() {
+            const raw = yield* makePassThrough
+            const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw))
+            const { upgrade } = yield* socket.reader
+            const cause = new Error("stop before TLS handshake")
+            let received: Tls.ConnectionOptions | undefined
+            vi.mocked(Tls.connect).mockImplementationOnce((options) => {
+              received = options as Tls.ConnectionOptions
+              throw cause
+            })
+            // Use a variable so this runtime regression can run before the public option is added.
+            const options = servername === undefined
+              ? { rejectUnauthorized: true }
+              : { rejectUnauthorized: true, servername }
+            const error = yield* upgrade(options).pipe(Effect.flip)
+
+            assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+            if (error.reason._tag === "SocketUpgradeError") assert.strictEqual(error.reason.cause, cause)
+            assert.strictEqual(received?.socket, raw)
+            assert.strictEqual(received?.rejectUnauthorized, true)
+            assert.strictEqual(received?.servername, servername)
+          })
+      )
+    }
+
     it.live("requires both key and cert for server TLS upgrades", () =>
       Effect.gen(function*() {
         const raw = new Duplex({
@@ -631,6 +663,60 @@ describe("Socket", () => {
   describe("WebSocket", { concurrent: false }, () => {
     const url = `ws://localhost:1234`
 
+    it.effect.each(["timeout", "interruption"] as const)(
+      "safely closes a pending ws handshake on %s",
+      (mode) =>
+        Effect.gen(function*() {
+          const accepted = yield* Deferred.make<void>()
+          const connections = new Set<Net.Socket>()
+          const server = yield* Effect.acquireRelease(
+            Effect.sync(() =>
+              Net.createServer((connection) => {
+                connections.add(connection)
+                Deferred.doneUnsafe(accepted, Effect.void)
+              })
+            ),
+            (server) =>
+              Effect.promise(() => {
+                for (const connection of connections) connection.destroy()
+                return new Promise<void>((resolve) => server.close(() => resolve()))
+              })
+          )
+          yield* Effect.promise(() =>
+            new Promise<void>((resolve, reject) => {
+              server.once("error", reject)
+              server.listen(0, "127.0.0.1", resolve)
+            })
+          )
+          const address = server.address()
+          assert.isTrue(typeof address === "object" && address !== null)
+          if (typeof address !== "object" || address === null) return
+
+          const reader = yield* Effect.gen(function*() {
+            const socket = yield* Socket.makeWebSocket(`ws://127.0.0.1:${address.port}`, { openTimeout: 100 })
+            yield* socket.reader
+          }).pipe(
+            Effect.scoped,
+            Effect.provide(NodeSocket.layerWebSocketConstructorWS),
+            Effect.forkChild
+          )
+          // Accept TCP without ever completing the WebSocket upgrade.
+          yield* Deferred.await(accepted)
+          if (mode === "timeout") {
+            yield* TestClock.adjust(100)
+            const error = Option.getOrThrow(Exit.findErrorOption(yield* Fiber.await(reader)))
+            assert.strictEqual(error.reason._tag, "SocketOpenError")
+            if (error.reason._tag === "SocketOpenError") assert.strictEqual(error.reason.kind, "Timeout")
+          } else {
+            yield* Fiber.interrupt(reader)
+            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(reader)))
+          }
+          // ws emits the handshake-abort error asynchronously after close().
+          // Leave it unhandled by the test so Vitest detects a lifecycle regression.
+          yield* Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)))
+        })
+    )
+
     const makeServer = Effect.acquireRelease(
       Effect.sync(() => new WS(url)),
       (ws) =>
@@ -687,6 +773,45 @@ describe("Socket", () => {
           ["after-ready"]
         )
       }))
+
+    it.live("passes headers and a subprotocol to the opening handshake", () =>
+      Effect.gen(function*() {
+        const handshake = yield* Deferred.make<{ authorization: string | undefined; protocol: string }>()
+        const server = yield* Effect.acquireRelease(
+          Effect.callback<NodeSocket.NodeWS.WebSocketServer>((resume) => {
+            const server = new NodeSocket.NodeWS.WebSocketServer({ host: "127.0.0.1", port: 0 })
+            server.once("listening", () => resume(Effect.succeed(server)))
+            server.once("error", (error) => resume(Effect.die(error)))
+            server.on("connection", (client, request) => {
+              Deferred.doneUnsafe(
+                handshake,
+                Effect.succeed({
+                  authorization: request.headers.authorization,
+                  protocol: client.protocol
+                })
+              )
+            })
+          }),
+          (server) =>
+            Effect.promise(() => {
+              for (const client of server.clients) client.terminate()
+              return new Promise<void>((resolve) => server.close(() => resolve()))
+            })
+        )
+        const address = server.address()
+        assert.isTrue(typeof address === "object" && address !== null)
+        if (typeof address !== "object" || address === null) return
+        const options = {
+          protocols: "graphql-transport-ws",
+          headers: { Authorization: "Bearer test" }
+        }
+        const socket = yield* Socket.makeWebSocket(`ws://127.0.0.1:${address.port}`, options)
+        yield* socket.reader
+        assert.deepStrictEqual(yield* Deferred.await(handshake).pipe(Effect.timeout("1 second")), {
+          authorization: "Bearer test",
+          protocol: "graphql-transport-ws"
+        })
+      }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
 
     it.effect("passes headers to the opening handshake", () =>
       Effect.gen(function*() {

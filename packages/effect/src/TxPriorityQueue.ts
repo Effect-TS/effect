@@ -9,6 +9,7 @@
  * is empty, so they can be combined with other transactional reads and writes in
  * one atomic workflow.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -53,6 +54,7 @@ const TypeId = "~effect/TxPriorityQueue"
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -136,6 +138,7 @@ const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -158,6 +161,7 @@ export const empty = <A>(order: Order<A>): Effect.Effect<TxPriorityQueue<A>> =>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -198,6 +202,7 @@ export function fromIterable<A>(
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -220,6 +225,7 @@ export const make = <A>(order: Order<A>) => (...elements: Array<A>): Effect.Effe
  * await Effect.runPromise(program) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -241,6 +247,7 @@ export const size = <A>(self: TxPriorityQueue<A>): Effect.Effect<number> => Effe
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -262,6 +269,7 @@ export const isEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => 
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -288,6 +296,7 @@ export const isNonEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> 
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -322,6 +331,7 @@ export const peek = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -346,6 +356,7 @@ export const peekOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -375,6 +386,7 @@ export const offer: {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -405,6 +417,7 @@ export const offerAll: {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -435,6 +448,7 @@ export const take = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -460,6 +474,7 @@ export const takeAll = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -488,6 +503,7 @@ export const takeOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  * await Effect.runPromise(program) // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -524,6 +540,7 @@ export const takeUpTo: {
  * await Effect.runPromise(program) // => [1, 3, 5]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -553,6 +570,7 @@ export const removeIf: {
  * await Effect.runPromise(program) // => [2, 4]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -581,6 +599,7 @@ export const retainIf: {
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -603,6 +622,7 @@ export const toArray = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

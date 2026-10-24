@@ -7,6 +7,7 @@
  * exit codes and already-reported failures. Application code usually calls the
  * platform-provided runner instead of using this module directly.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -54,6 +55,7 @@ import type * as Fiber from "./Fiber.ts"
  * await completed // => [Exit.succeed("Hello, World!"), 0]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export interface Teardown {
  *
  * @see {@link errorExitCode} for customizing failure exit codes
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -123,9 +126,9 @@ export const defaultTeardown: Teardown = <E, A>(
  *
  * **Details**
  *
- * The runner executes Effect programs as main entry points. The provided
- * function receives a forked fiber and a teardown callback so it can install
- * platform-specific signal handling, fiber observers, and final exit behavior.
+ * The setup function runs before user code and receives the main fiber and a
+ * teardown callback to install platform-specific signal handlers, observers,
+ * and exit behavior.
  *
  * Most applications should use a platform-provided runner, such as
  * `NodeRuntime.runMain`, rather than constructing one directly.
@@ -175,6 +178,7 @@ export const defaultTeardown: Teardown = <E, A>(
  * events // => ["Starting program", "Program completed", "Custom teardown logic"]
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -204,23 +208,24 @@ export const makeRunMain = (
     readonly disableErrorReporting?: boolean | undefined
     readonly teardown?: Teardown | undefined
   }) => {
-    const fiber = options?.disableErrorReporting === true
-      ? Effect.runFork(effect)
-      : Effect.runFork(
-        Effect.tapCause(effect, (cause) => {
-          if (Cause.hasInterruptsOnly(cause)) return Effect.void
-          const isReported = getErrorReported(Cause.squash(cause))
-          return isReported ? Effect.logError(cause) : Effect.void
-        })
-      )
-    try {
-      const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
-      fiber.addObserver(() => {
-        clearInterval(keepAlive)
+    const main = options?.disableErrorReporting === true
+      ? effect
+      : Effect.tapCause(effect, (cause) => {
+        if (Cause.hasInterruptsOnly(cause)) return Effect.void
+        const isReported = getErrorReported(Cause.squash(cause))
+        return isReported ? Effect.logError(cause) : Effect.void
       })
-    } catch {}
     const teardown = options?.teardown ?? defaultTeardown
-    return f({ fiber, teardown })
+    Effect.runFork(Effect.withFiber((fiber) => {
+      try {
+        const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
+        fiber.addObserver(() => {
+          clearInterval(keepAlive)
+        })
+      } catch {}
+      f({ fiber, teardown })
+      return main
+    }))
   })
 
 declare global {
@@ -238,6 +243,7 @@ declare global {
  * Use to type properties keyed by `Runtime.errorExitCode` on custom error
  * values.
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -279,6 +285,7 @@ export type errorExitCode = "~effect/Runtime/errorExitCode"
  * @see {@link defaultTeardown} for the default failure exit-code rules that read this marker
  * @see {@link getErrorExitCode} for reading the marker from unknown error values
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -305,6 +312,7 @@ export const errorExitCode: errorExitCode = "~effect/Runtime/errorExitCode"
  *
  * @see {@link errorExitCode} for the marker read by this function
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -326,6 +334,7 @@ export const getErrorExitCode = (u: unknown): number => {
  * Use to type properties keyed by `Runtime.errorReported` on custom error
  * values.
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -368,6 +377,7 @@ export type errorReported = "~effect/Runtime/errorReported"
  * @see {@link errorExitCode} for controlling failure exit codes
  * @see {@link getErrorReported} for reading the marker from unknown error values
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -393,6 +403,7 @@ export const errorReported: errorReported = "~effect/Runtime/errorReported"
  *
  * @see {@link errorReported} for the marker read by this function
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */

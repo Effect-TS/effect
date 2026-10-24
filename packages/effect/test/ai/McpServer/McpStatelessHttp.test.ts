@@ -1,16 +1,21 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as McpClient from "effect/ai/McpClient"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
+import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
-import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
-import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
+import { makeHttpHarness, MCP_ENDPOINT } from "./TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 
 const protocols = [
   McpProtocol.v2025_11_25,
@@ -20,16 +25,19 @@ const protocols = [
   McpProtocol.v2026_07_28
 ] as const
 
-const toolkit = Toolkit.make(Tool.make("inspect", {
-  parameters: Schema.Struct({ label: Schema.String }),
-  success: Schema.Struct({
-    label: Schema.String,
-    version: Schema.String,
-    client: Schema.String,
-    canSample: Schema.Boolean
+const toolkit = Toolkit.make(
+  Tool.make("inspect", {
+    parameters: Schema.Struct({ label: Schema.String }),
+    success: Schema.Struct({
+      label: Schema.String,
+      version: Schema.String,
+      client: Schema.String,
+      canSample: Schema.Boolean
+    }),
+    dependencies: [McpSchema.McpRequestContext]
   }),
-  dependencies: [McpSchema.McpRequestContext]
-}))
+  Tool.make("fail", { success: Schema.String, failure: Schema.String })
+)
 
 const handlers = toolkit.toLayer({
   inspect: Effect.fnUntraced(function*({ label }) {
@@ -41,11 +49,16 @@ const handlers = toolkit.toLayer({
       client: context.clientInfo?.name ?? "unknown",
       canSample: context.clientCapabilities.sampling !== undefined
     }
-  })
+  }),
+  fail: () => Effect.fail("expected failure")
 })
 
-const serverLayer = (sessionMode?: "stateful" | "stateless", allowSessionTermination = false) =>
-  Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
+const serverLayer = (
+  sessionMode?: "stateful" | "stateless",
+  allowSessionTermination = false,
+  registration: Layer.Layer<never, never, McpServer.McpServer> = Layer.empty
+) =>
+  Layer.merge(Layer.effectDiscard(McpServer.registerToolkit(toolkit)), registration).pipe(
     Layer.provide(McpServer.McpServer.layer),
     Layer.provide(handlers),
     Layer.provide(McpServer.layerHttp({
@@ -163,6 +176,184 @@ describe("legacy stateless Streamable HTTP", () => {
           const response = yield* server.post(inspect(version), { "Mcp-Protocol-Version": version })
           assert.deepStrictEqual(yield* readMcpHttpResponse(response), expectedResult(version, version))
         }), { concurrency: "unbounded" })
+    }))
+
+  it.effect("rejects logging changes after another request has created a batch binding", () =>
+    Effect.gen(function*() {
+      const server = yield* makeHttpHarness(serverLayer("stateless"))
+      const response = yield* server.post([
+        { jsonrpc: "2.0", id: "ping", method: "ping" },
+        { jsonrpc: "2.0", id: "logging", method: "logging/setLevel", params: { level: "debug" } }
+      ], { "Mcp-Protocol-Version": "2025-03-26" })
+      const messages = (yield* readMcpHttpResponse(response)) as Array<any>
+      assert.deepInclude(messages, { jsonrpc: "2.0", id: "ping", result: {} })
+      const logging = messages.find((message) => message.id === "logging")
+      assert.strictEqual(logging?.error?.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+    }))
+
+  it.effect("rejects resource subscriptions and suppresses list-change broadcasts", () =>
+    Effect.gen(function*() {
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: new McpSchema.Tool({ name: "broadcast", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: Effect.fnUntraced(function*() {
+            yield* server.notifications["notifications/tools/list_changed"]({})
+            yield* server.notifications["notifications/resources/list_changed"]({})
+            yield* server.notifications["notifications/prompts/list_changed"]({})
+            return new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] })
+          })
+        })
+      ))
+      const server = yield* makeHttpHarness(serverLayer("stateless", false, registration))
+      const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+      for (const method of ["resources/subscribe", "resources/unsubscribe"]) {
+        const response = yield* server.post(
+          { jsonrpc: "2.0", id: 2, method, params: { uri: "test://resource" } },
+          headers
+        )
+        const message = (yield* readMcpHttpResponse(response)) as any
+        assert.strictEqual(message.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+      }
+      const response = yield* server.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "broadcast" }
+      }, headers)
+      const body = yield* Effect.promise(() => response.text())
+      assert.notInclude(body, "notifications/")
+      assert.include(body, "\"text\":\"done\"")
+    }))
+
+  it.live("serves a native client when every HTTP request uses a fresh server runtime", () =>
+    Effect.gen(function*() {
+      const methods: Array<string> = []
+      const fetch: typeof globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = new Request(input, init)
+        methods.push((await request.clone().json()).method)
+        assert.isFalse(request.headers.has("Mcp-Session-Id"))
+        const { handler, dispose } = HttpRouter.toWebHandler(serverLayer("stateless"), { disableLogger: true })
+        try {
+          const response = await handler(request)
+          assert.isFalse(response.headers.has("Mcp-Session-Id"))
+          return new Response(await response.arrayBuffer(), { status: response.status, headers: response.headers })
+        } finally {
+          await dispose()
+        }
+      }, { preconnect() {} })
+      const context = yield* Layer.build(
+        McpClient.layerHttp({
+          name: "native-client",
+          version: "1",
+          url: MCP_ENDPOINT,
+          protocol: McpProtocol.v2025_11_25
+        }).pipe(
+          Layer.provide(FetchHttpClient.layer),
+          Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch))
+        )
+      )
+      const client = Context.get(context, McpClient.McpClient)
+      const tool = (yield* client.listTools()).find((tool) => tool.name === "inspect")
+      assert.isDefined(tool)
+      const result = yield* client.callTool({ tool, arguments: { label: "native" } })
+      assert.deepStrictEqual(result.structuredContent, {
+        label: "native",
+        version: "2025-11-25",
+        client: "unknown",
+        canSample: false
+      })
+      assert.deepStrictEqual(methods, ["initialize", "notifications/initialized", "tools/list", "tools/call"])
+    }))
+
+  it.effect("keeps execution failures distinct from protocol errors and serves the next POST", () =>
+    Effect.gen(function*() {
+      const server = yield* makeHttpHarness(serverLayer("stateless"))
+      const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+      const failed = yield* server.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "fail", arguments: {} }
+      }, headers)
+      assert.strictEqual(failed.status, 200)
+      const execution = (yield* readMcpHttpResponse(failed)) as any
+      assert.strictEqual(execution.result.isError, true)
+      assert.deepStrictEqual(execution.result.content, [{ type: "text", text: JSON.stringify("expected failure") }])
+      const unknown = yield* server.post({ jsonrpc: "2.0", id: 2, method: "unknown" }, headers)
+      const protocol = (yield* readMcpHttpResponse(unknown)) as any
+      assert.strictEqual(protocol.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
+      const called = yield* server.post(inspect("after-failure"), headers)
+      assert.deepStrictEqual(yield* readMcpHttpResponse(called), expectedResult("after-failure", "2025-11-25"))
+    }))
+
+  it.live("releases tool resources on HTTP abort before response headers", () =>
+    Effect.gen(function*() {
+      const entered = yield* Deferred.make<void>()
+      const released = yield* Deferred.make<void>()
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: new McpSchema.Tool({ name: "wait", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Deferred.succeed(entered, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.ensuring(Deferred.succeed(released, undefined))
+            )
+        })
+      ))
+      const server = yield* makeHttpHarness(serverLayer("stateless", false, registration))
+      const abort = new AbortController()
+      const response = server.handler(
+        new Request(MCP_ENDPOINT, {
+          method: "POST",
+          headers: { accept: "application/json, text/event-stream", "content-type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "wait" } }),
+          signal: abort.signal
+        })
+      )
+      response.catch(() => undefined)
+      yield* Deferred.await(entered)
+      abort.abort()
+      yield* Deferred.await(released).pipe(Effect.timeout("1 second"))
+    }))
+
+  it.live("isolates cancellation POSTs and releases streaming tool resources on disconnect", () =>
+    Effect.gen(function*() {
+      const released = yield* Deferred.make<void>()
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: new McpSchema.Tool({ name: "wait", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            server.notifications["notifications/progress"]({ progressToken: "wait", progress: 1 }).pipe(
+              Effect.andThen(Effect.never),
+              Effect.ensuring(Deferred.succeed(released, undefined))
+            )
+        })
+      ))
+      const server = yield* makeHttpHarness(serverLayer("stateless", false, registration))
+      const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+      const response = yield* server.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "wait", _meta: { progressToken: "wait" } }
+      }, headers)
+      const stream = makeMcpSseReader(response)
+      yield* Effect.addFinalizer(() => stream.cancel)
+      assert.strictEqual((yield* stream.take()).method, "notifications/progress")
+      const cancelled = yield* server.post({
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: 2 }
+      }, headers)
+      assert.strictEqual(cancelled.status, 202)
+      assert.isFalse(yield* Deferred.isDone(released))
+      yield* stream.cancel
+      yield* Deferred.await(released).pipe(Effect.timeout("1 second"))
+      const called = yield* server.post(inspect("after-disconnect"), headers)
+      assert.deepStrictEqual(yield* readMcpHttpResponse(called), expectedResult("after-disconnect", "2025-11-25"))
     }))
 
   it.effect("preserves stateful sessions by default", () =>

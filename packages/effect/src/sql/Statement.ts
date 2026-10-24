@@ -114,8 +114,10 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 })
 
 /**
- * Parents driver spans under `sql.execute` for every client in the current scope,
- * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
+ * Parents driver spans under the statement span for every client in the current scope,
+ * including acquisition and stream pulls, and records how long each statement
+ * waited for a connection as `db.client.connection.wait_time_ms`. Defaults to
+ * `false`; ignored when tracing is disabled.
  *
  * @stability unstable
  * @category services
@@ -517,6 +519,9 @@ export interface Constructor {
    * **Gotchas**
    *
    * Not supported in sqlite.
+   *
+   * The alias is escaped as an identifier and is not passed through name
+   * transforms.
    */
   readonly updateValues: (
     value: ReadonlyArray<Record<string, unknown>>,
@@ -820,6 +825,10 @@ export type CompilerOptions<C extends Custom<any, any, any, any> = any> = {
   readonly dialect: Dialect
   readonly placeholder: (index: number, value: unknown) => string
   readonly onIdentifier: (value: string, withoutTransform: boolean) => string
+  /**
+   * Renders `updateValues`. The `alias` is already escaped with
+   * `onIdentifier(alias, true)` and must be inserted as is.
+   */
   readonly onRecordUpdate: (
     placeholders: string,
     alias: string,
@@ -927,6 +936,19 @@ const CompilerProto = {
         }
 
         case "ArrayHelper": {
+          if (segment.value.length === 0) {
+            const inKeyword = emptyInKeyword.exec(sql)
+            if (inKeyword === null || isInLineComment(sql, inKeyword.index)) {
+              sql += "()"
+            } else if (this.dialect === "pg") {
+              // an empty subquery is typed as text in postgres, so compare with an
+              // empty array, which takes the type of the left operand instead
+              sql = sql.slice(0, inKeyword.index) + (inKeyword[1] ? "<> ALL('{}')" : "= ANY('{}')")
+            } else {
+              sql += "(SELECT NULL WHERE 1=0)"
+            }
+            break
+          }
           sql += `(${placeholders(segment.value)})`
           binds.push.apply(binds, segment.value as any)
           break
@@ -1070,7 +1092,7 @@ const CompilerProto = {
           }
           const [s, b] = opts.onRecordUpdate(
             placeholders,
-            segment.alias,
+            opts.onIdentifier(segment.alias, true),
             generateColumns(keys, opts.onIdentifier, withoutTransform),
             values,
             typeof segment.returningIdentifier === "string"
@@ -1204,7 +1226,7 @@ export const defaultTransforms = (
 ) => {
   const transformValue = (value: any) => {
     if (Array.isArray(value)) {
-      if (value.length === 0 || value[0].constructor !== Object) {
+      if (value.length === 0 || value[0]?.constructor !== Object) {
         return value
       }
       return array(value)
@@ -1230,6 +1252,8 @@ export const defaultTransforms = (
       const row = rows[i]
       if (Array.isArray(row)) {
         newRows[i] = transformArrayNested(row) as any
+      } else if (row === null || typeof row !== "object") {
+        newRows[i] = row
       } else {
         const obj: any = {}
         for (const [key, value] of Object.entries(row)) {
@@ -1249,6 +1273,8 @@ export const defaultTransforms = (
       const row = rows[i]
       if (Array.isArray(row)) {
         newRows[i] = transformArray(row) as any
+      } else if (row === null || typeof row !== "object") {
+        newRows[i] = row
       } else {
         const obj: any = {}
         for (const [key, value] of Object.entries(row)) {
@@ -1269,10 +1295,63 @@ export const defaultTransforms = (
   } as const
 }
 
+/**
+ * Returns the OpenTelemetry database span target for a client with the given
+ * span attributes: `db.namespace`, then `server.address[:server.port]`, or
+ * `undefined` when neither is set.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const spanTarget = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string | undefined => {
+  const namespace = spanAttribute(spanAttributes, "db.namespace")
+  if (isNonEmptyString(namespace)) {
+    return namespace
+  }
+  const address = spanAttribute(spanAttributes, "server.address")
+  if (isNonEmptyString(address)) {
+    const port = spanAttribute(spanAttributes, "server.port")
+    return port === undefined ? address : `${address}:${port}`
+  }
+  return undefined
+}
+
+/**
+ * Returns the span name for statements run by a client with the given span
+ * attributes, following the OpenTelemetry database span conventions: the
+ * {@link spanTarget}, then `db.system.name`, falling back to `sql.execute`.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const target = spanTarget(spanAttributes)
+  if (target !== undefined) {
+    return target
+  }
+  const system = spanAttribute(spanAttributes, "db.system.name")
+  return isNonEmptyString(system) ? system : "sql.execute"
+}
+
 // internal
 
-const ATTR_DB_OPERATION_NAME = "db.operation.name"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
+const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
+const ATTR_SQL_METHOD = "effect.sql.method"
+
+// the last value wins, matching the order the attributes are applied to spans
+const spanAttribute = (spanAttributes: ReadonlyArray<readonly [string, unknown]>, key: string): unknown => {
+  for (let i = spanAttributes.length - 1; i >= 0; i--) {
+    if (spanAttributes[i][0] === key) {
+      return spanAttributes[i][1]
+    }
+  }
+  return undefined
+}
+
+const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>
@@ -1338,7 +1417,7 @@ const StatementProto: Omit<
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
-      "sql.execute",
+      spanName(this.spanAttributes),
       { kind: "client" },
       (span) =>
         this.withConnectionSpan(
@@ -1365,14 +1444,21 @@ const StatementProto: Omit<
       for (const [key, value] of this.spanAttributes) {
         span.attribute(key, value)
       }
-      span.attribute(ATTR_DB_OPERATION_NAME, operation)
+      span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
+      const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+      const clock = propagate ? waitClock(fiber) : undefined
+      const run = clock === undefined
+        ? (connection: Connection) => f(connection, sql, params)
+        : (connection: Connection) =>
+          Effect.suspend(() => {
+            recordConnectionWait(span, clock)
+            return f(connection, sql, params)
+          })
       const execute = this.borrower === undefined
-        ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
-        : this.borrower((connection: Connection) => f(connection, sql, params))
-      return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-        ? Effect.provideService(execute, Tracer.ParentSpan, span)
-        : execute
+        ? Effect.scoped(Effect.flatMap(this.acquirer, run))
+        : this.borrower(run)
+      return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
     })
   },
 
@@ -1395,17 +1481,22 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped("sql.execute", { kind: "client" }),
+      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
           for (const [key, value] of self.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
+          span.attribute(ATTR_SQL_METHOD, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
-          const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
-          return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const clock = propagate ? waitClock(fiber) : undefined
+          const acquire = Effect.map(self.acquirer, (connection) => {
+            if (clock !== undefined) recordConnectionWait(span, clock)
+            return connection.executeStream(sql, params, self.transformRows)
+          })
+          return propagate
             ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
             : acquire
         })
@@ -1440,7 +1531,7 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, "sql.execute", { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(
@@ -1471,6 +1562,18 @@ const StatementProto: Omit<
     }
   }
 }
+
+// Without span timing, the span has no start time to measure from.
+const waitClock = (fiber: Fiber.Fiber<unknown, unknown>): Clock | undefined =>
+  fiber.getRef(TracerTimingEnabled) ? fiber.getRef(Clock) : undefined
+
+// Measured from the statement span's start to the connection hand-off, so it
+// also covers compiling the statement and any `CurrentTransformer` run first.
+const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
+  span.attribute(
+    ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
+    Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
+  )
 
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
@@ -1591,3 +1694,7 @@ function in_(): Fragment | ArrayHelper {
 }
 
 const neverFragment = fragment([literal("1=0")])
+
+const emptyInKeyword = /\b(NOT\s+)?IN\s*$/i
+
+const isInLineComment = (sql: string, index: number) => sql.lastIndexOf("--", index) > sql.lastIndexOf("\n", index)

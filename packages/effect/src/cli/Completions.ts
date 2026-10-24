@@ -1,14 +1,15 @@
 /**
  * The `Completions` module turns a plain description of an Effect CLI command
- * tree into shell completion scripts for Bash, Zsh, and Fish. It is the
- * low-level script generation surface used by the unstable CLI package and by
- * the built-in completions global flag.
+ * tree into shell completion scripts for Bash, Zsh, Fish, and PowerShell. It
+ * is the low-level script generation surface used by the unstable CLI package
+ * and by the built-in completions global flag.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import * as Bash from "./internal/completions/bash.ts"
 import * as Fish from "./internal/completions/fish.ts"
+import * as PowerShell from "./internal/completions/powershell.ts"
 import * as Zsh from "./internal/completions/zsh.ts"
 
 /**
@@ -18,7 +19,7 @@ import * as Zsh from "./internal/completions/zsh.ts"
  * @category models
  * @since 4.0.0
  */
-export type Shell = "bash" | "zsh" | "fish"
+export type Shell = "bash" | "zsh" | "fish" | "powershell"
 
 /**
  * Describes a command for completion script generation.
@@ -47,6 +48,16 @@ export interface FlagDescriptor {
   readonly aliases: ReadonlyArray<string>
   readonly description: string | undefined
   readonly type: FlagType
+  /**
+   * Whether the flag's value is optional. Its value can only be attached with
+   * `=` (`--name=value`), never given as the next word.
+   */
+  readonly optionalValue?: boolean | undefined
+  /**
+   * Long name that sets a boolean flag to `false`. Defaults to `no-<name>`;
+   * `false` means the flag has no negated form.
+   */
+  readonly negation?: string | false | undefined
 }
 
 /**
@@ -105,8 +116,8 @@ export type ArgumentType =
  *
  * **Details**
  *
- * Dispatches by `shell` to Bash, Zsh, or Fish generation and returns a static
- * script string for `executableName`.
+ * Dispatches by `shell` to Bash, Zsh, Fish, or PowerShell generation and
+ * returns a static script string for `executableName`.
  *
  * @see {@link Shell} for supported shell names
  * @see {@link CommandDescriptor} for the command shape used by completion generation
@@ -127,5 +138,7 @@ export const generate = (
       return Zsh.generate(executableName, descriptor)
     case "fish":
       return Fish.generate(executableName, descriptor)
+    case "powershell":
+      return PowerShell.generate(executableName, descriptor)
   }
 }

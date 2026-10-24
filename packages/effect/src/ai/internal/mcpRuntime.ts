@@ -31,7 +31,6 @@ const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
 const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
-const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
 
 const asRecord = (input: unknown): Record<string, unknown> | undefined =>
   typeof input === "object" && input !== null ? input as Record<string, unknown> : undefined
@@ -123,6 +122,7 @@ export type HttpAdmission =
  */
 export interface HandlerInstallationOptions {
   readonly core: McpCore.McpCore
+  readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
   readonly markSubscriptionCancelled?: NonNullable<
@@ -242,7 +242,7 @@ export const make = Effect.fnUntraced(function*(
   const registry = yield* McpProtocolRegistry.make(protocols)
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
   const unsupportedProtocolVersion = (requested: string) => ({
-    code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+    code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
     message: `Unsupported protocol version '${requested}'`,
     data: { supported: protocolVersions, requested }
   })
@@ -369,7 +369,7 @@ export const make = Effect.fnUntraced(function*(
       const claim = protocolVersionClaim(metadata)
       const requestedVersion = typeof claim.value === "string" ? claim.value : undefined
       let binding = claim.present ? undefined : stateful?.resolve(clientId, headers)
-      if (!claim.present && binding === undefined && request.tag !== "initialize" && statelessHttp) {
+      if (!claim.present && request.tag !== "initialize" && statelessHttp) {
         const context = yield* Effect.context<never>()
         if (Context.getOrUndefined(context, HttpServerRequest.HttpServerRequest) !== undefined) {
           if (request.tag === "logging/setLevel") {
@@ -378,8 +378,10 @@ export const make = Effect.fnUntraced(function*(
               message: "Persistent logging settings are not supported by stateless HTTP"
             })
           }
-          const registration = statelessHttpRegistration(headers)
-          if (registration !== undefined) binding = stateful?.registerConnection(clientId, registration)
+          if (binding === undefined) {
+            const registration = statelessHttpRegistration(headers)
+            if (registration !== undefined) binding = stateful?.registerConnection(clientId, registration)
+          }
         }
       }
       let protocol: PublicMcpProtocol.AnyProtocolAdapter
@@ -393,7 +395,7 @@ export const make = Effect.fnUntraced(function*(
         const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
         if (selected === undefined) {
           return yield* new McpProtocol.ProtocolError({
-            code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+            code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
             message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
           })
         }
@@ -555,12 +557,20 @@ export const make = Effect.fnUntraced(function*(
           })
       ),
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
-    canDeliver: (clientId, headers, notification, fallback) =>
-      stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,
+    canDeliver: (clientId, headers, notification, fallback) => {
+      if (
+        statelessHttp && stateful?.resolve(clientId, headers) !== undefined &&
+        McpProtocol.isSubscriptionServerNotification(notification)
+      ) {
+        return false
+      }
+      return stateful?.canDeliver(clientId, headers, notification, fallback) ?? true
+    },
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,
+        getListChangeRevision: options.getListChangeRevision,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         ...(options.markSubscriptionCancelled === undefined
           ? {}
@@ -621,7 +631,7 @@ export const make = Effect.fnUntraced(function*(
                 if (sessionId === undefined) stateful.registerConnection(clientId, registration)
                 else stateful.registerHttp(sessionId, registration)
                 appendPreResponseHandlerUnsafe(
-                  httpRequest,
+                  fiber.context,
                   (_request, response) =>
                     Effect.succeed(HttpServerResponse.setHeaders(response, {
                       ...(sessionId === undefined ? {} : { [MCP_SESSION_ID_HEADER]: sessionId }),

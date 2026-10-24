@@ -1,6 +1,7 @@
 /**
  * Runner-side Deno platform for Effect worker handlers using the standard `MessagePort` API.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -26,6 +27,7 @@ if (typeof self !== "undefined" && "onconnect" in self) {
 /**
  * Creates a worker runner platform over a `MessagePort`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -85,7 +87,7 @@ export const make = (self: MessagePort): WorkerRunner.WorkerRunnerPlatform["Serv
             closeLatch,
             new WorkerError({
               reason: new WorkerReceiveError({
-                message: "An messageerror event was emitted",
+                message: "A messageerror event was emitted",
                 cause: error.data
               })
             })
@@ -97,7 +99,7 @@ export const make = (self: MessagePort): WorkerRunner.WorkerRunnerPlatform["Serv
             new WorkerError({
               reason: new WorkerReceiveError({
                 message: "An error event was emitted",
-                cause: error.data
+                cause: error.error
               })
             })
           )
@@ -158,6 +160,7 @@ export const make = (self: MessagePort): WorkerRunner.WorkerRunnerPlatform["Serv
 /**
  * Layer that provides the worker runner platform using the global worker scope.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -168,6 +171,7 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.sync(
 /**
  * Layer that provides the worker runner platform using the supplied `MessagePort`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

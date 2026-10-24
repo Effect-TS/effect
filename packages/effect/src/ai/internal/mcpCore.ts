@@ -7,7 +7,6 @@
 import * as Arr from "../../Array.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
-import type * as Schema from "../../Schema.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 
@@ -56,7 +55,7 @@ export interface NegotiatedProtocolProfile<out Version extends string = McpProto
     : McpSchema.Implementation | undefined
   readonly requestMetadata?:
     | (Version extends McpProtocol.StatefulProtocolVersion ? CanonicalRequestMetadata
-      : CanonicalRequestMetadata | Schema.JsonObject)
+      : CanonicalRequestMetadata | Readonly<Record<string, unknown>>)
     | undefined
 }
 
@@ -66,7 +65,7 @@ export interface NegotiatedProtocolProfile<out Version extends string = McpProto
  * @internal
  */
 export interface CanonicalServerCapabilities {
-  readonly experimental?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly experimental?: Readonly<Record<string, Readonly<Record<string, unknown>>>> | undefined
   readonly logging?: boolean | undefined
   readonly completions?: boolean | undefined
   readonly prompts?: Readonly<{ readonly listChanged?: boolean | undefined }> | undefined
@@ -77,7 +76,7 @@ export interface CanonicalServerCapabilities {
     }>
     | undefined
   readonly tools?: Readonly<{ readonly listChanged?: boolean | undefined }> | undefined
-  readonly extensions?: Schema.JsonObject | undefined
+  readonly extensions?: Readonly<Record<string, unknown>> | undefined
 }
 
 /**
@@ -303,7 +302,7 @@ export interface CompletionResult {
   readonly values: ReadonlyArray<string>
   readonly total?: number | undefined
   readonly hasMore?: boolean | undefined
-  readonly metadata?: Schema.JsonObject | undefined
+  readonly metadata?: Readonly<Record<string, unknown>> | undefined
 }
 
 /**
@@ -333,7 +332,7 @@ export type ClientNotification = Data.TaggedEnum<{
     readonly progress: number
     readonly total?: number | undefined
     readonly message?: string | undefined
-    readonly metadata?: Schema.JsonObject | undefined
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined
   }
   RootsChanged: {}
 }>
@@ -349,7 +348,7 @@ export const ClientNotification = Data.taggedEnum<ClientNotification>()
 export interface Cancellation {
   readonly requestId: string | number
   readonly reason?: string | undefined
-  readonly metadata?: Schema.JsonObject | undefined
+  readonly metadata?: Readonly<Record<string, unknown>> | undefined
 }
 
 /**
@@ -359,25 +358,25 @@ export type ServerNotification = Data.TaggedEnum<{
   Cancelled: {
     readonly requestId: string | number
     readonly reason?: string | undefined
-    readonly metadata?: Schema.JsonObject | undefined
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined
   }
   Progress: {
     readonly progressToken: string | number
     readonly progress: number
     readonly total?: number | undefined
     readonly message?: string | undefined
-    readonly metadata?: Schema.JsonObject | undefined
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined
   }
   LoggingMessage: {
     readonly level: McpSchema.LoggingLevel
     readonly logger?: string | undefined
     readonly data: unknown
-    readonly metadata?: Schema.JsonObject | undefined
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined
   }
-  ResourceUpdated: { readonly uri: string; readonly metadata?: Schema.JsonObject | undefined }
-  ResourcesChanged: { readonly metadata?: Schema.JsonObject | undefined }
-  ToolsChanged: { readonly metadata?: Schema.JsonObject | undefined }
-  PromptsChanged: { readonly metadata?: Schema.JsonObject | undefined }
+  ResourceUpdated: { readonly uri: string; readonly metadata?: Readonly<Record<string, unknown>> | undefined }
+  ResourcesChanged: { readonly metadata?: Readonly<Record<string, unknown>> | undefined }
+  ToolsChanged: { readonly metadata?: Readonly<Record<string, unknown>> | undefined }
+  PromptsChanged: { readonly metadata?: Readonly<Record<string, unknown>> | undefined }
   ElicitationComplete: { readonly elicitationId: string }
 }>
 

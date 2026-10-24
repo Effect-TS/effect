@@ -1,3 +1,5 @@
+/// <reference lib="esnext.disposable" preserve="true" />
+
 /**
  * Runs many effects against services built once from a `Layer`.
  *
@@ -7,13 +9,15 @@
  * and runners for connecting Effect programs to JavaScript entry points such as
  * promises, callbacks, and synchronous code.
  *
+ * @stability stable
  * @since 2.0.0
  */
-import type * as Context from "./Context.ts"
+import * as Context from "./Context.ts"
+import * as Deferred from "./Deferred.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
-import { type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
+import { fiberEnterUninterruptibleUnsafe, type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -40,6 +44,7 @@ const TypeId = "~effect/ManagedRuntime"
  *
  * @see {@link make} for creating managed runtimes this guard recognizes
  *
+ * @stability stable
  * @category guards
  * @since 3.9.0
  */
@@ -54,6 +59,7 @@ export const isManagedRuntime = (input: unknown): input is ManagedRuntime<unknow
  * Use to reference type-level helpers for extracting managed runtime services
  * and layer errors.
  *
+ * @stability stable
  * @since 3.4.0
  */
 export declare namespace ManagedRuntime {
@@ -107,6 +113,7 @@ export declare namespace ManagedRuntime {
  * @see {@link make} for constructing a managed runtime from a layer
  * @see {@link Layer.build} for lower-level scoped layer construction
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -205,6 +212,10 @@ export interface ManagedRuntime<in R, out ER> {
    * **When to use**
    *
    * Use to release this runtime's layer resources from Promise-based code.
+   *
+   * **Details**
+   *
+   * Calls made while a disposal is in progress wait for it to finish.
    */
   readonly dispose: () => Promise<void>
 
@@ -224,9 +235,31 @@ export interface ManagedRuntime<in R, out ER> {
    * **When to use**
    *
    * Use to release this runtime's layer resources from an `Effect` workflow.
+   *
+   * **Details**
+   *
+   * Disposal runs uninterruptibly. Calls made while a disposal is in progress
+   * wait for it to finish, and interrupting a waiting call only stops the wait.
+   * Fibers started by this runtime, their child fibers, and the runtime's
+   * finalizers do not wait: the disposal interrupts or runs them, so waiting
+   * would deadlock.
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 }
+
+// The runtimes whose disposal the current fiber is running. A disposal adds its
+// runtime to the set it inherits, so a finalizer that disposes another runtime
+// still belongs to the outer disposals. Finalizers and their parallel fibers
+// inherit the set from the disposing fiber. It is not provided to the layer
+// build, because finalizers of layers shared through a MemoMap run with the
+// build context of the runtime that built them, which may not be the runtime
+// disposing them.
+const DisposingRuntimes = Context.Reference<ReadonlySet<ManagedRuntime<any, any>>>(
+  "effect/ManagedRuntime/DisposingRuntimes",
+  {
+    defaultValue: () => new Set()
+  }
+)
 
 /**
  * Creates a `ManagedRuntime` from a layer.
@@ -247,6 +280,11 @@ export interface ManagedRuntime<in R, out ER> {
  *
  * Dispose the runtime when it is no longer needed. A runtime cannot be reused
  * after disposal.
+ *
+ * A failed layer build is also cached: subsequent runs return the same build
+ * failure without rebuilding the layer. For transient failures, retry inside
+ * the layer before passing it to `make`, or dispose the runtime and create a
+ * new one to attempt a fresh build.
  *
  * **Example** (Creating a managed runtime)
  *
@@ -280,6 +318,7 @@ export interface ManagedRuntime<in R, out ER> {
  * @see {@link Layer.MemoMap} for shared layer memoization
  * @see {@link Layer.build} for lower-level scoped layer construction
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -293,8 +332,17 @@ export const make = <R, ER>(
   const scope = Scope.makeUnsafe("sequential")
   const layerScope = Scope.forkUnsafe(scope, "sequential")
   const fiberScope = Scope.forkUnsafe(scope, "parallel")
+  // Fibers started by the runtime, including the layer build, are interrupted
+  // and awaited by its disposal, so they and their child fibers must not wait
+  // for it.
+  const managedFibers = new WeakSet<Fiber.Fiber<any, any>>()
+  const disposingFibers = new WeakSet<Fiber.Fiber<any, any>>()
   const defaultRunOptions: Effect.RunOptions = {
-    onFiberStart: Fiber.runIn(fiberScope)
+    onFiberStart(fiber) {
+      managedFibers.add(fiber)
+      if (disposingFibers.has(fiber)) return
+      Fiber.runIn(fiber, fiberScope)
+    }
   }
   const mergeRunOptions = <O extends Effect.RunOptions>(options?: O): O =>
     options
@@ -309,6 +357,7 @@ export const make = <R, ER>(
       }
       : defaultRunOptions as O
   let buildFiber: Fiber.Fiber<Context.Context<R>, ER> | undefined
+  let disposed: Deferred.Deferred<void> | undefined
   const contextEffect = Effect.withFiber<Context.Context<R>, ER>((fiber) => {
     if (!buildFiber) {
       buildFiber = Effect.runFork(
@@ -319,7 +368,15 @@ export const make = <R, ER>(
               self.cachedContext = context
             })
         ),
-        { ...defaultRunOptions, scheduler: fiber.cache.scheduler }
+        {
+          scheduler: fiber.cache.scheduler,
+          // Unlike requests, the build joins fiberScope even if it disposed the
+          // runtime, so disposal still interrupts it.
+          onFiberStart(fiber) {
+            managedFibers.add(fiber)
+            Fiber.runIn(fiber, fiberScope)
+          }
+        }
       )
     }
     return Effect.flatten(Fiber.await(buildFiber))
@@ -342,14 +399,28 @@ export const make = <R, ER>(
       return self.dispose()
     },
     disposeEffect: Effect.withFiber((fiber) => {
-      // Closing fiberScope interrupts and awaits every managed fiber. Skip the
+      if (disposed !== undefined) {
+        if (fiber.getRef(DisposingRuntimes).has(self)) return Effect.void
+        for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+          if (managedFibers.has(current)) return Effect.void
+        }
+        return Deferred.await(disposed)
+      }
+      // Once `disposed` is set the close must run, or later calls would wait forever.
+      fiberEnterUninterruptibleUnsafe(fiber)
+      const done = disposed = Deferred.makeUnsafe<void>()
+      // Closing fiberScope interrupts and awaits every managed fiber. Exempt the
       // disposing fiber and its ancestors, which would otherwise await themselves.
       for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+        disposingFibers.add(current)
         scopeRemoveFinalizerUnsafe(fiberScope, current)
       }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
-      return Scope.close(self.scope, Exit.void)
+      return Scope.close(self.scope, Exit.void).pipe(
+        Effect.provideService(DisposingRuntimes, new Set(fiber.getRef(DisposingRuntimes)).add(self)),
+        Effect.ensuring(Deferred.done(done, Exit.void))
+      )
     }),
     runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions): Fiber.Fiber<A, E | ER> {
       return self.cachedContext === undefined ?

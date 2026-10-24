@@ -26,7 +26,7 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
   ) return format(input)
   if (typeof input === "symbol") {
     const key = globalThis.Symbol.keyFor(input)
-    return key === undefined ? undefined : `Symbol.for(${format(key)})`
+    return key === undefined ? undefined : `globalThis.Symbol.for(${format(key)})`
   }
   if (typeof input !== "object") return undefined
   if (Array.isArray(input)) {
@@ -46,6 +46,13 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
     entries.push(`${formatPropertyKey(key)}: ${rendered}`)
   }
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`
+}
+
+// Leading checks that turn a bare `Schema.Number` into a built-in schema.
+const canonicalNumberChecks: Record<string, string> = {
+  [`Schema.isFinite().annotate({ "expected": "a finite number" })`]: "Schema.Finite",
+  ["Schema.isInt()"]: "Schema.Int",
+  [`Schema.isInt().annotate({ "expected": "an integer" })`]: "Schema.Int"
 }
 
 function renderAnnotations(
@@ -223,7 +230,7 @@ export function toCodeDocument(
   const artifacts: Array<SchemaRepresentation.Artifact> = []
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, string>()
-  const uniqueIdentifiers = new Set<string>()
+  const uniqueIdentifiers = new Set<string>(["Schema"])
   let compilingRecursiveDefinition = false
   let explicitSuspendDepth = 0
 
@@ -282,8 +289,8 @@ export function toCodeDocument(
       identifier,
       code: makeCode(
         key === undefined
-          ? `Symbol(${description === undefined ? "" : format(description)})`
-          : `Symbol.for(${format(key)})`,
+          ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
+          : `globalThis.Symbol.for(${format(key)})`,
         `typeof ${identifier}`
       )
     })
@@ -341,7 +348,11 @@ export function toCodeDocument(
     let runtime = base.runtime + runtimeAnnotate(representation.annotations)
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
-      runtime += `.check(${compileCheck(check, [...path, "checks", index])})`
+      const compiledCheck = compileCheck(check, [...path, "checks", index])
+      // Only collapse a bare number's leading canonical check.
+      runtime = runtime === "Schema.Number" && Object.hasOwn(canonicalNumberChecks, compiledCheck)
+        ? canonicalNumberChecks[compiledCheck]
+        : `${runtime}.check(${compiledCheck})`
     }
     return makeCode(runtime, base.Type)
   }

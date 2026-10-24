@@ -6,6 +6,7 @@
  * makes them easy to narrow with pattern matching or simple checks. These
  * helpers are commonly used for domain values and errors in Effect programs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -42,6 +43,7 @@ import type { Unify } from "./Unify.ts"
  * @see {@link TaggedClass} — adds a `_tag` field
  * @see {@link Error} — yieldable error variant
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -85,6 +87,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * @see {@link TaggedError} — tagged error variant
  * @see {@link TaggedEnum} — multi-variant unions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -136,6 +139,7 @@ export const TaggedClass = <Tag extends string>(
  * @see {@link TaggedEnum.WithGenerics} — generic tagged enums
  * @see {@link TaggedEnum.Constructor} — the constructor object type
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -172,6 +176,7 @@ type UntaggedChildren<A> = true extends ChildrenAreTagged<A>
  *   values ({@link TaggedEnum.Value})
  * - Full constructor objects ({@link TaggedEnum.Constructor})
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace TaggedEnum {
@@ -387,13 +392,14 @@ export declare namespace TaggedEnum {
    * @category utility types
    * @since 3.1.0
    */
-  export type Constructor<A extends { readonly _tag: string }> = Types.Simplify<
-    {
+  export type Constructor<A extends { readonly _tag: string }> =
+    & {
       readonly [Tag in A["_tag"]]: ConstructorFrom<
         Extract<A, { readonly _tag: Tag }>,
         "_tag"
       >
-    } & {
+    }
+    & {
       readonly $is: <Tag extends A["_tag"]>(
         tag: Tag
       ) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
@@ -419,7 +425,6 @@ export declare namespace TaggedEnum {
         ): Unify<ReturnType<Cases[A["_tag"]]>>
       }
     }
-  >
 
   /**
    * Function type that constructs a tagged-union variant from its fields,
@@ -440,6 +445,61 @@ export declare namespace TaggedEnum {
   export type ConstructorFrom<A, Tag extends keyof A = never> = (
     args: Types.VoidIfEmpty<{ readonly [P in keyof A as P extends Tag ? never : P]: A[P] }>
   ) => A
+
+  /**
+   * The full constructors-and-matchers object type returned by {@link taggedEnum}
+   * for a {@link WithGenerics} definition.
+   *
+   * **When to use**
+   *
+   * Use when you want to annotate an exported constructor bundle for a generic
+   * tagged enum.
+   *
+   * **Details**
+   *
+   * Includes one generic constructor per variant (keyed by tag name) plus the
+   * `$is` / `$match` helpers from {@link GenericMatchers}.
+   *
+   * @see {@link Constructor} — the non-generic equivalent
+   * @see {@link GenericCaseConstructor} — the constructor for one variant
+   *
+   * @category utility types
+   * @since 4.0.7
+   */
+  export type GenericConstructor<Z extends WithGenerics<1 | 2 | 3 | 4>> =
+    & {
+      readonly [Tag in Z["taggedEnum"]["_tag"]]: GenericCaseConstructor<Z, Tag>[Z["numberOfGenerics"]]
+    }
+    & GenericMatchers<Z>
+
+  /**
+   * The generic constructors for one variant of a {@link WithGenerics}
+   * definition, keyed by the number of generics.
+   *
+   * **When to use**
+   *
+   * Use to type an individual constructor for one variant of a generic tagged
+   * enum, by indexing with the definition's `numberOfGenerics`.
+   *
+   * @see {@link GenericConstructor} — the full constructor object type
+   *
+   * @category utility types
+   * @since 4.0.7
+   */
+  export interface GenericCaseConstructor<Z extends WithGenerics<number>, Tag extends Z["taggedEnum"]["_tag"]> {
+    readonly 1: <A>(
+      args: Args<Kind<Z, A>, Tag, Extract<Kind<Z, A>, { readonly _tag: Tag }>>
+    ) => Value<Kind<Z, A>, Tag>
+    readonly 2: <A, B>(
+      args: Args<Kind<Z, A, B>, Tag, Extract<Kind<Z, A, B>, { readonly _tag: Tag }>>
+    ) => Value<Kind<Z, A, B>, Tag>
+    readonly 3: <A, B, C>(
+      args: Args<Kind<Z, A, B, C>, Tag, Extract<Kind<Z, A, B, C>, { readonly _tag: Tag }>>
+    ) => Value<Kind<Z, A, B, C>, Tag>
+    readonly 4: <A, B, C, D>(
+      args: Args<Kind<Z, A, B, C, D>, Tag, Extract<Kind<Z, A, B, C, D>, { readonly _tag: Tag }>>
+    ) => Value<Kind<Z, A, B, C, D>, Tag>
+  }
 
   /**
    * Type-guard and pattern-matching interface for generic tagged enums.
@@ -574,58 +634,12 @@ export declare namespace TaggedEnum {
  * @see {@link TaggedEnum.Constructor} — the returned object type
  * @see {@link TaggedEnum.WithGenerics} — generic enum support
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
 export const taggedEnum: {
-  <Z extends TaggedEnum.WithGenerics<1>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
-
-  <Z extends TaggedEnum.WithGenerics<2>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
-
-  <Z extends TaggedEnum.WithGenerics<3>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B, C>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B, C>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
-
-  <Z extends TaggedEnum.WithGenerics<4>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C, D>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B, C, D>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
-
+  <Z extends TaggedEnum.WithGenerics<1 | 2 | 3 | 4>>(): TaggedEnum.GenericConstructor<Z>
   <A extends { readonly _tag: string }>(): TaggedEnum.Constructor<A>
 } = () =>
   new Proxy(
@@ -706,6 +720,7 @@ function taggedMatch<
  * @see {@link TaggedError} — adds a `_tag` for `Effect.catchTag`
  * @see {@link Class} — non-error data class
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -755,6 +770,7 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @see {@link Error} — without a `_tag`
  * @see {@link TaggedClass} — tagged class that is not an error
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */

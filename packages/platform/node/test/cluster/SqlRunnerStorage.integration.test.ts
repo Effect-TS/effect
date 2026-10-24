@@ -1,20 +1,119 @@
-import { NodeFileSystem } from "@effect/platform-node"
+import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
+import { PgClient } from "@effect/sql-pg"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Latch, Layer, Schedule } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Latch, Layer, Redacted, Result, Schedule } from "effect"
 import {
   ClusterError,
+  MessageStorage,
   Runner,
   RunnerAddress,
   RunnerStorage,
   ShardId,
   ShardingConfig,
+  Snowflake,
+  SqlMessageStorage,
   SqlRunnerStorage
 } from "effect/cluster"
-import { SqlClient, type SqlConnection, SqlError } from "effect/sql"
+import { Migrator, SqlClient, type SqlConnection, SqlError } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
+
+const appRole = "cluster_app"
+
+const AppClient = Layer.unwrap(
+  Effect.gen(function*() {
+    const container = yield* PgContainer
+    return PgClient.layer({
+      host: container.getHost(),
+      port: container.getPort(),
+      database: container.getDatabase(),
+      username: appRole,
+      password: Redacted.make(appRole)
+    })
+  })
+)
+
+const asApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layer, Snowflake.layerGenerator])
+
+const assertMigrationDefect = (exit: Exit.Exit<unknown, unknown>) => {
+  assert(Exit.isFailure(exit))
+  assert.isFalse(Cause.hasFails(exit.cause))
+  assert.isFalse(Cause.hasInterrupts(exit.cause))
+  const error = Cause.findDefect(exit.cause)
+  assert(Result.isSuccess(error))
+  assert(error.success instanceof Migrator.MigrationError)
+  assert.strictEqual(error.success.kind, "Failed")
+  assertAuthorizationError(error.success.cause)
+}
+
+const assertAuthorizationError = (error: unknown) => {
+  assert(SqlError.isSqlError(error), `expected a SqlError, got ${error}`)
+  assert.strictEqual(error.reason._tag, "AuthorizationError")
+}
+
+const TestLayer = Layer.effectDiscard(Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  yield* sql.unsafe(`CREATE ROLE ${appRole} LOGIN PASSWORD '${appRole}'`)
+  yield* sql.unsafe(`REVOKE CREATE ON SCHEMA public FROM PUBLIC`)
+  yield* sql.unsafe(`GRANT USAGE ON SCHEMA public TO ${appRole}`)
+})).pipe(Layer.provideMerge(PgContainer.layerClient), Layer.provideMerge(PgContainer.layer))
+
+describe("cluster SQL storage with a DML-only role", () => {
+  // The tests grant on and provision tables in the same schema.
+  it.layer(TestLayer, { concurrent: false, timeout: 120_000 })("pg", (it) => {
+    it.effect("starts from tables migrated by an owner connection", () =>
+      Effect.gen(function*() {
+        yield* Effect.scoped(Layer.build(Layer.mergeAll(
+          SqlMessageStorage.layerMigrations({}),
+          SqlRunnerStorage.layerMigrations({})
+        )))
+        const sql = yield* SqlClient.SqlClient
+        yield* sql.unsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${appRole}`)
+        yield* sql.unsafe(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${appRole}`)
+
+        yield* asApp(
+          Effect.gen(function*() {
+            const runners = yield* RunnerStorage.RunnerStorage
+            const runner = Runner.make({
+              address: RunnerAddress.make("localhost", 1234),
+              groups: ["default"],
+              weight: 1
+            })
+            yield* runners.register(runner, true)
+            expect(yield* runners.getRunners).toEqual([[runner, true]])
+
+            const messages = yield* MessageStorage.MessageStorage
+            expect(yield* messages.unprocessedMessages([ShardId.make("default", 1)])).toEqual([])
+          }).pipe(
+            Effect.provide(Layer.mergeAll(SqlMessageStorage.layerStorage({}), SqlRunnerStorage.layerStorage({})))
+          )
+        )
+      }))
+
+    it.effect("surfaces errors inside a migration as defects", () =>
+      Effect.gen(function*() {
+        // Empty history tables the role can use, so the migrator gets past its
+        // own table and fails inside the first migration.
+        for (const table of ["inside_migrations", "inside_runner_migrations"]) {
+          yield* Migrator.make({})({ loader: Migrator.fromRecord({}), table })
+          const sql = yield* SqlClient.SqlClient
+          yield* sql.unsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${table} TO ${appRole}`)
+        }
+
+        assertMigrationDefect(
+          yield* asApp(Effect.scoped(Layer.build(SqlMessageStorage.layerMigrations({ prefix: "inside" })))).pipe(
+            Effect.exit
+          )
+        )
+        assertMigrationDefect(
+          yield* asApp(Effect.scoped(Layer.build(SqlRunnerStorage.layerWith({ prefix: "inside" })))).pipe(Effect.exit)
+        )
+      }).pipe(Effect.timeout("20 seconds"), TestClock.withLive), 30_000)
+  })
+})
 
 const StorageLayer = SqlRunnerStorage.layer
 
@@ -27,373 +126,379 @@ const partitionConfig = {
 }
 
 describe("SqlRunnerStorage", () => {
-  it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
-    const partitioned = makePartitionState()
-    const layer = StorageLayer.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
-      Layer.provide(ShardingConfig.layer(partitionConfig))
-    )
+  // These tests each get an empty database on one shared container, so
+  // container startup counts against the hook timeout, not each test's.
+  it.layer(PgContainer.layer, { timeout: 120_000 })((it) => {
+    it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
+      const partitioned = makePartitionState()
+      const layer = StorageLayer.pipe(
+        Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+        Layer.provide(ShardingConfig.layer(partitionConfig))
+      )
 
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const runner = Runner.make({
-        address: runnerAddress1,
-        groups: ["default"],
-        weight: 1
-      })
-      const shards = [ShardId.make("default", 1)]
+      return Effect.gen(function*() {
+        const storage = yield* RunnerStorage.RunnerStorage
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shards = [ShardId.make("default", 1)]
 
-      yield* storage.register(runner, true)
-      yield* storage.acquire(runnerAddress1, shards)
-      partitionConnection(partitioned)
+        yield* storage.register(runner, true)
+        yield* storage.acquire(runnerAddress1, shards)
+        partitionConnection(partitioned)
 
-      const expectDeadline = Effect.fnUntraced(function*(operation: Effect.Effect<unknown, unknown>) {
-        const [elapsed, exit] = yield* operation.pipe(
-          Effect.exit,
-          Effect.timed
-        )
+        const expectDeadline = Effect.fnUntraced(function*(operation: Effect.Effect<unknown, unknown>) {
+          const [elapsed, exit] = yield* operation.pipe(
+            Effect.exit,
+            Effect.timed
+          )
+          assert(Exit.isFailure(exit))
+          const error = Cause.squash(exit.cause)
+          assert(error instanceof ClusterError.PersistenceError)
+          assert.isBelow(Duration.toMillis(elapsed), lockOperationInterval * 5)
+          yield* Effect.sleep(20)
+        })
+
+        const expectRecovery = Effect.fnUntraced(function*() {
+          restoreConnection(partitioned)
+          expect(
+            yield* storage.refresh(runnerAddress1, shards).pipe(
+              Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
+            )
+          ).toEqual(shards)
+        })
+
+        yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+        yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+        yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+
+        assert.isAtLeast(partitioned.interruptedQueries, 1)
+        assert.isAtMost(partitioned.maxActiveQueries, 1)
+
+        yield* expectRecovery()
+
+        partitionConnection(partitioned)
+        yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
+        yield* expectRecovery()
+
+        partitionConnection(partitioned)
+        yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
+        yield* expectRecovery()
+        yield* storage.release(runnerAddress1, shards[0])
+
+        assert.strictEqual(partitioned.activeQueries, 0)
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: 30_000,
+          orElse: () =>
+            Effect.die(
+              `timed out exercising shard lock rebuilds (${partitionDiagnostics(partitioned)})`
+            )
+        }),
+        // Ensure layer teardown cannot mask a body failure with Vitest's timeout.
+        Effect.ensuring(Effect.sync(() => {
+          restoreConnection(partitioned)
+        })),
+        Effect.provide(layer),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect("empty liveness probe bypasses a wedged reserved connection", () => {
+      const partitioned = makePartitionState()
+      const layer = StorageLayer.pipe(
+        Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+        Layer.provide(ShardingConfig.layer(partitionConfig))
+      )
+
+      return Effect.gen(function*() {
+        const storage = yield* RunnerStorage.RunnerStorage
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shards = [ShardId.make("default", 1)]
+
+        yield* storage.register(runner, true)
+        yield* storage.acquire(runnerAddress1, shards)
+        partitionConnection(partitioned)
+
+        // shard lock operations are stuck behind the wedged reserved connection
+        const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
         assert(Exit.isFailure(exit))
-        const error = Cause.squash(exit.cause)
-        assert(error instanceof ClusterError.PersistenceError)
-        assert.isBelow(Duration.toMillis(elapsed), lockOperationInterval * 5)
-        yield* Effect.sleep(20)
-      })
 
-      const expectRecovery = Effect.fnUntraced(function*() {
+        // the liveness probe runs on the shared pool, so it must succeed while
+        // the reserved connection stays wedged
+        expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
+
         restoreConnection(partitioned)
+        expect(
+          yield* storage.refresh(runnerAddress1, shards).pipe(
+            Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+          )
+        ).toEqual(shards)
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => {
+          restoreConnection(partitioned)
+        })),
+        Effect.provide(layer),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
+      const partitioned = makePartitionState()
+      const layer = StorageLayer.pipe(
+        Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
+        Layer.provide(ShardingConfig.layer({
+          shardLockDisableAdvisory: true,
+          ...partitionConfig
+        }))
+      )
+
+      return Effect.gen(function*() {
+        const storage = yield* RunnerStorage.RunnerStorage
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shards = [ShardId.make("default", 1)]
+
+        yield* storage.register(runner, true)
+        yield* storage.acquire(runnerAddress1, shards)
+        partitionConnection(partitioned)
+        yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+        yield* waitUntil(() => partitioned.activeQueries === 0)
+
+        restoreConnection(partitioned)
+        expect(
+          yield* storage.refresh(runnerAddress1, shards).pipe(
+            Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+          )
+        ).toEqual(shards)
+        assert.isAtLeast(partitioned.interruptedQueries, 1)
+        assert.isAtMost(partitioned.maxActiveQueries, 1)
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => {
+          restoreConnection(partitioned)
+        })),
+        Effect.provide(layer),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect("rebuilds the reserved connection again when a rebuilt connection stops responding", () => {
+      const partitioned = makePartitionState()
+      const layer = StorageLayer.pipe(
+        Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
+        Layer.provide(ShardingConfig.layer(partitionConfig))
+      )
+
+      return Effect.gen(function*() {
+        const storage = yield* RunnerStorage.RunnerStorage
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shards = [ShardId.make("default", 1)]
+
+        yield* storage.register(runner, true)
+        yield* storage.acquire(runnerAddress1, shards)
+
+        // a failing lock operation rebuilds the reserved connection
+        partitioned.failNextQueries = 1
+        yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+        yield* waitUntil(() => partitioned.usableConnections === 2)
+
+        // the rebuilt connection then wedges, without any lock operation
+        // succeeding in between - a further rebuild still has to be attempted
+        const reserved = partitioned.reservedConnections
+        partitionConnection(partitioned)
+        yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+        yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+        restoreConnection(partitioned)
+        yield* waitUntil(() => partitioned.reservedConnections > reserved)
+
         expect(
           yield* storage.refresh(runnerAddress1, shards).pipe(
             Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
           )
         ).toEqual(shards)
-      })
-
-      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
-      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
-      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
-
-      assert.isAtLeast(partitioned.interruptedQueries, 1)
-      assert.isAtMost(partitioned.maxActiveQueries, 1)
-
-      yield* expectRecovery()
-
-      partitionConnection(partitioned)
-      yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
-      yield* expectRecovery()
-
-      partitionConnection(partitioned)
-      yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
-      yield* expectRecovery()
-      yield* storage.release(runnerAddress1, shards[0])
-
-      assert.strictEqual(partitioned.activeQueries, 0)
-    }).pipe(
-      Effect.timeoutOrElse({
-        duration: 30_000,
-        orElse: () =>
-          Effect.die(
-            `timed out exercising shard lock rebuilds (${partitionDiagnostics(partitioned)})`
-          )
-      }),
-      // Ensure layer teardown cannot mask a body failure with Vitest's timeout.
-      Effect.ensuring(Effect.sync(() => {
-        restoreConnection(partitioned)
-      })),
-      Effect.provide(layer),
-      TestClock.withLive
-    )
-  }, 60_000)
-
-  it.effect("empty liveness probe bypasses a wedged reserved connection", () => {
-    const partitioned = makePartitionState()
-    const layer = StorageLayer.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
-      Layer.provide(ShardingConfig.layer(partitionConfig))
-    )
-
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const runner = Runner.make({
-        address: runnerAddress1,
-        groups: ["default"],
-        weight: 1
-      })
-      const shards = [ShardId.make("default", 1)]
-
-      yield* storage.register(runner, true)
-      yield* storage.acquire(runnerAddress1, shards)
-      partitionConnection(partitioned)
-
-      // shard lock operations are stuck behind the wedged reserved connection
-      const exit = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      assert(Exit.isFailure(exit))
-
-      // the liveness probe runs on the shared pool, so it must succeed while
-      // the reserved connection stays wedged
-      expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
-
-      restoreConnection(partitioned)
-      expect(
-        yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
-        )
-      ).toEqual(shards)
-    }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        restoreConnection(partitioned)
-      })),
-      Effect.provide(layer),
-      TestClock.withLive
-    )
-  }, 60_000)
-
-  it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
-    const partitioned = makePartitionState()
-    const layer = StorageLayer.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
-      Layer.provide(ShardingConfig.layer({
-        shardLockDisableAdvisory: true,
-        ...partitionConfig
-      }))
-    )
-
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const runner = Runner.make({
-        address: runnerAddress1,
-        groups: ["default"],
-        weight: 1
-      })
-      const shards = [ShardId.make("default", 1)]
-
-      yield* storage.register(runner, true)
-      yield* storage.acquire(runnerAddress1, shards)
-      partitionConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      yield* waitUntil(() => partitioned.activeQueries === 0)
-
-      restoreConnection(partitioned)
-      expect(
-        yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
-        )
-      ).toEqual(shards)
-      assert.isAtLeast(partitioned.interruptedQueries, 1)
-      assert.isAtMost(partitioned.maxActiveQueries, 1)
-    }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        restoreConnection(partitioned)
-      })),
-      Effect.provide(layer),
-      TestClock.withLive
-    )
-  }, 60_000)
-
-  it.effect("rebuilds the reserved connection again when a rebuilt connection stops responding", () => {
-    const partitioned = makePartitionState()
-    const layer = StorageLayer.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
-      Layer.provide(ShardingConfig.layer(partitionConfig))
-    )
-
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const runner = Runner.make({
-        address: runnerAddress1,
-        groups: ["default"],
-        weight: 1
-      })
-      const shards = [ShardId.make("default", 1)]
-
-      yield* storage.register(runner, true)
-      yield* storage.acquire(runnerAddress1, shards)
-
-      // a failing lock operation rebuilds the reserved connection
-      partitioned.failNextQueries = 1
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      yield* waitUntil(() => partitioned.usableConnections === 2)
-
-      // the rebuilt connection then wedges, without any lock operation
-      // succeeding in between - a further rebuild still has to be attempted
-      const reserved = partitioned.reservedConnections
-      partitionConnection(partitioned)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-      restoreConnection(partitioned)
-      yield* waitUntil(() => partitioned.reservedConnections > reserved)
-
-      expect(
-        yield* storage.refresh(runnerAddress1, shards).pipe(
-          Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
-        )
-      ).toEqual(shards)
-    }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        restoreConnection(partitioned)
-      })),
-      Effect.provide(layer),
-      TestClock.withLive
-    )
-  }, 60_000)
-
-  it.effect(
-    "rebuilds the reserved connection when releasing the previous one hangs",
-    () =>
-      withStalledRelease((storage, shards, partitioned) =>
-        Effect.gen(function*() {
-          yield* Effect.sleep(lockOperationInterval * 1.5)
-
-          // the stalled release must not disable further rebuilds
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => {
           restoreConnection(partitioned)
-          const reserved = partitioned.reservedConnections
-          yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-          yield* waitUntil(() => partitioned.reservedConnections > reserved)
+        })),
+        Effect.provide(layer),
+        TestClock.withLive
+      )
+    }, 60_000)
 
-          expect(
-            yield* storage.refresh(runnerAddress1, shards).pipe(
-              Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
-            )
-          ).toEqual(shards)
-        })
-      ),
-    60_000
-  )
+    it.effect(
+      "rebuilds the reserved connection when releasing the previous one hangs",
+      () =>
+        withStalledRelease((storage, shards, partitioned) =>
+          Effect.gen(function*() {
+            yield* Effect.sleep(lockOperationInterval * 1.5)
 
-  it.effect(
-    "replaces a pending reserved connection once when operations waiting on it fail",
-    () =>
-      withStalledRelease((storage, shards, partitioned) =>
-        Effect.gen(function*() {
-          restoreConnection(partitioned)
-          const reserved = partitioned.reservedConnections
+            // the stalled release must not disable further rebuilds
+            restoreConnection(partitioned)
+            const reserved = partitioned.reservedConnections
+            yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+            yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
-          // both operations wait on the pending connection and time out together,
-          // but only one of them may replace it
-          const exits = yield* Effect.all([
-            storage.refresh(runnerAddress1, shards).pipe(Effect.exit),
-            storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
-          ], { concurrency: "unbounded" })
-          assert(exits.every(Exit.isFailure))
-          yield* waitUntil(() => partitioned.reservedConnections > reserved)
-          expect(
-            yield* storage.refresh(runnerAddress1, shards).pipe(
-              Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
-            )
-          ).toEqual(shards)
-          yield* Effect.sleep(lockOperationInterval / 2)
-          expect(partitioned.reservedConnections, partitionDiagnostics(partitioned)).toEqual(reserved + 1)
-        })
-      ),
-    60_000
-  )
+            expect(
+              yield* storage.refresh(runnerAddress1, shards).pipe(
+                Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+              )
+            ).toEqual(shards)
+          })
+        ),
+      60_000
+    )
 
-  it.effect(
-    "replaces a connection that fails an operation which waited for it",
-    () =>
-      withStalledRelease((storage, shards, partitioned) =>
-        Effect.gen(function*() {
-          restoreConnection(partitioned)
-          const waiting = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, Effect.forkChild)
-          yield* Effect.sleep(lockOperationInterval / 10)
+    it.effect(
+      "replaces a pending reserved connection once when operations waiting on it fail",
+      () =>
+        withStalledRelease((storage, shards, partitioned) =>
+          Effect.gen(function*() {
+            restoreConnection(partitioned)
+            const reserved = partitioned.reservedConnections
 
-          // the waiting operation runs on the replacement, which then fails it
-          const reserved = partitioned.reservedConnections
-          partitioned.failNextQueries = 1
-          partitioned.blockRelease = false
-          yield* waitUntil(() => partitioned.reservedConnections > reserved)
-          assert(Exit.isFailure(yield* Fiber.join(waiting)))
+            // both operations wait on the pending connection and time out together,
+            // but only one of them may replace it
+            const exits = yield* Effect.all([
+              storage.refresh(runnerAddress1, shards).pipe(Effect.exit),
+              storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+            ], { concurrency: "unbounded" })
+            assert(exits.every(Exit.isFailure))
+            yield* waitUntil(() => partitioned.reservedConnections > reserved)
+            // count before retrying: a retry that misses its deadline under load
+            // rightly replaces the connection again
+            yield* Effect.sleep(lockOperationInterval / 2)
+            expect(partitioned.reservedConnections, partitionDiagnostics(partitioned)).toEqual(reserved + 1)
+            expect(
+              yield* storage.refresh(runnerAddress1, shards).pipe(
+                Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+              )
+            ).toEqual(shards)
+          })
+        ),
+      60_000
+    )
 
-          // the failing replacement is replaced without another operation failing on it
-          yield* waitUntil(() => partitioned.reservedConnections > reserved + 1)
-          expect(
-            yield* storage.refresh(runnerAddress1, shards).pipe(
-              Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
-            )
-          ).toEqual(shards)
-        })
-      ),
-    60_000
-  )
+    it.effect(
+      "replaces a connection that fails an operation which waited for it",
+      () =>
+        withStalledRelease((storage, shards, partitioned) =>
+          Effect.gen(function*() {
+            restoreConnection(partitioned)
+            const waiting = yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, Effect.forkChild)
+            yield* Effect.sleep(lockOperationInterval / 10)
 
-  it.effect("isolates advisory shard locks by prefix", () =>
-    Effect.gen(function*() {
-      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
-      const shard = ShardId.make("default", 1)
+            // the waiting operation runs on the replacement, which then fails it
+            const reserved = partitioned.reservedConnections
+            partitioned.failNextQueries = 1
+            partitioned.blockRelease = false
+            yield* waitUntil(() => partitioned.reservedConnections > reserved)
+            assert(Exit.isFailure(yield* Fiber.join(waiting)))
 
-      expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
-      expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([shard])
-    }).pipe(
-      // Release the advisory-lock connections before the PostgreSQL layer.
-      Effect.scoped,
-      Effect.provide(PgContainer.layerClient),
-      Effect.provide(ShardingConfig.layer())
-    ), 60_000)
+            // the failing replacement is replaced without another operation failing on it
+            yield* waitUntil(() => partitioned.reservedConnections > reserved + 1)
+            expect(
+              yield* storage.refresh(runnerAddress1, shards).pipe(
+                Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+              )
+            ).toEqual(shards)
+          })
+        ),
+      60_000
+    )
 
-  it.effect("excludes other storages using the same prefix", () =>
-    Effect.gen(function*() {
-      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-      const shard = ShardId.make("default", 1)
-
-      expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
-      expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
-    }).pipe(
-      // Release the advisory-lock connections before the PostgreSQL layer.
-      Effect.scoped,
-      Effect.provide(PgContainer.layerClient),
-      Effect.provide(ShardingConfig.layer())
-    ), 60_000)
-
-  it.effect(
-    "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
-    () =>
+    it.effect("isolates advisory shard locks by prefix", () =>
       Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
+        const shard = ShardId.make("default", 1)
+
+        expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+        expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([shard])
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer())
+      ), 60_000)
+
+    it.effect("excludes other storages using the same prefix", () =>
+      Effect.gen(function*() {
         const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
         const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
-        const shards = Array.from({ length: 12 }, (_, i) => ShardId.make("default", i + 1))
-        const reversed = [...shards].reverse()
-        // Rewrite each lease in reverse so the physical row order differs from
-        // the sorted lock order.
-        const acquireShuffled = Effect.gen(function*() {
-          yield* storageA.acquire(runnerAddress1, shards)
-          for (const shard of reversed) {
-            yield* storageA.refresh(runnerAddress1, [shard])
-          }
-        })
+        const shard = ShardId.make("default", 1)
 
-        // Slow each row write so the concurrent statements overlap.
-        yield* sql`CREATE FUNCTION delay_row() RETURNS trigger LANGUAGE plpgsql AS $$
-          BEGIN PERFORM pg_sleep(0.003); RETURN COALESCE(NEW, OLD); END $$`
-        yield* sql`CREATE TRIGGER delay_row BEFORE UPDATE OR DELETE ON cluster_locks
-          FOR EACH ROW EXECUTE FUNCTION delay_row()`
-
-        for (let i = 0; i < 8; i++) {
-          yield* acquireShuffled
-          yield* sql`UPDATE cluster_locks SET acquired_at = NOW() - INTERVAL '1 hour'`
-          yield* Effect.all([
-            storageA.refresh(runnerAddress1, shards),
-            storageB.acquire(runnerAddress2, reversed)
-          ], { concurrency: 2 })
-          yield* storageA.releaseAll(runnerAddress1)
-          yield* storageB.releaseAll(runnerAddress2)
-
-          yield* acquireShuffled
-          yield* Effect.all([
-            storageA.releaseAll(runnerAddress1),
-            storageB.acquire(runnerAddress2, reversed)
-          ], { concurrency: 2 })
-          yield* storageB.releaseAll(runnerAddress2)
-        }
+        expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+        expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
       }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
         Effect.scoped,
-        Effect.provide(PgContainer.layerClient),
-        Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true })),
-        TestClock.withLive
-      ),
-    60_000
-  )
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer())
+      ), 60_000)
+
+    it.effect(
+      "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+          const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+          const shards = Array.from({ length: 12 }, (_, i) => ShardId.make("default", i + 1))
+          const reversed = [...shards].reverse()
+          // Rewrite each lease in reverse so the physical row order differs from
+          // the sorted lock order.
+          const acquireShuffled = Effect.gen(function*() {
+            yield* storageA.acquire(runnerAddress1, shards)
+            for (const shard of reversed) {
+              yield* storageA.refresh(runnerAddress1, [shard])
+            }
+          })
+
+          // Slow each row write so the concurrent statements overlap.
+          yield* sql`CREATE FUNCTION delay_row() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN PERFORM pg_sleep(0.003); RETURN COALESCE(NEW, OLD); END $$`
+          yield* sql`CREATE TRIGGER delay_row BEFORE UPDATE OR DELETE ON cluster_locks
+            FOR EACH ROW EXECUTE FUNCTION delay_row()`
+
+          for (let i = 0; i < 8; i++) {
+            yield* acquireShuffled
+            yield* sql`UPDATE cluster_locks SET acquired_at = NOW() - INTERVAL '1 hour'`
+            yield* Effect.all([
+              storageA.refresh(runnerAddress1, shards),
+              storageB.acquire(runnerAddress2, reversed)
+            ], { concurrency: 2 })
+            yield* storageA.releaseAll(runnerAddress1)
+            yield* storageB.releaseAll(runnerAddress2)
+
+            yield* acquireShuffled
+            yield* Effect.all([
+              storageA.releaseAll(runnerAddress1),
+              storageB.acquire(runnerAddress2, reversed)
+            ], { concurrency: 2 })
+            yield* storageB.releaseAll(runnerAddress2)
+          }
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(PgContainer.layerClientDatabase),
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true })),
+          TestClock.withLive
+        ),
+      60_000
+    )
+  })
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
@@ -468,6 +573,30 @@ describe("SqlRunnerStorage", () => {
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
+
+      if (label === "pg") {
+        it.effect("runner migrations adopt existing tables without migration records", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+
+            // Advisory-lock deployments had no locks table or migration history.
+            yield* sql`CREATE TABLE legacy_runners (
+              machine_id SERIAL PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BOOLEAN NOT NULL DEFAULT TRUE,
+              last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
+              UNIQUE(address)
+            )`
+            yield* sql`INSERT INTO legacy_runners (address, runner) VALUES ('legacy:1', 'legacy')`
+            const rows = yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`
+
+            yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "legacy" })))
+
+            expect(yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`).toEqual(rows)
+            expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
+          }))
+      }
     })
   })
 })
@@ -646,7 +775,7 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       })
       return client
     })
-  ).pipe(Layer.provide(PgContainer.layerClient))
+  ).pipe(Layer.provide(PgContainer.layerClientDatabase))
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

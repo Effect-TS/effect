@@ -6,6 +6,9 @@
  * runtimes, and Node.js environments where `globalThis.fetch` is available, or
  * anywhere a compatible fetch function can be supplied.
  *
+ * Requests with an `Upgrade` header fail with `TransportError` before anything
+ * is sent because fetch cannot hand over the connection.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -45,6 +48,8 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
  *
  * Request-specific method, headers, body, and abort signal are supplied by the client when a request is executed.
  *
+ * @see {@link HttpClient.followRedirects} for following redirects in the client, which needs `{ redirect: "manual" }` here
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -54,6 +59,16 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 ) {}
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
+  if (request.headers.upgrade !== undefined) {
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.TransportError({
+          request,
+          description: "fetch cannot send an HTTP upgrade request"
+        })
+      })
+    )
+  }
   const fetch = fiber.getRef(Fetch)
   const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers
@@ -62,6 +77,8 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
   if (headers["content-length"]) {
     headers = Headers.remove(headers, "content-length")
   }
+  let uploadController: AbortController | undefined
+  const stopUpload = Effect.sync(() => uploadController?.abort())
   const send = (body: BodyInit | undefined) =>
     Effect.map(
       Effect.tryPromise({
@@ -72,7 +89,7 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
             headers,
             body,
             duplex: typeof ReadableStream !== "undefined" && body instanceof ReadableStream ? "half" : undefined,
-            signal
+            signal: uploadController ? AbortSignal.any([signal, uploadController.signal]) : signal
           } as any),
         catch: (cause) =>
           new HttpClientError.HttpClientError({
@@ -82,16 +99,47 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
             })
           })
       }),
-      (response) => HttpClientResponse.fromWeb(request, response)
-    )
+      (response) => {
+        const original = HttpClientResponse.fromWeb(request, response)
+        if (!uploadController) return original
+        if (response.body === null) uploadController.abort()
+        // Finishing or releasing either response reader ends the upload, not
+        // merely receiving headers. Keep the original response and its caches,
+        // and inherit its Web source so `toWeb` hands over the original body.
+        return Object.create(original, {
+          ...Object.fromEntries(
+            (["arrayBuffer", "text", "json", "formData", "urlParamsBody"] as const).map((key) => [key, {
+              get: () =>
+                Effect.ensuring(original[key] as Effect.Effect<unknown, HttpClientError.HttpClientError>, stopUpload)
+            }])
+          ),
+          stream: { get: () => Stream.ensuring(original.stream, stopUpload) }
+        }) as HttpClientResponse.HttpClientResponse
+      }
+    ).pipe(Effect.onError(() => stopUpload))
   switch (request.body._tag) {
     case "Raw":
     case "Uint8Array":
       return send(request.body.body as any)
     case "FormData":
       return send(request.body.formData)
-    case "Stream":
-      return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
+    case "Stream": {
+      uploadController = new AbortController()
+      const uploadSignal = AbortSignal.any([signal, uploadController.signal])
+      const stopped = Effect.callback<void>((resume) => {
+        const onAbort = () => resume(Effect.interrupt)
+        if (uploadSignal.aborted) {
+          onAbort()
+          return
+        }
+        uploadSignal.addEventListener("abort", onAbort, { once: true })
+        return Effect.sync(() => uploadSignal.removeEventListener("abort", onAbort))
+      })
+      return Effect.flatMap(
+        Stream.toReadableStreamEffect(Stream.interruptWhen(request.body.stream, stopped)),
+        send
+      )
+    }
   }
   return send(undefined)
 })
@@ -115,12 +163,17 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * **Gotchas**
  *
  * Fetch behavior comes from the runtime's implementation, so CORS, cookies,
- * redirects, abort handling, and streaming support can vary by platform. Stream
- * request bodies are sent as Web streams with `duplex: "half"`, and any
- * `content-length` header is removed before calling `fetch`.
+ * redirects, abort handling, and streaming support can vary by platform.
+ * `fetch` follows redirects itself by default, so `HttpClient.followRedirects`
+ * has no effect unless `RequestInit` sets `redirect: "manual"`. Trace
+ * propagation is on by default, and a browser preflight fails unless the
+ * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
+ * streams with `duplex: "half"`, and any `content-length` header is removed
+ * before calling `fetch`.
  *
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
+ * @see {@link HttpClient.TracerPropagationEnabled} for leaving `b3` and `traceparent` off a browser request
  *
  * @stability unstable
  * @category layers

@@ -7,11 +7,13 @@
  * services and request options, and defines a lower-level `node:http` /
  * `node:https` client with scoped HTTP agent layers.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { flow } from "effect/Function"
+import * as Fiber from "effect/Fiber"
+import { constVoid, flow } from "effect/Function"
 import * as Cookies from "effect/http/Cookies"
 import * as Headers from "effect/http/Headers"
 import type * as Body from "effect/http/HttpBody"
@@ -28,11 +30,14 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Http from "node:http"
-import * as Https from "node:https"
-import { Readable } from "node:stream"
+import type * as Http from "node:http"
+import type * as Https from "node:https"
+import { type Duplex, Readable } from "node:stream"
+import * as Consumers from "node:stream/consumers"
 import { pipeline } from "node:stream/promises"
+import { http, https } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -51,6 +56,7 @@ export {
    * Use to access or override the fetch implementation used by the Node
    * fetch-based HTTP client.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -58,6 +64,7 @@ export {
   /**
    * Layer that provides the fetch-based HTTP client implementation.
    *
+   * @stability unstable
    * @category layers
    * @since 4.0.0
    */
@@ -69,6 +76,7 @@ export {
    *
    * Use to provide default fetch request options for Node HTTP requests.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -94,6 +102,41 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
 const loadUndici = Effect.promise(() => import("./Undici.ts"))
 
 /**
+ * Acquires a new Undici `Agent` dispatcher configured with the supplied
+ * options and destroys it when the enclosing scope is finalized.
+ *
+ * **When to use**
+ *
+ * Use to control how the Undici client connects, for example to send every
+ * request over a unix domain socket or to present a client certificate.
+ *
+ * **Details**
+ *
+ * The options are passed to `new Agent(options)`. Connection settings live
+ * under `connect`:
+ *
+ * - `connect: { socketPath }` dials a unix domain socket (or a Windows named
+ *   pipe) instead of TCP. The request URL still supplies the `Host` header
+ *   and path, so any origin such as `http://localhost` works.
+ * - `connect: { ca, cert, key, servername, rejectUnauthorized }` configures
+ *   TLS for `https:` origins, including mutual TLS.
+ *
+ * `makeUndici` sets `headersTimeout` and `bodyTimeout` on every request, so
+ * timeouts given here are overridden. Use `Effect.timeout` instead.
+ *
+ * @stability unstable
+ * @category resource management
+ * @since 4.0.5
+ */
+export const makeDispatcherOptions = (
+  options?: Undici.Agent.Options | undefined
+): Effect.Effect<Undici.Dispatcher, never, Scope.Scope> =>
+  Effect.acquireRelease(
+    Effect.map(loadUndici, (_) => new _.Agent(options)),
+    (dispatcher) => Effect.promise(() => dispatcher.destroy())
+  )
+
+/**
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
  * scope is finalized.
  *
@@ -101,9 +144,23 @@ const loadUndici = Effect.promise(() => import("./Undici.ts"))
  * @category resource management
  * @since 4.0.0
  */
-export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = Effect.acquireRelease(
-  Effect.map(loadUndici, (_) => new _.Agent()),
-  (dispatcher) => Effect.promise(() => dispatcher.destroy())
+export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = makeDispatcherOptions()
+
+/**
+ * Provides the `Dispatcher` service using a scoped Undici `Agent` configured
+ * with the supplied options.
+ *
+ * **Details**
+ *
+ * See `makeDispatcherOptions` for the unix socket and TLS settings.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerDispatcherOptions: (options?: Undici.Agent.Options | undefined) => Layer.Layer<Dispatcher> = flow(
+  makeDispatcherOptions,
+  Layer.effect(Dispatcher)
 )
 
 /**
@@ -113,7 +170,7 @@ export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope
  * @category layers
  * @since 4.0.0
  */
-export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)(makeDispatcher)
+export const layerDispatcher: Layer.Layer<Dispatcher> = layerDispatcherOptions()
 
 /**
  * Provides the `Dispatcher` service from Undici's process-global dispatcher,
@@ -152,22 +209,29 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
 export const makeUndici = Effect.gen(function*() {
   const dispatcher = yield* Dispatcher
   return Client.make((request, url, signal, fiber) =>
-    convertBody(request.body).pipe(
-      Effect.flatMap((body) =>
-        Effect.tryPromise({
-          try: () =>
-            dispatcher.request({
-              ...fiber.getRef(UndiciOptions),
-              signal,
-              method: request.method,
-              headers: request.headers,
-              origin: url.origin,
-              path: url.pathname + url.search,
-              body,
-              // leave timeouts to Effect.timeout etc
-              headersTimeout: 60 * 60 * 1000,
-              bodyTimeout: 0
-            }),
+    convertBody(request).pipe(
+      Effect.flatMap(({ body, headers }): Effect.Effect<UndiciResponseSource, Error.HttpClientError> => {
+        const options = {
+          ...fiber.getRef(UndiciOptions),
+          method: request.method,
+          headers,
+          origin: url.origin,
+          path: url.pathname + url.search,
+          body,
+          // leave timeouts to Effect.timeout etc
+          headersTimeout: 60 * 60 * 1000,
+          bodyTimeout: 0
+        }
+        if (request.headers.upgrade !== undefined) {
+          return dispatchUpgrade(dispatcher, request, signal, {
+            ...options,
+            // undici writes the connection and upgrade headers itself
+            headers: Headers.removeMany(headers, ["connection", "upgrade"]),
+            upgrade: request.headers.upgrade
+          })
+        }
+        return Effect.tryPromise({
+          try: () => dispatcher.request({ ...options, signal }),
           catch: (cause) =>
             new Error.HttpClientError({
               reason: new Error.TransportError({
@@ -176,30 +240,136 @@ export const makeUndici = Effect.gen(function*() {
               })
             })
         })
-      ),
+      }),
       Effect.map((response) => new UndiciResponse(request, response, url.href.split("#")[0]))
     )
   )
 })
 
-function convertBody(
-  body: Body.HttpBody
-): Effect.Effect<Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>> {
+interface UndiciResponseSource {
+  readonly statusCode: number
+  readonly headers: Undici.Dispatcher.ResponseData["headers"]
+  readonly body: Readable & { arrayBuffer(): Promise<ArrayBuffer> }
+  readonly upgraded?: Duplex | undefined
+}
+
+// Dispatch directly to support both upgrades and readable refusal bodies.
+// Dispatcher.request rejects upgrades; Dispatcher.upgrade rejects non-101 responses.
+const dispatchUpgrade = (
+  dispatcher: Undici.Dispatcher,
+  request: HttpClientRequest,
+  signal: AbortSignal,
+  options: Undici.Dispatcher.DispatchOptions
+) =>
+  Effect.callback<UndiciResponseSource, Error.HttpClientError>((resume) => {
+    let controller: Undici.Dispatcher.DispatchController | undefined
+    let body: UpgradeResponseBody | undefined
+    let reason: globalThis.Error | undefined
+    const abort = (error: globalThis.Error) => {
+      reason ??= error
+      if (body !== undefined) body.destroy(error)
+      else controller?.abort(error)
+    }
+    const onAbort = () => abort(signal.reason)
+    const fail = (cause: unknown) =>
+      resume(Effect.fail(
+        new Error.HttpClientError({
+          reason: new Error.TransportError({ request, cause })
+        })
+      ))
+    if (signal.aborted) onAbort()
+    else signal.addEventListener("abort", onAbort, { once: true })
+    const done = () => signal.removeEventListener("abort", onAbort)
+    try {
+      dispatcher.dispatch(options, {
+        onRequestStart(c) {
+          controller = c
+          if (reason !== undefined) c.abort(reason)
+        },
+        onRequestUpgrade(_, statusCode, headers, socket) {
+          done()
+          const body = new UpgradeResponseBody(undefined)
+          body.push(null)
+          // undici has already pushed back the bytes past the response head
+          resume(Effect.succeed({ statusCode, headers, body, upgraded: takeOver(socket, undefined, signal) }))
+        },
+        onResponseStart(c, statusCode, headers) {
+          if (statusCode < 200) return
+          body = new UpgradeResponseBody(c)
+          resume(Effect.succeed({ statusCode, headers, body }))
+        },
+        onResponseData(c, chunk) {
+          if (!body!.push(chunk)) c.pause()
+        },
+        onResponseEnd() {
+          done()
+          body!.push(null)
+        },
+        onResponseError(_, cause) {
+          done()
+          if (body === undefined) fail(cause)
+          else body.destroy(cause)
+        }
+      })
+    } catch (cause) {
+      done()
+      fail(cause)
+    }
+    return Effect.sync(() => {
+      done()
+      abort(new globalThis.Error("The request was interrupted"))
+    })
+  })
+
+class UpgradeResponseBody extends Readable {
+  readonly controller: Undici.Dispatcher.DispatchController | undefined
+  constructor(controller: Undici.Dispatcher.DispatchController | undefined) {
+    super()
+    this.controller = controller
+  }
+  override _read() {
+    this.controller?.resume()
+  }
+  override _destroy(error: globalThis.Error | null, callback: (error?: globalThis.Error | null) => void) {
+    if (!this.readableEnded) this.controller?.abort(error ?? new globalThis.Error("The response body was destroyed"))
+    callback(error)
+  }
+  arrayBuffer(): Promise<ArrayBuffer> {
+    return Consumers.arrayBuffer(this)
+  }
+}
+
+function convertBody(request: HttpClientRequest): Effect.Effect<{
+  readonly body: Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>
+  readonly headers: Headers.Headers
+}> {
+  const { body, headers } = request
   switch (body._tag) {
     case "Empty": {
-      return Effect.succeed(null)
+      return Effect.succeed({ body: null, headers })
     }
     case "Uint8Array":
     case "Raw": {
-      return Effect.succeed(body.body as Uint8Array)
+      return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
-      return Effect.succeed(body.formData as any)
+      return Effect.map(loadUndici, (undici) => ({
+        body: convertFormData(body.formData, undici),
+        headers: Headers.remove(headers, "content-type")
+      }))
     }
     case "Stream": {
-      return NodeStream.toReadable(body.stream)
+      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
     }
   }
+}
+
+const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
+  const converted = new undici.FormData()
+  for (const [key, value] of formData) {
+    converted.append(key, value)
+  }
+  return converted
 }
 
 function noopErrorHandler(_: any) {}
@@ -208,12 +378,12 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
-  readonly source: Undici.Dispatcher.ResponseData
+  readonly source: UndiciResponseSource
   readonly url: string
 
   constructor(
     request: HttpClientRequest,
-    source: Undici.Dispatcher.ResponseData,
+    source: UndiciResponseSource,
     url: string
   ) {
     super()
@@ -339,6 +509,10 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
     return this.arrayBufferBody
   }
 
+  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
+    return upgradeSocket(this, this.source.upgraded)
+  }
+
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
       _id: "effect/http/HttpClientResponse",
@@ -376,6 +550,71 @@ export const layerUndiciNoDispatcher: Layer.Layer<
  */
 export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUndiciNoDispatcher, layerDispatcher)
 
+/**
+ * Provides an Undici-backed `HttpClient` together with a scoped Undici
+ * `Agent` dispatcher configured with the supplied options.
+ *
+ * **When to use**
+ *
+ * Use to send every request over a unix domain socket with
+ * `{ connect: { socketPath } }`, or over TLS with a custom CA and client
+ * certificate with `{ connect: { ca, cert, key, servername, rejectUnauthorized } }`.
+ *
+ * **Details**
+ *
+ * See `makeDispatcherOptions` for how the options are applied.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerUndiciOptions = (options?: Undici.Agent.Options | undefined): Layer.Layer<Client.HttpClient> =>
+  Layer.provide(layerUndiciNoDispatcher, layerDispatcherOptions(options))
+
+// -----------------------------------------------------------------------------
+// Upgrades
+// -----------------------------------------------------------------------------
+
+// Loaded on demand, as it depends on node:net and ws.
+const loadUpgrade = Effect.promise(() => import("./internal/upgrade.ts"))
+
+const takeOver = (conn: Duplex, head: Uint8Array | undefined, signal: AbortSignal): Duplex => {
+  if (head !== undefined && head.length > 0) conn.unshift(head)
+  conn.on("error", constVoid)
+  if (signal.aborted) {
+    conn.destroy()
+  } else {
+    const onAbort = () => conn.destroy()
+    signal.addEventListener("abort", onAbort, { once: true })
+    conn.once("close", () => signal.removeEventListener("abort", onAbort))
+  }
+  return conn
+}
+
+const upgradeSocket = (
+  response: HttpClientResponse,
+  upgraded: Duplex | undefined
+): Effect.Effect<Socket.Socket, Error.HttpClientError> => {
+  if (upgraded !== undefined) {
+    return Effect.flatMap(loadUpgrade, (_) => _.toSocket(upgraded))
+  }
+  return Effect.fail(
+    new Error.HttpClientError({
+      reason: response.status === 101
+        // Bun before 1.4 reports 101 without handing over the connection.
+        ? new Error.TransportError({
+          request: response.request,
+          description: "the runtime did not hand over the connection of the upgrade"
+        })
+        : new Error.StatusCodeError({
+          request: response.request,
+          response,
+          description: "expected 101 Switching Protocols"
+        })
+    })
+  )
+}
+
 // -----------------------------------------------------------------------------
 // node:http
 // -----------------------------------------------------------------------------
@@ -384,6 +623,7 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
  * Service tag for the paired Node `http` and `https` agents used by the
  * node:http-backed HTTP client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -393,20 +633,48 @@ export class HttpAgent extends Context.Service<HttpAgent, {
 }>()("@effect/platform-node/NodeHttpClient/HttpAgent") {}
 
 /**
+ * Options for the Node `http` and `https` agents created by `makeAgent`.
+ *
+ * **Details**
+ *
+ * Extends `https.AgentOptions` with `socketPath`. Node agents merge their
+ * options into every request they create, so:
+ *
+ * - `socketPath` dials a unix domain socket (or a Windows named pipe) instead
+ *   of TCP. The request URL still supplies the `Host` header and path.
+ * - `ca`, `cert`, `key`, `servername` and `rejectUnauthorized` configure TLS
+ *   for `https:` URLs, including mutual TLS.
+ *
+ * Both agents receive the same options.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface HttpAgentOptions extends Https.AgentOptions {
+  /**
+   * Path of a unix domain socket or Windows named pipe to connect through
+   * instead of TCP.
+   */
+  readonly socketPath?: string | undefined
+}
+
+/**
  * Acquires Node `http` and `https` agents with the supplied options and
  * destroys both agents when the enclosing scope is finalized.
  *
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
-export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
+export const makeAgent = (options?: HttpAgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
   Effect.zipWith(
     Effect.acquireRelease(
-      Effect.sync(() => new Http.Agent(options)),
+      Effect.sync(() => new http.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     Effect.acquireRelease(
-      Effect.sync(() => new Https.Agent(options)),
+      Effect.sync(() => new https.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     (http, https) => ({ http, https })
@@ -416,10 +684,11 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent
  * Provides the `HttpAgent` service using scoped Node `http` and `https`
  * agents configured with the supplied options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerAgentOptions: (options?: Https.AgentOptions | undefined) => Layer.Layer<
+export const layerAgentOptions: (options?: HttpAgentOptions | undefined) => Layer.Layer<
   HttpAgent
 > = flow(makeAgent, Layer.effect(HttpAgent))
 
@@ -427,6 +696,7 @@ export const layerAgentOptions: (options?: Https.AgentOptions | undefined) => La
  * Provides the `HttpAgent` service using default scoped Node `http` and
  * `https` agents.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -437,6 +707,7 @@ export const layerAgent: Layer.Layer<HttpAgent> = layerAgentOptions()
  * current `HttpAgent`, streaming request bodies, and wrapping Node responses
  * as `HttpClientResponse` values.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -444,24 +715,41 @@ export const makeNodeHttp = Effect.gen(function*() {
   const agent = yield* HttpAgent
   return Client.make((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
-      Https.request(url, {
+      https.request(url, {
         agent: agent.https,
         method: request.method,
         headers: request.headers,
         signal
       }) :
-      Http.request(url, {
+      http.request(url, {
         agent: agent.http,
         method: request.method,
         headers: request.headers,
         signal
       })
-    return Effect.raceFirst(
-      waitForResponse(nodeRequest, request),
-      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
-    ).pipe(
+    // Response headers must not interrupt the upload: a bidirectional server
+    // answers before it has read the whole body. The upload runs detached and
+    // is stopped once the request or the response closes.
+    return sendBody(nodeRequest, request, request.body).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
-      Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
+      Effect.forkDetach,
+      Effect.flatMap((upload) => {
+        const stopUpload = () => upload.interruptUnsafe()
+        nodeRequest.once("close", stopUpload)
+        return Effect.raceFirst(
+          waitForResponse(nodeRequest, request, signal),
+          Fiber.join(upload).pipe(Effect.andThen(Effect.never))
+        ).pipe(
+          Effect.map((result) => {
+            // A keep-alive request stays open while its upload is unfinished,
+            // even after the response has been fully consumed.
+            result[0].once("close", stopUpload)
+            return result
+          })
+        )
+      }),
+      Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
+      Effect.map(([response, upgraded]) => new NodeHttpResponse(request, response, url.href.split("#")[0], upgraded))
     )
   })
 })
@@ -483,21 +771,20 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const response = new globalThis.Response(body.formData)
+        return Effect.flatMap(loadUndici, (undici) => {
+          const response = new undici.Response(convertFormData(body.formData, undici))
+          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
 
-        response.headers.forEach((value, key) => {
-          nodeRequest.setHeader(key, value)
-        })
-
-        return Effect.tryPromise({
-          try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+          return Effect.tryPromise({
+            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
+          })
         })
       }
       case "Stream": {
@@ -511,6 +798,8 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
+            // The upload fiber owns destruction after observing body failures.
+            endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
                 reason: new Error.TransportError({
@@ -519,13 +808,16 @@ const sendBody = (
                 })
               })
           })
-        )
+        ).pipe(Effect.andThen(() => {
+          nodeRequest.end()
+          return waitForFinish(nodeRequest, request)
+        }))
       }
     }
   })
 
-const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest) =>
-  Effect.callback<Http.IncomingMessage, Error.HttpClientError>((resume) => {
+const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest, signal: AbortSignal) =>
+  Effect.callback<readonly [Http.IncomingMessage, Duplex?], Error.HttpClientError>((resume) => {
     function onError(cause: Error) {
       resume(Effect.fail(
         new Error.HttpClientError({
@@ -540,14 +832,19 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientReq
 
     function onResponse(response: Http.IncomingMessage) {
       nodeRequest.off("error", onError)
-      resume(Effect.succeed(response))
+      resume(Effect.succeed([response]))
     }
-    nodeRequest.on("upgrade", onResponse)
     nodeRequest.on("response", onResponse)
+
+    function onUpgrade(response: Http.IncomingMessage, socket: Duplex, head: Buffer) {
+      nodeRequest.off("error", onError)
+      resume(Effect.succeed([response, takeOver(socket, head, signal)]))
+    }
+    nodeRequest.on("upgrade", onUpgrade)
 
     return Effect.sync(() => {
       nodeRequest.off("error", onError)
-      nodeRequest.off("upgrade", onResponse)
+      nodeRequest.off("upgrade", onUpgrade)
       nodeRequest.off("response", onResponse)
     })
   })
@@ -582,11 +879,13 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
   readonly url: string
+  readonly upgraded: Duplex | undefined
 
   constructor(
     request: HttpClientRequest,
     source: Http.IncomingMessage,
-    url: string
+    url: string,
+    upgraded: Duplex | undefined
   ) {
     super(source, (cause) =>
       new Error.HttpClientError({
@@ -599,10 +898,15 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
     this[Response.TypeId] = Response.TypeId
     this.request = request
     this.url = url
+    this.upgraded = upgraded
   }
 
   get status() {
     return this.source.statusCode!
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
+    return upgradeSocket(this, this.upgraded)
   }
 
   cachedCookies?: Cookies.Cookies
@@ -656,6 +960,7 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
  * Provides a node:http-backed `HttpClient` using the current `HttpAgent`
  * service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -669,7 +974,29 @@ export const layerNodeHttpNoAgent: Layer.Layer<
  * Provides a node:http-backed `HttpClient` together with default scoped Node
  * `http` and `https` agents.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerNodeHttp: Layer.Layer<Client.HttpClient> = Layer.provide(layerNodeHttpNoAgent, layerAgent)
+
+/**
+ * Provides a node:http-backed `HttpClient` together with scoped Node `http`
+ * and `https` agents configured with the supplied options.
+ *
+ * **When to use**
+ *
+ * Use to send every request over a unix domain socket with `{ socketPath }`,
+ * or over TLS with a custom CA and client certificate with
+ * `{ ca, cert, key, servername, rejectUnauthorized }`.
+ *
+ * **Details**
+ *
+ * See `HttpAgentOptions` for how the options are applied.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerNodeHttpOptions = (options?: HttpAgentOptions | undefined): Layer.Layer<Client.HttpClient> =>
+  Layer.provide(layerNodeHttpNoAgent, layerAgentOptions(options))

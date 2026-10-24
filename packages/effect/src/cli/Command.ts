@@ -34,6 +34,7 @@ import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
 import { checkForDuplicateFlags, makeCommand, makeParser, toImpl, TypeId } from "./internal/command.ts"
 import { mergeConfig, parseConfig } from "./internal/config.ts"
+import { resolveFormatter } from "./internal/formatter.ts"
 import { getGlobalFlagsForCommandPath, getGlobalFlagsForCommandTree, getHelpForCommandPath } from "./internal/help.ts"
 import * as Lexer from "./internal/lexer.ts"
 import * as Parser from "./internal/parser.ts"
@@ -735,6 +736,101 @@ export const withHandler: {
 ): Command<Name, A, ContextInput, E, Exclude<R, BuiltInSettingContext>> =>
   makeCommand({ ...toImpl(self), handle: handler } as any))
 
+/**
+ * Validates the parsed input of a command before the handler runs.
+ *
+ * **Details**
+ *
+ * Use this for rules that involve several flags or arguments, such as
+ * mutually exclusive flags. The validation receives the same input as the
+ * handler, with defaults, prompts and the wizard already applied. A failure
+ * is shown with the command help, like a parse error, and the handler does
+ * not run. Fail with `CliError.ValidationError` to supply the message, or
+ * with any other `CliError`. Validations run in the order they were added and
+ * stop at the first failure. Adding a handler later with `withHandler` keeps
+ * them.
+ *
+ * A validation sees only the input that exists where it is applied. Add it
+ * after `withSharedFlags` to see the shared flags. Added after
+ * `withSubcommands`, it also runs when a subcommand is selected, with the
+ * parent's shared flags as input.
+ *
+ * **Example** (Rejecting mutually exclusive flags)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
+ * import { CliError, Command, Flag } from "effect/cli"
+ * import { ChildProcessSpawner } from "effect/process"
+ * import { TestConsole } from "effect/testing"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   TestConsole.layer,
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
+ *
+ * const download = Command.make("download", {
+ *   useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
+ *   useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
+ * }, () => Effect.void).pipe(
+ *   Command.validate(({ useApi, useDocker }) =>
+ *     useApi && useDocker
+ *       ? Effect.fail(
+ *         new CliError.ValidationError({
+ *           message: "--use-api and --use-docker are mutually exclusive"
+ *         })
+ *       )
+ *       : Effect.void
+ *   )
+ * )
+ *
+ * const error = await Effect.runPromise(
+ *   Command.runWith(download, { version: "1.0.0" })(["--use-api", "--use-docker"]).pipe(
+ *     Effect.flip,
+ *     Effect.provide(CliTestLayer)
+ *   )
+ * )
+ * error._tag // => "ShowHelp"
+ * error.errors[0].message // => "--use-api and --use-docker are mutually exclusive"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const validate: {
+  <Input>(
+    f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+  ): <Name extends string, ContextInput, E, R>(
+    self: Command<Name, Input, ContextInput, E, R>
+  ) => Command<Name, Input, ContextInput, E, R>
+  <Name extends string, Input, ContextInput, E, R>(
+    self: Command<Name, Input, ContextInput, E, R>,
+    f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+  ): Command<Name, Input, ContextInput, E, R>
+} = dual(2, <Name extends string, Input, ContextInput, E, R>(
+  self: Command<Name, Input, ContextInput, E, R>,
+  f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+): Command<Name, Input, ContextInput, E, R> => {
+  const impl = toImpl(self)
+  return makeCommand({
+    ...impl,
+    parse: (raw) => Effect.tap(impl.parse(raw), f)
+  }) as any
+})
+
 interface SubcommandGroupInternal {
   readonly group: string | undefined
   readonly commands: NonEmptyReadonlyArray<Command.Any>
@@ -954,7 +1050,7 @@ export const withSubcommands: {
     unlisted: impl.unlisted,
     annotations: impl.annotations,
     globalFlags: impl.globalFlags,
-    examples: impl.examples,
+    resolveExamples: impl.resolveExamples,
     service: impl.service,
     subcommands: normalized.groups,
     parse,
@@ -1055,7 +1151,7 @@ export const withSharedFlags: {
       unlisted: impl.unlisted,
       annotations: impl.annotations,
       globalFlags: impl.globalFlags,
-      examples: impl.examples,
+      resolveExamples: impl.resolveExamples,
       service: impl.service as Context.Key<CommandContext<Name>, NextContextInput>,
       subcommands: impl.subcommands,
       parse,
@@ -1370,6 +1466,10 @@ export const annotateMerge: {
  * Examples are exposed in structured `HelpDoc` data and rendered by the
  * default formatter in an `EXAMPLES` section.
  *
+ * Pass a function to build examples from the `commandPath` shown in help, so
+ * they stay correct wherever the command is mounted. The `examples` field
+ * resolves the function with the command's own name as the path.
+ *
  * **Example** (Adding usage examples)
  *
  * ```ts import.meta.vitest
@@ -1385,22 +1485,48 @@ export const annotateMerge: {
  * login.examples.map((example) => example.command) // => ["myapp login", "myapp login --token sbp_abc123"]
  * ```
  *
+ * **Example** (Deriving examples from the command path)
+ *
+ * ```ts import.meta.vitest
+ * import { Command } from "effect/cli"
+ *
+ * const deploy = Command.make("deploy").pipe(
+ *   Command.withExamples(({ commandPath }) => [
+ *     { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
+ *   ])
+ * )
+ *
+ * deploy.examples.map((example) => example.command) // => ["deploy --yes"]
+ * ```
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
 export const withExamples: {
-  (examples: ReadonlyArray<Command.Example>): <const Name extends string, Input, E, R, ContextInput>(
+  (
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
+  ): <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>
   ) => Command<Name, Input, ContextInput, E, R>
   <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>,
-    examples: ReadonlyArray<Command.Example>
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
   ): Command<Name, Input, ContextInput, E, R>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
-  examples: ReadonlyArray<Command.Example>
-) => makeCommand({ ...toImpl(self), examples }))
+  examples:
+    | ReadonlyArray<Command.Example>
+    | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
+) =>
+  makeCommand({
+    ...toImpl(self),
+    resolveExamples: Predicate.isFunction(examples) ? (commandPath) => examples({ commandPath }) : () => examples
+  }))
 
 /* ========================================================================== */
 /* Providing Services                                                         */
@@ -1711,19 +1837,24 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
-    const formatter = yield* CliOutput.Formatter
-    const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
-    yield* Console.log(formatter.formatHelpDoc(helpDoc))
-    if (renderErrors && error.errors.length > 0) {
-      yield* Console.error(formatter.formatErrors(error.errors as any))
-    }
+    const presenter = yield* CliOutput.Presenter
+    const { commandPath, errors } = error
+    const helpDoc = yield* getHelpForCommandPath(command, commandPath, builtIns)
+    yield* presenter.present(
+      renderErrors && errors.length > 0
+        ? { _tag: "InvalidInvocation", commandPath, helpDoc, errors }
+        : { _tag: "Help", reason: "Implicit", commandPath, helpDoc }
+    )
   })
 
-const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
+const showUserError = (error: object, userMessage: string): Effect.Effect<void> =>
   Effect.gen(function*() {
-    const formatter = yield* CliOutput.Formatter
-    yield* Console.error(formatter.formatError(error))
-    error[Runtime.errorReported] = false
+    const formatter = yield* resolveFormatter
+    const rendered = error instanceof CliError.UserError
+      ? error
+      : new CliError.UserError({ cause: error, userMessage })
+    yield* Console.error(formatter.formatError(rendered))
+    Object.assign(error, { [Runtime.errorReported]: false })
   })
 
 /**
@@ -1734,10 +1865,12 @@ const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
  * Use when command-line arguments should come from `Stdio` at the application
  * entry point.
  *
- * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help, version, and parse error output is written through
+ * `CliOutput.Presenter`. Help documents are always presented. By default,
+ * parse error details are also presented, and handler failures annotated with
+ * `CliError.userMessage`, including `CliError.UserError`, are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with standard input)
  *
@@ -1824,10 +1957,12 @@ export const run: {
  * Use when you need to test CLI applications or programmatically execute
  * commands with specific arguments.
  *
- * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help, version, and parse error output is written through
+ * `CliOutput.Presenter`. Help documents are always presented. By default,
+ * parse error details are also presented, and handler failures annotated with
+ * `CliError.userMessage`, including `CliError.UserError`, are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with explicit arguments)
  *
@@ -1934,14 +2069,15 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         if (!hasEntry) continue
         const [, value] = yield* flag.flag.parse(emptyArgs)
         if (flag === GlobalFlag.Wizard) {
+          const { colors } = yield* Prompt.Theme
           return yield* Effect.gen(function*() {
-            yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description))
+            yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description, colors))
             const prefix = [
               command.name,
               ...args.filter((arg) => arg !== "--wizard" && !arg.startsWith("--wizard="))
             ]
             const wizardResult = yield* Wizard.run(command, { commandPath, prefix })
-            yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs))
+            yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs, colors))
             const shouldRun = yield* Prompt.run(Prompt.Toggle({
               message: "Run this command?",
               initial: true,
@@ -1953,7 +2089,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
               yield* runWith(command, { ...config, renderErrors: false })(wizardResult.args.slice(1))
             }
           }).pipe(
-            Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit()))
+            Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit(colors)))
           )
         }
         yield* flag.run(value, handlerCtx)
@@ -2001,11 +2137,12 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       (error) => Effect.andThen(showHelp(command, error, config.renderErrors !== false), Effect.fail(error))
     ),
     Effect.catchFilter(
-      (error) =>
-        config.renderErrors !== false && CliError.isCliError(error) && error._tag === "UserError"
-          ? Result.succeed(error)
-          : Result.fail(error),
-      (error) => Effect.andThen(showUserError(error), Effect.fail(error))
+      (error) => {
+        if (config.renderErrors === false || !Predicate.isObjectKeyword(error)) return Result.fail(error)
+        const userMessage = CliError.getUserMessage(error)
+        return userMessage === undefined ? Result.fail(error) : Result.succeed({ error, userMessage })
+      },
+      ({ error, userMessage }) => Effect.andThen(showUserError(error, userMessage), Effect.fail(error))
     ),
     Effect.catchFilter(
       (e) =>

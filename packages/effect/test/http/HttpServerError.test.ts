@@ -14,6 +14,7 @@ import {
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Respondable from "effect/http/HttpServerRespondable"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as UrlParams from "effect/http/UrlParams"
 
 const makeRequest = (method: string, url: string) => HttpServerRequest.fromWeb(new Request(url, { method }))
 const makeResponse = (status: number) => HttpServerResponse.empty({ status })
@@ -31,6 +32,16 @@ describe("HttpServerError", () => {
       assert.strictEqual(parseError.message, "RequestParseError (POST /widgets): invalid body")
       assert.strictEqual(routeNotFound.message, "RouteNotFound (POST /widgets)")
     })
+
+    it.effect("redacts query params using the current redacted names", () =>
+      Effect.gen(function*() {
+        const request = makeRequest("GET", "http://example.com/widgets?token=token-secret&sig=sig-visible")
+
+        assert.strictEqual(
+          new RouteNotFound({ request }).message,
+          "RouteNotFound (GET /widgets?token=REDACTED&sig=sig-visible)"
+        )
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
 
     it("formats response reason messages", () => {
       const request = makeRequest("GET", "http://example.com/tea")

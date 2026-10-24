@@ -15,6 +15,7 @@
  * Effect.runSync(program) // => ".txt"
  * ```
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -55,12 +56,12 @@ const fileUrlOps = (impl: {
 /**
  * A {@linkplain Layer.Layer | layer} that provides POSIX path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerPosix: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
-  Path.Path.of({
-    [Path.TypeId]: Path.TypeId,
+  Path.make({
     ...DenoPathPosix,
     sep: DenoPathPosix.SEPARATOR,
     ...fileUrlOps(DenoPathPosix)
@@ -70,14 +71,14 @@ export const layerPosix: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
 /**
  * A {@linkplain Layer.Layer | layer} that provides Windows path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerWin32: Layer.Layer<Path.Path> = Layer.succeed(
   Path.Path
 )(
-  Path.Path.of({
-    [Path.TypeId]: Path.TypeId,
+  Path.make({
     ...DenoPathWin,
     sep: DenoPathWin.SEPARATOR,
     ...fileUrlOps(DenoPathWin)
@@ -87,14 +88,14 @@ export const layerWin32: Layer.Layer<Path.Path> = Layer.succeed(
 /**
  * A {@linkplain Layer.Layer | layer} that provides OS-agnostic path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layer: Layer.Layer<Path.Path> = Layer.succeed(
   Path.Path
 )(
-  Path.Path.of({
-    [Path.TypeId]: Path.TypeId,
+  Path.make({
     ...DenoPath,
     sep: DenoPath.SEPARATOR,
     ...fileUrlOps(DenoPath)

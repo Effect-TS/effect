@@ -15,12 +15,14 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constVoid, dual } from "../Function.ts"
+import { shouldHydrate } from "../internal/hydration.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import type { Scheduler, SchedulerDispatcher } from "../Scheduler.ts"
 import { MixedScheduler } from "../Scheduler.ts"
+import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Result from "./AsyncResult.ts"
@@ -71,11 +73,13 @@ export interface AtomRegistry {
   readonly scheduler: Scheduler
   readonly schedulerAsync: Scheduler
   readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
+  readonly ensureNode: <A>(atom: Atom.Atom<A>) => Node<A>
   readonly get: <A>(atom: Atom.Atom<A>) => A
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
   readonly setSerializable: (key: string, encoded: unknown) => void
+  readonly preloadedSerializable: Map<string, unknown>
   readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
   readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
   readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
@@ -83,6 +87,7 @@ export interface AtomRegistry {
   }) => () => void
   readonly reset: () => void
   readonly dispose: () => void
+  scheduleNodeRemoval(node: Node<any>): void
   onNodeAdded?: ((node: Node<any>) => void) | undefined
   onNodeRemoved?: ((node: Node<any>) => void) | undefined
 }
@@ -102,10 +107,14 @@ export interface AtomRegistry {
 export interface Node<A> {
   readonly atom: Atom.Atom<A>
   readonly value: () => A
+  readonly valueOption: () => Option.Option<A>
+  readonly canBeRemoved: boolean
   parents: Set<Node<any>>
   children: Set<Node<any>>
   listeners: Set<() => void>
   currentState(): "uninitialized" | "stale" | "valid" | "removed"
+  setInitialValue(value: A): void
+  subscribe(listener: () => void): () => void
 }
 
 /**
@@ -123,7 +132,7 @@ export interface Node<A> {
  */
 export const make = (
   options?: {
-    readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any]> | undefined
+    readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]> | undefined
     readonly scheduleTask?: ((f: () => void) => () => void) | undefined
     readonly timeoutResolution?: number | undefined
     readonly defaultIdleTTL?: number | undefined
@@ -163,7 +172,7 @@ export const AtomRegistry = Context.Service<AtomRegistry>(TypeId)
  * @since 4.0.0
  */
 export const layerOptions = (options?: {
-  readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any]> | undefined
+  readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]> | undefined
   readonly scheduleTask?: ((f: () => void) => () => void) | undefined
   readonly timeoutResolution?: number | undefined
   readonly defaultIdleTTL?: number | undefined
@@ -358,7 +367,7 @@ class RegistryImpl implements AtomRegistry {
   onNodeRemoved?: ((node: Node<any>) => void) | undefined
 
   constructor(
-    initialValues?: Iterable<readonly [Atom.Atom<any>, any]>,
+    initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]>,
     scheduleTask?: (cb: () => void) => () => void,
     timeoutResolution?: number,
     defaultIdleTTL?: number
@@ -375,12 +384,12 @@ class RegistryImpl implements AtomRegistry {
       this.timeoutResolution = timeoutResolution ?? 1000
     }
     if (initialValues !== undefined) {
-      for (const [atom, value] of initialValues) {
+      for (const [atom, value, options] of initialValues) {
         let target = atom
         while (target.initialValueTarget) {
           target = target.initialValueTarget
         }
-        this.ensureNode(target).setInitialValue(value)
+        this.ensureNode(target).setInitialValue(value, options?.skipInitialRun)
       }
     }
   }
@@ -467,15 +476,21 @@ class RegistryImpl implements AtomRegistry {
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
       const encoded = this.preloadedSerializable.get(key)
       this.preloadedSerializable.delete(key)
-      const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
+      const serializable = (atom as any as Atom.Serializable<any>)[SerializableTypeId]
+      let decoded: A
+      try {
+        decoded = serializable.decode(encoded as Schema.Json)
+      } catch (error) {
+        if (Schema.isSchemaError(error)) return node
+        throw error
+      }
       let target = atom
       while (target.initialValueTarget) {
         target = target.initialValueTarget
       }
-      if (target === atom) {
-        node.setValue(decoded)
-      } else {
-        this.ensureNode(target).setInitialValue(decoded)
+      const targetNode = target === atom ? node : this.ensureNode(target)
+      if (shouldHydrate(targetNode._value, decoded)) {
+        targetNode.setInitialValue(decoded, serializable.skipInitialRun)
       }
     }
     return node
@@ -493,7 +508,9 @@ class RegistryImpl implements AtomRegistry {
   }
 
   invalidateAtom = <A>(atom: Atom.Atom<A>): void => {
-    this.ensureNode(atom).invalidate()
+    const node = this.ensureNode(atom)
+    node.skipInitialRun = false
+    node.invalidate()
   }
 
   scheduleAtomRemoval(atom: Atom.Atom<any>): void {
@@ -644,6 +661,10 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
+  skipInitialRun = false
+  // the parents, and their lifetimes, of a build that kept the seed without
+  // reaching the effect, such as one waiting for a runtime
+  keptParents: Array<readonly [NodeImpl<any>, Lifetime<any> | undefined]> | undefined
   invalidatedDuringBuild = false
   failed = false
 
@@ -730,6 +751,9 @@ class NodeImpl<A> {
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
       if (this.preserveInitialValueOnBuild) {
         this.preserveInitialValueOnBuild = false
+        if (this.skipInitialRun) {
+          this.keptParents = Array.from(this.parents, (parent) => [parent, parent.lifetime] as const)
+        }
         this.failed = false
         this.state = NodeState.valid
       } else {
@@ -803,9 +827,10 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
-  setInitialValue(value: A): void {
+  setInitialValue(value: A, skipInitialRun = false): void {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.preserveInitialValueOnBuild = true
+      this.skipInitialRun = skipInitialRun
       this.state = NodeState.stale
       this._value = value
       if (this.listeners.size > 0) {
@@ -831,7 +856,9 @@ class NodeImpl<A> {
     this._value = value
     let failure: unknown = noFailure
     try {
-      this.invalidateChildren()
+      // A first value cannot replace one held by a dependent. Recovery still
+      // retries dependents whose reads failed before this node had a value.
+      if (initialized || recovered) this.invalidateChildren()
     } catch (error) {
       failure = error
     }
@@ -960,6 +987,25 @@ class NodeImpl<A> {
       }
     }
   }
+}
+
+/**
+ * Whether the build keeps the node's seeded value instead of running its
+ * effect or stream. Consumed by the first run, so later rebuilds run it. A
+ * parent rebuilt since the seed was kept, such as a reconfigured runtime, is a
+ * real change and runs it too.
+ *
+ * @internal
+ */
+export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
+  const lifetime = ctx as Lifetime<any>
+  const node = lifetime.node
+  if (!node.skipInitialRun) return false
+  const keptParents = node.keptParents
+  node.skipInitialRun = false
+  node.keptParents = undefined
+  return !lifetime.isFn && !Result.isInitial(node._value) &&
+    (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))
 }
 
 interface Lifetime<A> extends Atom.AtomContext {

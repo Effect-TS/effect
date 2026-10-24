@@ -1565,6 +1565,29 @@ Expected "Infinity" | "-Infinity" | "NaN"
       )
     })
 
+    it("loads matching numeric record keys", async () => {
+      const provider = ConfigProvider.fromUnknown({ a: { 80: "http", 1.5: "fractional", abc: "skipped" } })
+
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Int, Schema.String), "a"),
+        provider,
+        { 80: "http" }
+      )
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Number, Schema.String), "a"),
+        provider,
+        { 80: "http", 1.5: "fractional" }
+      )
+    })
+
+    it("preserves __proto__ record keys", async () => {
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.String, Schema.String), "a"),
+        ConfigProvider.fromUnknown({ a: { ["__proto__"]: "value" } }),
+        { ["__proto__"]: "value" }
+      )
+    })
+
     describe("built-in schema-backed constructors", () => {
       it("decodes supported boolean spellings", async () => {
         const provider = ConfigProvider.fromUnknown({
@@ -1710,13 +1733,38 @@ Expected "Infinity" | "-Infinity" | "NaN"
           )
         })
 
+        it("keeps key-value separators inside values", async () => {
+          const config = Config.Record(Schema.String, Schema.String, "OTEL_EXPORTER_OTLP_HEADERS")
+
+          await assertSuccess(
+            config,
+            ConfigProvider.fromEnv({
+              env: {
+                OTEL_EXPORTER_OTLP_HEADERS: "authorization=Basic dXNlcjpwYXNz==,x-tenant=a=b"
+              }
+            }),
+            {
+              "authorization": "Basic dXNlcjpwYXNz==",
+              "x-tenant": "a=b"
+            }
+          )
+        })
+
+        it("supports an empty key-value separator", async () => {
+          await assertSuccess(
+            Config.Record(Schema.String, Schema.String, { keyValueSeparator: "" }),
+            ConfigProvider.fromUnknown("ab,cd"),
+            { a: "b", c: "d" }
+          )
+        })
+
         it("supports custom separators", async () => {
           const options = { separator: "&", keyValueSeparator: "==" }
-          const input = "service.name==my-service&service.version==1.0.0&custom.attribute==value"
+          const input = "service.name==my-service&service.version==1.0.0&custom.attribute==a==b"
           const expected = {
             "service.name": "my-service",
             "service.version": "1.0.0",
-            "custom.attribute": "value"
+            "custom.attribute": "a==b"
           }
 
           await assertSuccess(

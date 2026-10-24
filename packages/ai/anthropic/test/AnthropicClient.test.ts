@@ -49,6 +49,34 @@ describe("AnthropicClient", () => {
       body: { error: { message: "gateway rate limit" } }
     }))))
 
+  it.effect.each([
+    { name: "ignores a negative Retry-After", header: "-5", expected: undefined },
+    { name: "ignores a non-finite Retry-After", header: "Infinity", expected: undefined },
+    { name: "honors an HTTP-date Retry-After", header: "Thu, 01 Jan 1970 00:00:30 GMT", expected: 30_000 }
+  ])("$name", ({ expected, header }) =>
+    Effect.gen(function*() {
+      const client = yield* AnthropicClient.AnthropicClient
+      const error = yield* client.createMessage({
+        payload: {
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hello" }]
+        }
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error.reason._tag, "RateLimitError")
+      if (error.reason._tag !== "RateLimitError") return
+      assert.strictEqual(
+        error.reason.retryAfter === undefined ? undefined : Duration.toMillis(error.reason.retryAfter),
+        expected
+      )
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Json",
+      status: 429,
+      headers: { "retry-after": header },
+      body: { error: { message: "gateway rate limit" } }
+    }))))
+
   it.effect("redacts the API key in AI error context", () =>
     Effect.gen(function*() {
       const client = yield* AnthropicClient.AnthropicClient
@@ -127,6 +155,7 @@ describe("AnthropicClient", () => {
   it("preserves and truncates a fallback HTTP response", () => {
     const body = `${"a".repeat(200)}b`
     const reason = Errors.mapStatusCodeToReason({
+      now: 0,
       status: 400,
       headers: {},
       message: undefined,

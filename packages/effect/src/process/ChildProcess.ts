@@ -259,7 +259,8 @@ export interface KillOptions {
   /**
    * The duration of time to wait after the child process has been terminated
    * before forcefully killing the child process by sending it the `"SIGKILL"`
-   * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent.
+   * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent and termination
+   * waits for the process to exit with no time limit.
    *
    * **Details**
    *
@@ -318,10 +319,17 @@ export interface StdoutConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stdout` and the parent process.
    *
-   * A `Sink` can also be passed, which will receive all elements produced by
-   * the `stdout` of the child process.
+   * A `Sink` can also be passed. The output is transduced through the sink as
+   * `handle.stdout` is consumed, and `handle.stdout` emits the results produced by
+   * the sink instead of the raw output.
    *
    * Defaults to "pipe".
+   *
+   * **Gotchas**
+   *
+   * A `Sink` only receives data while `handle.stdout` is being consumed. If
+   * it is never consumed, the sink receives nothing and a child process that
+   * writes more than the pipe buffer can block before it exits.
    */
   readonly stream?: CommandOutput | undefined
 }
@@ -342,10 +350,17 @@ export interface StderrConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stderr` and the parent process.
    *
-   * A `Sink` can also be passed, which will receive all elements produced by
-   * the `stderr` of the child process.
+   * A `Sink` can also be passed. The output is transduced through the sink as
+   * `handle.stderr` is consumed, and `handle.stderr` emits the results produced by
+   * the sink instead of the raw output.
    *
    * Defaults to "pipe".
+   *
+   * **Gotchas**
+   *
+   * A `Sink` only receives data while `handle.stderr` is being consumed. If
+   * it is never consumed, the sink receives nothing and a child process that
+   * writes more than the pipe buffer can block before it exits.
    */
   readonly stream?: CommandOutput | undefined
 }
@@ -381,6 +396,18 @@ export type AdditionalFdConfig =
     /**
      * For output file descriptors, an optional sink which receives data from
      * the file descriptor.
+     *
+     * **Details**
+     *
+     * The data is transduced through the sink as `handle.getOutputFd(fd)` is
+     * consumed, and that stream emits the results produced by the sink
+     * instead of the raw output.
+     *
+     * **Gotchas**
+     *
+     * The sink only receives data while `handle.getOutputFd(fd)` is being
+     * consumed. If it is never consumed, the sink receives nothing and a child
+     * process that writes more than the pipe buffer can block before it exits.
      */
     readonly sink?: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
   }

@@ -9,6 +9,7 @@
  * constructors, focusing helpers, and operations for replacing, modifying, or
  * collecting focused values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -59,6 +60,7 @@ import type { IsUnion, NoInfer } from "./Types.ts"
  * @see {@link Lens} — when you only need a one-directional focus into a whole
  * @see {@link Prism} — when the focus may not be present
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -95,6 +97,7 @@ export interface Iso<in out S, in out A> extends Lens<S, A>, Prism<S, A> {}
  * @see {@link Iso} — the type this function returns
  * @see {@link id} — identity iso (no conversion)
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -134,6 +137,7 @@ export function makeIso<S, A>(get: (s: S) => A, set: (a: A) => S): Iso<S, A> {
  * @see {@link Iso} — when conversion is lossless in both directions
  * @see {@link Optional} — when reading can also fail
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -172,6 +176,7 @@ export interface Lens<in out S, in out A> extends Optional<S, A> {
  * @see {@link Lens} — the type this function returns
  * @see {@link makeIso} — when no original `S` is needed for `set`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -218,6 +223,7 @@ export function makeLens<S, A>(get: (s: S) => A, replace: (a: A, s: S) => S): Le
  * @see {@link fromChecks} — build a Prism from schema checks
  * @see {@link Lens} — when reading always succeeds
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -261,6 +267,7 @@ export interface Prism<in out S, in out A> extends Optional<S, A> {
  * @see {@link Prism} — the type this function returns
  * @see {@link fromChecks} — build from `Schema` checks instead
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -304,6 +311,7 @@ export function makePrism<S, A>(
  * @see {@link makePrism} — constructor with custom getter/setter
  * @see {@link Prism} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -440,6 +448,7 @@ type ForbidUnion<A, Message extends string> = IsUnion<A> extends true ? [Message
  * @see {@link Lens} — when reading always succeeds
  * @see {@link Prism} — when writing always succeeds
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -915,6 +924,7 @@ export interface Optional<in out S, in out A> {
  * @see {@link makeLens} — when reading always succeeds
  * @see {@link makePrism} — when writing always succeeds
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -961,6 +971,7 @@ export function makeOptional<S, A>(
  * @see {@link getAll} — extract focused elements
  * @see {@link Optional} — the base type
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1291,6 +1302,7 @@ function composeKind(a: Kind, b: Kind): Kind {
  *
  * @see {@link getResult} for optics whose focus may be absent
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1315,6 +1327,7 @@ export const get: {
  *
  * @see {@link get} for optics that always focus
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1339,6 +1352,7 @@ export const getResult: {
  *
  * @see {@link replace} for updates that use an existing source
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1363,6 +1377,7 @@ export const set: {
  *
  * @see {@link replaceResult} for an explicit replacement failure
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1387,6 +1402,7 @@ export const replace: {
  *
  * @see {@link replace} for returning the original source on failure
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1426,6 +1442,7 @@ export const replaceResult: {
  *
  * @see {@link modifyAll} for transforming every value in a traversal
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1485,6 +1502,7 @@ export const modify: {
  *
  * @see {@link Traversal} — the optic type this operates on
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1515,6 +1533,7 @@ export const getAll: {
  * @see {@link modify} for transforming the focus as a whole
  * @see {@link getAll} for reading every focused value
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1573,6 +1592,7 @@ const identityIso = make([])
  *
  * @see {@link Iso} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1611,6 +1631,7 @@ export function id<S>(): Iso<S, S> {
  * @see {@link Iso} — the type this function returns
  * @see {@link id} — identity iso
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1648,6 +1669,7 @@ export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [str
  * @see {@link none} — focuses on `None` instead
  * @see {@link Prism} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1687,6 +1709,7 @@ export function some<A>(): Prism<Option.Option<A>, A> {
  * @see {@link some} — focuses on `Some` instead
  * @see {@link Prism} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1726,6 +1749,7 @@ export function none<A>(): Prism<Option.Option<A>, undefined> {
  * @see {@link failure} — focuses on the failure side
  * @see {@link Prism} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1765,6 +1789,7 @@ export function success<A, E>(): Prism<Result.Result<A, E>, A> {
  * @see {@link success} — focuses on the success side
  * @see {@link Prism} — the type this function returns
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

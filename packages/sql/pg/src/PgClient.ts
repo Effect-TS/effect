@@ -1,6 +1,7 @@
 /**
  * PostgreSQL support for Effect SQL, backed by the native wire protocol client.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -29,6 +30,7 @@ import * as PgTypes from "./PgTypes.ts"
 /**
  * The runtime type identifier for `PgClient`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -37,6 +39,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgClient"
 /**
  * The type-level identifier for `PgClient`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -45,6 +48,7 @@ export type TypeId = "~@effect/sql-pg/PgClient"
 /**
  * A PostgreSQL `SqlClient` with JSON and `LISTEN`/`NOTIFY` helpers.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -68,6 +72,7 @@ export interface PgClient extends Client.SqlClient {
 /**
  * The service tag for `PgClient`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -76,10 +81,11 @@ export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
 /**
  * Connection and query settings for a PostgreSQL client.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface PgClientConfig {
+export interface PgClientConfig<R = never> {
   readonly url?: Redacted.Redacted | undefined
 
   readonly host?: string | undefined
@@ -96,6 +102,8 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+  /** Idle time before TCP keepalive probes start. See `PgConnection.Config.keepAlive`. */
+  readonly keepAlive?: Duration.Input | undefined
 
   readonly stream?: (() => Duplex) | undefined
 
@@ -144,29 +152,71 @@ export interface PgClientConfig {
   readonly preparedStatementCacheSize?: number | undefined
   /** Maximum backend message size in bytes. Defaults to 16 MiB. */
   readonly maxMessageSize?: number | undefined
+  /**
+   * Runs after each connection checkout, in the fiber that uses the connection.
+   *
+   * **Details**
+   *
+   * Runs once per statement or stream outside a transaction, including
+   * multiplexed statements, and once per `withTransaction`, `reserve`, `listen`
+   * and `notify`. Finalizers it adds run when that acquisition ends. Services it
+   * requires are captured when the client is built, and the consuming fiber's
+   * services take precedence.
+   *
+   * **Gotchas**
+   *
+   * Keep it cheap: it runs while holding the connection. With `makeClient` and
+   * `acquireForStream`, it runs before a stream opens its own connection.
+   *
+   * **Example** (Reading request context on each checkout)
+   *
+   * ```ts
+   * import { PgClient } from "@effect/sql-pg"
+   * import { Context, Effect } from "effect"
+   *
+   * // Set by each request handler with `Effect.provideService`.
+   * const KeepAlive = Context.Reference<(() => void) | undefined>("app/KeepAlive", {
+   *   defaultValue: () => undefined
+   * })
+   *
+   * const layer = PgClient.layer({
+   *   onAcquire: Effect.gen(function*() {
+   *     const keepAlive = yield* KeepAlive
+   *     keepAlive?.()
+   *   })
+   * })
+   * ```
+   */
+  readonly onAcquire?: Effect.Effect<void, never, R> | undefined
 }
 
 /**
  * PostgreSQL client settings with connection pool limits and timeouts.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface PgPoolConfig extends PgClientConfig {
+export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly idleTimeout?: Duration.Input | undefined
 
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
+  /** Bounds how long acquiring a pooled connection takes. See `PgPool.Config.acquireTimeout`. */
+  readonly acquireTimeout?: Duration.Input | undefined
 }
 
 /**
  * Creates a scoped PostgreSQL client backed by a connection pool.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+export const make = <R = never>(
+  options: PgPoolConfig<R>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
@@ -179,17 +229,18 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
 /**
  * Creates a scoped PostgreSQL client backed by one connection.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const makeClient = (
-  options: PgClientConfig & {
+export const makeClient = <R = never>(
+  options: PgClientConfig<R> & {
     /**
      * Opens a separate connection for each stream and listener when enabled.
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
       acquirer: Effect.succeed(makeConnection(
@@ -204,16 +255,32 @@ export const makeClient = (
 /**
  * Builds the shared SQL facade around native connection acquirers.
  */
-const makeImpl = Effect.fnUntraced(function*(
+const makeImpl = Effect.fnUntraced(function*<R>(
   options: {
     readonly acquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly borrower?: Borrower | undefined
     readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
-    readonly config: PgClientConfig
+    readonly config: PgClientConfig<R>
   }
-): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
-  const config = options.config
+): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
+  // The consuming fiber's services take precedence over the captured ones.
+  const hook = options.config.onAcquire
+  const context = yield* Effect.context<R>()
+  const onAcquire = hook &&
+    Effect.updateContext(hook, (current: Context.Context<never>) => Context.merge(context, current))
+  const config: PgClientConfig = { ...options.config, onAcquire }
+  let { acquirer, borrower, listenAcquirer, transactionAcquirer } = options
+  if (onAcquire !== undefined) {
+    acquirer = Effect.tap(acquirer, onAcquire)
+    transactionAcquirer = Effect.tap(transactionAcquirer, onAcquire)
+    listenAcquirer = Effect.tap(listenAcquirer, onAcquire)
+    if (borrower !== undefined) {
+      const borrow = borrower
+      // Scope each statement so hook finalizers run when it ends.
+      borrower = (f) => borrow((connection) => Effect.scoped(Effect.andThen(onAcquire, f(connection))))
+    }
+  }
   const compiler = makeCompiler(
     config.transformQueryNames,
     config.transformJson
@@ -228,18 +295,19 @@ const makeImpl = Effect.fnUntraced(function*(
   const listen = (
     channel: string
   ): Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope> =>
-    Effect.flatMap(options.listenAcquirer, (connection) => connection.listen(channel))
+    Effect.flatMap(listenAcquirer, (connection) => connection.listen(channel))
 
   return Object.assign(
     yield* Client.make({
-      acquirer: options.acquirer,
-      borrower: options.borrower,
+      driver: "pg",
+      acquirer,
+      borrower,
       // Postgres prepares transaction control like anything else, and a client
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
       commit,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      transactionAcquirer: options.transactionAcquirer,
+      transactionAcquirer,
       compiler,
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
@@ -260,7 +328,7 @@ const makeImpl = Effect.fnUntraced(function*(
         return channelError !== undefined ?
           Effect.fail(channelError) :
           Effect.asVoid(Effect.scoped(Effect.flatMap(
-            options.acquirer,
+            acquirer,
             (conn) => conn.executeRaw(`SELECT pg_notify($1, $2)`, [channel, payload])
           )))
       }
@@ -355,6 +423,7 @@ const makeConnection = (
 /**
  * Provides both `PgClient` and `SqlClient` from an acquisition effect.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -371,12 +440,17 @@ export const layerFrom = <E, R>(
 /**
  * Creates a client layer from wrapped pool configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig = (
-  config: Config.Wrap<PgPoolConfig>
-): Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+export const layerConfig = <R = never>(
+  config: Config.Wrap<PgPoolConfig<R>>
+): Layer.Layer<
+  PgClient | Client.SqlClient,
+  Config.ConfigError | SqlError,
+  Exclude<R, Scope.Scope | Reactivity.Reactivity>
+> =>
   layerFrom(Effect.flatMap(
     Config.unwrap(config),
     make
@@ -385,16 +459,19 @@ export const layerConfig = (
 /**
  * Creates a client layer from pool configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer = (
-  config: PgPoolConfig
-): Layer.Layer<PgClient | Client.SqlClient, SqlError> => layerFrom(make(config))
+export const layer = <R = never>(
+  config: PgPoolConfig<R>
+): Layer.Layer<PgClient | Client.SqlClient, SqlError, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
+  layerFrom(make(config))
 
 /**
  * Creates the PostgreSQL statement compiler.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -445,6 +522,7 @@ const escape = Statement.defaultEscape("\"")
 /**
  * PostgreSQL-specific statement fragments.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

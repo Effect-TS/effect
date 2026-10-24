@@ -34,6 +34,7 @@ import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
+import type { Fragment } from "../sql/Statement.ts"
 import * as Redis from "./Redis.ts"
 
 /**
@@ -80,11 +81,27 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If an element with the same id already exists in the queue, it will not be
-   * added again. De-duplication survives completion until the id is removed by
+   * added again, and the `delay` of the duplicate offer is ignored.
+   * De-duplication survives completion until the id is removed by
    * `layerCleanup`.
+   *
+   * `delay` postpones the first delivery. Measured by the store's clock, the
+   * element is never delivered before the delay elapses, and is typically
+   * delivered within the store's `pollInterval` after. The SQL store uses the
+   * database clock and rounds delays up to whole seconds. The Redis store
+   * compares the offering process's clock with the polling worker's, so it
+   * relies on those clocks agreeing.
+   * Retries still use the queue's `retrySchedule`, and the delay does not
+   * count an attempt. A zero, negative or omitted delay enqueues the element
+   * immediately.
+   *
+   * An infinite delay does nothing: the id is returned, but nothing is stored
+   * and no de-duplication record is written, so the same id can be offered
+   * again later.
    */
   readonly offer: (value: A, options?: {
-    readonly id: string | undefined
+    readonly id?: string | undefined
+    readonly delay?: Duration.Input | undefined
   }) => Effect.Effect<string, PersistedQueueError | Schema.SchemaError, R>
 
   /**
@@ -232,21 +249,27 @@ export const makeFactory = Effect.gen(function*() {
       return Effect.succeed<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>({
         [TypeId]: TypeId,
         offer: (value, opts) =>
-          Effect.flatMap(
-            encodeUnknown(value),
-            (element) => {
-              const id = opts?.id ?? crypto.randomUUID()
-              return Effect.as(
-                store.offer({
-                  name: options.name,
-                  id,
-                  element,
-                  isCustomId: opts?.id !== undefined
-                }),
-                id
-              )
+          Effect.suspend(() => {
+            const id = opts?.id ?? crypto.randomUUID()
+            const delay = positiveDelay(opts?.delay)
+            if (delay !== undefined && !Duration.isFinite(delay)) {
+              return Effect.succeed(id)
             }
-          ),
+            return Effect.flatMap(
+              encodeUnknown(value),
+              (element) =>
+                Effect.as(
+                  store.offer({
+                    name: options.name,
+                    id,
+                    element,
+                    isCustomId: opts?.id !== undefined,
+                    delay
+                  }),
+                  id
+                )
+            )
+          }),
         take: <XA, XE, XR>(
           f: (value: S["Type"], metadata: {
             readonly id: string
@@ -430,6 +453,13 @@ class DeadLetter {
 const isDeadLetter = (u: unknown): u is DeadLetter =>
   Predicate.isTagged(u, "~effect/persistence/PersistedQueue/DeadLetter")
 
+// stores only see a positive delay, so a zero or negative one is dropped here
+const positiveDelay = (input: Duration.Input | undefined): Duration.Duration | undefined => {
+  if (input === undefined) return undefined
+  const delay = Duration.fromInputUnsafe(input)
+  return Duration.isPositive(delay) ? delay : undefined
+}
+
 const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
   for (const reason of cause.reasons) {
     if (Cause.isFailReason(reason) && isDeadLetter(reason.error)) {
@@ -452,6 +482,9 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * The store persists offered elements and returns taken elements in a scope so
  * the finalizer can complete or retry them based on the processing exit.
  *
+ * An offered `delay` is always finite and positive, and the element must not
+ * be taken before it elapses. It is `undefined` for immediate elements.
+ *
  * Claiming an element counts an attempt, so the `attempts` returned by `take`
  * is 1-based. When the take scope closes with a success the element is marked
  * completed; a failure retries it according to `retryDelay` or marks it failed
@@ -471,6 +504,7 @@ export class PersistedQueueStore extends Context.Service<
         readonly id: string
         readonly element: unknown
         readonly isCustomId: boolean
+        readonly delay?: Duration.Duration | undefined
       }
     ) => Effect.Effect<void, PersistedQueueError>
 
@@ -508,6 +542,9 @@ export class PersistedQueueStore extends Context.Service<
  * The store is process-local and volatile; failed takes are requeued with the
  * queue's retry schedule until the configured maximum attempts is reached,
  * after which the element is marked as failed.
+ *
+ * Delayed elements are scanned on every take loop, so the store is meant for
+ * development and tests rather than large delayed backlogs.
  *
  * @stability unstable
  * @category layers
@@ -558,7 +595,7 @@ export const layerStoreMemory: Layer.Layer<
             element: options.element,
             attempts: 0,
             state: "pending",
-            visibleAt: now,
+            visibleAt: options.delay === undefined ? now : now + Duration.toMillis(options.delay),
             stateChangedAt: now
           }
           queue.entries.set(options.id, entry)
@@ -655,7 +692,9 @@ export const layerStoreMemory: Layer.Layer<
  * The store uses Redis lists, hashes, and sorted sets with worker locks,
  * periodically refreshes locks while items are being processed, delays retried
  * items with the queue's retry schedule, and moves exhausted items to a failed
- * queue.
+ * queue. Delayed offers share the retry sorted set: they are scored with the
+ * offering process's clock and released by the polling worker's clock, so
+ * clock skew between hosts shifts their delivery.
  *
  * @stability unstable
  * @category constructors
@@ -716,6 +755,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const retry = redis.eval(retryRedis)
   const resetQueue = redis.eval(resetQueueRedis)
   const offer = redis.eval(offerRedis)
+  const offerDelayed = redis.eval(offerDelayedRedis)
   const take = redis.eval(takeRedis)
   const expireAll = redis.eval(expireAllRedis)
   const trimFailed = redis.eval(trimFailedRedis)
@@ -836,44 +876,55 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
   )
 
-  const scanKeys = (pattern: string) =>
-    Effect.gen(function*() {
-      const keys: Array<string> = []
-      let cursor = "0"
-      do {
-        const [next, batch] = yield* redis.send<[string, Array<string>]>(
-          "SCAN",
-          cursor,
-          "MATCH",
-          pattern,
-          "COUNT",
-          "100"
-        )
-        cursor = next
-        for (const key of batch) keys.push(key)
-      } while (cursor !== "0")
-      return keys
-    })
+  const scanKeys = Effect.fnUntraced(function*(pattern: string) {
+    const keys: Array<string> = []
+    let cursor = "0"
+    do {
+      const [next, batch] = yield* redis.send<[string, Array<string>]>(
+        "SCAN",
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        "100"
+      )
+      cursor = next
+      for (const key of batch) keys.push(key)
+    } while (cursor !== "0")
+    return keys
+  })
 
   return PersistedQueueStore.of({
-    offer: ({ element, id, isCustomId, name }) => {
+    offer: ({ delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
+      // replace lone surrogates like Redis' UTF-8 encoding does, so the id in
+      // the payload matches the id keys
+      id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
       const payload = JSON.stringify({ id, element })
-      return (isCustomId
-        ? offer(keys.queue, keys.ids, id, payload)
-        : redis.send("RPUSH", keys.queue, payload)).pipe(
-          Effect.mapError(({ cause }) =>
-            new PersistedQueueError({
-              message: "Failed to offer element to persisted queue",
-              cause
-            })
-          ),
-          Effect.tap(() =>
-            Effect.sync(() => {
-              queueStates.peek(name)?.nudge.openUnsafe()
-            })
-          )
+      const send = Effect.suspend(() => {
+        if (delay === undefined) {
+          return isCustomId
+            ? offer(keys.queue, keys.ids, id, payload)
+            : redis.send("RPUSH", keys.queue, payload)
+        }
+        const visibleAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(delay)
+        return isCustomId
+          ? offerDelayed(keys.delayed, keys.ids, id, payload, visibleAt)
+          : redis.send("ZADD", keys.delayed, visibleAt.toString(), payload)
+      })
+      return send.pipe(
+        Effect.mapError(({ cause }) =>
+          new PersistedQueueError({
+            message: "Failed to offer element to persisted queue",
+            cause
+          })
+        ),
+        Effect.tap(() =>
+          Effect.sync(() => {
+            queueStates.peek(name)?.nudge.openUnsafe()
+          })
         )
+      )
     },
     take: (options) =>
       Effect.uninterruptibleMask((restore) => {
@@ -955,8 +1006,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           })
         )
       }),
-    cleanup: ({ failedTimeToLive, timeToLive }) =>
-      Effect.gen(function*() {
+    cleanup: Effect.fnUntraced(
+      function*({ failedTimeToLive, timeToLive }) {
         const now = clock.currentTimeMillisUnsafe()
         const idsKeys = yield* scanKeys(`${prefix}*:ids`)
         const cutoff = now - Duration.toMillis(timeToLive)
@@ -978,14 +1029,14 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             { concurrency: 16, discard: true }
           )
         }
-      }).pipe(
-        Effect.mapError(({ cause }) =>
-          new PersistedQueueError({
-            message: "Failed to clean up persisted queue",
-            cause
-          })
-        )
+      },
+      Effect.mapError(({ cause }) =>
+        new PersistedQueueError({
+          message: "Failed to clean up persisted queue",
+          cause
+        })
       )
+    )
   })
 })
 
@@ -1003,6 +1054,25 @@ local payload = ARGV[2]
 local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
 if result == 1 then
   redis.call("RPUSH", key_queue, payload)
+end
+`,
+    numberOfKeys: 2
+  }
+)
+
+const offerDelayedRedis = Redis.script(
+  (...args: [keyDelayed: string, keyIds: string, id: string, payload: string, visibleAt: number]) => args,
+  {
+    lua: `
+local key_delayed = KEYS[1]
+local key_ids = KEYS[2]
+local id = ARGV[1]
+local payload = ARGV[2]
+local visible_at = ARGV[3]
+
+local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
+if result == 1 then
+  redis.call("ZADD", key_delayed, visible_at, payload)
 end
 `,
     numberOfKeys: 2
@@ -1163,6 +1233,27 @@ redis.call("ZADD", key_ids, "XX", "+inf", id)
   }
 )
 
+// Every record starts with {"id":"...". Decode only the id, since Redis cjson
+// rejects lone UTF-16 surrogates that JSON.stringify can emit in the element.
+const queueRecordIdRedis = `
+local function record_id(payload)
+  assert(string.sub(payload, 1, 7) == '{"id":"', "Invalid queue record id")
+  local i = 8
+  while i <= #payload do
+    local byte = string.byte(payload, i)
+    if byte == 92 then
+      -- Skip escaped characters, including escaped quotes and backslashes.
+      i = i + 2
+    elseif byte == 34 then
+      return cjson.decode(string.sub(payload, 7, i))
+    else
+      i = i + 1
+    end
+  end
+  error("Unterminated queue record id")
+end
+`
+
 const takeRedis = Redis.script(
   (
     ...args: [
@@ -1189,6 +1280,8 @@ local batch_size = tonumber(ARGV[3])
 local pttl = ARGV[4]
 local now = ARGV[5]
 
+${queueRecordIdRedis}
+
 local due = redis.call("ZRANGEBYSCORE", key_delayed, "-inf", now, "LIMIT", 0, 100)
 if #due > 0 then
   for i, payload in ipairs(due) do
@@ -1197,14 +1290,21 @@ if #due > 0 then
   redis.call("ZREM", key_delayed, unpack(due))
 end
 
-local payloads = redis.call("LPOP", key_queue, batch_size)
-if not payloads then
+local payloads = redis.call("LRANGE", key_queue, 0, batch_size - 1)
+if #payloads == 0 then
   return nil
 end
 
-local result = {}
+-- read every id before removing the batch, as script errors do not roll back
+local ids = {}
 for i, payload in ipairs(payloads) do
-  local id = cjson.decode(payload).id
+  ids[i] = record_id(payload)
+end
+redis.call("LTRIM", key_queue, #payloads, -1)
+
+local result = {}
+for i, id in ipairs(ids) do
+  local payload = payloads[i]
   local key_lock = prefix .. id .. ":lock"
   redis.call("SET", key_lock, worker_id, "PX", pttl)
   redis.call("HSET", key_pending, id, payload)
@@ -1243,21 +1343,20 @@ local key_ids = KEYS[2]
 local cutoff = tonumber(ARGV[1])
 local removed = 0
 
+${queueRecordIdRedis}
+
 while removed < ${trimFailedBatchSize} do
   local head = redis.call("LINDEX", key_failed, 0)
   if not head then break end
-  local ok, decoded = pcall(cjson.decode, head)
+  local ok, id = pcall(record_id, head)
   if ok then
-    local failed_at = tonumber(decoded.failedAt)
+    -- failedAt is always the last field of a failed record
+    local failed_at = tonumber(string.match(head, ',"failedAt":([^,}]+)%}$'))
     if failed_at ~= nil and failed_at >= cutoff then break end
-    redis.call("LPOP", key_failed)
-    if decoded.id ~= nil then
-      redis.call("ZREM", key_ids, decoded.id)
-    end
-  else
-    -- a corrupt head would otherwise block trimming of the whole list
-    redis.call("LPOP", key_failed)
+    redis.call("ZREM", key_ids, id)
   end
+  -- a corrupt head would otherwise block trimming of the whole list
+  redis.call("LPOP", key_failed)
   removed = removed + 1
 end
 
@@ -1293,8 +1392,15 @@ export const layerStoreRedis: (
  * **Details**
  *
  * The store creates the queue table and indexes, acquires rows with
- * per-worker locks, refreshes active locks while scoped takes are running, and
- * retries or completes rows according to the processing exit.
+ * per-acquisition locks, refreshes active locks while scoped takes are running,
+ * and retries or completes rows according to the processing exit.
+ *
+ * Settlements and refreshes only apply to the acquisition a handler received,
+ * so a handler whose lock lapsed can still settle or renew its claim until
+ * another poll re-claims the row.
+ *
+ * Offer and retry delays are measured with the database clock and rounded up
+ * to whole seconds.
  *
  * @stability unstable
  * @category constructors
@@ -1327,8 +1433,6 @@ export const makeStoreSql: (
     options?.lockExpiration ? Duration.fromInputUnsafe(options.lockExpiration) : Duration.minutes(2),
     Duration.millis(1)
   )
-  const workerId = crypto.randomUUID()
-
   const ackRetrySchedule = makeAckRetrySchedule(lockExpiration)
 
   yield* Effect.orDie(
@@ -1360,34 +1464,75 @@ export const makeStoreSql: (
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
   const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
+  // Deadline for a delayed offer, which must never land before the delay
+  // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
+  // start. mysql and sqlite clocks drop the fraction of the current second, so
+  // they get a whole extra second to cover it.
+  const delayedVisibleAt = (delay: Duration.Duration) => {
+    const seconds = Math.ceil(Duration.toSeconds(delay))
+    return sql.onDialectOrElse({
+      pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
+      mssql: () => secondsOffset(seconds),
+      orElse: () => secondsOffset(seconds + 1)
+    })
+  }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
-    pg: () => (id: string, name: string, element: string) =>
+    pg: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
         ON CONFLICT (id, queue_name) DO NOTHING
       `,
-    mysql: () => (id: string, name: string, element: string) =>
+    mysql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
-    mssql: () => (id: string, name: string, element: string) =>
-      sql`
-        MERGE ${tableNameSql} WITH (HOLDLOCK) AS target
-        USING (SELECT ${id} AS id, ${name} AS queue_name) AS source
-        ON target.id = source.id AND target.queue_name = source.queue_name
-        WHEN NOT MATCHED THEN
-          INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow});
-      `,
+    // Avoids MERGE WITH (HOLDLOCK), whose range locks deadlock concurrent offers.
+    // - READCOMMITTEDLOCK makes the check wait for an uncommitted duplicate, even
+    //   under read committed snapshot.
+    // - A duplicate inserted after the check raises 2601/2627. XACT_ABORT is off
+    //   so that error doesn't doom the caller's transaction; it is restored
+    //   before rethrowing any other error.
+    // - The nested sp_executesql restores XACT_ABORT on exit, including on
+    //   cancellation.
+    mssql: () => {
+      // matches the SQL Server compiler's identifier escaping
+      const escape = (name: string) => `[${name.replace(/\]/g, "]]").replace(/\./g, "].[")}]`
+      const table = escape(tableName)
+      const offerSql = `
+        SET XACT_ABORT OFF;
+        BEGIN TRY
+          IF NOT EXISTS (
+            SELECT 1 FROM ${table} WITH (READCOMMITTEDLOCK, FORCESEEK, INDEX(${escape(`idx_${tableName}_id`)}))
+            WHERE id = @id AND queue_name = @name
+          )
+            INSERT INTO ${table} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+            VALUES (@id, @name, @element, 'pending', 0, @visible_at, SYSDATETIME(), SYSDATETIME());
+        END TRY
+        BEGIN CATCH
+          IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1
+          BEGIN
+            IF @xact_abort <> 0 SET XACT_ABORT ON;
+            THROW;
+          END
+        END CATCH`
+      return (id: string, name: string, element: string, visibleAt: Fragment) =>
+        sql`
+          DECLARE @visible_at DATETIME2 = ${visibleAt};
+          DECLARE @xact_abort INT = @@OPTIONS & 16384;
+          EXEC sp_executesql ${offerSql},
+            N'@id NVARCHAR(MAX), @name NVARCHAR(MAX), @element NVARCHAR(MAX), @visible_at DATETIME2, @xact_abort INT',
+            @id = ${id}, @name = ${name}, @element = ${element}, @visible_at = @visible_at, @xact_abort = @xact_abort;
+        `
+    },
     // sqlite
-    orElse: () => (id: string, name: string, element: string) =>
+    orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `
   })
 
@@ -1397,75 +1542,80 @@ export const makeStoreSql: (
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
 
-  const workerIdSql = stringLiteral(workerId)
-  const elementIds = new Set<number | string>()
+  // Elements this store has claimed and not yet settled. Each poll claims its
+  // rows under a fresh lock, so a settlement only matches the acquisition it
+  // belongs to, even after the same store re-claims a lapsed row.
+  const held = new Set<Element>()
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
-    if (elementIds.size === 0) return Effect.void
-    const ids = Array.from(elementIds)
+    if (held.size === 0) return Effect.void
+    const sequences = new Set<number | string>()
+    const locks = new Set<string>()
+    for (const element of held) {
+      sequences.add(element.sequence)
+      locks.add(wrapString(element.lock))
+    }
+    // A row only ever carries the lock of the poll that claimed it, so matching
+    // every held sequence against every live lock renews just this store's own
+    // claims while keeping the statement flat
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = ${sqlNow}
-      WHERE sequence IN (${sql.literal(ids.join(","))})
-      AND acquired_by = ${workerIdSql}
+      WHERE sequence IN (${sql.literal(Array.from(sequences).join(","))})
+      AND acquired_by IN (${sql.literal(Array.from(locks).join(","))})
     `
   })
-  const ack = (
-    statement: Effect.Effect<unknown, SqlError>,
-    sequences: ReadonlyArray<number | string>
-  ): Effect.Effect<void> =>
+  const ack = (statement: Effect.Effect<unknown, SqlError>, element: Element): Effect.Effect<void> =>
     statement.pipe(
       Effect.retry(ackRetrySchedule),
       Effect.orDie,
       Effect.ensuring(Effect.sync(() => {
-        for (const sequence of sequences) {
-          elementIds.delete(sequence)
-        }
+        held.delete(element)
       })),
       Effect.asVoid
     )
-  const complete = (sequence: number | string) =>
+  const complete = (element: Element) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'completed'
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      element
     )
-  const fail = (sequence: number | string, cause: Cause.Cause<any>) =>
+  const fail = (element: Element, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'failed', last_failure = ${
         Cause.pretty(cause)
       }
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      element
     )
-  const retry = (sequence: number | string, delay: Duration.Duration, cause: Cause.Cause<any>) =>
+  const retry = (element: Element, delay: Duration.Duration, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
         secondsFromNow(Duration.toSeconds(delay))
       }, last_failure = ${Cause.pretty(cause)}
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      element
     )
-  const interrupt = (ids: Array<number | string>) =>
+  const interrupt = (element: Element) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
-        WHERE sequence IN (${sql.literal(ids.join(","))})
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      ids
+      element
     )
 
   yield* refreshLocks.pipe(
@@ -1485,6 +1635,7 @@ export const makeStoreSql: (
     readonly sequence: number | string
     readonly element: string
     attempts: number
+    lock: string
   }
   const queueStates = makeQueueStates()
   const mailboxes = yield* RcMap.make({
@@ -1498,10 +1649,10 @@ export const makeStoreSql: (
       const nudge = state.nudge
 
       yield* Effect.addFinalizer(() =>
-        Effect.flatMap(Queue.clear(queue), (elements) => {
-          if (elements.length === 0) return Effect.void
-          return interrupt(Array.from(elements, (e) => e.sequence))
-        })
+        Effect.flatMap(
+          Queue.clear(queue),
+          (elements) => Effect.forEach(elements, interrupt, { concurrency: "unbounded", discard: true })
+        )
       )
 
       // flip exhausted rows whose lock expired (worker crashed on the final
@@ -1523,11 +1674,11 @@ export const makeStoreSql: (
       )
 
       const poll = sql.onDialectOrElse({
-        pg: () => (size: number) =>
+        pg: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
               UPDATE ${tableNameSql}
-              SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+              SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
               WHERE sequence IN (
                 SELECT sequence FROM ${tableNameSql}
                 WHERE queue_name = ${name}
@@ -1544,7 +1695,7 @@ export const makeStoreSql: (
             SELECT sequence, id, element, attempts FROM cte
             ORDER BY visible_at ASC, sequence ASC
           `,
-        mysql: () => (size: number) =>
+        mysql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             SELECT sequence, id, element, attempts FROM ${tableNameSql} q
             WHERE queue_name = ${name}
@@ -1560,7 +1711,7 @@ export const makeStoreSql: (
               if (rows.length === 0) return Effect.void
               return sql`
                 UPDATE ${tableNameSql}
-                SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+                SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
                 WHERE sequence IN (${sql.literal(rows.map((r) => r.sequence).join(","))})
               `.unprepared
             }),
@@ -1572,10 +1723,13 @@ export const makeStoreSql: (
             }),
             sql.withTransaction
           ),
-        mssql: () => (size: number) =>
+        // READPAST skips rows locked by another claim or a settlement instead
+        // of deadlocking with them
+        mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
-              SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
+              SELECT TOP ${sql.literal(size.toString())} sequence
+              FROM ${tableNameSql} WITH (UPDLOCK, READPAST, ROWLOCK)
               WHERE queue_name = ${name}
               AND state = 'pending'
               AND attempts < ${maxAttempts}
@@ -1584,16 +1738,16 @@ export const makeStoreSql: (
               ORDER BY visible_at ASC, sequence ASC
             )
             UPDATE q
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = q.attempts + 1
+            SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = q.attempts + 1
             OUTPUT inserted.sequence, inserted.id, inserted.element, inserted.attempts
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
         // sqlite
-        orElse: () => (size: number) =>
+        orElse: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             UPDATE ${tableNameSql}
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+            SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
             WHERE sequence IN (
               SELECT sequence FROM ${tableNameSql}
               WHERE queue_name = ${name}
@@ -1613,7 +1767,8 @@ export const makeStoreSql: (
           yield* pollLatch.await
           yield* Effect.yieldNow
           nudge.closeUnsafe()
-          const results = takers.current === 0 ? [] : yield* poll(takers.current)
+          const lock = crypto.randomUUID()
+          const results = takers.current === 0 ? [] : yield* poll(takers.current, stringLiteral(lock))
           if (results.length === 0) {
             yield* Effect.race(Effect.sleep(pollInterval), nudge.await)
             continue
@@ -1621,7 +1776,8 @@ export const makeStoreSql: (
           takenLatch.closeUnsafe()
           for (const row of results) {
             row.attempts = Number(row.attempts)
-            elementIds.add(row.sequence)
+            row.lock = lock
+            held.add(row)
           }
           yield* Queue.offerAll(queue, results)
           yield* takenLatch.await
@@ -1696,20 +1852,31 @@ export const makeStoreSql: (
     )
 
   return PersistedQueueStore.of({
-    offer: ({ element, id, name }) =>
-      Effect.catchCause(Effect.suspend(() => offer(id, name, JSON.stringify(element))), (cause) =>
-        Effect.fail(
-          new PersistedQueueError({
-            message: "Failed to offer element to persisted queue",
-            cause
-          })
-        )).pipe(
-          Effect.tap(() =>
-            Effect.sync(() => {
-              queueStates.peek(name)?.nudge.openUnsafe()
-            })
+    offer: ({ delay, element, id, name }) =>
+      Effect.catchCause(
+        Effect.suspend(() =>
+          offer(
+            id,
+            name,
+            JSON.stringify(element),
+            delay === undefined ? sqlNow : delayedVisibleAt(delay)
           )
         ),
+        (cause) =>
+          Effect.fail(
+            new PersistedQueueError({
+              message: "Failed to offer element to persisted queue",
+              cause
+            })
+          )
+      ).pipe(
+        // Wake takers once the offer is committed.
+        Effect.tap(() =>
+          sql.afterCommit(Effect.sync(() => {
+            queueStates.peek(name)?.nudge.openUnsafe()
+          }))
+        )
+      ),
     take: (options) => {
       queueStates.get(options.name).maxAttempts = options.maxAttempts
       const loop: Effect.Effect<
@@ -1750,26 +1917,26 @@ export const makeStoreSql: (
             } catch (defect) {
               // a row that cannot be parsed will never succeed, so dead-letter
               // it and take the next element
-              return Effect.andThen(fail(element.sequence, Cause.die(defect)), loop)
+              return Effect.andThen(fail(element, Cause.die(defect)), loop)
             }
             return Effect.as(
               Effect.addFinalizer((exit) => {
                 if (exit._tag === "Success") {
-                  return complete(element.sequence)
+                  return complete(element)
                 }
                 const dead = deadLetterFromCause(exit.cause)
                 if (dead !== undefined) {
-                  return fail(element.sequence, dead.cause)
+                  return fail(element, dead.cause)
                 }
                 if (Cause.hasInterruptsOnly(exit.cause)) {
-                  return interrupt([element.sequence])
+                  return interrupt(element)
                 }
                 if (element.attempts >= options.maxAttempts) {
-                  return fail(element.sequence, exit.cause)
+                  return fail(element, exit.cause)
                 }
                 return Effect.flatMap(
                   options.retryDelay(element.attempts),
-                  (delay) => retry(element.sequence, delay, exit.cause)
+                  (delay) => retry(element, delay, exit.cause)
                 )
               }),
               { id: element.id, attempts: element.attempts, element: parsed }
@@ -1779,22 +1946,22 @@ export const makeStoreSql: (
       )
       return loop
     },
-    cleanup: ({ failedTimeToLive, timeToLive }) =>
-      Effect.gen(function*() {
+    cleanup: Effect.fnUntraced(
+      function*({ failedTimeToLive, timeToLive }) {
         yield* cleanupState("completed", timeToLive)
         if (failedTimeToLive !== undefined) {
           yield* cleanupState("failed", failedTimeToLive)
         }
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.fail(
-            new PersistedQueueError({
-              message: "Failed to clean up persisted queue",
-              cause
-            })
-          )
+      },
+      Effect.catchCause((cause) =>
+        Effect.fail(
+          new PersistedQueueError({
+            message: "Failed to clean up persisted queue",
+            cause
+          })
         )
       )
+    )
   })
 })
 
@@ -1912,46 +2079,43 @@ const sqlMigrations = (tableName: string) =>
       const takeIndex = sql(`idx_${tableName}_take`)
 
       yield* sql.onDialectOrElse({
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
-            yield* sql`ALTER TABLE ${tableNameSql}
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+          yield* sql`ALTER TABLE ${tableNameSql}
               ADD COLUMN state VARCHAR(10),
               ADD COLUMN visible_at TIMESTAMP`
-            yield* sql`UPDATE ${tableNameSql}
+          yield* sql`UPDATE ${tableNameSql}
               SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                   visible_at = updated_at`
-            yield* sql`ALTER TABLE ${tableNameSql}
+          yield* sql`ALTER TABLE ${tableNameSql}
               ALTER COLUMN sequence TYPE BIGINT,
               ALTER COLUMN id TYPE VARCHAR(255),
               ALTER COLUMN queue_name TYPE VARCHAR(255),
               ALTER COLUMN state SET NOT NULL,
               ALTER COLUMN visible_at SET NOT NULL,
               DROP COLUMN completed`
-          }),
-        mysql: () =>
-          Effect.gen(function*() {
-            yield* sql`DROP INDEX ${takeIndex} ON ${tableNameSql}`
-            yield* sql`ALTER TABLE ${tableNameSql}
+        }),
+        mysql: Effect.fnUntraced(function*() {
+          yield* sql`DROP INDEX ${takeIndex} ON ${tableNameSql}`
+          yield* sql`ALTER TABLE ${tableNameSql}
               MODIFY COLUMN id VARCHAR(255) NOT NULL,
               MODIFY COLUMN queue_name VARCHAR(255) NOT NULL,
               MODIFY COLUMN element MEDIUMTEXT NOT NULL,
               MODIFY COLUMN last_failure MEDIUMTEXT NULL,
               ADD COLUMN state VARCHAR(10) NULL,
               ADD COLUMN visible_at DATETIME NULL`
-            yield* sql`UPDATE ${tableNameSql}
+          yield* sql`UPDATE ${tableNameSql}
               SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                   visible_at = updated_at`
-            yield* sql`ALTER TABLE ${tableNameSql}
+          yield* sql`ALTER TABLE ${tableNameSql}
               MODIFY COLUMN state VARCHAR(10) NOT NULL,
               MODIFY COLUMN visible_at DATETIME NOT NULL,
               DROP COLUMN completed`
-          }),
-        mssql: () =>
-          Effect.gen(function*() {
-            const upgradedTableName = `${tableName}_upgrade`
-            const upgradedTable = sql(upgradedTableName)
-            yield* sql`CREATE TABLE ${upgradedTable} (
+        }),
+        mssql: Effect.fnUntraced(function*() {
+          const upgradedTableName = `${tableName}_upgrade`
+          const upgradedTable = sql(upgradedTableName)
+          yield* sql`CREATE TABLE ${upgradedTable} (
               sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
               id NVARCHAR(255) NOT NULL,
               queue_name NVARCHAR(255) NOT NULL,
@@ -1965,7 +2129,7 @@ const sqlMigrations = (tableName: string) =>
               created_at DATETIME2 NOT NULL,
               updated_at DATETIME2 NOT NULL
             )`
-            yield* sql`SET IDENTITY_INSERT ${upgradedTable} ON;
+          yield* sql`SET IDENTITY_INSERT ${upgradedTable} ON;
               INSERT INTO ${upgradedTable}
               (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
                 acquired_at, acquired_by, created_at, updated_at)
@@ -1974,19 +2138,18 @@ const sqlMigrations = (tableName: string) =>
                 attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
               FROM ${tableNameSql};
               SET IDENTITY_INSERT ${upgradedTable} OFF`
-            yield* sql`DROP TABLE ${tableNameSql}`
-            yield* sql`EXEC sp_rename ${upgradedTableName}, ${tableName}`
-            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
-            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
-          }),
+          yield* sql`DROP TABLE ${tableNameSql}`
+          yield* sql`EXEC sp_rename ${upgradedTableName}, ${tableName}`
+          yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+          yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+        }),
         // sqlite rebuilds the table because altering or dropping constrained
         // columns is not portable across supported SQLite versions.
-        orElse: () =>
-          Effect.gen(function*() {
-            const upgradedTableName = `${tableName}_upgrade`
-            const upgradedTable = sql(upgradedTableName)
-            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
-            yield* sql`CREATE TABLE ${upgradedTable} (
+        orElse: Effect.fnUntraced(function*() {
+          const upgradedTableName = `${tableName}_upgrade`
+          const upgradedTable = sql(upgradedTableName)
+          yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+          yield* sql`CREATE TABLE ${upgradedTable} (
               sequence INTEGER PRIMARY KEY AUTOINCREMENT,
               id TEXT NOT NULL,
               queue_name TEXT NOT NULL,
@@ -2000,18 +2163,18 @@ const sqlMigrations = (tableName: string) =>
               created_at DATETIME NOT NULL,
               updated_at DATETIME NOT NULL
             )`
-            yield* sql`INSERT INTO ${upgradedTable}
+          yield* sql`INSERT INTO ${upgradedTable}
               (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
                 acquired_at, acquired_by, created_at, updated_at)
               SELECT sequence, id, queue_name, element,
                 CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                 attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
               FROM ${tableNameSql}`
-            yield* sql`DROP TABLE ${tableNameSql}`
-            yield* sql`ALTER TABLE ${upgradedTable} RENAME TO ${tableNameSql}`
-            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
-            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
-          })
+          yield* sql`DROP TABLE ${tableNameSql}`
+          yield* sql`ALTER TABLE ${upgradedTable} RENAME TO ${tableNameSql}`
+          yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+          yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+        })
       })
 
       // partial index where supported, so pollers never scan completed rows

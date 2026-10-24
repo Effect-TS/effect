@@ -41,6 +41,17 @@ export const experimental = 1
 `
       )
       yield* fs.writeFileString(
+        path.join(directory, "ExplicitStable.ts"),
+        `/**
+ * Explicitly stable module.
+ *
+ * @stability stable
+ * @since 1.0.0
+ */
+export const explicitStable = 1
+`
+      )
+      yield* fs.writeFileString(
         path.join(directory, "Stable.ts"),
         `/**
  * Stable module.
@@ -76,6 +87,12 @@ export const unstable = 1
 export * as Experimental from "./Experimental.ts"
 
 /**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as ExplicitStable from "./ExplicitStable.ts"
+
+/**
  * @since 1.0.0
  */
 export * as Stable from "./Stable.ts"
@@ -85,6 +102,37 @@ export * as Stable from "./Stable.ts"
  * @since 2.0.0
  */
 export * as Unstable from "./Unstable.ts"
+`
+      )
+    }).pipe(Effect.provide(MainLayer)))
+
+  it.effect("reads the module JSDoc after triple-slash directives", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "codegen-" })
+      const barrel = path.join(directory, "index.ts")
+      yield* fs.writeFileString(barrel, "// @barrel\n")
+      yield* fs.writeFileString(
+        path.join(directory, "Disposable.ts"),
+        `/// <reference lib="esnext.disposable" preserve="true" />
+/**
+ * @since 2.0.0
+ */
+export const disposable = 1
+`
+      )
+
+      const generator = yield* Codegen.BarrelGenerator
+      yield* generator.processFile({ path: barrel, pattern: "*.ts", offset: 1 })
+
+      assert.strictEqual(
+        yield* fs.readFileString(barrel),
+        `// @barrel
+
+/**
+ * @since 2.0.0
+ */
+export * as Disposable from "./Disposable.ts"
 `
       )
     }).pipe(Effect.provide(MainLayer)))

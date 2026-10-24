@@ -6,11 +6,12 @@
  * `layerWin32` provide fixed POSIX and Windows variants. All three layers also
  * include helpers for converting between file paths and file URLs.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { Path, TypeId } from "effect/Path"
+import { make, Path } from "effect/Path"
 import { BadArgument } from "effect/PlatformError"
 import * as NodePath from "node:path"
 import * as NodeUrl from "node:url"
@@ -42,37 +43,37 @@ const fileUrlOps = (windows: boolean | undefined) => ({
  * Provides the `Path` service using Node's POSIX path implementation plus
  * file URL conversion helpers.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerPosix: Layer.Layer<Path> = Layer.succeed(Path)({
-  [TypeId]: TypeId,
+export const layerPosix: Layer.Layer<Path> = Layer.succeed(Path)(make({
   ...NodePath.posix,
   ...fileUrlOps(false)
-})
+}))
 
 /**
  * Provides the `Path` service using Node's Windows path implementation plus
  * file URL conversion helpers.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerWin32: Layer.Layer<Path> = Layer.succeed(Path)({
-  [TypeId]: TypeId,
+export const layerWin32: Layer.Layer<Path> = Layer.succeed(Path)(make({
   ...NodePath.win32,
   ...fileUrlOps(true)
-})
+}))
 
 /**
  * Provides the default `Path` service using the host platform's Node path
  * implementation plus file URL conversion helpers.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<Path> = Layer.succeed(Path)({
-  [TypeId]: TypeId,
+export const layer: Layer.Layer<Path> = Layer.succeed(Path)(make({
   ...NodePath,
   ...fileUrlOps(undefined)
-})
+}))

@@ -11,6 +11,7 @@
  * synchronous. Database export and extension loading are supported; streaming
  * queries and `updateValues` are not.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { constants, Database } from "bun:sqlite"
@@ -41,6 +42,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
 /**
  * Runtime type identifier used to mark Bun `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -49,6 +51,7 @@ export const TypeId: TypeId = "~@effect/sql-sqlite-bun/SqliteClient"
 /**
  * Type-level identifier used to mark Bun `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -57,6 +60,7 @@ export type TypeId = "~@effect/sql-sqlite-bun/SqliteClient"
 /**
  * Bun SQLite client service, extending `SqlClient` with database export and extension loading helpers. `updateValues` is not supported.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -77,6 +81,7 @@ export interface SqliteClient extends Client.SqlClient {
  *
  * Use to access or provide a Bun SQLite client through the Effect context.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -85,6 +90,7 @@ export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-bu
 /**
  * Configuration for a Bun SQLite client, including filename, open mode flags, WAL and busy timeout behavior, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -116,6 +122,7 @@ interface SqliteConnection extends Connection {
 /**
  * Creates a scoped Bun SQLite client for a database file, enabling WAL and a 5-second busy timeout by default. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected. Streaming queries are not implemented.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -256,7 +263,7 @@ export const make = (
     })
 
     const connection = yield* makeConnection
-    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, isTransaction, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(connection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -264,10 +271,13 @@ export const make = (
 
     const client: SqliteClient = Object.assign(
       (yield* Client.make({
+        driver: "sqlite-bun",
         acquirer,
+        borrower,
         compiler,
         transactionAcquirer,
         onCommitFailure,
+        isTransaction,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
@@ -282,9 +292,9 @@ export const make = (
         export: Effect.withFiber((fiber) =>
           Context.getOption(fiber.context, client.transactionService)._tag === "Some"
             ? connection.export
-            : Effect.flatMap(acquirer, (_) => _.export)
+            : Effect.scoped(Effect.flatMap(acquirer, (_) => _.export))
         ),
-        loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
+        loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
       }
     )
     return client
@@ -293,6 +303,7 @@ export const make = (
 /**
  * Creates a layer from a `Config`-wrapped Bun SQLite client configuration, providing both `SqliteClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -313,6 +324,7 @@ export const layerConfig = (
 /**
  * Creates a layer from a concrete Bun SQLite client configuration, providing both `SqliteClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
