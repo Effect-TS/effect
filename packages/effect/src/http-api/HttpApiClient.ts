@@ -871,39 +871,41 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 // ----------------------------------------------------------------------------
 
 // Struct-level encodings can rename keys arbitrarily, so names are only exact
-// for structs whose keys are encoded as is.
+// for structs whose keys are encoded as is. `undefined` redacts every encoded
+// field. Only the schema's structure is inspected: no encoder is executed.
 const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> | undefined => {
   if (schema === undefined) return []
-  const ast = SchemaAST.toType(schema.ast)
+  const ast = schema.ast
   if (!containsRedacted(ast)) return []
   if (
-    !SchemaAST.isObjects(ast) || schema.ast.encoding !== undefined ||
+    !SchemaAST.isObjects(ast) || ast.encoding !== undefined ||
     ast.indexSignatures.some((is) => containsRedacted(is.type))
   ) {
     return undefined
   }
-  const names: Array<string> = []
-  for (const ps of ast.propertySignatures) {
-    if (typeof ps.name === "string" && containsRedacted(ps.type)) {
-      names.push(ps.name)
-    }
-  }
-  return names
+  return ast.propertySignatures.flatMap((ps) =>
+    typeof ps.name === "string" && containsRedacted(ps.type) ? [ps.name] : []
+  )
 }
 
-const containsRedacted = (ast: SchemaAST.AST): boolean => {
+const containsRedacted = (ast: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean => {
+  if (seen.has(ast)) return false
+  seen.add(ast)
+  const recur = (ast: SchemaAST.AST) => containsRedacted(ast, seen)
   switch (ast._tag) {
     case "Declaration":
-      return (ast.annotations as Schema.Annotations.Declaration<unknown, readonly []> | undefined)?.representation
-            ?.id === "effect/schema/Redacted" ||
-        ast.typeParameters.some(containsRedacted)
+      return (ast.annotations as Schema.Annotations.Declaration<unknown> | undefined)?.representation?.id ===
+          "effect/schema/Redacted" ||
+        ast.typeParameters.some(recur)
     case "Objects":
-      return ast.propertySignatures.some((ps) => containsRedacted(ps.type)) ||
-        ast.indexSignatures.some((is) => containsRedacted(is.type))
+      return ast.propertySignatures.some((ps) => recur(ps.type)) ||
+        ast.indexSignatures.some((is) => recur(is.type))
     case "Union":
-      return ast.types.some(containsRedacted)
+      return ast.types.some(recur)
     case "Arrays":
-      return ast.elements.some(containsRedacted) || ast.rest.some(containsRedacted)
+      return ast.elements.some(recur) || ast.rest.some(recur)
+    case "Suspend":
+      return recur(ast.thunk())
     default:
       return false
   }

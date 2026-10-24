@@ -1097,63 +1097,41 @@ describe("HttpApiClient", () => {
       assert.strictEqual(typeof groupClient["__proto__"], "function")
     }))
 
-  it.effect("redacts Redacted query and header fields in client spans", () =>
-    Effect.gen(function*() {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(
-          HttpApiEndpoint.post("join", "/join", {
-            query: { token: Schema.RedactedFromValue(Schema.String), page: Schema.String },
-            headers: Schema.Struct({ "x-token": Schema.RedactedFromValue(Schema.String), "x-page": Schema.String })
-              .pipe(
+  describe("Redacted span fields", () => {
+    const Token = Schema.RedactedFromValue(Schema.String)
+    const secret = Redacted.make("s3cret")
+
+    it.effect("redacts Redacted query and header fields in client spans", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("join", "/join", {
+              query: { token: Token, page: Schema.String },
+              headers: Schema.Struct({ "x-token": Token, "x-page": Schema.String }).pipe(
                 Schema.encodeKeys({ "x-token": "x-auth-token" })
               )
-          })
+            })
+          )
         )
-      )
-      let clientSpan: Tracer.NativeSpan | undefined
-      const tracer = Tracer.make({
-        span(options) {
-          clientSpan = new Tracer.NativeSpan(options)
-          return clientSpan
-        }
-      })
-      let sent: { readonly url: string; readonly headers: Record<string, string> } | undefined
-      const client = yield* HttpApiClient.makeWith(Api, {
-        baseUrl: "http://test",
-        httpClient: HttpClient.make((request, url) =>
-          Effect.sync(() => {
-            sent = { url: url.toString(), headers: request.headers }
-            return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
-          })
-        )
-      })
-      const secret = Redacted.make("s3cret")
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
 
-      yield* client.test.join({
-        query: { token: secret, page: "1" },
-        headers: { "x-token": secret, "x-page": "1" }
-      }).pipe(
-        Effect.provideService(HttpClient.TracerHeaderFilter, () => true),
-        Effect.provideService(Tracer.Tracer, tracer)
-      )
+        yield* capture.trace(client.test.join({
+          query: { token: secret, page: "1" },
+          headers: { "x-token": secret, "x-page": "1" }
+        }))
 
-      assert(clientSpan !== undefined)
-      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
-      strictEqual(clientSpan.attributes.get("url.query"), "token=REDACTED&page=1")
-      // Renamed keys cannot be traced back to their fields, so every encoded header is redacted.
-      strictEqual(clientSpan.attributes.get("http.request.header.x-auth-token"), "<redacted>")
-      strictEqual(clientSpan.attributes.get("http.request.header.x-page"), "<redacted>")
-      strictEqual(sent?.url, "http://test/join?token=s3cret&page=1")
-      strictEqual(sent?.headers["x-auth-token"], "s3cret")
-      strictEqual(sent?.headers["x-page"], "1")
-    }))
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
+        strictEqual(capture.span.attributes.get("url.query"), "token=REDACTED&page=1")
+        // Renamed keys cannot be traced back to their fields, so every encoded header is redacted.
+        strictEqual(capture.span.attributes.get("http.request.header.x-auth-token"), "<redacted>")
+        strictEqual(capture.span.attributes.get("http.request.header.x-page"), "<redacted>")
+        strictEqual(capture.sent.url, "http://test/join?token=s3cret&page=1")
+        strictEqual(capture.sent.headers["x-auth-token"], "s3cret")
+        strictEqual(capture.sent.headers["x-page"], "1")
+      }))
 
-  it.effect.each([
-    (token: string) => token.toLowerCase(),
-    (token: string) => String(token)
-  ])(
-    "redacts Redacted fields behind custom key transformations without extra encoding",
-    (encodeToken) =>
+    it.effect("redacts every field behind a custom key encoding without extra encoding", () =>
       Effect.gen(function*() {
         let encodings = 0
         const Api = HttpApi.make("Api").add(
@@ -1161,12 +1139,12 @@ describe("HttpApiClient", () => {
             HttpApiEndpoint.get("join", "/join", {
               query: Schema.Struct({ auth_token: Schema.String, page: Schema.String }).pipe(
                 Schema.decodeTo(
-                  Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), page: Schema.String }),
+                  Schema.Struct({ token: Token, page: Schema.String }),
                   SchemaTransformation.transform({
                     decode: ({ auth_token, page }) => ({ token: auth_token, page }),
                     encode: ({ page, token }) => {
                       encodings++
-                      return { auth_token: encodeToken(token), page }
+                      return { auth_token: token, page }
                     }
                   })
                 )
@@ -1174,36 +1152,35 @@ describe("HttpApiClient", () => {
             })
           )
         )
-        let clientSpan: Tracer.NativeSpan | undefined
-        const tracer = Tracer.make({
-          span(options) {
-            clientSpan = new Tracer.NativeSpan(options)
-            return clientSpan
-          }
-        })
-        let sentUrl: string | undefined
-        const client = yield* HttpApiClient.makeWith(Api, {
-          baseUrl: "http://test",
-          httpClient: HttpClient.make((request, url) =>
-            Effect.sync(() => {
-              sentUrl = url.toString()
-              return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
-            })
-          )
-        })
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
         strictEqual(encodings, 0)
 
-        yield* client.test.join({ query: { token: Redacted.make("s3cret"), page: "1" } }).pipe(
-          Effect.provideService(Tracer.Tracer, tracer)
-        )
+        yield* capture.trace(client.test.join({ query: { token: secret, page: "1" } }))
 
         strictEqual(encodings, 1)
-        assert(clientSpan !== undefined)
-        strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?auth_token=REDACTED&page=REDACTED")
-        strictEqual(clientSpan.attributes.get("url.query"), "auth_token=REDACTED&page=REDACTED")
-        strictEqual(sentUrl, "http://test/join?auth_token=s3cret&page=1")
-      })
-  )
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/join?auth_token=REDACTED&page=REDACTED")
+        strictEqual(capture.span.attributes.get("url.query"), "auth_token=REDACTED&page=REDACTED")
+        strictEqual(capture.sent.url, "http://test/join?auth_token=s3cret&page=1")
+      }))
+
+    it.effect("redacts every field of a suspended query schema", () =>
+      Effect.gen(function*() {
+        const Query = Schema.Struct({ token: Token, page: Schema.String })
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("join", "/join", { query: Schema.suspend((): typeof Query => Query) })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.join({ query: { token: secret, page: "1" } }))
+
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&page=REDACTED")
+        strictEqual(capture.sent.url, "http://test/join?token=s3cret&page=1")
+      }))
+  })
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>
     Effect.gen(function*() {
@@ -1450,6 +1427,39 @@ const ErrorContentTypeApi = HttpApi.make("ErrorContentTypeApi").add(
       })
     )
 )
+
+// Records the client span and the request that reaches the wire.
+const captureRequest = () => {
+  let span: Tracer.NativeSpan | undefined
+  let sent: { readonly url: string; readonly headers: Record<string, string> } | undefined
+  const tracer = Tracer.make({
+    span(options) {
+      span = new Tracer.NativeSpan(options)
+      return span
+    }
+  })
+  return {
+    httpClient: HttpClient.make((request, url) =>
+      Effect.sync(() => {
+        sent = { url: url.toString(), headers: request.headers }
+        return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+      })
+    ),
+    trace: <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+      effect.pipe(
+        Effect.provideService(Tracer.Tracer, tracer),
+        Effect.provideService(HttpClient.TracerHeaderFilter, () => true)
+      ),
+    get span() {
+      assert(span !== undefined)
+      return span
+    },
+    get sent() {
+      assert(sent !== undefined)
+      return sent
+    }
+  }
+}
 
 const clientFromResponse = (response: () => Response): HttpClient.HttpClient =>
   HttpClient.make((request): Effect.Effect<HttpClientResponse.HttpClientResponse, never, never> =>
