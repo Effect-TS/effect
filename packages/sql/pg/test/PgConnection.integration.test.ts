@@ -4,7 +4,7 @@ import { Cause, Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scope, S
 import type { SqlError } from "effect/sql/SqlError"
 import * as TestClock from "effect/testing/TestClock"
 import * as Net from "node:net"
-import { PgContainer, waitUntilAdvisoryLock } from "./utils.ts"
+import { PgContainer, waitUntilActive, waitUntilAdvisoryLock } from "./utils.ts"
 
 const makeConnection = Effect.fnUntraced(function*(options?: PgConnection.Config) {
   const container = yield* PgContainer
@@ -60,6 +60,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("10 seconds"))
       for (const socket of sockets) socket.destroy()
       assert.isTrue(Option.isSome(closed), "listener scope did not close within 10 seconds")
+    }).pipe(TestClock.withLive), 30_000)
+
+  it.effect("keeps a busy pinned session when a listener closes", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const observer = yield* makeConnection()
+      const pinned = yield* connection.pin
+      const scope = yield* Scope.make()
+      yield* Scope.provide(pinned.listen("busy_listener"), scope)
+      const slow = yield* Effect.forkChild(pinned.query("SELECT pg_sleep(6)"))
+      yield* waitUntilActive(observer, pinned.processId)
+
+      yield* Scope.close(scope, Exit.void)
+      yield* Fiber.join(slow)
+      const result = yield* pinned.query("SELECT 1 AS one")
+      assert.deepStrictEqual(result.rows, [{ one: 1 }])
     }).pipe(TestClock.withLive), 30_000)
 
   it.effect("connects through ReadyForQuery", () =>

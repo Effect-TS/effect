@@ -264,8 +264,9 @@ export interface PgConnection {
   /**
    * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
-   * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
-   * registration errors fail the acquiring effect.
+   * closes, when it runs `UNLISTEN` and shuts down the queue. A session that
+   * does not confirm `UNLISTEN` within 5 seconds is closed instead of
+   * returned. PostgreSQL registration errors fail the acquiring effect.
    * Connection failures after registration fail the queue with the original
    * `SqlError`. Intentional scope closure interrupts consumers.
    */
@@ -363,6 +364,7 @@ const abortDrainGraceMillis = 10
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
+const unlistenTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
 const streamPauseThreshold = 512
@@ -1920,10 +1922,19 @@ const listenChannel = (
             current.delete(queue)
             if (current.size > 0) return Queue.shutdown(queue)
             conn.channels.delete(channel)
-            const unlisten = conn.deadWith === undefined
-              ? Effect.ignore(pinned.query(`UNLISTEN ${identifier}`))
-              : Effect.void
-            return Effect.andThen(unlisten, Queue.shutdown(queue))
+            if (conn.deadWith !== undefined) return Queue.shutdown(queue)
+            const unlisten = Effect.suspend(() => {
+              const timeout = setTimeout(
+                () =>
+                  conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
+                unlistenTimeoutMillis
+              )
+              return Effect.ensuring(
+                Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+                Effect.sync(() => clearTimeout(timeout))
+              )
+            })
+            return Effect.andThen(conn.wire.withPermit(unlisten), Queue.shutdown(queue))
           })
         )
         yield* pinned.query(`LISTEN ${identifier}`)
