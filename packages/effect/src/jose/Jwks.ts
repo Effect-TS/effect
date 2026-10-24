@@ -20,10 +20,9 @@ import * as Deferred from "../Deferred.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import * as FetchHttpClient from "../http/FetchHttpClient.ts"
 import * as HttpClient from "../http/HttpClient.ts"
+import { ManualRedirect } from "../http/internal/manualRedirect.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
 import { fail, invalidArgument, millis, noPrivateMembers, parseJsonObject } from "./internal/compact.ts"
@@ -260,7 +259,8 @@ const readUrl = (input: string) => {
  *
  * Only a 200 response from the configured URL is accepted, and redirects are
  * never followed. With `FetchHttpClient` the layer sends requests with
- * `redirect: "manual"`, so a redirect fails before any further request.
+ * `redirect: "manual"`, keeping the client's other `RequestInit` options, so a
+ * redirect fails before any further request.
  *
  * **Gotchas**
  *
@@ -330,13 +330,7 @@ export const layerRemote = (
         return { keySet, expiresAt: (yield* Clock.currentTimeMillis) + timeToLive }
       }).pipe(
         Effect.scoped,
-        Effect.provideServiceEffect(
-          FetchHttpClient.RequestInit,
-          Effect.map(
-            Effect.serviceOption(FetchHttpClient.RequestInit),
-            (init): globalThis.RequestInit => ({ ...Option.getOrUndefined(init), redirect: "manual" })
-          )
-        ),
+        Effect.provideService(ManualRedirect, true),
         Effect.catchTag("HttpClientError", (cause) => Effect.fail(unavailable("The key set request failed", cause))),
         Effect.timeoutOrElse({
           duration: timeout,

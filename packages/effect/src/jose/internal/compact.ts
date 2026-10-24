@@ -159,17 +159,21 @@ export const encodeHeader = (
  * @internal
  */
 export const millis = (name: string, input: Duration.Input): Effect.Effect<number, JoseError.JoseError> => {
-  const value = hasNaN(input) ? Option.none() : Option.map(Duration.fromInput(input), Duration.toMillis)
+  const value = hasInvalidComponent(input) ? Option.none() : Option.map(Duration.fromInput(input), Duration.toMillis)
   return Option.isSome(value) && Number.isFinite(value.value) && value.value >= 0
     ? Effect.succeed(value.value)
     : invalidArgument(`${name} must be a finite, non-negative duration`)
 }
 
-// `Duration` reads NaN as zero in every input form, which would silently
+// `Duration` reads NaN as zero in every input form, and components that are
+// not finite or overflow on conversion add up to NaN. Either would silently
 // disable a bound.
-const hasNaN = (input: Duration.Input): boolean => {
+const hasInvalidComponent = (input: Duration.Input): boolean => {
   if (typeof input === "number") return Number.isNaN(input)
   if (typeof input !== "object" || Duration.isDuration(input)) return false
-  const components: ReadonlyArray<unknown> = Array.isArray(input) ? input : Object.values(input)
-  return components.some((component) => typeof component === "number" && Number.isNaN(component))
+  if (Array.isArray(input)) return input.some((component) => !Number.isFinite(component))
+  return Object.entries(input).some(([unit, component]) =>
+    typeof component === "number" &&
+    (!Number.isFinite(component) || !Number.isFinite(Duration.toMillis({ [unit]: component })))
+  )
 }
