@@ -273,9 +273,7 @@ interface Metadata {
   readonly key_ops?: ReadonlyArray<string> | undefined
 }
 
-// `operations` lists every operation the key performs here, so `key_ops` must
-// allow all of them: a symmetric key both signs and verifies, or both encrypts
-// and decrypts.
+// `key_ops` must allow every operation in `operations`; symmetric keys perform both.
 const checkMetadata = (
   jwk: Metadata,
   algorithm: string,
