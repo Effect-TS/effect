@@ -4,16 +4,16 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as KeyFormat from "effect/crypto/KeyFormat"
-import * as Signature from "effect/crypto/Signature"
-import * as Effect from "effect/Effect"
-import * as Predicate from "effect/Predicate"
-import * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
-import { decode as decodeInput, defectError, derBytes, native, withSecret } from "../internal/crypto.ts"
-import { decode, reveal } from "../internal/encoding.ts"
-import * as KeyInput from "../internal/keyInput.ts"
-import * as KeyPolicy from "../internal/keyPolicy.ts"
+import * as KeyFormat from "../crypto/KeyFormat.ts"
+import * as Signature from "../crypto/Signature.ts"
+import * as Effect from "../Effect.ts"
+import * as Predicate from "../Predicate.ts"
+import * as Redacted from "../Redacted.ts"
+import * as Schema from "../Schema.ts"
+import { decode as decodeInput, defectError, derBytes, native, withSecret } from "./internal/crypto.ts"
+import { decode, reveal } from "./internal/encoding.ts"
+import * as KeyInput from "./internal/keyInput.ts"
+import * as KeyPolicy from "./internal/keyPolicy.ts"
 import {
   type CryptoUnavailable,
   InvalidInput,
@@ -495,7 +495,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  * **Example** (Binding a symmetric signing key)
  *
  * ```ts import.meta.vitest
- * import { Jwk } from "@effect/auth/jose"
+ * import { Jwk } from "effect/jose"
  * import { Effect, Redacted } from "effect"
  *
  * // Fixed public example material; generate application secrets securely.

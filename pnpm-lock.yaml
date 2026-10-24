@@ -342,18 +342,6 @@ importers:
         specifier: ^3.5.44
         version: 3.5.44(typescript@7.0.2)
 
-  packages/auth:
-    devDependencies:
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform/node
-      effect:
-        specifier: workspace:^
-        version: link:../effect
-      jose:
-        specifier: 6.2.12
-        version: 6.2.12
-
   packages/effect:
     devDependencies:
       '@types/node':
@@ -377,6 +365,9 @@ importers:
       immer:
         specifier: ^11.1.21
         version: 11.1.21
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
       miniflare:
         specifier: 5.20260925.0-alpha
         version: 5.20260925.0-alpha(@types/node@26.6.5)

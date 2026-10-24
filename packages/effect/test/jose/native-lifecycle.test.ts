@@ -1,11 +1,11 @@
-import type { JoseError } from "@effect/auth/jose"
-import { Jwe, Jwk, Jws } from "@effect/auth/jose"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Redacted, Scope } from "effect"
 import { Aead, type CryptoError, Mac, type SecureRandom } from "effect/crypto"
-import { webCryptoLayer as cryptoLayer } from "../utils/crypto.ts"
-import { withNativeGate } from "../utils/nativeGate.ts"
+import type { JoseError } from "effect/jose"
+import { Jwe, Jwk, Jws } from "effect/jose"
 import { privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
+import { webCryptoLayer as cryptoLayer } from "./utils/crypto.ts"
+import { withNativeGate } from "./utils/nativeGate.ts"
 
 describe("native operation lifecycle", { concurrent: false }, () => {
   for (

@@ -4,12 +4,12 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as Clock from "effect/Clock"
-import * as Effect from "effect/Effect"
-import * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
-import * as DurationInput from "../internal/duration.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
+import * as Clock from "../Clock.ts"
+import * as Effect from "../Effect.ts"
+import * as Redacted from "../Redacted.ts"
+import * as Schema from "../Schema.ts"
+import * as DurationInput from "./internal/duration.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
 import { ClaimValidationFailed, type VerifyError } from "./JoseError.ts"
 import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
 import { type Header, type Requirements, VerifyOptions as JwsVerifyOptions } from "./Jws.ts"
@@ -237,8 +237,8 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * **Example** (Verifying application claims and issuer policy)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwt } from "@effect/auth/jose"
- * import { NodeCrypto } from "@effect/platform-node"
+ * import { Jwk, Jwt } from "effect/jose"
+ * import { Mac, SecureRandom, Signature } from "effect/crypto"
  * import { Effect, Redacted, Schema } from "effect"
  *
  * const Claims = Schema.Struct({ sub: Schema.String, iss: Schema.String })
@@ -254,8 +254,8 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *   })
  *   return verified.claims
  * }).pipe(
- *   Effect.provide([NodeCrypto.layerMac, NodeCrypto.layerSignature]),
- *   Effect.provide(NodeCrypto.layerSecureRandom)
+ *   Effect.provide([Mac.layerWebCrypto, Signature.layerWebCrypto]),
+ *   Effect.provide(SecureRandom.layerWebCrypto)
  * ))
  * claims // => ({ sub: "user-123", iss: "example" })
  * ```

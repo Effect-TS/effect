@@ -1,5 +1,5 @@
-import type { Jwk } from "@effect/auth/jose"
 import { Effect, Redacted } from "effect"
+import type { Jwk } from "effect/jose"
 import * as jose from "jose"
 
 // P-256 fixture adapted from panva/jose test/jwks/remote.test.ts.
@@ -17,7 +17,7 @@ export const secretJwk = { kty: "oct", k: jose.base64url.encode(secret) }
 export const utf8 = (input: string) => new TextEncoder().encode(input)
 export const text = (input: Uint8Array) => new TextDecoder().decode(input)
 
-export { cryptoLayer } from "../utils/crypto.ts"
+export { cryptoLayer } from "./utils/crypto.ts"
 
 export const independentJws = (
   payload: Uint8Array,

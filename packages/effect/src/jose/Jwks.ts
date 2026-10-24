@@ -4,25 +4,25 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as Cause from "effect/Cause"
-import * as Clock from "effect/Clock"
-import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
-import type * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import * as HttpClient from "effect/http/HttpClient"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
-import * as Scope from "effect/Scope"
-import * as Semaphore from "effect/Semaphore"
-import * as Stream from "effect/Stream"
-import * as SynchronizedRef from "effect/SynchronizedRef"
-import * as DurationInput from "../internal/duration.ts"
-import { json } from "../internal/encoding.ts"
-import * as KeyInput from "../internal/keyInput.ts"
+import * as Cause from "../Cause.ts"
+import * as Clock from "../Clock.ts"
+import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
+import type * as Duration from "../Duration.ts"
+import * as Effect from "../Effect.ts"
+import * as Exit from "../Exit.ts"
+import * as FetchHttpClient from "../http/FetchHttpClient.ts"
+import * as HttpClient from "../http/HttpClient.ts"
+import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
+import * as Schema from "../Schema.ts"
+import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
+import * as Stream from "../Stream.ts"
+import * as SynchronizedRef from "../SynchronizedRef.ts"
+import * as DurationInput from "./internal/duration.ts"
+import { json } from "./internal/encoding.ts"
+import * as KeyInput from "./internal/keyInput.ts"
 import { AmbiguousKey, InvalidKey, JwksUnavailable, type KeyError, KeyNotFound } from "./JoseError.ts"
 import { AsymmetricAlgorithm, importPublic, PublicJwk, type PublicKey } from "./Jwk.ts"
 
@@ -93,7 +93,7 @@ export class Jwks extends Context.Service<
   {
     readonly resolve: (selection: Selection) => Effect.Effect<PublicKey, KeyError>
   }
->()("@effect/auth/jose/Jwks") {}
+>()("effect/jose/Jwks") {}
 
 /**
  * Captures a detached, immutable key-set generation and returns its resource-free public-key resolver.
@@ -105,8 +105,8 @@ export class Jwks extends Context.Service<
  * **Example** (Resolving one trusted public key)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwks } from "@effect/auth/jose"
- * import { NodeCrypto } from "@effect/platform-node"
+ * import { Jwk, Jwks } from "effect/jose"
+ * import { SecureRandom, Signature } from "effect/crypto"
  * import { Effect } from "effect"
  *
  * const algorithm = await Effect.runPromise(Effect.gen(function*() {
@@ -115,8 +115,8 @@ export class Jwks extends Context.Service<
  *   const key = yield* resolver.resolve({ algorithm: "ES256", kid: "signing-1" })
  *   return key.algorithm
  * }).pipe(
- *   Effect.provide(NodeCrypto.layerSignature),
- *   Effect.provide(NodeCrypto.layerSecureRandom)
+ *   Effect.provide(Signature.layerWebCrypto),
+ *   Effect.provide(SecureRandom.layerWebCrypto)
  * ))
  * algorithm // => "ES256"
  * ```

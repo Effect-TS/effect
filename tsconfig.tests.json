@@ -34,11 +34,9 @@
       // suite of `@effect/platform-node` which itself depends on `@effect/platform-node`).
       "effect": ["./packages/effect/src/index.ts"],
       "effect/graphql": ["./packages/effect/src/graphql/index.ts"],
+      "effect/jose": ["./packages/effect/src/jose/index.ts"],
       "effect/schema": ["./packages/effect/src/schema/index.ts"],
       "effect/*": ["./packages/effect/src/*.ts"],
-      "@effect/auth": ["./packages/auth/src/index.ts"],
-      "@effect/auth/jose": ["./packages/auth/src/jose/index.ts"],
-      "@effect/auth/*": ["./packages/auth/src/*.ts"],
       "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.ts"],
       "@effect/ai-anthropic/*": ["./packages/ai/anthropic/src/*.ts"],
       "@effect/ai-cloudflare": ["./packages/ai/cloudflare/src/index.ts"],

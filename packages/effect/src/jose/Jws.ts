@@ -4,16 +4,16 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as KeyFormat from "effect/crypto/KeyFormat"
-import * as Mac from "effect/crypto/Mac"
-import * as Signature from "effect/crypto/Signature"
-import * as Effect from "effect/Effect"
-import * as Base64Url from "effect/encoding/Base64Url"
-import * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
-import { copy, decode as decodeInput, derBytes, native, withSecret } from "../internal/crypto.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
-import * as KeyPolicy from "../internal/keyPolicy.ts"
+import * as KeyFormat from "../crypto/KeyFormat.ts"
+import * as Mac from "../crypto/Mac.ts"
+import * as Signature from "../crypto/Signature.ts"
+import * as Effect from "../Effect.ts"
+import * as Base64Url from "../encoding/Base64Url.ts"
+import * as Redacted from "../Redacted.ts"
+import * as Schema from "../Schema.ts"
+import { copy, decode as decodeInput, derBytes, native, withSecret } from "./internal/crypto.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
+import * as KeyPolicy from "./internal/keyPolicy.ts"
 import { AlgorithmNotAllowed, InvalidKey, InvalidToken, SignatureVerificationFailed } from "./JoseError.ts"
 import {
   Algorithm,
@@ -229,8 +229,8 @@ export const sign = Effect.fnUntraced(function*(
  * **Example** (Authenticating signed payload bytes)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jws } from "@effect/auth/jose"
- * import { NodeCrypto } from "@effect/platform-node"
+ * import { Jwk, Jws } from "effect/jose"
+ * import { Mac, SecureRandom, Signature } from "effect/crypto"
  * import { Effect, Redacted } from "effect"
  *
  * const payload = await Effect.runPromise(Effect.gen(function*() {
@@ -243,8 +243,8 @@ export const sign = Effect.fnUntraced(function*(
  *   const verified = yield* Jws.verify(token, key, { algorithms: ["HS256"] })
  *   return new TextDecoder().decode(Redacted.value(verified.payload))
  * }).pipe(
- *   Effect.provide([NodeCrypto.layerMac, NodeCrypto.layerSignature]),
- *   Effect.provide(NodeCrypto.layerSecureRandom)
+ *   Effect.provide([Mac.layerWebCrypto, Signature.layerWebCrypto]),
+ *   Effect.provide(SecureRandom.layerWebCrypto)
  * ))
  * payload // => "hello"
  * ```
