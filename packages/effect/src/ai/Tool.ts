@@ -291,6 +291,18 @@ export interface Tool<
   readonly needsApproval?: boolean | NeedsApprovalFunction<any> | undefined
 
   /**
+   * Maps a successful tool result to the content sent to the model.
+   *
+   * **Details**
+   *
+   * When defined, providers that support rich tool results send the returned
+   * parts instead of the encoded result. The application still receives the
+   * typed result. Changing the success schema with `setSuccess` removes the
+   * mapping.
+   */
+  readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
+
+  /**
    * Set whether user approval is required before executing this tool.
    */
   setNeedsApproval(
@@ -1017,6 +1029,11 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly encodedResult: unknown
   /**
+   * The content to send to the model in place of the encoded result, produced
+   * by the tool's `toModelOutput` mapping for successful results.
+   */
+  readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
+  /**
    * Whether the result of executing the tool call handler was an error or not.
    */
   readonly isFailure: boolean
@@ -1117,7 +1134,7 @@ const Proto = {
     return clone(this, { parametersSchema, jsonSchema: undefined })
   },
   setSuccess(this: Any, successSchema: Schema.Constraint) {
-    return clone(this, { successSchema })
+    return clone(this, { successSchema, toModelOutput: undefined })
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
@@ -1158,6 +1175,7 @@ const userDefinedProto = <
   readonly annotations: Context.Context<never>
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
+  readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
 }): Tool<
   Name,
   {
@@ -1220,6 +1238,7 @@ const dynamicProto = <
   readonly annotations: Context.Context<never>
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<any> | undefined
+  readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
   readonly jsonSchema: JsonSchema.JsonSchema | undefined
 }): Dynamic<
   Name,
@@ -1319,6 +1338,17 @@ export const make = <
    *   dynamically determine if approval is needed.
    */
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
+  /**
+   * Maps a successful tool result to the content sent to the model.
+   *
+   * **Details**
+   *
+   * Use this to send images or files to the model as part of a tool result.
+   * Providers that support rich tool results send the returned parts instead
+   * of the encoded result, and other providers send the encoded result. The
+   * application still receives the typed result.
+   */
+  readonly toModelOutput?: ((result: Success["Type"]) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
 }): Tool<
   Name,
   {
@@ -1339,7 +1369,8 @@ export const make = <
     failureSchema,
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
-    needsApproval: options?.needsApproval as any
+    needsApproval: options?.needsApproval as any,
+    toModelOutput: options?.toModelOutput
   }) as any
 }
 
@@ -1400,6 +1431,7 @@ export const dynamic: {
       readonly failure?: Schema.Constraint | undefined
       readonly failureMode?: FailureMode | undefined
       readonly needsApproval?: NeedsApproval<any> | undefined
+      readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
     }
   >(
     name: Name,
@@ -1427,6 +1459,7 @@ export const dynamic: {
     readonly failure?: Schema.Constraint | undefined
     readonly failureMode?: FailureMode | undefined
     readonly needsApproval?: NeedsApproval<any> | undefined
+    readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
   }
 >(name: Name, options?: Options): any => {
   const successSchema = options?.success ?? Schema.Unknown
@@ -1444,6 +1477,7 @@ export const dynamic: {
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
     needsApproval: options?.needsApproval,
+    toModelOutput: options?.toModelOutput,
     jsonSchema
   })
 }

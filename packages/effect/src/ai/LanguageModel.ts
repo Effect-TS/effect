@@ -1553,6 +1553,7 @@ export const make: (params: {
             preliminary: false,
             result: r.encodedResult,
             encodedResult: r.encodedResult,
+            ...modelOutputField(r.modelOutput),
             isFailure: r.isFailure
           }) as Response.StreamPart<Tools>
         )
@@ -1680,6 +1681,7 @@ export const make: (params: {
             providerExecuted: false,
             result: result.result,
             encodedResult: result.encodedResult,
+            ...modelOutputField(result.modelOutput),
             isFailure: result.isFailure,
             preliminary: result.preliminary
           }) as Response.StreamPart<Tools>
@@ -2268,6 +2270,7 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
       name: toolCall.name,
       result: terminalResult.result,
       encodedResult: terminalResult.encodedResult,
+      ...modelOutputField(terminalResult.modelOutput),
       isFailure: terminalResult.isFailure,
       preliminary: terminalResult.preliminary,
       providerExecuted: false
@@ -2347,6 +2350,11 @@ const makeInterruptedToolResult = (
   })
 }
 
+// Only sets `modelOutput` on a tool result part when the tool produced one, so
+// parts without a mapping keep their existing shape.
+const modelOutputField = (modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined) =>
+  modelOutput === undefined ? undefined : { modelOutput }
+
 type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   | Response.ToolResultPart<
     Tool.Name<Tools[keyof Tools]>,
@@ -2417,6 +2425,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
                 providerExecuted: false,
                 result: result.result,
                 encodedResult: result.encodedResult,
+                ...modelOutputField(result.modelOutput),
                 isFailure: result.isFailure,
                 preliminary: result.preliminary
               }) as ToolResolutionResult<Tools>
@@ -2446,6 +2455,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
               providerExecuted: false,
               result: result.result,
               encodedResult: result.encodedResult,
+              ...modelOutputField(result.modelOutput),
               isFailure: result.isFailure,
               preliminary: result.preliminary
             }) as ToolResolutionResult<Tools>
