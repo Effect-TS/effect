@@ -1,4 +1,5 @@
 import { assert, it } from "@effect/vitest"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { Jwk, Jwks, Jwt } from "effect/jose"
 import type * as JoseError from "effect/jose/JoseError"
@@ -104,6 +105,14 @@ it.effect("validates registered claims against the verification policy", () =>
       const error = yield* Jwt.verify(Jwt.RegisteredClaims, token, key, options).pipe(Effect.flip)
       assertReason(error, "ClaimValidationFailed")
       assert.deepInclude(error.reason, expected)
+    }
+
+    // Every NaN representation is rejected, not read as zero.
+    for (const clockTolerance of [NaN, [NaN, 0], { seconds: NaN }] satisfies Array<Duration.Input>) {
+      assertReason(
+        yield* Jwt.verify(Jwt.RegisteredClaims, token, key, { clockTolerance }).pipe(Effect.flip),
+        "InvalidArgument"
+      )
     }
 
     yield* TestClock.setTime((now - 11) * 1000)

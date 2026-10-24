@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import { KeyFormat, Signature } from "effect/crypto"
 import * as Effect from "effect/Effect"
-import { Jwk } from "effect/jose"
+import { Jwk, Jwks } from "effect/jose"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as NodeCrypto from "node:crypto"
@@ -48,6 +48,14 @@ it.effect("binds imported keys to the selected algorithm and honours JWK metadat
     // Private members never satisfy the public schema.
     assert.isFalse(Schema.is(Jwk.PublicJwk)(rfc7515.es256.jwk))
     assert.isTrue(Schema.is(Jwk.PrivateJwk)(rfc7515.es256.jwk))
+    // Not even RSA factors without `d`.
+    const { d: _d, ...factors } = rfc7515.rs256.jwk
+    assert.isFalse(Schema.is(Jwk.PublicJwk)(factors))
+    assert.isFalse(Schema.is(Jwks.KeySet)({ keys: [factors] }))
+    assertReason(
+      yield* Jwk.importPublic(factors as unknown as Jwk.PublicJwk, "RS256").pipe(Effect.flip),
+      "InvalidKey"
+    )
   }))
 
 it.effect("rejects RSA keys below 2048 bits", () =>
@@ -86,6 +94,16 @@ it.effect("imports octet keys with per-algorithm length rules", () =>
     assertReason(yield* Jwk.importSecret(Redacted.make(rfc7515.hs256.jwk), "dir").pipe(Effect.flip), "InvalidKey")
     assertReason(
       yield* Jwk.importSecret(Redacted.make({ ...secretJwk, alg: "HS256" }), "dir").pipe(Effect.flip),
+      "InvalidKey"
+    )
+    // A symmetric key performs both operations, so `key_ops` must allow both.
+    yield* Jwk.importSecret(Redacted.make({ ...secretJwk, key_ops: ["sign", "verify"] }), "HS256")
+    assertReason(
+      yield* Jwk.importSecret(Redacted.make({ ...secretJwk, key_ops: ["verify"] }), "HS256").pipe(Effect.flip),
+      "InvalidKey"
+    )
+    assertReason(
+      yield* Jwk.importSecret(Redacted.make({ ...secretJwk, key_ops: ["decrypt"] }), "dir").pipe(Effect.flip),
       "InvalidKey"
     )
   }))
