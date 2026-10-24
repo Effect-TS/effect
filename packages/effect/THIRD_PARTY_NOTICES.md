@@ -8,24 +8,25 @@ used only for tests and independent interoperation.
 
 ## JOSE contracts
 
-Selected public contract tests and the P-256 fixture in [test/jose/](test/jose/) are adapted from
+Selected public contract tests in [test/jose/](test/jose/) follow behaviours exercised by
 [panva/jose](https://github.com/panva/jose/tree/505a55b8f73536082367b2614cb77e927ba96ec1),
 v6.2.12, commit `505a55b8f73536082367b2614cb77e927ba96ec1` (Filip Skokan).
 The selected source contracts are adapted to the supported profile:
 
-| Upstream tests                                                                                                                   | Local tests                                                                                           |
-| -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `test/jws/compact.verify.test.ts`, `test/jws/flattened.verify.test.ts`, `test/jws/crit.test.ts`, `test/jws/restrictions.test.ts` | `test/jose/protocols.test.ts`, `test/jose/compact-validation.test.ts`, `test/jose/key-policy.test.ts` |
-| `test/jwk/jwk2key.test.ts`, `test/jwk/key_input.test.ts`                                                                         | `test/jose/key-policy.test.ts`, `test/jose/protocols.test.ts`                                         |
-| `test/jwt/verify.test.ts`                                                                                                        | `test/jose/claims.test.ts`, `test/jose/jwt-verification.test.ts`                                      |
-| `test/jwks/local.test.ts`, `test/jwks/remote.test.ts`                                                                            | `test/jose/jwks.test.ts`, `test/jose/jwks-recovery.test.ts`, `test/jose/fixtures.ts`                  |
-| `test/jwe/compact.encrypt.test.ts`, `test/jwe/compact.decrypt.test.ts`, `test/jwe/flattened.decrypt.test.ts`                     | `test/jose/protocols.test.ts`, `test/jose/compact-validation.test.ts`                                 |
+| Upstream tests                                                                                                                   | Local tests              |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `test/jws/compact.verify.test.ts`, `test/jws/flattened.verify.test.ts`, `test/jws/crit.test.ts`, `test/jws/restrictions.test.ts` | `test/jose/Jws.test.ts`  |
+| `test/jwk/jwk2key.test.ts`, `test/jwk/key_input.test.ts`                                                                         | `test/jose/Jwk.test.ts`  |
+| `test/jwt/verify.test.ts`                                                                                                        | `test/jose/Jwt.test.ts`  |
+| `test/jwks/local.test.ts`, `test/jwks/remote.test.ts`                                                                            | `test/jose/Jwks.test.ts` |
+| `test/jwe/compact.encrypt.test.ts`, `test/jwe/compact.decrypt.test.ts`, `test/jwe/flattened.decrypt.test.ts`                     | `test/jose/Jwe.test.ts`  |
 
 Only applicable public behavior is adapted; flattened-format tests supply shared
-header and authentication-tag validation, not JSON serialization support. Tests
-use independent interoperation against that release, plus Effect-specific
-policy capture, scoped cancellation and bounded-waiter regressions. This is not
-a full upstream suite port or a claim of full upstream compatibility.
+header and authentication-tag validation, not JSON serialization support. Known
+answer vectors come from RFC 7515 Appendix A. Tests use independent
+interoperation against that release, plus Effect-specific policy, scoped
+cancellation and refresh-coalescing regressions. This is not a full upstream
+suite port or a claim of full upstream compatibility.
 
 The source implementation informs claim validation, protected-header policy, and
 key selection in `src/jose/Jwt.ts`, `src/jose/Jws.ts`, `src/jose/Jwk.ts`, `src/jose/Jwks.ts`, and
