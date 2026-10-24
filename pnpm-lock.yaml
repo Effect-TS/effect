@@ -342,6 +342,36 @@ importers:
         specifier: ^3.5.44
         version: 3.5.44(typescript@7.0.2)
 
+  packages/auth:
+    devDependencies:
+      '@effect/graphql-generator':
+        specifier: workspace:^
+        version: link:../tools/graphql-generator
+      '@effect/openapi-generator':
+        specifier: workspace:^
+        version: link:../tools/openapi-generator
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
+      saxes:
+        specifier: ^6.0.0
+        version: 6.0.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      typescript-compiler:
+        specifier: npm:typescript@6.0.3
+        version: typescript@6.0.3
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+
   packages/effect:
     devDependencies:
       '@types/node':
