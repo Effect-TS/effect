@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `MultipartParser` rejecting a tab inside a quoted `Content-Disposition` or `Content-Type` parameter: the quoted-string patterns allowed vertical tab instead of horizontal tab.
+Fix `MultipartParser` rejecting horizontal tabs in quoted `Content-Disposition` and `Content-Type` parameters.
