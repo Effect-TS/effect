@@ -9,6 +9,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Option,
   Redacted,
   Ref,
   Schedule,
@@ -748,12 +749,16 @@ Missing key
 
     it.effect("follows the location without re-encoding its query", () =>
       Effect.gen(function*() {
-        const { client, requests } = yield* makeRedirectClient(302, "https://origin.test/dest?sig=a%20b&flag")
-        yield* client.get("https://origin.test/start")
+        const { client, requests } = yield* makeRedirectClient(
+          302,
+          "https://origin.test/dest?q=caf%E9&sig=a%20b&flag#new"
+        )
+        yield* client.get("https://origin.test/start", { urlParams: { old: "1" }, hash: "old" })
 
         const redirected = (yield* Ref.get(requests))[1]
-        assert.strictEqual(redirected.url, "https://origin.test/dest?sig=a%20b&flag")
+        assert.strictEqual(redirected.url, "https://origin.test/dest?q=caf%E9&sig=a%20b&flag")
         assert.strictEqual(UrlParams.toString(redirected.urlParams), "")
+        assert.deepStrictEqual(redirected.hash, Option.some("new"))
       }))
 
     it.effect("returns the redirect response when the location is invalid", () =>
