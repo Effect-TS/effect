@@ -268,7 +268,8 @@ describe("legacy stateless Streamable HTTP", () => {
       const methods: Array<string> = []
       const fetch: typeof globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(input, init)
-        methods.push((await request.clone().json()).method)
+        const message = Schema.decodeUnknownSync(Schema.Struct({ method: Schema.String }))(await request.clone().json())
+        methods.push(message.method)
         assert.isFalse(request.headers.has("Mcp-Session-Id"))
         const { handler, dispose } = HttpRouter.toWebHandler(serverLayer("stateless"), { disableLogger: true })
         try {
