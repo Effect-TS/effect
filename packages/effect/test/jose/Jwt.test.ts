@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { Jwk, Jwks, Jwt } from "effect/jose"
+import type * as JoseError from "effect/jose/JoseError"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { TestClock } from "effect/testing"
@@ -91,7 +92,7 @@ it.effect("validates registered claims against the verification policy", () =>
     })
     assert.deepStrictEqual(accepted.registeredClaims, registered)
 
-    const failures: Array<[Jwt.VerifyOptions, { claim: string; reason: string }]> = [
+    const failures: Array<[Jwt.VerifyOptions, Pick<JoseError.ClaimValidationFailed, "claim" | "reason">]> = [
       [{ issuer: "https://other.example" }, { claim: "iss", reason: "mismatch" }],
       [{ audience: ["mobile"] }, { claim: "aud", reason: "mismatch" }],
       [{ subject: "user_2" }, { claim: "sub", reason: "mismatch" }],
@@ -107,6 +108,7 @@ it.effect("validates registered claims against the verification policy", () =>
 
     yield* TestClock.setTime((now - 11) * 1000)
     const early = yield* Jwt.verify(Jwt.RegisteredClaims, token, key).pipe(Effect.flip)
+    assertReason(early, "ClaimValidationFailed")
     assert.deepInclude(early.reason, { claim: "nbf", reason: "notYetValid" })
     yield* Jwt.verify(Jwt.RegisteredClaims, token, key, { clockTolerance: 1000 })
 
@@ -115,7 +117,8 @@ it.effect("validates registered claims against the verification policy", () =>
       new jose.CompactSign(utf8("{\"exp\":\"tomorrow\"}")).setProtectedHeader({ alg: "HS256" }).sign(secret)
     )
     const invalid = yield* Jwt.verify(Jwt.RegisteredClaims, malformed, key).pipe(Effect.flip)
-    assert.deepInclude(invalid.reason, { _tag: "ClaimValidationFailed", claim: "exp", reason: "invalid" })
+    assertReason(invalid, "ClaimValidationFailed")
+    assert.deepInclude(invalid.reason, { claim: "exp", reason: "invalid" })
   }).pipe(Effect.provide(layer)))
 
 it.effect("verifies with a key resolved from the Jwks service", () =>
