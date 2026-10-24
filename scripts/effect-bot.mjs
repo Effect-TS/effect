@@ -52,7 +52,8 @@ export async function relayComment(options) {
   if (!permission.ok) throw new Error(`Permission lookup failed: HTTP ${permission.status}`)
   const { role_name: role } = await permission.json()
   // The live role is authoritative. author_association only narrows write
-  // access to outside collaborators; no permission fallback or custom-role inference.
+  // access to outside collaborators, and reflects affiliation when the comment
+  // was created; no permission fallback or custom-role inference.
   const outsideWriter = role === "write" && comment.author_association === "COLLABORATOR"
   if (role !== "admin" && role !== "maintain" && !outsideWriter) return { status: "rejected" }
 
