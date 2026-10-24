@@ -150,6 +150,20 @@ export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtoc
 }> {}
 
 /**
+ * A request rejected outside the handler, for example by MCP middleware.
+ * Adapters send it as a JSON-RPC error with its code, message and data, never
+ * as a tool result. `error` keeps the original failure for in-process callers.
+ *
+ * @internal
+ */
+export class RequestRejected extends Data.TaggedError("RequestRejected")<{
+  readonly code: number
+  readonly message: string
+  readonly data?: unknown
+  readonly error: McpSchema.McpErrorBase
+}> {}
+
+/**
  * @internal
  */
 export type ToolError =
@@ -157,6 +171,7 @@ export type ToolError =
   | InvalidToolInput
   | InvalidToolContinuation
   | ToolExecutionError
+  | RequestRejected
 
 /**
  * @internal
@@ -166,12 +181,13 @@ export interface ToolRegistration {
   // `tool.title ?? tool.annotations?.title` at the public boundary.
   readonly descriptor: McpSchema.Tool
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
+    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
 }
@@ -184,8 +200,13 @@ export interface Tools {
     registration: ToolRegistration
   ) => Effect.Effect<void>
   readonly list: (
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
+  // Skips request-level visibility checks.
+  readonly find: (
+    name: string,
     profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
+  ) => McpSchema.Tool | undefined
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
@@ -198,9 +219,10 @@ export interface Tools {
 export interface ResourceRegistration {
   readonly descriptor: McpSchema.Resource
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -209,12 +231,16 @@ export interface ResourceRegistration {
 export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly match: (uri: string) => ReadonlyArray<string> | undefined
   readonly read: (
     uri: string,
     params: ReadonlyArray<string>,
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    McpSchema.ReadResourceResult,
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -224,17 +250,17 @@ export interface Resources {
   readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
   readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, RequestRejected>
   readonly listTemplates: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>, RequestRejected>
   readonly read: (
     uri: string,
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -251,10 +277,14 @@ export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
 export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
-  ) => Effect.Effect<OperationOutcome<McpSchema.GetPromptResult>, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    OperationOutcome<McpSchema.GetPromptResult>,
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -263,15 +293,15 @@ export interface PromptRegistration {
 export interface Prompts {
   readonly register: (registration: PromptRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, RequestRejected>
   readonly get: (
     name: string,
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -314,12 +344,12 @@ export interface Completions {
     complete: (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   ) => Effect.Effect<void>
   readonly complete: (
     request: CompletionRequest,
     invocation: McpInvocation
-  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -401,6 +431,14 @@ export interface McpCore {
 }
 
 /**
+ * Runs the request-level visibility checks of a registration on a list
+ * request, after `isVisible` passed.
+ *
+ * @internal
+ */
+export type Visible = (invocation: McpInvocation) => Effect.Effect<boolean, RequestRejected>
+
+/**
  * @internal
  */
 export const make: Effect.Effect<McpCore> = Effect.sync(() => {
@@ -413,24 +451,35 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   >()
+
+  const filterList = <D>(
+    registrations: Iterable<{
+      readonly descriptor: D
+      readonly isVisible: ToolRegistration["isVisible"]
+      readonly visible?: Visible | undefined
+    }>,
+    invocation: McpInvocation
+  ): Effect.Effect<ReadonlyArray<D>, RequestRejected> =>
+    Effect.map(
+      Effect.filter(
+        Arr.filter(registrations, (entry) => entry.isVisible(invocation.protocol)),
+        (entry) => entry.visible === undefined ? Effect.succeed(true) : entry.visible(invocation)
+      ),
+      (entries) => entries.map((entry) => entry.descriptor)
+    )
 
   const tools: Tools = {
     register: (registration) =>
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
       }),
-    list: (profile) =>
-      Effect.sync(() => {
-        const descriptors: Array<McpSchema.Tool> = []
-        for (const registration of registrations.values()) {
-          if (registration.isVisible(profile)) {
-            descriptors.push(registration.descriptor)
-          }
-        }
-        return descriptors
-      }),
+    list: (invocation) => filterList(registrations.values(), invocation),
+    find: (name, profile) => {
+      const registration = registrations.get(name)
+      return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
+    },
     call: (call, invocation) =>
       Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
@@ -465,18 +514,8 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
           resourceTemplateRegistrations[index] = registration
         }
       }),
-    list: (profile) =>
-      Effect.sync(() =>
-        resourceRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
-    listTemplates: (profile) =>
-      Effect.sync(() =>
-        resourceTemplateRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
+    list: (invocation) => filterList(resourceRegistrations, invocation),
+    listTemplates: (invocation) => filterList(resourceTemplateRegistrations, invocation),
     read: Effect.fnUntraced(function*(uri, invocation) {
       const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
       if (resource !== undefined && resource.isVisible(invocation.protocol)) {
@@ -497,12 +536,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       Effect.sync(() => {
         promptRegistrations.set(registration.descriptor.name, registration)
       }),
-    list: (profile) =>
-      Effect.sync(() =>
-        Array.from(promptRegistrations.values())
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
+    list: (invocation) => filterList(promptRegistrations.values(), invocation),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
       if (registration === undefined || !registration.isVisible(invocation.protocol)) {

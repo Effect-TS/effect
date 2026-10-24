@@ -56,7 +56,11 @@ export const isHttpClientRequest = (u: unknown): u is HttpClientRequest => hasPr
  */
 export interface HttpClientRequest extends Inspectable.Inspectable, Pipeable {
   readonly [TypeId]: typeof TypeId
-  readonly method: HttpMethod
+  /**
+   * The request method, which may be a method outside the known `HttpMethod`
+   * literals when the request was converted from a Web or server request.
+   */
+  readonly method: string
   readonly url: string
   readonly urlParams: UrlParams.UrlParams
   readonly hash: Option.Option<string>
@@ -126,7 +130,7 @@ const Proto = {
  * @since 4.0.0
  */
 export function makeWith(
-  method: HttpMethod,
+  method: string,
   url: string,
   urlParams: UrlParams.Input,
   hash: Option.Option<string>,
@@ -812,7 +816,7 @@ export interface CompressionOptions {
  * `Content-Length`. The compressed body does not retain the original lazy text.
  * Stream bodies are compressed lazily and have their content length removed.
  * They still require a client runtime that supports streaming request bodies
- * (Fetch requires `duplex: "half"`, which Safari and Firefox do not support).
+ * (stable Safari and Firefox do not; see `FetchHttpClient.StreamBodyFallback`).
  *
  * Returns the original request unchanged for empty, FormData, and raw bodies,
  * bodies with a known length below `options.minSize`, or requests with any
@@ -1110,16 +1114,15 @@ export function toUrl(self: HttpClientRequest): Option.Option<URL> {
  * @since 4.0.0
  */
 export const fromWeb = (request: globalThis.Request): HttpClientRequest => {
-  const method = request.method.toUpperCase() as HttpMethod
-  return modify(empty, {
-    method,
+  const method = request.method.toUpperCase()
+  return modify(makeWith(method, "", UrlParams.empty, Option.none(), Headers.empty, HttpBody.empty), {
     url: new URL(request.url),
     headers: request.headers,
     body: fromWebBody(request, method)
   })
 }
 
-const fromWebBody = (request: globalThis.Request, method: HttpMethod): HttpBody.HttpBody => {
+const fromWebBody = (request: globalThis.Request, method: string): HttpBody.HttpBody => {
   if (!hasBody(method) || request.body === null) {
     return HttpBody.empty
   }

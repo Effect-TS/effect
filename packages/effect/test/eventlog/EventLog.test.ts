@@ -3,6 +3,7 @@ import {
   Array,
   Context,
   Effect,
+  Exit,
   Layer,
   Logger,
   Option,
@@ -13,6 +14,7 @@ import {
   References,
   Schema,
   SchemaGetter,
+  Scope,
   Stream
 } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
@@ -21,7 +23,12 @@ import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
+import * as EventLogServerEncrypted from "effect/eventlog/EventLogServerEncrypted"
 import { Reactivity } from "effect/reactivity"
+import * as RpcClient from "effect/rpc/RpcClient"
+import type * as RpcGroup from "effect/rpc/RpcGroup"
+import type { FromServer } from "effect/rpc/RpcMessage"
+import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
 import { TestClock } from "effect/testing"
 
@@ -1394,4 +1401,165 @@ describe("EventLog", () => {
       assert.deepStrictEqual(first.duplicateEntries, [])
       assert.deepStrictEqual(second.duplicateEntries.map((_) => _.idString), [entry.idString])
     }).pipe(Effect.provide(EventJournal.layerMemory)))
+})
+
+const ValueGroup = EventGroup.empty.add({
+  tag: "ValueSet",
+  primaryKey: (payload) => payload.id,
+  payload: Schema.Struct({ id: Schema.String, value: Schema.Number })
+})
+const valueSchema = EventLog.schema(ValueGroup)
+
+const keepLatest = EventLog.groupBatchCompaction(ValueGroup, ({ entries, forward }) => {
+  const newest = new Map<string, EventJournal.Entry>()
+  for (const { entry } of entries) {
+    const current = newest.get(entry.primaryKey)
+    if (current === undefined || EventJournal.Entry.Order(current, entry) < 0) newest.set(entry.primaryKey, entry)
+  }
+  return Effect.forEach(newest.values(), forward, { discard: true })
+}, { remote: true })
+
+const CompactionRpcs = EventLogMessage.EventLogRemoteRpcs.merge(EventLogMessage.EventLogCompactionRpcs)
+type CompactionRpcs = RpcGroup.Rpcs<typeof CompactionRpcs>
+const defaultStoreId = EventLogMessage.StoreId.make("default")
+
+// An encrypted server on memory storage, serving both RPC groups.
+const makeCompactionServer = Effect.fnUntraced(function*() {
+  const storage = EventLogServerEncrypted.layerStorageMemoryWith({
+    compaction: { thresholdFloor: 1, stageTtl: "12 hours" }
+  })
+  const context = yield* Layer.build(Layer.provideMerge(EventLogServerEncrypted.layerRpcHandlers, storage))
+  const compaction = Context.get(context, EventLogServerEncrypted.Storage).compaction!
+  const connections: Array<(response: FromServer<CompactionRpcs>) => Effect.Effect<void>> = []
+  const server = yield* RpcServer.makeNoSerialization(CompactionRpcs, {
+    onFromServer: (response) => connections[response.clientId](response)
+  }).pipe(Effect.provide(context))
+
+  const connect = Effect.gen(function*() {
+    const clientId = connections.length
+    const { client, write } = yield* RpcClient.makeNoSerialization(CompactionRpcs, {
+      supportsAck: true,
+      onFromClient: ({ message }) => server.write(clientId, message)
+    })
+    connections.push(write)
+    return client
+  })
+
+  const snapshots = (publicKey: string) =>
+    compaction.history(publicKey, defaultStoreId).pipe(
+      Effect.map((history) => history.filter((activation) => activation.keptCount !== undefined).length)
+    )
+
+  return { compaction, connect, snapshots }
+})
+
+type CompactionServer = Effect.Success<ReturnType<typeof makeCompactionServer>>
+
+// A device running `EventLog` over `journal`, connected to `server`. Its
+// handler records each replayed or written value as `id=value` in `handled`.
+const makeDevice = Effect.fnUntraced(function*(
+  server: CompactionServer,
+  identity: EventLog.Identity["Service"],
+  options?: {
+    readonly journal?: EventJournal.EventJournal["Service"] | undefined
+    readonly compactor?: Layer.Layer<never, never, EventLog.Registry> | undefined
+    readonly handled?: Array<string> | undefined
+  }
+) {
+  const handled = options?.handled ?? []
+  const journal = options?.journal ?? (yield* EventJournal.makeMemory)
+  const handlers = Layer.mergeAll(
+    EventLog.group(ValueGroup, (handlers) =>
+      handlers.handle("ValueSet", ({ payload }) =>
+        Effect.sync(() => {
+          handled.push(`${payload.id}=${payload.value}`)
+        }))),
+    options?.compactor ?? Layer.empty
+  ).pipe(Layer.provide(EventLog.layerRegistry))
+  const context = yield* Layer.build(
+    EventLog.layer(valueSchema, handlers).pipe(
+      Layer.provide(Layer.succeed(EventJournal.EventJournal, journal)),
+      Layer.provide(Layer.succeed(EventLog.Identity, identity))
+    )
+  )
+  const remote = yield* EventLogRemote.makeEncrypted.pipe(
+    Effect.provideService(EventLogRemote.EventLogRemoteClient, yield* server.connect),
+    Effect.provide(context)
+  )
+  const log = Context.get(context, EventLog.EventLog)
+  return {
+    log,
+    journal,
+    remote,
+    handled,
+    write: (id: string, value: number) => log.write({ schema: valueSchema, event: "ValueSet", payload: { id, value } })
+  }
+})
+
+// Advances the TestClock 15 minutes, then gives fibers waiting on Web Crypto
+// some real time.
+const step = TestClock.adjust("15 minutes").pipe(Effect.andThen(TestClock.withLive(Effect.sleep(5))))
+
+// Steps until `done` holds, for at most 50 hours.
+const advanceUntil = Effect.fnUntraced(function*(done: Effect.Effect<boolean, unknown>, waitingFor: string) {
+  for (let i = 0; i < 200; i++) {
+    if (yield* done) return
+    yield* step
+  }
+  return assert.fail(`timed out waiting until ${waitingFor}`)
+})
+
+describe("EventLog remote compaction", () => {
+  it.effect("bootstraps a new device from the snapshot a background run commits, ending with the state of a full replay", () =>
+    Effect.gen(function*() {
+      const server = yield* makeCompactionServer()
+      const identity = yield* EventLog.makeIdentity
+      const writer = yield* makeDevice(server, identity, { compactor: keepLatest })
+      for (const [id, value] of [["a", 1], ["b", 1], ["a", 2], ["a", 3], ["b", 2]] as const) {
+        yield* writer.write(id, value)
+      }
+
+      yield* advanceUntil(
+        Effect.map(server.snapshots(identity.publicKey), (count) => count === 1),
+        "a snapshot commits"
+      )
+      yield* writer.write("a", 4)
+      const reader = yield* makeDevice(server, identity)
+      yield* advanceUntil(Effect.sync(() => reader.handled.includes("a=4")), "the reader replays the tail")
+
+      // A full replay ends with a=4 and b=2 too, after handling all six writes.
+      assert.deepStrictEqual(reader.handled, ["a=3", "b=2", "a=4"])
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("serves a device whose cursor is inside one snapshot everything kept by the next", () =>
+    Effect.gen(function*() {
+      const server = yield* makeCompactionServer()
+      const identity = yield* EventLog.makeIdentity
+      const writer = yield* makeDevice(server, identity, { compactor: keepLatest })
+      const journal = yield* EventJournal.makeMemory
+      const handled: Array<string> = []
+      yield* writer.write("k1", 1)
+      yield* writer.write("k2", 1)
+      const readerScope = yield* Scope.make()
+      const reader = yield* makeDevice(server, identity, { journal, handled }).pipe(Scope.provide(readerScope))
+      yield* advanceUntil(Effect.sync(() => handled.includes("k2=1")), "the reader reads sequence 1")
+      yield* Scope.close(readerScope, Exit.void)
+      const cursor = yield* journal.nextRemoteSequence(reader.remote.id)
+
+      // Snapshot g+1 covers sequences 0 to 3, so the reader's cursor is inside it.
+      yield* writer.write("k1", 2)
+      yield* writer.write("k3", 1)
+      yield* advanceUntil(Effect.map(server.snapshots(identity.publicKey), (count) => count === 1), "g+1 commits")
+      yield* writer.write("k3", 2)
+      yield* writer.write("k4", 1)
+      yield* writer.write("k4", 2)
+      yield* advanceUntil(Effect.map(server.snapshots(identity.publicKey), (count) => count === 2), "g+2 commits")
+      yield* makeDevice(server, identity, { journal, handled })
+      yield* advanceUntil(Effect.sync(() => handled.includes("k4=2")), "the reader catches up")
+
+      assert.deepStrictEqual({ cursor, handled }, {
+        cursor: 2,
+        handled: ["k1=1", "k2=1", "k1=2", "k3=2", "k4=2"]
+      })
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })

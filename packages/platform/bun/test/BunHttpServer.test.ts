@@ -302,6 +302,29 @@ describe("BunHttpServer", () => {
       }).pipe(Effect.provide(BunHttpServer.layerTest)), 5000)
   }
 
+  it.live("keeps quiet response streams open unless an idle timeout is configured", () =>
+    Effect.gen(function*() {
+      const quietStream = Effect.fnUntraced(function*(idleTimeout?: number) {
+        const server = yield* BunHttpServer.make({
+          hostname: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "100 millis",
+          ...(idleTimeout === undefined ? {} : { idleTimeout })
+        })
+        yield* server.serve(Effect.succeed(HttpServerResponse.stream(Stream.concat(
+          Stream.succeed(new TextEncoder().encode("a")),
+          // Longer than Bun's 10 second default idle timeout plus its timer granularity.
+          Stream.fromEffect(Effect.as(Effect.sleep("15 seconds"), new TextEncoder().encode("b")))
+        ))))
+        return yield* Effect.exit(fetchText(NetAddress.formatUrlUnsafe(server.address)))
+      })
+      const [omitted, explicit] = yield* Effect.all([Effect.scoped(quietStream()), Effect.scoped(quietStream(1))], {
+        concurrency: "unbounded"
+      })
+      assert.deepStrictEqual(omitted, Exit.succeed("ab"))
+      assert.isTrue(Exit.hasDies(explicit))
+    }).pipe(Effect.timeout("25 seconds")), 30000)
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {

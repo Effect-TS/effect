@@ -10,7 +10,6 @@
  * @stability stable
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.ts"
 import { Clock } from "./Clock.ts"
 import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
@@ -23,7 +22,6 @@ import * as internal from "./internal/effect.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
-import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
 import * as Semaphore from "./Semaphore.ts"
 
@@ -94,6 +92,29 @@ export interface Config<A, E> {
   readonly maxSize: number
   readonly strategy: Strategy<A, E>
   readonly targetUtilization: number
+}
+
+/**
+ * A point-in-time count of a pool's items and waiting borrowers.
+ *
+ * **Details**
+ *
+ * `idle` and `used` count acquired items, not borrowers, so an item shared by
+ * several borrowers counts once. `pending` counts borrowers waiting for an
+ * item. `min` and `max` are the configured size bounds.
+ *
+ * @see {@link stats} for reading a snapshot
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Stats {
+  readonly idle: number
+  readonly used: number
+  readonly pending: number
+  readonly min: number
+  readonly max: number
 }
 
 /**
@@ -909,6 +930,52 @@ export const reserve: {
     ))
 )
 
+/**
+ * Returns a snapshot of how many items are idle or in use and how many
+ * borrowers are waiting.
+ *
+ * **When to use**
+ *
+ * Use to sample pool occupancy for metrics, such as connection counts for a
+ * database driver.
+ *
+ * **Details**
+ *
+ * - Only successfully acquired items are counted. Items still being acquired
+ *   and failed acquisitions are not.
+ * - An item is used while it has a borrower or a reservation, otherwise idle.
+ * - An invalidated item counts as used until its last borrower returns it.
+ *
+ * **Gotchas**
+ *
+ * The replacement for an invalidated item is acquired while the old one is
+ * still borrowed, so `idle + used` can briefly exceed `max`. A borrower that
+ * has been woken but has not yet taken its item is not counted as pending.
+ *
+ * @see {@link Stats} for the snapshot fields
+ *
+ * @stability unstable
+ * @category getters
+ * @since 4.0.0
+ */
+export const stats = <A, E>(self: Pool<A, E>): Effect.Effect<Stats> =>
+  Effect.sync(() => {
+    let idle = 0
+    let used = 0
+    for (const item of self.state.items) {
+      if (item.exit._tag !== "Success") continue
+      if (item.refCount > 0 || reservations.has(item)) used++
+      else idle++
+    }
+    return {
+      idle,
+      used,
+      pending: self.state.waiters.size,
+      min: self.config.minSize,
+      max: self.config.maxSize
+    }
+  })
+
 const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
     if (!self.state.items.has(poolItem)) {
@@ -994,7 +1061,10 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
       const use = Effect.flatMap(Effect.exit(impl[Acquire]), (exit) => {
         const item: PoolItem<A, E> = {
           exit,
-          finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
+          finalizer: Effect.ignoreCause(Scope.close(scope, exit), {
+            log: "Unhandled",
+            message: "Unhandled error in pool finalizer"
+          }),
           refCount: 0,
           idleSince: impl[PoolClock].currentTimeMillisUnsafe(),
           disableReclaim: false,
@@ -1118,15 +1188,3 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
     reclaim: (_) => Effect.undefined
   })
 })
-
-const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
-  Effect.withFiber<void>((fiber) => {
-    const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
-    if (unhandledLogLevel) {
-      return Effect.logWithLevel(unhandledLogLevel)(
-        "Unhandled error in pool finalizer",
-        cause
-      )
-    }
-    return Effect.void
-  })

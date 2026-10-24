@@ -32,12 +32,34 @@
  * SOFTWARE.
  */
 
+import * as Result from "../Result.ts"
+import { EncodingError } from "./EncodingError.ts"
+
 type Table = Record<string, unknown>
 
 const hasOwn = Object.prototype.hasOwnProperty
 const makeTable = (): Table => Object.create(null)
 const isTable = (value: unknown): value is Table =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date)
+const localDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
+const localTimePattern = /^(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/
+const numericOffsetPattern = /^[+-](\d{2}):(\d{2})$/
+const dateTimePattern = /^(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}:\d{2}(?:\.\d+)?)([Zz]|[+-]\d{2}:\d{2})?$/
+const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+const isValidDate = (date: string): boolean => {
+  const [, year, month, day] = localDatePattern.exec(date)!.map(Number)
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const days = month === 2 && leap ? 29 : daysInMonth[month - 1]
+  return month >= 1 && month <= 12 && day >= 1 && day <= days
+}
+const isValidTime = (time: string): boolean => {
+  const [, hour, minute, second] = localTimePattern.exec(time)!.map(Number)
+  return hour <= 23 && minute <= 59 && second <= 60
+}
+const isValidOffset = (offset: string): boolean => {
+  const numeric = numericOffsetPattern.exec(offset)
+  return numeric === null || (Number(numeric[1]) <= 23 && Number(numeric[2]) <= 59)
+}
 
 class TomlParser {
   readonly root = makeTable()
@@ -47,6 +69,8 @@ class TomlParser {
   private line = 1
   private column = 1
   private readonly explicitTables = new Set<Table>()
+  // Values parsed from `[...]` or `{...}` are complete; headers and dotted keys cannot extend them.
+  private readonly inlineValues = new Set<unknown>()
 
   constructor(input: string) {
     this.input = input
@@ -102,6 +126,9 @@ class TomlParser {
       const key = path[index]
       const last = index === path.length - 1
       let value = table[key]
+      if (this.inlineValues.has(value)) {
+        this.fail(`Cannot redefine existing key '${path.slice(0, index + 1).join(".")}'`)
+      }
 
       if (last && array) {
         if (value === undefined) {
@@ -140,7 +167,7 @@ class TomlParser {
         const child = makeTable()
         table[key] = child
         table = child
-      } else if (isTable(existing)) {
+      } else if (isTable(existing) && !this.inlineValues.has(existing)) {
         table = existing
       } else {
         this.fail(`Cannot redefine existing key '${keys.slice(0, index + 1).join(".")}'`)
@@ -195,10 +222,14 @@ class TomlParser {
       return this.parseLiteralString(this.input.startsWith("'''", this.index))
     }
     if (character === "[") {
-      return this.parseArray()
+      const array = this.parseArray()
+      this.inlineValues.add(array)
+      return array
     }
     if (character === "{") {
-      return this.parseInlineTable()
+      const table = this.parseInlineTable()
+      this.inlineValues.add(table)
+      return table
     }
 
     const spaceSeparatedDateTime = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)/
@@ -230,21 +261,21 @@ class TomlParser {
   }
 
   private parseDate(token: string): Date | string | undefined {
-    const date = "\\d{4}-\\d{2}-\\d{2}"
-    const time = "\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?"
-    if (new RegExp(`^${date}[Tt]${time}(?:[Zz]|[+-]\\d{2}:\\d{2})$`).test(token)) {
-      const value = new Date(token.replace("t", "T").replace("z", "Z"))
-      if (Number.isNaN(value.getTime())) {
+    const dateTime = dateTimePattern.exec(token)
+    if (dateTime !== null) {
+      const [, date, time, offset] = dateTime
+      // `Date` cannot represent a leap second, so offset date-times reject `:60`
+      const offsetValid = offset === undefined || (isValidOffset(offset) && time.slice(6, 8) !== "60")
+      if (!isValidDate(date) || !isValidTime(time) || !offsetValid) {
         this.fail(`Invalid date-time '${token}'`)
       }
-      return value
+      return offset === undefined ? `${date}T${time}` : new Date(`${date}T${time}${offset.toUpperCase()}`)
     }
-    if (
-      new RegExp(`^${date}[Tt]${time}$`).test(token) ||
-      new RegExp(`^${date}$`).test(token) ||
-      new RegExp(`^${time}$`).test(token)
-    ) {
-      return token.replace("t", "T")
+    if (localDatePattern.test(token)) {
+      return isValidDate(token) ? token : this.fail(`Invalid date-time '${token}'`)
+    }
+    if (localTimePattern.test(token)) {
+      return isValidTime(token) ? token : this.fail(`Invalid date-time '${token}'`)
     }
     return undefined
   }
@@ -289,7 +320,7 @@ class TomlParser {
     while (!this.done) {
       if (multiline && this.input.startsWith("\"\"\"", this.index)) {
         this.advance(3)
-        return output
+        return output + this.closingQuotes("\"")
       }
       const character = this.peek()
       if (!multiline && character === "\"") {
@@ -354,7 +385,7 @@ class TomlParser {
       if (multiline && this.input.startsWith("'''", this.index)) {
         const output = this.input.slice(start, this.index)
         this.advance(3)
-        return output
+        return output + this.closingQuotes("'")
       }
       if (!multiline && this.peek() === "'") {
         const output = this.input.slice(start, this.index)
@@ -367,6 +398,15 @@ class TomlParser {
       this.advance()
     }
     this.fail("Unterminated literal string")
+  }
+
+  private closingQuotes(quote: string): string {
+    let quotes = ""
+    while (quotes.length < 2 && this.peek() === quote) {
+      quotes += quote
+      this.advance()
+    }
+    return quotes
   }
 
   private parseArray(): Array<unknown> {
@@ -498,11 +538,36 @@ class TomlParser {
  *
  * **Details**
  *
- * Offset date-times are represented by `Date`, matching the package this
- * parser replaces. Local dates and times remain strings.
+ * Returns `Result.succeed` with the parsed record, or `Result.fail` with an
+ * `EncodingError` when the input is not valid TOML. Offset date-times are
+ * represented by `Date`, matching the package this parser replaces. Local
+ * dates and times remain strings.
+ *
+ * **Example** (Parsing a TOML document)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Toml } from "effect/encoding"
+ *
+ * Toml.parse("port = 8080") // => Result.succeed({ port: 8080 })
+ * Result.isFailure(Toml.parse("port = ")) // => true
+ * ```
  *
  * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
-export const parse = (input: string): Record<string, unknown> => new TomlParser(input.replace(/^\uFEFF/, "")).parse()
+export const parse = (input: string): Result.Result<Record<string, unknown>, EncodingError> => {
+  try {
+    return Result.succeed(new TomlParser(input.replace(/^\uFEFF/, "")).parse())
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Toml",
+        kind: "Decode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
+}
