@@ -20,22 +20,23 @@ import * as Deferred from "../Deferred.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as FetchHttpClient from "../http/FetchHttpClient.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
-import { fail, invalidArgument, millis, parseJsonObject } from "./internal/compact.ts"
+import { fail, invalidArgument, millis, noPrivateMembers, parseJsonObject } from "./internal/compact.ts"
 import * as JoseError from "./JoseError.ts"
 import { type AsymmetricAlgorithm, importPublic, PublicJwk, type PublicKey } from "./Jwk.ts"
 
 // Any other key family or curve, with any other members. Private and
-// symmetric members are still rejected.
+// symmetric members, including RSA factors, are still rejected.
 const UnsupportedJwk = Schema.StructWithRest(
   Schema.Struct({
     kty: Schema.String,
     crv: Schema.optionalKey(Schema.String),
-    d: Schema.optionalKey(Schema.Never),
-    k: Schema.optionalKey(Schema.Never)
+    ...noPrivateMembers
   }),
   [Schema.Record(Schema.String, Schema.Unknown)]
 ).check(Schema.makeFilter((jwk) =>
@@ -257,8 +258,17 @@ const readUrl = (input: string) => {
  * fails every caller until `cooldown` passes; there is no fallback to an
  * expired set.
  *
- * Only a 200 response from the configured URL is accepted. A client that
- * follows a redirect answers from another URL, so its response is rejected.
+ * Only a 200 response from the configured URL is accepted, and redirects are
+ * never followed. With `FetchHttpClient` the layer sends requests with
+ * `redirect: "manual"`, so a redirect fails before any further request.
+ *
+ * **Gotchas**
+ *
+ * The layer cannot stop other clients from following redirects, including
+ * clients wrapped with `HttpClient.followRedirects`. Supply a client that does
+ * not follow them: a followed redirect has already sent a request to the new
+ * location by the time its response is rejected for coming from another URL.
+ *
  * Closing the layer interrupts any request in flight.
  *
  * @stability unstable
@@ -320,6 +330,13 @@ export const layerRemote = (
         return { keySet, expiresAt: (yield* Clock.currentTimeMillis) + timeToLive }
       }).pipe(
         Effect.scoped,
+        Effect.provideServiceEffect(
+          FetchHttpClient.RequestInit,
+          Effect.map(
+            Effect.serviceOption(FetchHttpClient.RequestInit),
+            (init): globalThis.RequestInit => ({ ...Option.getOrUndefined(init), redirect: "manual" })
+          )
+        ),
         Effect.catchTag("HttpClientError", (cause) => Effect.fail(unavailable("The key set request failed", cause))),
         Effect.timeoutOrElse({
           duration: timeout,

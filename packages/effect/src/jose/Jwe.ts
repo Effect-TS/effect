@@ -15,10 +15,10 @@ import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import {
+  cryptoFailure,
   decodeHeader,
   decodeSegment,
   encodeHeader,
-  fromCryptoError,
   invalidToken,
   split,
   utf8
@@ -120,7 +120,7 @@ export const encrypt = Effect.fnUntraced(function*(
   const nonce = yield* random.randomBytes(Aead.aes256Gcm.nonceLength)
   const aead = yield* Aead.Aead
   const sealed = yield* aead.encrypt(key.key, plaintext, { nonce, aad: utf8(protectedHeader) }).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(cryptoFailure("Could not encrypt with the key"))
   )
   const ciphertext = Base64Url.encode(sealed.subarray(0, -tagLength))
   const tag = Base64Url.encode(sealed.subarray(-tagLength))
@@ -161,7 +161,7 @@ export const decrypt = Effect.fnUntraced(function*(
     Effect.mapError((error) =>
       error.reason._tag === "DecryptionFailed"
         ? new JoseError.JoseError({ reason: new JoseError.DecryptionFailed() })
-        : fromCryptoError(error)
+        : cryptoFailure("Could not decrypt with the key")(error)
     )
   )
   return { protectedHeader, plaintext }

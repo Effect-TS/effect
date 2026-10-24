@@ -23,9 +23,44 @@ export const invalidKey = (description: string, cause?: unknown) =>
 export const invalidArgument = (description: string, cause?: unknown) =>
   fail(new JoseError.InvalidArgument({ description, cause }))
 
-/** @internal */
-export const fromCryptoError = (error: CryptoError.CryptoError): JoseError.JoseError =>
+/**
+ * Maps a failure of an operation on secret material, such as signing or
+ * private-key import, to a fixed description. Backend messages and causes may
+ * describe the secret, so they are dropped.
+ *
+ * @internal
+ */
+export const cryptoFailure = (description: string) => (_: CryptoError.CryptoError): JoseError.JoseError =>
+  new JoseError.JoseError({ reason: new JoseError.InvalidKey({ description }) })
+
+/**
+ * Maps a public-key import failure, keeping the backend diagnostic.
+ *
+ * @internal
+ */
+export const publicKeyFailure = (error: CryptoError.CryptoError): JoseError.JoseError =>
   new JoseError.JoseError({ reason: new JoseError.InvalidKey({ description: error.message, cause: error }) })
+
+/**
+ * Schema fields that keep private and symmetric key members out of a public
+ * JWK.
+ *
+ * @internal
+ */
+export const noPrivateMembers = {
+  d: Schema.optionalKey(Schema.Never),
+  p: Schema.optionalKey(Schema.Never),
+  q: Schema.optionalKey(Schema.Never),
+  dp: Schema.optionalKey(Schema.Never),
+  dq: Schema.optionalKey(Schema.Never),
+  qi: Schema.optionalKey(Schema.Never),
+  oth: Schema.optionalKey(Schema.Never),
+  k: Schema.optionalKey(Schema.Never)
+}
+
+/** @internal */
+export const hasPrivateMembers = (jwk: object): boolean =>
+  Object.keys(noPrivateMembers).some((name) => Object.hasOwn(jwk, name))
 
 /** @internal */
 export const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text)
@@ -124,11 +159,17 @@ export const encodeHeader = (
  * @internal
  */
 export const millis = (name: string, input: Duration.Input): Effect.Effect<number, JoseError.JoseError> => {
-  // `Duration` reads NaN as zero, which would silently disable a bound.
-  const value = typeof input === "number" && Number.isNaN(input)
-    ? Option.none()
-    : Option.map(Duration.fromInput(input), Duration.toMillis)
+  const value = hasNaN(input) ? Option.none() : Option.map(Duration.fromInput(input), Duration.toMillis)
   return Option.isSome(value) && Number.isFinite(value.value) && value.value >= 0
     ? Effect.succeed(value.value)
     : invalidArgument(`${name} must be a finite, non-negative duration`)
+}
+
+// `Duration` reads NaN as zero in every input form, which would silently
+// disable a bound.
+const hasNaN = (input: Duration.Input): boolean => {
+  if (typeof input === "number") return Number.isNaN(input)
+  if (typeof input !== "object" || Duration.isDuration(input)) return false
+  const components: ReadonlyArray<unknown> = Array.isArray(input) ? input : Object.values(input)
+  return components.some((component) => typeof component === "number" && Number.isNaN(component))
 }
