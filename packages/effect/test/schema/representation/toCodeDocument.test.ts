@@ -258,6 +258,21 @@ describe("toCodeDocument", () => {
         artifacts: [{ _tag: "Import", importDeclaration: `import * as Exit from "effect/Exit"` }]
       })
     })
+
+    it("IpInterface does not import a namespace named like its declaration", () => {
+      assertSchema({ schema: Schema.IpInterface }, {
+        codes: makeCode("IpInterface", "IpInterface"),
+        references: {
+          nonRecursives: [{
+            $ref: "IpInterface",
+            code: makeCode(
+              `Schema.IpInterface.annotate({ "identifier": "IpInterface" })`,
+              `Schema.IpInterface["Type"]`
+            )
+          }]
+        }
+      })
+    })
   })
 
   it("Null", () => {
