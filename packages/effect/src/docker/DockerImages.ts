@@ -9,7 +9,7 @@
  * their result: the pushed manifest, and the built image's ID.
  *
  * Every operation that talks to a Registry (pull, push, search, distribution) sends
- * the credential the `DockerEngine` resolves for that Registry in
+ * the credential `DockerRegistryAuth` resolves for that Registry in
  * `X-Registry-Auth`, anonymous as `{}`; a per-call `auth` replaces it. A build
  * sends only the credentials it is given, see {@link BuildOptions}.
  *
@@ -48,15 +48,9 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
-import {
-  apiClient,
-  authConfig,
-  DockerEngine,
-  registryAuth,
-  withOperation,
-  withStreamOperation
-} from "./DockerEngine.ts"
+import { apiClient, DockerEngine, withOperation, withStreamOperation } from "./DockerEngine.ts"
 import { DockerError, InvalidReference, InvalidResponse, StreamFailed } from "./DockerError.ts"
+import { authConfig, DockerRegistryAuth, registryAuthHeader } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
 // -----------------------------------------------------------------------------
@@ -350,7 +344,7 @@ export type BuildProgress =
  *   redacted in spans.
  * - `auth` and `registries` are the credentials sent in `X-Registry-Config`,
  *   which only the classic builder uses: `auth` as given, `registries`
- *   resolved by the `DockerEngine`. Nothing else is sent.
+ *   resolved by `DockerRegistryAuth`. Nothing else is sent.
  *
  * The rest are `POST /build`'s query parameters.
  *
@@ -862,182 +856,189 @@ export class DockerImages extends Context.Service<DockerImages, {
 }>()("effect/docker/DockerImages") {}
 
 /**
- * Builds the {@link DockerImages} service over the `DockerEngine` in context.
+ * Builds the {@link DockerImages} service over the `DockerEngine` and
+ * `DockerRegistryAuth` in context.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const engine = yield* DockerEngine
-  const api = yield* apiClient(engine, DockerApi.Images, "docker.Images")
-  const { config } = engine
+export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
+  function*() {
+    const engine = yield* DockerEngine
+    const registryAuth = yield* DockerRegistryAuth
+    const api = yield* apiClient(engine, DockerApi.Images, "docker.Images")
+    const { config } = engine
 
-  /** `X-Registry-Auth` for a registry: the call's `auth`, otherwise the engine's credential. */
-  const registryAuthOf = (registry: string, auth: DockerConfig.Credential | undefined) =>
-    registryAuth(engine, registry, auth)
+    /** `X-Registry-Auth` for a registry: the call's `auth`, otherwise the resolved credential. */
+    const registryAuthOf = (registry: string, auth: DockerConfig.Credential | undefined) =>
+      registryAuthHeader(registryAuth, registry, auth)
 
-  const load: DockerImages["Service"]["load"] = (archive, options) =>
-    failOnError(api.load({ query: options ?? {}, payload: archive }))
+    const load: DockerImages["Service"]["load"] = (archive, options) =>
+      failOnError(api.load({ query: options ?? {}, payload: archive }))
 
-  const pull: DockerImages["Service"]["pull"] = (input, options) =>
-    Stream.unwrap(Effect.gen(function*() {
-      const reference = yield* referenceOf(input)
-      const auth = yield* registryAuthOf(reference.registry, options?.auth)
-      return failOnError(api.pull({
-        query: {
-          fromImage: `${reference.registry}/${reference.repository}`,
-          // a digest goes in `tag` too; without a tag, the Engine pulls every tag
-          tag: reference.digest ?? reference.tag ?? "latest",
-          platform: options?.platform ?? config.platform
-        },
-        headers: { "x-registry-auth": auth }
-      }))
-    })).pipe(withStreamOperation(engine, "docker.Images.pull", resourceOf(input)))
-
-  const pushStream: DockerImages["Service"]["pushStream"] = (input, options) =>
-    Stream.unwrap(Effect.gen(function*() {
-      const reference = yield* referenceOf(input)
-      const auth = yield* registryAuthOf(reference.registry, options?.auth)
-      return failOnError(api.push({
-        params: { name: `${reference.registry}/${reference.repository}` },
-        query: { tag: reference.tag, platform: options?.platform },
-        headers: { "x-registry-auth": auth }
-      }))
-    })).pipe(withStreamOperation(engine, "docker.Images.pushStream", resourceOf(input)))
-
-  const importImage: DockerImages["Service"]["import"] = (source, options) => {
-    const query = { ...options, platform: options?.platform ?? config.platform }
-    return failOnError(
-      typeof source === "string"
-        ? api.importUrl({ query: { ...query, fromSrc: source } })
-        : api.importArchive({ query: { ...query, fromSrc: "-" }, payload: source })
-    )
-  }
-
-  /** The progress of a build, recording its image ID in `state`. */
-  const buildWith = (
-    context: Stream.Stream<Uint8Array, DockerError> | string,
-    options: BuildOptions | undefined,
-    state: { id: string | undefined }
-  ): Stream.Stream<BuildProgress, DockerError> => {
-    const { auth, buildArgs, registries, ...query } = options ?? {}
-    // the configured proxy, unless the build sets the same args, as `docker build` adds it
-    const proxyArgs = Object.fromEntries(DockerConfig.proxyVariables(config.proxy))
-    const credentials = Effect.map(
-      Effect.forEach(
-        registries ?? [],
-        (registry) => Effect.map(engine.credential(registry), (credential) => [registry, credential] as const)
-      ),
-      (resolved) => {
-        // keyed and addressed as the Engine looks a registry up; a given credential wins
-        const out: Record<string, DockerApi.AuthConfig> = {}
-        for (const [registry, credential] of [...resolved, ...Object.entries(auth ?? {})]) {
-          if (credential === undefined) continue
-          const config = authConfig(registry, credential)
-          out[DockerConfig.normalizeRegistry(registry)] = config
-        }
-        return Object.keys(out).length === 0 ? undefined : out
-      }
-    )
-    return Stream.unwrap(Effect.map(credentials, (registryConfig) => {
-      const request = {
-        query: {
-          ...query,
-          builder: query.builder ?? config.builder,
-          forceRemove: query.forceRemove ?? true,
-          platform: query.platform ?? config.platform,
-          buildArgs: buildArgs === undefined && Object.keys(proxyArgs).length === 0
-            ? undefined
-            : { ...proxyArgs, ...buildArgs }
-        },
-        headers: { "x-registry-config": registryConfig }
-      }
-      return (typeof context === "string"
-        ? api.buildRemote({ ...request, query: { ...request.query, remote: context } })
-        : api.build({ ...request, payload: context })).pipe(
-          Stream.mapEffect((message) => buildProgress(state, message, query.quiet === true)),
-          Stream.flattenIterable
-        )
-    }))
-  }
-
-  return DockerImages.of({
-    list: (options) => api.list({ query: options ?? {} }),
-    inspect: (name, options) => api.inspect({ params: { name }, query: options ?? {} }),
-    history: (name, options) => api.history({ params: { name }, query: options ?? {} }),
-    attestations: (name, options) => api.attestations({ params: { name }, query: options ?? {} }),
-    tag: (name, target) =>
-      Effect.flatMap(
-        referenceOf(target),
-        (target) =>
-          api.tag({ params: { name }, query: { repo: `${target.registry}/${target.repository}`, tag: target.tag } })
-      ),
-    remove: (name, options) => api.remove({ params: { name }, query: options ?? {} }),
-    prune: (options) => api.prune({ query: options ?? {} }),
-    search: Effect.fnUntraced(
-      function*(term, options) {
-        const { auth: own, ...query } = options ?? {}
-        const auth = yield* registryAuthOf(searchRegistry(term), own)
-        return yield* api.search({ query: { ...query, term }, headers: { "x-registry-auth": auth } })
-      },
-      (effect) => withOperation(engine, "docker.Images.search")(effect)
-    ),
-    commit: (container, options) => {
-      const { config, ...query } = options ?? {}
-      return api.commit({ query: { ...query, container }, payload: config ?? {} })
-    },
-    distribution: Effect.fnUntraced(
-      function*(input, options) {
+    const pull: DockerImages["Service"]["pull"] = (input, options) =>
+      Stream.unwrap(Effect.gen(function*() {
         const reference = yield* referenceOf(input)
         const auth = yield* registryAuthOf(reference.registry, options?.auth)
-        return yield* api.distribution({
-          params: { name: formatReference(reference) },
+        return failOnError(api.pull({
+          query: {
+            fromImage: `${reference.registry}/${reference.repository}`,
+            // a digest goes in `tag` too; without a tag, the Engine pulls every tag
+            tag: reference.digest ?? reference.tag ?? "latest",
+            platform: options?.platform ?? config.platform
+          },
           headers: { "x-registry-auth": auth }
-        })
+        }))
+      })).pipe(withStreamOperation(engine, "docker.Images.pull", resourceOf(input)))
+
+    const pushStream: DockerImages["Service"]["pushStream"] = (input, options) =>
+      Stream.unwrap(Effect.gen(function*() {
+        const reference = yield* referenceOf(input)
+        const auth = yield* registryAuthOf(reference.registry, options?.auth)
+        return failOnError(api.push({
+          params: { name: `${reference.registry}/${reference.repository}` },
+          query: { tag: reference.tag, platform: options?.platform },
+          headers: { "x-registry-auth": auth }
+        }))
+      })).pipe(withStreamOperation(engine, "docker.Images.pushStream", resourceOf(input)))
+
+    const importImage: DockerImages["Service"]["import"] = (source, options) => {
+      const query = { ...options, platform: options?.platform ?? config.platform }
+      return failOnError(
+        typeof source === "string"
+          ? api.importUrl({ query: { ...query, fromSrc: source } })
+          : api.importArchive({ query: { ...query, fromSrc: "-" }, payload: source })
+      )
+    }
+
+    /** The progress of a build, recording its image ID in `state`. */
+    const buildWith = (
+      context: Stream.Stream<Uint8Array, DockerError> | string,
+      options: BuildOptions | undefined,
+      state: { id: string | undefined }
+    ): Stream.Stream<BuildProgress, DockerError> => {
+      const { auth, buildArgs, registries, ...query } = options ?? {}
+      // the configured proxy, unless the build sets the same args, as `docker build` adds it
+      const proxyArgs = Object.fromEntries(DockerConfig.proxyVariables(config.proxy))
+      const credentials = Effect.map(
+        Effect.forEach(
+          registries ?? [],
+          (registry) => Effect.map(registryAuth.credential(registry), (credential) => [registry, credential] as const)
+        ),
+        (resolved) => {
+          // keyed and addressed as the Engine looks a registry up; a given credential wins
+          const out: Record<string, DockerApi.AuthConfig> = {}
+          for (const [registry, credential] of [...resolved, ...Object.entries(auth ?? {})]) {
+            if (credential === undefined) continue
+            const config = authConfig(registry, credential)
+            out[DockerConfig.normalizeRegistry(registry)] = config
+          }
+          return Object.keys(out).length === 0 ? undefined : out
+        }
+      )
+      return Stream.unwrap(Effect.map(credentials, (registryConfig) => {
+        const request = {
+          query: {
+            ...query,
+            builder: query.builder ?? config.builder,
+            forceRemove: query.forceRemove ?? true,
+            platform: query.platform ?? config.platform,
+            buildArgs: buildArgs === undefined && Object.keys(proxyArgs).length === 0
+              ? undefined
+              : { ...proxyArgs, ...buildArgs }
+          },
+          headers: { "x-registry-config": registryConfig }
+        }
+        return (typeof context === "string"
+          ? api.buildRemote({ ...request, query: { ...request.query, remote: context } })
+          : api.build({ ...request, payload: context })).pipe(
+            Stream.mapEffect((message) => buildProgress(state, message, query.quiet === true)),
+            Stream.flattenIterable
+          )
+      }))
+    }
+
+    return DockerImages.of({
+      list: (options) => api.list({ query: options ?? {} }),
+      inspect: (name, options) => api.inspect({ params: { name }, query: options ?? {} }),
+      history: (name, options) => api.history({ params: { name }, query: options ?? {} }),
+      attestations: (name, options) => api.attestations({ params: { name }, query: options ?? {} }),
+      tag: (name, target) =>
+        Effect.flatMap(
+          referenceOf(target),
+          (target) =>
+            api.tag({ params: { name }, query: { repo: `${target.registry}/${target.repository}`, tag: target.tag } })
+        ),
+      remove: (name, options) => api.remove({ params: { name }, query: options ?? {} }),
+      prune: (options) => api.prune({ query: options ?? {} }),
+      search: Effect.fnUntraced(
+        function*(term, options) {
+          const { auth: own, ...query } = options ?? {}
+          const auth = yield* registryAuthOf(searchRegistry(term), own)
+          return yield* api.search({ query: { ...query, term }, headers: { "x-registry-auth": auth } })
+        },
+        (effect) => withOperation(engine, "docker.Images.search")(effect)
+      ),
+      commit: (container, options) => {
+        const { config, ...query } = options ?? {}
+        return api.commit({ query: { ...query, container }, payload: config ?? {} })
       },
-      (effect, input) => withOperation(engine, "docker.Images.distribution", resourceOf(input))(effect)
-    ),
-    save: (names, options) =>
-      typeof names === "string"
-        ? api.save({ params: { name: names }, query: options ?? {} })
-        : api.saveAll({ query: { ...options, names } }),
-    load,
-    pull,
-    pushStream,
-    push: (reference, options) =>
-      pushResultOf(pushStream(reference, options), "docker.Images.push").pipe(
-        withOperation(engine, "docker.Images.push", resourceOf(reference))
+      distribution: Effect.fnUntraced(
+        function*(input, options) {
+          const reference = yield* referenceOf(input)
+          const auth = yield* registryAuthOf(reference.registry, options?.auth)
+          return yield* api.distribution({
+            params: { name: formatReference(reference) },
+            headers: { "x-registry-auth": auth }
+          })
+        },
+        (effect, input) => withOperation(engine, "docker.Images.distribution", resourceOf(input))(effect)
       ),
-    import: importImage,
-    buildStream: (context, options) =>
-      Stream.suspend(() => buildWith(context, options, { id: undefined })).pipe(
-        withStreamOperation(engine, "docker.Images.buildStream")
-      ),
-    build: (context, options) =>
-      Effect.suspend(() => {
-        const state: { id: string | undefined } = { id: undefined }
-        return buildWith(context, options, state).pipe(
-          Stream.runDrain,
-          Effect.flatMap(() =>
-            state.id !== undefined ? Effect.succeed({ id: state.id }) : Effect.fail(
-              new DockerError({
-                reason: new InvalidResponse({ issue: "the build ended without reporting an image ID" }),
-                operation: "docker.Images.build"
-              })
+      save: (names, options) =>
+        typeof names === "string"
+          ? api.save({ params: { name: names }, query: options ?? {} })
+          : api.saveAll({ query: { ...options, names } }),
+      load,
+      pull,
+      pushStream,
+      push: (reference, options) =>
+        pushResultOf(pushStream(reference, options), "docker.Images.push").pipe(
+          withOperation(engine, "docker.Images.push", resourceOf(reference))
+        ),
+      import: importImage,
+      buildStream: (context, options) =>
+        Stream.suspend(() => buildWith(context, options, { id: undefined })).pipe(
+          withStreamOperation(engine, "docker.Images.buildStream")
+        ),
+      build: (context, options) =>
+        Effect.suspend(() => {
+          const state: { id: string | undefined } = { id: undefined }
+          return buildWith(context, options, state).pipe(
+            Stream.runDrain,
+            Effect.flatMap(() =>
+              state.id !== undefined ? Effect.succeed({ id: state.id }) : Effect.fail(
+                new DockerError({
+                  reason: new InvalidResponse({ issue: "the build ended without reporting an image ID" }),
+                  operation: "docker.Images.build"
+                })
+              )
             )
           )
-        )
-      }).pipe(withOperation(engine, "docker.Images.build"))
-  })
-})
+        }).pipe(withOperation(engine, "docker.Images.build"))
+    })
+  }
+)
 
 /**
- * Provides {@link DockerImages} over the `DockerEngine` in context, built with
- * {@link make}. `Docker.layer` provides every service.
+ * Provides {@link DockerImages} over the `DockerEngine` and `DockerRegistryAuth`
+ * in context, built with {@link make}. `Docker.layer` provides every service.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.6
  */
-export const layer: Layer.Layer<DockerImages, never, DockerEngine> = Layer.effect(DockerImages, make)
+export const layer: Layer.Layer<DockerImages, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
+  DockerImages,
+  make
+)

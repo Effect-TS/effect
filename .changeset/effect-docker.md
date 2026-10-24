@@ -7,11 +7,12 @@ Add `effect/docker`, an Effect-native client for the Docker Engine API, and `Nod
 
 - `DockerSchema` holds Schemas for the Engine's request and response definitions, generated from moby's API document (API 1.56, decoding every version from 1.44).
 - `DockerConfig` is the client's configuration as plain data: `layer` takes static values, and `layerFromEnv` reads it as the Docker CLI does (`DOCKER_HOST`, contexts, TLS material, `config.json`).
-- `DockerEngine` is the connection to one Engine: an `HttpClient` that negotiates the API version.
+- `DockerEngine` is the connection to one Engine: an `HttpClient` that negotiates the API version. It holds no registry credentials.
 - `DockerApi` defines the Engine API as `HttpApi` endpoint groups, one per area, which the services are clients of, and the models they take and return where those differ from `DockerSchema`'s, such as secrets as `Redacted`. Every endpoint declares the Engine's error responses (`EngineErrors`, or `SwarmErrors` where Swarm serves it, whose 503 is `SwarmUnavailable`), which decode to the `DockerError` reason classes; services fail with them as `DockerError`, which names the operation.
 - `DockerSystem` covers ping, version, info, events, disk usage, registry login and build-cache pruning.
 - `DockerContainers` covers the container lifecycle, logs, stats, attach and archives; `DockerExec` runs commands in running containers; `DockerNetworks` and `DockerVolumes` manage networks and volumes.
-- `DockerImages` pulls, pushes, builds, tags, saves, loads, imports and commits images, with registry credentials resolved as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`).
+- `DockerRegistryAuth` resolves the registry credentials that images, plugins and services send, as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`); provide it yourself to resolve them another way.
+- `DockerImages` pulls, pushes, builds, tags, saves, loads, imports and commits images.
 - `DockerSwarm` inits, joins, inspects, updates and leaves a Swarm, and reads the unlock key of an autolocked one. A Swarm endpoint's 503 fails with `SwarmUnavailable`, which isn't retryable, and join tokens and unlock keys are `Redacted`.
 - `DockerNodes` lists, inspects, updates and removes a Swarm's nodes.
 - `DockerServices` lists, inspects, creates, updates, rolls back and removes services, and streams their logs; `parseLogLine` reads the attributes `details` adds. Specs go as given: registry credentials only with `registryAuth` or `auth`, and `resolveImage` pins the image's digest and platforms as `docker service create` does.

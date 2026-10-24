@@ -4,7 +4,8 @@
  *
  * `NodeDocker.layer` already provides them. Use {@link layer} with a
  * `DockerEngine` of your own, for example one made with `DockerEngine.make`
- * over your own `HttpClient`.
+ * over your own `HttpClient`, and a `DockerRegistryAuth` (the Docker CLI's
+ * resolution is `DockerRegistryAuth.layer`).
  *
  * **Example** (Reading the Engine's version)
  *
@@ -30,6 +31,7 @@ import * as DockerImages from "./DockerImages.ts"
 import * as DockerNetworks from "./DockerNetworks.ts"
 import * as DockerNodes from "./DockerNodes.ts"
 import * as DockerPlugins from "./DockerPlugins.ts"
+import type { DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import * as DockerSecrets from "./DockerSecrets.ts"
 import * as DockerServices from "./DockerServices.ts"
 import * as DockerSwarm from "./DockerSwarm.ts"
@@ -61,14 +63,14 @@ export type Docker =
   | DockerVolumes.DockerVolumes
 
 /**
- * Provides every service over the `DockerEngine` in context, each built with
- * its own `make`.
+ * Provides every service over the `DockerEngine` and `DockerRegistryAuth` in
+ * context, each built with its own `make`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.6
  */
-export const layer: Layer.Layer<Docker, never, DockerEngine> = Layer.mergeAll(
+export const layer: Layer.Layer<Docker, never, DockerEngine | DockerRegistryAuth> = Layer.mergeAll(
   DockerContainers.layer,
   DockerExec.layer,
   DockerImages.layer,

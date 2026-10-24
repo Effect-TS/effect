@@ -1,18 +1,20 @@
 /**
- * The connection to one Engine: the single seam of `effect/docker`.
+ * The connection to one Engine, which every service of `effect/docker` is
+ * built over.
  *
  * A `DockerEngine` carries the `DockerConfig` it was built from, the
  * `HttpClient` every request goes through (upgraded ones for exec and attach
  * included), and the negotiated API version. Every service of
  * `effect/docker` (`DockerSystem`, ...) is built over it, and reads the
- * configuration from it, never from context.
+ * configuration from it, never from context. Registry credentials are
+ * `DockerRegistryAuth`'s, not the engine's.
  *
  * Provide it with `NodeDocker` from `@effect/platform-node`: its
  * `layerFromEnv` configures it as the Docker CLI does, and its `layer` builds
  * over the `DockerConfig` you provide. Both build the `DockerEngine` over
  * Node's `HttpClient`, and provide every service with `Docker.layer`. With an
  * `HttpClient` of your own, build it with {@link make} and add the services
- * with `Docker.layer`.
+ * with `Docker.layer` and a `DockerRegistryAuth`.
  *
  * **API versions**
  *
@@ -56,7 +58,6 @@
  * @since 4.0.6
  */
 import * as Context from "../Context.ts"
-import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as HttpApi from "../http-api/HttpApi.ts"
 import * as HttpApiClient from "../http-api/HttpApiClient.ts"
@@ -70,15 +71,11 @@ import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as Option from "../Option.ts"
-import * as ChildProcess from "../process/ChildProcess.ts"
-import * as ChildProcessSpawner from "../process/ChildProcessSpawner.ts"
-import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
 import {
   ApiVersions,
-  type AuthConfig,
   errorMessage,
   type ErrorResponse,
   ErrorResponses,
@@ -88,7 +85,6 @@ import {
 import * as DockerConfig from "./DockerConfig.ts"
 import {
   ConnectionFailed,
-  CredentialsUnavailable,
   DockerError,
   InvalidResponse,
   isDockerError,
@@ -117,11 +113,6 @@ export class DockerEngine extends Context.Service<DockerEngine, {
   readonly client: HttpClient.HttpClient.With<DockerError>
   /** The negotiated (or pinned) API version. Negotiates on first use. */
   readonly apiVersion: Effect.Effect<string, DockerError>
-  /**
-   * Resolves the credential for a registry from the config, as the Docker CLI
-   * does; `undefined` means anonymous. See {@link make}.
-   */
-  readonly credential: (registry: string) => Effect.Effect<DockerConfig.Credential | undefined, DockerError>
 }>()("effect/docker/DockerEngine") {}
 
 /**
@@ -198,149 +189,24 @@ const onceSuccessful = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> 
  * unreachable, ping it while building your application's layer, with a
  * timeout of your choice.
  *
- * Registry credentials resolve as the Docker CLI resolves them, for every
- * request that needs them: the registry is normalized with
- * `DockerConfig.normalizeRegistry`, then looked up in `authConfig`
- * (`DOCKER_AUTH_CONFIG`), then asked of its credential helper (`credHelpers`,
- * else `credsStore`), else looked up in `auths`. The `ChildProcessSpawner`
- * runs helpers as `docker-credential-<name> get`, every time, because helper
- * tokens are short-lived. A helper that answers "credentials not found in
- * native keychain" means anonymous; one that fails, answers malformed JSON or
- * takes longer than a minute fails with `CredentialsUnavailable`.
- *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
 export const make = (
   httpClient: HttpClient.HttpClient
-): Effect.Effect<
-  DockerEngine["Service"],
-  never,
-  DockerConfig.DockerConfig | ChildProcessSpawner.ChildProcessSpawner
-> =>
+): Effect.Effect<DockerEngine["Service"], never, DockerConfig.DockerConfig> =>
   Effect.gen(function*() {
     const config = yield* DockerConfig.DockerConfig
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const apiVersion = config.apiVersion !== undefined
       ? Effect.succeed(config.apiVersion)
       : onceSuccessful(Effect.flatMap(pingApiVersion(makeClient(config, httpClient)), negotiate))
     return DockerEngine.of({
       config,
       client: makeClient(config, httpClient, apiVersion),
-      apiVersion,
-      credential: makeCredential(config, spawner)
+      apiVersion
     })
   })
-
-// -----------------------------------------------------------------------------
-// registry credentials
-// -----------------------------------------------------------------------------
-
-/** How long a credential helper may take. */
-const helperTimeout = Duration.minutes(1)
-
-/** What a credential helper answers when it has no credentials for a registry. */
-const helperNotFound = "credentials not found in native keychain"
-
-const HelperOutput = Schema.Struct({ Username: Schema.String, Secret: Schema.String })
-
-const decodeHelperOutput = Schema.decodeUnknownEffect(Schema.fromJsonString(HelperOutput))
-
-const unavailable = (registry: string, message: string, options?: { helper?: string; cause?: unknown }) =>
-  new DockerError({ reason: new CredentialsUnavailable({ registry, message, ...options }) })
-
-const isAnonymous = (credential: DockerConfig.Credential) =>
-  credential.username === undefined && credential.password === undefined && credential.identityToken === undefined
-
-/** The entry for a normalized registry: under its own key, else under any key that normalizes to it. */
-const lookup = <A>(entries: Readonly<Record<string, A>>, key: string): A | undefined =>
-  Object.hasOwn(entries, key)
-    ? entries[key]
-    : Object.entries(entries).find(([registry]) => DockerConfig.normalizeRegistry(registry) === key)?.[1]
-
-const runHelper = (
-  spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
-  helper: string,
-  registry: string
-): Effect.Effect<DockerConfig.Credential | undefined, DockerError> => {
-  const program = `docker-credential-${helper}`
-  return Effect.scoped(Effect.gen(function*() {
-    const handle = yield* spawner.spawn(ChildProcess.make(program, ["get"], {
-      stdin: Stream.make(new TextEncoder().encode(registry))
-    }))
-    const [stdout, stderr, exitCode] = yield* Effect.all([
-      Stream.mkString(Stream.decodeText(handle.stdout)),
-      Stream.mkString(Stream.decodeText(handle.stderr)),
-      handle.exitCode
-    ], { concurrency: "unbounded" })
-    if (exitCode !== 0) {
-      // the helper protocol answers on stdout
-      if (stdout.trim() === helperNotFound) return undefined
-      return yield* unavailable(registry, `${program} get exited with ${exitCode}: ${stdout.trim() || stderr.trim()}`, {
-        helper
-      })
-    }
-    const output = yield* decodeHelperOutput(stdout.trim()).pipe(
-      Effect.mapError((cause) => unavailable(registry, `${program} get answered malformed JSON`, { helper, cause }))
-    )
-    const credential: DockerConfig.Credential = output.Username === "<token>"
-      ? { identityToken: Redacted.make(output.Secret) }
-      : { username: output.Username, password: Redacted.make(output.Secret) }
-    return credential
-  })).pipe(
-    Effect.catchTag(
-      "PlatformError",
-      (cause) => Effect.fail(unavailable(registry, `Failed to run ${program}: ${cause.message}`, { helper, cause }))
-    ),
-    Effect.timeoutOrElse({
-      duration: helperTimeout,
-      orElse: () => Effect.fail(unavailable(registry, `${program} get took longer than a minute`, { helper }))
-    })
-  )
-}
-
-/** Resolves credentials as the Docker CLI does, see {@link make}. */
-const makeCredential = (
-  config: DockerConfig.ResolvedConfig,
-  spawner: ChildProcessSpawner.ChildProcessSpawner["Service"]
-) =>
-(registry: string): Effect.Effect<DockerConfig.Credential | undefined, DockerError> => {
-  const key = DockerConfig.normalizeRegistry(registry)
-  const fromEnvironment = lookup(config.authConfig, key)
-  if (fromEnvironment !== undefined && !isAnonymous(fromEnvironment)) return Effect.succeed(fromEnvironment)
-  const helper = lookup(config.credHelpers, key) ?? config.credsStore
-  if (helper !== undefined && helper !== "") return runHelper(spawner, helper, key)
-  const entry = lookup(config.auths, key)
-  return Effect.succeed(entry === undefined || isAnonymous(entry) ? undefined : entry)
-}
-
-/**
- * A credential as the Engine's `AuthConfig` for a registry, addressed by the
- * registry normalized as the Engine looks it up.
- *
- * @internal
- */
-export const authConfig = (registry: string, credential: DockerConfig.Credential): AuthConfig => ({
-  ...credential,
-  serverAddress: DockerConfig.normalizeRegistry(registry)
-})
-
-/**
- * `X-Registry-Auth` for a registry: the call's `auth`, otherwise the engine's
- * credential; anonymous as `{}`.
- *
- * @internal
- */
-export const registryAuth = (
-  engine: DockerEngine["Service"],
-  registry: string,
-  auth: DockerConfig.Credential | undefined
-): Effect.Effect<AuthConfig, DockerError> =>
-  Effect.map(
-    auth !== undefined ? Effect.succeed(auth) : engine.credential(registry),
-    (credential) => credential === undefined ? {} : authConfig(registry, credential)
-  )
 
 // -----------------------------------------------------------------------------
 // requests

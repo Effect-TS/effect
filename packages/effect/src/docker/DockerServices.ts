@@ -39,10 +39,11 @@ import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
 import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, authConfig, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse } from "./DockerError.ts"
 import { frames, fromContentType } from "./DockerExec.ts"
 import * as DockerImages from "./DockerImages.ts"
+import { authConfig, DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
 /**
@@ -50,7 +51,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * **Details**
  *
- * - `registryAuth: true` sends the credential the `DockerEngine` resolves
+ * - `registryAuth: true` sends the credential `DockerRegistryAuth` resolves
  *   for the image's Registry, so that the nodes can pull a private image;
  *   `auth` sends the given one instead. Without either, the Engine sends no
  *   credential (on `update`, `registryAuthFrom` picks a stored one).
@@ -378,117 +379,120 @@ const placementPlatforms = (
 }
 
 /**
- * Builds the {@link DockerServices} service over the `DockerEngine` in
- * context.
+ * Builds the {@link DockerServices} service over the `DockerEngine` and
+ * `DockerRegistryAuth` in context.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const engine = yield* DockerEngine
-  const api = yield* apiClient(engine, DockerApi.Services, "docker.Services")
-  const images = yield* DockerImages.make
+export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
+  function*() {
+    const engine = yield* DockerEngine
+    const registryAuth = yield* DockerRegistryAuth
+    const api = yield* apiClient(engine, DockerApi.Services, "docker.Services")
+    const images = yield* DockerImages.make
 
-  /** The spec as `options` asks to send it, its `X-Registry-Auth`, and the warnings about its image. */
-  const prepare = Effect.fnUntraced(function*(
-    spec: DockerApi.ServiceSpec,
-    options: ImageOptions | undefined
-  ) {
-    if (options?.registryAuth !== true && options?.auth === undefined && options?.resolveImage !== true) {
-      return { spec, auth: undefined, warnings: [] }
-    }
-    const image = spec.TaskTemplate?.ContainerSpec?.Image ?? ""
-    const reference = yield* Effect.fromResult(DockerImages.parseReference(image))
-    const credential = options.auth ?? (options.registryAuth === true
-      ? yield* engine.credential(reference.registry)
-      : undefined)
-    const auth = credential === undefined ? undefined : authConfig(reference.registry, credential)
-    if (options.resolveImage !== true) return { spec, auth, warnings: [] }
+    /** The spec as `options` asks to send it, its `X-Registry-Auth`, and the warnings about its image. */
+    const prepare = Effect.fnUntraced(function*(
+      spec: DockerApi.ServiceSpec,
+      options: ImageOptions | undefined
+    ) {
+      if (options?.registryAuth !== true && options?.auth === undefined && options?.resolveImage !== true) {
+        return { spec, auth: undefined, warnings: [] }
+      }
+      const image = spec.TaskTemplate?.ContainerSpec?.Image ?? ""
+      const reference = yield* Effect.fromResult(DockerImages.parseReference(image))
+      const credential = options.auth ?? (options.registryAuth === true
+        ? yield* registryAuth.credential(reference.registry)
+        : undefined)
+      const auth = credential === undefined ? undefined : authConfig(reference.registry, credential)
+      if (options.resolveImage !== true) return { spec, auth, warnings: [] }
 
-    const tagged = reference.tag === undefined && reference.digest === undefined
-      ? new DockerImages.ImageReference({ ...reference, tag: "latest" })
-      : reference
-    const withImage = (image: string, platforms?: Array<DockerSchema.Platform>) => ({
-      ...spec,
-      TaskTemplate: {
-        ...spec.TaskTemplate,
-        ContainerSpec: { ...spec.TaskTemplate?.ContainerSpec, Image: image },
-        ...(platforms === undefined || platforms.length === 0
-          ? {}
-          : { Placement: { ...spec.TaskTemplate?.Placement, Platforms: platforms } })
+      const tagged = reference.tag === undefined && reference.digest === undefined
+        ? new DockerImages.ImageReference({ ...reference, tag: "latest" })
+        : reference
+      const withImage = (image: string, platforms?: Array<DockerSchema.Platform>) => ({
+        ...spec,
+        TaskTemplate: {
+          ...spec.TaskTemplate,
+          ContainerSpec: { ...spec.TaskTemplate?.ContainerSpec, Image: image },
+          ...(platforms === undefined || platforms.length === 0
+            ? {}
+            : { Placement: { ...spec.TaskTemplate?.Placement, Platforms: platforms } })
+        }
+      })
+      const distribution = yield* Effect.result(images.distribution(tagged, { auth: credential }))
+      const digest = distribution._tag === "Success" ? distribution.success.Descriptor.digest : undefined
+      if (distribution._tag === "Failure" || digest === undefined) {
+        const why = distribution._tag === "Failure" ? distribution.failure.message : "the Registry reported no digest"
+        return {
+          spec: withImage(DockerImages.formatReference(tagged)),
+          auth,
+          warnings: [
+            `image ${image} could not be resolved on its Registry to pin its digest (${why}); ` +
+            `each node pulls it independently, so they may run different versions`
+          ]
+        }
+      }
+      const pinned = tagged.digest === undefined ? new DockerImages.ImageReference({ ...tagged, digest }) : tagged
+      return {
+        spec: withImage(DockerImages.formatReference(pinned), placementPlatforms(distribution.success.Platforms)),
+        auth,
+        warnings: []
       }
     })
-    const distribution = yield* Effect.result(images.distribution(tagged, { auth: credential }))
-    const digest = distribution._tag === "Success" ? distribution.success.Descriptor.digest : undefined
-    if (distribution._tag === "Failure" || digest === undefined) {
-      const why = distribution._tag === "Failure" ? distribution.failure.message : "the Registry reported no digest"
-      return {
-        spec: withImage(DockerImages.formatReference(tagged)),
-        auth,
-        warnings: [
-          `image ${image} could not be resolved on its Registry to pin its digest (${why}); ` +
-          `each node pulls it independently, so they may run different versions`
-        ]
-      }
-    }
-    const pinned = tagged.digest === undefined ? new DockerImages.ImageReference({ ...tagged, digest }) : tagged
-    return {
-      spec: withImage(DockerImages.formatReference(pinned), placementPlatforms(distribution.success.Platforms)),
-      auth,
-      warnings: []
-    }
-  })
 
-  const inspect: DockerServices["Service"]["inspect"] = (id, options) =>
-    api.inspect({ params: { id }, query: options ?? {} })
-  const update: DockerServices["Service"]["update"] = (id, spec, options) =>
-    Effect.gen(function*() {
-      const prepared = yield* prepare(spec, options)
-      const response = yield* api.update({
-        params: { id },
-        query: { version: options.version, registryAuthFrom: options.registryAuthFrom },
-        headers: { "x-registry-auth": prepared.auth },
-        payload: prepared.spec
-      })
-      return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
-    }).pipe(withOperation(engine, "docker.Services.update", id))
-
-  return DockerServices.of({
-    list: (options) => api.list({ query: options ?? {} }),
-    inspect,
-    create: (spec, options) =>
+    const inspect: DockerServices["Service"]["inspect"] = (id, options) =>
+      api.inspect({ params: { id }, query: options ?? {} })
+    const update: DockerServices["Service"]["update"] = (id, spec, options) =>
       Effect.gen(function*() {
         const prepared = yield* prepare(spec, options)
-        const response = yield* api.create({ headers: { "x-registry-auth": prepared.auth }, payload: prepared.spec })
-        return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
-      }).pipe(withOperation(engine, "docker.Services.create", spec.Name)),
-    update,
-    rollback: (id) =>
-      Effect.flatMap(inspect(id), (service) =>
-        api.update({
+        const response = yield* api.update({
           params: { id },
-          // the Engine checks the spec, then rolls back to the previous one
-          query: { version: service.Version?.Index ?? 0, rollback: "previous" },
-          headers: {},
-          payload: service.Spec ?? {}
-        })).pipe(withOperation(engine, "docker.Services.rollback", id)),
-    modify: (id, f, options) =>
-      modifyWith(
-        inspect(id),
-        (spec, version) => update(id, spec, { ...options, version }),
-        f
-      ).pipe(withOperation(engine, "docker.Services.modify", id)),
-    remove: (id) => api.remove({ params: { id } }),
-    logs: (id, options) =>
-      Stream.unwrap(
-        Effect.map(
-          api.logs({ params: { id }, query: logsQuery(options) }),
-          (logs) => logFrames(logs, "docker.Services.logs")
-        )
-      ).pipe(withStreamOperation(engine, "docker.Services.logs", id))
-  })
-})
+          query: { version: options.version, registryAuthFrom: options.registryAuthFrom },
+          headers: { "x-registry-auth": prepared.auth },
+          payload: prepared.spec
+        })
+        return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
+      }).pipe(withOperation(engine, "docker.Services.update", id))
+
+    return DockerServices.of({
+      list: (options) => api.list({ query: options ?? {} }),
+      inspect,
+      create: (spec, options) =>
+        Effect.gen(function*() {
+          const prepared = yield* prepare(spec, options)
+          const response = yield* api.create({ headers: { "x-registry-auth": prepared.auth }, payload: prepared.spec })
+          return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
+        }).pipe(withOperation(engine, "docker.Services.create", spec.Name)),
+      update,
+      rollback: (id) =>
+        Effect.flatMap(inspect(id), (service) =>
+          api.update({
+            params: { id },
+            // the Engine checks the spec, then rolls back to the previous one
+            query: { version: service.Version?.Index ?? 0, rollback: "previous" },
+            headers: {},
+            payload: service.Spec ?? {}
+          })).pipe(withOperation(engine, "docker.Services.rollback", id)),
+      modify: (id, f, options) =>
+        modifyWith(
+          inspect(id),
+          (spec, version) => update(id, spec, { ...options, version }),
+          f
+        ).pipe(withOperation(engine, "docker.Services.modify", id)),
+      remove: (id) => api.remove({ params: { id } }),
+      logs: (id, options) =>
+        Stream.unwrap(
+          Effect.map(
+            api.logs({ params: { id }, query: logsQuery(options) }),
+            (logs) => logFrames(logs, "docker.Services.logs")
+          )
+        ).pipe(withStreamOperation(engine, "docker.Services.logs", id))
+    })
+  }
+)
 
 /**
  * Provides {@link DockerServices} over the `DockerEngine` in context, built
@@ -498,4 +502,7 @@ export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine>
  * @category layers
  * @since 4.0.6
  */
-export const layer: Layer.Layer<DockerServices, never, DockerEngine> = Layer.effect(DockerServices, make)
+export const layer: Layer.Layer<DockerServices, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
+  DockerServices,
+  make
+)

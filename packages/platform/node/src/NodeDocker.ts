@@ -1,9 +1,10 @@
 /**
  * The Node.js layer for `effect/docker`.
  *
- * {@link layerFromEnv} provides `DockerEngine` and every `effect/docker` service,
- * configured as the Docker CLI is (see `DockerConfig.ResolvedConfig`), and
- * {@link layer} provides them over the `DockerConfig` you provide.
+ * {@link layerFromEnv} provides `DockerEngine`, `DockerRegistryAuth` and every
+ * `effect/docker` service, configured as the Docker CLI is (see
+ * `DockerConfig.ResolvedConfig`), and {@link layer} provides them over the
+ * `DockerConfig` you provide.
  *
  * **Example** (Reading the Engine's information)
  *
@@ -28,6 +29,7 @@
 import * as Docker from "effect/docker/Docker"
 import * as DockerConfig from "effect/docker/DockerConfig"
 import * as DockerEngine from "effect/docker/DockerEngine"
+import * as DockerRegistryAuth from "effect/docker/DockerRegistryAuth"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Host from "effect/net/Host"
@@ -73,7 +75,7 @@ const spawnerLayer = NodeChildProcessSpawner.layer.pipe(
  * The client sets no timeouts (the Engine sends no headers until a `stop`
  * with a long timeout is done), and hands over the connection of exec and
  * attach upgrades. The agents are destroyed with the scope. Nothing contacts
- * the Engine. Registry credential helpers run as Node.js child processes.
+ * the Engine.
  *
  * @stability unstable
  * @category constructors
@@ -95,14 +97,20 @@ export const make: Effect.Effect<
   const httpClient = yield* NodeHttpClient.makeNodeHttp.pipe(
     Effect.provideService(NodeHttpClient.HttpAgent, agent)
   )
-  return yield* DockerEngine.make(httpClient).pipe(Effect.provide(spawnerLayer))
+  return yield* DockerEngine.make(httpClient)
 })
 
 /**
- * Provides `DockerEngine` and every service of `Docker.layer` on Node.js, built
- * with {@link make} from the `DockerConfig` it requires.
+ * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
+ * `Docker.layer` on Node.js, built with {@link make} from the `DockerConfig`
+ * it requires.
  *
  * **Details**
+ *
+ * Registry credentials resolve as the Docker CLI resolves them
+ * (`DockerRegistryAuth.layer`), with credential helpers run as Node.js child
+ * processes. To resolve them another way, provide `Docker.layer` with
+ * {@link make}'s engine and a `DockerRegistryAuth` of your own.
  *
  * Provide the configuration as its own layer: `DockerConfig.layer(config)`
  * for static values, or `DockerConfig.layerFromEnv`, which
@@ -114,16 +122,19 @@ export const make: Effect.Effect<
  * @since 4.0.6
  */
 export const layer: Layer.Layer<
-  DockerEngine.DockerEngine | Docker.Docker,
+  DockerEngine.DockerEngine | DockerRegistryAuth.DockerRegistryAuth | Docker.Docker,
   never,
   DockerConfig.DockerConfig
 > = Docker.layer.pipe(
-  Layer.provideMerge(Layer.effect(DockerEngine.DockerEngine, make))
+  Layer.provideMerge(Layer.mergeAll(
+    Layer.effect(DockerEngine.DockerEngine, make),
+    DockerRegistryAuth.layer.pipe(Layer.provide(spawnerLayer))
+  ))
 )
 
 /**
- * Provides `DockerEngine` and every service of `Docker.layer` on Node.js, configured as a
- * bare `docker` invocation is: {@link layer} over
+ * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
+ * `Docker.layer` on Node.js, configured as a bare `docker` invocation is: {@link layer} over
  * `DockerConfig.layerFromEnv(overrides)`.
  *
  * **Details**
@@ -139,7 +150,10 @@ export const layer: Layer.Layer<
  */
 export const layerFromEnv = (
   overrides?: Partial<DockerConfig.ResolvedConfig> | undefined
-): Layer.Layer<DockerEngine.DockerEngine | Docker.Docker, DockerConfig.DockerConfigError> =>
+): Layer.Layer<
+  DockerEngine.DockerEngine | DockerRegistryAuth.DockerRegistryAuth | Docker.Docker,
+  DockerConfig.DockerConfigError
+> =>
   layer.pipe(
     Layer.provide(DockerConfig.layerFromEnv(overrides)),
     Layer.provide(NodeServices.layer)

@@ -1,5 +1,5 @@
 import { Effect, Layer, PlatformError, Sink, Stream, Tracer } from "effect"
-import { Docker, DockerConfig, DockerEngine } from "effect/docker"
+import { Docker, DockerConfig, DockerEngine, DockerRegistryAuth } from "effect/docker"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
 import { ChildProcessSpawner } from "effect/process"
 import { Socket } from "effect/socket"
@@ -141,7 +141,7 @@ export const makeStubEngine = (
       )
     })
   )
-  const engine = DockerEngine.make(httpClient).pipe(
+  const [engine, registryAuth] = Effect.all([DockerEngine.make(httpClient), DockerRegistryAuth.make]).pipe(
     Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, options?.spawner ?? helpers({})),
     Effect.provideService(DockerConfig.DockerConfig, {
       ...DockerConfig.defaults,
@@ -151,12 +151,18 @@ export const makeStubEngine = (
     }),
     Effect.runSync
   )
-  return { engine, requests, provide: provideEngine(engine) }
+  return { engine, registryAuth, requests, provide: provideEngine(engine, registryAuth) }
 }
 
-/** Provides an engine and every service over it. */
-export const provideEngine = (engine: DockerEngine.DockerEngine["Service"]) =>
-  Effect.provide(Docker.layer.pipe(Layer.provideMerge(Layer.succeed(DockerEngine.DockerEngine, engine))))
+/** Provides an engine, registry credentials and every service over them. */
+export const provideEngine = (
+  engine: DockerEngine.DockerEngine["Service"],
+  registryAuth: DockerRegistryAuth.DockerRegistryAuth["Service"]
+) =>
+  Effect.provide(Docker.layer.pipe(Layer.provideMerge(Layer.mergeAll(
+    Layer.succeed(DockerEngine.DockerEngine, engine),
+    Layer.succeed(DockerRegistryAuth.DockerRegistryAuth, registryAuth)
+  ))))
 
 /** Answers `/_ping` like Docker with API `version`, and everything else with `reply`. */
 export const withPing =

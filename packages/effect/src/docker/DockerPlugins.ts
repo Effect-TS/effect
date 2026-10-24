@@ -9,7 +9,7 @@
  * plugin install` command does, with the decision as a function.
  *
  * Every operation that talks to a Registry (privileges, pull, upgrade, push)
- * sends the credential the `DockerEngine` resolves for that Registry in
+ * sends the credential `DockerRegistryAuth` resolves for that Registry in
  * `X-Registry-Auth`, anonymous as `{}`; a per-call `auth` replaces it.
  * Progress streams fail with `StreamFailed` on the first in-band error, such
  * as `incorrect privileges` or a Registry's refusal, which the Engine reports
@@ -43,9 +43,10 @@ import type * as Redacted from "../Redacted.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, DockerEngine, registryAuth, withOperation, withStreamOperation } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, withOperation, withStreamOperation } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import * as DockerImages from "./DockerImages.ts"
+import { DockerRegistryAuth, registryAuthHeader } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
 /**
@@ -61,7 +62,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  * - `args` are `set`'s `KEY=value` settings, applied before enabling; any
  *   of them can be `Redacted`.
  * - `disabled` leaves the plugin disabled.
- * - `auth` replaces the credential the `DockerEngine` resolves.
+ * - `auth` replaces the credential `DockerRegistryAuth` resolves.
  * - `timeout` is `enable`'s.
  *
  * @stability unstable
@@ -306,102 +307,105 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
 }>()("effect/docker/DockerPlugins") {}
 
 /**
- * Builds the {@link DockerPlugins} service over the `DockerEngine` in
- * context.
+ * Builds the {@link DockerPlugins} service over the `DockerEngine` and
+ * `DockerRegistryAuth` in context.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const engine = yield* DockerEngine
-  const api = yield* apiClient(engine, DockerApi.Plugins, "docker.Plugins")
+export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
+  function*() {
+    const engine = yield* DockerEngine
+    const registryAuth = yield* DockerRegistryAuth
+    const api = yield* apiClient(engine, DockerApi.Plugins, "docker.Plugins")
 
-  /** `X-Registry-Auth` for a plugin reference: the call's `auth`, otherwise the engine's credential. */
-  const registryAuthOf = (reference: string, auth: DockerConfig.Credential | undefined) =>
-    Effect.flatMap(
-      Effect.fromResult(DockerImages.parseReference(reference)),
-      ({ registry }) => registryAuth(engine, registry, auth)
-    )
+    /** `X-Registry-Auth` for a plugin reference: the call's `auth`, otherwise the resolved credential. */
+    const registryAuthOf = (reference: string, auth: DockerConfig.Credential | undefined) =>
+      Effect.flatMap(
+        Effect.fromResult(DockerImages.parseReference(reference)),
+        ({ registry }) => registryAuthHeader(registryAuth, registry, auth)
+      )
 
-  const privilegesOf: DockerPlugins["Service"]["privileges"] = (remote, options) =>
-    Effect.flatMap(
-      registryAuthOf(remote, options?.auth),
-      (auth) => api.privileges({ query: { remote }, headers: { "x-registry-auth": auth } })
-    ).pipe(withOperation(engine, "docker.Plugins.privileges", remote))
+    const privilegesOf: DockerPlugins["Service"]["privileges"] = (remote, options) =>
+      Effect.flatMap(
+        registryAuthOf(remote, options?.auth),
+        (auth) => api.privileges({ query: { remote }, headers: { "x-registry-auth": auth } })
+      ).pipe(withOperation(engine, "docker.Plugins.privileges", remote))
 
-  /** A pull's progress, and the name the plugin is installed as. */
-  const pullWith = (remote: string, options: Parameters<DockerPlugins["Service"]["pull"]>[1]) =>
-    Effect.flatMap(registryAuthOf(remote, options.auth), (auth) =>
-      Effect.map(
-        api.pull({
-          query: { remote, name: options.name },
-          headers: { "x-registry-auth": auth },
-          payload: options.privileges
-        }),
-        ({ body, headers }) => ({
-          name: headers["docker-plugin-name"] ?? options.name ?? remote,
-          progress: DockerImages.failOnError(body)
-        })
-      ))
-
-  const enable: DockerPlugins["Service"]["enable"] = (name, options) =>
-    api.enable({ params: { name }, query: { timeout: options?.timeout ?? 0 } })
-  const set: DockerPlugins["Service"]["set"] = (name, settings) => api.set({ params: { name }, payload: settings })
-  const remove: DockerPlugins["Service"]["remove"] = (name, options) =>
-    api.remove({ params: { name }, query: options ?? {} })
-  const pushStream: DockerPlugins["Service"]["pushStream"] = (name, options) =>
-    Stream.unwrap(Effect.map(
-      registryAuthOf(name, options?.auth),
-      (auth) => DockerImages.failOnError(api.push({ params: { name }, headers: { "x-registry-auth": auth } }))
-    )).pipe(withStreamOperation(engine, "docker.Plugins.pushStream", name))
-
-  return DockerPlugins.of({
-    list: (options) => api.list({ query: options ?? {} }),
-    inspect: (name) => api.inspect({ params: { name } }),
-    privileges: privilegesOf,
-    pull: (remote, options) =>
-      Stream.unwrap(Effect.map(pullWith(remote, options), ({ progress }) => progress)).pipe(
-        withStreamOperation(engine, "docker.Plugins.pull", remote)
-      ),
-    install: (remote, options) =>
-      Effect.gen(function*() {
-        const asked = yield* privilegesOf(remote, { auth: options.auth })
-        const accepted = yield* options.accept(asked)
-        const pulled = yield* pullWith(remote, { privileges: accepted, name: options.name, auth: options.auth })
-        yield* Effect.gen(function*() {
-          yield* Stream.runDrain(pulled.progress)
-          if (options.args !== undefined && options.args.length > 0) yield* set(pulled.name, options.args)
-          if (options.disabled !== true) yield* enable(pulled.name, { timeout: options.timeout })
-        }).pipe(
-          // nothing is left behind; a pull that failed installed nothing
-          Effect.onError(() => Effect.ignore(remove(pulled.name, { force: true })))
-        )
-        return pulled.name
-      }).pipe(Effect.withSpan("docker.Plugins.install", { attributes: { "docker.resource_id": remote } })),
-    upgrade: (name, remote, options) =>
-      Stream.unwrap(Effect.flatMap(registryAuthOf(remote, options.auth), (auth) =>
+    /** A pull's progress, and the name the plugin is installed as. */
+    const pullWith = (remote: string, options: Parameters<DockerPlugins["Service"]["pull"]>[1]) =>
+      Effect.flatMap(registryAuthOf(remote, options.auth), (auth) =>
         Effect.map(
-          api.upgrade({
-            params: { name },
-            query: { remote },
+          api.pull({
+            query: { remote, name: options.name },
             headers: { "x-registry-auth": auth },
             payload: options.privileges
           }),
-          ({ body }) => DockerImages.failOnError(body)
-        ))).pipe(withStreamOperation(engine, "docker.Plugins.upgrade", name)),
-    enable,
-    disable: (name, options) => api.disable({ params: { name }, query: options ?? {} }),
-    set,
-    create: (name, context) => api.create({ query: { name }, payload: context }),
-    pushStream,
-    push: (name, options) =>
-      DockerImages.pushResultOf(pushStream(name, options), "docker.Plugins.push").pipe(
-        withOperation(engine, "docker.Plugins.push", name)
-      ),
-    remove
-  })
-})
+          ({ body, headers }) => ({
+            name: headers["docker-plugin-name"] ?? options.name ?? remote,
+            progress: DockerImages.failOnError(body)
+          })
+        ))
+
+    const enable: DockerPlugins["Service"]["enable"] = (name, options) =>
+      api.enable({ params: { name }, query: { timeout: options?.timeout ?? 0 } })
+    const set: DockerPlugins["Service"]["set"] = (name, settings) => api.set({ params: { name }, payload: settings })
+    const remove: DockerPlugins["Service"]["remove"] = (name, options) =>
+      api.remove({ params: { name }, query: options ?? {} })
+    const pushStream: DockerPlugins["Service"]["pushStream"] = (name, options) =>
+      Stream.unwrap(Effect.map(
+        registryAuthOf(name, options?.auth),
+        (auth) => DockerImages.failOnError(api.push({ params: { name }, headers: { "x-registry-auth": auth } }))
+      )).pipe(withStreamOperation(engine, "docker.Plugins.pushStream", name))
+
+    return DockerPlugins.of({
+      list: (options) => api.list({ query: options ?? {} }),
+      inspect: (name) => api.inspect({ params: { name } }),
+      privileges: privilegesOf,
+      pull: (remote, options) =>
+        Stream.unwrap(Effect.map(pullWith(remote, options), ({ progress }) => progress)).pipe(
+          withStreamOperation(engine, "docker.Plugins.pull", remote)
+        ),
+      install: (remote, options) =>
+        Effect.gen(function*() {
+          const asked = yield* privilegesOf(remote, { auth: options.auth })
+          const accepted = yield* options.accept(asked)
+          const pulled = yield* pullWith(remote, { privileges: accepted, name: options.name, auth: options.auth })
+          yield* Effect.gen(function*() {
+            yield* Stream.runDrain(pulled.progress)
+            if (options.args !== undefined && options.args.length > 0) yield* set(pulled.name, options.args)
+            if (options.disabled !== true) yield* enable(pulled.name, { timeout: options.timeout })
+          }).pipe(
+            // nothing is left behind; a pull that failed installed nothing
+            Effect.onError(() => Effect.ignore(remove(pulled.name, { force: true })))
+          )
+          return pulled.name
+        }).pipe(Effect.withSpan("docker.Plugins.install", { attributes: { "docker.resource_id": remote } })),
+      upgrade: (name, remote, options) =>
+        Stream.unwrap(Effect.flatMap(registryAuthOf(remote, options.auth), (auth) =>
+          Effect.map(
+            api.upgrade({
+              params: { name },
+              query: { remote },
+              headers: { "x-registry-auth": auth },
+              payload: options.privileges
+            }),
+            ({ body }) => DockerImages.failOnError(body)
+          ))).pipe(withStreamOperation(engine, "docker.Plugins.upgrade", name)),
+      enable,
+      disable: (name, options) => api.disable({ params: { name }, query: options ?? {} }),
+      set,
+      create: (name, context) => api.create({ query: { name }, payload: context }),
+      pushStream,
+      push: (name, options) =>
+        DockerImages.pushResultOf(pushStream(name, options), "docker.Plugins.push").pipe(
+          withOperation(engine, "docker.Plugins.push", name)
+        ),
+      remove
+    })
+  }
+)
 
 /**
  * Provides {@link DockerPlugins} over the `DockerEngine` in context, built
@@ -411,4 +415,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine> 
  * @category layers
  * @since 4.0.6
  */
-export const layer: Layer.Layer<DockerPlugins, never, DockerEngine> = Layer.effect(DockerPlugins, make)
+export const layer: Layer.Layer<DockerPlugins, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
+  DockerPlugins,
+  make
+)

@@ -1,7 +1,7 @@
 import { NodeDocker, NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Queue, Redacted } from "effect"
-import { DockerConfig, DockerEngine } from "effect/docker"
+import { DockerConfig, DockerEngine, DockerRegistryAuth } from "effect/docker"
 import { HttpClientRequest } from "effect/http"
 import * as Fs from "node:fs"
 import * as Http from "node:http"
@@ -187,8 +187,8 @@ esac
           })
       )
       const [ghcr, other] = yield* Effect.gen(function*() {
-        const engine = yield* DockerEngine.DockerEngine
-        return yield* Effect.all([engine.credential("ghcr.io"), engine.credential("quay.io")])
+        const registryAuth = yield* DockerRegistryAuth.DockerRegistryAuth
+        return yield* Effect.all([registryAuth.credential("ghcr.io"), registryAuth.credential("quay.io")])
       }).pipe(Effect.provide(NodeDocker.layer.pipe(Layer.provide(DockerConfig.layer({ credsStore: "test" })))))
       assert.strictEqual(ghcr?.username, "helper-user")
       assert.strictEqual(ghcr?.password && Redacted.value(ghcr.password), "helper-secret")
