@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Logger,
+  Option,
+  Result,
+  type Scope,
+  Semaphore,
+  Stream
+} from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
@@ -617,4 +631,134 @@ describe("SqlClient", () => {
         assert.isFalse(calls.includes("invalidate(dropped)"))
       }))
   })
+})
+
+const querySchema = {
+  version: 2,
+  dialect: "sqlite",
+  tables: {
+    users: {
+      id: { INTEGER: null },
+      name: { TEXT: null },
+      email: { TEXT: null, NULL: null },
+      age: { INTEGER: null }
+    }
+  }
+}
+
+class QueryDatabase
+  extends SqlClient.Service<QueryDatabase>()("test/SqlClient/QueryDatabase", { schema: querySchema })
+{}
+
+const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
+  SqlClient.make({
+    driver: "test",
+    acquirer: Effect.die("Compilation must not acquire a connection"),
+    compiler,
+    spanAttributes: []
+  }).pipe(Effect.provide(Reactivity.layer))
+
+const queryLayer = QueryDatabase.layer.pipe(
+  Layer.provide(Layer.effect(SqlClient.SqlClient, makeQueryClient()))
+)
+
+describe("SqlClient.Service", () => {
+  it.effect("binds every named occurrence in SQL order", () =>
+    Effect.gen(function*() {
+      const query = yield* QueryDatabase
+      const name = "' OR 1=1 --"
+      const statement = query(
+        "SELECT id FROM users WHERE name = :name AND id = :id AND age > :id",
+        { id: 1, name }
+      )
+
+      assert.deepStrictEqual(statement.compile(), [
+        "SELECT id FROM users WHERE name = ? AND id = ? AND age > ?",
+        [name, 1, 1]
+      ])
+      assert.deepStrictEqual(query("SELECT email FROM users WHERE email = :email", { email: null }).compile(), [
+        "SELECT email FROM users WHERE email = ?",
+        [null]
+      ])
+    }).pipe(Effect.provide(queryLayer)))
+
+  it.effect("validates the schema when the database layer is built", () =>
+    Effect.gen(function*() {
+      const invalid: Array<unknown> = [
+        { ...querySchema, version: 1 },
+        { ...querySchema, dialect: "pg" },
+        { ...querySchema, tables: { users: { id: { INTEGER: null, TEXT: null } } } },
+        { ...querySchema, tables: { users: { id: { ANY: null } } } }
+      ]
+      for (const value of invalid) {
+        class InvalidDatabase extends SqlClient.Service<InvalidDatabase>()("test/InvalidDatabase", {
+          schema: value as typeof querySchema
+        }) {}
+        const exit = yield* InvalidDatabase.pipe(
+          Effect.provide(InvalidDatabase.layer),
+          Effect.provideServiceEffect(SqlClient.SqlClient, makeQueryClient()),
+          Effect.exit
+        )
+        assert(Exit.isFailure(exit))
+        const defect = Cause.findDefect(exit.cause)
+        assert(Result.isSuccess(defect))
+        assert.instanceOf(defect.success, TypeError)
+      }
+    }))
+
+  it.effect("uses the database provided in the current scope", () =>
+    Effect.gen(function*() {
+      const first = yield* makeClient()
+      const second = yield* makeClient()
+      const firstQuery = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
+        Effect.provideService(SqlClient.SqlClient, first.sql)
+      )
+      const secondQuery = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
+        Effect.provideService(SqlClient.SqlClient, second.sql)
+      )
+      const select = QueryDatabase.use((sql) => sql("SELECT id FROM users"))
+      yield* Effect.gen(function*() {
+        yield* select
+        yield* select.pipe(Effect.provideService(QueryDatabase, secondQuery))
+        yield* select
+      }).pipe(Effect.provideService(QueryDatabase, firstQuery))
+      assert.deepStrictEqual(first.calls, [
+        "prepared(SELECT id FROM users)",
+        "release",
+        "prepared(SELECT id FROM users)",
+        "release"
+      ])
+      assert.deepStrictEqual(second.calls, ["prepared(SELECT id FROM users)", "release"])
+    }))
+
+  it.effect("requires a SQLite client", () =>
+    Effect.gen(function*() {
+      const client = yield* makeQueryClient(Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: () => ["", []]
+      }))
+      const exit = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
+        Effect.provideService(SqlClient.SqlClient, client),
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.include(Cause.pretty(exit.cause), "requires a SQLite client")
+    }))
+
+  it.effect("rejects inherited or missing parameter values from untyped callers", () =>
+    Effect.gen(function*() {
+      const query = yield* QueryDatabase
+      const text = "SELECT id FROM users WHERE id = :id"
+      assert.throws(() => Reflect.apply(query, undefined, [text]), /Missing SQL parameter :id/)
+      assert.throws(
+        () => Reflect.apply(query, undefined, [text, Object.create({ id: 1 })]),
+        /Missing SQL parameter :id/
+      )
+    }).pipe(Effect.provide(queryLayer)))
 })

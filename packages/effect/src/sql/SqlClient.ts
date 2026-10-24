@@ -15,6 +15,9 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import * as query from "../internal/sqlQuery.ts"
+import type * as querySchema from "../internal/sqlQuerySchema.ts"
+import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -171,6 +174,95 @@ export interface SqlClient extends Constructor {
  * @since 4.0.0
  */
 export const SqlClient = Context.Service<SqlClient>("effect/sql/SqlClient")
+
+/**
+ * JSON snapshot shape accepted by `Service`, with table names, column names,
+ * SQLite types, and nullability encoded as object keys to preserve inference
+ * through a native JSON import.
+ *
+ * **Details**
+ *
+ * Pass the imported snapshot as the service's `schema` option to retain its
+ * specific keys. A column such as `{ TEXT: null, NULL: null }` represents
+ * `string | null`; the marker values are not row data or defaults.
+ *
+ * @see Service
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type QuerySchema = querySchema.Snapshot
+
+/**
+ * Query constructor that infers selected fields and named parameter types from
+ * a schema snapshot and a SQL string literal, returning an executable SQL
+ * `Statement`.
+ *
+ * @see Service
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>>
+
+/**
+ * Defines a database service whose query constructor checks SQL string literals
+ * and infers result and parameter types from an imported JSON schema snapshot.
+ *
+ * **Details**
+ *
+ * Extend `SqlClient.Service<Database>()("Database", { schema })` to declare the
+ * service, then use `yield* Database` to access its query constructor. Query
+ * code requires only `Database`. Its `layer` requires `SqlClient` and binds the
+ * snapshot to that client when the layer is built. Provide a driver layer to
+ * supply the connection and manage its lifetime.
+ *
+ * Call the resulting constructor with parentheses and use `:name` placeholders
+ * with a parameter object. Values are bound in SQL occurrence order. Supports
+ * `SELECT`, projections, `AS` aliases, `DISTINCT`, table aliases, and
+ * `INNER`/`LEFT`/`RIGHT`/`FULL`/`CROSS JOIN`. Non-cross joins require `ON`.
+ * Comparisons of a column to another column or a named parameter can use `AND`;
+ * `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET` are also supported.
+ * Outer joins make the unmatched side's columns nullable. Ambiguous column
+ * references and duplicate result names require explicit qualification or aliases.
+ * Unsupported query patterns, dynamic strings, and unions of query literals
+ * produce type errors.
+ *
+ * **Gotchas**
+ *
+ * Requires a version 2 SQLite snapshot. Invalid snapshots or other dialects
+ * fail layer construction with a defect. Only `STRICT` tables with ordinary
+ * `INT`, `INTEGER`, `REAL`, and `TEXT` columns are supported. Generated columns
+ * and `BLOB` values are not supported. Identifier spelling must match the snapshot.
+ * Column references named like SQL literals, such as `null` or `current_date`,
+ * require quoted identifiers and are rejected by this grammar.
+ * Row-name transforms are disabled, numeric decoding must use the driver's
+ * defaults, and predicates do not narrow result nullability. `NATURAL JOIN`,
+ * `USING`, subqueries, and expressions are outside this grammar. The caller
+ * must keep the snapshot in sync with the runtime database.
+ * SQLite performs final syntax validation; the type parser does not reject
+ * unquoted keyword aliases.
+ * Existing tagged-template queries and SQL client helpers remain available
+ * through the separate `SqlClient` service.
+ *
+ * @see QuerySchema
+ * @see Query
+ * @stability experimental
+ * @category services
+ * @since 4.0.0
+ */
+export const Service = <Self>() =>
+<const Id extends string, S extends QuerySchema>(
+  id: Id,
+  options: { readonly schema: S }
+): Context.ServiceClass<Self, Id, Query<S>> & {
+  readonly layer: Layer.Layer<Self, never, SqlClient>
+} => {
+  const service = Context.Service<Self, Query<S>>()(id)
+  return Object.assign(service, {
+    layer: Layer.effect(service, Effect.map(SqlClient, (client) => query.makeQuery(client, options.schema)))
+  })
+}
 
 /**
  * Namespace containing types associated with the `SqlClient` service.

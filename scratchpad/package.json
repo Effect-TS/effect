@@ -3,6 +3,12 @@
   "private": true,
   "type": "module",
   "version": "0.0.0",
+  "scripts": {
+    "sql:snapshot": "node sql-typesafe/snapshot.ts",
+    "sql:check": "pnpm --workspace-root exec tsc -b packages/effect packages/platform/node packages/sql/sqlite-node && tsc -p sql-typesafe",
+    "sql:demo": "node sql-typesafe/main.ts",
+    "sql:verify": "pnpm sql:check && node sql-typesafe/verify.ts"
+  },
   "dependencies": {
     "@effect/ai-anthropic": "workspace:*",
     "@effect/ai-openai": "workspace:*",
@@ -24,5 +30,8 @@
     "@effect/sql-sqlite-react-native": "workspace:*",
     "@effect/sql-sqlite-wasm": "workspace:*",
     "effect": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "7.1.0-beta"
   }
 }
