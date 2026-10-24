@@ -545,6 +545,41 @@ describe("HttpApiClient", () => {
         >
       >()
     })
+
+    it("infers payload services only from the payload argument", () => {
+      type Item = { readonly n: number }
+
+      const Item = hole<Schema.Codec<Item, Item, never, "ItemEncoding">>()
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: Schema.String
+              }),
+              HttpApiEndpoint.post("ndjson", "/ndjson", {
+                payload: HttpApiSchema.StreamNdjson({ schema: Item })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(
+        Effect.all([
+          client.group.a(),
+          client.group.ndjson({ payload: hole<Stream.Stream<Item, "ItemError", "ItemSource">>() })
+        ])
+      ).type.toBe<
+        Effect.Effect<
+          [string, void],
+          HttpClientError.HttpClientError | Schema.SchemaError,
+          "ItemSource" | "ItemEncoding"
+        >
+      >()
+      expect<Effect.Services<ReturnType<typeof client.group.a>>>().type.toBe<never>()
+    })
   })
 
   describe("success", () => {

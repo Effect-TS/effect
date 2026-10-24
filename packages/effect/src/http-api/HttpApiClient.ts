@@ -230,7 +230,14 @@ export declare namespace Client {
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
     R
-  > = <Mode extends ResponseMode = "decoded-only", PayloadR = never>(
+  > = <
+    Mode extends ResponseMode = "decoded-only",
+    PayloadR extends (
+      [Extract<Endpoint["~Payload"], HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<any>>] extends [never]
+        ? never :
+        unknown
+    ) = never
+  >(
     request: Simplify<
       HttpApiEndpoint.ClientRequest<
         Endpoint["~Params"],
@@ -241,7 +248,7 @@ export declare namespace Client {
         PayloadR
       >
     >
-  ) => MethodReturn<Endpoint, E, R, Mode, PayloadR>
+  ) => MethodReturn<Endpoint, E, R, Mode, NoInfer<PayloadR>>
 
   /**
    * Extracts client methods for endpoints in top-level groups so they can be exposed
