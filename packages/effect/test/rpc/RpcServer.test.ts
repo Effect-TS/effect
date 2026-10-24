@@ -476,12 +476,19 @@ describe("RpcServer", () => {
       yield* server.write(1, request("3", "throwsStream"))
       const summarize = (message: RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>) =>
         message._tag === "Exit"
-          ? [message.requestId, Exit.isSuccess(message.exit) ? message.exit.value : Cause.squash(message.exit.cause)]
+          ? [
+            message.requestId,
+            Exit.isSuccess(message.exit)
+              ? ["Success", message.exit.value]
+              : message.exit.cause.reasons.map((reason) =>
+                Cause.isDieReason(reason) ? ["Die", reason.defect] : [reason._tag]
+              )
+          ]
           : [message._tag]
-      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["2", "boom"])
-      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["3", "boom stream"])
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["2", [["Die", "boom"]]])
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["3", [["Die", "boom stream"]]])
       yield* Deferred.succeed(release, undefined)
-      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["1", "served"])
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["1", ["Success", "served"]])
     }))
 
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
