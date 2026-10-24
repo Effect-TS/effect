@@ -9,7 +9,9 @@
  * 3. apply the hand-written patches from `codegen.yaml`, then the computed
  *    patch families (`Patches.standing`);
  * 4. generate a Schema for every `components.schemas` entry, write the file and
- *    format it with dprint.
+ *    format it with dprint;
+ * 5. write the manifest of the document's operations (`Manifest`), which
+ *    `effect/docker`'s conformance test checks `DockerApi` against.
  *
  * Run it on purpose, never during the build:
  *
@@ -34,6 +36,7 @@ import * as Stream from "effect/Stream"
 import SwaggerToOpenApi from "swagger2openapi"
 import { CodegenConfig } from "./Config.ts"
 import * as Generate from "./Generate.ts"
+import * as Manifest from "./Manifest.ts"
 import * as Patches from "./Patches.ts"
 
 const configFile = new URL("../codegen.yaml", import.meta.url)
@@ -67,6 +70,28 @@ const applyPatch = (document: Patches.Node, name: string, patch: JsonPatch.JsonP
 }
 
 /**
+ * Writes `source` to `output`, formatted with dprint. dprint skips paths below
+ * dot-directories, so it formats stdin; only on success, because a failing
+ * `pnpm` prints its error on stdout.
+ */
+const writeFormatted = Effect.fnUntraced(function*(output: string, source: string, cwd: string) {
+  const fs = yield* FileSystem.FileSystem
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+  yield* fs.writeFileString(output, source)
+  const [formatted, exitCode] = yield* Effect.scoped(Effect.flatMap(
+    spawner.spawn(ChildProcess.make("pnpm", ["exec", "dprint", "fmt", "--stdin", output], {
+      stdin: Stream.make(new TextEncoder().encode(source)),
+      cwd
+    })),
+    (handle) => Effect.all([Stream.mkString(Stream.decodeText(handle.stdout)), handle.exitCode], { concurrency: 2 })
+  ))
+  if (exitCode !== 0) {
+    return yield* Effect.die(new Error(`dprint exited with ${exitCode}:\n${formatted}`))
+  }
+  yield* fs.writeFileString(output, formatted)
+})
+
+/**
  * Runs the codegen pipeline.
  *
  * @category entry points
@@ -97,23 +122,12 @@ export const run = Effect.gen(function*() {
     patched = applyPatch(patched, family.name, patch)
   }
 
-  const source = Generate.generate(patched, config)
   const output = path.resolve(path.dirname(configPath), config.output)
-  yield* fs.writeFileString(output, source)
-
-  // format in place; dprint skips paths below dot-directories, so use stdin
-  // (only on success: a failing `pnpm` prints its error on stdout)
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const [formatted, exitCode] = yield* Effect.scoped(Effect.flatMap(
-    spawner.spawn(ChildProcess.make("pnpm", ["exec", "dprint", "fmt", "--stdin", output], {
-      stdin: Stream.make(new TextEncoder().encode(source)),
-      cwd: path.dirname(configPath)
-    })),
-    (handle) => Effect.all([Stream.mkString(Stream.decodeText(handle.stdout)), handle.exitCode], { concurrency: 2 })
-  ))
-  if (exitCode !== 0) {
-    return yield* Effect.die(new Error(`dprint exited with ${exitCode}:\n${formatted}`))
-  }
-  yield* fs.writeFileString(output, formatted)
+  yield* writeFormatted(output, Generate.generate(patched, config), path.dirname(configPath))
   yield* Console.log(`Wrote ${output}`)
+
+  const manifest = path.resolve(path.dirname(configPath), config.manifest)
+  const operations = Manifest.make(patched, { apiVersion: config.apiVersion, spec: config.spec })
+  yield* writeFormatted(manifest, JSON.stringify(operations, null, 2) + "\n", path.dirname(configPath))
+  yield* Console.log(`Wrote ${manifest}`)
 })

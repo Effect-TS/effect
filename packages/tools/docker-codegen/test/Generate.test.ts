@@ -21,6 +21,7 @@ const config = {
   spec: "",
   apiVersion: "1.56",
   output: "",
+  manifest: "",
   header: "/** @since 4.0.6 */",
   since: "4.0.6",
   patches: [],

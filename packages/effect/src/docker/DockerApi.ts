@@ -444,6 +444,7 @@ const NoBody = Schema.Void.pipe(
  */
 export const System = HttpApiGroup.make("system").add(
   HttpApiEndpoint.get("ping", "/_ping", { success: Ping }),
+  HttpApiEndpoint.head("pingHead", "/_ping", { success: Ping }),
   HttpApiEndpoint.get("version", "/version", { success: Schema.toCodecGoJson(DockerSchema.SystemVersion) }),
   HttpApiEndpoint.get("info", "/info", { success: Schema.toCodecGoJson(DockerSchema.SystemInfo) }),
   HttpApiEndpoint.get("events", "/events", {
@@ -727,10 +728,10 @@ export const Containers = HttpApiGroup.make("containers").add(
   HttpApiEndpoint.post("attach", "/containers/:id/attach", {
     params: id,
     query: {
-      stream: Schema.Literal(true),
-      stdin: Schema.Boolean,
-      stdout: Schema.Boolean,
-      stderr: Schema.Boolean,
+      stream: Schema.optional(Schema.Boolean),
+      stdin: Schema.optional(Schema.Boolean),
+      stdout: Schema.optional(Schema.Boolean),
+      stderr: Schema.optional(Schema.Boolean),
       logs: Schema.optional(Schema.Boolean),
       detachKeys: Schema.optional(Schema.String)
     },
@@ -1001,7 +1002,11 @@ const buildFields = {
   cpuSetCpus: Schema.optional(Schema.String),
   cpuPeriod: Schema.optional(Schema.Number),
   cpuQuota: Schema.optional(Schema.Number),
-  squash: Schema.optional(Schema.Boolean)
+  squash: Schema.optional(Schema.Boolean),
+  outputs: Schema.optional(Schema.fromJsonString(Schema.Array(Schema.Struct({
+    Type: Schema.String,
+    Attrs: Schema.optionalKey(Schema.Record(Schema.String, Schema.String))
+  }))))
 }
 
 const buildKeys = {
@@ -1127,7 +1132,8 @@ export const Images = HttpApiGroup.make("images").add(
     success: tar
   }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
   HttpApiEndpoint.get("saveAll", "/images/get", {
-    query: { names: Schema.Array(Schema.String), platform: Schema.optional(Platforms) },
+    // without names, an archive of no images
+    query: { names: Schema.optional(Schema.Array(Schema.String)), platform: Schema.optional(Platforms) },
     success: tar
   }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
   HttpApiEndpoint.post("load", "/images/load", {

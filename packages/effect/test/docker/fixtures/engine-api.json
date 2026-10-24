@@ -1,0 +1,2072 @@
+{
+  "apiVersion": "1.56",
+  "spec": "https://raw.githubusercontent.com/moby/moby/475c34abbab8e8b7ad45887b46a7bac89b2cea7c/api/swagger.yaml",
+  "operations": [
+    {
+      "operationId": "SystemPing",
+      "method": "GET",
+      "path": "/_ping",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "SystemPingHead",
+      "method": "HEAD",
+      "path": "/_ping",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "SystemAuth",
+      "method": "POST",
+      "path": "/auth",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200,
+        204
+      ],
+      "errors": [
+        401,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageBuild",
+      "method": "POST",
+      "path": "/build",
+      "query": [
+        "buildargs",
+        "cachefrom",
+        "cpuperiod",
+        "cpuquota",
+        "cpusetcpus",
+        "cpushares",
+        "dockerfile",
+        "extrahosts",
+        "forcerm",
+        "labels",
+        "memory",
+        "memswap",
+        "networkmode",
+        "nocache",
+        "outputs",
+        "platform",
+        "pull",
+        "q",
+        "remote",
+        "rm",
+        "shmsize",
+        "squash",
+        "t",
+        "target",
+        "version"
+      ],
+      "required": [],
+      "headers": [
+        "content-type",
+        "x-registry-config"
+      ],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500
+      ]
+    },
+    {
+      "operationId": "BuildPrune",
+      "method": "POST",
+      "path": "/build/prune",
+      "query": [
+        "all",
+        "filters",
+        "max-used-space",
+        "min-free-space",
+        "reserved-space"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImageCommit",
+      "method": "POST",
+      "path": "/commit",
+      "query": [
+        "author",
+        "changes",
+        "comment",
+        "container",
+        "pause",
+        "repo",
+        "tag"
+      ],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ConfigList",
+      "method": "GET",
+      "path": "/configs",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ConfigDelete",
+      "method": "DELETE",
+      "path": "/configs/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ConfigInspect",
+      "method": "GET",
+      "path": "/configs/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ConfigUpdate",
+      "method": "POST",
+      "path": "/configs/:id/update",
+      "query": [
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ConfigCreate",
+      "method": "POST",
+      "path": "/configs/create",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        409,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ContainerDelete",
+      "method": "DELETE",
+      "path": "/containers/:id",
+      "query": [
+        "force",
+        "link",
+        "v"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        400,
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerArchive",
+      "method": "GET",
+      "path": "/containers/:id/archive",
+      "query": [
+        "path"
+      ],
+      "required": [
+        "path"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerArchiveInfo",
+      "method": "HEAD",
+      "path": "/containers/:id/archive",
+      "query": [
+        "path"
+      ],
+      "required": [
+        "path"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PutContainerArchive",
+      "method": "PUT",
+      "path": "/containers/:id/archive",
+      "query": [
+        "copyUIDGID",
+        "noOverwriteDirNonDir",
+        "path"
+      ],
+      "required": [
+        "path"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        403,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerAttach",
+      "method": "POST",
+      "path": "/containers/:id/attach",
+      "query": [
+        "detachKeys",
+        "logs",
+        "stderr",
+        "stdin",
+        "stdout",
+        "stream"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        101,
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerAttachWebsocket",
+      "method": "GET",
+      "path": "/containers/:id/attach/ws",
+      "query": [
+        "detachKeys",
+        "logs",
+        "stderr",
+        "stdin",
+        "stdout",
+        "stream"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        101,
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerChanges",
+      "method": "GET",
+      "path": "/containers/:id/changes",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerExec",
+      "method": "POST",
+      "path": "/containers/:id/exec",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerExport",
+      "method": "GET",
+      "path": "/containers/:id/export",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerInspect",
+      "method": "GET",
+      "path": "/containers/:id/json",
+      "query": [
+        "size"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerKill",
+      "method": "POST",
+      "path": "/containers/:id/kill",
+      "query": [
+        "signal"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerLogs",
+      "method": "GET",
+      "path": "/containers/:id/logs",
+      "query": [
+        "follow",
+        "since",
+        "stderr",
+        "stdout",
+        "tail",
+        "timestamps",
+        "until"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerPause",
+      "method": "POST",
+      "path": "/containers/:id/pause",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerRename",
+      "method": "POST",
+      "path": "/containers/:id/rename",
+      "query": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerResize",
+      "method": "POST",
+      "path": "/containers/:id/resize",
+      "query": [
+        "h",
+        "w"
+      ],
+      "required": [
+        "h",
+        "w"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerRestart",
+      "method": "POST",
+      "path": "/containers/:id/restart",
+      "query": [
+        "signal",
+        "t"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerStart",
+      "method": "POST",
+      "path": "/containers/:id/start",
+      "query": [
+        "detachKeys"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204,
+        304
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerStats",
+      "method": "GET",
+      "path": "/containers/:id/stats",
+      "query": [
+        "one-shot",
+        "stream"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerStop",
+      "method": "POST",
+      "path": "/containers/:id/stop",
+      "query": [
+        "signal",
+        "t"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204,
+        304
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerTop",
+      "method": "GET",
+      "path": "/containers/:id/top",
+      "query": [
+        "ps_args"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerUnpause",
+      "method": "POST",
+      "path": "/containers/:id/unpause",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerUpdate",
+      "method": "POST",
+      "path": "/containers/:id/update",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerWait",
+      "method": "POST",
+      "path": "/containers/:id/wait",
+      "query": [
+        "condition"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerCreate",
+      "method": "POST",
+      "path": "/containers/create",
+      "query": [
+        "name",
+        "platform"
+      ],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        400,
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerList",
+      "method": "GET",
+      "path": "/containers/json",
+      "query": [
+        "all",
+        "filters",
+        "limit",
+        "size"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500
+      ]
+    },
+    {
+      "operationId": "ContainerPrune",
+      "method": "POST",
+      "path": "/containers/prune",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "DistributionInspect",
+      "method": "GET",
+      "path": "/distribution/:name/json",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        401,
+        500
+      ]
+    },
+    {
+      "operationId": "SystemEvents",
+      "method": "GET",
+      "path": "/events",
+      "query": [
+        "filters",
+        "since",
+        "until"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500
+      ]
+    },
+    {
+      "operationId": "ExecInspect",
+      "method": "GET",
+      "path": "/exec/:id/json",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ExecResize",
+      "method": "POST",
+      "path": "/exec/:id/resize",
+      "query": [
+        "h",
+        "w"
+      ],
+      "required": [
+        "h",
+        "w"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ExecStart",
+      "method": "POST",
+      "path": "/exec/:id/start",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        409
+      ]
+    },
+    {
+      "operationId": "ImageDelete",
+      "method": "DELETE",
+      "path": "/images/:name",
+      "query": [
+        "force",
+        "noprune",
+        "platforms"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageAttestations",
+      "method": "GET",
+      "path": "/images/:name/attestations",
+      "query": [
+        "platform",
+        "statement",
+        "type"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        501
+      ]
+    },
+    {
+      "operationId": "ImageGet",
+      "method": "GET",
+      "path": "/images/:name/get",
+      "query": [
+        "platform"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImageHistory",
+      "method": "GET",
+      "path": "/images/:name/history",
+      "query": [
+        "platform"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageInspect",
+      "method": "GET",
+      "path": "/images/:name/json",
+      "query": [
+        "manifests",
+        "platform"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ImagePush",
+      "method": "POST",
+      "path": "/images/:name/push",
+      "query": [
+        "platform",
+        "tag"
+      ],
+      "required": [],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageTag",
+      "method": "POST",
+      "path": "/images/:name/tag",
+      "query": [
+        "repo",
+        "tag"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        201
+      ],
+      "errors": [
+        400,
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageCreate",
+      "method": "POST",
+      "path": "/images/create",
+      "query": [
+        "changes",
+        "fromImage",
+        "fromSrc",
+        "message",
+        "platform",
+        "repo",
+        "tag"
+      ],
+      "required": [],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "ImageGetAll",
+      "method": "GET",
+      "path": "/images/get",
+      "query": [
+        "names",
+        "platform"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImageList",
+      "method": "GET",
+      "path": "/images/json",
+      "query": [
+        "all",
+        "digests",
+        "filters",
+        "identity",
+        "manifests",
+        "shared-size"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImageLoad",
+      "method": "POST",
+      "path": "/images/load",
+      "query": [
+        "platform",
+        "quiet"
+      ],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImagePrune",
+      "method": "POST",
+      "path": "/images/prune",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "ImageSearch",
+      "method": "GET",
+      "path": "/images/search",
+      "query": [
+        "filters",
+        "limit",
+        "term"
+      ],
+      "required": [
+        "term"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "SystemInfo",
+      "method": "GET",
+      "path": "/info",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkList",
+      "method": "GET",
+      "path": "/networks",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkDelete",
+      "method": "DELETE",
+      "path": "/networks/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        403,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkInspect",
+      "method": "GET",
+      "path": "/networks/:id",
+      "query": [
+        "scope",
+        "verbose"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkConnect",
+      "method": "POST",
+      "path": "/networks/:id/connect",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        403,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkDisconnect",
+      "method": "POST",
+      "path": "/networks/:id/disconnect",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        403,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkCreate",
+      "method": "POST",
+      "path": "/networks/create",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        400,
+        403,
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "NetworkPrune",
+      "method": "POST",
+      "path": "/networks/prune",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "NodeList",
+      "method": "GET",
+      "path": "/nodes",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "NodeDelete",
+      "method": "DELETE",
+      "path": "/nodes/:id",
+      "query": [
+        "force"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "NodeInspect",
+      "method": "GET",
+      "path": "/nodes/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "NodeUpdate",
+      "method": "POST",
+      "path": "/nodes/:id/update",
+      "query": [
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "PluginList",
+      "method": "GET",
+      "path": "/plugins",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "PluginDelete",
+      "method": "DELETE",
+      "path": "/plugins/:name",
+      "query": [
+        "force"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginDisable",
+      "method": "POST",
+      "path": "/plugins/:name/disable",
+      "query": [
+        "force"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginEnable",
+      "method": "POST",
+      "path": "/plugins/:name/enable",
+      "query": [
+        "timeout"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginInspect",
+      "method": "GET",
+      "path": "/plugins/:name/json",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginPush",
+      "method": "POST",
+      "path": "/plugins/:name/push",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginSet",
+      "method": "POST",
+      "path": "/plugins/:name/set",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginUpgrade",
+      "method": "POST",
+      "path": "/plugins/:name/upgrade",
+      "query": [
+        "remote"
+      ],
+      "required": [
+        "remote"
+      ],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": true,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "PluginCreate",
+      "method": "POST",
+      "path": "/plugins/create",
+      "query": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        204
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "GetPluginPrivileges",
+      "method": "GET",
+      "path": "/plugins/privileges",
+      "query": [
+        "remote"
+      ],
+      "required": [
+        "remote"
+      ],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "PluginPull",
+      "method": "POST",
+      "path": "/plugins/pull",
+      "query": [
+        "name",
+        "remote"
+      ],
+      "required": [
+        "remote"
+      ],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": true,
+      "success": [
+        204
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "SecretList",
+      "method": "GET",
+      "path": "/secrets",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SecretDelete",
+      "method": "DELETE",
+      "path": "/secrets/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SecretInspect",
+      "method": "GET",
+      "path": "/secrets/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SecretUpdate",
+      "method": "POST",
+      "path": "/secrets/:id/update",
+      "query": [
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SecretCreate",
+      "method": "POST",
+      "path": "/secrets/create",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        409,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceList",
+      "method": "GET",
+      "path": "/services",
+      "query": [
+        "filters",
+        "status"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceDelete",
+      "method": "DELETE",
+      "path": "/services/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceInspect",
+      "method": "GET",
+      "path": "/services/:id",
+      "query": [
+        "insertDefaults"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceLogs",
+      "method": "GET",
+      "path": "/services/:id/logs",
+      "query": [
+        "details",
+        "follow",
+        "since",
+        "stderr",
+        "stdout",
+        "tail",
+        "timestamps"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceUpdate",
+      "method": "POST",
+      "path": "/services/:id/update",
+      "query": [
+        "registryAuthFrom",
+        "rollback",
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "ServiceCreate",
+      "method": "POST",
+      "path": "/services/create",
+      "query": [],
+      "required": [],
+      "headers": [
+        "x-registry-auth"
+      ],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        400,
+        403,
+        409,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "Session",
+      "method": "POST",
+      "path": "/session",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        101
+      ],
+      "errors": [
+        400,
+        500
+      ]
+    },
+    {
+      "operationId": "SwarmInspect",
+      "method": "GET",
+      "path": "/swarm",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmInit",
+      "method": "POST",
+      "path": "/swarm/init",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmJoin",
+      "method": "POST",
+      "path": "/swarm/join",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmLeave",
+      "method": "POST",
+      "path": "/swarm/leave",
+      "query": [
+        "force"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmUnlock",
+      "method": "POST",
+      "path": "/swarm/unlock",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmUnlockkey",
+      "method": "GET",
+      "path": "/swarm/unlockkey",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SwarmUpdate",
+      "method": "POST",
+      "path": "/swarm/update",
+      "query": [
+        "rotateManagerToken",
+        "rotateManagerUnlockKey",
+        "rotateWorkerToken",
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SystemDataUsage",
+      "method": "GET",
+      "path": "/system/df",
+      "query": [
+        "type",
+        "verbose"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "TaskList",
+      "method": "GET",
+      "path": "/tasks",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "TaskInspect",
+      "method": "GET",
+      "path": "/tasks/:id",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "TaskLogs",
+      "method": "GET",
+      "path": "/tasks/:id/logs",
+      "query": [
+        "details",
+        "follow",
+        "since",
+        "stderr",
+        "stdout",
+        "tail",
+        "timestamps"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "SystemVersion",
+      "method": "GET",
+      "path": "/version",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "VolumeList",
+      "method": "GET",
+      "path": "/volumes",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "VolumeDelete",
+      "method": "DELETE",
+      "path": "/volumes/:name",
+      "query": [
+        "force"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        204
+      ],
+      "errors": [
+        404,
+        409,
+        500
+      ]
+    },
+    {
+      "operationId": "VolumeInspect",
+      "method": "GET",
+      "path": "/volumes/:name",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        404,
+        500
+      ]
+    },
+    {
+      "operationId": "VolumeUpdate",
+      "method": "PUT",
+      "path": "/volumes/:name",
+      "query": [
+        "version"
+      ],
+      "required": [
+        "version"
+      ],
+      "headers": [],
+      "body": true,
+      "success": [
+        200
+      ],
+      "errors": [
+        400,
+        404,
+        500,
+        503
+      ]
+    },
+    {
+      "operationId": "VolumeCreate",
+      "method": "POST",
+      "path": "/volumes/create",
+      "query": [],
+      "required": [],
+      "headers": [],
+      "body": true,
+      "success": [
+        201
+      ],
+      "errors": [
+        500
+      ]
+    },
+    {
+      "operationId": "VolumePrune",
+      "method": "POST",
+      "path": "/volumes/prune",
+      "query": [
+        "filters"
+      ],
+      "required": [],
+      "headers": [],
+      "body": false,
+      "success": [
+        200
+      ],
+      "errors": [
+        500
+      ]
+    }
+  ]
+}

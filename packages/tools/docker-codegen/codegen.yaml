@@ -3,11 +3,13 @@
 # To bump the pin, point `spec` at a newer moby commit, update `apiVersion` (our maximum API
 # version), regenerate from the repository root, review the diff, add version gates for new
 # request options, check that no field became required since the minimum API version (1.44),
-# and re-capture the test fixtures:
+# and declare what packages/effect/test/docker/DockerApi.test.ts reports as new in the manifest:
 #   node packages/tools/docker-codegen/src/bin.ts
 spec: https://raw.githubusercontent.com/moby/moby/475c34abbab8e8b7ad45887b46a7bac89b2cea7c/api/swagger.yaml
 apiVersion: "1.56"
 output: ../../effect/src/docker/DockerSchema.ts
+# the operations, which test/docker/DockerApi.test.ts checks DockerApi against
+manifest: ../../effect/test/docker/fixtures/engine-api.json
 # the `@since` of the generated definitions
 since: "4.0.6"
 header: |
