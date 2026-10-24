@@ -697,6 +697,14 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("DurationFromIsoString", () => {
+      assertJsonSchemaDocument(Schema.DurationFromIsoString, {
+        schema: {
+          "type": "string"
+        }
+      })
+    })
+
     it("Option(String)", () => {
       const schema = Schema.Option(Schema.String)
       assertJsonSchemaDocument(schema, {
