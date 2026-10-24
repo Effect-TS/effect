@@ -1377,18 +1377,28 @@ const makeFn = (
         useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
         result,
       CurrentStackFrame,
-      (prev) => ({
-        name,
-        stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
-        parent: {
-          name: definitionName,
-          stack: definitionStack,
-          parent: prev
-        }
-      })
+      makeCallFrame(name, callError, definitionName, definitionStack)
     )
   })
 }
+
+// Built outside the traced function so the frame's `stack` closure cannot capture that call's `arguments`.
+// Frames outlive the call in forked fibers, which would otherwise keep every argument alive.
+const makeCallFrame = (
+  name: string,
+  callError: Error | undefined,
+  definitionName: string,
+  definitionStack: () => string | undefined
+) =>
+(prev: StackFrame | undefined): StackFrame => ({
+  name,
+  stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
+  parent: {
+    name: definitionName,
+    stack: definitionStack,
+    parent: prev
+  }
+})
 
 /** @internal */
 export const fnUntracedEager: Effect.fn.Untraced = (
