@@ -230,30 +230,25 @@ export declare namespace Client {
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
     R
-  > = [Extract<Endpoint["~Payload"], HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<any>>] extends
-    [never] ? <Mode extends ResponseMode = "decoded-only">(
-      request: Simplify<
-        HttpApiEndpoint.ClientRequest<
-          Endpoint["~Params"],
-          Endpoint["~Query"],
-          Endpoint["~Payload"],
-          Endpoint["~Headers"],
-          Mode
-        >
+  > = <
+    Mode extends ResponseMode = "decoded-only",
+    PayloadR extends (
+      [Extract<Endpoint["~Payload"], HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<any>>] extends [never]
+        ? never :
+        unknown
+    ) = never
+  >(
+    request: Simplify<
+      HttpApiEndpoint.ClientRequest<
+        Endpoint["~Params"],
+        Endpoint["~Query"],
+        Endpoint["~Payload"],
+        Endpoint["~Headers"],
+        Mode,
+        PayloadR
       >
-    ) => MethodReturn<Endpoint, E, R, Mode, never>
-    : <Mode extends ResponseMode = "decoded-only", PayloadR = never>(
-      request: Simplify<
-        HttpApiEndpoint.ClientRequest<
-          Endpoint["~Params"],
-          Endpoint["~Query"],
-          Endpoint["~Payload"],
-          Endpoint["~Headers"],
-          Mode,
-          PayloadR
-        >
-      >
-    ) => MethodReturn<Endpoint, E, R, Mode, NoInfer<PayloadR>>
+    >
+  ) => MethodReturn<Endpoint, E, R, Mode, NoInfer<PayloadR>>
 
   /**
    * Extracts client methods for endpoints in top-level groups so they can be exposed
