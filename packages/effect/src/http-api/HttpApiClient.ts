@@ -19,7 +19,7 @@ import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
-import type * as Headers from "../http/Headers.ts"
+import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -500,6 +500,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
+        // Schema encoding unwraps `Redacted` values, so track their names to keep them out of spans.
+        const redactedQueryNames = getRedactedNames(endpoint.query)
+        const redactedHeaderNames = getRedactedNames(endpoint.headers)
+
         const endpointFn = Effect.fnUntraced(function*(
           request: {
             readonly params: Record<string, string> | undefined
@@ -567,13 +571,28 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
           }
 
-          const response = yield* executeMiddleware(
+          let execute = executeMiddleware(
             group,
             endpoint,
             httpRequest,
             middlewareKeys,
             middlewareKeys.length - 1
           )
+          if (redactedQueryNames.length > 0) {
+            execute = Effect.updateService(
+              execute,
+              UrlParams.CurrentRedactedNames,
+              (names) => [...names, ...redactedQueryNames]
+            )
+          }
+          if (redactedHeaderNames.length > 0) {
+            execute = Effect.updateService(
+              execute,
+              Headers.CurrentRedactedNames,
+              (names) => [...names, ...redactedHeaderNames]
+            )
+          }
+          const response = yield* execute
 
           if (request?.responseMode === "response-only") {
             return response
@@ -845,6 +864,33 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 }
 
 // ----------------------------------------------------------------------------
+
+const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> => {
+  if (schema === undefined) return []
+  const ast = SchemaAST.toType(schema.ast)
+  if (!SchemaAST.isObjects(ast)) return []
+  const names: Array<string> = []
+  for (const ps of ast.propertySignatures) {
+    if (typeof ps.name === "string" && containsRedacted(ps.type)) {
+      names.push(ps.name)
+    }
+  }
+  return names
+}
+
+const containsRedacted = (ast: SchemaAST.AST): boolean => {
+  switch (ast._tag) {
+    case "Declaration":
+      return (ast.annotations as Schema.Annotations.Declaration<unknown, readonly []> | undefined)?.representation
+        ?.id === "effect/schema/Redacted"
+    case "Union":
+      return ast.types.some(containsRedacted)
+    case "Arrays":
+      return ast.elements.some(containsRedacted) || ast.rest.some(containsRedacted)
+    default:
+      return false
+  }
+}
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {

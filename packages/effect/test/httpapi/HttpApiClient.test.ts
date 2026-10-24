@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Redacted, Schema, Stream, Tracer } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1095,6 +1095,52 @@ describe("HttpApiClient", () => {
       assert.strictEqual(typeof client["__proto__"]["__proto__"], "function")
       assert.isTrue(Object.hasOwn(groupClient, "__proto__"))
       assert.strictEqual(typeof groupClient["__proto__"], "function")
+    }))
+
+  it.effect("redacts Redacted query and header fields in client spans", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.post("join", "/join", {
+            query: { token: Schema.RedactedFromValue(Schema.String), page: Schema.String },
+            headers: { "x-token": Schema.RedactedFromValue(Schema.String), "x-page": Schema.String }
+          })
+        )
+      )
+      let clientSpan: Tracer.NativeSpan | undefined
+      const tracer = Tracer.make({
+        span(options) {
+          clientSpan = new Tracer.NativeSpan(options)
+          return clientSpan
+        }
+      })
+      let sent: { readonly url: string; readonly headers: Record<string, string> } | undefined
+      const client = yield* HttpApiClient.makeWith(Api, {
+        baseUrl: "http://test",
+        httpClient: HttpClient.make((request, url) =>
+          Effect.sync(() => {
+            sent = { url: url.toString(), headers: request.headers }
+            return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+          })
+        )
+      })
+      const secret = Redacted.make("s3cret")
+
+      yield* client.test.join({
+        query: { token: secret, page: "1" },
+        headers: { "x-token": secret, "x-page": "1" }
+      }).pipe(
+        Effect.provideService(HttpClient.TracerHeaderFilter, () => true),
+        Effect.provideService(Tracer.Tracer, tracer)
+      )
+
+      assert(clientSpan !== undefined)
+      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("url.query"), "token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("http.request.header.x-token"), "<redacted>")
+      strictEqual(clientSpan.attributes.get("http.request.header.x-page"), "1")
+      strictEqual(sent?.url, "http://test/join?token=s3cret&page=1")
+      strictEqual(sent?.headers["x-token"], "s3cret")
     }))
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>
