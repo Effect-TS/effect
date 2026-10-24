@@ -151,22 +151,35 @@ it.effect("accepts only the configured HTTPS document and never follows redirect
     assertReason(yield* resolve(redirected), "KeySetUnavailable")
     assert.strictEqual(followed, 1)
 
-    // The fetch client never sends a request past the first hop. This fake
-    // follows like `fetch` unless the request asks for manual redirects.
+    // The fetch client never sends a request past the first hop, and keeps the
+    // RequestInit configured on its layer. This fake follows like `fetch`
+    // unless the request asks for manual redirects.
     const destinations: Array<string> = []
+    const inits: Array<RequestInit | undefined> = []
     const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       destinations.push(String(input))
+      inits.push(init)
       if (init?.redirect === "manual") {
         return new Response(null, { status: 302, headers: { location: "http://127.0.0.1/admin" } })
       }
       destinations.push("http://127.0.0.1/admin", url)
       return new Response(JSON.stringify({ keys: [ec] }))
     }) as typeof globalThis.fetch
+    const configured = FetchHttpClient.layer.pipe(
+      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, {
+        credentials: "include",
+        cache: "no-store",
+        integrity: "sha256-configured",
+        headers: { authorization: "Bearer configured" }
+      }))
+    )
     assertReason(
-      yield* resolve(FetchHttpClient.layer).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+      yield* resolve(configured).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
       "KeySetUnavailable"
     )
     assert.deepStrictEqual(destinations, [url])
+    assert.deepInclude(inits[0], { credentials: "include", cache: "no-store", integrity: "sha256-configured" })
+    assert.strictEqual(new Headers(inits[0]?.headers).get("authorization"), "Bearer configured")
 
     // A redirect status is a failed response, not a hop.
     assertReason(
