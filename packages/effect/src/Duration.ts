@@ -1875,11 +1875,10 @@ export const format = (self: Duration): string => {
  *
  * **Details**
  *
- * Only exact units are used: days (24 hours), hours, minutes, and seconds,
- * with up to nine fractional second digits. Years and months are never
- * produced because they have no fixed length. Negative durations get a
- * leading `-`, and zero is formatted as `"PT0S"`, matching
- * `Temporal.Duration#toString`.
+ * The duration is balanced into days (24 hours), hours, minutes, and
+ * seconds, with up to nine fractional second digits. Weeks, months, and years
+ * are never produced. Negative durations get a leading `-`, and zero is
+ * formatted as `"PT0S"`.
  *
  * Returns `Option.none()` if the duration is infinite.
  *
@@ -1931,7 +1930,7 @@ const DURATION_ISO_REGEXP =
 
 const parseIsoComponent = (whole: string | undefined, fraction: string | undefined, scale: bigint): bigint =>
   (whole === undefined ? bigint0 : BigInt(whole) * scale) +
-  (fraction === undefined ? bigint0 : BigInt(fraction.padEnd(9, "0")) * scale / bigint1e9)
+  (fraction === undefined ? bigint0 : BigInt(fraction.padEnd(9, "0")) * (scale / bigint1e9))
 
 /**
  * Parses an ISO 8601 duration string into a `Duration`.
