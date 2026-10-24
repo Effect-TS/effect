@@ -21,7 +21,15 @@ import * as Signature from "../crypto/Signature.ts"
 import * as Effect from "../Effect.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
-import { decodeSegment, fromCryptoError, invalidArgument, invalidKey } from "./internal/compact.ts"
+import {
+  cryptoFailure,
+  decodeSegment,
+  hasPrivateMembers,
+  invalidArgument,
+  invalidKey,
+  noPrivateMembers,
+  publicKeyFailure
+} from "./internal/compact.ts"
 import type { JoseError } from "./JoseError.ts"
 
 /**
@@ -81,20 +89,19 @@ const metadata = {
 const rsa = { ...metadata, kty: Schema.Literal("RSA"), n: Schema.String, e: Schema.String }
 const ec = { ...metadata, kty: Schema.Literal("EC"), crv: Schema.Literal("P-256"), x: Schema.String, y: Schema.String }
 const okp = { ...metadata, kty: Schema.Literal("OKP"), crv: Schema.Literal("Ed25519"), x: Schema.String }
-const noSecret = { d: Schema.optionalKey(Schema.Never), k: Schema.optionalKey(Schema.Never) }
 
 /**
  * Schema for an RSA, P-256, or Ed25519 public JWK. Private and symmetric
- * members are rejected.
+ * members, including RSA factors, are rejected.
  *
  * @stability unstable
  * @category schemas
  * @since 4.1.0
  */
 export const PublicJwk = Schema.Union([
-  Schema.Struct({ ...rsa, ...noSecret }),
-  Schema.Struct({ ...ec, ...noSecret }),
-  Schema.Struct({ ...okp, ...noSecret })
+  Schema.Struct({ ...rsa, ...noPrivateMembers }),
+  Schema.Struct({ ...ec, ...noPrivateMembers }),
+  Schema.Struct({ ...okp, ...noPrivateMembers })
 ])
 
 /**
@@ -266,8 +273,9 @@ interface Metadata {
   readonly key_ops?: ReadonlyArray<string> | undefined
 }
 
-// `operations` lists the operations the key can perform here; `key_ops` must
-// allow at least one of them.
+// `operations` lists every operation the key performs here, so `key_ops` must
+// allow all of them: a symmetric key both signs and verifies, or both encrypts
+// and decrypts.
 const checkMetadata = (
   jwk: Metadata,
   algorithm: string,
@@ -280,8 +288,8 @@ const checkMetadata = (
   if (jwk.use !== undefined && jwk.use !== use) {
     return invalidKey(`The JWK use is ${jwk.use}, not ${use}`)
   }
-  if (jwk.key_ops !== undefined && !operations.some((operation) => jwk.key_ops!.includes(operation))) {
-    return invalidKey(`The JWK key_ops do not allow ${operations.join(" or ")}`)
+  if (jwk.key_ops !== undefined && !operations.every((operation) => jwk.key_ops!.includes(operation))) {
+    return invalidKey(`The JWK key_ops must allow ${operations.join(" and ")}`)
   }
   return Effect.void
 }
@@ -303,7 +311,7 @@ const exportJwk = (
 ): Effect.Effect<object, JoseError> =>
   KeyFormat.encode(KeyFormat.jwk, key as KeyFormat.Key).pipe(
     Effect.mapBoth({
-      onFailure: fromCryptoError,
+      onFailure: cryptoFailure("Could not export the key"),
       onSuccess: (jwk) => ({ ...jwk, ...(kid === undefined ? {} : { kid }), alg: algorithm })
     })
   )
@@ -327,7 +335,7 @@ export const generateKeyPair = Effect.fnUntraced(function*(
   }
   const signature = yield* Signature.Signature
   const pair = yield* signature.generateKeyPair(signatureAlgorithm(algorithm, modulusLength)).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(cryptoFailure(`Could not generate a ${algorithm} key pair`))
   )
   const publicJwk = yield* exportJwk(pair.publicKey, algorithm, kid)
   const privateJwk = yield* exportJwk(pair.privateKey, algorithm, kid)
@@ -340,8 +348,8 @@ export const generateKeyPair = Effect.fnUntraced(function*(
  * **Details**
  *
  * The key's family and curve must fit the algorithm, and any `alg`, `use`, or
- * `key_ops` member must allow verification with it. To import untrusted JSON,
- * decode it with {@link PublicJwk} first.
+ * `key_ops` member must allow verification with it. Private members are
+ * rejected. To import untrusted JSON, decode it with {@link PublicJwk} first.
  *
  * @see {@link importPrivate}
  *
@@ -353,9 +361,10 @@ export const importPublic = Effect.fnUntraced(function*(
   jwk: PublicJwk,
   algorithm: AsymmetricAlgorithm
 ): Effect.fn.Return<PublicKey, JoseError> {
+  if (hasPrivateMembers(jwk)) return yield* invalidKey("A public JWK cannot contain private members")
   yield* checkMetadata(jwk, algorithm, "sig", ["verify"])
   const key = yield* KeyFormat.decodePublic(KeyFormat.jwk, signatureAlgorithm(algorithm), jsonWebKey(jwk)).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(publicKeyFailure)
   )
   yield* checkModulus(key)
   return { _tag: "PublicKey", algorithm, kid: jwk.kid, jwk, key }
@@ -378,7 +387,7 @@ export const importPrivate = Effect.fnUntraced(function*(
   const jwk = Redacted.value(input)
   yield* checkMetadata(jwk, algorithm, "sig", ["sign"])
   const key = yield* KeyFormat.decodePrivate(KeyFormat.jwk, signatureAlgorithm(algorithm), jsonWebKey(jwk)).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(cryptoFailure(`Could not import the private JWK for ${algorithm}`))
   )
   yield* checkModulus(key)
   return { _tag: "PrivateKey", algorithm, kid: jwk.kid, key }
@@ -399,7 +408,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
   options?: { readonly kid?: string | undefined }
 ): Effect.fn.Return<PrivateKey, JoseError> {
   const key = yield* KeyFormat.decodePrivate(KeyFormat.pkcs8, signatureAlgorithm(algorithm), Redacted.value(der)).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(cryptoFailure(`Could not import the PKCS#8 key for ${algorithm}`))
   )
   yield* checkModulus(key)
   return { _tag: "PrivateKey", algorithm, kid: options?.kid, key }
@@ -411,7 +420,8 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  * **Details**
  *
  * HS256 keys need at least 32 bytes and `dir` keys exactly 32. Any `alg`,
- * `use`, or `key_ops` member must allow the algorithm.
+ * `use`, or `key_ops` member must allow the algorithm; `key_ops` must allow
+ * both of its operations.
  *
  * **Example** (Importing an HS256 key)
  *
@@ -446,9 +456,10 @@ export const importSecret = Effect.fnUntraced(function*<A extends SecretAlgorith
       algorithm === "HS256" ? "HS256 keys must have at least 32 bytes" : "dir keys must have exactly 32 bytes"
     )
   }
+  const failure = cryptoFailure(`Could not import the ${algorithm} key`)
   const key = algorithm === "HS256"
-    ? yield* Effect.mapError(Mac.key(Mac.hmacSha256, bytes), fromCryptoError)
-    : yield* Effect.mapError(Aead.key(Aead.aes256Gcm, bytes), fromCryptoError)
+    ? yield* Effect.mapError(Mac.key(Mac.hmacSha256, bytes), failure)
+    : yield* Effect.mapError(Aead.key(Aead.aes256Gcm, bytes), failure)
   return { _tag: "SecretKey", algorithm, kid: jwk.kid, key } as SecretKey<A>
 })
 

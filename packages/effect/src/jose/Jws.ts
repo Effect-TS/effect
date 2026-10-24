@@ -17,11 +17,11 @@ import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import {
+  cryptoFailure,
   decodeHeader,
   decodeSegment,
   encodeHeader,
   fail,
-  fromCryptoError,
   invalidArgument,
   invalidToken,
   split,
@@ -134,6 +134,9 @@ export const parse = Effect.fnUntraced(function*(
   }
 })
 
+const signFailure = cryptoFailure("Could not sign with the key")
+const verifyFailure = cryptoFailure("Could not verify with the key")
+
 const algorithmNotAllowed = fail(new JoseError.AlgorithmNotAllowed())
 
 const authenticated = (parsed: Parsed, valid: boolean): Effect.Effect<Verified, JoseError.JoseError> =>
@@ -147,7 +150,7 @@ const verifySignature = Effect.fnUntraced(function*(
 ): Effect.fn.Return<Verified, JoseError.JoseError, Signature.Signature> {
   const signature = yield* Signature.Signature
   const valid = yield* signature.verify(key.key, parsed.signature, parsed.signingInput).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
 })
@@ -195,10 +198,10 @@ export const sign = Effect.fnUntraced(function*(
   let signature: Uint8Array
   if (key._tag === "SecretKey") {
     const mac = yield* Mac.Mac
-    signature = yield* mac.sign(key.key, data).pipe(Effect.mapError(fromCryptoError))
+    signature = yield* mac.sign(key.key, data).pipe(Effect.mapError(signFailure))
   } else {
     const signer = yield* Signature.Signature
-    signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(fromCryptoError))
+    signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(signFailure))
   }
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
 })
@@ -223,7 +226,7 @@ export const verify = Effect.fnUntraced(function*(
   if (key._tag === "PublicKey") return yield* verifySignature(parsed, key)
   const mac = yield* Mac.Mac
   const valid = yield* mac.verify(key.key, parsed.signature, parsed.signingInput).pipe(
-    Effect.mapError(fromCryptoError)
+    Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
 })
