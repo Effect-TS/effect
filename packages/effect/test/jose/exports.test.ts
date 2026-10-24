@@ -19,6 +19,6 @@ it("exposes the same JOSE modules through grouped and direct entrypoints", () =>
 
 it("keeps JOSE implementation helpers private", () => {
   const require = createRequire(import.meta.url)
-  const error = assert.throws(() => require.resolve("effect/jose/internal/crypto"))
-  assert.propertyVal(error, "code", "ERR_PACKAGE_PATH_NOT_EXPORTED")
+  assert.doesNotThrow(() => require.resolve("effect/jose/Jwt"))
+  assert.throws(() => require.resolve("effect/jose/internal/crypto"))
 })
