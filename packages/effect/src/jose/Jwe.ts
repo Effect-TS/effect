@@ -1,5 +1,9 @@
 /**
- * Compact direct A256GCM encryption with authenticated protected headers and redacted plaintext.
+ * Compact JSON Web Encryption with a shared key: `dir` key management and
+ * A256GCM content encryption.
+ *
+ * The protected header is authenticated as additional data, so changing it
+ * fails decryption. Headers with `crit` or `zip` are rejected.
  *
  * @stability unstable
  * @since 4.1.0
@@ -10,83 +14,93 @@ import * as Effect from "../Effect.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
-import { copy, decode as decodeInput, native, operationError, withSecret } from "./internal/crypto.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import * as KeyPolicy from "./internal/keyPolicy.ts"
-import { CryptoUnavailable, DecryptionFailed, InvalidKey, InvalidToken, type OperationError } from "./JoseError.ts"
+import {
+  decodeHeader,
+  decodeSegment,
+  encodeHeader,
+  fromCryptoError,
+  invalidToken,
+  split,
+  utf8
+} from "./internal/compact.ts"
+import * as JoseError from "./JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
 /**
- * Schema for direct symmetric encryption with A256GCM and optional key and content identifiers.
+ * Schema for an authenticated JWE protected header. Other parameters are
+ * dropped.
  *
  * @stability unstable
  * @category schemas
  * @since 4.1.0
  */
-export const Header = Schema.Struct({
+export const ProtectedHeader = Schema.Struct({
   alg: Schema.Literal("dir"),
   enc: Schema.Literal("A256GCM"),
-  kid: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
-  typ: Schema.optionalKey(Schema.NonEmptyString),
-  cty: Schema.optionalKey(Schema.NonEmptyString)
+  kid: Schema.optionalKey(Schema.String),
+  typ: Schema.optionalKey(Schema.String),
+  cty: Schema.optionalKey(Schema.String)
 })
 
 /**
- * Value described by the Header schema.
+ * An authenticated JWE protected header.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export type Header = typeof Header.Type
+export type ProtectedHeader = typeof ProtectedHeader.Type
+
 /**
- * Failures produced by compact encryption, decryption, key validation, or cryptographic operations.
+ * Header parameters to protect. `alg` and `enc` are fixed and `kid` defaults
+ * to the key's.
  *
  * @stability unstable
- * @category errors
+ * @category models
  * @since 4.1.0
  */
-export type JweError = InvalidToken | InvalidKey | OperationError | DecryptionFailed
-
-const readHeader = Effect.fnUntraced(function*(input: unknown) {
-  const raw = yield* parse(JsonObject, input, "header")
-
-  if (raw.crit !== undefined || raw.zip !== undefined) {
-    return yield* InvalidToken.make({ reason: "header" })
-  }
-
-  return yield* parse(Header, raw, "header")
-})
+export interface Header {
+  readonly kid?: string | undefined
+  readonly typ?: string | undefined
+  readonly cty?: string | undefined
+}
 
 /**
- * Encrypts redacted plaintext as a compact JWE with a fresh 96-bit IV from the SecureRandom service.
+ * The protected header and plaintext of a decrypted JWE.
  *
- * **Details**
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface Decrypted {
+  readonly protectedHeader: ProtectedHeader
+  readonly plaintext: Uint8Array
+}
+
+const tagLength = 16
+
+/**
+ * Encrypts plaintext as a compact JWE with a random 96-bit IV.
  *
- * Random-source failures become typed CryptoUnavailable errors without exposing native causes.
- *
- * **Example** (Encrypting and authenticating plaintext)
+ * **Example** (Encrypting and decrypting a message)
  *
  * ```ts import.meta.vitest
- * import { Jwe, Jwk } from "effect/jose"
+ * import { Effect, Layer, Redacted } from "effect"
  * import { Aead, SecureRandom } from "effect/crypto"
- * import { Effect, Redacted } from "effect"
+ * import { Jwe, Jwk } from "effect/jose"
+ *
+ * const layer = Aead.layerWebCrypto.pipe(Layer.provideMerge(SecureRandom.layerWebCrypto))
  *
  * const plaintext = await Effect.runPromise(Effect.gen(function*() {
  *   // Fixed public example material; generate application secrets securely.
  *   const key = yield* Jwk.importSecret(
- *     Redacted.make({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" }),
+ *     Redacted.make({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const),
  *     "dir"
  *   )
- *   const token = yield* Jwe.encrypt(
- *     Redacted.make(new TextEncoder().encode("private message")), key, { alg: "dir", enc: "A256GCM" }
- *   )
+ *   const token = yield* Jwe.encrypt(new TextEncoder().encode("private message"), key)
  *   const decrypted = yield* Jwe.decrypt(token, key)
- *   return new TextDecoder().decode(Redacted.value(decrypted.plaintext))
- * }).pipe(
- *   Effect.provide(Aead.layerWebCrypto),
- *   Effect.provide(SecureRandom.layerWebCrypto)
- * ))
+ *   return new TextDecoder().decode(decrypted.plaintext)
+ * }).pipe(Effect.provide(layer)))
  * plaintext // => "private message"
  * ```
  *
@@ -97,52 +111,25 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  * @since 4.1.0
  */
 export const encrypt = Effect.fnUntraced(function*(
-  plaintext: Redacted.Redacted<Uint8Array>,
-  key: SecretKey,
-  input: Header
-): Effect.fn.Return<Redacted.Redacted<string>, JweError, Aead.Aead | SecureRandom.SecureRandom> {
-  const header = yield* readHeader(input)
-
-  if (key.algorithm !== "dir") return yield* InvalidKey.make({})
-  yield* KeyPolicy.check(yield* reveal(key.jwk), "dir", "encrypt")
-  yield* parse(
-    Schema.Uint8Array.check(Schema.isMaxLength(45000)),
-    yield* reveal(plaintext),
-    "payload"
-  )
-
-  const protectedPart = Base64Url.encode(
-    yield* stringify(header).pipe(Effect.mapError(() => InvalidToken.make({ reason: "header" })))
-  )
-
-  if (protectedPart.length > 4096) return yield* InvalidToken.make({ reason: "header" })
+  plaintext: Uint8Array,
+  key: SecretKey<"dir">,
+  header?: Header
+): Effect.fn.Return<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom> {
+  const protectedHeader = encodeHeader({ alg: "dir", enc: "A256GCM" }, key.kid, header)
   const random = yield* SecureRandom.SecureRandom
-  const nonce = yield* random.randomBytes(12).pipe(
-    Effect.catchDefect(() => CryptoUnavailable.make({})),
-    Effect.uninterruptible,
-    Effect.flatMap(copy)
-  )
-  yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(12, 12)), nonce, "nonce")
+  const nonce = yield* random.randomBytes(Aead.aes256Gcm.nonceLength)
   const aead = yield* Aead.Aead
-  const sealed = yield* withSecret(plaintext, (data) =>
-    withSecret(key.material, (owned) =>
-      Effect.gen(function*() {
-        yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
-        return yield* native(Effect.gen(function*() {
-          const secretKey = yield* Aead.key(Aead.aes256Gcm, owned)
-          return yield* aead.encrypt(secretKey, data, { nonce, aad: utf8(protectedPart) })
-        }))
-      })))
-
-  return Redacted.make(
-    `${protectedPart}..${Base64Url.encode(nonce)}.${Base64Url.encode(sealed.subarray(0, -16))}.${
-      Base64Url.encode(sealed.subarray(-16))
-    }`
+  const sealed = yield* aead.encrypt(key.key, plaintext, { nonce, aad: utf8(protectedHeader) }).pipe(
+    Effect.mapError(fromCryptoError)
   )
+  const ciphertext = Base64Url.encode(sealed.subarray(0, -tagLength))
+  const tag = Base64Url.encode(sealed.subarray(-tagLength))
+  return Redacted.make(`${protectedHeader}..${Base64Url.encode(nonce)}.${ciphertext}.${tag}`)
 })
 
 /**
- * Authenticates and decrypts a compact direct A256GCM JWE, returning redacted plaintext and its protected header.
+ * Decrypts a compact `dir`/A256GCM JWE and authenticates its protected
+ * header.
  *
  * @see {@link encrypt}
  *
@@ -151,43 +138,31 @@ export const encrypt = Effect.fnUntraced(function*(
  * @since 4.1.0
  */
 export const decrypt = Effect.fnUntraced(function*(
-  token: Redacted.Redacted<string>,
-  key: SecretKey
-) {
-  const [protectedPart, encryptedKey, iv, ciphertext, tag] = yield* split(token, 5)
-
-  if (encryptedKey !== "" || protectedPart.length > 4096) {
-    return yield* InvalidToken.make({ reason: "serialization" })
+  token: string | Redacted.Redacted<string>,
+  key: SecretKey<"dir">
+): Effect.fn.Return<Decrypted, JoseError.JoseError, Aead.Aead> {
+  const [header, encryptedKey, iv, ciphertext, tag] = yield* split(token, 5)
+  if (encryptedKey !== "") return yield* invalidToken("A dir token must have an empty encrypted key")
+  const protectedHeader = yield* decodeHeader(header, ProtectedHeader, ["crit", "zip"])
+  const nonce = decodeSegment(iv)
+  const data = decodeSegment(ciphertext)
+  const authTag = decodeSegment(tag)
+  if (
+    nonce === undefined || data === undefined || authTag === undefined ||
+    nonce.length !== Aead.aes256Gcm.nonceLength || authTag.length !== tagLength
+  ) {
+    return yield* invalidToken("The IV, ciphertext, or tag is malformed")
   }
-  const protectedHeader = yield* readHeader(yield* json(yield* decode(protectedPart), "header"))
-
-  if (key.algorithm !== "dir") return yield* InvalidKey.make({})
-  yield* KeyPolicy.check(yield* reveal(key.jwk), "dir", "decrypt")
-  const nonce = yield* decode(iv)
-  const data = yield* decode(ciphertext)
-  const authTag = yield* decode(tag)
-
-  if (nonce.length !== 12 || authTag.length !== 16) {
-    return yield* InvalidToken.make({ reason: "serialization" })
-  }
-  const sealed = new Uint8Array(data.length + authTag.length)
-
+  const sealed = new Uint8Array(data.length + tagLength)
   sealed.set(data)
   sealed.set(authTag, data.length)
-
   const aead = yield* Aead.Aead
-  const plaintext = yield* withSecret(key.material, (owned) =>
-    Effect.gen(function*() {
-      yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
-      const secretKey = yield* native(Aead.key(Aead.aes256Gcm, owned))
-      return yield* aead.decrypt(secretKey, sealed, { nonce, aad: utf8(protectedPart) }).pipe(
-        Effect.mapError((error) =>
-          error.reason._tag === "DecryptionFailed" ? DecryptionFailed.make({}) : operationError(error)
-        ),
-        Effect.catchDefect(() => CryptoUnavailable.make({})),
-        Effect.map(Redacted.make)
-      )
-    }))
-
+  const plaintext = yield* aead.decrypt(key.key, sealed, { nonce, aad: utf8(header) }).pipe(
+    Effect.mapError((error) =>
+      error.reason._tag === "DecryptionFailed"
+        ? new JoseError.JoseError({ reason: new JoseError.DecryptionFailed() })
+        : fromCryptoError(error)
+    )
+  )
   return { protectedHeader, plaintext }
 })
