@@ -58,7 +58,7 @@ const verification: Oidc.VerificationInput = {
 const generate = Effect.promise(() => jose.generateKeyPair("RS256", { extractable: true }))
 
 function sign(
-  key: CryptoKey | Uint8Array,
+  key: jose.CryptoKey | Uint8Array,
   data: jose.JWTPayload,
   algorithm: Oidc.IdTokenAlgorithm = "RS256"
 ): Effect.Effect<Redacted.Redacted<string>> {

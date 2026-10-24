@@ -57,7 +57,7 @@ export const generateSigningKeys = (algorithm: "RS256" | "PS256" | "ES256" | "Ed
 
 export const signingKeys = generateSigningKeys()
 
-export const sign = (key: CryptoKey | Uint8Array, payload: jose.JWTPayload, algorithm = "RS256") =>
+export const sign = (key: jose.CryptoKey | Uint8Array, payload: jose.JWTPayload, algorithm = "RS256") =>
   Effect.promise(() => new jose.SignJWT(payload).setProtectedHeader({ alg: algorithm, kid: "provider-key" }).sign(key))
 
 export const metadataFor = (issuer: string): OAuth.Metadata => {
