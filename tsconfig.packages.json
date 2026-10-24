@@ -5,7 +5,6 @@
   "references": [
     { "path": "ai-docs" },
     { "path": "packages/effect" },
-    { "path": "packages/auth" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/cloudflare" },
     { "path": "packages/ai/openai-compat" },

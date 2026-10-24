@@ -1,10 +1,10 @@
-import { JoseError, Jwe, Jwk, Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
 import { Aead, CryptoError, Digest, Mac, SecureRandom, Signature, WebCrypto } from "effect/crypto"
 import * as Base64Url from "effect/encoding/Base64Url"
-import { webCryptoLayer, withSubtle } from "../utils/crypto.ts"
+import { JoseError, Jwe, Jwk, Jwks, Jws } from "effect/jose"
 import { cryptoLayer, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
+import { webCryptoLayer, withSubtle } from "./utils/crypto.ts"
 
 for (const algorithm of ["RS256", "PS256", "ES256", "EdDSA"] as const) {
   it.effect(`uses injected services for ${algorithm} generation, signing and key-set verification`, () =>

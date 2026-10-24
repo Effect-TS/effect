@@ -15,7 +15,6 @@
   "fixed": [
     [
       "effect",
-      "@effect/auth",
       "@effect/ai-anthropic",
       "@effect/ai-cloudflare",
       "@effect/ai-openai",

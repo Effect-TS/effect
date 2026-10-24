@@ -1,6 +1,6 @@
-import { Jwe, Jwk, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
+import { Jwe, Jwk, Jws } from "effect/jose"
 import * as jose from "jose"
 import { createCipheriv, createHmac, createPrivateKey, sign } from "node:crypto"
 import { cryptoLayer, independentJws, privateJwk, publicJwk, secret, secretJwk, utf8 } from "./fixtures.ts"
