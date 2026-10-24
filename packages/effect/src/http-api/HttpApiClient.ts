@@ -19,7 +19,7 @@ import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
-import type * as Headers from "../http/Headers.ts"
+import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -500,6 +500,11 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
+        // Schema encoding unwraps `Redacted` values, so track their names to keep them out of spans.
+        // `undefined` means every encoded field is redacted.
+        const redactedQueryNames = getRedactedNames(endpoint.query)
+        const redactedHeaderNames = getRedactedNames(endpoint.headers)
+
         const endpointFn = Effect.fnUntraced(function*(
           request: {
             readonly params: Record<string, string> | undefined
@@ -511,6 +516,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          let redactedQuery: ReadonlyArray<string> = []
+          let redactedHeaders: ReadonlyArray<string> = []
 
           if (request !== undefined) {
             // params
@@ -554,12 +561,16 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             if (encodeHeaders !== undefined) {
               const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
               httpRequest = HttpClientRequest.setHeaders(httpRequest, headers)
+              redactedHeaders = redactedHeaderNames ?? Object.keys(headers)
             }
 
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
+              if (redactedQueryNames === undefined || redactedQueryNames.length > 0) {
+                redactedQuery = getRedactedParams(query, redactedQueryNames)
+              }
             }
           }
 
@@ -567,13 +578,28 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
           }
 
-          const response = yield* executeMiddleware(
+          let execute = executeMiddleware(
             group,
             endpoint,
             httpRequest,
             middlewareKeys,
             middlewareKeys.length - 1
           )
+          if (redactedQuery.length > 0) {
+            execute = Effect.updateService(
+              execute,
+              UrlParams.CurrentRedactedNames,
+              (names) => [...names, ...redactedQuery]
+            )
+          }
+          if (redactedHeaders.length > 0) {
+            execute = Effect.updateService(
+              execute,
+              Headers.CurrentRedactedNames,
+              (names) => [...names, ...redactedHeaders]
+            )
+          }
+          const response = yield* execute
 
           if (request?.responseMode === "response-only") {
             return response
@@ -845,6 +871,55 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 }
 
 // ----------------------------------------------------------------------------
+
+// Struct-level encodings can rename keys arbitrarily, so names are only exact
+// for structs whose keys are encoded as is. `undefined` redacts every encoded
+// field. Only the schema's structure is inspected: no encoder is executed.
+const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> | undefined => {
+  if (schema === undefined) return []
+  const ast = schema.ast
+  if (!containsRedacted(ast)) return []
+  if (
+    !SchemaAST.isObjects(ast) || ast.encoding !== undefined ||
+    ast.indexSignatures.some((is) => containsRedacted(is.type))
+  ) {
+    return undefined
+  }
+  return ast.propertySignatures.flatMap((ps) =>
+    typeof ps.name === "string" && containsRedacted(ps.type) ? [ps.name] : []
+  )
+}
+
+// `UrlParams` flattens nested values into bracketed names such as `nested[token]`.
+const getRedactedParams = (query: UrlParams.Input, names: ReadonlyArray<string> | undefined): Array<string> => {
+  const keys = UrlParams.fromInput(query).params.map(([key]) => key)
+  return names === undefined
+    ? keys
+    : keys.filter((key) => names.some((name) => key === name || key.startsWith(`${name}[`)))
+}
+
+const containsRedacted = (ast: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean => {
+  if (seen.has(ast)) return false
+  seen.add(ast)
+  const recur = (ast: SchemaAST.AST) => containsRedacted(ast, seen)
+  switch (ast._tag) {
+    case "Declaration":
+      return (ast.annotations as Schema.Annotations.Declaration<unknown> | undefined)?.representation?.id ===
+          "effect/schema/Redacted" ||
+        ast.typeParameters.some(recur)
+    case "Objects":
+      return ast.propertySignatures.some((ps) => recur(ps.type)) ||
+        ast.indexSignatures.some((is) => recur(is.type))
+    case "Union":
+      return ast.types.some(recur)
+    case "Arrays":
+      return ast.elements.some(recur) || ast.rest.some(recur)
+    case "Suspend":
+      return recur(ast.thunk())
+    default:
+      return false
+  }
+}
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
