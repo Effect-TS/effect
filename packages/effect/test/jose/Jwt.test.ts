@@ -107,8 +107,18 @@ it.effect("validates registered claims against the verification policy", () =>
       assert.deepInclude(error.reason, expected)
     }
 
-    // Every NaN representation is rejected, not read as zero.
-    for (const clockTolerance of [NaN, [NaN, 0], { seconds: NaN }] satisfies Array<Duration.Input>) {
+    // Inputs that `Duration` would read as zero are rejected: NaN in any form,
+    // non-finite components, and components that overflow.
+    for (
+      const clockTolerance of [
+        NaN,
+        [NaN, 0],
+        { seconds: NaN },
+        { seconds: Infinity, minutes: -Infinity },
+        { milliseconds: Infinity, nanoseconds: -Infinity },
+        { seconds: Number.MAX_VALUE, minutes: -Number.MAX_VALUE }
+      ] satisfies Array<Duration.Input>
+    ) {
       assertReason(
         yield* Jwt.verify(Jwt.RegisteredClaims, token, key, { clockTolerance }).pipe(Effect.flip),
         "InvalidArgument"
