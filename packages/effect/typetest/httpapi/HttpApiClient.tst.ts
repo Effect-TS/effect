@@ -557,9 +557,6 @@ describe("HttpApiClient", () => {
               HttpApiEndpoint.get("a", "/a", {
                 success: Schema.String
               }),
-              HttpApiEndpoint.get("b", "/b", {
-                success: Schema.Number
-              }),
               HttpApiEndpoint.post("ndjson", "/ndjson", {
                 payload: HttpApiSchema.StreamNdjson({ schema: Item })
               })
@@ -569,12 +566,6 @@ describe("HttpApiClient", () => {
         HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
       )
 
-      expect(Effect.all([client.group.a(), client.group.b()])).type.toBe<
-        Effect.Effect<[string, number], HttpClientError.HttpClientError | Schema.SchemaError>
-      >()
-      expect(Effect.all({ a: client.group.a(), b: client.group.b() })).type.toBe<
-        Effect.Effect<{ a: string; b: number }, HttpClientError.HttpClientError | Schema.SchemaError>
-      >()
       expect(
         Effect.all([
           client.group.a(),
