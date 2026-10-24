@@ -578,6 +578,7 @@ describe("HttpApiClient", () => {
           "ItemSource" | "ItemEncoding"
         >
       >()
+      expect<Effect.Services<ReturnType<typeof client.group.a>>>().type.toBe<never>()
     })
   })
 
