@@ -8,10 +8,10 @@ import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
-import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
 import { CloudflareClient } from "./CloudflareClient.ts"
 import type * as CloudflareSchema from "./CloudflareSchema.ts"
+import { encodeImage, hasRemoteUrl } from "./internal/images.ts"
 
 /**
  * Cloudflare Clef model identifiers.
@@ -78,7 +78,7 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
+        if (hasRemoteUrl(images)) {
           return yield* Effect.fail(AiError.make({
             module: "CloudflareDecisionModel",
             method: "decide",
@@ -128,12 +128,6 @@ export const make = Effect.fnUntraced(
     })
   }
 )
-
-const encodeImage = (image: DecisionModel.Image): typeof CloudflareSchema.Image.Encoded =>
-  image.data instanceof URL ? image.data.href : {
-    content_type: image.mediaType,
-    base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
-  }
 
 /**
  * Provides DecisionModel using an existing CloudflareClient.
