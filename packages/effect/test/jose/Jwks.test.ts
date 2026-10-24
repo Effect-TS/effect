@@ -4,6 +4,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Jwks } from "effect/jose"
@@ -107,6 +108,12 @@ it.effect("caches remote key sets, coalesces concurrent refreshes, and refreshes
     assertReason(yield* keys.resolve({ algorithm: "ES256", kid: "rotated" }).pipe(Effect.flip), "KeySetUnavailable")
     assertReason(yield* keys.resolve({ algorithm: "ES256", kid: "rotated" }).pipe(Effect.flip), "KeySetUnavailable")
     assert.strictEqual(requests, 3)
+
+    // Once the cooldown passes, a good document recovers.
+    document = { keys: [{ ...ec, kid: "rotated" }] }
+    yield* TestClock.adjust(11)
+    assert.strictEqual((yield* keys.resolve({ algorithm: "ES256", kid: "rotated" })).kid, "rotated")
+    assert.strictEqual(requests, 4)
   }).pipe(Effect.provide(layer)))
 
 it.effect("accepts only the configured HTTPS document and never follows redirects", () =>
@@ -143,6 +150,23 @@ it.effect("accepts only the configured HTTPS document and never follows redirect
     )
     assertReason(yield* resolve(redirected), "KeySetUnavailable")
     assert.strictEqual(followed, 1)
+
+    // The fetch client never sends a request past the first hop. This fake
+    // follows like `fetch` unless the request asks for manual redirects.
+    const destinations: Array<string> = []
+    const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      destinations.push(String(input))
+      if (init?.redirect === "manual") {
+        return new Response(null, { status: 302, headers: { location: "http://127.0.0.1/admin" } })
+      }
+      destinations.push("http://127.0.0.1/admin", url)
+      return new Response(JSON.stringify({ keys: [ec] }))
+    }) as typeof globalThis.fetch
+    assertReason(
+      yield* resolve(FetchHttpClient.layer).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch)),
+      "KeySetUnavailable"
+    )
+    assert.deepStrictEqual(destinations, [url])
 
     // A redirect status is a failed response, not a hop.
     assertReason(
