@@ -278,7 +278,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       headers: request.headers,
       payload: request.payload
     }
-    const result = entry.handler(request.payload, metadata)
+    const result = runHandler(entry, request.payload, metadata)
 
     // if the handler requested forking, then we skip the concurrency control
     const isWrapper = Rpc.isWrapper(result)
@@ -572,6 +572,21 @@ const handlerContext = (
     cache.set(fiberContext, merged)
   }
   return merged
+}
+
+// a synchronous throw is handled like a returned `Effect.die`, so it goes
+// through the request exit handling. Stream handlers may also return an
+// Effect, so a single `Effect.die` covers both kinds of rpc.
+const runHandler = (
+  entry: Rpc.Handler<string>,
+  payload: unknown,
+  metadata: Parameters<Rpc.Handler<string>["handler"]>[1]
+) => {
+  try {
+    return entry.handler(payload, metadata)
+  } catch (defect) {
+    return Effect.die(defect)
+  }
 }
 
 const applyMiddleware = <A, E, R>(
