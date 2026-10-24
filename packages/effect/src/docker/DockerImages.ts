@@ -345,6 +345,9 @@ export type BuildProgress =
  * - `auth` and `registries` are the credentials sent in `X-Registry-Config`,
  *   which only the classic builder uses: `auth` as given, `registries`
  *   resolved by `DockerRegistryAuth`. Nothing else is sent.
+ * - `outputs` is BuildKit's output configuration, such as
+ *   `[{ Type: "moby", Attrs: { compression: "zstd" } }]`; the classic builder
+ *   ignores it.
  *
  * The rest are `POST /build`'s query parameters.
  *
@@ -376,6 +379,9 @@ export interface BuildOptions {
   readonly cpuPeriod?: number | undefined
   readonly cpuQuota?: number | undefined
   readonly squash?: boolean | undefined
+  readonly outputs?:
+    | ReadonlyArray<{ readonly Type: string; readonly Attrs?: Readonly<Record<string, string>> }>
+    | undefined
   readonly auth?: Readonly<Record<string, DockerConfig.Credential>> | undefined
   readonly registries?: ReadonlyArray<string> | undefined
 }

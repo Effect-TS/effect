@@ -15,7 +15,8 @@ import * as Schema from "effect/Schema"
  *
  * - `spec` is moby's `api/swagger.yaml` at a pinned commit; `apiVersion` must
  *   match its `info.version`, and is our maximum API version.
- * - `output` is resolved relative to the configuration file.
+ * - `output` (the Schemas) and `manifest` (the operations, see `Manifest`)
+ *   are resolved relative to the configuration file.
  * - `since` is the `@since` version of the generated definitions.
  * - `patches` are inline JSON Patch documents, applied in order before the
  *   computed patch families.
@@ -27,6 +28,7 @@ export const CodegenConfig = Schema.Struct({
   spec: Schema.String,
   apiVersion: Schema.String,
   output: Schema.String,
+  manifest: Schema.String,
   header: Schema.String,
   since: Schema.String,
   patches: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultType(Effect.succeed([]))),
