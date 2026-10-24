@@ -34,6 +34,7 @@
       // suite of `@effect/platform-node` which itself depends on `@effect/platform-node`).
       "effect": ["./packages/effect/src/index.ts"],
       "effect/graphql": ["./packages/effect/src/graphql/index.ts"],
+      "effect/jose": ["./packages/effect/src/jose/index.ts"],
       "effect/schema": ["./packages/effect/src/schema/index.ts"],
       "effect/*": ["./packages/effect/src/*.ts"],
       "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.ts"],

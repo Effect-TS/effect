@@ -1,0 +1,123 @@
+import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter } from "effect"
+import type { Aead, CryptoError, Mac, SecureRandom, Signature } from "effect/crypto"
+import { type JoseError, Jwe, Jwk, type Jwks, Jws, Jwt } from "effect/jose"
+import { describe, expect, it } from "tstyche"
+
+declare const hmac: Jwk.SecretKey<"HS256">
+declare const dir: Jwk.SecretKey<"dir">
+declare const privateKey: Jwk.PrivateKey
+declare const publicKey: Jwk.PublicKey
+declare const token: Redacted.Redacted<string>
+declare const payload: Uint8Array
+
+class Decode extends Context.Service<Decode, { readonly prefix: string }>()("test/Decode") {}
+class Encode extends Context.Service<Encode, { readonly prefix: string }>()("test/Encode") {}
+
+const Claims = Schema.Struct({
+  sub: Schema.String.pipe(Schema.decodeTo(Schema.String, {
+    decode: SchemaGetter.transformEffect((value) => Effect.map(Decode, (service) => service.prefix + value)),
+    encode: SchemaGetter.transformEffect((value) => Effect.map(Encode, (service) => value.slice(service.prefix.length)))
+  })),
+  quota: Schema.FiniteFromString
+})
+
+describe("Jwk", () => {
+  it("binds secret keys to one algorithm at the type level", () => {
+    expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "HS256")).type.toBe<
+      Effect.Effect<Jwk.SecretKey<"HS256">, JoseError.JoseError>
+    >()
+    expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "dir")).type.toBe<
+      Effect.Effect<Jwk.SecretKey<"dir">, JoseError.JoseError>
+    >()
+    expect<Jwk.SigningKey>().type.toBe<Jwk.PrivateKey | Jwk.SecretKey<"HS256">>()
+    expect<Jwk.VerificationKey>().type.toBe<Jwk.PublicKey | Jwk.SecretKey<"HS256">>()
+  })
+
+  it("imports without services and never exposes CryptoError", () => {
+    expect(Jwk.importPublic({ kty: "EC", crv: "P-256", x: "", y: "" }, "ES256")).type.toBe<
+      Effect.Effect<Jwk.PublicKey, JoseError.JoseError>
+    >()
+    expect(Jwk.importPkcs8(Redacted.make(payload), "ES256")).type.toBe<
+      Effect.Effect<Jwk.PrivateKey, JoseError.JoseError>
+    >()
+    expect(Jwk.generateKeyPair({ algorithm: "ES256" })).type.toBe<
+      Effect.Effect<Jwk.KeyPair, JoseError.JoseError, Signature.Signature>
+    >()
+    expect<Extract<JoseError.JoseError, CryptoError.CryptoError>>().type.toBe<never>()
+    expect(Jwk.importPublic).type.not.toBeCallableWith({ kty: "EC", crv: "P-256", x: "", y: "" }, "HS256")
+  })
+
+  it("exposes the crypto key object", () => {
+    expect(publicKey.key).type.toBe<Signature.PublicKey>()
+    expect(privateKey.key).type.toBe<Signature.PrivateKey>()
+    expect(hmac.key).type.toBe<Mac.Key>()
+    expect(dir.key).type.toBe<Aead.Key>()
+    expect(publicKey.kid).type.toBe<string | undefined>()
+  })
+})
+
+describe("Jws and Jwe", () => {
+  it("derives the algorithm from the key and makes the header optional", () => {
+    expect(Jws.sign(payload, hmac)).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Jws.Requirements>
+    >()
+    expect(Jws.sign).type.toBeCallableWith(payload, privateKey, { kid: "k", typ: "JWT" })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { alg: "HS256" })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, dir)
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, hmac)
+    expect(Jwe.encrypt(payload, dir)).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom>
+    >()
+    expect<Jws.Requirements>().type.toBe<Mac.Mac | Signature.Signature>()
+  })
+
+  it("accepts plain or redacted tokens", () => {
+    expect(Jws.verify("a.b.c", publicKey)).type.toBe<
+      Effect.Effect<Jws.Verified, JoseError.JoseError, Jws.Requirements>
+    >()
+    expect(Jws.verify).type.toBeCallableWith(token, publicKey)
+    expect(Jws.verify).type.not.toBeCallableWith(token, publicKey, { algorithms: ["ES256"] })
+    expect(Jws.verifyWithKeySet(token, { algorithms: ["ES256"] })).type.toBe<
+      Effect.Effect<
+        Jws.Verified & { readonly key: Jwk.PublicKey },
+        JoseError.JoseError,
+        Jwks.Jwks | Signature.Signature
+      >
+    >()
+    expect(Jws.verifyWithKeySet).type.not.toBeCallableWith(token, { algorithms: ["HS256"] })
+    expect(Jwe.decrypt(token, dir)).type.toBe<Effect.Effect<Jwe.Decrypted, JoseError.JoseError, Aead.Aead>>()
+    expect<Jws.Verified["payload"]>().type.toBe<Uint8Array>()
+    expect<Jws.Verified["protectedHeader"]>().type.toBe<Jws.ProtectedHeader>()
+    expect<Jws.ProtectedHeader["alg"]>().type.toBe<Jwk.Algorithm>()
+  })
+})
+
+describe("Jwt", () => {
+  it("keeps encoding and decoding services distinct", () => {
+    const signed = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, hmac)
+    const verified = Jwt.verify(Claims, token, hmac)
+    expect<Effect.Services<typeof signed>>().type.toBe<Encode | Jws.Requirements>()
+    expect<Effect.Services<typeof verified>>().type.toBe<Decode | Jws.Requirements>()
+    expect<Effect.Success<typeof signed>>().type.toBe<Redacted.Redacted<string>>()
+    expect<Effect.Success<typeof verified>>().type.toBe<Jwt.Verified<typeof Claims.Type>>()
+    expect<Effect.Error<typeof signed>>().type.toBe<Jwt.JwtError>()
+    expect<Jwt.JwtError>().type.toBe<JoseError.JoseError | Schema.SchemaError>()
+  })
+
+  it("accepts Duration inputs for policy and requires an allowlist only for key sets", () => {
+    expect<Jwt.VerifyOptions["clockTolerance"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwt.VerifyOptions["maxTokenAge"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwks.RemoteOptions["timeToLive"]>().type.toBe<Duration.Input | undefined>()
+    expect(Jwt.verify).type.not.toBeCallableWith(Claims, token, hmac, { algorithms: ["HS256"] })
+    expect(Jwt.verifyWithKeySet).type.not.toBeCallableWith(Claims, token, {})
+    const resolved = Jwt.verifyWithKeySet(Claims, token, { algorithms: ["ES256"] })
+    expect<Effect.Services<typeof resolved>>().type.toBe<Decode | Jwks.Jwks | Signature.Signature>()
+    expect<Effect.Success<typeof resolved>>().type.toBe<
+      Jwt.Verified<typeof Claims.Type> & { readonly key: Jwk.PublicKey }
+    >()
+    expect(Jwt.decodeUnverified(token)).type.toBe<
+      Effect.Effect<Jwt.Unverified, JoseError.JoseError>
+    >()
+    expect<Jwt.Unverified["claims"]>().type.toBe<Readonly<Record<string, Schema.Json>>>()
+  })
+})

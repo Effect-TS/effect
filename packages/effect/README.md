@@ -58,3 +58,29 @@ The `effect` package is a collection of modules. Some of the core ones:
 | Schema   | A powerful library for defining, validating, and transforming structured data with type-safe encoding and decoding.        |
 
 In v4, functionality that previously lived in separate packages ships inside `effect` under the `effect/*` namespaces, including `http`, `http-api`, `rpc`, `cluster`, `workflow`, `cli`, `ai`, `sql`, and `reactivity`.
+
+## JOSE
+
+`effect/jose` provides unstable APIs for algorithm-bound JWKs, compact JWS and JWE, schema-typed JWTs, and local or remote JWKS resolution, built on `effect/crypto`. Signatures use HS256, RS256, PS256, ES256, or EdDSA (Ed25519); encryption uses `dir` with `A256GCM`.
+
+```ts
+import { Effect, Layer, Schema } from "effect"
+import { Mac, SecureRandom, Signature } from "effect/crypto"
+import { Jwk, Jwt } from "effect/jose"
+
+const Claims = Schema.Struct({ sub: Schema.String })
+
+const program = Effect.gen(function*() {
+  const pair = yield* Jwk.generateKeyPair({ algorithm: "ES256", kid: "signing-key" })
+  const signingKey = yield* Jwk.importPrivate(pair.privateKey, "ES256")
+  const verificationKey = yield* Jwk.importPublic(pair.publicKey, "ES256")
+  const token = yield* Jwt.sign(Claims, { sub: "user_1" }, signingKey, { typ: "JWT" })
+  return yield* Jwt.verify(Claims, token, verificationKey, { typ: "JWT" })
+}).pipe(
+  Effect.provide(
+    Layer.mergeAll(Mac.layerWebCrypto, Signature.layerWebCrypto).pipe(Layer.provide(SecureRandom.layerWebCrypto))
+  )
+)
+```
+
+See [third-party notices](THIRD_PARTY_NOTICES.md) for test attribution.
