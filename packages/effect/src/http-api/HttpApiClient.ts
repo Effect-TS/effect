@@ -568,7 +568,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
-              redactedQuery = redactedQueryNames ?? Object.keys(query)
+              if (redactedQueryNames === undefined || redactedQueryNames.length > 0) {
+                redactedQuery = getRedactedParams(query, redactedQueryNames)
+              }
             }
           }
 
@@ -886,6 +888,14 @@ const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string>
   return ast.propertySignatures.flatMap((ps) =>
     typeof ps.name === "string" && containsRedacted(ps.type) ? [ps.name] : []
   )
+}
+
+// `UrlParams` flattens nested values into bracketed names such as `nested[token]`.
+const getRedactedParams = (query: UrlParams.Input, names: ReadonlyArray<string> | undefined): Array<string> => {
+  const keys = UrlParams.fromInput(query).params.map(([key]) => key)
+  return names === undefined
+    ? keys
+    : keys.filter((key) => names.some((name) => key === name || key.startsWith(`${name}[`)))
 }
 
 const containsRedacted = (ast: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean => {
