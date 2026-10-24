@@ -567,6 +567,10 @@ describe("Duration", () => {
       }
       deepStrictEqual(Duration.fromIso("PT1.5S"), Option.some(Duration.millis(1500)))
       deepStrictEqual(Duration.fromIso("PT0.000000001S"), Option.some(Duration.nanos(1n)))
+      deepStrictEqual(
+        Duration.fromIso("PT9007199254740.993S"),
+        Option.some(Duration.nanos(9_007_199_254_740_993_000_000n))
+      )
     })
 
     it("formatIso / fromIso round trip", () => {
