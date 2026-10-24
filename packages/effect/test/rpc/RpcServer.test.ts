@@ -440,6 +440,50 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 2 })
     }))
 
+  it.effect("isolates synchronous handler throws when fatal defects are disabled", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const group = RpcGroup.make(
+        Rpc.make("pending", { success: Schema.String }),
+        Rpc.make("throws", { success: Schema.String }),
+        Rpc.make("throwsStream", { success: Schema.String, stream: true })
+      )
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
+      const server = yield* RpcServer.makeNoSerialization(group, {
+        disableFatalDefects: true,
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(group.toLayer({
+        pending: () =>
+          Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(release)), Effect.as("served")),
+        throws: (): Effect.Effect<string> => {
+          throw "boom"
+        },
+        throwsStream: (): Stream.Stream<string> => {
+          throw "boom stream"
+        }
+      })))
+      const request = (id: string, tag: "pending" | "throws" | "throwsStream") => ({
+        _tag: "Request" as const,
+        id: RpcMessage.RequestId(id),
+        tag,
+        payload: {},
+        headers: Headers.empty
+      })
+      yield* server.write(1, request("1", "pending"))
+      yield* Deferred.await(started)
+      yield* server.write(1, request("2", "throws"))
+      yield* server.write(1, request("3", "throwsStream"))
+      const summarize = (message: RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>) =>
+        message._tag === "Exit"
+          ? [message.requestId, Exit.isSuccess(message.exit) ? message.exit.value : Cause.squash(message.exit.cause)]
+          : [message._tag]
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["2", "boom"])
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["3", "boom stream"])
+      yield* Deferred.succeed(release, undefined)
+      assert.deepStrictEqual(summarize(yield* Queue.take(messages)), ["1", "served"])
+    }))
+
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
     Effect.gen(function*() {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()
