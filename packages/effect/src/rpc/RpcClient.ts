@@ -689,9 +689,9 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly schemas: RpcSchemas
   }
   const entries = new Map<RequestId, ClientEntry>()
-  // Set before the protocol stops running this client, so requests made while
-  // it shuts down are not handed to a transport that is being torn down.
-  let isClosing = false
+  // Completed before the protocol stops running this client, so requests made
+  // while it shuts down are not handed to a transport that is being torn down.
+  const closing = Deferred.makeUnsafe<void>()
 
   const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
     if (!entries.has(requestId)) return Effect.void
@@ -723,7 +723,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             Effect.flatMap((payload) => {
               // Checked after encoding, which can suspend while the client
               // starts shutting down.
-              if (isClosing) {
+              if (Deferred.isDoneUnsafe(closing)) {
                 entries.delete(message.id)
                 return Effect.interrupt
               }
@@ -775,7 +775,14 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           ).pipe(
             Effect.onError((cause) =>
               write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
-                Effect.andThen(Cause.hasInterrupts(cause) ? Effect.void : Effect.ignore(interruptRequest(requestId)))
+                Effect.andThen(
+                  Cause.hasInterrupts(cause) ? Effect.void : Effect.raceFirst(
+                    Effect.ignore(interruptRequest(requestId)),
+                    // Best-effort once the client closes: a disconnected transport
+                    // can wait for a reconnect that never comes.
+                    Deferred.await(closing)
+                  )
+                )
               )
             ),
             // a decode failure only ends its own request; interruption still propagates
@@ -821,11 +828,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     Effect.forkScoped
   )
   // Finalizers run in reverse order, so this runs before `run` is interrupted.
-  yield* Effect.addFinalizer(() =>
-    Effect.sync(() => {
-      isClosing = true
-    })
-  )
+  yield* Effect.addFinalizer(() => Deferred.succeed(closing, void 0))
 
   return client
 })
