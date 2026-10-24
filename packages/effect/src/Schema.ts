@@ -13953,8 +13953,7 @@ export interface DurationFromIsoString extends decodeTo<Duration, String> {
  * @since 4.1.0
  */
 export const DurationFromIsoString: DurationFromIsoString = String.annotate({
-  expected: "an ISO 8601 duration string that will be decoded as a Duration",
-  format: "duration"
+  expected: "an ISO 8601 duration string that will be decoded as a Duration"
 }).pipe(
   decodeTo(Duration, durationFromIsoString)
 )
