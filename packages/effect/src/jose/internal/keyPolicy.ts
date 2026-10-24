@@ -1,9 +1,9 @@
-import * as CryptoError from "effect/crypto/CryptoError"
-import * as Digest from "effect/crypto/Digest"
-import * as Signature from "effect/crypto/Signature"
-import * as Effect from "effect/Effect"
-import { InvalidKey } from "../jose/JoseError.ts"
-import type { AsymmetricAlgorithm, PrivateJwk, PublicJwk, SecretJwk } from "../jose/Jwk.ts"
+import * as CryptoError from "../../crypto/CryptoError.ts"
+import * as Digest from "../../crypto/Digest.ts"
+import * as Signature from "../../crypto/Signature.ts"
+import * as Effect from "../../Effect.ts"
+import { InvalidKey } from "../JoseError.ts"
+import type { AsymmetricAlgorithm, PrivateJwk, PublicJwk, SecretJwk } from "../Jwk.ts"
 
 /** @internal */
 export const check = (

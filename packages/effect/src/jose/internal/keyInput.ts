@@ -1,7 +1,7 @@
-import * as Predicate from "effect/Predicate"
-import * as Result from "effect/Result"
-import * as Schema from "effect/Schema"
-import { InvalidKey } from "../jose/JoseError.ts"
+import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
+import * as Schema from "../../Schema.ts"
+import { InvalidKey } from "../JoseError.ts"
 
 /** @internal */
 export const maxArrayLength = 256

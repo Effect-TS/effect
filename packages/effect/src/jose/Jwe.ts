@@ -4,15 +4,15 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as Aead from "effect/crypto/Aead"
-import * as SecureRandom from "effect/crypto/SecureRandom"
-import * as Effect from "effect/Effect"
-import * as Base64Url from "effect/encoding/Base64Url"
-import * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
-import { copy, decode as decodeInput, native, operationError, withSecret } from "../internal/crypto.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
-import * as KeyPolicy from "../internal/keyPolicy.ts"
+import * as Aead from "../crypto/Aead.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
+import * as Effect from "../Effect.ts"
+import * as Base64Url from "../encoding/Base64Url.ts"
+import * as Redacted from "../Redacted.ts"
+import * as Schema from "../Schema.ts"
+import { copy, decode as decodeInput, native, operationError, withSecret } from "./internal/crypto.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
+import * as KeyPolicy from "./internal/keyPolicy.ts"
 import { CryptoUnavailable, DecryptionFailed, InvalidKey, InvalidToken, type OperationError } from "./JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
@@ -68,8 +68,8 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  * **Example** (Encrypting and authenticating plaintext)
  *
  * ```ts import.meta.vitest
- * import { Jwe, Jwk } from "@effect/auth/jose"
- * import { NodeCrypto } from "@effect/platform-node"
+ * import { Jwe, Jwk } from "effect/jose"
+ * import { Aead, SecureRandom } from "effect/crypto"
  * import { Effect, Redacted } from "effect"
  *
  * const plaintext = await Effect.runPromise(Effect.gen(function*() {
@@ -84,8 +84,8 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  *   const decrypted = yield* Jwe.decrypt(token, key)
  *   return new TextDecoder().decode(Redacted.value(decrypted.plaintext))
  * }).pipe(
- *   Effect.provide(NodeCrypto.layerAead),
- *   Effect.provide(NodeCrypto.layerSecureRandom)
+ *   Effect.provide(Aead.layerWebCrypto),
+ *   Effect.provide(SecureRandom.layerWebCrypto)
  * ))
  * plaintext // => "private message"
  * ```

@@ -1,9 +1,9 @@
-import type * as CryptoError from "effect/crypto/CryptoError"
-import * as Effect from "effect/Effect"
-import * as Predicate from "effect/Predicate"
-import * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
-import { CryptoUnavailable, InvalidInput, type OperationError, UnsupportedAlgorithm } from "../jose/JoseError.ts"
+import type * as CryptoError from "../../crypto/CryptoError.ts"
+import * as Effect from "../../Effect.ts"
+import * as Predicate from "../../Predicate.ts"
+import * as Redacted from "../../Redacted.ts"
+import * as Schema from "../../Schema.ts"
+import { CryptoUnavailable, InvalidInput, type OperationError, UnsupportedAlgorithm } from "../JoseError.ts"
 
 /** @internal */
 export function decode<A>(

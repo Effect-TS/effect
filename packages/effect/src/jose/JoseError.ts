@@ -4,7 +4,7 @@
  * @stability unstable
  * @since 4.1.0
  */
-import * as Schema from "effect/Schema"
+import * as Schema from "../Schema.ts"
 
 /**
  * Error indicating invalid input to a cryptographic operation without retaining key material or plaintext.

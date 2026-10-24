@@ -1,9 +1,9 @@
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
-import * as SchemaGetter from "effect/SchemaGetter"
-import * as SchemaIssue from "effect/SchemaIssue"
+import * as Duration from "../../Duration.ts"
+import * as Effect from "../../Effect.ts"
+import * as Option from "../../Option.ts"
+import * as Schema from "../../Schema.ts"
+import * as SchemaGetter from "../../SchemaGetter.ts"
+import * as SchemaIssue from "../../SchemaIssue.ts"
 
 const DurationInputComponents = Schema.Struct({
   weeks: Schema.optional(Schema.Finite),

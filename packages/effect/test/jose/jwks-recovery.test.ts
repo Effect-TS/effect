@@ -1,7 +1,7 @@
-import { JoseError, Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Cause, Clock, Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scheduler, Scope } from "effect"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
+import { JoseError, Jwks, Jws } from "effect/jose"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"

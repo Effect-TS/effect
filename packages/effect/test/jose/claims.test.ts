@@ -1,6 +1,6 @@
-import { Jwk, Jwt } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Context, Effect, Redacted, Schema, SchemaGetter } from "effect"
+import { Jwk, Jwt } from "effect/jose"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, independentJwt, secret, secretJwk, utf8 } from "./fixtures.ts"
