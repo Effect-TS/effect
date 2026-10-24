@@ -62,7 +62,9 @@ describe("DockerExec", () => {
         execEngine(connection([], "hold")).provide,
         Effect.flip
       )
-      assert.strictEqual(error, broken)
+      // the input's reason, naming the operation it failed
+      assert.strictEqual(error.reason, broken.reason)
+      assert.strictEqual(error.operation, "docker.Exec.run")
     }))
 
   it.effect("fails with ConnectionFailed when the connection breaks, instead of waiting", () =>
@@ -85,8 +87,8 @@ describe("DockerExec", () => {
         Effect.flip
       )
       assert.deepStrictEqual(
-        error.reason,
-        new DockerError.Conflict({ status: 409, message: "container c is not running", operation: "docker.Exec.start" })
+        [error.reason, error.operation],
+        [new DockerError.Conflict({ message: "container c is not running" }), "docker.Exec.start"]
       )
     }))
 

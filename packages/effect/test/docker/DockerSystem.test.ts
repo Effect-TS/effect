@@ -69,7 +69,7 @@ describe("DockerSystem", () => {
       ])
       const error = yield* Effect.flip(events("{\"Type\":\"container\"}\nnot json\n"))
       assert(error.reason._tag === "InvalidResponse")
-      assert.strictEqual(error.reason.operation, "docker.System.events")
+      assert.strictEqual(error.operation, "docker.System.events")
     }))
 
   it.effect("sends since, until and filters as the Engine reads them", () =>

@@ -55,17 +55,14 @@ describe("DockerVolumes", () => {
           : json({}, 202)))
       const fail = (name: string) =>
         DockerVolumes.DockerVolumes.use((volumes) => volumes.inspect(name)).pipe(stub.provide, Effect.flip)
+      const missing = yield* fail("missing")
       assert.deepStrictEqual(
-        (yield* fail("missing")).reason,
-        new DockerError.NotFound({
-          status: 404,
-          message: "no such volume",
-          operation: "docker.Volumes.inspect"
-        })
+        [missing.reason, missing.operation],
+        [new DockerError.NotFound({ message: "no such volume" }), "docker.Volumes.inspect"]
       )
       const broken = yield* fail("broken")
       assert(broken.reason._tag === "InvalidResponse")
-      assert.strictEqual(broken.reason.operation, "docker.Volumes.inspect")
+      assert.strictEqual(broken.operation, "docker.Volumes.inspect")
       const unexpected = yield* fail("other")
       assert(unexpected.reason._tag === "InvalidResponse")
       assert.include(unexpected.message, "unexpected status 202")
@@ -77,20 +74,20 @@ describe("DockerVolumes", () => {
         request.url.pathname.endsWith("/proxied")
           ? { status: 403, headers: { "content-type": "text/html" }, body: "<h1>Forbidden</h1>\n" }
           : json({ message: "bad gateway" }, 502)))
-      const reason = (name: string) =>
+      const fail = (name: string) =>
         DockerVolumes.DockerVolumes.use((volumes) => volumes.inspect(name)).pipe(
           stub.provide,
           Effect.flip,
-          Effect.map((error) => error.reason)
+          Effect.map((error) => [error.reason, error.operation])
         )
       assert.deepStrictEqual(
-        yield* reason("proxied"),
-        new DockerError.Forbidden({ status: 403, message: "<h1>Forbidden</h1>", operation: "docker.Volumes.inspect" })
+        yield* fail("proxied"),
+        [new DockerError.Forbidden({ message: "<h1>Forbidden</h1>" }), "docker.Volumes.inspect"]
       )
       // a status `DockerApi` doesn't declare
       assert.deepStrictEqual(
-        yield* reason("other"),
-        new DockerError.UnexpectedStatus({ status: 502, message: "bad gateway", operation: "docker.Volumes.inspect" })
+        yield* fail("other"),
+        [new DockerError.UnexpectedStatus({ status: 502, message: "bad gateway" }), "docker.Volumes.inspect"]
       )
     }))
 })

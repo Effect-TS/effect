@@ -699,11 +699,8 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
         const fromTar = (error: DockerError | Tar.TarError): DockerError =>
           Tar.isTarError(error)
             ? new DockerError({
-              reason: new InvalidResponse({
-                issue: error.message,
-                operation: "docker.Containers.copyFrom",
-                cause: error
-              })
+              reason: new InvalidResponse({ issue: error.message, cause: error }),
+              operation: "docker.Containers.copyFrom"
             })
             : error
         return bytes.pipe(
