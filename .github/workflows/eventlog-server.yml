@@ -13,7 +13,8 @@ permissions: {}
 jobs:
   image:
     name: Build and Push
-    if: github.repository_owner == 'Effect-Ts'
+    # Manual runs can target any branch, and this job publishes `latest`.
+    if: github.repository_owner == 'Effect-Ts' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
