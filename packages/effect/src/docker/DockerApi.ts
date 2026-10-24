@@ -42,16 +42,35 @@ import * as DockerSchema from "./DockerSchema.ts"
 // -----------------------------------------------------------------------------
 
 /**
- * An endpoint annotation: the request fields newer than API 1.44, each with
- * the version it arrived in, and the endpoint's own version when it is newer.
+ * An endpoint annotation: the API version the endpoint arrived in when it is
+ * newer than 1.44, and the request fields newer than 1.44, each with the
+ * version it arrived in.
+ *
+ * **Details**
+ *
  * A key names a field of the request's `query` or `payload` as the caller
  * passes it, a dotted key (`HostConfig.Init`) a nested one, and a `*` key any
  * element of an array or entry of a map
- * (`HostConfig.Mounts.*.VolumeOptions.Subpath`). The `DockerEngine`'s client
- * fails a request that sets one with `OptionNotSupported` when the negotiated
- * version is older, before anything is sent.
+ * (`HostConfig.Mounts.*.VolumeOptions.Subpath`). The services of
+ * `effect/docker` fail a request that sets one with `OptionNotSupported`
+ * when the negotiated version is older, before anything is sent. An Engine
+ * that predates a field ignores it or rejects the request, so a client of
+ * {@link DockerApi} of your own can check them the same way.
  *
- * @internal
+ * **Example** (Reading the version an endpoint arrived in)
+ *
+ * ```ts import.meta.vitest
+ * import { Context } from "effect"
+ * import { DockerApi } from "effect/docker"
+ *
+ * const endpoint = DockerApi.Images.endpoints.attestations
+ * const versions = Context.getOrUndefined(endpoint.annotations, DockerApi.ApiVersions)
+ * console.log(versions?.endpoint) // "1.55"
+ * ```
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.6
  */
 export class ApiVersions extends Context.Service<ApiVersions, {
   /** The version the endpoint itself arrived in. */

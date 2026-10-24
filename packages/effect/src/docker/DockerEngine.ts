@@ -715,7 +715,7 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
           const method = client[id]
           const name = `${operations}.${id}`
           const mapError = toDockerError(engine, name)
-          const versions = Context.getOrUndefined(endpoint.annotations as Context.Context<ApiVersions>, ApiVersions)
+          const versions = Context.getOrUndefined(endpoint.annotations, ApiVersions)
           const streamed = Array.from(endpoint.success).some(HttpApiSchema.isStreamSchema)
           // an error status `DockerApi` doesn't declare, with the message of its body
           const send = (request: ClientRequest | undefined) =>
