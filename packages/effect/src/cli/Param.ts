@@ -1488,14 +1488,16 @@ export const withFallbackPrompt: {
   self: Param<Kind, A>,
   prompt: FallbackPrompt<B>
 ): Param<Kind, A | B> => {
-  const runPrompt = (error: CliError.MissingOption | CliError.MissingArgument, args: ParsedArgs) =>
-    Effect.flatMap(TerminalCapabilities.TerminalCapabilities, ({ canPrompt }) =>
-      canPrompt
-        ? Effect.flatMap(Prompt.isPrompt(prompt) ? Effect.succeed(prompt) : prompt, Prompt.run).pipe(
-          Effect.map((value) => [args.arguments, value as A | B] as const),
-          Effect.catchTag("QuitError", () => Effect.fail(error))
-        )
-        : Effect.fail(error))
+  const runPrompt = Effect.fnUntraced(function*(
+    error: CliError.MissingOption | CliError.MissingArgument,
+    args: ParsedArgs
+  ) {
+    const { canPrompt } = yield* TerminalCapabilities.TerminalCapabilities
+    if (!canPrompt) return yield* Effect.fail(error)
+    const built = Prompt.isPrompt(prompt) ? prompt : yield* prompt
+    const value = yield* Effect.catchTag(Prompt.run(built), "QuitError", () => Effect.fail(error))
+    return [args.arguments, value as A | B] as const
+  })
   return transform(
     self,
     (parse) => (args) =>
