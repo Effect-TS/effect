@@ -1,181 +1,329 @@
 /**
- * Typed JOSE failures with fixed diagnostics that never contain tokens, claims, keys, URLs, or native causes.
+ * The `JoseError` returned by the `effect/jose` modules, and the reasons it
+ * carries.
+ *
+ * Every failure is one `JoseError` whose `reason` says what went wrong. Reasons
+ * for configuration, transport, and key-import problems carry a `description`
+ * and, when there is one, a `cause`. Reasons for failed authentication carry
+ * nothing: they never describe tokens, claims, plaintext, or key material.
+ *
+ * **Gotchas**
+ *
+ * Map the error before it reaches a client, for example
+ * `SignatureVerificationFailed` to a 401. Sending verification detail to
+ * clients is how oracles leak.
  *
  * @stability unstable
  * @since 4.1.0
  */
-import * as Schema from "../Schema.ts"
+import * as Data from "../Data.ts"
+import * as Predicate from "../Predicate.ts"
+
+const TypeId = "~effect/jose/JoseError" as const
+const ReasonTypeId = "~effect/jose/JoseError/Reason" as const
 
 /**
- * Error indicating invalid input to a cryptographic operation without retaining key material or plaintext.
+ * Reason for a malformed compact serialization, protected header, or payload,
+ * or for header parameters that are not supported, such as `crit`.
  *
  * @stability unstable
  * @category errors
  * @since 4.1.0
  */
-export class InvalidInput extends Schema.TaggedError<InvalidInput>()("JoseInvalidInput", {
-  reason: Schema.Literals(["key", "nonce", "parameters", "data"])
-}) {}
+export class InvalidToken extends Data.TaggedError("InvalidToken")<{
+  readonly description: string
+}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
 
-/**
- * Error indicating that the cryptographic backend does not support the requested algorithm.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class UnsupportedAlgorithm extends Schema.TaggedError<UnsupportedAlgorithm>()(
-  "JoseUnsupportedAlgorithm",
-  {}
-) {}
-
-/**
- * Error indicating a cryptographic backend failure without exposing its native cause.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class CryptoUnavailable extends Schema.TaggedError<CryptoUnavailable>()(
-  "JoseCryptoUnavailable",
-  {}
-) {}
-
-/**
- * Failures produced by cryptographic operations, with diagnostics that omit secret inputs and native causes.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export type OperationError = InvalidInput | UnsupportedAlgorithm | CryptoUnavailable
-
-/**
- * Error indicating malformed compact serialization, headers, payload, or options; diagnostics omit sensitive inputs.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class InvalidToken extends Schema.TaggedError<InvalidToken>()("JoseInvalidToken", {
-  reason: Schema.Literals(["serialization", "header", "payload", "parameters"])
-}) {}
-
-/**
- * Error indicating that the protected algorithm is outside the verification allowlist.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class AlgorithmNotAllowed extends Schema.TaggedError<AlgorithmNotAllowed>()(
-  "JoseAlgorithmNotAllowed",
-  {}
-) {}
-
-/**
- * Error indicating invalid key material or a key incompatible with the selected operation.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class InvalidKey extends Schema.TaggedError<InvalidKey>()("JoseInvalidKey", {}) {}
-
-/**
- * Error indicating that a compact JWS signature could not be authenticated.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class SignatureVerificationFailed extends Schema.TaggedError<SignatureVerificationFailed>()(
-  "JoseSignatureVerificationFailed",
-  {}
-) {}
-
-/**
- * Error indicating that authenticated decryption failed.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class DecryptionFailed extends Schema.TaggedError<DecryptionFailed>()(
-  "JoseDecryptionFailed",
-  {}
-) {}
-
-/**
- * Error indicating that no public key matches the requested algorithm and key identifier.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class KeyNotFound extends Schema.TaggedError<KeyNotFound>()("JoseKeyNotFound", {}) {}
-
-/**
- * Error indicating that more than one public key matches the selection policy.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class AmbiguousKey extends Schema.TaggedError<AmbiguousKey>()("JoseAmbiguousKey", {}) {}
-
-/**
- * Error indicating a remote key-set configuration, transport, response, or lifecycle failure.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class JwksUnavailable extends Schema.TaggedError<JwksUnavailable>()("JoseJwksUnavailable", {
-  reason: Schema.Literals(["configuration", "transport", "response", "cooldown", "busy", "closed"])
-}) {}
-
-/**
- * Error indicating a missing, invalid, mismatched, or temporally invalid registered claim.
- *
- * @stability unstable
- * @category errors
- * @since 4.1.0
- */
-export class ClaimValidationFailed extends Schema.TaggedError<ClaimValidationFailed>()(
-  "JoseClaimValidationFailed",
-  {
-    claim: Schema.Literals(["registered", "iss", "sub", "aud", "exp", "nbf", "iat", "jti", "typ"]),
-    reason: Schema.Literals([
-      "invalid",
-      "missing",
-      "mismatch",
-      "expired",
-      "notYetValid",
-      "tooOld",
-      "future"
-    ])
+  override get message(): string {
+    return this.description
   }
-) {}
+}
 
 /**
- * Failures produced when importing or resolving key material.
+ * Reason for key material that cannot be imported, or that does not fit the
+ * selected algorithm or operation.
  *
  * @stability unstable
  * @category errors
  * @since 4.1.0
  */
-export type KeyError = InvalidKey | KeyNotFound | AmbiguousKey | JwksUnavailable | OperationError
+export class InvalidKey extends Data.TaggedError("InvalidKey")<{
+  readonly description: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return this.description
+  }
+}
 
 /**
- * Failures produced when authenticating a compact JWS or resolving its verification key.
+ * Reason for an option or configuration value that the operation rejects
+ * before doing any work, such as a non-HTTPS key-set URL.
  *
  * @stability unstable
  * @category errors
  * @since 4.1.0
  */
-export type VerifyError =
-  | KeyError
+export class InvalidArgument extends Data.TaggedError("InvalidArgument")<{
+  readonly description: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return this.description
+  }
+}
+
+/**
+ * Reason for a token whose protected `alg` is not the key's algorithm or is
+ * outside the allowlist.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class AlgorithmNotAllowed extends Data.TaggedError("AlgorithmNotAllowed")<{}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "The token algorithm is not allowed"
+  }
+}
+
+/**
+ * Reason for a signature that does not authenticate the token.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class SignatureVerificationFailed extends Data.TaggedError("SignatureVerificationFailed")<{}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "Could not verify the signature"
+  }
+}
+
+/**
+ * Reason for ciphertext that fails authenticated decryption.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class DecryptionFailed extends Data.TaggedError("DecryptionFailed")<{}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "Could not decrypt the token"
+  }
+}
+
+/**
+ * Reason for a key set with no key matching the algorithm and key id.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class KeyNotFound extends Data.TaggedError("KeyNotFound")<{}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "No key matches the algorithm and key id"
+  }
+}
+
+/**
+ * Reason for a key set with more than one key matching the algorithm and key
+ * id.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class AmbiguousKey extends Data.TaggedError("AmbiguousKey")<{}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "More than one key matches the algorithm and key id"
+  }
+}
+
+/**
+ * Reason for a remote key set that cannot be fetched or read, is cooling down
+ * after a failed refresh, or belongs to a closed layer.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class KeySetUnavailable extends Data.TaggedError("KeySetUnavailable")<{
+  readonly description: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return this.description
+  }
+}
+
+/**
+ * Reason for a registered claim or `typ` header that is missing, malformed,
+ * different from the expected value, or outside its validity window.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class ClaimValidationFailed extends Data.TaggedError("ClaimValidationFailed")<{
+  readonly claim: "iss" | "sub" | "aud" | "exp" | "nbf" | "iat" | "jti" | "typ"
+  readonly reason: "invalid" | "missing" | "mismatch" | "expired" | "notYetValid" | "tooOld" | "future"
+}> {
+  /**
+   * Marks this value as a `JoseError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return `The ${this.claim} claim failed validation: ${this.reason}`
+  }
+}
+
+/**
+ * Union of the reasons carried by `JoseError`.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export type JoseErrorReason =
   | InvalidToken
+  | InvalidKey
+  | InvalidArgument
   | AlgorithmNotAllowed
   | SignatureVerificationFailed
+  | DecryptionFailed
+  | KeyNotFound
+  | AmbiguousKey
+  | KeySetUnavailable
+  | ClaimValidationFailed
+
+/**
+ * Error returned by the `effect/jose` modules.
+ *
+ * **Example** (Rejecting a token with a bad signature)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { JoseError } from "effect/jose"
+ *
+ * const verify = Effect.fail(
+ *   new JoseError.JoseError({ reason: new JoseError.SignatureVerificationFailed() })
+ * )
+ *
+ * const program = verify.pipe(
+ *   Effect.catchReason("JoseError", "SignatureVerificationFailed", () => Effect.succeed("rejected"))
+ * )
+ *
+ * await Effect.runPromise(program) // => "rejected"
+ * ```
+ *
+ * @see {@link isJoseError} for narrowing unknown values
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class JoseError extends Data.TaggedError("JoseError")<{
+  readonly reason: JoseErrorReason
+}> {
+  /**
+   * Marks this value as a `JoseError` for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [TypeId] = TypeId
+
+  /**
+   * The reason's cause, when it has one.
+   *
+   * @since 4.1.0
+   */
+  override readonly cause: unknown = "cause" in this.reason ? this.reason.cause : undefined
+
+  override get message(): string {
+    return this.reason.message
+  }
+}
+
+/**
+ * Checks whether a value is a `JoseError`.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.1.0
+ */
+export const isJoseError = (u: unknown): u is JoseError => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Checks whether a value is one of the reasons carried by `JoseError`.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.1.0
+ */
+export const isJoseErrorReason = (u: unknown): u is JoseErrorReason => Predicate.hasProperty(u, ReasonTypeId)
