@@ -41,12 +41,8 @@ describe("DockerTasks", () => {
       const stub = makeStubEngine(withPing("1.44", () => json({ message: "This node is not a swarm manager." }, 503)))
       const error = yield* Effect.flip(Tasks.use((tasks) => tasks.inspect("t1"))).pipe(stub.provide)
       assert.deepStrictEqual(
-        error.reason,
-        new DockerError.SwarmUnavailable({
-          status: 503,
-          message: "This node is not a swarm manager.",
-          operation: "docker.Tasks.inspect"
-        })
+        [error.reason, error.operation],
+        [new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." }), "docker.Tasks.inspect"]
       )
     }))
 
@@ -57,8 +53,8 @@ describe("DockerTasks", () => {
         stub.provide
       )
       assert.deepStrictEqual(
-        error.reason,
-        new DockerError.NotFound({ status: 404, message: "task t1 not found", operation: "docker.Tasks.logs" })
+        [error.reason, error.operation],
+        [new DockerError.NotFound({ message: "task t1 not found" }), "docker.Tasks.logs"]
       )
     }))
 })

@@ -196,7 +196,7 @@ export const logFrames = (
   const framing = fromContentType(logs.headers["content-type"])
   return framing === undefined
     ? Stream.fail(
-      new DockerError({ reason: new InvalidResponse({ issue: "the logs have no stream Content-Type", operation }) })
+      new DockerError({ reason: new InvalidResponse({ issue: "the logs have no stream Content-Type" }), operation })
     )
     : frames(logs.body, framing)
 }

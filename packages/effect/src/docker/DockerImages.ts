@@ -301,7 +301,7 @@ export const pushResultOf = <E, R>(
     ),
     Effect.flatMap((aux) =>
       Effect.mapError(decodePushResult(aux), (cause) =>
-        new DockerError({ reason: new InvalidResponse({ issue: cause.message, operation, cause }) }))
+        new DockerError({ reason: new InvalidResponse({ issue: cause.message, cause }), operation }))
     )
   )
 
@@ -1022,10 +1022,8 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
           Effect.flatMap(() =>
             state.id !== undefined ? Effect.succeed({ id: state.id }) : Effect.fail(
               new DockerError({
-                reason: new InvalidResponse({
-                  issue: "the build ended without reporting an image ID",
-                  operation: "docker.Images.build"
-                })
+                reason: new InvalidResponse({ issue: "the build ended without reporting an image ID" }),
+                operation: "docker.Images.build"
               })
             )
           )

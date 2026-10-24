@@ -99,10 +99,8 @@ const exitCodeWith = (
       if (typeof result.ExitCode === "number") return Effect.succeed(result.ExitCode)
       return Effect.fail(
         new DockerError({
-          reason: new InvalidResponse({
-            issue: "the exec stopped without an exit code",
-            operation: "docker.Exec.inspect"
-          })
+          reason: new InvalidResponse({ issue: "the exec stopped without an exit code" }),
+          operation: "docker.Exec.inspect"
         })
       )
     })

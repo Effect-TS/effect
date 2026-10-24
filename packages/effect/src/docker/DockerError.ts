@@ -29,6 +29,7 @@
  */
 import * as Data from "../Data.ts"
 import { hasProperty } from "../Predicate.ts"
+import * as Schema from "../Schema.ts"
 import type * as SchemaIssue from "../SchemaIssue.ts"
 
 const TypeId = "~effect/docker/DockerError"
@@ -47,10 +48,11 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  *
  * **Details**
  *
- * The `reason` holds the specific failure. `isRetryable` is `true` only for
- * {@link ConnectionFailed} (unless it names a misconfiguration), {@link TooManyRequests}
- * and {@link Unavailable}.
- * The original error (an `HttpClientError` or a Schema issue) is kept as the
+ * The `reason` holds the specific failure, and `operation` the operation
+ * that failed, as its span names it (`docker.Containers.inspect`).
+ * `isRetryable` is `true` only for {@link ConnectionFailed} (unless it names a
+ * misconfiguration), {@link TooManyRequests} and {@link Unavailable}. The
+ * original error (an `HttpClientError` or a Schema issue) is kept as the
  * `cause`.
  *
  * @stability unstable
@@ -59,9 +61,12 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  */
 export class DockerError extends Data.TaggedError("DockerError")<{
   readonly reason: DockerErrorReason
+  /** The operation that failed, as its span names it (`docker.Containers.inspect`). */
+  readonly operation?: string | undefined
 }> {
   constructor(props: {
     readonly reason: DockerErrorReason
+    readonly operation?: string | undefined
   }) {
     if ("cause" in props.reason && props.reason.cause !== undefined) {
       super({ ...props, cause: props.reason.cause } as any)
@@ -89,10 +94,11 @@ export class DockerError extends Data.TaggedError("DockerError")<{
   }
 
   override get message(): string {
-    const reason = this.reason
-    return "status" in reason
-      ? `${reason._tag} (${reason.status} ${reason.operation}): ${reason.message}`
-      : reason.message
+    const { operation, reason } = this
+    if ("status" in reason) {
+      return `${reason._tag} (${reason.status}${operation === undefined ? "" : ` ${operation}`}): ${reason.message}`
+    }
+    return operation === undefined ? reason.message : `${operation}: ${reason.message}`
   }
 }
 
@@ -100,24 +106,10 @@ export class DockerError extends Data.TaggedError("DockerError")<{
 // Engine responses
 // -----------------------------------------------------------------------------
 
-/**
- * The fields of an Engine response that isn't a success.
- *
- * **Details**
- *
- * `message` is the JSON `message` of the body, otherwise the trimmed body
- * text. `operation` names the operation that sent the request, as its span
- * does (`docker.Containers.inspect`).
- *
- * @stability unstable
- * @category models
- * @since 4.0.6
- */
-export interface ResponseFields {
-  readonly status: number
-  readonly message: string
-  readonly operation: string
-}
+// Every class below is both a `DockerError` reason and the Schema that
+// `DockerApi` declares the response with: on the wire, the Engine's
+// `{ message }` JSON (or a proxy's text) under the class's status. `message` is
+// the JSON `message` of the body, otherwise the trimmed body text.
 
 /**
  * The Engine answered 400: the request or one of its parameters is invalid.
@@ -126,7 +118,17 @@ export interface ResponseFields {
  * @category errors
  * @since 4.0.6
  */
-export class BadRequest extends Data.TaggedError("BadRequest")<ResponseFields> {
+export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 400.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 400 {
+    return 400
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -145,7 +147,17 @@ export class BadRequest extends Data.TaggedError("BadRequest")<ResponseFields> {
  * @category errors
  * @since 4.0.6
  */
-export class Unauthorized extends Data.TaggedError("Unauthorized")<ResponseFields> {
+export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 401.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 401 {
+    return 401
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -164,7 +176,17 @@ export class Unauthorized extends Data.TaggedError("Unauthorized")<ResponseField
  * @category errors
  * @since 4.0.6
  */
-export class Forbidden extends Data.TaggedError("Forbidden")<ResponseFields> {
+export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 403.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 403 {
+    return 403
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -184,7 +206,17 @@ export class Forbidden extends Data.TaggedError("Forbidden")<ResponseFields> {
  * @category errors
  * @since 4.0.6
  */
-export class NotFound extends Data.TaggedError("NotFound")<ResponseFields> {
+export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 404.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 404 {
+    return 404
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -204,7 +236,17 @@ export class NotFound extends Data.TaggedError("NotFound")<ResponseFields> {
  * @category errors
  * @since 4.0.6
  */
-export class Conflict extends Data.TaggedError("Conflict")<ResponseFields> {
+export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 409.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 409 {
+    return 409
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -223,7 +265,19 @@ export class Conflict extends Data.TaggedError("Conflict")<ResponseFields> {
  * @category errors
  * @since 4.0.6
  */
-export class PreconditionFailed extends Data.TaggedError("PreconditionFailed")<ResponseFields> {
+export class PreconditionFailed
+  extends Schema.TaggedError<PreconditionFailed>()("PreconditionFailed", { message: Schema.String })
+{
+  /**
+   * The status the Engine answers with: 412.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 412 {
+    return 412
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -242,7 +296,19 @@ export class PreconditionFailed extends Data.TaggedError("PreconditionFailed")<R
  * @category errors
  * @since 4.0.6
  */
-export class TooManyRequests extends Data.TaggedError("TooManyRequests")<ResponseFields> {
+export class TooManyRequests
+  extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", { message: Schema.String })
+{
+  /**
+   * The status the Engine answers with: 429.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 429 {
+    return 429
+  }
+
   /**
    * Whether retrying may succeed: always for this reason.
    *
@@ -266,7 +332,17 @@ export class TooManyRequests extends Data.TaggedError("TooManyRequests")<Respons
  * @category errors
  * @since 4.0.6
  */
-export class ServerError extends Data.TaggedError("ServerError")<ResponseFields> {
+export class ServerError extends Schema.TaggedError<ServerError>()("ServerError", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 500.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 500 {
+    return 500
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -285,7 +361,17 @@ export class ServerError extends Data.TaggedError("ServerError")<ResponseFields>
  * @category errors
  * @since 4.0.6
  */
-export class NotImplemented extends Data.TaggedError("NotImplemented")<ResponseFields> {
+export class NotImplemented extends Schema.TaggedError<NotImplemented>()("NotImplemented", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 501.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 501 {
+    return 501
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -305,7 +391,17 @@ export class NotImplemented extends Data.TaggedError("NotImplemented")<ResponseF
  * @category errors
  * @since 4.0.6
  */
-export class Unavailable extends Data.TaggedError("Unavailable")<ResponseFields> {
+export class Unavailable extends Schema.TaggedError<Unavailable>()("Unavailable", { message: Schema.String }) {
+  /**
+   * The status the Engine answers with: 503.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 503 {
+    return 503
+  }
+
   /**
    * Whether retrying may succeed: always for this reason.
    *
@@ -334,7 +430,19 @@ export class Unavailable extends Data.TaggedError("Unavailable")<ResponseFields>
  * @category errors
  * @since 4.0.6
  */
-export class SwarmUnavailable extends Data.TaggedError("SwarmUnavailable")<ResponseFields> {
+export class SwarmUnavailable
+  extends Schema.TaggedError<SwarmUnavailable>()("SwarmUnavailable", { message: Schema.String })
+{
+  /**
+   * The status the Engine answers with: 503.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get status(): 503 {
+    return 503
+  }
+
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -354,7 +462,10 @@ export class SwarmUnavailable extends Data.TaggedError("SwarmUnavailable")<Respo
  * @category errors
  * @since 4.0.6
  */
-export class UnexpectedStatus extends Data.TaggedError("UnexpectedStatus")<ResponseFields> {
+export class UnexpectedStatus extends Data.TaggedError("UnexpectedStatus")<{
+  readonly status: number
+  readonly message: string
+}> {
   /**
    * Whether retrying may succeed: never for this reason.
    *
@@ -434,8 +545,6 @@ const causeMessages = (u: unknown): string => {
  */
 export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
   readonly issue: SchemaIssue.Issue | string
-  /** The method that received it, such as `docker.Containers.inspect`. */
-  readonly operation: string
   readonly cause?: unknown
 }> {
   /**
@@ -453,7 +562,7 @@ export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
       : this.cause instanceof Error
       ? this.cause.message
       : String(this.issue)
-    return `Invalid response from ${this.operation}: ${detail}`
+    return `Invalid response: ${detail}`
   }
 }
 

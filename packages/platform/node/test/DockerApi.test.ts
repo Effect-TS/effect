@@ -1,13 +1,14 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
-import { DockerApi } from "effect/docker"
+import { DockerApi, DockerError } from "effect/docker"
 import { HttpClient, HttpRouter } from "effect/http"
 import { HttpApi, HttpApiBuilder, HttpApiClient } from "effect/http-api"
 
 const Api = HttpApi.make("docker").add(DockerApi.Volumes)
 
-const missing = new DockerApi.NotFound({ message: "get v: no such volume" })
+const missing = new DockerError.NotFound({ message: "get v: no such volume" })
+const outsideSwarm = new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." })
 
 const VolumesLayer = HttpApiBuilder.group(Api, "volumes", (handlers) =>
   handlers
@@ -15,15 +16,18 @@ const VolumesLayer = HttpApiBuilder.group(Api, "volumes", (handlers) =>
     // the endpoints the test doesn't call
     .handle("list", () => Effect.die("unused"))
     .handle("create", () => Effect.die("unused"))
-    .handle("update", () => Effect.die("unused"))
+    .handle("update", () => Effect.fail(outsideSwarm))
     .handle("remove", () => Effect.die("unused"))
     .handle("prune", () => Effect.die("unused")))
 
-// a server passes requests through `EngineErrors`
-const EngineErrorsLayer = Layer.succeed(DockerApi.EngineErrors, (effect) => effect)
+// a server passes requests through `EngineErrors` and `SwarmErrors`
+const ErrorsLayer = Layer.mergeAll(
+  Layer.succeed(DockerApi.EngineErrors, (effect) => effect),
+  Layer.succeed(DockerApi.SwarmErrors, (effect) => effect)
+)
 
 const ServerLayer = HttpRouter.serve(
-  HttpApiBuilder.layer(Api).pipe(Layer.provide(VolumesLayer), Layer.provide(EngineErrorsLayer)),
+  HttpApiBuilder.layer(Api).pipe(Layer.provide(VolumesLayer), Layer.provide(ErrorsLayer)),
   { disableListenLog: true, disableLogger: true }
 ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
 
@@ -37,7 +41,13 @@ describe("DockerApi", () => {
 
       const client = yield* HttpApiClient.make(Api)
       const error = yield* Effect.flip(client.volumes.inspect({ params: { name: "v" } }))
-      assert.instanceOf(error, DockerApi.NotFound)
+      assert.instanceOf(error, DockerError.NotFound)
       assert.deepStrictEqual(error, missing)
+
+      // a Swarm endpoint's 503
+      const unavailable = yield* Effect.flip(
+        client.volumes.update({ params: { name: "v" }, query: { version: 1 }, payload: {} })
+      )
+      assert.deepStrictEqual(unavailable, outsideSwarm)
     }).pipe(Effect.provide(ServerLayer)))
 })

@@ -82,30 +82,17 @@ import {
   errorMessage,
   type ErrorResponse,
   ErrorResponses,
-  errorStatus,
-  SwarmEndpoint
+  type SwarmErrorResponse,
+  SwarmErrorResponses
 } from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
 import {
-  BadRequest,
-  Conflict,
   ConnectionFailed,
   CredentialsUnavailable,
   DockerError,
-  type DockerErrorReason,
-  Forbidden,
   InvalidResponse,
   isDockerError,
-  NotFound,
-  NotImplemented,
   OptionNotSupported,
-  PreconditionFailed,
-  type ResponseFields,
-  ServerError,
-  SwarmUnavailable,
-  TooManyRequests,
-  Unauthorized,
-  Unavailable,
   UnexpectedStatus,
   UnsupportedApiVersion
 } from "./DockerError.ts"
@@ -473,29 +460,7 @@ export const connectionFailed = (endpoint: typeof DockerConfig.Endpoint.Type, ca
     })
   })
 
-/** The reason of each of `DockerApi`'s error responses. */
-const reasons: {
-  readonly [Tag in ErrorResponse["_tag"]]: new(fields: ResponseFields) => DockerErrorReason
-} = {
-  BadRequest,
-  Unauthorized,
-  Forbidden,
-  NotFound,
-  Conflict,
-  PreconditionFailed,
-  TooManyRequests,
-  ServerError,
-  NotImplemented,
-  Unavailable
-}
-
-const isErrorResponse = Schema.is(Schema.Union(ErrorResponses))
-
-/** A decoded error response of `operation` as its reason. */
-const fromErrorResponse = (response: ErrorResponse, operation: string): DockerError =>
-  new DockerError({
-    reason: new reasons[response._tag]({ status: errorStatus[response._tag], message: response.message, operation })
-  })
+const isErrorResponse = Schema.is(Schema.Union([...ErrorResponses, ...SwarmErrorResponses]))
 
 /** The decoders of `DockerApi`'s error responses, by status. */
 const errorResponses = new Map(
@@ -505,9 +470,10 @@ const errorResponses = new Map(
 /** A response of `operation` that isn't a success, as `DockerApi` declares its status, else `UnexpectedStatus`. */
 const statusError = (status: number, body: string, operation: string): DockerError => {
   const decode = errorResponses.get(status)
-  return decode === undefined
-    ? new DockerError({ reason: new UnexpectedStatus({ status, message: errorMessage(body), operation }) })
-    : fromErrorResponse(decode(body), operation)
+  return new DockerError({
+    reason: decode === undefined ? new UnexpectedStatus({ status, message: errorMessage(body) }) : decode(body),
+    operation
+  })
 }
 
 /** How much of an error response's body is read. */
@@ -648,6 +614,7 @@ export type MethodError =
   | HttpClientError.HttpClientError
   | Schema.SchemaError
   | ErrorResponse
+  | SwarmErrorResponse
 
 /** `HttpApiClient`'s failure for a response whose status no endpoint schema declares. */
 type UnexpectedStatusError = HttpClientError.HttpClientError & {
@@ -659,34 +626,29 @@ const isUnexpectedStatus = (error: MethodError): error is UnexpectedStatusError 
   error.reason.response !== undefined && error.reason.cause === undefined
 
 /**
- * Maps a method's failures to `DockerError`: an error response as its
- * reason, a body that fails to read as `ConnectionFailed`, and one that fails
- * to decode as `InvalidResponse`, naming the operation.
+ * Maps a method's failures to `DockerError` naming the operation: an error
+ * response as its reason, a body that fails to read as `ConnectionFailed`,
+ * and one that fails to decode as `InvalidResponse`. A `DockerError` keeps
+ * the operation it already names.
  *
  * @internal
  */
 export const toDockerError =
   (engine: DockerEngine["Service"], operation: string) => (error: MethodError): DockerError =>
     isDockerError(error)
-      ? error
+      ? error.operation === undefined ? new DockerError({ reason: error.reason, operation }) : error
       : isErrorResponse(error)
-      ? fromErrorResponse(error, operation)
+      ? new DockerError({ reason: error, operation })
       : isUnexpectedStatus(error)
       ? new DockerError({
-        reason: new InvalidResponse({
-          issue: `unexpected status ${error.reason.response.status}`,
-          operation,
-          cause: error
-        })
+        reason: new InvalidResponse({ issue: `unexpected status ${error.reason.response.status}`, cause: error }),
+        operation
       })
       : HttpClientError.isHttpClientError(error) && error.reason._tag !== "DecodeError"
-      ? connectionFailed(engine.config.endpoint, error)
+      ? new DockerError({ reason: connectionFailed(engine.config.endpoint, error).reason, operation })
       : new DockerError({
-        reason: new InvalidResponse({
-          issue: Schema.isSchemaError(error) ? error.issue : error.message,
-          operation,
-          cause: error
-        })
+        reason: new InvalidResponse({ issue: Schema.isSchemaError(error) ? error.issue : error.message, cause: error }),
+        operation
       })
 
 /** The span options of an operation: the resource it acts on, as `docker.resource_id`. */
@@ -726,22 +688,6 @@ export const withStreamOperation =
 // -----------------------------------------------------------------------------
 // API version gates
 // -----------------------------------------------------------------------------
-
-/**
- * A Swarm endpoint's failure: a 503 as `SwarmUnavailable`, anything else as it is.
- *
- * @internal
- */
-export const swarmError = (error: DockerError): DockerError =>
-  error.reason._tag === "Unavailable"
-    ? new DockerError({
-      reason: new SwarmUnavailable({
-        status: error.reason.status,
-        message: error.reason.message,
-        operation: error.reason.operation
-      })
-    })
-    : error
 
 /**
  * Whether a Swarm update failed because the object changed since it was
@@ -874,8 +820,7 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
 
 /**
  * The client of an endpoint group over the engine's `HttpClient`. Each method
- * checks the endpoint's {@link ApiVersions}, reports a {@link SwarmEndpoint}'s
- * 503 as `SwarmUnavailable`, runs in a span named
+ * checks the endpoint's {@link ApiVersions}, runs in a span named
  * `<operations>.<endpoint>` (e.g. `docker.System.info`) with the `id` or
  * `name` path parameter as `docker.resource_id`, and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
@@ -903,10 +848,7 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
         Object.entries(group.endpoints as Readonly<Record<string, HttpApiEndpoint.Top>>).map(([id, endpoint]) => {
           const method = client[id]
           const name = `${operations}.${id}`
-          const toError = toDockerError(engine, name)
-          const mapError = Context.getOrUndefined(endpoint.annotations as Context.Context<SwarmEndpoint>, SwarmEndpoint)
-            ? (error: MethodError) => swarmError(toError(error))
-            : toError
+          const mapError = toDockerError(engine, name)
           const versions = Context.getOrUndefined(endpoint.annotations as Context.Context<ApiVersions>, ApiVersions)
           const streamed = Array.from(endpoint.success).some(HttpApiSchema.isStreamSchema)
           // an error status `DockerApi` doesn't declare, with the message of its body

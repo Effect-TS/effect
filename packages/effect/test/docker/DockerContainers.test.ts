@@ -275,18 +275,10 @@ describe("DockerContainers", () => {
         Effect.flip(Effect.scoped(use((containers) => containers.attach("c"))))
       ]).pipe(stub.provide)
       assert.deepStrictEqual(
-        [logs.reason, attach.reason],
+        [[logs.reason, logs.operation], [attach.reason, attach.operation]],
         [
-          new DockerError.NotFound({
-            status: 404,
-            message: "No such container: c",
-            operation: "docker.Containers.logs"
-          }),
-          new DockerError.NotFound({
-            status: 404,
-            message: "No such container: c",
-            operation: "docker.Containers.attach"
-          })
+          [new DockerError.NotFound({ message: "No such container: c" }), "docker.Containers.logs"],
+          [new DockerError.NotFound({ message: "No such container: c" }), "docker.Containers.attach"]
         ]
       )
     }))

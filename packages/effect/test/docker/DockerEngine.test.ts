@@ -47,8 +47,8 @@ describe("DockerEngine", () => {
       const stub = makeStubEngine((request) => fail ? { status: 503, body: "starting" } : withPing("1.44")(request))
       const error = yield* Effect.flip(stub.engine.apiVersion)
       assert.deepStrictEqual(
-        error.reason,
-        new DockerError.Unavailable({ status: 503, message: "starting", operation: "docker.Engine.apiVersion" })
+        [error.reason, error.operation],
+        [new DockerError.Unavailable({ message: "starting" }), "docker.Engine.apiVersion"]
       )
       fail = false
       assert.strictEqual(yield* stub.engine.apiVersion, "1.44")
@@ -165,8 +165,8 @@ describe("DockerError", () => {
     Effect.gen(function*() {
       const docker = yield* classify(409, JSON.stringify({ message: "conflict" }))
       assert.deepStrictEqual(
-        docker.reason,
-        new DockerError.Conflict({ status: 409, message: "conflict", operation: "docker.System.info" })
+        [docker.reason, docker.operation],
+        [new DockerError.Conflict({ message: "conflict" }), "docker.System.info"]
       )
       const text = yield* classify(404, "Not Found\n")
       assert(text.reason._tag === "NotFound")
@@ -182,7 +182,7 @@ describe("DockerError", () => {
           Effect.flip
         )
         assert(error.reason._tag === "InvalidResponse")
-        assert.strictEqual(error.reason.operation, "docker.System.version")
+        assert.strictEqual(error.operation, "docker.System.version")
       }
     }))
 })

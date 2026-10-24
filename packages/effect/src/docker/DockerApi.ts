@@ -10,8 +10,10 @@
  *
  * - Paths have no `/v1.xx` prefix: the `DockerEngine`'s `HttpClient` adds
  *   the negotiated version.
- * - Every group declares the Engine's {@link ErrorResponses} with
- *   {@link EngineErrors}.
+ * - Every endpoint declares the Engine's {@link ErrorResponses} with
+ *   {@link EngineErrors}, or {@link SwarmErrorResponses} with
+ *   {@link SwarmErrors} when Swarm serves it. They decode to the
+ *   `DockerError` reason classes.
  * - Query booleans are `true` and `false`; the Engine also reads `1` and
  *   `0`, which the Docker CLI sends.
  * - Fields that carry secrets are `Redacted`; requests send them
@@ -32,6 +34,7 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as DockerError from "./DockerError.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 
 // -----------------------------------------------------------------------------
@@ -57,17 +60,6 @@ export class ApiVersions extends Context.Service<ApiVersions, {
   readonly payload?: Readonly<Record<string, string>> | undefined
 }>()("effect/docker/DockerApi/ApiVersions") {}
 
-/**
- * An endpoint annotation: Swarm serves the endpoint, so the `DockerEngine`'s
- * client reports its 503 as `SwarmUnavailable`, which isn't retryable,
- * instead of `Unavailable`.
- *
- * @internal
- */
-export class SwarmEndpoint extends Context.Service<SwarmEndpoint, boolean>()(
-  "effect/docker/DockerApi/SwarmEndpoint"
-) {}
-
 // -----------------------------------------------------------------------------
 // errors
 // -----------------------------------------------------------------------------
@@ -84,130 +76,16 @@ export const errorMessage = (body: string): string =>
   Option.match(decodeErrorBody(body), { onNone: () => body.trim(), onSome: ({ message }) => message })
 
 /**
- * The Engine's 400: the request or one of its parameters is invalid.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", { message: Schema.String }) {}
-
-/**
- * The Engine's 401, its own or a registry's.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", { message: Schema.String }) {}
-
-/**
- * The Engine's 403.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", { message: Schema.String }) {}
-
-/**
- * The Engine's 404: the object doesn't exist, or the Engine has no such route.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {}
-
-/**
- * The Engine's 409, for example removing a running container.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { message: Schema.String }) {}
-
-/**
- * The Engine's 412.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class PreconditionFailed
-  extends Schema.TaggedError<PreconditionFailed>()("PreconditionFailed", { message: Schema.String })
-{}
-
-/**
- * The Engine's 429, typically a registry's rate limit.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class TooManyRequests
-  extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", { message: Schema.String })
-{}
-
-/**
- * The Engine's 500.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class ServerError extends Schema.TaggedError<ServerError>()("ServerError", { message: Schema.String }) {}
-
-/**
- * The Engine's 501.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class NotImplemented
-  extends Schema.TaggedError<NotImplemented>()("NotImplemented", { message: Schema.String })
-{}
-
-/**
- * The Engine's 503; a Swarm endpoint's when the node can't serve Swarm requests.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class Unavailable extends Schema.TaggedError<Unavailable>()("Unavailable", { message: Schema.String }) {}
-
-/**
- * The status the Engine answers each of {@link ErrorResponses} with.
- *
- * @internal
- */
-export const errorStatus = {
-  BadRequest: 400,
-  Unauthorized: 401,
-  Forbidden: 403,
-  NotFound: 404,
-  Conflict: 409,
-  PreconditionFailed: 412,
-  TooManyRequests: 429,
-  ServerError: 500,
-  NotImplemented: 501,
-  Unavailable: 503
-} as const
-
-/**
- * An error class on the wire: its status, and the Engine's `{ message }`
- * JSON body, decoded as {@link errorMessage} reads it.
+ * An error class on the wire: its status, and the Engine's `{ message }` JSON
+ * body, decoded as {@link errorMessage} reads it.
  */
 const errorResponse = <
-  const Tag extends keyof typeof errorStatus,
+  const Tag extends string,
   S extends Schema.Codec<
     { readonly _tag: Tag; readonly message: string },
     { readonly _tag: Tag; readonly message: string }
   >
->(error: S, tag: Tag) =>
+>(error: S, tag: Tag, status: number) =>
   Schema.String.pipe(
     Schema.decodeTo(
       error,
@@ -217,30 +95,41 @@ const errorResponse = <
       })
     ),
     HttpApiSchema.asText({ contentType: "application/json" }),
-    HttpApiSchema.status(errorStatus[tag])
+    HttpApiSchema.status(status)
   )
+
+const BadRequestResponse = errorResponse(DockerError.BadRequest, "BadRequest", 400)
+const UnauthorizedResponse = errorResponse(DockerError.Unauthorized, "Unauthorized", 401)
+const ForbiddenResponse = errorResponse(DockerError.Forbidden, "Forbidden", 403)
+const NotFoundResponse = errorResponse(DockerError.NotFound, "NotFound", 404)
+const ConflictResponse = errorResponse(DockerError.Conflict, "Conflict", 409)
+const PreconditionFailedResponse = errorResponse(DockerError.PreconditionFailed, "PreconditionFailed", 412)
+const TooManyRequestsResponse = errorResponse(DockerError.TooManyRequests, "TooManyRequests", 429)
+const ServerErrorResponse = errorResponse(DockerError.ServerError, "ServerError", 500)
+const NotImplementedResponse = errorResponse(DockerError.NotImplemented, "NotImplemented", 501)
 
 /**
  * The Engine's error responses, one per status of moby's table: every
  * endpoint can answer each of them, as moby maps its kinds of error to
- * statuses the same way for every handler. Each decodes to its class,
- * which a server handler fails with.
+ * statuses the same way for every handler (the API document lists only some
+ * per operation). Each decodes to its `DockerError` reason class, which a
+ * server handler fails with.
  *
  * @stability unstable
  * @category errors
  * @since 4.0.6
  */
 export const ErrorResponses = [
-  errorResponse(BadRequest, "BadRequest"),
-  errorResponse(Unauthorized, "Unauthorized"),
-  errorResponse(Forbidden, "Forbidden"),
-  errorResponse(NotFound, "NotFound"),
-  errorResponse(Conflict, "Conflict"),
-  errorResponse(PreconditionFailed, "PreconditionFailed"),
-  errorResponse(TooManyRequests, "TooManyRequests"),
-  errorResponse(ServerError, "ServerError"),
-  errorResponse(NotImplemented, "NotImplemented"),
-  errorResponse(Unavailable, "Unavailable")
+  BadRequestResponse,
+  UnauthorizedResponse,
+  ForbiddenResponse,
+  NotFoundResponse,
+  ConflictResponse,
+  PreconditionFailedResponse,
+  TooManyRequestsResponse,
+  ServerErrorResponse,
+  NotImplementedResponse,
+  errorResponse(DockerError.Unavailable, "Unavailable", 503)
 ] as const
 
 /**
@@ -253,6 +142,37 @@ export const ErrorResponses = [
 export type ErrorResponse = typeof ErrorResponses[number]["Type"]
 
 /**
+ * The error responses of the endpoints Swarm serves: {@link ErrorResponses},
+ * with 503 as `SwarmUnavailable`, which the Engine answers when the node
+ * can't serve Swarm requests in its current state.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export const SwarmErrorResponses = [
+  BadRequestResponse,
+  UnauthorizedResponse,
+  ForbiddenResponse,
+  NotFoundResponse,
+  ConflictResponse,
+  PreconditionFailedResponse,
+  TooManyRequestsResponse,
+  ServerErrorResponse,
+  NotImplementedResponse,
+  errorResponse(DockerError.SwarmUnavailable, "SwarmUnavailable", 503)
+] as const
+
+/**
+ * One of the {@link SwarmErrorResponses}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type SwarmErrorResponse = typeof SwarmErrorResponses[number]["Type"]
+
+/**
  * Declares {@link ErrorResponses} on every endpoint of a group. Clients don't
  * need it; a server provides it as a middleware that passes requests through.
  *
@@ -262,6 +182,18 @@ export type ErrorResponse = typeof ErrorResponses[number]["Type"]
  */
 export class EngineErrors extends HttpApiMiddleware.Service<EngineErrors>()("effect/docker/DockerApi/EngineErrors", {
   error: ErrorResponses
+}) {}
+
+/**
+ * Declares {@link SwarmErrorResponses} on the endpoints Swarm serves, as
+ * {@link EngineErrors} declares {@link ErrorResponses}.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class SwarmErrors extends HttpApiMiddleware.Service<SwarmErrors>()("effect/docker/DockerApi/SwarmErrors", {
+  error: SwarmErrorResponses
 }) {}
 
 // -----------------------------------------------------------------------------
@@ -938,12 +870,6 @@ export const Volumes = HttpApiGroup.make("volumes").add(
     params: name,
     success: Schema.toCodecGoJson(DockerSchema.Volume)
   }),
-  HttpApiEndpoint.put("update", "/volumes/:name", {
-    params: name,
-    query: { version: Schema.Number },
-    payload: DockerSchema.VolumeUpdateRequest,
-    success: HttpApiSchema.Empty(200)
-  }).annotate(SwarmEndpoint, true),
   HttpApiEndpoint.delete("remove", "/volumes/:name", {
     params: name,
     query: { force: Schema.optional(Schema.Boolean) },
@@ -953,7 +879,15 @@ export const Volumes = HttpApiGroup.make("volumes").add(
     query: { filters },
     success: Schema.toCodecGoJson(DockerSchema.VolumePruneResponse)
   })
-).middleware(EngineErrors)
+).middleware(EngineErrors).add(
+  // cluster volumes: Swarm serves the update
+  HttpApiEndpoint.put("update", "/volumes/:name", {
+    params: name,
+    query: { version: Schema.Number },
+    payload: DockerSchema.VolumeUpdateRequest,
+    success: HttpApiSchema.Empty(200)
+  }).middleware(SwarmErrors)
+)
 
 // -----------------------------------------------------------------------------
 // images
@@ -1309,7 +1243,7 @@ export const Swarm = HttpApiGroup.make("swarm").add(
     payload: Schema.Struct({ UnlockKey: SwarmSecret }),
     success: HttpApiSchema.Empty(200)
   })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // nodes
@@ -1342,7 +1276,7 @@ export const Nodes = HttpApiGroup.make("nodes").add(
     query: { force: Schema.optional(Schema.Boolean) },
     success: HttpApiSchema.Empty(200)
   })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // services
@@ -1474,7 +1408,7 @@ export const Services = HttpApiGroup.make("services").add(
     // raw or multiplexed, as the `Content-Type` says
     success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
   })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // tasks
@@ -1502,7 +1436,7 @@ export const Tasks = HttpApiGroup.make("tasks").add(
     // raw or multiplexed, as the `Content-Type` says
     success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
   })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // secrets
@@ -1575,7 +1509,7 @@ export const Secrets = HttpApiGroup.make("secrets").add(
     success: HttpApiSchema.Empty(200)
   }),
   HttpApiEndpoint.delete("remove", "/secrets/:id", { params: id, success: HttpApiSchema.NoContent })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // configs
@@ -1649,7 +1583,7 @@ export const SwarmConfigs = HttpApiGroup.make("configs").add(
     success: HttpApiSchema.Empty(200)
   }),
   HttpApiEndpoint.delete("remove", "/configs/:id", { params: id, success: HttpApiSchema.NoContent })
-).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+).middleware(SwarmErrors)
 
 // -----------------------------------------------------------------------------
 // plugins
