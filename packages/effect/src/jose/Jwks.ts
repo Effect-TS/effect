@@ -369,20 +369,19 @@ export const layerRemote = (
       const resolve = (selection: Selection) =>
         Effect.flatMap(Clock.currentTimeMillis, (now): Effect.Effect<PublicKey, JoseError.JoseError> => {
           if (closed) return closedExit
+          const lookup = (snapshot: Snapshot) => importKey(candidates(snapshot.keySet, selection), selection.algorithm)
           const current = cache
           if (current !== undefined && current.expiresAt > now) {
             const found = candidates(current.keySet, selection)
             if (found.length > 0) return importKey(found, selection.algorithm)
             // An unknown key may have been rotated in. Refetch, unless cooling down.
             return Effect.flatMap(refresh(now, current), (snapshot) =>
-              snapshot === undefined
-                ? fail(new JoseError.KeyNotFound())
-                : importKey(candidates(snapshot.keySet, selection), selection.algorithm))
+              snapshot === undefined ? fail(new JoseError.KeyNotFound()) : lookup(snapshot))
           }
           return Effect.flatMap(refresh(now), (snapshot) =>
             snapshot === undefined
               ? Effect.fail(unavailable("The key set is cooling down after a failed fetch"))
-              : importKey(candidates(snapshot.keySet, selection), selection.algorithm))
+              : lookup(snapshot))
         })
 
       return Jwks.of({ resolve })

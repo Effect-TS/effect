@@ -135,20 +135,10 @@ const claimValidationFailed = (
   reason: JoseError.ClaimValidationFailed["reason"]
 ) => fail(new JoseError.ClaimValidationFailed({ claim, reason }))
 
-const isString = (value: unknown): value is string => typeof value === "string"
-const isNumericDate = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
-
-const registeredClaimGuards: Record<keyof RegisteredClaims, (value: unknown) => boolean> = {
-  iss: isString,
-  sub: isString,
-  aud: (value) => isString(value) || (Array.isArray(value) && value.every(isString)),
-  exp: isNumericDate,
-  nbf: isNumericDate,
-  iat: isNumericDate,
-  jti: isString
-}
-
-const registeredClaimNames = Object.keys(registeredClaimGuards) as Array<keyof RegisteredClaims>
+// Each claim is checked on its own so the failure can name it.
+const registeredClaimGuards = Object.entries(RegisteredClaims.fields).map(([name, field]) =>
+  [name as keyof RegisteredClaims, Schema.is(field.schema)] as const
+)
 
 interface Policy extends Omit<VerifyOptions, "clockTolerance" | "maxTokenAge"> {
   readonly clockTolerance: number
@@ -184,9 +174,9 @@ const checkClaims = Effect.fnUntraced(function*(
   policy: Policy
 ): Effect.fn.Return<RegisteredClaims, JoseError.JoseError> {
   const registered: Record<string, unknown> = {}
-  for (const name of registeredClaimNames) {
+  for (const [name, isValid] of registeredClaimGuards) {
     if (!Object.hasOwn(claims, name)) continue
-    if (!registeredClaimGuards[name](claims[name])) return yield* claimValidationFailed(name, "invalid")
+    if (!isValid(claims[name])) return yield* claimValidationFailed(name, "invalid")
     registered[name] = claims[name]
   }
   const { iss, sub, aud, exp, nbf, iat } = registered as RegisteredClaims
