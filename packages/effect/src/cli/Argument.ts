@@ -405,6 +405,8 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required argument is missing.
  *
+ * **Gotchas**
+ *
  * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
  * the original `MissingArgument` error is returned.
  *
