@@ -28,8 +28,6 @@ import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import * as HttpClientRequest from "../http/HttpClientRequest.ts"
-import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import type * as Redacted from "../Redacted.ts"
@@ -39,7 +37,7 @@ import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type { LogFrame } from "./DockerContainers.ts"
-import { apiClient, connectionFailed, DockerEngine, filterStatus, withOperation } from "./DockerEngine.ts"
+import { apiClient, connectionFailed, DockerEngine, withOperation } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse, StdinNotAttached, StreamFailed } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -314,17 +312,11 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
           : {})
       }
       return yield* releaseOnFailure(Effect.gen(function*() {
-        const response = yield* engine.client.execute(
-          HttpClientRequest.post(`/exec/${encodeURIComponent(id)}/start`).pipe(
-            HttpClientRequest.bodyJsonUnsafe(body),
-            HttpClientRequest.upgrade("tcp")
-          )
-        )
-        const socket = yield* upgradeOf(response, "docker.Exec.start")
+        const { headers, socket } = yield* api.start({ params: { id }, payload: body })
         return yield* makeHandle({
           engine,
           socket,
-          framing: fromContentType(response.headers["content-type"]) ?? (tty ? "raw" : "multiplexed"),
+          framing: fromContentType(headers["content-type"]) ?? (tty ? "raw" : "multiplexed"),
           stdin: info.OpenStdin === true,
           exitCode: (outputDone) => Effect.andThen(outputDone, exitCodeWith(inspect, id)),
           resize: (size) => resize(id, size)
@@ -559,32 +551,6 @@ export const releaseOnFailure = <A, E, R>(
       Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
     )
   })
-
-/**
- * The connection of an upgraded response. An error status fails as the
- * Engine's error response; any other response that didn't switch protocols is
- * an invalid response.
- */
-const upgradeOf = (
-  response: HttpClientResponse.HttpClientResponse,
-  operation: string
-): Effect.Effect<Socket.Socket, DockerError> =>
-  response.status === 101
-    ? Effect.mapError(
-      response.upgrade,
-      (cause) => new DockerError({ reason: new InvalidResponse({ issue: cause.message, operation, cause }) })
-    )
-    : Effect.andThen(
-      filterStatus(operation)(response),
-      Effect.fail(
-        new DockerError({
-          reason: new InvalidResponse({
-            issue: `expected 101 Switching Protocols, got ${response.status}`,
-            operation
-          })
-        })
-      )
-    )
 
 /** How many chunks each view buffers before the connection stalls, like a pipe's buffer. */
 const bufferChunks = 16
