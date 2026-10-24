@@ -13719,6 +13719,33 @@ const durationFromMillis: SchemaTransformation.Transformation<Duration_.Duration
     decode: (i) => Duration_.millis(i),
     encode: (a) => Duration_.toMillis(a)
   })
+const durationFromIsoString: SchemaTransformation.Transformation<Duration_.Duration, string> = SchemaTransformation
+  .transformEffect<Duration_.Duration, string>({
+    decode: (s, options) =>
+      Option_.match(Duration_.fromIso(s), {
+        onNone: () =>
+          Effect.fail(
+            new SchemaIssue.InvalidValue(
+              { expected: "an ISO 8601 duration without years or months" },
+              s,
+              options
+            )
+          ),
+        onSome: Effect.succeed
+      }),
+    encode: (a, options) =>
+      Option_.match(Duration_.formatIso(a), {
+        onNone: () =>
+          Effect.fail(
+            new SchemaIssue.InvalidValue(
+              { expected: "a finite Duration" },
+              a,
+              options
+            )
+          ),
+        onSome: Effect.succeed
+      })
+  })
 /**
  * Type-level representation of {@link Duration}.
  *
@@ -13893,6 +13920,43 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
  */
 export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, durationFromMillis)
+)
+/**
+ * Type-level representation of {@link DurationFromIsoString}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.1.0
+ */
+export interface DurationFromIsoString extends decodeTo<Duration, String> {
+  readonly "Rebuild": DurationFromIsoString
+}
+/**
+ * Schema that decodes an ISO 8601 duration string into a `Duration`.
+ *
+ * **Details**
+ *
+ * Decoding:
+ * - A string accepted by `Duration.fromIso` is decoded as a `Duration`, such
+ *   as `"PT1H30M"`, `"P1W2D"`, or `"-PT0.5S"`. Years and months are rejected
+ *   because they have no fixed length.
+ *
+ * Encoding:
+ * - A finite `Duration` is encoded with `Duration.formatIso`, using days,
+ *   hours, minutes, and seconds. Encoding fails for `Duration.infinity` and
+ *   `Duration.negativeInfinity`.
+ *
+ * @see {@link DurationFromString} for the `"5 seconds"` string format
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const DurationFromIsoString: DurationFromIsoString = String.annotate({
+  expected: "an ISO 8601 duration string that will be decoded as a Duration",
+  format: "duration"
+}).pipe(
+  decodeTo(Duration, durationFromIsoString)
 )
 
 // -----------------------------------------------------------------------------
