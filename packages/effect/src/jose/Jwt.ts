@@ -1,22 +1,30 @@
 /**
- * Schema-based compact JSON Web Tokens with signature authentication and registered-claim validation.
+ * Compact JSON Web Tokens whose claims are encoded and decoded with a
+ * `Schema`.
+ *
+ * Verification authenticates the token first, then checks the registered
+ * claims and the verification policy, and only then decodes the application
+ * claims. `exp` and `nbf` are checked whenever they are present; require them
+ * with `requiredClaims`.
  *
  * @stability unstable
  * @since 4.1.0
  */
 import * as Clock from "../Clock.ts"
+import type * as Signature from "../crypto/Signature.ts"
+import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Redacted from "../Redacted.ts"
+import type * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
-import * as DurationInput from "./internal/duration.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import { ClaimValidationFailed, type VerifyError } from "./JoseError.ts"
+import { fail, invalidToken, millis, parseJsonObject, utf8 } from "./internal/compact.ts"
+import * as JoseError from "./JoseError.ts"
 import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
-import { type Header, type Requirements, VerifyOptions as JwsVerifyOptions } from "./Jws.ts"
+import type { Jwks } from "./Jwks.ts"
 import * as Jws from "./Jws.ts"
 
 /**
- * Schema for standard JWT claims, allowing a string or string array audience and finite NumericDate values.
+ * Schema for the registered claims: string `iss`, `sub`, and `jti`, a string
+ * or string array `aud`, and finite NumericDate `exp`, `nbf`, and `iat`.
  *
  * @stability unstable
  * @category schemas
@@ -33,7 +41,7 @@ export const RegisteredClaims = Schema.Struct({
 })
 
 /**
- * Value described by the RegisteredClaims schema.
+ * The registered claims of a JWT.
  *
  * @stability unstable
  * @category models
@@ -41,59 +49,54 @@ export const RegisteredClaims = Schema.Struct({
  */
 export type RegisteredClaims = typeof RegisteredClaims.Type
 
-const expected = Schema.Union([
-  Schema.String,
-  Schema.Array(Schema.String).check(Schema.isMinLength(1))
-])
-
 /**
- * Schema for signature policy, expected claims, required claims, clock tolerance, and maximum token age.
- * Expiration and not-before claims are validated when present; require them explicitly with requiredClaims.
- *
- * @stability unstable
- * @category schemas
- * @since 4.1.0
- */
-export const VerifyOptions = Schema.Struct({
-  ...JwsVerifyOptions.fields,
-  issuer: Schema.optionalKey(expected),
-  audience: Schema.optionalKey(expected),
-  subject: Schema.optionalKey(Schema.String),
-  typ: Schema.optionalKey(Schema.NonEmptyString),
-  /**
-   * Nonnegative tolerance for temporal claims. Defaults to zero. Numeric inputs are milliseconds.
-   */
-  clockTolerance: Schema.optionalKey(DurationInput.NonNegativeInput),
-  /**
-   * Nonnegative maximum age measured from iat. When set, iat is required. Numeric inputs are milliseconds.
-   */
-  maxTokenAge: Schema.optionalKey(DurationInput.NonNegativeInput),
-  requiredClaims: Schema.optionalKey(
-    Schema.Array(Schema.Literals(["iss", "sub", "aud", "exp", "nbf", "iat", "jti"]))
-  )
-})
-
-/**
- * Value described by the VerifyOptions schema.
+ * The policy a verified JWT must satisfy.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export type VerifyOptions = typeof VerifyOptions.Type
-
-const seconds = DurationInput.Seconds.check(Schema.isGreaterThanOrEqualTo(0))
-
-const ResolvedVerifyOptions = Schema.Struct({
-  ...VerifyOptions.fields,
-  clockTolerance: Schema.optionalKey(seconds),
-  maxTokenAge: Schema.optionalKey(seconds)
-})
-
-type ResolvedVerifyOptions = typeof ResolvedVerifyOptions.Type
+export interface VerifyOptions {
+  /**
+   * Accepted `iss` values.
+   */
+  readonly issuer?: string | ReadonlyArray<string> | undefined
+  /**
+   * Accepted audiences. The token's `aud` must contain at least one.
+   */
+  readonly audience?: string | ReadonlyArray<string> | undefined
+  readonly subject?: string | undefined
+  /**
+   * Expected `typ` header. Media types compare case-insensitively and without
+   * the `application/` prefix.
+   */
+  readonly typ?: string | undefined
+  /**
+   * Tolerance for `exp`, `nbf`, and `iat`. Defaults to zero; numbers are
+   * milliseconds.
+   */
+  readonly clockTolerance?: Duration.Input | undefined
+  /**
+   * Maximum age measured from `iat`, which becomes required. Numbers are
+   * milliseconds.
+   */
+  readonly maxTokenAge?: Duration.Input | undefined
+  readonly requiredClaims?: ReadonlyArray<keyof RegisteredClaims> | undefined
+}
 
 /**
- * Decoded application claims, validated registered claims, and the authenticated protected header.
+ * Options for {@link verifyWithKeySet}: the verification policy and the
+ * accepted algorithms.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface VerifyWithKeySetOptions extends VerifyOptions, Jws.VerifyWithKeySetOptions {}
+
+/**
+ * A verified JWT: decoded application claims, its registered claims, and the
+ * protected header.
  *
  * @stability unstable
  * @category models
@@ -102,116 +105,152 @@ type ResolvedVerifyOptions = typeof ResolvedVerifyOptions.Type
 export interface Verified<A> {
   readonly claims: A
   readonly registeredClaims: RegisteredClaims
-  readonly protectedHeader: Header
+  readonly protectedHeader: Jws.ProtectedHeader
 }
 
 /**
- * Failures produced by JWT key handling, signature verification, claim validation, or schema conversion.
+ * The protected header and claims of a JWT that has not been verified.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface Unverified {
+  readonly protectedHeader: Jws.ProtectedHeader
+  readonly claims: Readonly<Record<string, Schema.Json>>
+}
+
+/**
+ * Failures of JWT operations: JOSE failures, and schema failures while
+ * encoding or decoding the application claims.
  *
  * @stability unstable
  * @category errors
  * @since 4.1.0
  */
-export type JwtError = VerifyError | ClaimValidationFailed | Schema.SchemaError
+export type JwtError = JoseError.JoseError | Schema.SchemaError
+
+const claimValidationFailed = (
+  claim: JoseError.ClaimValidationFailed["claim"],
+  reason: JoseError.ClaimValidationFailed["reason"]
+) => fail(new JoseError.ClaimValidationFailed({ claim, reason }))
+
+const isString = (value: unknown): value is string => typeof value === "string"
+const isNumericDate = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
+
+const registeredClaimGuards: Record<keyof RegisteredClaims, (value: unknown) => boolean> = {
+  iss: isString,
+  sub: isString,
+  aud: (value) => isString(value) || (Array.isArray(value) && value.every(isString)),
+  exp: isNumericDate,
+  nbf: isNumericDate,
+  iat: isNumericDate,
+  jti: isString
+}
+
+const registeredClaimNames = Object.keys(registeredClaimGuards) as Array<keyof RegisteredClaims>
+
+interface Policy extends Omit<VerifyOptions, "clockTolerance" | "maxTokenAge"> {
+  readonly clockTolerance: number
+  readonly maxTokenAge: number | undefined
+}
+
+// Durations are read before any cryptography, in seconds.
+const readPolicy = Effect.fnUntraced(function*(
+  options: VerifyOptions | undefined
+): Effect.fn.Return<Policy, JoseError.JoseError> {
+  const clockTolerance = options?.clockTolerance === undefined
+    ? 0
+    : yield* millis("clockTolerance", options.clockTolerance)
+  const maxTokenAge = options?.maxTokenAge === undefined ? undefined : yield* millis("maxTokenAge", options.maxTokenAge)
+  return {
+    ...options,
+    clockTolerance: clockTolerance / 1000,
+    maxTokenAge: maxTokenAge === undefined ? undefined : maxTokenAge / 1000
+  }
+})
+
+const toArray = (value: string | ReadonlyArray<string>): ReadonlyArray<string> =>
+  typeof value === "string" ? [value] : value
+
+const mediaType = (value: string): string => {
+  const type = value.toLowerCase()
+  return type.includes("/") ? type : `application/${type}`
+}
 
 const checkClaims = Effect.fnUntraced(function*(
   claims: Readonly<Record<string, Schema.Json>>,
-  header: Header,
-  options: ResolvedVerifyOptions
-) {
-  const registered = yield* Schema.decodeEffect(RegisteredClaims)(claims, {
-    reportInput: false
-  }).pipe(
-    Effect.mapError(() => ClaimValidationFailed.make({ claim: "registered", reason: "invalid" }))
-  )
+  header: Jws.ProtectedHeader,
+  policy: Policy
+): Effect.fn.Return<RegisteredClaims, JoseError.JoseError> {
+  const registered: Record<string, unknown> = {}
+  for (const name of registeredClaimNames) {
+    if (!Object.hasOwn(claims, name)) continue
+    if (!registeredClaimGuards[name](claims[name])) return yield* claimValidationFailed(name, "invalid")
+    registered[name] = claims[name]
+  }
+  const { iss, sub, aud, exp, nbf, iat } = registered as RegisteredClaims
 
-  for (const claim of options.requiredClaims ?? []) {
-    if (registered[claim] === undefined) {
-      return yield* ClaimValidationFailed.make({ claim, reason: "missing" })
+  for (const name of policy.requiredClaims ?? []) {
+    if (registered[name] === undefined) return yield* claimValidationFailed(name, "missing")
+  }
+  if (policy.issuer !== undefined) {
+    if (iss === undefined) return yield* claimValidationFailed("iss", "missing")
+    if (!toArray(policy.issuer).includes(iss)) return yield* claimValidationFailed("iss", "mismatch")
+  }
+  if (policy.subject !== undefined) {
+    if (sub === undefined) return yield* claimValidationFailed("sub", "missing")
+    if (sub !== policy.subject) return yield* claimValidationFailed("sub", "mismatch")
+  }
+  if (policy.audience !== undefined) {
+    if (aud === undefined) return yield* claimValidationFailed("aud", "missing")
+    const audiences = toArray(aud)
+    if (!toArray(policy.audience).some((audience) => audiences.includes(audience))) {
+      return yield* claimValidationFailed("aud", "mismatch")
     }
   }
-  if (options.issuer !== undefined) {
-    if (registered.iss === undefined) {
-      return yield* ClaimValidationFailed.make({ claim: "iss", reason: "missing" })
-    }
-    const expected = typeof options.issuer === "string" ? [options.issuer] : options.issuer
-
-    if (!expected.includes(registered.iss)) {
-      return yield* ClaimValidationFailed.make({ claim: "iss", reason: "mismatch" })
-    }
-  }
-  if (options.subject !== undefined) {
-    if (registered.sub === undefined) {
-      return yield* ClaimValidationFailed.make({ claim: "sub", reason: "missing" })
-    }
-    if (options.subject !== registered.sub) {
-      return yield* ClaimValidationFailed.make({ claim: "sub", reason: "mismatch" })
-    }
-  }
-  if (options.audience !== undefined) {
-    if (registered.aud === undefined) {
-      return yield* ClaimValidationFailed.make({ claim: "aud", reason: "missing" })
-    }
-    const expected = typeof options.audience === "string" ? [options.audience] : options.audience
-    const actual = typeof registered.aud === "string" ? [registered.aud] : registered.aud
-
-    if (!expected.some((audience) => actual.includes(audience))) {
-      return yield* ClaimValidationFailed.make({ claim: "aud", reason: "mismatch" })
-    }
+  if (policy.typ !== undefined && (header.typ === undefined || mediaType(header.typ) !== mediaType(policy.typ))) {
+    return yield* claimValidationFailed("typ", "mismatch")
   }
 
-  const normalizedType = (value: string) => {
-    const type = value.toLowerCase()
-
-    return type.includes("/") ? type : `application/${type}`
-  }
-
-  if (
-    options.typ !== undefined &&
-    (header.typ === undefined || normalizedType(header.typ) !== normalizedType(options.typ))
-  ) {
-    return yield* ClaimValidationFailed.make({ claim: "typ", reason: "mismatch" })
-  }
   const now = Math.floor((yield* Clock.currentTimeMillis) / 1000)
-  const tolerance = options.clockTolerance ?? 0
-
-  if (registered.exp !== undefined && registered.exp <= now - tolerance) {
-    return yield* ClaimValidationFailed.make({ claim: "exp", reason: "expired" })
+  const tolerance = policy.clockTolerance
+  if (exp !== undefined && exp <= now - tolerance) return yield* claimValidationFailed("exp", "expired")
+  if (nbf !== undefined && nbf > now + tolerance) return yield* claimValidationFailed("nbf", "notYetValid")
+  if (policy.maxTokenAge !== undefined) {
+    if (iat === undefined) return yield* claimValidationFailed("iat", "missing")
+    if (iat > now + tolerance) return yield* claimValidationFailed("iat", "future")
+    if (now - iat - tolerance > policy.maxTokenAge) return yield* claimValidationFailed("iat", "tooOld")
   }
-  if (registered.nbf !== undefined && registered.nbf > now + tolerance) {
-    return yield* ClaimValidationFailed.make({ claim: "nbf", reason: "notYetValid" })
-  }
-  if (options.maxTokenAge !== undefined) {
-    if (registered.iat === undefined) {
-      return yield* ClaimValidationFailed.make({ claim: "iat", reason: "missing" })
-    }
-    if (registered.iat > now + tolerance) {
-      return yield* ClaimValidationFailed.make({ claim: "iat", reason: "future" })
-    }
-    if (now - registered.iat - tolerance > options.maxTokenAge) {
-      return yield* ClaimValidationFailed.make({ claim: "iat", reason: "tooOld" })
-    }
-  }
-
-  return registered
+  return registered as RegisteredClaims
 })
 
 const decodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
   verified: Jws.Verified,
-  options: ResolvedVerifyOptions
-) {
-  const wire = yield* json(yield* reveal(verified.payload), "payload")
-  const registeredClaims = yield* checkClaims(wire, verified.protectedHeader, options)
-  const claims = yield* Schema.decodeEffect(schema)(wire, { reportInput: false })
-
-  return { claims, registeredClaims, protectedHeader: verified.protectedHeader } satisfies Verified<
-    S["Type"]
-  >
+  policy: Policy
+): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"]> {
+  const claims = parseJsonObject(verified.payload)
+  if (claims === undefined) return yield* invalidToken("The JWT payload is not a JSON object")
+  const registeredClaims = yield* checkClaims(claims, verified.protectedHeader, policy)
+  return {
+    claims: yield* Schema.decodeUnknownEffect(schema)(claims),
+    registeredClaims,
+    protectedHeader: verified.protectedHeader
+  }
 })
 
+const ClaimsJson = Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.is(RegisteredClaims)(claims)))
+
 /**
- * Encodes application claims with a schema and signs their JSON object representation as a compact JWT.
+ * Encodes claims with a schema and signs them as a compact JWT.
+ *
+ * **Details**
+ *
+ * The encoded claims must be a JSON object whose registered claims match
+ * {@link RegisteredClaims}.
+ *
+ * @see {@link verify}
  *
  * @stability unstable
  * @category cryptography
@@ -221,46 +260,44 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
   claims: S["Type"],
   key: SigningKey,
-  header: Header
-): Effect.fn.Return<Redacted.Redacted<string>, JwtError, Requirements | S["EncodingServices"]> {
-  const encoded = yield* Schema.encodeEffect(schema)(claims, { reportInput: false })
-  const wire = yield* Schema.decodeUnknownEffect(JsonObject)(encoded, { reportInput: false })
-
-  yield* Schema.decodeEffect(RegisteredClaims)(wire, { reportInput: false })
-
-  return yield* Jws.sign(Redacted.make(utf8(yield* stringify(wire))), key, header)
+  header?: Jws.Header
+): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.Requirements> {
+  const encoded = yield* Schema.encodeEffect(schema)(claims)
+  const json = yield* Schema.decodeUnknownEffect(ClaimsJson)(encoded)
+  return yield* Jws.sign(utf8(JSON.stringify(json)), key, header)
 })
 
 /**
- * Authenticates a compact JWT, validates registered claims against the clock and policy, and decodes application claims.
+ * Verifies a compact JWT with a key, checks its claims against the policy, and
+ * decodes the claims with a schema.
  *
- * **Example** (Verifying application claims and issuer policy)
+ * **Example** (Verifying a token)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwt } from "effect/jose"
+ * import { Effect, Layer, Redacted, Schema } from "effect"
  * import { Mac, SecureRandom, Signature } from "effect/crypto"
- * import { Effect, Redacted, Schema } from "effect"
+ * import { Jwk, Jwt } from "effect/jose"
+ *
+ * const layer = Layer.mergeAll(Mac.layerWebCrypto, Signature.layerWebCrypto).pipe(
+ *   Layer.provide(SecureRandom.layerWebCrypto)
+ * )
  *
  * const Claims = Schema.Struct({ sub: Schema.String, iss: Schema.String })
+ *
  * const claims = await Effect.runPromise(Effect.gen(function*() {
  *   // Fixed public example material; generate application secrets securely.
  *   const key = yield* Jwk.importSecret(
- *     Redacted.make({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" }),
+ *     Redacted.make({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const),
  *     "HS256"
  *   )
- *   const token = yield* Jwt.sign(Claims, { sub: "user-123", iss: "example" }, key, { alg: "HS256" })
- *   const verified = yield* Jwt.verify(Claims, token, key, {
- *     algorithms: ["HS256"], issuer: "example", requiredClaims: ["sub", "iss"]
- *   })
+ *   const token = yield* Jwt.sign(Claims, { sub: "user-123", iss: "example" }, key)
+ *   const verified = yield* Jwt.verify(Claims, token, key, { issuer: "example", requiredClaims: ["sub"] })
  *   return verified.claims
- * }).pipe(
- *   Effect.provide([Mac.layerWebCrypto, Signature.layerWebCrypto]),
- *   Effect.provide(SecureRandom.layerWebCrypto)
- * ))
+ * }).pipe(Effect.provide(layer)))
  * claims // => ({ sub: "user-123", iss: "example" })
  * ```
  *
- * @see {@link verifyWithKeySet} to resolve the verification key from the Jwks service
+ * @see {@link verifyWithKeySet} for resolving the key from the `Jwks` service
  *
  * @stability unstable
  * @category cryptography
@@ -268,20 +305,19 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  */
 export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
-  token: Redacted.Redacted<string>,
+  token: string | Redacted.Redacted<string>,
   key: VerificationKey,
-  options: VerifyOptions
-): Effect.fn.Return<Verified<S["Type"]>, JwtError, Requirements | S["DecodingServices"]> {
-  // Capture all policy before asynchronous cryptography or key resolution.
-  const policy = yield* parse(ResolvedVerifyOptions, options, "parameters")
-
-  return yield* decodeClaims(schema, yield* Jws.verify(token, key, policy), policy)
+  options?: VerifyOptions
+): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"] | Jws.Requirements> {
+  const policy = yield* readPolicy(options)
+  return yield* decodeClaims(schema, yield* Jws.verify(token, key), policy)
 })
 
 /**
- * Authenticates and decodes a JWT using an asymmetric key resolved from the Jwks service.
+ * Verifies a compact JWT with a public key resolved from the `Jwks` service,
+ * checks its claims against the policy, and decodes the claims with a schema.
  *
- * @see {@link verify} to authenticate with an explicit key
+ * @see {@link verify} for verifying with a known key
  *
  * @stability unstable
  * @category cryptography
@@ -289,32 +325,37 @@ export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  */
 export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
-  token: Redacted.Redacted<string>,
-  options: VerifyOptions
+  token: string | Redacted.Redacted<string>,
+  options: VerifyWithKeySetOptions
 ): Effect.fn.Return<
   Verified<S["Type"]> & { readonly key: PublicKey },
   JwtError,
-  Effect.Services<ReturnType<typeof Jws.verifyWithKeySet>> | S["DecodingServices"]
+  S["DecodingServices"] | Jwks | Signature.Signature
 > {
-  const policy = yield* parse(ResolvedVerifyOptions, options, "parameters")
-  const jws = yield* Jws.verifyWithKeySet(token, policy)
-
-  return { ...(yield* decodeClaims(schema, jws, policy)), key: jws.key }
+  const policy = yield* readPolicy(options)
+  const verified = yield* Jws.verifyWithKeySet(token, options)
+  return { ...(yield* decodeClaims(schema, verified, policy)), key: verified.key }
 })
 
 /**
- * Parses claims without establishing authenticity, validating registered claims, or decoding application claims.
+ * Reads the protected header and claims of a JWT without verifying it.
  *
- * @see {@link verify} to authenticate a token with an explicit key
- * @see {@link verifyWithKeySet} to authenticate using the Jwks service
+ * **Gotchas**
+ *
+ * Nothing returned here is authenticated. Use it only to choose how to
+ * verify, never to authorize.
+ *
+ * @see {@link verify}
  *
  * @stability unstable
- * @category cryptography
+ * @category decoding
  * @since 4.1.0
  */
-export const decodeUnverified = Effect.fnUntraced(function*(token: Redacted.Redacted<string>) {
-  const [, payload] = yield* split(token, 3)
-  const claims = yield* json(yield* decode(payload), "payload")
-
-  return { _tag: "UnverifiedJwt", claims: Redacted.make(claims) } as const
+export const decodeUnverified = Effect.fnUntraced(function*(
+  token: string | Redacted.Redacted<string>
+): Effect.fn.Return<Unverified, JoseError.JoseError> {
+  const parsed = yield* Jws.parse(token)
+  const claims = parseJsonObject(parsed.payload)
+  if (claims === undefined) return yield* invalidToken("The JWT payload is not a JSON object")
+  return { protectedHeader: parsed.protectedHeader, claims }
 })
