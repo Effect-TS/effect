@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Redacted, Schema, Stream, Tracer } from "effect"
+import { Cause, Effect, Exit, Redacted, Schema, SchemaTransformation, Stream, Tracer } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1102,9 +1102,7 @@ describe("HttpApiClient", () => {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.post("join", "/join", {
-            query: Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), page: Schema.String }).pipe(
-              Schema.encodeKeys({ token: "auth_token" })
-            ),
+            query: { token: Schema.RedactedFromValue(Schema.String), page: Schema.String },
             headers: Schema.Struct({ "x-token": Schema.RedactedFromValue(Schema.String), "x-page": Schema.String })
               .pipe(
                 Schema.encodeKeys({ "x-token": "x-auth-token" })
@@ -1140,13 +1138,72 @@ describe("HttpApiClient", () => {
       )
 
       assert(clientSpan !== undefined)
-      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?auth_token=REDACTED&page=1")
-      strictEqual(clientSpan.attributes.get("url.query"), "auth_token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
+      strictEqual(clientSpan.attributes.get("url.query"), "token=REDACTED&page=1")
+      // Renamed keys cannot be traced back to their fields, so every encoded header is redacted.
       strictEqual(clientSpan.attributes.get("http.request.header.x-auth-token"), "<redacted>")
-      strictEqual(clientSpan.attributes.get("http.request.header.x-page"), "1")
-      strictEqual(sent?.url, "http://test/join?auth_token=s3cret&page=1")
+      strictEqual(clientSpan.attributes.get("http.request.header.x-page"), "<redacted>")
+      strictEqual(sent?.url, "http://test/join?token=s3cret&page=1")
       strictEqual(sent?.headers["x-auth-token"], "s3cret")
+      strictEqual(sent?.headers["x-page"], "1")
     }))
+
+  it.effect.each([
+    (token: string) => token.toLowerCase(),
+    (token: string) => String(token)
+  ])(
+    "redacts Redacted fields behind custom key transformations without extra encoding",
+    (encodeToken) =>
+      Effect.gen(function*() {
+        let encodings = 0
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("join", "/join", {
+              query: Schema.Struct({ auth_token: Schema.String, page: Schema.String }).pipe(
+                Schema.decodeTo(
+                  Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), page: Schema.String }),
+                  SchemaTransformation.transform({
+                    decode: ({ auth_token, page }) => ({ token: auth_token, page }),
+                    encode: ({ page, token }) => {
+                      encodings++
+                      return { auth_token: encodeToken(token), page }
+                    }
+                  })
+                )
+              )
+            })
+          )
+        )
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        let sentUrl: string | undefined
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request, url) =>
+            Effect.sync(() => {
+              sentUrl = url.toString()
+              return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+            })
+          )
+        })
+        strictEqual(encodings, 0)
+
+        yield* client.test.join({ query: { token: Redacted.make("s3cret"), page: "1" } }).pipe(
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        strictEqual(encodings, 1)
+        assert(clientSpan !== undefined)
+        strictEqual(clientSpan.attributes.get("url.full"), "http://test/join?auth_token=REDACTED&page=REDACTED")
+        strictEqual(clientSpan.attributes.get("url.query"), "auth_token=REDACTED&page=REDACTED")
+        strictEqual(sentUrl, "http://test/join?auth_token=s3cret&page=1")
+      })
+  )
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>
     Effect.gen(function*() {

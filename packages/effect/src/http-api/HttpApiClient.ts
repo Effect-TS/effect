@@ -18,7 +18,6 @@ import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
-import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
@@ -34,7 +33,6 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
-import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
@@ -503,6 +501,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
         // Schema encoding unwraps `Redacted` values, so track their names to keep them out of spans.
+        // `undefined` means every encoded field is redacted.
         const redactedQueryNames = getRedactedNames(endpoint.query)
         const redactedHeaderNames = getRedactedNames(endpoint.headers)
 
@@ -517,6 +516,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          let redactedQuery: ReadonlyArray<string> = []
+          let redactedHeaders: ReadonlyArray<string> = []
 
           if (request !== undefined) {
             // params
@@ -560,12 +561,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             if (encodeHeaders !== undefined) {
               const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
               httpRequest = HttpClientRequest.setHeaders(httpRequest, headers)
+              redactedHeaders = redactedHeaderNames ?? Object.keys(headers)
             }
 
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
+              redactedQuery = redactedQueryNames ?? Object.keys(query)
             }
           }
 
@@ -580,18 +583,18 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             middlewareKeys,
             middlewareKeys.length - 1
           )
-          if (redactedQueryNames.length > 0) {
+          if (redactedQuery.length > 0) {
             execute = Effect.updateService(
               execute,
               UrlParams.CurrentRedactedNames,
-              (names) => [...names, ...redactedQueryNames]
+              (names) => [...names, ...redactedQuery]
             )
           }
-          if (redactedHeaderNames.length > 0) {
+          if (redactedHeaders.length > 0) {
             execute = Effect.updateService(
               execute,
               Headers.CurrentRedactedNames,
-              (names) => [...names, ...redactedHeaderNames]
+              (names) => [...names, ...redactedHeaders]
             )
           }
           const response = yield* execute
@@ -867,54 +870,36 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 // ----------------------------------------------------------------------------
 
-// Names are collected on the decoded side, where `Redacted` is visible, then
-// mapped to encoded keys by encoding a marker through the key transformations.
-const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> => {
+// Struct-level encodings can rename keys arbitrarily, so names are only exact
+// for structs whose keys are encoded as is.
+const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> | undefined => {
   if (schema === undefined) return []
   const ast = SchemaAST.toType(schema.ast)
-  if (!SchemaAST.isObjects(ast)) return []
-  const marker = {}
-  const probe: Record<PropertyKey, unknown> = {}
+  if (!containsRedacted(ast)) return []
+  if (
+    !SchemaAST.isObjects(ast) || schema.ast.encoding !== undefined ||
+    ast.indexSignatures.some((is) => containsRedacted(is.type))
+  ) {
+    return undefined
+  }
   const names: Array<string> = []
   for (const ps of ast.propertySignatures) {
-    const redacted = containsRedacted(ps.type)
-    InternalRecord.assignProperty(probe, ps.name, redacted ? marker : null)
-    if (redacted && typeof ps.name === "string") {
+    if (typeof ps.name === "string" && containsRedacted(ps.type)) {
       names.push(ps.name)
     }
   }
-  if (names.length === 0) return names
-  const keys = toKeysAST(schema.ast)
-  if (keys === undefined) return names
-  const exit = SchemaParser.encodeUnknownExit(Schema.make<Schema.Codec<unknown>>(keys))(probe)
-  if (Exit.isFailure(exit)) return names
-  const encoded = exit.value as Record<string, unknown>
-  return Object.keys(encoded).filter((key) => encoded[key] === marker)
-}
-
-// Keeps the property names and key transformations of a struct, ignoring property types.
-const toKeysAST = (ast: SchemaAST.AST): SchemaAST.Objects | undefined => {
-  if (!SchemaAST.isObjects(ast)) return undefined
-  const links: Array<SchemaAST.Link> = []
-  for (const link of ast.encoding ?? []) {
-    const to = toKeysAST(link.to)
-    if (to === undefined) return undefined
-    links.push(new SchemaAST.Link(to, link.transformation))
-  }
-  return new SchemaAST.Objects(
-    ast.propertySignatures.map((ps) => new SchemaAST.PropertySignature(ps.name, SchemaAST.unknown)),
-    [],
-    undefined,
-    undefined,
-    Arr.isArrayNonEmpty(links) ? links : undefined
-  )
+  return names
 }
 
 const containsRedacted = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "Declaration":
       return (ast.annotations as Schema.Annotations.Declaration<unknown, readonly []> | undefined)?.representation
-        ?.id === "effect/schema/Redacted"
+            ?.id === "effect/schema/Redacted" ||
+        ast.typeParameters.some(containsRedacted)
+    case "Objects":
+      return ast.propertySignatures.some((ps) => containsRedacted(ps.type)) ||
+        ast.indexSignatures.some((is) => containsRedacted(is.type))
     case "Union":
       return ast.types.some(containsRedacted)
     case "Arrays":
