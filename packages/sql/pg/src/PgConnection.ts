@@ -265,8 +265,8 @@ export interface PgConnection {
    * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
    * closes, when it runs `UNLISTEN` and shuts down the queue. A session that
-   * does not confirm `UNLISTEN` within 5 seconds is closed instead of
-   * returned. PostgreSQL registration errors fail the acquiring effect.
+   * does not confirm `UNLISTEN` within 5 seconds is closed. PostgreSQL
+   * registration errors fail the acquiring effect.
    * Connection failures after registration fail the queue with the original
    * `SqlError`. Intentional scope closure interrupts consumers.
    */
@@ -1922,7 +1922,6 @@ const listenChannel = (
             current.delete(queue)
             if (current.size > 0) return Queue.shutdown(queue)
             conn.channels.delete(channel)
-            if (conn.deadWith !== undefined) return Queue.shutdown(queue)
             return Effect.andThen(unlisten(conn, pinned, identifier), Queue.shutdown(queue))
           })
         )
@@ -1937,12 +1936,12 @@ const listenChannel = (
 /**
  * Runs `UNLISTEN` and closes the session if PostgreSQL does not answer in time.
  * The timer starts once the wire is free, so a long statement on the same
- * pinned session does not count against it. A pin released while this waited
- * has handed the session on, so the statement is skipped.
+ * pinned session does not count against it. Nothing is sent once the session
+ * is dead or its pin released, as the session may already have a new owner.
  */
 const unlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection, identifier: string): Effect.Effect<void> =>
   conn.wire.withPermit(Effect.suspend(() => {
-    if (pinned.released) return Effect.void
+    if (conn.deadWith !== undefined || pinned.released) return Effect.void
     const timeout = setTimeout(
       () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
       unlistenTimeoutMillis
