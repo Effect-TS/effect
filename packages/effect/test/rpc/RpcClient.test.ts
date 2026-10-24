@@ -24,7 +24,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpEffect from "effect/http/HttpEffect"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer, RpcTest } from "effect/rpc"
 import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
@@ -1211,6 +1211,31 @@ describe("RpcClient", () => {
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
     }))
+
+  for (const disableFatalDefects of [undefined, true]) {
+    it.effect(`RpcTest handler defects with disableFatalDefects: ${disableFatalDefects}`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const group = RpcGroup.make(
+          Rpc.make("Block", { success: Schema.String }),
+          Rpc.make("Boom")
+        )
+        const client = yield* RpcTest.makeClient(group, { disableFatalDefects }).pipe(
+          Effect.provide(group.toLayer({
+            Block: () =>
+              Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(release)), Effect.as("ok")),
+            Boom: () => Effect.die("boom")
+          }))
+        )
+        const blocked = yield* client.Block().pipe(Effect.catchDefect(Effect.succeed), Effect.forkChild)
+        yield* Deferred.await(started)
+
+        assert.strictEqual(yield* client.Boom().pipe(Effect.catchDefect(Effect.succeed)), "boom")
+        yield* Deferred.succeed(release, undefined)
+        assert.strictEqual(yield* Fiber.join(blocked), disableFatalDefects ? "ok" : "boom")
+      }))
+  }
 
   describe("tracing", () => {
     const SpanGroup = TestGroup.prefix("Echo.")
