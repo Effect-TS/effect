@@ -1923,18 +1923,7 @@ const listenChannel = (
             if (current.size > 0) return Queue.shutdown(queue)
             conn.channels.delete(channel)
             if (conn.deadWith !== undefined) return Queue.shutdown(queue)
-            const unlisten = Effect.suspend(() => {
-              const timeout = setTimeout(
-                () =>
-                  conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
-                unlistenTimeoutMillis
-              )
-              return Effect.ensuring(
-                Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
-                Effect.sync(() => clearTimeout(timeout))
-              )
-            })
-            return Effect.andThen(conn.wire.withPermit(unlisten), Queue.shutdown(queue))
+            return Effect.andThen(unlisten(conn, identifier), Queue.shutdown(queue))
           })
         )
         yield* pinned.query(`LISTEN ${identifier}`)
@@ -1944,6 +1933,23 @@ const listenChannel = (
       )
     })
   )
+
+/**
+ * Runs `UNLISTEN` and closes the session if PostgreSQL does not answer in time.
+ * The timer starts once the wire is free, so a long statement on the same
+ * pinned session does not count against it.
+ */
+const unlisten = (conn: PgConnectionImpl, identifier: string): Effect.Effect<void> =>
+  conn.wire.withPermit(Effect.suspend(() => {
+    const timeout = setTimeout(
+      () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
+      unlistenTimeoutMillis
+    )
+    return Effect.ensuring(
+      Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+      Effect.sync(() => clearTimeout(timeout))
+    )
+  }))
 
 const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Effect<void> =>
   Effect.callback<void>((resume) => {
