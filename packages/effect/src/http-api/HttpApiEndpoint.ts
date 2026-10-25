@@ -1371,17 +1371,13 @@ function getErrorResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function validateSuccessResponse(
-  allSchemas: ReadonlyArray<Schema.Constraint>,
-  method: HttpMethod,
-  payload: PayloadMap
-) {
-  const upgrades = allSchemas.filter(HttpApiSchema.isUpgrade)
-  const hasUpgrade = upgrades.length > 0
+function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, payload: PayloadMap) {
+  const upgrades = schemas.filter(HttpApiSchema.isUpgrade)
+  if (upgrades.length > 1) {
+    throw new Error("Cannot declare more than one upgrade")
+  }
+  const hasUpgrade = upgrades.length === 1
   if (hasUpgrade) {
-    if (upgrades.length > 1) {
-      throw new Error("Cannot declare more than one upgrade")
-    }
     if (method === "HEAD") {
       throw new Error("HEAD endpoints cannot declare an upgrade")
     }
@@ -1392,8 +1388,6 @@ function validateSuccessResponse(
       }
     }
   }
-  // The server may decline an upgrade (RFC 9110 §7.8) and answer with an ordinary success instead.
-  const schemas = hasUpgrade ? allSchemas.filter((schema) => !HttpApiSchema.isUpgrade(schema)) : allSchemas
   let hasStream = false
   const statuses = new Map<number, {
     readonly stream?: HttpApiSchema.StreamSchema | undefined
@@ -1402,6 +1396,8 @@ function validateSuccessResponse(
   }>()
 
   for (const schema of schemas) {
+    // The server may decline the upgrade (RFC 9110 §7.8) and answer with one of the other successes.
+    if (HttpApiSchema.isUpgrade(schema)) continue
     const inner = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const status = HttpApiSchema.getStatusSuccessSchema(schema)
     if (hasUpgrade && status === 101) {

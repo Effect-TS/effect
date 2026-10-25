@@ -939,8 +939,8 @@ function handlerToHttpEffect(
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
   const upgrade = getUpgradeSuccessSchema(endpoint)
-  // The server may decline the upgrade with one of these instead.
-  const hasOrdinarySuccess = upgrade !== undefined && endpoint.success.size > 1
+  // The handler of a mixed endpoint may decline the upgrade and return one of the other successes.
+  const upgradeOnly = upgrade !== undefined && endpoint.success.size === 1
   const encodeUpgradeHeaders = UndefinedOr.map(
     upgrade?.headers,
     (schema) => Schema.encodeUnknownEffect(schema, options.headers)
@@ -1004,8 +1004,8 @@ function handlerToHttpEffect(
       if (Response.isHttpServerResponse(response)) {
         return response
       }
-      if (upgrade !== undefined && (upgraded || !hasOrdinarySuccess)) {
-        if (hasOrdinarySuccess && response !== undefined) {
+      if (upgradeOnly || upgraded) {
+        if (response !== undefined && !upgradeOnly) {
           return yield* Effect.die(new Error("Cannot return a success value after calling upgrade()"))
         }
         // The server replaces this with the 101 once the connection is upgraded.
@@ -1358,9 +1358,12 @@ function makeSuccessSchema(
   endpoint: HttpApiEndpoint.Top,
   headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
-  const schemas = HttpApiEndpoint.getSuccessSchemas(endpoint).filter((schema) => !HttpApiSchema.isUpgrade(schema)).map(
-    (schema) => toResponseSuccessSchema(schema, headersOptions)
-  )
+  const schemas: Array<Schema.ConstraintEncoder<HttpServerResponse, unknown>> = []
+  for (const schema of HttpApiEndpoint.getSuccessSchemas(endpoint)) {
+    // The 101 is written by the transport, so the upgrade has no response encoder.
+    if (HttpApiSchema.isUpgrade(schema)) continue
+    schemas.push(toResponseSuccessSchema(schema, headersOptions))
+  }
   return schemas.length === 1 ? schemas[0] : Schema.Union(schemas)
 }
 

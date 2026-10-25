@@ -724,10 +724,9 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  *
  * **When to use**
  *
- * Use when an endpoint hands over its connection as a raw byte stream
- * after `101 Switching Protocols`. For
- * WebSocket, upgrade the request with `HttpServerRequest.upgrade` and
- * connect with `Socket.makeWebSocket` instead.
+ * Use when an endpoint hands over its connection as a raw byte stream after
+ * `101 Switching Protocols`. For WebSocket, upgrade the request with
+ * `HttpServerRequest.upgrade` and connect with `Socket.makeWebSocket` instead.
  *
  * **Details**
  *

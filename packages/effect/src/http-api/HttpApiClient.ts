@@ -111,7 +111,7 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
  *
  * @stability unstable
  * @category type IDs
- * @since 4.0.7
+ * @since 4.1.0
  */
 export const UpgradedTypeId = "~effect/http-api/HttpApiClient/Upgraded"
 
@@ -120,7 +120,7 @@ export const UpgradedTypeId = "~effect/http-api/HttpApiClient/Upgraded"
  *
  * @stability unstable
  * @category type IDs
- * @since 4.0.7
+ * @since 4.1.0
  */
 export type UpgradedTypeId = typeof UpgradedTypeId
 
@@ -188,7 +188,7 @@ export interface Upgraded<Headers = Headers.Headers> {
  *
  * @stability unstable
  * @category guards
- * @since 4.0.7
+ * @since 4.1.0
  */
 export const isUpgraded = (u: unknown): u is Upgraded<unknown> => Predicate.hasProperty(u, UpgradedTypeId)
 
