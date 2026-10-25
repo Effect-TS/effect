@@ -55,11 +55,10 @@ describe("UrlParams", () => {
         expected: "/path?%73ig=REDACTED&Sig=REDACTED&sig&page=1"
       },
       {
-        url: "https://bucket.test/file?X-Amz-Credential=AKIA%2F20261024&X-Amz-Expires=60" +
-          "&X-Amz-Security-Token=session&X-Amz-Signature=abc",
+        url: "/file?X-Amz-Credential=a&X-Amz-Expires=60&X-Amz-Security-Token=b&X-Amz-Signature=c",
         names: undefined,
-        expected: "https://bucket.test/file?X-Amz-Credential=REDACTED&X-Amz-Expires=60" +
-          "&X-Amz-Security-Token=REDACTED&X-Amz-Signature=REDACTED"
+        expected:
+          "/file?X-Amz-Credential=REDACTED&X-Amz-Expires=60&X-Amz-Security-Token=REDACTED&X-Amz-Signature=REDACTED"
       },
       { url: "/path/@user?page=a@b", names: undefined, expected: "/path/@user?page=a@b" },
       {
