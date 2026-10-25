@@ -148,7 +148,11 @@ const linesWith = (script: string, needle: string): string =>
 
 const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0
 
-/** Complete the last of `words` with the generated Bash script in a directory of `process` fixtures. */
+/**
+ * Complete the last of `words` like interactive Bash in a directory of
+ * `process` fixtures, and return the argument each candidate expands to once
+ * inserted, with `<home>` standing for the fixture directory.
+ */
 const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
   const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
   try {
@@ -157,17 +161,40 @@ const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
     writeFileSync(join(directory, "report data.txt"), "")
     writeFileSync(join(directory, "report.txt"), "")
     const quote = (word: string) => `'${word.replace(/'/g, "'\\''")}'`
+    const line = words.join(" ")
+    const last = words[words.length - 1]
+    // Readline completes only the text after an unclosed quote.
+    let open = ""
+    let start = 0
+    for (let i = 0; i < last.length; i++) {
+      if (open === "") {
+        if (last[i] === "\\") i++
+        else if (last[i] === "'" || last[i] === `"`) [open, start] = [last[i], i + 1]
+      } else if (last[i] === open) open = ""
+      else if (last[i] === "\\" && open === `"`) i++
+    }
+    const word = open === "" ? last : last.slice(start)
     const file = join(directory, "completion.bash")
     writeFileSync(
       file,
       [
+        // Initialize readline as an interactive shell does, which changes how
+        // Bash 3.2's compgen expands `$VAR/`.
+        `set -o emacs; bind 2>/dev/null`,
         Bash.generate("process", fromCommand(withPaths)),
         `COMP_WORDS=(${words.map(quote).join(" ")})`,
         `COMP_CWORD=${words.length - 1}`,
-        `COMP_LINE=${quote(words.join(" "))}`,
+        `COMP_LINE=${quote(line)}`,
         `COMP_POINT=\${#COMP_LINE}`,
-        `_process process "\${COMP_WORDS[COMP_CWORD]}" "\${COMP_WORDS[COMP_CWORD-1]}"`,
-        `printf '%s\\n' "\${COMPREPLY[@]}"`
+        `_process process ${quote(word)} ${quote(words[words.length - 2])}`,
+        // Insert each candidate as readline would, closing an open quote.
+        `for _match in "\${COMPREPLY[@]}"; do`,
+        `  _line=${quote(line.slice(0, line.length - word.length))}"$_match"`,
+        `  [[ -n ${quote(open)} && "$_match" != *${quote(open)} ]] && _line+=${quote(open)}`,
+        `  eval "set -- $_line" || continue`,
+        `  shift $(($# - 1))`,
+        `  printf '%s\\n' "$1"`,
+        `done`
       ].join("\n")
     )
     return execFileSync("bash", ["--noprofile", "--norc", file], {
@@ -177,6 +204,7 @@ const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
     })
       .split("\n")
       .filter((text) => text !== "")
+      .map((text) => text.replaceAll(directory, "<home>"))
       .sort()
   } finally {
     rmSync(directory, { recursive: true, force: true })
@@ -286,11 +314,20 @@ describe("Bash completions", () => {
   })
 
   it.skipIf(!hasBash)("completes paths containing spaces as one escaped candidate", () => {
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "rep"]), ["report.txt", "report\\ data.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "report\\ d"]), ["report\\ data.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "~/rep"]), ["~/report.txt", "~/report\\ data.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--output-dir", "pro"]), ["project\\ files"])
-    assert.deepStrictEqual(replayBashPaths(["process", "rep"]), ["report.txt", "report\\ data.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "rep"]), ["report data.txt", "report.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "report\\ d"]), ["report data.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "~/rep"]), [
+      "<home>/report data.txt",
+      "<home>/report.txt"
+    ])
+    assert.deepStrictEqual(replayBashPaths(["process", "--output-dir", "pro"]), ["project files"])
+    assert.deepStrictEqual(replayBashPaths(["process", "rep"]), ["report data.txt", "report.txt"])
+  })
+
+  it.skipIf(!hasBash)("keeps a variable in a path prefix expandable", () => {
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/project."]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}/project.`]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}"/project.`]), ["<home>/project.txt"])
   })
 
   it("inlines choice values for choice flags", () => {
