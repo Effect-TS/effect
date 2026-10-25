@@ -105,6 +105,31 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it.each([
+    ["\\uD7FF", "\uD7FF"],
+    ["\\uE000", "\uE000"],
+    ["\\U0001F600", "😀"],
+    ["\\U0010FFFF", "\u{10FFFF}"]
+  ])("parses Unicode scalar escape %s", (escape, expected) => {
+    assert.deepStrictEqual(Toml.parse(`value = "${escape}"`), { value: expected })
+  })
+
+  it.each([
+    [String.raw`value = "\uD800"`, 1, 12],
+    [String.raw`value = "\uDFFF"`, 1, 12],
+    [String.raw`value = "\U0000D800"`, 1, 12],
+    ["value = \"\"\"\n\\uD800\n\"\"\"", 2, 3],
+    [String.raw`"\uD800" = 1`, 1, 4],
+    [String.raw`value = "\uD83D\uDE00"`, 1, 12],
+    [String.raw`value = "\U00110000"`, 1, 12]
+  ])("rejects Unicode escapes that are not scalar values: %s", (input, line, column) => {
+    assert.throws(
+      () => Toml.parse(input),
+      SyntaxError,
+      `Invalid unicode escape at line ${line}, column ${column}`
+    )
+  })
+
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))

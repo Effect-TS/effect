@@ -333,7 +333,11 @@ class TomlParser {
         if (!new RegExp(`^[0-9A-Fa-f]{${length}}$`).test(hex)) {
           this.fail("Invalid unicode escape")
         }
-        output += String.fromCodePoint(Number.parseInt(hex, 16))
+        const codePoint = Number.parseInt(hex, 16)
+        if ((codePoint >= 0xD800 && codePoint <= 0xDFFF) || codePoint > 0x10FFFF) {
+          this.fail("Invalid unicode escape")
+        }
+        output += String.fromCodePoint(codePoint)
         this.advance(length)
       } else {
         this.fail(`Invalid escape '\\${escape}'`)
