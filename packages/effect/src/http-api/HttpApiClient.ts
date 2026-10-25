@@ -774,7 +774,7 @@ type DecodeResponse<
  * ```
  *
  * @stability unstable
- * @category decoding
+ * @category constructors
  * @since 4.0.7
  */
 export const decodeResponse = <
