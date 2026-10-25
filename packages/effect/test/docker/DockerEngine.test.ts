@@ -45,9 +45,10 @@ describe("DockerEngine", () => {
       let fail = true
       const stub = makeStubEngine((request) => fail ? { status: 503, body: "starting" } : withPing("1.44")(request))
       const error = yield* Effect.flip(stub.engine.apiVersion)
+      // `HEAD` first, then `GET`, which names the failure
       assert.deepStrictEqual(
-        [error.reason, error.operation],
-        [new DockerError.Unavailable({ message: "starting" }), "docker.Engine.apiVersion"]
+        [error.reason, error.operation, stub.requests.map((request) => `${request.method} ${request.url.pathname}`)],
+        [new DockerError.Unavailable({ message: "starting" }), "docker.Engine.ping", ["HEAD /_ping", "GET /_ping"]]
       )
       fail = false
       assert.strictEqual(yield* stub.engine.apiVersion, "1.44")
@@ -122,10 +123,13 @@ describe("DockerEngine", () => {
       ]
       for (const [code, hint] of cases) {
         const cause = Object.assign(new Error(code), { code })
-        const error = yield* Effect.flip(makeStubEngine(() => ({ fail: true, cause })).engine.apiVersion)
+        const stub = makeStubEngine(() => ({ fail: true, cause }))
+        const error = yield* Effect.flip(stub.engine.apiVersion)
         assert(error.reason._tag === "ConnectionFailed")
         assert.strictEqual(error.reason.hint, hint, code)
         assert.isFalse(error.isRetryable, code)
+        // as in moby's client, a connection failure doesn't dial again with `GET`
+        assert.strictEqual(stub.requests.length, 1, code)
       }
     }))
 })
