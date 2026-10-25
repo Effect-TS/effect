@@ -1294,11 +1294,13 @@ function getPayload(
         throw new Error("Multiple streaming payloads are not supported")
       }
       hasStream = true
-      const contentType = MediaType.normalize(schema.contentType)
-      if (result.has(contentType)) {
-        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${schema.contentType}`)
+      for (const declared of schema.contentTypes) {
+        const contentType = MediaType.normalize(declared)
+        if (result.has(contentType)) {
+          throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${declared}`)
+        }
+        result.set(contentType, { encoding: { _tag: "Stream", contentType: declared }, schemas: [schema] })
       }
-      result.set(contentType, { encoding: { _tag: "Stream", contentType: schema.contentType }, schemas: [schema] })
       continue
     }
     const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
@@ -1407,10 +1409,12 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
-      if (entry.bufferedContentTypes.has(MediaType.normalize(inner.contentType))) {
-        throw new Error(
-          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${inner.contentType}`
-        )
+      for (const declared of inner.contentTypes) {
+        if (entry.bufferedContentTypes.has(MediaType.normalize(declared))) {
+          throw new Error(
+            `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${declared}`
+          )
+        }
       }
       statuses.set(status, { ...entry, stream: inner })
     } else {
@@ -1421,9 +1425,8 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
           throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
         }
         const encoding = HttpApiSchema.getResponseEncodingSchema(schema)
-        if (
-          MediaType.normalize(encoding.contentType) === MediaType.normalize(entry.stream.contentType)
-        ) {
+        const contentType = MediaType.normalize(encoding.contentType)
+        if (entry.stream.contentTypes.some((declared) => MediaType.normalize(declared) === contentType)) {
           throw new Error(
             `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${encoding.contentType}`
           )

@@ -585,7 +585,9 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
           if (HttpApiSchema.isStreamSchema(schema)) {
             // Endpoint construction rejects a buffered payload sharing a streaming payload's media type.
-            schemasByContentType.set(schema.contentType, schema)
+            for (const contentType of schema.contentTypes) {
+              schemasByContentType.set(contentType, schema)
+            }
             continue
           }
           if (HttpApiSchema.isNoContent(schema.ast)) continue
@@ -979,20 +981,14 @@ function extractResponseBodies(
     stream: HttpApiSchema.StreamSchema,
     status: number
   ) {
-    const statusMap = map.get(status)
+    let statusMap = map.get(status)
     if (statusMap === undefined) {
-      map.set(status, {
-        descriptions: new Set(),
-        content: undefined,
-        headers: [],
-        streamContent: new Map([[stream.contentType, stream]])
-      })
-    } else {
-      if (statusMap.streamContent === undefined) {
-        statusMap.streamContent = new Map([[stream.contentType, stream]])
-      } else {
-        statusMap.streamContent.set(stream.contentType, stream)
-      }
+      statusMap = { descriptions: new Set(), content: undefined, headers: [], streamContent: undefined }
+      map.set(status, statusMap)
+    }
+    const streamContent = statusMap.streamContent ??= new Map()
+    for (const contentType of stream.contentTypes) {
+      streamContent.set(contentType, stream)
     }
   }
 }

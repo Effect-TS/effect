@@ -1485,7 +1485,7 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 The wire format:
 
-- The server accepts only the declared content type, compared after normalization, and answers `415` otherwise. There are no aliases: for JSON Lines, pass `contentType: "application/jsonl"`.
+- The server accepts only the declared content types, compared after normalization, and answers `415` otherwise. To also accept JSON Lines, pass a list such as `contentType: ["application/x-ndjson", "application/jsonl"]`. The derived client sends the first entry.
 - `\n`, `\r\n` and a bare `\r` each end a line. Empty lines are skipped, so a client can send `\n` as a keep-alive. A line containing only whitespace is malformed.
 - A missing final newline is fine if the last line parses. If it doesn't, the issue message says "unterminated final line", so a truncated body is recognizable.
 - A leading UTF-8 BOM is stripped. Invalid UTF-8 is an error, never replaced with U+FFFD.
@@ -2390,6 +2390,7 @@ const Api = HttpApi.make("myApi").add(
 Things to know:
 
 - Set a custom status or content type with `HttpApiSchema.status(code)` and the `contentType` option, for example `HttpApiSchema.status(206)(HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" }))`.
+- `StreamUint8Array` and `StreamNdjson` also take a list of content types for a stream that is sent under more than one, like Docker's `application/vnd.docker.raw-stream` and `application/vnd.docker.multiplexed-stream` logs. The server sends the first entry by default. To send another, wrap the stream in `HttpApiSchema.WithHeaders` with a `"content-type": Schema.Literals([...])` header and return it from the handler. OpenAPI lists the stream under every entry, and the derived client decodes any of them. An empty list, or two entries that match after normalization, throws.
 - Wrap a stream schema with `HttpApiSchema.WithHeaders` to declare typed response headers (see [Setting Response Headers](#setting-response-headers)). The handler returns `HttpApiSchema.withHeaders({ body, headers })` with the stream as `body`, and the client resolves to the same shape.
 - An endpoint may declare at most one streaming success schema, `HEAD` endpoints cannot declare one, and streaming schemas are not supported in error responses.
 - The `effect/http-api/stream/failure` event name is reserved: `events` schemas may not declare it, and the client treats such an event as a stream failure only when its `data` decodes to a `Cause`.

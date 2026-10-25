@@ -890,8 +890,11 @@ describe("OpenApi", () => {
 
     const spec = OpenApi.fromApi(Api)
 
-    const bytes = { schema: { type: "string", format: "binary" }, "x-effect-stream": { encoding: "uint8array" } }
-    const ndjson = { schema: { type: "number" }, "x-effect-stream": { encoding: "ndjson" } }
+    const bytes = {
+      schema: { type: "string", format: "binary" },
+      "x-effect-stream": { encoding: "uint8array" }
+    } as const
+    const ndjson = { schema: { type: "number" }, "x-effect-stream": { encoding: "ndjson" } } as const
     const logs = spec.paths["/logs"]?.get?.responses[200]?.content
     assert.deepStrictEqual(logs, {
       "application/vnd.docker.raw-stream": bytes,
