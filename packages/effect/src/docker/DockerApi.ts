@@ -278,14 +278,15 @@ const streamHeaders = { "content-type": Schema.optional(StreamContentType) }
  */
 export const Filters = Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Array(Schema.String)])).pipe(
   Schema.encodeTo(
-    Schema.String,
-    SchemaTransformation.transform({
-      decode: (json: string) => JSON.parse(json),
+    Schema.fromJsonString(Schema.Record(Schema.String, Schema.Array(Schema.String))),
+    SchemaTransformation.transform<
+      { readonly [key: string]: string | ReadonlyArray<string> },
+      { readonly [key: string]: ReadonlyArray<string> }
+    >({
+      decode: (filters) => filters,
       encode: (filters) =>
-        JSON.stringify(
-          Object.fromEntries(
-            Object.entries(filters).map(([key, value]) => [key, typeof value === "string" ? [value] : value])
-          )
+        Object.fromEntries(
+          Object.entries(filters).map(([key, value]) => [key, typeof value === "string" ? [value] : value])
         )
     })
   )
