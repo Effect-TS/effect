@@ -321,19 +321,22 @@ export const causeCombine: {
   }
 )
 
-const containsAnnotations = (
+const includesAnnotations = (
   self: ReadonlyMap<string, unknown>,
   that: ReadonlyMap<string, unknown>
 ): boolean => {
   if (self === that) return true
+  if (self.size < that.size) return false
   for (const [key, value] of that) {
-    if (!self.has(key) || !Object.is(self.get(key), value)) return false
+    if (self.get(key) !== value || !self.has(key)) return false
   }
   return true
 }
 
 /**
  * Appends the interrupts from `interrupts` that `self` does not contain yet.
+ * An interrupt is contained when `self` has an interrupt from the same fiber
+ * that includes all of its annotations, as annotating a cause only adds them.
  * Unlike `causeCombine`, it never calls hash or equality methods, which can be
  * user-defined, random, or throwing.
  *
@@ -345,7 +348,7 @@ export const causeAddInterrupts = <E>(self: Cause.Cause<E>, interrupts: Cause.Ca
     if (
       isInterruptReason(reason) &&
       !reasons.some((r) =>
-        isInterruptReason(r) && r.fiberId === reason.fiberId && containsAnnotations(r.annotations, reason.annotations)
+        isInterruptReason(r) && r.fiberId === reason.fiberId && includesAnnotations(r.annotations, reason.annotations)
       )
     ) {
       reasons.push(reason)
