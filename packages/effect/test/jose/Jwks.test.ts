@@ -116,6 +116,42 @@ it.effect("caches remote key sets, coalesces concurrent refreshes, and refreshes
     assert.strictEqual(requests, 4)
   }).pipe(Effect.provide(layer)))
 
+it.effect("refetches an expired key set at once when timeToLive is shorter than cooldown", () =>
+  Effect.gen(function*() {
+    let requests = 0
+    let status = 500
+    const context = yield* Layer.build(
+      Jwks.layerRemote({ url, timeToLive: "10 seconds", cooldown: "30 seconds" }).pipe(
+        Layer.provide(serve(() =>
+          Effect.sync(() => {
+            requests++
+            return new Response(JSON.stringify({ keys: [ec] }), { status })
+          })
+        ))
+      )
+    )
+    const keys = Context.get(context, Jwks.Jwks)
+
+    // A failed fetch still cools down.
+    assertReason(yield* keys.resolve({ algorithm: "ES256", kid: "ec" }).pipe(Effect.flip), "KeySetUnavailable")
+    status = 200
+    yield* TestClock.adjust("5 seconds")
+    assertReason(yield* keys.resolve({ algorithm: "ES256", kid: "ec" }).pipe(Effect.flip), "KeySetUnavailable")
+    assert.strictEqual(requests, 1)
+    yield* TestClock.adjust("30 seconds")
+    yield* keys.resolve({ algorithm: "ES256", kid: "ec" })
+    assert.strictEqual(requests, 2)
+
+    // A set that expired after a successful fetch is refetched without waiting for the cooldown.
+    yield* TestClock.adjust("15 seconds")
+    assert.strictEqual((yield* keys.resolve({ algorithm: "ES256", kid: "ec" })).kid, "ec")
+    assert.strictEqual(requests, 3)
+
+    // Unknown kids still refetch at most once per cooldown.
+    assertReason(yield* keys.resolve({ algorithm: "ES256", kid: "unknown" }).pipe(Effect.flip), "KeyNotFound")
+    assert.strictEqual(requests, 3)
+  }))
+
 it.effect("accepts only a 200 document from the configured HTTPS URL", () =>
   Effect.gen(function*() {
     const resolve = (client: Layer.Layer<HttpClient.HttpClient>, options?: Partial<Jwks.RemoteOptions>) =>
