@@ -322,9 +322,8 @@ export const causeCombine: {
 )
 
 /**
- * Whether `self` already records the interruption `that`: the same fiber id
- * and every annotation of `that`. Annotating a cause only adds annotations,
- * so an annotated copy of an interrupt still records it.
+ * Annotating a cause only adds annotations, so an interrupt from the same
+ * fiber that has every annotation of `that` already records it.
  */
 const interruptIncludes = (self: Cause.Interrupt, that: Cause.Interrupt): boolean => {
   if (self.fiberId !== that.fiberId) return false
@@ -335,7 +334,7 @@ const interruptIncludes = (self: Cause.Interrupt, that: Cause.Interrupt): boolea
 }
 
 /**
- * Appends the interrupts from `interrupts` that `self` does not record yet.
+ * Appends the interrupts from `interrupts` that `self` does not contain yet.
  * Unlike `causeCombine`, it never calls hash or equality methods, which can be
  * user-defined, random, or throwing.
  *
