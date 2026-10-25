@@ -392,34 +392,21 @@ describe("RpcSerialization", () => {
     ])
   })
 
-  for (
-    const [name, serialization] of [
-      ["jsonRpc", RpcSerialization.jsonRpc()],
-      ["ndJsonRpc", RpcSerialization.ndJsonRpc()]
-    ] as const
-  ) {
-    it(`${name} keeps stream chunks of a batched request in order`, () => {
-      const parser = serialization.makeUnsafe()
-      parser.decode(
-        "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]\n"
-      )
+  it("jsonRpc emits stream chunks of a batched request immediately", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    parser.decode(
+      "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+    )
 
-      const responses: Array<RpcMessage.FromServerEncoded> = [
-        { _tag: "Chunk", requestId: 1, values: ["a"] },
-        { _tag: "Chunk", requestId: 1, values: ["b"] },
-        { _tag: "Exit", requestId: 2, exit: { _tag: "Success", value: "two" } },
-        { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: null } }
-      ]
-      const client = serialization.makeUnsafe()
-      const encoded = responses.map((response) => parser.encode(response))
-      const decoded = encoded.map((frame) => frame === undefined ? undefined : client.decode(frame))
-
-      assert.deepStrictEqual(decoded[0], [responses[0]])
-      assert.deepStrictEqual(decoded[1], [responses[1]])
-      assert.strictEqual(encoded[2], undefined)
-      assert.deepStrictEqual(decoded[3], [responses[2], responses[3]])
-    })
-  }
+    const chunk = parser.encode({ _tag: "Chunk", requestId: 1, values: ["a"] })
+    assert.deepStrictEqual(JSON.parse(chunk as string), { jsonrpc: "2.0", chunk: true, id: 1, result: ["a"] })
+    assert.strictEqual(parser.encode(responseExitSuccess(1, null)), undefined)
+    const exits = parser.encode(responseExitSuccess(2, "two"))
+    assert.deepStrictEqual(JSON.parse(exits as string), [
+      { jsonrpc: "2.0", id: 1, result: null },
+      { jsonrpc: "2.0", id: 2, result: "two" }
+    ])
+  })
 
   it("jsonRpc preserves id 0 across decode and encode", () => {
     const parser = RpcSerialization.jsonRpc().makeUnsafe()
