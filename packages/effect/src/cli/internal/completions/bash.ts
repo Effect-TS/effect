@@ -51,6 +51,10 @@ const buildFlagGroupDeclarations = (
   lines.push(``)
 }
 
+// Quoting these substitutions breaks quote matching on Bash 3.2.
+const removeQuotes = (variable: string): string =>
+  [`\\\\`, `\\"`, `\\'`].map((quote) => `${variable}=\${${variable}//${quote}/}`).join("; ")
+
 /**
  * Complete choices without `compgen -W`, which reparses quoted values. Escape
  * only the portion readline replaces for the active quote context.
@@ -71,9 +75,8 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(`  esac`)
   lines.push(``)
   lines.push(`  local _prefix="$_cur" _committed="$_head"`)
-  // Quoting these substitutions breaks quote matching on Bash 3.2.
-  lines.push(`  _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}`)
-  lines.push(`  _committed=\${_committed//\\\\/}; _committed=\${_committed//\\"/}; _committed=\${_committed//\\'/}`)
+  lines.push(`  ${removeQuotes("_prefix")}`)
+  lines.push(`  ${removeQuotes("_committed")}`)
   lines.push(``)
   lines.push(`  COMPREPLY=()`)
   lines.push(`  local _choice _rest _match`)
@@ -111,37 +114,43 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(``)
 }
 
+interface Helpers {
+  readonly choices: string
+  readonly paths: string
+}
+
 /**
- * Complete paths one `compgen` line at a time, so names containing whitespace
- * stay whole, and insert them with the choice helper's quoting.
+ * Complete paths through the choice helper, reading `compgen` line by line so
+ * a name containing whitespace or glob characters stays one quoted candidate.
+ * A leading `~user` or `$VAR` is left unquoted so it still expands.
  */
-const pathsHelper = (helperName: string, choicesHelperName: string, lines: Array<string>): void => {
-  lines.push(`${helperName}()`)
+const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
+  lines.push(`${helpers.paths}()`)
   lines.push(`{`)
   lines.push(`  local _kind="$1" _cur="$2" _word="$3"`)
   lines.push(``)
   lines.push(`  local _prefix="$_cur"`)
-  lines.push(`  _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}`)
+  lines.push(`  ${removeQuotes("_prefix")}`)
+  lines.push(``)
+  lines.push(`  local _lead=""`)
+  lines.push(`  if [[ "$_cur" == "$_word" && "$_prefix" == [~$]*/* ]]; then`)
+  lines.push(`    _lead="\${_prefix%%/*}"`)
+  // An escaped or quoted lead is literal.
+  lines.push(`    [[ "$_cur" == "$_lead"/* ]] || _lead=""`)
+  lines.push(`  fi`)
   lines.push(``)
   lines.push(`  local _path _paths=()`)
   lines.push(`  while IFS= read -r _path; do`)
-  lines.push(`    _paths+=("$_path")`)
+  lines.push(`    _paths+=("\${_path#"$_lead"}")`)
   lines.push(`  done < <(compgen "$_kind" -- "$_prefix")`)
-  lines.push(`  ${choicesHelperName} "$_cur" "$_word" \${_paths[@]+"\${_paths[@]}"}`)
+  lines.push(`  ${helpers.choices} "\${_cur#"$_lead"}" "\${_word#"$_lead"}" "\${_paths[@]}"`)
   lines.push(``)
-  // Keep a typed leading tilde or variable expandable.
-  lines.push(`  [[ "$_cur" == [~$]* ]] || return 0`)
   lines.push(`  local _i`)
   lines.push(`  for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
-  lines.push(`    [[ "\${COMPREPLY[_i]}" == \\\\[~$]* ]] && COMPREPLY[_i]="\${COMPREPLY[_i]#\\\\}"`)
+  lines.push(`    COMPREPLY[_i]="$_lead\${COMPREPLY[_i]}"`)
   lines.push(`  done`)
   lines.push(`}`)
   lines.push(``)
-}
-
-interface Helpers {
-  readonly choices: string
-  readonly paths: string
 }
 
 const choiceCompletion = (helpers: Helpers, values: ReadonlyArray<string>): string =>
@@ -376,7 +385,7 @@ export const generate = (
   lines.push(``)
 
   choicesHelper(helpers.choices, lines)
-  pathsHelper(helpers.paths, helpers.choices, lines)
+  pathsHelper(helpers, lines)
   generateFunction(descriptor, [], lines, helpers)
 
   lines.push(`complete -F _${safeName} ${escapeForBash(executableName)}`)
