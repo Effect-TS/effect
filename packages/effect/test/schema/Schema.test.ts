@@ -6988,6 +6988,42 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Class", () => {
+    for (const first of ["base", "subclass"] as const) {
+      it.effect(`plain subclasses use their own constructor when the ${first} is used first`, () =>
+        Effect.gen(function*() {
+          class Person extends Schema.Class<Person>("Person")({ name: Schema.String }) {}
+          class Admin extends Person {
+            get isAdmin() {
+              return true
+            }
+          }
+          const firstClass = first === "base" ? Person : Admin
+          Schema.decodeUnknownSync(firstClass)({ name: "first" })
+
+          const admin = Schema.decodeUnknownSync(Admin)({ name: "admin" })
+          assert.instanceOf(admin, Admin)
+          assertTrue(admin instanceof Admin && admin.isAdmin)
+          assert.instanceOf(Admin.make({ name: "admin" }), Admin)
+          assert.instanceOf(Option.getOrThrow(Admin.makeOption({ name: "admin" })), Admin)
+          assert.instanceOf(yield* Admin.makeEffect({ name: "admin" }), Admin)
+
+          strictEqual(Schema.decodeUnknownSync(Person)({ name: "person" }).constructor, Person)
+          strictEqual(Person.make({ name: "person" }).constructor, Person)
+          strictEqual(Option.getOrThrow(Person.makeOption({ name: "person" })).constructor, Person)
+          strictEqual((yield* Person.makeEffect({ name: "person" })).constructor, Person)
+        }))
+    }
+
+    it("plain TaggedClass subclasses use their own constructor", () => {
+      class Person extends Schema.TaggedClass<Person>()("Person", { name: Schema.String }) {}
+      class Admin extends Person {}
+
+      strictEqual(Schema.decodeUnknownSync(Admin)({ _tag: "Person", name: "admin" }).constructor, Admin)
+      strictEqual(Admin.make({ name: "admin" }).constructor, Admin)
+      strictEqual(Schema.decodeUnknownSync(Person)({ _tag: "Person", name: "person" }).constructor, Person)
+      strictEqual(Person.make({ name: "person" }).constructor, Person)
+    })
+
     it.effect("make preserves existing instances like the other constructor adapters", () =>
       Effect.gen(function*() {
         let constructions = 0

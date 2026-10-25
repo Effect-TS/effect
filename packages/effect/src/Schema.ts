@@ -16357,12 +16357,13 @@ function getClassSchemaFactory<S extends Constraint>(
   identifier: string,
   annotations: Annotations.Declaration<any, readonly [S]> | undefined
 ) {
-  let memo: decodeTo<declareConstructor<any, S["Encoded"], readonly [S]>, S> | undefined
+  const memo = new WeakMap<object, unknown>()
   return <Self extends (new(...args: ReadonlyArray<any>) => any) & { readonly identifier: string }>(
     self: Self
   ): decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S> => {
-    if (memo !== undefined) {
-      return memo
+    const cached = memo.get(self)
+    if (cached !== undefined) {
+      return cached as decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S>
     }
     const ClassTypeId = getClassTypeId(identifier)
     const isClassValue: Predicate.Predicate<unknown> = (input) =>
@@ -16393,7 +16394,9 @@ function getClassSchemaFactory<S extends Constraint>(
         }
       )
     )
-    return memo = decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S>(to, transformation)(from)
+    const schema = decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S>(to, transformation)(from)
+    memo.set(self, schema)
+    return schema
   }
 }
 
