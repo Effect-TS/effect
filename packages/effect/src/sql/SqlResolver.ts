@@ -418,7 +418,13 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
 
 function transactionKey<A>(entry: Request.Entry<A>): object | undefined {
   const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
-  const transaction = (client && Context.getOrUndefined(entry.context, client.transactionService)) ??
-    Context.get(entry.context, CurrentTransactionBatchKey)
-  return transaction && Equal.byReferenceUnsafe(transaction)
+  const conn = client && Context.getOrUndefined(entry.context, client.transactionService)
+  const transaction = Context.get(entry.context, CurrentTransactionBatchKey)
+  if (conn === undefined || conn === transaction) {
+    return transaction && Equal.byReferenceUnsafe(transaction)
+  } else if (transaction === undefined) {
+    return Equal.byReferenceUnsafe(conn)
+  }
+  // The generic client's transaction and another client's transaction are both active
+  return [Equal.byReferenceUnsafe(conn), Equal.byReferenceUnsafe(transaction)]
 }
