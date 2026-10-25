@@ -1787,20 +1787,23 @@ describe("OpenAiLanguageModel", () => {
           }
         }))))
 
-      it.effect("determines finish reason from incomplete_details", () =>
+      it.effect.each(
+        [
+          { reason: "content_filter", expected: "content-filter" },
+          { reason: "max_output_tokens", expected: "length" }
+        ] as const
+      )("determines finish reason from incomplete_details.$reason", ({ reason, expected }) =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
             prompt: "Hello"
           }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
 
-          const finishPart = result.content.find((p) => p.type === "finish")
-          if (finishPart?.type === "finish") {
-            strictEqual(finishPart.reason, "content-filter")
-          }
+          strictEqual(result.finishReason, expected)
         }).pipe(Effect.provide(makeTestLayer({
           body: {
+            status: "incomplete",
             output: [makeTextOutput("Hello")],
-            incomplete_details: { reason: "content_filter" }
+            incomplete_details: { reason }
           }
         }))))
 
@@ -1876,6 +1879,29 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("reports length when max_output_tokens truncates a response", () =>
+      Effect.gen(function*() {
+        const event = {
+          type: "response.incomplete",
+          sequence_number: 1,
+          response: makeDefaultResponse({
+            status: "incomplete",
+            incomplete_details: { reason: "max_output_tokens" }
+          })
+        }
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(
+            HttpClient.HttpClient,
+            makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
+          )
+        )
+
+        strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
+      }))
+
     it.effect.each(
       [
         {

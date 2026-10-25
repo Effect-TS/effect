@@ -14,6 +14,71 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicLanguageModel", () => {
+  describe("finish reason", () => {
+    it.effect.each(["generateText", "streamText"] as const)(
+      "reports length when model_context_window_exceeded truncates a response with %s",
+      (method) =>
+        Effect.gen(function*() {
+          const message = {
+            id: "msg_test_1",
+            type: "message",
+            role: "assistant",
+            model: "claude-sonnet-4-20250514",
+            content: [],
+            stop_reason: "model_context_window_exceeded",
+            stop_sequence: null,
+            usage: {
+              cache_creation: null,
+              cache_creation_input_tokens: null,
+              cache_read_input_tokens: null,
+              input_tokens: 10,
+              output_tokens: 5,
+              service_tier: null
+            }
+          }
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) =>
+                Effect.succeed(
+                  method === "generateText"
+                    ? jsonResponse(request, message)
+                    : sseResponse(request, [
+                      {
+                        type: "message_start",
+                        message: { ...message, stop_reason: null, usage: { ...message.usage, output_tokens: 0 } }
+                      },
+                      {
+                        type: "message_delta",
+                        delta: { stop_reason: message.stop_reason, stop_sequence: null },
+                        usage: {
+                          cache_creation_input_tokens: null,
+                          cache_read_input_tokens: null,
+                          input_tokens: null,
+                          output_tokens: 5
+                        }
+                      },
+                      { type: "message_stop" }
+                    ])
+                )
+              )
+            ))
+          )
+          const parts = yield* Effect.gen(function*() {
+            if (method === "generateText") {
+              return (yield* LanguageModel.generateText({ prompt: "Hello" })).content
+            }
+            return yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+            Effect.provide(layer)
+          )
+
+          assert.strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
+        })
+    )
+  })
+
   describe("streamText", () => {
     it.effect("reports total input tokens and cache usage on the span", () =>
       Effect.gen(function*() {
