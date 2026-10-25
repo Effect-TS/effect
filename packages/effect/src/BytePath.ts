@@ -192,6 +192,15 @@ export const fromString = (input: string): Result.Result<BytePath, BytePathError
 export const toBytes = (path: BytePath): Uint8Array<ArrayBuffer> => bytes(path).slice()
 
 /**
+ * Returns the exact number of path bytes without copying them.
+ *
+ * @stability unstable
+ * @category getters
+ * @since 4.1.0
+ */
+export const byteLength = (path: BytePath): number => bytes(path).byteLength
+
+/**
  * Decodes a path as strict UTF-8, preserving a leading BOM. Returns
  * `InvalidUtf8` when the bytes have no lossless text representation.
  *
