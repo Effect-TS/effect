@@ -321,6 +321,17 @@ export const causeCombine: {
   }
 )
 
+const containsAnnotations = (
+  self: ReadonlyMap<string, unknown>,
+  that: ReadonlyMap<string, unknown>
+): boolean => {
+  if (self === that) return true
+  for (const [key, value] of that) {
+    if (!self.has(key) || !Object.is(self.get(key), value)) return false
+  }
+  return true
+}
+
 /**
  * Appends the interrupts from `interrupts` that `self` does not contain yet.
  * Unlike `causeCombine`, it never calls hash or equality methods, which can be
@@ -333,7 +344,9 @@ export const causeAddInterrupts = <E>(self: Cause.Cause<E>, interrupts: Cause.Ca
   for (const reason of interrupts.reasons) {
     if (
       isInterruptReason(reason) &&
-      !reasons.some((r) => isInterruptReason(r) && r.fiberId === reason.fiberId && r.annotations === reason.annotations)
+      !reasons.some((r) =>
+        isInterruptReason(r) && r.fiberId === reason.fiberId && containsAnnotations(r.annotations, reason.annotations)
+      )
     ) {
       reasons.push(reason)
     }
