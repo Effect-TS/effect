@@ -194,8 +194,8 @@ export interface RemoteOptions {
    */
   readonly timeToLive?: Duration.Input | undefined
   /**
-   * Minimum time between fetches, including failed ones. Defaults to 30
-   * seconds.
+   * Minimum time before retrying after a failed fetch, or refetching for an
+   * unknown key. Defaults to 30 seconds.
    */
   readonly cooldown?: Duration.Input | undefined
   /**
@@ -293,6 +293,7 @@ export const layerRemote = (
       let cache: Snapshot | undefined
       let pending: Deferred.Deferred<Snapshot, JoseError.JoseError> | undefined
       let lastAttempt = -Infinity
+      let lastFailed = false
       let closed = false
 
       const closedExit = Exit.fail(unavailable("The key set layer is closed"))
@@ -336,20 +337,23 @@ export const layerRemote = (
       )
 
       // Returns `undefined` while cooling down. `stale` is a snapshot that
-      // lacked the selected key, so it does not count as fresh.
+      // lacked the selected key, so it does not count as fresh. The cooldown
+      // bounds unknown-key probes and retries after a failure; an expired set
+      // that was fetched successfully is refetched at once.
       const refresh = (now: number, stale?: Snapshot) =>
         Effect.uninterruptibleMask((restore) =>
           Effect.suspend((): Effect.Effect<Snapshot | undefined, JoseError.JoseError> => {
             if (closed) return closedExit
             if (cache !== undefined && cache !== stale && cache.expiresAt > now) return Effect.succeed(cache)
             if (pending !== undefined) return restore(Deferred.await(pending))
-            if (now - lastAttempt < cooldown) return Effect.succeed(undefined)
+            if ((stale !== undefined || lastFailed) && now - lastAttempt < cooldown) return Effect.succeed(undefined)
             lastAttempt = now
             const result = pending = Deferred.makeUnsafe<Snapshot, JoseError.JoseError>()
             return fetch.pipe(
               Effect.onExit((exit) =>
                 Effect.sync(() => {
                   pending = undefined
+                  lastFailed = Exit.isFailure(exit)
                   if (Exit.isSuccess(exit)) cache = exit.value
                   Deferred.doneUnsafe(
                     result,
