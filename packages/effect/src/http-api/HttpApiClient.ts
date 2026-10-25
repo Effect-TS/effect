@@ -139,6 +139,10 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
 
+// An uninferred type parameter is instantiated with its constraint, so methods
+// without a streaming payload must constrain `PayloadR` to `never`
+type PayloadServicesConstraint<Payload> = [Extract<Payload, StreamPayloadSchema>] extends [never] ? never : unknown
+
 /**
  * Helper types used to describe generated HTTP API clients, including endpoint
  * methods, response modes, and grouped client shapes.
@@ -232,11 +236,7 @@ export declare namespace Client {
     R
   > = <
     Mode extends ResponseMode = "decoded-only",
-    PayloadR extends (
-      [Extract<Endpoint["~Payload"], HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<any>>] extends [never]
-        ? never :
-        unknown
-    ) = never
+    PayloadR extends PayloadServicesConstraint<Endpoint["~Payload"]> = never
   >(
     request: Simplify<
       HttpApiEndpoint.ClientRequest<
