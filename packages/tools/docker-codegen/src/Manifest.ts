@@ -3,8 +3,8 @@
  * manifest `effect/docker`'s conformance test checks `DockerApi` against.
  *
  * Each operation records what a declaration of it has to match: the method,
- * the path, the query and header parameters by their wire names, whether it
- * takes a body, and the statuses it answers with.
+ * the path, the query and header parameters by their wire names, its body and
+ * its media types, and the statuses it answers with.
  *
  * @since 4.0.6
  */
@@ -19,9 +19,12 @@ import type * as Patches from "./Patches.ts"
  *
  * - `path` has its parameters as `:name`, as `HttpApi` paths do.
  * - `query` and `headers` are the parameter names as sent; header names are
- *   lowercase. `required` lists the required query parameters.
+ *   lowercase. `required` and `requiredHeaders` list the required ones.
+ * - `body` says whether a request body is taken, and `consumes` its media
+ *   types.
  * - `success` are the statuses below 400 the document declares, `errors`
- *   the others.
+ *   the others. `produces` are the media types of the success responses
+ *   that have a body.
  *
  * @category models
  * @since 4.0.6
@@ -33,8 +36,11 @@ export const Operation = Schema.Struct({
   query: Schema.Array(Schema.String),
   required: Schema.Array(Schema.String),
   headers: Schema.Array(Schema.String),
-  body: Schema.Boolean,
+  requiredHeaders: Schema.Array(Schema.String),
+  body: Schema.Literals(["none", "optional", "required"]),
+  consumes: Schema.Array(Schema.String),
   success: Schema.Array(Schema.Number),
+  produces: Schema.Array(Schema.String),
   errors: Schema.Array(Schema.Number)
 })
 
@@ -92,21 +98,37 @@ export const make = (
       const parameters = [...nodes(item.parameters), ...nodes(operation.parameters)]
       const named = (location: string) =>
         parameters.filter((parameter) => parameter.in === location && Predicate.isString(parameter.name))
-      const statuses = Object.keys(isNode(operation.responses) ? operation.responses : {})
+      const names = (location: string, required: boolean) =>
+        sorted(
+          named(location)
+            .filter((parameter) => !required || parameter.required === true)
+            .map((parameter) =>
+              location === "header" ? (parameter.name as string).toLowerCase() : parameter.name as string
+            )
+        )
+      const responses = isNode(operation.responses) ? operation.responses : {}
+      const statuses = Object.keys(responses)
         .filter((status) => /^\d{3}$/.test(status))
         .map(Number)
         .sort((a, b) => a - b)
+      const success = statuses.filter((status) => status < 400)
+      const requestBody = isNode(operation.requestBody) ? operation.requestBody : undefined
+      const mediaTypes = (node: unknown) => {
+        const content = isNode(node) ? node.content : undefined
+        return isNode(content) ? Object.keys(content) : []
+      }
       operations.push({
         operationId: Predicate.isString(operation.operationId) ? operation.operationId : `${method} ${path}`,
         method: method.toUpperCase(),
         path: path.replaceAll(/\{(\w+)\}/g, ":$1"),
-        query: sorted(named("query").map((parameter) => parameter.name as string)),
-        required: sorted(
-          named("query").filter((parameter) => parameter.required === true).map((parameter) => parameter.name as string)
-        ),
-        headers: sorted(named("header").map((parameter) => (parameter.name as string).toLowerCase())),
-        body: operation.requestBody !== undefined,
-        success: statuses.filter((status) => status < 400),
+        query: names("query", false),
+        required: names("query", true),
+        headers: names("header", false),
+        requiredHeaders: names("header", true),
+        body: requestBody === undefined ? "none" : requestBody.required === true ? "required" : "optional",
+        consumes: sorted(mediaTypes(requestBody)),
+        success,
+        produces: sorted(success.flatMap((status) => mediaTypes(responses[status]))),
         errors: statuses.filter((status) => status >= 400)
       })
     }
