@@ -491,11 +491,39 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
             })
           }))((body as { result: unknown }).result)
 
-          assert.isAtLeast(result.ttlMs, 0)
+          assert.deepStrictEqual({ ttlMs: result.ttlMs, cacheScope: result.cacheScope }, {
+            ttlMs: 0,
+            cacheScope: "private"
+          }, method)
           assert.deepStrictEqual(result._meta["io.modelcontextprotocol/serverInfo"], {
             name: "McpConformance",
             version: "1.0.0"
           })
+        }
+      }))
+
+    // SEP-2549 cache hints are server-advertised freshness; omitted families keep the stale default.
+    it.effect("should advertise a configured tools cache hint and keep defaults for other results", () =>
+      Effect.gen(function*() {
+        for (const mode of ["server", "request"] as const) {
+          const harness = yield* makeHttpHarness(makeServerLayer({
+            name: "CacheHintServer",
+            protocols: [protocol],
+            mode,
+            cacheHints: { tools: { ttlMs: 60_000, cacheScope: "private" } }
+          }))
+          const cases = [
+            ["tools/list", 60_000],
+            ["prompts/list", 0],
+            ["server/discover", 0]
+          ] as const
+          for (const [method, ttlMs] of cases) {
+            const response = yield* harness.post(request(method, method), headers(method))
+            const message = Schema.decodeUnknownSync(Schema.Struct({
+              result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
+            }))(yield* readMcpHttpResponse(response))
+            assert.deepStrictEqual(message.result, { ttlMs, cacheScope: "private" }, `${mode} ${method}`)
+          }
         }
       }))
 

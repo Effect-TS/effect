@@ -16,6 +16,7 @@ interface Options<P extends Protocols> {
   readonly instructions?: string | undefined
   readonly protocols?: P | undefined
   readonly extensions?: Readonly<Record<`${string}/${string}`, Schema.Json>> | undefined
+  readonly cacheHints?: McpServer.CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly loggers?: ReadonlyArray<Logger.Logger<unknown, any>> | undefined
@@ -41,7 +42,8 @@ export function makeServerLayer(options: Options<Protocols> & { readonly mode?: 
     path: "/mcp" as const,
     protocols: options.protocols ?? [McpProtocol.v2025_06_18],
     allowedOrigins: ["https://allowed.example"],
-    extensions: options.extensions
+    extensions: options.extensions,
+    cacheHints: options.cacheHints
   }
   const loggers = Layer.succeed(References.CurrentLoggers, new Set(options.loggers ?? [noopLogger]))
   if (options.mode === "request") {
