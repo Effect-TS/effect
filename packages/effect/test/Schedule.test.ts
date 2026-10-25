@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Deferred, Duration, Effect, Fiber, Pull, Random, Result, Schedule } from "effect"
+import { Array, Cron, Deferred, Duration, Effect, Fiber, Pull, Random, Result, Schedule } from "effect"
 import { constant, constUndefined } from "effect/Function"
 import { TestClock } from "effect/testing"
 
@@ -348,6 +348,53 @@ describe("Schedule", () => {
           "Mon Jan 15 2024 04:30:00",
           "Wed Jan 17 2024 04:30:00",
           "Wed Jan 24 2024 04:30:00"
+        ])
+      }))
+
+    it.effect("honors repeatedTimes across a DST fold", () =>
+      Effect.gen(function*() {
+        // Europe/Berlin repeats local 02:00-02:59 at 01:00Z-01:59Z on 2026-10-25.
+        const recurrences = Effect.fnUntraced(
+          function*(schedule: Schedule.Schedule<Duration.Duration, unknown, Cron.CronParseError>, from: string) {
+            const now = new Date(from).getTime()
+            yield* TestClock.setTime(now)
+            const [, outputs] = yield* runDelays(schedule, Array.makeBy(4, constUndefined)).pipe(
+              Effect.map(Array.mapAccum(now, (next, delay) => {
+                const timestamp = next + Duration.toMillis(delay)
+                return [timestamp, new Date(timestamp).toISOString()]
+              }))
+            )
+            return outputs
+          }
+        )
+
+        expect(yield* recurrences(Schedule.cron("*/5 * * * *", "Europe/Berlin"), "2026-10-25T00:55:00Z")).toEqual([
+          "2026-10-25T02:00:00.000Z",
+          "2026-10-25T02:05:00.000Z",
+          "2026-10-25T02:10:00.000Z",
+          "2026-10-25T02:15:00.000Z"
+        ])
+        expect(
+          yield* recurrences(
+            Schedule.cron("*/5 * * * *", "Europe/Berlin", { repeatedTimes: "both" }),
+            "2026-10-25T00:55:00Z"
+          )
+        ).toEqual([
+          "2026-10-25T01:00:00.000Z",
+          "2026-10-25T01:05:00.000Z",
+          "2026-10-25T01:10:00.000Z",
+          "2026-10-25T01:15:00.000Z"
+        ])
+        expect(
+          yield* recurrences(
+            Schedule.cron(Cron.parseUnsafe("*/5 * * * *", "Europe/Berlin", { repeatedTimes: "both" })),
+            "2026-10-25T01:07:00Z"
+          )
+        ).toEqual([
+          "2026-10-25T01:10:00.000Z",
+          "2026-10-25T01:15:00.000Z",
+          "2026-10-25T01:20:00.000Z",
+          "2026-10-25T01:25:00.000Z"
         ])
       }))
 
