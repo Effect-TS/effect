@@ -862,6 +862,22 @@ describe("Cron", () => {
       }
     })
 
+    it("prev across a spring-forward gap", () => {
+      // Europe/Berlin skips local 02:00-02:59 on 2026-03-29; 02:30 resolves to 03:30 (01:30Z).
+      const cases: Array<[string, string, string]> = [
+        [daily, "2026-03-29T01:40:00Z", "2026-03-29T01:30:00Z"],
+        [daily, "2026-03-29T01:20:00Z", "2026-03-28T01:30:00Z"],
+        ["30 * * * *", "2026-03-29T01:20:00Z", "2026-03-29T00:30:00Z"]
+      ]
+
+      for (const repeatedTimes of ["earlier", "later", "both"] as const) {
+        for (const [expr, from, expected] of cases) {
+          const cron = Cron.parseUnsafe(expr, "Europe/Berlin", { repeatedTimes })
+          deepStrictEqual(prev(cron, new Date(from)), new Date(expected), `${expr} ${repeatedTimes} from ${from}`)
+        }
+      }
+    })
+
     it("sequence with both visits every instant of the fold in order", () => {
       const cron = Cron.parseUnsafe(every5, "Europe/Berlin", { repeatedTimes: "both" })
       const sequence = Cron.sequence(cron, new Date("2026-10-25T00:55:00Z"))
