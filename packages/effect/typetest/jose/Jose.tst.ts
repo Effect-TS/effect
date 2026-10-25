@@ -1,12 +1,15 @@
-import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter } from "effect"
+import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter, type Scope } from "effect"
 import type { Aead, CryptoError, Mac, SecureRandom, Signature } from "effect/crypto"
-import { type JoseError, Jwe, Jwk, type Jwks, Jws, Jwt } from "effect/jose"
+import type { HttpClient } from "effect/http"
+import { type JoseError, Jwe, Jwk, Jwks, Jws, Jwt } from "effect/jose"
 import { describe, expect, it } from "tstyche"
 
 declare const hmac: Jwk.SecretKey<"HS256">
 declare const dir: Jwk.SecretKey<"dir">
 declare const privateKey: Jwk.PrivateKey
 declare const publicKey: Jwk.PublicKey
+declare const signingKey: Jwk.SigningKey
+declare const verificationKey: Jwk.VerificationKey
 declare const token: Redacted.Redacted<string>
 declare const payload: Uint8Array
 
@@ -59,7 +62,7 @@ describe("Jwk", () => {
 describe("Jws and Jwe", () => {
   it("derives the algorithm from the key and makes the header optional", () => {
     expect(Jws.sign(payload, hmac)).type.toBe<
-      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Jws.Requirements>
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Mac.Mac>
     >()
     expect(Jws.sign).type.toBeCallableWith(payload, privateKey, { kid: "k", typ: "JWT" })
     expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { alg: "HS256" })
@@ -71,9 +74,22 @@ describe("Jws and Jwe", () => {
     expect<Jws.Requirements>().type.toBe<Mac.Mac | Signature.Signature>()
   })
 
+  it("requires only the service the key uses", () => {
+    expect(Jws.sign(payload, privateKey)).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Signature.Signature>
+    >()
+    expect(Jws.verify(token, hmac)).type.toBe<Effect.Effect<Jws.Verified, JoseError.JoseError, Mac.Mac>>()
+    expect(Jws.sign(payload, signingKey)).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Jws.Requirements>
+    >()
+    expect(Jws.verify(token, verificationKey)).type.toBe<
+      Effect.Effect<Jws.Verified, JoseError.JoseError, Jws.Requirements>
+    >()
+  })
+
   it("accepts plain or redacted tokens", () => {
     expect(Jws.verify("a.b.c", publicKey)).type.toBe<
-      Effect.Effect<Jws.Verified, JoseError.JoseError, Jws.Requirements>
+      Effect.Effect<Jws.Verified, JoseError.JoseError, Signature.Signature>
     >()
     expect(Jws.verify).type.toBeCallableWith(token, publicKey)
     expect(Jws.verify).type.not.toBeCallableWith(token, publicKey, { algorithms: ["ES256"] })
@@ -96,12 +112,23 @@ describe("Jwt", () => {
   it("keeps encoding and decoding services distinct", () => {
     const signed = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, hmac)
     const verified = Jwt.verify(Claims, token, hmac)
-    expect<Effect.Services<typeof signed>>().type.toBe<Encode | Jws.Requirements>()
-    expect<Effect.Services<typeof verified>>().type.toBe<Decode | Jws.Requirements>()
+    expect<Effect.Services<typeof signed>>().type.toBe<Encode | Mac.Mac>()
+    expect<Effect.Services<typeof verified>>().type.toBe<Decode | Mac.Mac>()
     expect<Effect.Success<typeof signed>>().type.toBe<Redacted.Redacted<string>>()
     expect<Effect.Success<typeof verified>>().type.toBe<Jwt.Verified<typeof Claims.Type>>()
     expect<Effect.Error<typeof signed>>().type.toBe<Jwt.JwtError>()
     expect<Jwt.JwtError>().type.toBe<JoseError.JoseError | Schema.SchemaError>()
+  })
+
+  it("requires only the service the key uses", () => {
+    const signedAsymmetric = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, privateKey)
+    const verifiedAsymmetric = Jwt.verify(Claims, token, publicKey)
+    const signedUnion = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, signingKey)
+    const verifiedUnion = Jwt.verify(Claims, token, verificationKey)
+    expect<Effect.Services<typeof signedAsymmetric>>().type.toBe<Encode | Signature.Signature>()
+    expect<Effect.Services<typeof verifiedAsymmetric>>().type.toBe<Decode | Signature.Signature>()
+    expect<Effect.Services<typeof signedUnion>>().type.toBe<Encode | Jws.Requirements>()
+    expect<Effect.Services<typeof verifiedUnion>>().type.toBe<Decode | Jws.Requirements>()
   })
 
   it("accepts Duration inputs for policy and requires an allowlist only for key sets", () => {
@@ -119,5 +146,13 @@ describe("Jwt", () => {
       Effect.Effect<Jwt.Unverified, JoseError.JoseError>
     >()
     expect<Jwt.Unverified["claims"]>().type.toBe<Readonly<Record<string, Schema.Json>>>()
+  })
+})
+
+describe("Jwks", () => {
+  it("builds a remote key set in a scope", () => {
+    expect(Jwks.makeRemote({ url: "https://issuer.example/keys" })).type.toBe<
+      Effect.Effect<Jwks.Jwks["Service"], JoseError.JoseError, HttpClient.HttpClient | Scope.Scope>
+    >()
   })
 })
