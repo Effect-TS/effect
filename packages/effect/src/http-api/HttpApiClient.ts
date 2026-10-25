@@ -715,7 +715,7 @@ type DecodeResponse<
 ) => Effect.Effect<
   SuccessType<Endpoint["~Success"]>,
   HttpApiEndpoint.Errors<Endpoint> | HttpClientError.HttpClientError | Schema.SchemaError,
-  SuccessDecodingServices<Endpoint["~Success"]> | Endpoint["~Error"]["DecodingServices"]
+  SuccessDecodingServices<Endpoint["~Success"]> | HttpApiEndpoint.ErrorServicesDecode<Endpoint>
 >
 
 /**
@@ -732,11 +732,11 @@ type DecodeResponse<
  * **Details**
  *
  * The response does not need to come from a generated client. Declared error
- * responses fail with the decoded error, and undeclared statuses fail with a
- * `StatusCodeError`. Parse options are resolved from the API, group and
- * endpoint annotations. The body is only read when the returned effect runs,
- * so it must run inside the scope that owns the response. Middleware and
- * `transformResponse` are not applied.
+ * responses fail with the decoded error, and undeclared statuses fail with an
+ * `HttpClientError` whose reason is a `DecodeError`. Parse options are resolved
+ * from the API, group and endpoint annotations. The body is only read when the
+ * returned effect runs, so it must run inside the scope that owns the response.
+ * Middleware and `transformResponse` are not applied.
  *
  * Building the decoder walks the API declaration, so build it once per
  * endpoint and reuse it.
