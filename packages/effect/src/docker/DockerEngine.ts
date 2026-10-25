@@ -296,7 +296,9 @@ const connectionHint = (
  * method and path, because the query can hold build args, the headers
  * registry credentials, and the body passwords or container env. Errors that
  * hold a response (whose request has everything) become a `TransportError`
- * with the same message.
+ * with the same message. `HttpClientError`'s own serialization isn't enough:
+ * it redacts only the query names known where it is serialized, and the full
+ * request stays a property.
  */
 const sanitizeCause = (cause: unknown): unknown => {
   if (!HttpClientError.isHttpClientError(cause)) return cause

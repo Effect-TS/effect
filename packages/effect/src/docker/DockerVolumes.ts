@@ -1,7 +1,23 @@
 /**
  * Volumes: list, create, inspect, update, remove and prune.
  *
- * Request bodies are the generated `DockerSchema` types.
+ * Request bodies are the generated `DockerSchema` types. Swarm serves cluster
+ * volumes: `update`, and `create` with a `ClusterVolumeSpec`, fail with
+ * `SwarmUnavailable` outside a Swarm manager.
+ *
+ * **Example** (Creating a labelled volume and listing by label)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { DockerVolumes } from "effect/docker"
+ *
+ * const program = Effect.gen(function*() {
+ *   const volumes = yield* DockerVolumes.DockerVolumes
+ *   yield* volumes.create({ Name: "cache", Labels: { app: "demo" } })
+ *   const { Volumes } = yield* volumes.list({ filters: { label: "app=demo" } })
+ *   return Volumes?.map((volume) => volume.Name)
+ * })
+ * ```
  *
  * @stability unstable
  * @since 4.0.6

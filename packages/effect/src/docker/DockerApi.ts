@@ -19,6 +19,27 @@
  * - Fields that carry secrets are `Redacted`; requests send them
  *   unwrapped.
  *
+ * The services are clients of these groups. For what they don't cover, make
+ * a client of a group over the `DockerEngine`'s `HttpClient`, which adds the
+ * negotiated version and the configuration.
+ *
+ * **Example** (A client of the volume endpoints)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { DockerApi, DockerEngine } from "effect/docker"
+ * import { HttpApi, HttpApiClient } from "effect/http-api"
+ *
+ * const program = Effect.gen(function*() {
+ *   const engine = yield* DockerEngine.DockerEngine
+ *   const client = yield* HttpApiClient.makeWith(HttpApi.make("docker").add(DockerApi.Volumes), {
+ *     httpClient: engine.client
+ *   })
+ *   // fails with `DockerError`'s reason classes, such as `NotFound`
+ *   return yield* client.volumes.inspect({ params: { name: "cache" } })
+ * })
+ * ```
+ *
  * @stability unstable
  * @since 4.0.6
  */

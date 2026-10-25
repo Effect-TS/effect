@@ -19,6 +19,17 @@
  * for sockets. Docker Desktop and rootless Docker are found through the
  * Contexts they create.
  *
+ * **Example** (A static configuration)
+ *
+ * ```ts import.meta.vitest
+ * import { DockerConfig } from "effect/docker"
+ *
+ * const ConfigLive = DockerConfig.layer({
+ *   endpoint: { _tag: "Tcp", host: "docker.example.com", port: 2376, tls: { verify: true } },
+ *   apiVersion: "1.48"
+ * })
+ * ```
+ *
  * @stability unstable
  * @since 4.0.6
  */
