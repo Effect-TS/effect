@@ -136,7 +136,7 @@
     "ast-types": "^0.16.3",
     "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.5",
-    "immer": "^11.1.21",
+    "immer": "^11.2.9",
     "miniflare": "5.20260925.0-alpha",
     "protobufjs": "^8.8.1",
     "tinybench": "^6.2.2",
