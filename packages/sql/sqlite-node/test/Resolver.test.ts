@@ -1,9 +1,9 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, FileSystem, Iterable, Schema } from "effect"
+import { Cause, Context, Effect, Exit, FileSystem, Iterable, Layer, Schema } from "effect"
 import { Reactivity } from "effect/reactivity"
-import { SqlError, SqlResolver } from "effect/sql"
+import { SqlClient, SqlError, SqlResolver } from "effect/sql"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -178,5 +178,51 @@ describe("Resolver", () => {
           }
         )
       }))
+  })
+
+  describe("void", () => {
+    it.effect("keeps requests outside a transaction out of its batch", () => {
+      const batches: Array<Array<number>> = []
+      class Writes extends Context.Service<Writes, {
+        readonly insert: (id: number) => Effect.Effect<void, SqlError.SqlError | Schema.SchemaError>
+        readonly withTransaction: SqlClient.SqlClient["withTransaction"]
+        readonly all: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>
+      }>()("test/Writes") {}
+      const layer = Layer.effect(
+        Writes,
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
+          const Insert = SqlResolver.void({
+            Request: Schema.Number,
+            execute: (ids) => {
+              batches.push(ids)
+              return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+            }
+          })
+          return Writes.of({
+            insert: SqlResolver.request(Insert),
+            withTransaction: sql.withTransaction,
+            all: sql`SELECT * FROM writes`
+          })
+        })
+      ).pipe(Layer.provide(SqliteClient.layer({ filename: ":memory:" })))
+      return Effect.gen(function*() {
+        const writes = yield* Writes
+        const [inside, outside] = yield* Effect.all([
+          Effect.exit(writes.withTransaction(
+            Effect.andThen(
+              Effect.all([writes.insert(1), writes.insert(3)], { concurrency: "unbounded" }),
+              Effect.fail("rollback")
+            )
+          )),
+          Effect.exit(writes.insert(2))
+        ], { concurrency: "unbounded" })
+        assert.deepStrictEqual(inside, Exit.fail("rollback"))
+        assert.deepStrictEqual(outside, Exit.void)
+        assert.deepStrictEqual(batches, [[1, 3], [2]])
+        assert.deepStrictEqual(yield* writes.all, [{ id: 2 }])
+      }).pipe(Effect.provide(layer))
+    })
   })
 })

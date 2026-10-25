@@ -15,6 +15,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { CurrentTransactionBatchKey } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -514,7 +515,10 @@ const makeAfterCommit =
       }
       // Runs later with the services in scope now, without the transaction.
       buffer.callbacks.push(
-        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
+        Effect.provideContext(
+          effect,
+          Context.omit(transactionService, CurrentTransactionBatchKey)(fiber.context) as Context.Context<R>
+        )
       )
       return Effect.void
     })
@@ -612,6 +616,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(CurrentTransactionBatchKey, level),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)

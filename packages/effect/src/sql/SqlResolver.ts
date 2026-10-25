@@ -27,6 +27,7 @@ import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
+import { CurrentTransactionBatchKey } from "../internal/sql.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as Option from "../Option.ts"
 import * as Request from "../Request.ts"
@@ -132,7 +133,7 @@ export const ordered = <Req extends Schema.Constraint, Res extends Schema.Constr
       E | ResultLengthMismatch,
       Req["EncodingServices"] | Res["DecodingServices"] | R
     >,
-    SqlClient.TransactionConnection.Service | undefined
+    object | undefined
   >({
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
@@ -190,7 +191,7 @@ export const grouped = <Req extends Schema.Constraint, Res extends Schema.Constr
       E | Schema.SchemaError | Cause.NoSuchElementError,
       Req["EncodingServices"] | Res["DecodingServices"] | R
     >,
-    SqlClient.TransactionConnection.Service | undefined
+    object | undefined
   >({
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
@@ -260,7 +261,7 @@ export const findById = <Id extends Schema.Constraint, Res extends Schema.Constr
       E | Schema.SchemaError | Cause.NoSuchElementError,
       Id["EncodingServices"] | Res["DecodingServices"] | R
     >,
-    SqlClient.TransactionConnection.Service | undefined
+    object | undefined
   >({
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
@@ -314,7 +315,7 @@ const void_ = <Req extends Schema.Constraint, _, E, R>(
       E | Schema.SchemaError,
       Req["EncodingServices"] | R
     >,
-    SqlClient.TransactionConnection.Service | undefined
+    object | undefined
   >({
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
@@ -415,9 +416,12 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
   return [inputs, byIdMap] as const
 }
 
-function transactionKey<A>(entry: Request.Entry<A>): SqlClient.TransactionConnection.Service | undefined {
+function transactionKey<A>(entry: Request.Entry<A>): object | undefined {
   const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
-  if (!client) return undefined
+  if (!client) {
+    const transaction = Context.get(entry.context, CurrentTransactionBatchKey)
+    return transaction && Equal.byReferenceUnsafe(transaction)
+  }
   const conn = Context.getOrUndefined(entry.context, client.transactionService)
   if (!conn) return undefined
   return Equal.byReferenceUnsafe(conn)
