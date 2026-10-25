@@ -27,7 +27,7 @@ import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
-import { CurrentTransactionBatchKey } from "../internal/sql.ts"
+import { CurrentTransactionService } from "../internal/sql.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as Option from "../Option.ts"
 import * as Request from "../Request.ts"
@@ -419,7 +419,8 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
 function transactionKey<A>(entry: Request.Entry<A>): object | undefined {
   const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
   const conn = client && Context.getOrUndefined(entry.context, client.transactionService)
-  const transaction = Context.get(entry.context, CurrentTransactionBatchKey)
+  const service = Context.get(entry.context, CurrentTransactionService)
+  const transaction = service && Context.getOrUndefined(entry.context, service)
   if (conn === undefined || conn === transaction) {
     return transaction && Equal.byReferenceUnsafe(transaction)
   } else if (transaction === undefined) {

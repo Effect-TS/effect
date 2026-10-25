@@ -1,7 +1,7 @@
 import * as Context from "../Context.ts"
 
 /** @internal */
-export const CurrentTransactionBatchKey = Context.Reference<object | undefined>(
-  "effect/sql/CurrentTransactionBatchKey",
+export const CurrentTransactionService = Context.Reference<Context.Key<any, object> | undefined>(
+  "effect/sql/CurrentTransactionService",
   { defaultValue: () => undefined }
 )
