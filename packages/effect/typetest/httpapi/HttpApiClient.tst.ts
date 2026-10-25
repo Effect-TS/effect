@@ -1912,16 +1912,91 @@ describe("HttpApiClient", () => {
         mapError: () => new ApiError({ operation: "", cause: 1 })
       })
 
-      const make = HttpApiClient.make<"Api", typeof Users, () => ApiError>(Api)
+      // a mapper type is not an argument list
+      // @ts-expect-error does not satisfy the constraint
+      void HttpApiClient.make<"Api", typeof Users, () => ApiError>(Api)
+    })
+
+    it("keeps the original errors when explicit type arguments name a mapper that is not passed", () => {
+      type Mapper = (error: unknown) => ApiError
+      // the arguments must include the mapper the type arguments name
+      // @ts-expect-error Expected 2 arguments, but got 1
+      void HttpApiClient.make<"Api", typeof Users, readonly [{ readonly mapError: Mapper }]>(Api)
+      const make = HttpApiClient.make<"Api", typeof Users, readonly [{ readonly mapError: Mapper }]>(Api, {
+        mapError: (error) => new ApiError({ operation: "", cause: error })
+      })
       const client = hole<Effect.Success<typeof make>>()
+      expect(client.users.inspect()).type.toBe<Effect.Effect<Item, ApiError>>()
+      const makeWith = HttpApiClient.makeWith<
+        "Api",
+        typeof Users,
+        HttpClientError.HttpClientError | CustomClientError,
+        CustomService,
+        { readonly httpClient: typeof httpClient },
+        Mapper
+      >(Api, { httpClient })
+      const withClient = hole<Effect.Success<typeof makeWith>>()
+      const makeGroup = HttpApiClient.group<
+        "Api",
+        typeof Users,
+        "users",
+        HttpClientError.HttpClientError | CustomClientError,
+        CustomService,
+        { readonly group: "users"; readonly httpClient: typeof httpClient },
+        Mapper
+      >(Api, { group: "users", httpClient })
+      const users = hole<Effect.Success<typeof makeGroup>>()
+      const makeEndpoint = HttpApiClient.endpoint<
+        "Api",
+        typeof Users,
+        "users",
+        "statsStream",
+        HttpClientError.HttpClientError | CustomClientError,
+        CustomService,
+        { readonly group: "users"; readonly endpoint: "statsStream"; readonly httpClient: typeof httpClient },
+        Mapper
+      >(Api, { group: "users", endpoint: "statsStream", httpClient })
+      const statsStream = hole<Effect.Success<typeof makeEndpoint>>()
+
+      const withInspect = withClient.users.inspect()
+      const withStream = hole<Effect.Success<ReturnType<typeof withClient.users.statsStream<"decoded-only">>>>()
+      const groupInspect = users.inspect()
+      const endpointStream = hole<Effect.Success<ReturnType<typeof statsStream<"decoded-only">>>>()
+
+      expect<Schema.SchemaError>().type.toBeAssignableTo<Effect.Error<typeof withInspect>>()
+      expect<Schema.SchemaError>().type.toBeAssignableTo<Stream.Error<typeof withStream>>()
+      expect<Schema.SchemaError>().type.toBeAssignableTo<Effect.Error<typeof groupInspect>>()
+      expect<Schema.SchemaError>().type.toBeAssignableTo<Stream.Error<typeof endpointStream>>()
+    })
+
+    it("keeps the original errors when the whole options argument may be undefined", () => {
+      const makeSdk = (options?: { readonly mapError: (error: unknown) => ApiError }) =>
+        HttpApiClient.make(Api, options)
+      const client = hole<Effect.Success<ReturnType<typeof makeSdk>>>()
+
       expect(client.users.inspect()).type.toBe<
         Effect.Effect<
           Item,
+          | ApiError
           | EndpointError
           | MiddlewareClientError
           | "middleware-error"
           | HttpClientError.HttpClientError
           | Schema.SchemaError
+        >
+      >()
+      expect(client.users.statsStream()).type.toBe<
+        Effect.Effect<
+          Stream.Stream<
+            Item,
+            | ApiError
+            | { readonly reason: string }
+            | HttpClientError.HttpClientError
+            | Schema.SchemaError
+            | Sse.Retry
+            | Sse.SseError
+          >,
+          ApiError | HttpClientError.HttpClientError | Schema.SchemaError
         >
       >()
     })
