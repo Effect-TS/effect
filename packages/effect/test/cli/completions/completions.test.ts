@@ -331,6 +331,9 @@ describe("Bash completions", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/./project."]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "~+/project."]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME:-/tmp}"/project.`]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"$HOME/"project.`]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `$HOME/"project."`]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `~/"project."`]), ["<home>/project.txt"])
   })
 
   it("inlines choice values for choice flags", () => {
