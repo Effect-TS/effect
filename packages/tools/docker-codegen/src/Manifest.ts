@@ -4,7 +4,8 @@
  *
  * Each operation records what a declaration of it has to match: the method,
  * the path, the query and header parameters by their wire names, its body and
- * its media types, and the statuses it answers with.
+ * its media types, the statuses it answers with, and the fields of its request
+ * and response bodies.
  *
  * @since 4.0.6
  */
@@ -25,6 +26,8 @@ import type * as Patches from "./Patches.ts"
  * - `success` are the statuses below 400 the document declares, `errors`
  *   the others. `produces` are the media types of the success responses
  *   that have a body.
+ * - `requestFields` and `responseFields` are the fields of the request body
+ *   and of the success responses' bodies, see {@link fields}.
  *
  * @category models
  * @since 4.0.6
@@ -41,7 +44,9 @@ export const Operation = Schema.Struct({
   consumes: Schema.Array(Schema.String),
   success: Schema.Array(Schema.Number),
   produces: Schema.Array(Schema.String),
-  errors: Schema.Array(Schema.Number)
+  errors: Schema.Array(Schema.Number),
+  requestFields: Schema.Array(Schema.String),
+  responseFields: Schema.Array(Schema.String)
 })
 
 /**
@@ -75,6 +80,65 @@ const isNode = (u: unknown): u is Patches.Node => Predicate.isObject(u) && !Arra
 const nodes = (u: unknown): ReadonlyArray<Patches.Node> => Array.isArray(u) ? u.filter(isNode) : []
 
 const sorted = (values: Iterable<string>): Array<string> => Array.from(new Set(values)).sort()
+
+/**
+ * The fields of the body schemas under a request body's or a response's
+ * `content`, as sorted paths: `Name`, `Parent.Child`, `List[]` for the items
+ * of an array and `Map.*` for the values of a map, with `!` after a required
+ * property.
+ *
+ * **Details**
+ *
+ * `$ref`s are followed (a schema already being read isn't read again),
+ * `allOf` parts are merged, and so are `oneOf` and `anyOf` variants, where a
+ * property is required only if every variant requires it. Types aren't
+ * compared.
+ *
+ * @category constructors
+ * @since 4.0.6
+ */
+export const fields = (document: Patches.Node, nodesWithContent: ReadonlyArray<unknown>): Array<string> => {
+  const components = isNode(document.components) && isNode(document.components.schemas)
+    ? document.components.schemas
+    : {}
+  const walk = (node: unknown, prefix: string, seen: ReadonlyArray<string>, out: Map<string, boolean>): void => {
+    if (!isNode(node)) return
+    if (Predicate.isString(node.$ref)) {
+      const name = node.$ref.replace("#/components/schemas/", "")
+      if (!seen.includes(name)) walk(components[name], prefix, [...seen, name], out)
+      return
+    }
+    for (const part of nodes(node.allOf)) walk(part, prefix, seen, out)
+    const variants = [...nodes(node.oneOf), ...nodes(node.anyOf)].map((variant) => {
+      const paths = new Map<string, boolean>()
+      walk(variant, prefix, seen, paths)
+      return paths
+    })
+    for (const path of new Set(variants.flatMap((paths) => Array.from(paths.keys())))) {
+      out.set(path, (out.get(path) ?? false) || variants.every((paths) => paths.get(path) === true))
+    }
+    if (isNode(node.properties)) {
+      const required = Array.isArray(node.required) ? node.required : []
+      for (const [name, child] of Object.entries(node.properties)) {
+        const path = prefix === "" ? name : `${prefix}.${name}`
+        out.set(path, (out.get(path) ?? false) || required.includes(name))
+        walk(child, path, seen, out)
+      }
+    }
+    if (isNode(node.additionalProperties)) {
+      walk(node.additionalProperties, prefix === "" ? "*" : `${prefix}.*`, seen, out)
+    }
+    if (isNode(node.items)) walk(node.items, `${prefix}[]`, seen, out)
+  }
+  const out = new Map<string, boolean>()
+  for (const node of nodesWithContent) {
+    const content = isNode(node) && isNode(node.content) ? node.content : {}
+    for (const mediaType of Object.values(content)) {
+      if (isNode(mediaType)) walk(mediaType.schema, "", [], out)
+    }
+  }
+  return sorted(Array.from(out, ([path, required]) => required ? `${path}!` : path))
+}
 
 /**
  * Reads every operation of a patched OpenAPI 3.0 document, ordered by path
@@ -129,7 +193,9 @@ export const make = (
         consumes: sorted(mediaTypes(requestBody)),
         success,
         produces: sorted(success.flatMap((status) => mediaTypes(responses[status]))),
-        errors: statuses.filter((status) => status >= 400)
+        errors: statuses.filter((status) => status >= 400),
+        requestFields: fields(document, [requestBody]),
+        responseFields: fields(document, success.map((status) => responses[status]))
       })
     }
   }

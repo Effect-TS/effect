@@ -15,7 +15,9 @@ const Operation = Schema.Struct({
   consumes: Schema.Array(Schema.String),
   success: Schema.Array(Schema.Number),
   produces: Schema.Array(Schema.String),
-  errors: Schema.Array(Schema.Number)
+  errors: Schema.Array(Schema.Number),
+  requestFields: Schema.Array(Schema.String),
+  responseFields: Schema.Array(Schema.String)
 })
 
 type Operation = typeof Operation.Type
@@ -29,6 +31,61 @@ const Manifest = Schema.Struct({
 const manifest = Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(
   fs.readFileSync(new URL("./fixtures/engine-api.json", import.meta.url), "utf8")
 )
+
+interface Node {
+  readonly [key: string]: unknown
+}
+
+const isNode = (u: unknown): u is Node => typeof u === "object" && u !== null && !Array.isArray(u)
+
+const nodes = (u: unknown): ReadonlyArray<Node> => Array.isArray(u) ? u.filter(isNode) : []
+
+/**
+ * The fields of the body schemas under `content`, as `docker-codegen` writes
+ * them into the manifest: paths (`Parent.Child`, `List[]`, `Map.*`), with `!`
+ * after a required property. `$ref`s are followed once per path, `allOf` parts
+ * merged, and `oneOf` / `anyOf` variants merged, a property required only if
+ * every variant requires it.
+ */
+const fieldsOf = (components: Node, withContent: ReadonlyArray<unknown>): Array<string> => {
+  const walk = (node: unknown, prefix: string, seen: ReadonlyArray<string>, out: Map<string, boolean>): void => {
+    if (!isNode(node)) return
+    if (typeof node.$ref === "string") {
+      const name = node.$ref.replace("#/components/schemas/", "")
+      if (!seen.includes(name)) walk(components[name], prefix, [...seen, name], out)
+      return
+    }
+    for (const part of nodes(node.allOf)) walk(part, prefix, seen, out)
+    const variants = [...nodes(node.oneOf), ...nodes(node.anyOf)].map((variant) => {
+      const paths = new Map<string, boolean>()
+      walk(variant, prefix, seen, paths)
+      return paths
+    })
+    for (const path of new Set(variants.flatMap((paths) => Array.from(paths.keys())))) {
+      out.set(path, (out.get(path) ?? false) || variants.every((paths) => paths.get(path) === true))
+    }
+    if (isNode(node.properties)) {
+      const required = Array.isArray(node.required) ? node.required : []
+      for (const [name, child] of Object.entries(node.properties)) {
+        const path = prefix === "" ? name : `${prefix}.${name}`
+        out.set(path, (out.get(path) ?? false) || required.includes(name))
+        walk(child, path, seen, out)
+      }
+    }
+    if (isNode(node.additionalProperties)) {
+      walk(node.additionalProperties, prefix === "" ? "*" : `${prefix}.*`, seen, out)
+    }
+    if (isNode(node.items)) walk(node.items, `${prefix}[]`, seen, out)
+  }
+  const out = new Map<string, boolean>()
+  for (const node of withContent) {
+    const content = isNode(node) && isNode(node.content) ? node.content : {}
+    for (const mediaType of Object.values(content)) {
+      if (isNode(mediaType)) walk(mediaType.schema, "", [], out)
+    }
+  }
+  return Array.from(out, ([path, required]) => required ? `${path}!` : path).sort()
+}
 
 /**
  * An endpoint as `DockerApi`'s OpenAPI document states it, built for the
@@ -62,7 +119,9 @@ const declare = (group: HttpApiGroup.Top, endpoint: HttpApiGroup.Top["endpoints"
     consumes: Object.keys(operation.requestBody?.content ?? {}),
     success,
     produces: success.flatMap((status) => Object.keys(operation.responses[status].content ?? {})),
-    errors: statuses.filter((status) => status >= 400)
+    errors: statuses.filter((status) => status >= 400),
+    requestFields: fieldsOf(spec.components.schemas, [operation.requestBody]),
+    responseFields: fieldsOf(spec.components.schemas, success.map((status) => operation.responses[status]))
   }
   return { id: `${group.identifier}.${endpoint.identifier}`, ...declared }
 }
@@ -78,14 +137,16 @@ const shape = (path: string) => path.replaceAll(/:\w+/g, ":")
 
 const without = <A>(self: ReadonlyArray<A>, that: ReadonlyArray<A>) => self.filter((a) => !that.includes(a))
 
+/** The endpoints that declare an operation of the document: several when `DockerApi` splits it. */
+const endpointsOf = (operation: typeof manifest.operations[number]) =>
+  declared.filter((endpoint) => endpoint.method === operation.method && shape(endpoint.path) === shape(operation.path))
+
 /** How `DockerApi` differs from each operation of the document, by `operationId`. */
 const differences = (): Record<string, ReadonlyArray<string>> => {
   const out: Record<string, ReadonlyArray<string>> = {}
   for (const operation of manifest.operations) {
     // an operation can be declared as several endpoints, split by what they take or answer
-    const endpoints = declared.filter((endpoint) =>
-      endpoint.method === operation.method && shape(endpoint.path) === shape(operation.path)
-    )
+    const endpoints = endpointsOf(operation)
     if (endpoints.length === 0) {
       out[operation.operationId] = ["not declared"]
       continue
@@ -132,6 +193,52 @@ const differences = (): Record<string, ReadonlyArray<string>> => {
   return out
 }
 
+/** The paths of `paths` none of whose parents is among them: a missing object is one difference, not one per field. */
+const topmost = (paths: ReadonlyArray<string>) =>
+  paths.filter((path) =>
+    !paths.some((other) => other !== path && (path.startsWith(`${other}.`) || path.startsWith(`${other}[]`)))
+  )
+
+/**
+ * How the fields of `DockerApi`'s request and response bodies differ from the
+ * document's, by `operationId`: where both state some fields (a stream of
+ * bytes has none), the fields one has and the other hasn't, and the required
+ * ones.
+ */
+const fieldDifferences = (): Record<string, ReadonlyArray<string>> => {
+  const out: Record<string, ReadonlyArray<string>> = {}
+  for (const operation of manifest.operations) {
+    const endpoints = endpointsOf(operation)
+    if (endpoints.length === 0) continue
+    const found: Array<string> = []
+    for (
+      const [part, f] of [["request", (e: Operation) => e.requestFields], [
+        "response",
+        (e: Operation) => e.responseFields
+      ]] as const
+    ) {
+      const documented = f(operation)
+      const all = [...new Set(endpoints.flatMap(f))]
+      if (documented.length === 0 || all.length === 0) continue
+      const names = (paths: ReadonlyArray<string>) => paths.map((path) => path.replace(/!$/, ""))
+      found.push(
+        ...topmost(without(names(documented), names(all))).map((path) => `${part} ${path} not declared`),
+        ...topmost(without(names(all), names(documented))).map((path) => `${part} ${path} not in the document`),
+        ...without(all, documented).filter((path) =>
+          path.endsWith("!") && names(documented).includes(path.slice(0, -1))
+        )
+          .map((path) => `${part} ${path.slice(0, -1)} required`),
+        // `toCodecGoJson` reads a response's missing key as Go's zero value, so its encoded fields are all optional
+        ...(part === "response" ? [] : without(documented, all))
+          .filter((path) => path.endsWith("!") && names(all).includes(path.slice(0, -1)))
+          .map((path) => `${part} ${path.slice(0, -1)} optional`)
+      )
+    }
+    if (found.length > 0) out[operation.operationId] = found
+  }
+  return out
+}
+
 describe("DockerApi", () => {
   it("declares the pinned API document's operations, except where the Engine differs from it", () => {
     assert.strictEqual(manifest.apiVersion, "1.56")
@@ -172,6 +279,15 @@ describe("DockerApi", () => {
       ContainerLogs: ["response application/octet-stream not in the document"],
       ServiceLogs: ["response application/octet-stream not in the document"],
       TaskLogs: ["response application/octet-stream not in the document"]
+    })
+  })
+
+  it("declares the document's request and response fields, except where the Engine differs from it", () => {
+    assert.deepStrictEqual(fieldDifferences(), {
+      // an unlock can't succeed without the key
+      SwarmUnlock: ["request UnlockKey required"],
+      // the Engine's AuthConfig has `identitytoken`, which the document leaves out
+      SystemAuth: ["request identitytoken not in the document"]
     })
   })
 })
