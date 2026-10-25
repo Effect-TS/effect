@@ -1990,9 +1990,10 @@ describe("HttpApiBuilder span redaction", () => {
             remote: Schema.String.pipe(HttpApiSchema.sensitive),
             page: Schema.String
           },
-          headers: { "x-api-key": Schema.String.pipe(HttpApiSchema.sensitive) },
+          headers: { "user-agent": Schema.String.pipe(HttpApiSchema.sensitive) },
           success: Schema.String
-        })
+        }),
+        HttpApiEndpoint.get("failure", "/failure", { query: { token: Schema.String.pipe(HttpApiSchema.sensitive) } })
       )
     )
     let received: unknown
@@ -2000,16 +2001,19 @@ describe("HttpApiBuilder span redaction", () => {
       Api,
       "test",
       (handlers) =>
-        handlers.handle("join", ({ headers, query }) =>
-          Effect.sync(() => {
-            received = { token: Redacted.value(query.token), remote: query.remote, key: headers["x-api-key"] }
-            return "ok"
-          }))
+        handlers
+          .handle("join", ({ headers, query }) =>
+            Effect.sync(() => {
+              received = { token: Redacted.value(query.token), remote: query.remote, agent: headers["user-agent"] }
+              return "ok"
+            }))
+          .handle("failure", () => Effect.succeed(HttpServerResponse.empty({ status: 500 })))
     )
-    let span: Tracer.NativeSpan | undefined
+    const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
       span(options) {
-        span = new Tracer.NativeSpan(options)
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
         return span
       }
     })
@@ -2017,22 +2021,43 @@ describe("HttpApiBuilder span redaction", () => {
       HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
       { disableLogger: true }
     )
+    const context = Context.make(Tracer.Tracer, tracer).pipe(Context.add(HttpMiddleware.TracerHeaderFilter, () => true))
+    const statuses: Array<number> = []
     try {
-      const response = await handler(
-        new Request("http://localhost/join?token=s3cret&remote=https%3A%2F%2Fuser%3Apass%40host&page=1", {
-          headers: { "x-api-key": "k3y" }
-        }),
-        Context.make(Tracer.Tracer, tracer).pipe(Context.add(HttpMiddleware.TracerHeaderFilter, () => true))
-      )
-      assert.strictEqual(response.status, 200)
+      for (
+        const url of [
+          "/join?token=s3cret&remote=https%3A%2F%2Fuser%3Apass%40host&page=1",
+          // Fails query decoding, as `page` is missing.
+          "/join?token=s3cret&remote=https%3A%2F%2Fuser%3Apass%40host",
+          "/failure?token=s3cret"
+        ]
+      ) {
+        const response = await handler(
+          new Request(`http://localhost${url}`, { headers: { "user-agent": "agent-s3cret" } }),
+          context
+        )
+        statuses.push(response.status)
+      }
     } finally {
       await dispose()
     }
 
-    assert(span !== undefined)
-    assert.strictEqual(span.attributes.get("url.full"), "http://localhost/join?token=REDACTED&remote=REDACTED&page=1")
-    assert.strictEqual(span.attributes.get("http.request.header.x-api-key"), "<redacted>")
-    assert.deepStrictEqual(received, { token: "s3cret", remote: "https://user:pass@host", key: "k3y" })
+    assert.deepStrictEqual(statuses, [200, 400, 500])
+    const [success, invalid, failure] = spans
+    assert.strictEqual(
+      success.attributes.get("url.full"),
+      "http://localhost/join?token=REDACTED&remote=REDACTED&page=1"
+    )
+    assert.strictEqual(success.attributes.get("http.request.header.user-agent"), "<redacted>")
+    assert.strictEqual(success.attributes.get("user_agent.original"), "<redacted>")
+    assert.deepStrictEqual(received, { token: "s3cret", remote: "https://user:pass@host", agent: "agent-s3cret" })
+    assert.strictEqual(invalid.attributes.get("url.full"), "http://localhost/join?token=REDACTED&remote=REDACTED")
+    assert.strictEqual(failure.attributes.get("url.full"), "http://localhost/failure?token=REDACTED")
+    // Exporters render the span failure after the request has completed.
+    assert(failure.status._tag === "Ended" && failure.status.exit._tag === "Failure")
+    const error = Cause.squash(failure.status.exit.cause) as Error
+    assert.include(error.message, "GET /failure?token=REDACTED")
+    assert.notInclude(error.message, "s3cret")
   })
 })
 
