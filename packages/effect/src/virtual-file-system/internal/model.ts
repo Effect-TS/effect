@@ -28,7 +28,7 @@ export interface TokenInfo {
 
 const tokenRegistry = new WeakMap<object, TokenInfo>()
 
-export const tokenInfo = (value: unknown): TokenInfo | undefined =>
+export const tokenInfo = (value: unknown) =>
   typeof value === "object" && value !== null ? tokenRegistry.get(value) : undefined
 
 // NOTE: Registry membership identifies issued tokens of every kind. Transactions still
@@ -58,14 +58,14 @@ export function issueToken(
   return value
 }
 
-const equalsToken = (kind: TokenKind, left: unknown, right: unknown): boolean => {
+const equalsToken = (kind: TokenKind, left: unknown, right: unknown) => {
   const a = tokenInfo(left)
   const b = tokenInfo(right)
   return a !== undefined && b !== undefined && a.kind === kind && b.kind === kind &&
     a.instance === b.instance && a.object === b.object && a.version === b.version
 }
 
-const sameObject = (left: unknown, right: unknown): boolean => {
+const sameObject = (left: unknown, right: unknown) => {
   const a = tokenInfo(left)
   const b = tokenInfo(right)
   return a !== undefined && b !== undefined && a.instance === b.instance && a.object === b.object
@@ -120,7 +120,7 @@ export const Name = Schema.BytePath.check(Schema.makeFilter((path) => {
     !(bytes.length === 2 && bytes[0] === CHAR_DOT && bytes[1] === CHAR_DOT)
 }))
 
-const sortedNames = (names: ReadonlyArray<BytePath.BytePath>): boolean =>
+const sortedNames = (names: ReadonlyArray<BytePath.BytePath>) =>
   names.every((name, index) => index === 0 || BytePath.Order(names[index - 1], name) < 0)
 
 const validMetadata = (metadata: {
@@ -128,7 +128,7 @@ const validMetadata = (metadata: {
   readonly mode: number
   readonly size: ByteSize.ByteSize
   readonly nlink: bigint
-}): boolean =>
+}) =>
   metadata.kind === "file" ?
     metadata.mode <= 0o777 :
     metadata.kind === "symlink" ?
@@ -139,7 +139,7 @@ const coherentObservation = (observation: {
   readonly reference: ObjectReference
   readonly revision: ObjectRevision
   readonly metadata: { readonly objectNumber: bigint }
-}): boolean =>
+}) =>
   sameObject(observation.reference, observation.revision) &&
   tokenInfo(observation.reference)?.object === observation.metadata.objectNumber
 

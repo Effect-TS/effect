@@ -85,13 +85,19 @@ export interface Caller {
   readonly resource: R.Resource
 }
 
-export const createCaller = (engine: Engine, policy: Policy, resource: R.Resource): Caller => ({
-  runtime: engine.runtime,
-  inputLimits: engine.inputLimits,
-  engineCell: resource.retainContext(engine),
-  policy,
-  resource
-})
+/** @internal */
+export const createCallerResult = (
+  engine: Engine,
+  policy: Policy,
+  resource: R.Resource
+): Result.Result<Caller, M.InvalidResource> =>
+  Result.map(resource.retainContextResult(engine), (engineCell) => ({
+    runtime: engine.runtime,
+    inputLimits: engine.inputLimits,
+    engineCell,
+    policy,
+    resource
+  }))
 
 export const resolveEngine = (caller: Caller): Engine => {
   const engine = caller.engineCell.value
@@ -184,58 +190,96 @@ const PermissionMode = Schema.Number.check(Schema.isInt(), Schema.isBetween({ mi
 
 const BooleanOptions = Schema.Record(Schema.String, Schema.Unknown)
 
-export const checkOptions = (
+const isU32 = Schema.is(U32)
+
+const isPermissionMode = Schema.is(PermissionMode)
+
+const isOptions = Schema.is(BooleanOptions)
+
+const isString = Schema.is(Schema.String)
+
+const isName = Schema.is(M.Name)
+
+const isBigInt = Schema.is(Schema.BigInt)
+
+/** @internal */
+export const checkOptionsResult = (
   input: unknown,
   allowed: ReadonlyArray<string>,
   operation: string
-): Record<string, unknown> | undefined => {
-  if (input === undefined) return
-  if (!Schema.is(BooleanOptions)(input)) return R.invalid(operation, "options")
-  for (const key of Object.keys(input)) if (!allowed.includes(key)) return R.invalid(operation, key, "excessField")
-  return input
-}
-
-export const identity = (input: unknown, operation: string, field: string): number => {
-  if (!Schema.is(U32)(input)) return R.invalid(operation, field, "range")
-  return input
-}
-
-export const mode = (input: unknown, kind: Node["kind"], operation: string): number => {
-  if (!Schema.is(PermissionMode)(input) || (kind !== "directory" && input > 0o777)) {
-    return R.invalid(operation, "mode", "unsupportedBits")
+): Result.Result<Record<string, unknown> | undefined, M.InvalidInput> => {
+  if (input === undefined) return Result.succeed(undefined)
+  if (!isOptions(input)) return Result.fail(new M.InvalidInput({ operation, field: "options", reason: "malformed" }))
+  for (const key of Object.keys(input)) {
+    if (!allowed.includes(key)) {
+      return Result.fail(new M.InvalidInput({ operation, field: key, reason: "excessField" }))
+    }
   }
-  return input
+  return Result.succeed(input)
 }
 
-export const bufferLength = (input: Uint8Array, operation: string): number => {
-  const length = byteViewLength(input)
-  return length === undefined ? R.invalid(operation, "data", "invalidBuffer") : length
+/** @internal */
+export const identityResult = (
+  input: unknown,
+  operation: string,
+  field: string
+): Result.Result<number, M.InvalidInput> =>
+  isU32(input)
+    ? Result.succeed(input)
+    : Result.fail(new M.InvalidInput({ operation, field, reason: "range" }))
+
+/** @internal */
+export const modeResult = (
+  input: unknown,
+  kind: Node["kind"],
+  operation: string
+): Result.Result<number, M.InvalidInput> => {
+  if (!isPermissionMode(input) || (kind !== "directory" && input > 0o777)) {
+    return Result.fail(new M.InvalidInput({ operation, field: "mode", reason: "unsupportedBits" }))
+  }
+  return Result.succeed(input)
 }
 
-const pathLength = (path: M.Path, operation: string): number => {
-  if (BytePath.isBytePath(path)) return BytePath.byteLength(path)
-  if (!Schema.is(Schema.String)(path)) return R.invalid(operation, "path")
+/** @internal */
+export const bufferLengthResult = (input: Uint8Array, operation: string): Result.Result<number, M.InvalidInput> =>
+  Result.mapError(
+    Bytes.byteLength(input),
+    () => new M.InvalidInput({ operation, field: "data", reason: "invalidBuffer" })
+  )
+
+/** @internal */
+export const pathLengthResult = (path: M.Path, operation: string): Result.Result<number, M.InvalidInput> => {
+  if (BytePath.isBytePath(path)) return Result.succeed(BytePath.byteLength(path))
+  if (!isString(path)) return Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
   let total = 0
   for (let i = 0; i < path.length; i++) {
     const unit = path.charCodeAt(i)
-    if (unit === 0) return R.invalid(operation, "path")
+    if (unit === 0) return Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
     if (unit < 128) total++
     else if (unit < 2048) total += 2
     else if (unit >= 0xd800 && unit <= 0xdbff) {
       const low = path.charCodeAt(++i)
-      if (!(low >= 0xdc00 && low <= 0xdfff)) return R.invalid(operation, "path")
+      if (!(low >= 0xdc00 && low <= 0xdfff)) {
+        return Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
+      }
       total += 4
-    } else if (unit >= 0xdc00 && unit <= 0xdfff) return R.invalid(operation, "path")
-    else total += 3
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) {
+      return Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
+    } else total += 3
   }
-  return total
+  return Result.succeed(total)
 }
 
-export const pathValue = (path: M.Path, operation: string): BytePath.BytePath => {
-  if (BytePath.isBytePath(path)) return path
-  const result = BytePath.fromString(path)
-  if (Result.isFailure(result)) return R.invalid(operation, "path")
-  return result.success
+/** @internal */
+export const pathValueResult = (
+  path: M.Path,
+  operation: string
+): Result.Result<BytePath.BytePath, M.InvalidInput> => {
+  if (BytePath.isBytePath(path)) return Result.succeed(path)
+  return Result.mapError(
+    BytePath.fromString(path),
+    () => new M.InvalidInput({ operation, field: "path", reason: "malformed" })
+  )
 }
 
 export const key = (name: BytePath.BytePath): string => Hex.encode(BytePath.toBytes(name))
@@ -244,13 +288,13 @@ const dot = (bytes: Uint8Array): boolean => bytes.length === 1 && bytes[0] === C
 
 const dotdot = (bytes: Uint8Array): boolean => bytes.length === 2 && bytes[0] === CHAR_DOT && bytes[1] === CHAR_DOT
 
-export const nameValue = (input: M.Path, operation: string): BytePath.BytePath => {
-  const name = pathValue(input, operation)
-  if (!Schema.is(M.Name)(name)) return R.invalid(operation, "name")
-  return name
-}
-
-const fromBytes = (bytes: Uint8Array): BytePath.BytePath => Result.getOrThrow(BytePath.fromBytes(bytes))
+/** @internal */
+export const nameValueResult = (input: M.Path, operation: string): Result.Result<BytePath.BytePath, M.InvalidInput> =>
+  Result.gen(function*() {
+    const name = yield* pathValueResult(input, operation)
+    if (!isName(name)) return yield* Result.fail(new M.InvalidInput({ operation, field: "name", reason: "malformed" }))
+    return name
+  })
 
 export const asciiPath = (path: string): BytePath.BytePath => Result.getOrThrow(BytePath.fromString(path))
 
@@ -296,7 +340,7 @@ export class Engine {
 
   now(): DateTime.UnixNano {
     const value = this.runtime.clock.currentTimeNanosUnsafe()
-    if (!Schema.is(Schema.BigInt)(value)) throw new TypeError("Clock.currentTimeNanosUnsafe must return bigint")
+    if (!isBigInt(value)) throw new TypeError("Clock.currentTimeNanosUnsafe must return bigint")
     return DateTime.unixNanoFromNanoseconds(value)
   }
 
@@ -315,16 +359,20 @@ export class Engine {
     for (const [id, node] of this.nodes) if (node.nlink === BigInt("0") && !this.pins.has(id)) this.nodes.delete(id)
   }
 
-  retain(policy: Policy, resource: R.Resource): void {
-    this.retainObjects(resource, [policy.root, policy.cwd, ...policy.boundaries])
+  retainResult(policy: Policy, resource: R.Resource): Result.Result<void, M.InvalidResource> {
+    return this.retainObjectsResult(resource, [policy.root, policy.cwd, ...policy.boundaries])
   }
 
-  retainObjects(resource: R.Resource, ids: Iterable<bigint>): void {
+  retainObjectsResult(resource: R.Resource, ids: Iterable<bigint>): Result.Result<void, M.InvalidResource> {
     const retained = new Set(ids)
-    resource.releaseWith(() => {
-      for (const id of retained) this.unpin(id)
-    })
-    for (const id of retained) this.pin(id)
+    return Result.map(
+      resource.releaseWithResult(() => {
+        for (const id of retained) this.unpin(id)
+      }),
+      () => {
+        for (const id of retained) this.pin(id)
+      }
+    )
   }
 
   usage(): M.Usage {
@@ -449,57 +497,59 @@ export class Transaction {
     this.pendingCaller = caller
   }
 
-  get(id: bigint): Node {
+  getResult(id: bigint): Result.Result<Node, M.OperationError> {
     const node = this.changes.get(id) ?? this.engine.nodes.get(id)
-    if (node === undefined) {
-      throw new M.InvalidResource({ operation: this.operation, reason: "stale" })
-    }
-    return node
+    return node === undefined
+      ? Result.fail(new M.InvalidResource({ operation: this.operation, reason: "stale" }))
+      : Result.succeed(node)
   }
 
-  edit(id: bigint): Node {
-    let node = this.changes.get(id)
-    if (node !== undefined) return node
-    const before = this.get(id)
-    node = before.kind === "directory" ? { ...before, entries: new Map(before.entries) } : { ...before }
-    this.changes.set(id, node)
-    return node
+  editResult(id: bigint): Result.Result<Node, M.OperationError> {
+    const node = this.changes.get(id)
+    if (node !== undefined) return Result.succeed(node)
+    return Result.map(this.getResult(id), (before) => {
+      const edited = before.kind === "directory" ? { ...before, entries: new Map(before.entries) } : { ...before }
+      this.changes.set(id, edited)
+      return edited
+    })
   }
 
-  directory(id: bigint): DirectoryNode {
-    const node = this.get(id)
-    if (node.kind !== "directory") return this.wrongKind()
-    return node
+  directoryResult(id: bigint): Result.Result<DirectoryNode, M.OperationError> {
+    return Result.flatMap(this.getResult(id), (node) =>
+      node.kind === "directory"
+        ? Result.succeed(node)
+        : Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" })))
   }
 
-  private editDirectory(id: bigint): DirectoryNode {
-    const node = this.edit(id)
-    if (node.kind !== "directory") return this.wrongKind()
-    return node
+  private editDirectoryResult(id: bigint): Result.Result<DirectoryNode, M.OperationError> {
+    return Result.flatMap(this.editResult(id), (node) =>
+      node.kind === "directory"
+        ? Result.succeed(node)
+        : Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" })))
   }
 
-  wrongKind(): never {
-    throw new M.InvalidResource({ operation: this.operation, reason: "wrongKind" })
+  visitResult(amount = 1): Result.Result<void, M.OperationError> {
+    return this.engine.runtime.visitResult(this.work.ticket, this.operation, amount)
   }
 
-  visit(amount = 1): void {
-    this.engine.runtime.visit(this.work.ticket, this.operation, amount)
+  findBindingResult(directory: DirectoryNode, object: bigint): Result.Result<Binding | undefined, M.OperationError> {
+    return Result.gen(this, function*() {
+      for (const binding of directory.entries.values()) {
+        yield* this.visitResult()
+        if (binding.object === object) return binding
+      }
+    })
   }
 
-  findBinding(directory: DirectoryNode, object: bigint): Binding | undefined {
-    for (const binding of directory.entries.values()) {
-      this.visit()
-      if (binding.object === object) return binding
-    }
+  listBindingsResult(directory: DirectoryNode): Result.Result<ReadonlyArray<Binding>, M.OperationError> {
+    return Result.map(
+      this.visitResult(directory.entries.size),
+      () => Array.from(directory.entries.values()).sort((left, right) => BytePath.Order(left.name, right.name))
+    )
   }
 
-  listBindings(directory: DirectoryNode): ReadonlyArray<Binding> {
-    this.visit(directory.entries.size)
-    return Array.from(directory.entries.values()).sort((left, right) => BytePath.Order(left.name, right.name))
-  }
-
-  reserve(bytes: bigint): void {
-    this.work.reserve(bytes)
+  reserveResult(bytes: bigint): Result.Result<void, M.OperationError> {
+    return this.work.reserveResult(bytes)
   }
 
   observation(node: Node): M.ObjectObservation {
@@ -508,43 +558,58 @@ export class Transaction {
     return value
   }
 
-  explicitTime(id: bigint, field: "atime" | "mtime", value: DateTime.UnixNano): void {
-    this.edit(id)[field] = value
-    this.timeRequests.get(id)?.delete(field)
+  explicitTimeResult(
+    id: bigint,
+    field: "atime" | "mtime",
+    value: DateTime.UnixNano
+  ): Result.Result<void, M.OperationError> {
+    return Result.map(this.editResult(id), (node) => {
+      node[field] = value
+      this.timeRequests.get(id)?.delete(field)
+    })
   }
 
-  touch(id: bigint, fields: ReadonlyArray<"atime" | "mtime" | "ctime">): void {
-    this.edit(id)
-    let requested = this.timeRequests.get(id)
-    if (requested === undefined) {
-      requested = new Set()
-      this.timeRequests.set(id, requested)
-    }
-    for (const field of fields) requested.add(field)
+  touchResult(id: bigint, fields: ReadonlyArray<"atime" | "mtime" | "ctime">): Result.Result<void, M.OperationError> {
+    return Result.map(this.editResult(id), () => {
+      let requested = this.timeRequests.get(id)
+      if (requested === undefined) {
+        requested = new Set()
+        this.timeRequests.set(id, requested)
+      }
+      for (const field of fields) requested.add(field)
+    })
   }
 
-  changed(id: bigint, fields: ReadonlyArray<"atime" | "mtime" | "ctime">): void {
-    this.edit(id).revision++
-    this.touch(id, fields)
+  changedResult(id: bigint, fields: ReadonlyArray<"atime" | "mtime" | "ctime">): Result.Result<void, M.OperationError> {
+    return Result.flatMap(this.editResult(id), (node) => {
+      node.revision++
+      return this.touchResult(id, fields)
+    })
   }
 
-  private childChanged(id: bigint): void {
-    this.editDirectory(id).namespace++
-    this.changed(id, ["mtime", "ctime"])
+  private childChangedResult(id: bigint): Result.Result<void, M.OperationError> {
+    return Result.flatMap(this.editDirectoryResult(id), (node) => {
+      node.namespace++
+      return this.changedResult(id, ["mtime", "ctime"])
+    })
   }
 
   // ---------------------------------------------------------------------------
   // Authority and path resolution
   // ---------------------------------------------------------------------------
 
-  token(value: unknown, kind: M.TokenKind, id?: bigint): M.TokenInfo {
+  tokenResult(value: unknown, kind: M.TokenKind, id?: bigint): Result.Result<M.TokenInfo, M.OperationError> {
     const info = M.tokenInfo(value)
-    if (info === undefined || info.kind !== kind) return R.invalid(this.operation, "token")
-    if (info.instance !== this.engine.runtime.instanceNumber) {
-      throw new M.InvalidResource({ operation: this.operation, reason: "foreign" })
+    if (info === undefined || info.kind !== kind) {
+      return Result.fail(new M.InvalidInput({ operation: this.operation, field: "token", reason: "malformed" }))
     }
-    if (id !== undefined && info.object !== id) return R.invalid(this.operation, "token", "wrongObjectToken")
-    return info
+    if (info.instance !== this.engine.runtime.instanceNumber) {
+      return Result.fail(new M.InvalidResource({ operation: this.operation, reason: "foreign" }))
+    }
+    if (id !== undefined && info.object !== id) {
+      return Result.fail(new M.InvalidInput({ operation: this.operation, field: "token", reason: "wrongObjectToken" }))
+    }
+    return Result.succeed(info)
   }
 
   permission(node: Node, requested: number): boolean {
@@ -554,196 +619,243 @@ export class Transaction {
     return (((node.mode >> shift) & requested) === requested)
   }
 
-  require(node: Node, requested: number): void {
-    if (!this.permission(node, requested)) throw new M.AccessDenied({ operation: this.operation, reason: "permission" })
+  requireResult(node: Node, requested: number): Result.Result<void, M.OperationError> {
+    return this.permission(node, requested)
+      ? Result.succeed(undefined)
+      : Result.fail(new M.AccessDenied({ operation: this.operation, reason: "permission" }))
   }
 
-  owns(node: Node): void {
-    if (!this.caller.policy.privileged && this.caller.policy.uid !== node.uid) {
-      throw new M.AccessDenied({ operation: this.operation, reason: "ownership" })
-    }
+  ownsResult(node: Node): Result.Result<void, M.OperationError> {
+    return !this.caller.policy.privileged && this.caller.policy.uid !== node.uid
+      ? Result.fail(new M.AccessDenied({ operation: this.operation, reason: "ownership" }))
+      : Result.succeed(undefined)
   }
 
-  contained(id: bigint, root: bigint): boolean {
-    const seen = new Set<bigint>()
-    while (true) {
-      this.visit()
-      if (id === root) return true
-      if (seen.has(id)) return false
-      seen.add(id)
-      const node = this.get(id)
-      if (node.kind !== "directory" || node.parent === undefined) return false
-      id = node.parent
-    }
-  }
-
-  authority(relative = false): void {
-    const p = this.caller.policy
-    if (
-      !this.contained(p.root, this.engine.root) || p.boundaries.some((boundary) => !this.contained(p.root, boundary)) ||
-      (relative && !this.contained(p.cwd, p.root))
-    ) throw new M.AccessDenied({ operation: this.operation, reason: "confinement" })
-  }
-
-  referenceRoute(value: M.ObjectReference): Route {
-    const info = this.token(value, "object")
-    this.get(info.object)
-    this.authority()
-    const stack: Array<{ readonly node: DirectoryNode; readonly support: ReadonlyArray<RouteEdge> }> = [{
-      node: this.directory(this.caller.policy.root),
-      support: []
-    }]
-    const seen = new Set<bigint>()
-    for (let pending = stack.pop(); pending !== undefined; pending = stack.pop()) {
-      const { node: dir, support } = pending
-      this.visit()
-      if (dir.id === info.object) return { object: dir, support }
-      if (seen.has(dir.id)) continue
-      seen.add(dir.id)
-      if (!this.permission(dir, EXECUTE_PERMISSION)) continue
-      for (const binding of dir.entries.values()) {
-        this.visit()
-        const node = this.get(binding.object)
-        const routeSupport = [...support, {
-          parent: dir.id,
-          name: binding.name,
-          version: binding.version,
-          object: node.id
-        }]
-        if (node.id === info.object) return { object: node, parent: dir, binding, support: routeSupport }
-        if (node.kind === "directory") stack.push({ node, support: routeSupport })
+  containedResult(id: bigint, root: bigint): Result.Result<boolean, M.OperationError> {
+    return Result.gen(this, function*() {
+      const seen = new Set<bigint>()
+      while (true) {
+        yield* this.visitResult()
+        if (id === root) return true
+        if (seen.has(id)) return false
+        seen.add(id)
+        const node = yield* this.getResult(id)
+        if (node.kind !== "directory" || node.parent === undefined) return false
+        id = node.parent
       }
-    }
-    throw new M.AccessDenied({ operation: this.operation, reason: "temporarilyInaccessibleReference" })
+    })
   }
 
-  selectDirectoryRoute(
+  authorityResult(relative = false): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      const p = this.caller.policy
+      if (!(yield* this.containedResult(p.root, this.engine.root))) {
+        return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
+      }
+      for (const boundary of p.boundaries) {
+        if (!(yield* this.containedResult(p.root, boundary))) {
+          return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
+        }
+      }
+      if (relative && !(yield* this.containedResult(p.cwd, p.root))) {
+        return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
+      }
+    })
+  }
+
+  referenceRouteResult(value: M.ObjectReference): Result.Result<Route, M.OperationError> {
+    return Result.gen(this, function*() {
+      const info = yield* this.tokenResult(value, "object")
+      yield* this.getResult(info.object)
+      yield* this.authorityResult()
+      const stack: Array<{ readonly node: DirectoryNode; readonly support: ReadonlyArray<RouteEdge> }> = [{
+        node: yield* this.directoryResult(this.caller.policy.root),
+        support: []
+      }]
+      const seen = new Set<bigint>()
+      for (let pending = stack.pop(); pending !== undefined; pending = stack.pop()) {
+        const { node: dir, support } = pending
+        yield* this.visitResult()
+        if (dir.id === info.object) return { object: dir, support }
+        if (seen.has(dir.id)) continue
+        seen.add(dir.id)
+        if (!this.permission(dir, EXECUTE_PERMISSION)) continue
+        for (const binding of dir.entries.values()) {
+          yield* this.visitResult()
+          const node = yield* this.getResult(binding.object)
+          const routeSupport = [...support, {
+            parent: dir.id,
+            name: binding.name,
+            version: binding.version,
+            object: node.id
+          }]
+          if (node.id === info.object) return { object: node, parent: dir, binding, support: routeSupport }
+          if (node.kind === "directory") stack.push({ node, support: routeSupport })
+        }
+      }
+      return yield* Result.fail(
+        new M.AccessDenied({ operation: this.operation, reason: "temporarilyInaccessibleReference" })
+      )
+    })
+  }
+
+  selectDirectoryRouteResult(
     selector: M.DirectorySelector,
     state: ResolutionState = { follows: 0 }
-  ): Route & { readonly object: DirectoryNode } {
-    let route: Route
-    if (Schema.is(Schema.String)(selector) || BytePath.isBytePath(selector)) {
-      route = this.resolve(pathValue(selector, this.operation), true, undefined, state.follows, [], state)
-    } else if (M.isToken(selector)) {
-      route = this.referenceRoute(selector)
-    } else {
-      const handle = directoryHandleState(selector)
-      if (handle === undefined) return R.invalid(this.operation, "directory")
-      if (handle.caller.runtime !== this.caller.runtime) {
-        throw new M.InvalidResource({ operation: this.operation, reason: "foreign" })
+  ): Result.Result<Route & { readonly object: DirectoryNode }, M.OperationError> {
+    return Result.gen(this, function*() {
+      let route: Route
+      if (isString(selector) || BytePath.isBytePath(selector)) {
+        const path = yield* pathValueResult(selector, this.operation)
+        route = yield* this.resolveResult(path, true, undefined, state.follows, [], state)
+      } else if (M.isToken(selector)) {
+        route = yield* this.referenceRouteResult(selector)
+      } else {
+        const handle = directoryHandleState(selector)
+        if (handle === undefined) {
+          return yield* Result.fail(
+            new M.InvalidInput({ operation: this.operation, field: "directory", reason: "malformed" })
+          )
+        }
+        if (handle.caller.runtime !== this.caller.runtime) {
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "foreign" }))
+        }
+        if (handle.resource.state !== "open") return yield* Result.fail(R.closed(this.operation, handle.resource.state))
+        yield* this.work.borrowResult(handle.resource)
+        route = yield* this.referenceRouteResult(this.engine.reference(handle.id))
       }
-      if (handle.resource.state !== "open") throw R.closed(this.operation, handle.resource.state)
-      this.work.borrow(handle.resource)
-      route = this.referenceRoute(this.engine.reference(handle.id))
-    }
-    if (route.object.kind !== "directory") return this.wrongKind()
-    return { ...route, object: route.object }
+      if (route.object.kind !== "directory") {
+        return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+      }
+      return { ...route, object: route.object }
+    })
   }
 
-  selectDirectory(selector: M.DirectorySelector, state: ResolutionState = { follows: 0 }): DirectoryNode {
-    return this.selectDirectoryRoute(selector, state).object
+  selectDirectoryResult(
+    selector: M.DirectorySelector,
+    state: ResolutionState = { follows: 0 }
+  ): Result.Result<DirectoryNode, M.OperationError> {
+    return Result.map(this.selectDirectoryRouteResult(selector, state), (route) => route.object)
   }
 
-  consumeLink(state: ResolutionState): void {
-    if (++state.follows > this.engine.runtime.limits.symlinkFollows) {
-      throw new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" })
-    }
+  consumeLinkResult(state: ResolutionState): Result.Result<void, M.OperationError> {
+    return ++state.follows > this.engine.runtime.limits.symlinkFollows
+      ? Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" }))
+      : Result.succeed(undefined)
   }
 
-  resolve(
+  resolveResult(
     path: BytePath.BytePath,
     followFinal: boolean,
     start?: bigint,
     follows = 0,
     inherited: ReadonlyArray<RouteEdge> = [],
     state: ResolutionState = { follows }
-  ): Route {
+  ): Result.Result<Route, M.OperationError> {
     if (state.follows > this.engine.runtime.limits.symlinkFollows) {
-      throw new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" })
+      return Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" }))
     }
     let charge = BigInt(BytePath.byteLength(path))
-    if (charge === BigInt("0")) return R.invalid(this.operation, "path")
+    if (charge === BigInt("0")) {
+      return Result.fail(new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" }))
+    }
     if (follows === 0 && charge > this.engine.runtime.limits.pathBytes) {
-      return R.limit(this.operation, "path", "resolution")
+      return Result.fail(new M.LimitExceeded({ operation: this.operation, domain: "path", stage: "resolution" }))
     }
     if (charge > this.engine.runtime.limits.expandedPathBytes) {
-      return R.limit(this.operation, "expandedPath", "resolution")
+      return Result.fail(
+        new M.LimitExceeded({ operation: this.operation, domain: "expandedPath", stage: "resolution" })
+      )
     }
-    this.reserve(charge)
+    const reserved = this.reserveResult(charge)
+    if (Result.isFailure(reserved)) return Result.fail(reserved.failure)
     try {
-      let bytes = BytePath.toBytes(path)
-      let base = start
-      const support = [...inherited]
-      while (true) {
-        const absolute = bytes[0] === CHAR_FORWARD_SLASH
-        this.authority(!absolute && base === undefined)
-        let id = absolute ? this.caller.policy.root : base ?? this.caller.policy.cwd
-        const components: Array<Uint8Array> = []
-        for (let first = 0, i = 0; i <= bytes.length; i++) {
-          if (i === bytes.length || bytes[i] === CHAR_FORWARD_SLASH) {
-            if (i > first) components.push(bytes.subarray(first, i))
-            first = i + 1
-          }
-        }
-        let route: Route = { object: this.directory(id), support }
-        this.visit()
-        let expanded = false
-        for (let index = 0; index < components.length; index++) {
-          const component = components[index]
-          const directory = this.directory(id)
-          this.require(directory, EXECUTE_PERMISSION)
-          this.visit()
-          if (dot(component)) {
-            route = { object: directory, support }
-            continue
-          }
-          if (dotdot(component)) {
-            this.visit()
-            id = id === this.caller.policy.root ? id : directory.parent ?? id
-            route = { object: this.directory(id), support }
-            continue
-          }
-          const name = fromBytes(component)
-          const binding = directory.entries.get(key(name))
-          if (binding === undefined) throw new M.NotFound({ operation: this.operation, reason: "missingEntry" })
-          const node = this.get(binding.object)
-          support.push({ parent: directory.id, name: binding.name, version: binding.version, object: node.id })
-          route = { object: node, parent: directory, binding, support }
-          const terminal = index === components.length - 1
-          if (node.kind === "symlink" && (!terminal || followFinal)) {
-            this.consumeLink(state)
-            let length = BytePath.byteLength(node.target)
-            for (let rest = index + 1; rest < components.length; rest++) length += 1 + components[rest].length
-            if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) length++
-            const nextCharge = BigInt(length)
-            if (nextCharge > this.engine.runtime.limits.expandedPathBytes) {
-              return R.limit(this.operation, "expandedPath", "resolution")
+      return Result.gen(this, function*() {
+        let bytes = BytePath.toBytes(path)
+        let base = start
+        const support = [...inherited]
+        while (true) {
+          const absolute = bytes[0] === CHAR_FORWARD_SLASH
+          yield* this.authorityResult(!absolute && base === undefined)
+          let id = absolute ? this.caller.policy.root : base ?? this.caller.policy.cwd
+          const components: Array<Uint8Array> = []
+          for (let first = 0, i = 0; i <= bytes.length; i++) {
+            if (i === bytes.length || bytes[i] === CHAR_FORWARD_SLASH) {
+              if (i > first) components.push(bytes.subarray(first, i))
+              first = i + 1
             }
-            if (nextCharge > charge) this.reserve(nextCharge - charge)
-            else this.work.release(charge - nextCharge)
-            charge = nextCharge
-            const target = BytePath.toBytes(node.target)
-            const joined = new Uint8Array(length)
-            joined.set(target)
-            let offset = target.length
-            for (let rest = index + 1; rest < components.length; rest++) {
-              joined[offset++] = CHAR_FORWARD_SLASH
-              joined.set(components[rest], offset)
-              offset += components[rest].length
-            }
-            if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) joined[offset] = CHAR_FORWARD_SLASH
-            bytes = joined
-            base = directory.id
-            expanded = true
-            break
           }
-          id = node.id
-          if (!terminal && node.kind !== "directory") return this.wrongKind()
+          let route: Route = { object: yield* this.directoryResult(id), support }
+          yield* this.visitResult()
+          let expanded = false
+          for (let index = 0; index < components.length; index++) {
+            const component = components[index]
+            const directory = yield* this.directoryResult(id)
+            yield* this.requireResult(directory, EXECUTE_PERMISSION)
+            yield* this.visitResult()
+            if (dot(component)) {
+              route = { object: directory, support }
+              continue
+            }
+            if (dotdot(component)) {
+              yield* this.visitResult()
+              id = id === this.caller.policy.root ? id : directory.parent ?? id
+              route = { object: yield* this.directoryResult(id), support }
+              continue
+            }
+            const name = yield* Result.mapError(
+              BytePath.fromBytes(component),
+              () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
+            )
+            const binding = directory.entries.get(key(name))
+            if (binding === undefined) {
+              return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+            }
+            const node = yield* this.getResult(binding.object)
+            support.push({ parent: directory.id, name: binding.name, version: binding.version, object: node.id })
+            route = { object: node, parent: directory, binding, support }
+            const terminal = index === components.length - 1
+            if (node.kind === "symlink" && (!terminal || followFinal)) {
+              yield* this.consumeLinkResult(state)
+              let length = BytePath.byteLength(node.target)
+              for (let rest = index + 1; rest < components.length; rest++) length += 1 + components[rest].length
+              if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) length++
+              const nextCharge = BigInt(length)
+              if (nextCharge > this.engine.runtime.limits.expandedPathBytes) {
+                return yield* Result.fail(
+                  new M.LimitExceeded({ operation: this.operation, domain: "expandedPath", stage: "resolution" })
+                )
+              }
+              if (nextCharge > charge) yield* this.reserveResult(nextCharge - charge)
+              else this.work.release(charge - nextCharge)
+              charge = nextCharge
+              const target = BytePath.toBytes(node.target)
+              const joined = new Uint8Array(length)
+              joined.set(target)
+              let offset = target.length
+              for (let rest = index + 1; rest < components.length; rest++) {
+                joined[offset++] = CHAR_FORWARD_SLASH
+                joined.set(components[rest], offset)
+                offset += components[rest].length
+              }
+              if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) joined[offset] = CHAR_FORWARD_SLASH
+              bytes = joined
+              base = directory.id
+              expanded = true
+              break
+            }
+            id = node.id
+            if (!terminal && node.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+            }
+          }
+          if (expanded) continue
+          if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH && route.object.kind !== "directory") {
+            return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+          }
+          return route
         }
-        if (expanded) continue
-        if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH && route.object.kind !== "directory") return this.wrongKind()
-        return route
-      }
+      })
     } finally {
       this.work.release(charge)
     }
@@ -753,417 +865,559 @@ export class Transaction {
   // Retained routes and target selection
   // ---------------------------------------------------------------------------
 
-  retainRoute(
+  retainRouteResult(
     owner: R.Resource,
     request:
       | { readonly kind: "traversal"; readonly route: Route; readonly outputBytes: bigint }
       | { readonly kind: "frame"; readonly route: Route | SavedRoute }
-  ): { readonly route: SavedRoute; readonly resource: R.Resource } {
-    const route = request.route
-    const id = "object" in route ? route.object.id : route.id
-    const support = "object" in route ? route.support ?? [] : route.support
-    const frameResource = request.kind === "frame" ? this.work.acquireResource("lease", owner) : undefined
-    const framePins = request.kind === "frame" ? new Set(support.map((edge) => edge.parent)) : undefined
-    if (framePins !== undefined && this.engine.nodes.get(id)?.kind === "directory") framePins.add(id)
-    let bytes = request.kind === "traversal" ? request.outputBytes : BigInt("0")
-    for (const edge of support) bytes += BigInt(BytePath.byteLength(edge.name))
-    this.reserve(bytes)
-    const resource = frameResource ?? this.work.acquireResource("lease", owner)
-    this.work.retain(bytes, resource)
-    const saved: SavedRoute = request.kind === "traversal"
-      ? Object.freeze({
-        id,
-        support: Object.freeze(support.map((edge) => Object.freeze({ ...edge })))
-      })
-      : "object" in route
-      ? { id, support }
-      : route
-    const identities = framePins ?? new Set<bigint>()
-    if (request.kind === "traversal") {
+  ): Result.Result<{ readonly route: SavedRoute; readonly resource: R.Resource }, M.OperationError> {
+    return Result.gen(this, function*() {
+      const route = request.route
+      const id = "object" in route ? route.object.id : route.id
+      const support = "object" in route ? route.support ?? [] : route.support
+      const frameResource = request.kind === "frame"
+        ? yield* this.work.acquireResourceResult("lease", owner)
+        : undefined
+      const framePins = request.kind === "frame" ? new Set(support.map((edge) => edge.parent)) : undefined
+      if (framePins !== undefined && this.engine.nodes.get(id)?.kind === "directory") framePins.add(id)
+      let bytes = request.kind === "traversal" ? request.outputBytes : BigInt("0")
+      for (const edge of support) bytes += BigInt(BytePath.byteLength(edge.name))
+      yield* this.reserveResult(bytes)
+      const resource = frameResource ?? (yield* this.work.acquireResourceResult("lease", owner))
+      yield* this.work.retainResult(bytes, resource)
+      const saved: SavedRoute = request.kind === "traversal"
+        ? Object.freeze({
+          id,
+          support: Object.freeze(support.map((edge) => Object.freeze({ ...edge })))
+        })
+        : "object" in route
+        ? { id, support }
+        : route
+      const identities = framePins ?? new Set<bigint>()
+      if (request.kind === "traversal") {
+        for (const edge of saved.support) {
+          identities.add(edge.parent)
+          if ((yield* this.getResult(edge.object)).kind !== "file") identities.add(edge.object)
+        }
+        if (request.route.object.kind !== "file") identities.add(id)
+      }
+      yield* this.engine.retainObjectsResult(resource, identities)
+      return { route: saved, resource }
+    })
+  }
+
+  validateRouteResult(saved: SavedRoute): Result.Result<Route, M.OperationError> {
+    return Result.gen(this, function*() {
+      yield* this.authorityResult()
+      let final: Route | undefined
       for (const edge of saved.support) {
-        identities.add(edge.parent)
-        if (this.get(edge.object).kind !== "file") identities.add(edge.object)
+        yield* this.visitResult()
+        const parentNode = this.engine.nodes.get(edge.parent)
+        if (parentNode === undefined || parentNode.kind !== "directory") {
+          return yield* Result.fail(
+            new M.NamespaceChanged({ operation: this.operation, reason: "selectedBindingLost" })
+          )
+        }
+        const parent = yield* this.directoryResult(edge.parent)
+        if (!(yield* this.containedResult(parent.id, this.caller.policy.root))) {
+          return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
+        }
+        yield* this.requireResult(parent, EXECUTE_PERMISSION)
+        const binding = parent.entries.get(key(edge.name))
+        if (binding?.version !== edge.version || binding.object !== edge.object) {
+          return yield* Result.fail(
+            new M.NamespaceChanged({ operation: this.operation, reason: "selectedBindingLost" })
+          )
+        }
+        final = { object: yield* this.getResult(binding.object), parent, binding, support: saved.support }
       }
-      if (request.route.object.kind !== "file") identities.add(id)
-    }
-    this.engine.retainObjects(resource, identities)
-    return { route: saved, resource }
-  }
-
-  validateRoute(saved: SavedRoute): Route {
-    this.authority()
-    let final: Route | undefined
-    for (const edge of saved.support) {
-      this.visit()
-      const parentNode = this.engine.nodes.get(edge.parent)
-      if (parentNode === undefined || parentNode.kind !== "directory") {
-        throw new M.NamespaceChanged({ operation: this.operation, reason: "selectedBindingLost" })
+      const node = yield* this.getResult(saved.id)
+      if (node.kind === "directory" && !(yield* this.containedResult(node.id, this.caller.policy.root))) {
+        return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
       }
-      const parent = this.directory(edge.parent)
-      if (!this.contained(parent.id, this.caller.policy.root)) {
-        throw new M.AccessDenied({ operation: this.operation, reason: "confinement" })
+      if (final?.object.id === saved.id) return final
+      return { object: node, support: saved.support }
+    })
+  }
+
+  childRouteResult(
+    saved: SavedRoute,
+    name: BytePath.BytePath,
+    followFinal = false
+  ): Result.Result<Route, M.OperationError> {
+    return Result.gen(this, function*() {
+      const route = yield* this.validateRouteResult(saved)
+      if (route.object.kind !== "directory") {
+        return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
       }
-      this.require(parent, EXECUTE_PERMISSION)
-      const binding = parent.entries.get(key(edge.name))
-      if (binding?.version !== edge.version || binding.object !== edge.object) {
-        throw new M.NamespaceChanged({ operation: this.operation, reason: "selectedBindingLost" })
+      return yield* this.resolveResult(name, followFinal, route.object.id, 0, saved.support)
+    })
+  }
+
+  followRouteResult(saved: SavedRoute): Result.Result<Route, M.OperationError> {
+    return Result.gen(this, function*() {
+      const route = yield* this.validateRouteResult(saved)
+      if (route.object.kind !== "symlink") return route
+      if (route.parent === undefined) {
+        return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
       }
-      final = { object: this.get(binding.object), parent, binding, support: saved.support }
-    }
-    const node = this.get(saved.id)
-    if (node.kind === "directory" && !this.contained(node.id, this.caller.policy.root)) {
-      throw new M.AccessDenied({ operation: this.operation, reason: "confinement" })
-    }
-    if (final?.object.id === saved.id) return final
-    return { object: node, support: saved.support }
+      const state: ResolutionState = { follows: 0 }
+      yield* this.consumeLinkResult(state)
+      return yield* this.resolveResult(route.object.target, true, route.parent.id, state.follows, saved.support, state)
+    })
   }
 
-  childRoute(saved: SavedRoute, name: BytePath.BytePath, followFinal = false): Route {
-    const route = this.validateRoute(saved)
-    if (route.object.kind !== "directory") return this.wrongKind()
-    return this.resolve(name, followFinal, route.object.id, 0, saved.support)
+  targetResult(
+    target: M.Target,
+    followFinal = true,
+    state: ResolutionState = { follows: 0 }
+  ): Result.Result<Route, M.OperationError> {
+    return Result.gen(this, function*() {
+      if (isString(target) || BytePath.isBytePath(target)) {
+        const path = yield* pathValueResult(target, this.operation)
+        return yield* this.resolveResult(path, followFinal, undefined, state.follows, [], state)
+      }
+      if (M.isToken(target)) return yield* this.referenceRouteResult(target)
+      const address = target
+      if (!isOptions(address)) {
+        return yield* Result.fail(
+          new M.InvalidInput({ operation: this.operation, field: "target", reason: "malformed" })
+        )
+      }
+      const directory = yield* this.selectDirectoryResult(address.directory, state)
+      yield* this.requireResult(directory, EXECUTE_PERMISSION)
+      const name = yield* nameValueResult(address.name, this.operation)
+      yield* this.visitResult()
+      const binding = directory.entries.get(key(name))
+      if (binding === undefined) {
+        return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+      }
+      const node = yield* this.getResult(binding.object)
+      if (node.kind === "symlink" && followFinal) {
+        yield* this.consumeLinkResult(state)
+        return yield* this.resolveResult(node.target, true, directory.id, state.follows, [{
+          parent: directory.id,
+          name: binding.name,
+          version: binding.version,
+          object: node.id
+        }], state)
+      }
+      return {
+        object: node,
+        parent: directory,
+        binding,
+        support: [{ parent: directory.id, name: binding.name, version: binding.version, object: node.id }]
+      }
+    })
   }
 
-  followRoute(saved: SavedRoute): Route {
-    const route = this.validateRoute(saved)
-    if (route.object.kind !== "symlink") return route
-    if (route.parent === undefined) return this.wrongKind()
-    const state: ResolutionState = { follows: 0 }
-    this.consumeLink(state)
-    return this.resolve(route.object.target, true, route.parent.id, state.follows, saved.support, state)
-  }
-
-  target(target: M.Target, followFinal = true, state: ResolutionState = { follows: 0 }): Route {
-    if (Schema.is(Schema.String)(target) || BytePath.isBytePath(target)) {
-      return this.resolve(pathValue(target, this.operation), followFinal, undefined, state.follows, [], state)
-    }
-    if (M.isToken(target)) return this.referenceRoute(target)
-    const address = target
-    if (!Schema.is(BooleanOptions)(address)) return R.invalid(this.operation, "target")
-    const directory = this.selectDirectory(address.directory, state)
-    this.require(directory, EXECUTE_PERMISSION)
-    const name = nameValue(address.name, this.operation)
-    this.visit()
-    const binding = directory.entries.get(key(name))
-    if (binding === undefined) throw new M.NotFound({ operation: this.operation, reason: "missingEntry" })
-    const node = this.get(binding.object)
-    if (node.kind === "symlink" && followFinal) {
-      this.consumeLink(state)
-      return this.resolve(node.target, true, directory.id, state.follows, [{
-        parent: directory.id,
-        name: binding.name,
-        version: binding.version,
-        object: node.id
-      }], state)
-    }
-    return {
-      object: node,
-      parent: directory,
-      binding,
-      support: [{ parent: directory.id, name: binding.name, version: binding.version, object: node.id }]
-    }
-  }
-
-  slot(
+  slotResult(
     target: M.EntryTarget,
     start?: bigint,
     state: ResolutionState = { follows: 0 },
     allowMissingDirectory = false
-  ): EntrySlot {
-    let parent: DirectoryNode
-    let name: BytePath.BytePath
-    if (Schema.is(Schema.String)(target) || BytePath.isBytePath(target)) {
-      const bytes = BytePath.toBytes(pathValue(target, this.operation))
-      let end = bytes.length
-      while (end > 0 && bytes[end - 1] === CHAR_FORWARD_SLASH) end--
-      if (end === 0) throw new M.AccessDenied({ operation: this.operation, reason: "confinement" })
-      let slash = end - 1
-      while (slash >= 0 && bytes[slash] !== CHAR_FORWARD_SLASH) slash--
-      name = nameValue(fromBytes(bytes.subarray(slash + 1, end)), this.operation)
-      const parentPath = slash < 0 ? asciiPath(".") : slash === 0 ? asciiPath("/") : fromBytes(bytes.subarray(0, slash))
-      const node = this.resolve(parentPath, true, start, state.follows, [], state).object
-      if (node.kind !== "directory") return this.wrongKind()
-      parent = node
-    } else {
-      if (!Schema.is(BooleanOptions)(target)) return R.invalid(this.operation, "target")
-      parent = this.selectDirectory(target.directory, state)
-      name = nameValue(target.name, this.operation)
-    }
-    if (BigInt(BytePath.byteLength(name)) > this.engine.runtime.limits.nameBytes) {
-      return R.limit(this.operation, "name", "resolution")
-    }
-    this.require(parent, EXECUTE_PERMISSION)
-    this.visit()
-    const binding = parent.entries.get(key(name))
-    if ((Schema.is(Schema.String)(target) || BytePath.isBytePath(target))) {
-      const bytes = BytePath.toBytes(pathValue(target, this.operation))
-      if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) {
-        if (binding === undefined && !allowMissingDirectory) {
-          throw new M.NotFound({ operation: this.operation, reason: "missingEntry" })
+  ): Result.Result<EntrySlot, M.OperationError> {
+    return Result.gen(this, function*() {
+      let parent: DirectoryNode
+      let name: BytePath.BytePath
+      if (isString(target) || BytePath.isBytePath(target)) {
+        const path = yield* pathValueResult(target, this.operation)
+        const bytes = BytePath.toBytes(path)
+        let end = bytes.length
+        while (end > 0 && bytes[end - 1] === CHAR_FORWARD_SLASH) end--
+        if (end === 0) {
+          return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "confinement" }))
         }
-        if (binding !== undefined && this.get(binding.object).kind !== "directory") return this.wrongKind()
+        let slash = end - 1
+        while (slash >= 0 && bytes[slash] !== CHAR_FORWARD_SLASH) slash--
+        const component = yield* Result.mapError(
+          BytePath.fromBytes(bytes.subarray(slash + 1, end)),
+          () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
+        )
+        name = yield* nameValueResult(component, this.operation)
+        const parentPath = yield* Result.mapError(
+          slash < 0
+            ? BytePath.fromString(".")
+            : slash === 0
+            ? BytePath.fromString("/")
+            : BytePath.fromBytes(bytes.subarray(0, slash)),
+          () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
+        )
+        const { object: node } = yield* this.resolveResult(parentPath, true, start, state.follows, [], state)
+        if (node.kind !== "directory") {
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+        }
+        parent = node
+      } else {
+        if (!isOptions(target)) {
+          return yield* Result.fail(
+            new M.InvalidInput({ operation: this.operation, field: "target", reason: "malformed" })
+          )
+        }
+        parent = yield* this.selectDirectoryResult(target.directory, state)
+        name = yield* nameValueResult(target.name, this.operation)
       }
-    }
-    return { parent, name, binding }
+      if (BigInt(BytePath.byteLength(name)) > this.engine.runtime.limits.nameBytes) {
+        return yield* Result.fail(
+          new M.LimitExceeded({ operation: this.operation, domain: "name", stage: "resolution" })
+        )
+      }
+      yield* this.requireResult(parent, EXECUTE_PERMISSION)
+      yield* this.visitResult()
+      const binding = parent.entries.get(key(name))
+      if (isString(target) || BytePath.isBytePath(target)) {
+        const path = yield* pathValueResult(target, this.operation)
+        const bytes = BytePath.toBytes(path)
+        if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) {
+          if (binding === undefined && !allowMissingDirectory) {
+            return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+          }
+          if (binding !== undefined && (yield* this.getResult(binding.object)).kind !== "directory") {
+            return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+          }
+        }
+      }
+      return { parent, name, binding }
+    })
   }
 
-  followFinalSlot(initial: EntrySlot, state: ResolutionState, noFollow = false): EntrySlot {
-    let slot = initial
-    const seen = new Set<string>()
-    while (slot.binding !== undefined) {
-      const node = this.get(slot.binding.object)
-      if (node.kind !== "symlink") break
-      if (noFollow) throw new M.InvalidResource({ operation: this.operation, reason: "refusedSymlink" })
-      const routeKey = `${node.id}:${slot.parent.id}`
-      if (seen.has(routeKey)) throw new M.InvalidResource({ operation: this.operation, reason: "symlinkCycle" })
-      seen.add(routeKey)
-      this.consumeLink(state)
-      const bytes = BytePath.toBytes(node.target)
-      let start = bytes.length
-      while (start > 0 && bytes[start - 1] !== CHAR_FORWARD_SLASH) start--
-      const length = bytes.length - start
-      if (
-        bytes.at(-1) === CHAR_FORWARD_SLASH || (length === 1 && bytes[start] === CHAR_DOT) ||
-        (length === 2 && bytes[start] === CHAR_DOT && bytes[start + 1] === CHAR_DOT)
-      ) {
-        this.resolve(node.target, false, slot.parent.id, state.follows, [], state)
-        return this.wrongKind()
+  followFinalSlotResult(
+    initial: EntrySlot,
+    state: ResolutionState,
+    noFollow = false
+  ): Result.Result<EntrySlot, M.OperationError> {
+    return Result.gen(this, function*() {
+      let slot = initial
+      const seen = new Set<string>()
+      while (slot.binding !== undefined) {
+        const node = yield* this.getResult(slot.binding.object)
+        if (node.kind !== "symlink") break
+        if (noFollow) {
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "refusedSymlink" }))
+        }
+        const routeKey = `${node.id}:${slot.parent.id}`
+        if (seen.has(routeKey)) {
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkCycle" }))
+        }
+        seen.add(routeKey)
+        yield* this.consumeLinkResult(state)
+        const bytes = BytePath.toBytes(node.target)
+        let start = bytes.length
+        while (start > 0 && bytes[start - 1] !== CHAR_FORWARD_SLASH) start--
+        const length = bytes.length - start
+        if (
+          bytes.at(-1) === CHAR_FORWARD_SLASH || (length === 1 && bytes[start] === CHAR_DOT) ||
+          (length === 2 && bytes[start] === CHAR_DOT && bytes[start + 1] === CHAR_DOT)
+        ) {
+          yield* this.resolveResult(node.target, false, slot.parent.id, state.follows, [], state)
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+        }
+        slot = yield* this.slotResult(node.target, slot.parent.id, state)
       }
-      slot = this.slot(node.target, slot.parent.id, state)
-    }
-    return slot
+      return slot
+    })
   }
 
-  entry(parent: DirectoryNode, name: BytePath.BytePath, binding: Binding | undefined): M.EntryObservation {
-    const context = {
-      parent: this.engine.reference(parent.id),
-      parentNamespaceRevision: M.issueToken(
-        "namespace",
-        this.engine.runtime.instanceNumber,
-        parent.id,
-        parent.namespace
-      ),
-      name
-    }
-    if (binding === undefined) return { ...context, state: "absent" }
-    return {
-      ...context,
-      state: "present",
-      binding: M.issueToken("binding", this.engine.runtime.instanceNumber, parent.id, binding.version),
-      object: this.observation(this.get(binding.object))
-    }
+  entryResult(
+    parent: DirectoryNode,
+    name: BytePath.BytePath,
+    binding: Binding | undefined
+  ): Result.Result<M.EntryObservation, M.OperationError> {
+    return Result.gen(this, function*() {
+      const context = {
+        parent: this.engine.reference(parent.id),
+        parentNamespaceRevision: M.issueToken(
+          "namespace",
+          this.engine.runtime.instanceNumber,
+          parent.id,
+          parent.namespace
+        ),
+        name
+      }
+      if (binding === undefined) return { ...context, state: "absent" as const }
+      const token = M.issueToken("binding", this.engine.runtime.instanceNumber, parent.id, binding.version)
+      const node = yield* this.getResult(binding.object)
+      return { ...context, state: "present" as const, binding: token, object: this.observation(node) }
+    })
   }
 
   // ---------------------------------------------------------------------------
   // Conditions and namespace changes
   // ---------------------------------------------------------------------------
 
-  conditions(
+  conditionsResult(
     parent: DirectoryNode,
     binding: Binding | undefined,
     options: M.DestinationConditions | M.EntryConditions | undefined
-  ): void {
-    if (options?.parentNamespace !== undefined) {
-      const token = this.token(options.parentNamespace, "namespace", parent.id)
-      if (token.version !== parent.namespace) {
-        throw new M.ConditionFailed({ operation: this.operation, reason: "parentNamespaceRevision" })
+  ): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      if (options?.parentNamespace !== undefined) {
+        const token = yield* this.tokenResult(options.parentNamespace, "namespace", parent.id)
+        if (token.version !== parent.namespace) {
+          return yield* Result.fail(
+            new M.ConditionFailed({ operation: this.operation, reason: "parentNamespaceRevision" })
+          )
+        }
       }
-    }
-    const guard = options?.entry
-    if (guard === undefined) return
-    if (guard.expected === "absent") {
-      if (binding !== undefined) throw new M.ConditionFailed({ operation: this.operation, reason: "absence" })
-    } else if (guard.expected === "present") {
-      const token = this.token(guard.object, "object")
-      if (binding?.object !== token.object) throw new M.ConditionFailed({ operation: this.operation, reason: "object" })
-    } else if (guard.expected === "binding") {
-      const token = this.token(guard.binding, "binding", parent.id)
-      if (binding?.version !== token.version) {
-        throw new M.ConditionFailed({ operation: this.operation, reason: "binding" })
+      const guard = options?.entry
+      if (guard === undefined) return
+      if (guard.expected === "absent") {
+        if (binding !== undefined) {
+          return yield* Result.fail(new M.ConditionFailed({ operation: this.operation, reason: "absence" }))
+        }
+      } else if (guard.expected === "present") {
+        const token = yield* this.tokenResult(guard.object, "object")
+        if (binding?.object !== token.object) {
+          return yield* Result.fail(new M.ConditionFailed({ operation: this.operation, reason: "object" }))
+        }
+      } else if (guard.expected === "binding") {
+        const token = yield* this.tokenResult(guard.binding, "binding", parent.id)
+        if (binding?.version !== token.version) {
+          return yield* Result.fail(new M.ConditionFailed({ operation: this.operation, reason: "binding" }))
+        }
+      } else {
+        return yield* Result.fail(
+          new M.InvalidInput({ operation: this.operation, field: "conditions", reason: "malformed" })
+        )
       }
-    } else return R.invalid(this.operation, "conditions")
+    })
   }
 
-  revision(node: Node, condition: M.RevisionCondition | undefined): void {
-    if (condition?.expectedRevision === undefined) return
-    const token = this.token(condition.expectedRevision, "revision", node.id)
-    if (token.version !== node.revision) {
-      throw new M.ConditionFailed({ operation: this.operation, reason: "objectRevision" })
-    }
+  revisionResult(node: Node, condition: M.RevisionCondition | undefined): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      if (condition?.expectedRevision === undefined) return
+      const token = yield* this.tokenResult(condition.expectedRevision, "revision", node.id)
+      if (token.version !== node.revision) {
+        return yield* Result.fail(new M.ConditionFailed({ operation: this.operation, reason: "objectRevision" }))
+      }
+    })
   }
 
-  sticky(parent: DirectoryNode, victim: Node): void {
-    this.require(parent, WRITE_PERMISSION | EXECUTE_PERMISSION)
-    if (
-      (parent.mode & STICKY_BIT) !== 0 && !this.caller.policy.privileged && this.caller.policy.uid !== parent.uid &&
-      this.caller.policy.uid !== victim.uid
-    ) {
-      throw new M.AccessDenied({ operation: this.operation, reason: "ownership" })
-    }
+  stickyResult(parent: DirectoryNode, victim: Node): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      yield* this.requireResult(parent, WRITE_PERMISSION | EXECUTE_PERMISSION)
+      if (
+        (parent.mode & STICKY_BIT) !== 0 && !this.caller.policy.privileged && this.caller.policy.uid !== parent.uid &&
+        this.caller.policy.uid !== victim.uid
+      ) {
+        return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "ownership" }))
+      }
+    })
   }
 
-  insert(parentId: bigint, name: BytePath.BytePath, object: bigint): Binding {
-    this.reserve(BigInt(BytePath.byteLength(name)))
-    const binding = { name, object, version: this.engine.nextBinding++ }
-    this.editDirectory(parentId).entries.set(key(name), binding)
-    this.childChanged(parentId)
-    return binding
+  insertResult(parentId: bigint, name: BytePath.BytePath, object: bigint): Result.Result<Binding, M.OperationError> {
+    return Result.gen(this, function*() {
+      yield* this.reserveResult(BigInt(BytePath.byteLength(name)))
+      const binding = { name, object, version: this.engine.nextBinding++ }
+      const parent = yield* this.editDirectoryResult(parentId)
+      parent.entries.set(key(name), binding)
+      yield* this.childChangedResult(parentId)
+      return binding
+    })
   }
 
-  hardLink(node: FileNode | SymlinkNode, destination: EntrySlot): void {
-    this.edit(node.id).nlink++
-    this.changed(node.id, ["ctime"])
-    this.insert(destination.parent.id, destination.name, node.id)
-  }
-
-  move(from: EntrySlot, to: EntrySlot, node: Node): void {
-    if (to.binding !== undefined) this.remove(to.parent, to.binding)
-    this.editDirectory(from.parent.id).entries.delete(key(from.name))
-    this.childChanged(from.parent.id)
-    if (node.kind === "directory" && from.parent.id !== to.parent.id) {
-      this.editDirectory(from.parent.id).nlink--
-      this.changed(from.parent.id, ["ctime"])
-      this.editDirectory(to.parent.id).nlink++
-      this.changed(to.parent.id, ["ctime"])
-      const moved = this.edit(node.id)
-      if (moved.kind !== "directory") return this.wrongKind()
-      moved.parent = to.parent.id
-    }
-    this.insert(to.parent.id, to.name, node.id)
-    this.changed(node.id, ["ctime"])
-  }
-
-  create(kind: Node["kind"], parent: DirectoryNode, modeInput: number | undefined, payload?: BytePath.BytePath): Node {
-    const policy = this.caller.policy
-    const requested = mode(modeInput ?? (kind === "directory" ? 0o777 : 0o666), kind, this.operation)
-    const now = DateTime.unixNanoFromNanoseconds(BigInt("0"))
-    const common: Base = {
-      id: this.engine.nextObject++,
-      uid: policy.uid,
-      gid: (parent.mode & SET_GID_BIT) !== 0 ? parent.gid : policy.gid,
-      mode: kind === "symlink" ? 0o777 : requested & ~policy.umask,
-      nlink: kind === "directory" ? BigInt("2") : BigInt("1"),
-      revision: BigInt("1"),
-      atime: now,
-      mtime: now,
-      ctime: now,
-      birthtime: now
-    }
-    let node: Node
-    if (kind === "directory") {
-      if ((parent.mode & SET_GID_BIT) !== 0) common.mode |= SET_GID_BIT
-      node = { ...common, kind, entries: new Map(), namespace: BigInt("1"), parent: parent.id }
-      const edited = this.editDirectory(parent.id)
+  hardLinkResult(node: FileNode | SymlinkNode, destination: EntrySlot): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      const edited = yield* this.editResult(node.id)
       edited.nlink++
-      this.changed(parent.id, ["ctime"])
-    } else if (kind === "file") node = { ...common, kind, data: new Uint8Array(0) }
-    else {
-      if (payload === undefined || BytePath.byteLength(payload) === 0) return R.invalid(this.operation, "target")
-      this.reserve(BigInt(BytePath.byteLength(payload)))
-      node = { ...common, kind, target: payload }
-    }
-    this.changes.set(node.id, node)
-    this.timeRequests.set(node.id, new Set(["atime", "mtime", "ctime", "birthtime"]))
-    return node
+      yield* this.changedResult(node.id, ["ctime"])
+      yield* this.insertResult(destination.parent.id, destination.name, node.id)
+    })
   }
 
-  remove(parent: DirectoryNode, binding: Binding): void {
-    const node = this.edit(binding.object)
-    this.editDirectory(parent.id).entries.delete(key(binding.name))
-    this.childChanged(parent.id)
-    if (node.kind === "directory") {
-      node.nlink = BigInt("0")
-      node.parent = undefined
-      this.editDirectory(parent.id).nlink--
-      this.changed(parent.id, ["ctime"])
-    } else node.nlink--
-    this.changed(node.id, ["ctime"])
+  moveResult(from: EntrySlot, to: EntrySlot, node: Node): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      if (to.binding !== undefined) yield* this.removeResult(to.parent, to.binding)
+      const source = yield* this.editDirectoryResult(from.parent.id)
+      source.entries.delete(key(from.name))
+      yield* this.childChangedResult(from.parent.id)
+      if (node.kind === "directory" && from.parent.id !== to.parent.id) {
+        const before = yield* this.editDirectoryResult(from.parent.id)
+        before.nlink--
+        yield* this.changedResult(from.parent.id, ["ctime"])
+        const after = yield* this.editDirectoryResult(to.parent.id)
+        after.nlink++
+        yield* this.changedResult(to.parent.id, ["ctime"])
+        const moved = yield* this.editResult(node.id)
+        if (moved.kind !== "directory") {
+          return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+        }
+        moved.parent = to.parent.id
+      }
+      yield* this.insertResult(to.parent.id, to.name, node.id)
+      yield* this.changedResult(node.id, ["ctime"])
+    })
+  }
+
+  createResult(
+    kind: Node["kind"],
+    parent: DirectoryNode,
+    modeInput: number | undefined,
+    payload?: BytePath.BytePath
+  ): Result.Result<Node, M.OperationError> {
+    return Result.gen(this, function*() {
+      const policy = this.caller.policy
+      const requested = yield* modeResult(modeInput ?? (kind === "directory" ? 0o777 : 0o666), kind, this.operation)
+      const now = DateTime.unixNanoFromNanoseconds(BigInt("0"))
+      const common: Base = {
+        id: this.engine.nextObject++,
+        uid: policy.uid,
+        gid: (parent.mode & SET_GID_BIT) !== 0 ? parent.gid : policy.gid,
+        mode: kind === "symlink" ? 0o777 : requested & ~policy.umask,
+        nlink: kind === "directory" ? BigInt("2") : BigInt("1"),
+        revision: BigInt("1"),
+        atime: now,
+        mtime: now,
+        ctime: now,
+        birthtime: now
+      }
+      let node: Node
+      if (kind === "directory") {
+        if ((parent.mode & SET_GID_BIT) !== 0) common.mode |= SET_GID_BIT
+        node = { ...common, kind, entries: new Map(), namespace: BigInt("1"), parent: parent.id }
+        const edited = yield* this.editDirectoryResult(parent.id)
+        edited.nlink++
+        yield* this.changedResult(parent.id, ["ctime"])
+      } else if (kind === "file") node = { ...common, kind, data: new Uint8Array(0) }
+      else {
+        if (payload === undefined || BytePath.byteLength(payload) === 0) {
+          return yield* Result.fail(
+            new M.InvalidInput({ operation: this.operation, field: "target", reason: "malformed" })
+          )
+        }
+        yield* this.reserveResult(BigInt(BytePath.byteLength(payload)))
+        node = { ...common, kind, target: payload }
+      }
+      this.changes.set(node.id, node)
+      this.timeRequests.set(node.id, new Set(["atime", "mtime", "ctime", "birthtime"]))
+      return node
+    })
+  }
+
+  removeResult(parent: DirectoryNode, binding: Binding): Result.Result<void, M.OperationError> {
+    return Result.gen(this, function*() {
+      const node = yield* this.editResult(binding.object)
+      const directory = yield* this.editDirectoryResult(parent.id)
+      directory.entries.delete(key(binding.name))
+      yield* this.childChangedResult(parent.id)
+      if (node.kind === "directory") {
+        node.nlink = BigInt("0")
+        node.parent = undefined
+        const edited = yield* this.editDirectoryResult(parent.id)
+        edited.nlink--
+        yield* this.changedResult(parent.id, ["ctime"])
+      } else node.nlink--
+      yield* this.changedResult(node.id, ["ctime"])
+    })
   }
 
   // ---------------------------------------------------------------------------
   // Atomic publication
   // ---------------------------------------------------------------------------
 
-  transition<A>(value: A): R.Transition<A> {
-    const engine = this.engine
-    let capacityUnchanged = true
-    for (const [id, node] of this.changes) {
-      const before = engine.nodes.get(id)
-      if (before === undefined || before.kind !== node.kind || before.nlink !== node.nlink) {
-        capacityUnchanged = false
-        break
+  transitionResult<A>(value: A): Result.Result<R.ResultTransition<A>, M.OperationError> {
+    return Result.gen(this, function*() {
+      const engine = this.engine
+      let capacityUnchanged = true
+      for (const [id, node] of this.changes) {
+        const before = engine.nodes.get(id)
+        if (before === undefined || before.kind !== node.kind || before.nlink !== node.nlink) {
+          capacityUnchanged = false
+          break
+        }
+        const sameSize = before.kind === "directory" && node.kind === "directory"
+          ? before.entries.size === node.entries.size
+          : before.kind === "file" && node.kind === "file"
+          ? before.data.length === node.data.length
+          : before.kind === "symlink" && node.kind === "symlink" &&
+            BytePath.byteLength(before.target) === BytePath.byteLength(node.target)
+        if (!sameSize) {
+          capacityUnchanged = false
+          break
+        }
       }
-      const sameSize = before.kind === "directory" && node.kind === "directory"
-        ? before.entries.size === node.entries.size
-        : before.kind === "file" && node.kind === "file"
-        ? before.data.length === node.data.length
-        : before.kind === "symlink" && node.kind === "symlink" &&
-          BytePath.byteLength(before.target) === BytePath.byteLength(node.target)
-      if (!sameSize) {
-        capacityUnchanged = false
-        break
+      // Completed releases sweep unlinked, unpinned nodes. Unchanged per-node
+      // contributions therefore preserve the live map's membership and capacity.
+      let all: Map<bigint, Node> | undefined
+      if (!capacityUnchanged) {
+        let objects = engine.nodes.size
+        let entries = 0
+        let content = BigInt("0")
+        all = new Map(engine.nodes)
+        for (const [id, node] of this.changes) all.set(id, node)
+        for (const [id, node] of all) if (node.nlink === BigInt("0") && !engine.pins.has(id)) all.delete(id)
+        objects = all.size
+        for (const node of all.values()) {
+          if (node.kind === "directory") entries += node.entries.size
+          else if (node.kind === "file") content += BigInt(node.data.length)
+          else content += BigInt(BytePath.byteLength(node.target))
+        }
+        const limits = engine.runtime.limits
+        if (objects > limits.objects) {
+          return yield* Result.fail(
+            new M.LimitExceeded({ operation: this.operation, domain: "objects", stage: "publication" })
+          )
+        }
+        if (entries > limits.entries) {
+          return yield* Result.fail(
+            new M.LimitExceeded({ operation: this.operation, domain: "entries", stage: "publication" })
+          )
+        }
+        if (content > limits.contentBytes) {
+          return yield* Result.fail(
+            new M.LimitExceeded({ operation: this.operation, domain: "content", stage: "publication" })
+          )
+        }
       }
-    }
-    // Completed releases sweep unlinked, unpinned nodes. Unchanged per-node
-    // contributions therefore preserve the live map's membership and capacity.
-    let all: Map<bigint, Node> | undefined
-    if (!capacityUnchanged) {
-      let objects = engine.nodes.size
-      let entries = 0
-      let content = BigInt("0")
-      all = new Map(engine.nodes)
-      for (const [id, node] of this.changes) all.set(id, node)
-      for (const [id, node] of all) if (node.nlink === BigInt("0") && !engine.pins.has(id)) all.delete(id)
-      objects = all.size
-      for (const node of all.values()) {
-        if (node.kind === "directory") entries += node.entries.size
-        else if (node.kind === "file") content += BigInt(node.data.length)
-        else content += BigInt(BytePath.byteLength(node.target))
-      }
-      const limits = engine.runtime.limits
-      if (objects > limits.objects) return R.limit(this.operation, "objects", "publication")
-      if (entries > limits.entries) return R.limit(this.operation, "entries", "publication")
-      if (content > limits.contentBytes) return R.limit(this.operation, "content", "publication")
-    }
-    if (this.timeRequests.size > 0) {
-      const now = engine.now()
-      for (const [id, fields] of this.timeRequests) {
-        const node = this.edit(id)
-        let changed = false
-        for (const field of fields) {
-          if (node[field] !== now) {
-            node[field] = now
-            changed = true
+      if (this.timeRequests.size > 0) {
+        const now = engine.now()
+        for (const [id, fields] of this.timeRequests) {
+          const node = yield* this.editResult(id)
+          let changed = false
+          for (const field of fields) {
+            if (node[field] !== now) {
+              node[field] = now
+              changed = true
+            }
           }
+          if (changed) node.revision++
         }
-        if (changed) node.revision++
       }
-    }
-    for (const product of this.products) Object.assign(product.value, engine.observation(this.get(product.node.id)))
-    const read = this.pendingRead
-    const position = this.pendingPosition
-    const caller = this.pendingCaller
-    return {
-      value,
-      publish: () => {
-        // NOTE: Clock may have changed the borrowed view. Validate before any publication.
-        if (read !== undefined) {
-          const destination = read.destination
-          if (
-            bufferLength(destination.view, this.operation) !== destination.count ||
-            Reflect.get(Uint8Array.prototype, "buffer", destination.view) !== destination.backing ||
-            Reflect.get(Uint8Array.prototype, "byteOffset", destination.view) !== destination.offset
-          ) return R.invalid(this.operation, "destination", "invalidBuffer")
-        }
-        if (caller !== undefined) engine.retain(caller.policy, caller.resource)
-        if (all !== undefined) {
-          for (const id of engine.nodes.keys()) if (!all.has(id)) engine.nodes.delete(id)
-        }
-        for (const [id, node] of this.changes) if (all === undefined || all.has(id)) engine.nodes.set(id, node)
-        if (read !== undefined) Uint8Array.prototype.set.call(read.destination.view, read.bytes)
-        if (position !== undefined) position.state.position = position.next
+      for (const product of this.products) {
+        const node = yield* this.getResult(product.node.id)
+        Object.assign(product.value, engine.observation(node))
       }
-    }
+      const read = this.pendingRead
+      const position = this.pendingPosition
+      const caller = this.pendingCaller
+      return {
+        value,
+        publish: () =>
+          Result.gen(this, function*() {
+            // NOTE: Clock may have changed the borrowed view. Validate before any publication.
+            if (read !== undefined) {
+              const destination = read.destination
+              const length = yield* bufferLengthResult(destination.view, this.operation)
+              if (
+                length !== destination.count ||
+                Reflect.get(Uint8Array.prototype, "buffer", destination.view) !== destination.backing ||
+                Reflect.get(Uint8Array.prototype, "byteOffset", destination.view) !== destination.offset
+              ) {
+                return yield* Result.fail(
+                  new M.InvalidInput({ operation: this.operation, field: "destination", reason: "invalidBuffer" })
+                )
+              }
+            }
+            if (caller !== undefined) yield* engine.retainResult(caller.policy, caller.resource)
+            if (all !== undefined) {
+              for (const id of engine.nodes.keys()) if (!all.has(id)) engine.nodes.delete(id)
+            }
+            for (const [id, node] of this.changes) if (all === undefined || all.has(id)) engine.nodes.set(id, node)
+            if (read !== undefined) Uint8Array.prototype.set.call(read.destination.view, read.bytes)
+            if (position !== undefined) position.state.position = position.next
+          })
+      }
+    })
   }
 }
 
@@ -1171,20 +1425,30 @@ export class Transaction {
 // Admission and request snapshots
 // -----------------------------------------------------------------------------
 
-export const addressBytes = (target: M.Target | M.DirectorySelector, operation: string, limits: M.Limits): bigint => {
-  if (Schema.is(Schema.String)(target) || BytePath.isBytePath(target)) {
-    const n = pathLength(target, operation)
-    if (n === 0) return R.invalid(operation, "path")
-    if (BigInt(n) > limits.pathBytes) return R.limit(operation, "path", "admission")
-    return BigInt(n)
-  }
-  if (M.isToken(target) || isDirectoryHandle(target)) return BigInt("0")
-  const entry = target
-  if (!Schema.is(BooleanOptions)(entry) || entry.directory === undefined || entry.name === undefined) {
-    return R.invalid(operation, "target")
-  }
-  return addressBytes(entry.directory, operation, limits) + BigInt(pathLength(entry.name, operation))
-}
+/** @internal */
+export const addressBytesResult = (
+  target: M.Target | M.DirectorySelector,
+  operation: string,
+  limits: M.Limits
+): Result.Result<bigint, M.InvalidInput | M.LimitExceeded> =>
+  Result.gen(function*() {
+    if (isString(target) || BytePath.isBytePath(target)) {
+      const n = yield* pathLengthResult(target, operation)
+      if (n === 0) return yield* Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
+      if (BigInt(n) > limits.pathBytes) {
+        return yield* Result.fail(new M.LimitExceeded({ operation, domain: "path", stage: "admission" }))
+      }
+      return BigInt(n)
+    }
+    if (M.isToken(target) || isDirectoryHandle(target)) return BigInt("0")
+    const entry = target
+    if (!isOptions(entry) || entry.directory === undefined || entry.name === undefined) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "target", reason: "malformed" }))
+    }
+    const directory = yield* addressBytesResult(entry.directory, operation, limits)
+    const name = yield* pathLengthResult(entry.name, operation)
+    return directory + BigInt(name)
+  })
 
 // Entry snapshots retain the public address shape, not arbitrary structural
 // extras or prototype members supplied by a narrower caller type.
@@ -1193,41 +1457,41 @@ export type TargetSnapshot<T extends M.Target> = T extends M.Path ? M.Path :
   : T extends M.ObjectReference ? M.ObjectReference
   : M.Target
 
-export function snapshotTarget<T extends M.Target>(target: T): TargetSnapshot<T>
-export function snapshotTarget(target: M.Target): M.Target {
-  if (Schema.is(Schema.String)(target) || BytePath.isBytePath(target) || M.isToken(target)) {
-    return target
-  }
-  return { directory: target.directory, name: target.name }
+/** @internal */
+export function snapshotTargetResult<T extends M.Target>(target: T): Result.Result<TargetSnapshot<T>>
+export function snapshotTargetResult(target: M.Target): Result.Result<M.Target> {
+  if (isString(target) || BytePath.isBytePath(target) || M.isToken(target)) return Result.succeed(target)
+  return Result.succeed({ directory: target.directory, name: target.name })
 }
 
 // NOTE: Validate scalars and size addresses before admission. Snapshot after reservation;
 // resolve the namespace and current authority in the selected transaction.
-export const runAtomic = <A>(
+/** @internal */
+export const runAtomicResult = <A>(
   caller: Caller,
   operation: string,
-  targets: ReadonlyArray<M.Target | M.DirectorySelector> | (() => ReadonlyArray<M.Target | M.DirectorySelector>),
-  validate: () => void,
-  snapshot: (work: R.Work) => (tx: Transaction) => A,
+  targets:
+    | ReadonlyArray<M.Target | M.DirectorySelector>
+    | (() => Result.Result<ReadonlyArray<M.Target | M.DirectorySelector>, M.OperationError>),
+  validate: () => Result.Result<void, M.OperationError>,
+  snapshot: (work: R.Work) => Result.Result<(tx: Transaction) => Result.Result<A, M.OperationError>, M.OperationError>,
   receiver: R.Resource = caller.resource,
   ticket?: R.Ticket
 ): Effect.Effect<A, M.OperationError> =>
-  caller.runtime.run(receiver, operation, () => {
-    validate()
-    const supplied = typeof targets === "function" ? targets() : targets
-    return {
-      bytes: supplied.reduce(
-        (total, target) => total + addressBytes(target, operation, caller.runtime.limits),
-        BigInt("0")
-      ),
-      snapshot: (work) => {
-        const body = snapshot(work)
-        return {
-          execute: () => {
-            const tx = new Transaction(caller, work)
-            return tx.transition(body(tx))
-          }
-        }
+  caller.runtime.runResult(receiver, operation, () =>
+    Result.gen(function*() {
+      yield* validate()
+      const supplied = typeof targets === "function" ? yield* targets() : targets
+      let bytes = BigInt("0")
+      for (const target of supplied) bytes += yield* addressBytesResult(target, operation, caller.runtime.limits)
+      return {
+        bytes,
+        snapshot: (work) =>
+          Result.map(snapshot(work), (body) => ({
+            execute: () => {
+              const tx = new Transaction(caller, work)
+              return Result.flatMap(body(tx), (value) => tx.transitionResult(value))
+            }
+          }))
       }
-    }
-  }, ticket)
+    }), ticket)
