@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
+  Context,
   DateTime,
   Effect,
   type Exit,
@@ -10,7 +11,8 @@ import {
   Redacted,
   Schema,
   SchemaTransformation,
-  Stream
+  Stream,
+  Tracer
 } from "effect"
 import {
   Etag,
@@ -18,6 +20,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   HttpEffect,
+  HttpMiddleware,
   HttpPlatform,
   HttpRouter,
   HttpServerRequest,
@@ -1975,6 +1978,62 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
 
       assert.deepStrictEqual(error, { retryAfter: 30n })
     }))
+})
+
+describe("HttpApiBuilder span redaction", () => {
+  it("redacts Redacted and sensitive query and header fields in server spans", async () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("join", "/join", {
+          query: {
+            token: Schema.RedactedFromValue(Schema.String),
+            remote: Schema.String.pipe(HttpApiSchema.sensitive),
+            page: Schema.String
+          },
+          headers: { "x-api-key": Schema.String.pipe(HttpApiSchema.sensitive) },
+          success: Schema.String
+        })
+      )
+    )
+    let received: unknown
+    const GroupLayer = HttpApiBuilder.group(
+      Api,
+      "test",
+      (handlers) =>
+        handlers.handle("join", ({ headers, query }) =>
+          Effect.sync(() => {
+            received = { token: Redacted.value(query.token), remote: query.remote, key: headers["x-api-key"] }
+            return "ok"
+          }))
+    )
+    let span: Tracer.NativeSpan | undefined
+    const tracer = Tracer.make({
+      span(options) {
+        span = new Tracer.NativeSpan(options)
+        return span
+      }
+    })
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
+      { disableLogger: true }
+    )
+    try {
+      const response = await handler(
+        new Request("http://localhost/join?token=s3cret&remote=https%3A%2F%2Fuser%3Apass%40host&page=1", {
+          headers: { "x-api-key": "k3y" }
+        }),
+        Context.make(Tracer.Tracer, tracer).pipe(Context.add(HttpMiddleware.TracerHeaderFilter, () => true))
+      )
+      assert.strictEqual(response.status, 200)
+    } finally {
+      await dispose()
+    }
+
+    assert(span !== undefined)
+    assert.strictEqual(span.attributes.get("url.full"), "http://localhost/join?token=REDACTED&remote=REDACTED&page=1")
+    assert.strictEqual(span.attributes.get("http.request.header.x-api-key"), "<redacted>")
+    assert.deepStrictEqual(received, { token: "s3cret", remote: "https://user:pass@host", key: "k3y" })
+  })
 })
 
 describe("HttpApiBuilder streaming payloads", () => {

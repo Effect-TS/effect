@@ -45,6 +45,7 @@ import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
+import { getRedactedKeys, getRedactedNames } from "./internal/redaction.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -500,8 +501,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
-        // Schema encoding unwraps `Redacted` values, so track their names to keep them out of spans.
-        // `undefined` means every encoded field is redacted.
+        // Schema encoding unwraps `Redacted` values, so track the names of secret fields to keep
+        // them out of spans. `undefined` means every encoded field is redacted.
         const redactedQueryNames = getRedactedNames(endpoint.query)
         const redactedHeaderNames = getRedactedNames(endpoint.headers)
 
@@ -569,7 +570,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
               if (redactedQueryNames === undefined || redactedQueryNames.length > 0) {
-                redactedQuery = getRedactedParams(query, redactedQueryNames)
+                // `UrlParams` flattens nested values into bracketed names such as `nested[token]`.
+                const keys = UrlParams.fromInput(query).params.map(([key]) => key)
+                redactedQuery = getRedactedKeys(keys, redactedQueryNames)
               }
             }
           }
@@ -871,55 +874,6 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 }
 
 // ----------------------------------------------------------------------------
-
-// Struct-level encodings can rename keys arbitrarily, so names are only exact
-// for structs whose keys are encoded as is. `undefined` redacts every encoded
-// field. Only the schema's structure is inspected: no encoder is executed.
-const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<string> | undefined => {
-  if (schema === undefined) return []
-  const ast = schema.ast
-  if (!containsRedacted(ast)) return []
-  if (
-    !SchemaAST.isObjects(ast) || ast.encoding !== undefined ||
-    ast.indexSignatures.some((is) => containsRedacted(is.type))
-  ) {
-    return undefined
-  }
-  return ast.propertySignatures.flatMap((ps) =>
-    typeof ps.name === "string" && containsRedacted(ps.type) ? [ps.name] : []
-  )
-}
-
-// `UrlParams` flattens nested values into bracketed names such as `nested[token]`.
-const getRedactedParams = (query: UrlParams.Input, names: ReadonlyArray<string> | undefined): Array<string> => {
-  const keys = UrlParams.fromInput(query).params.map(([key]) => key)
-  return names === undefined
-    ? keys
-    : keys.filter((key) => names.some((name) => key === name || key.startsWith(`${name}[`)))
-}
-
-const containsRedacted = (ast: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean => {
-  if (seen.has(ast)) return false
-  seen.add(ast)
-  const recur = (ast: SchemaAST.AST) => containsRedacted(ast, seen)
-  switch (ast._tag) {
-    case "Declaration":
-      return (ast.annotations as Schema.Annotations.Declaration<unknown> | undefined)?.representation?.id ===
-          "effect/schema/Redacted" ||
-        ast.typeParameters.some(recur)
-    case "Objects":
-      return ast.propertySignatures.some((ps) => recur(ps.type)) ||
-        ast.indexSignatures.some((is) => recur(is.type))
-    case "Union":
-      return ast.types.some(recur)
-    case "Arrays":
-      return ast.elements.some(recur) || ast.rest.some(recur)
-    case "Suspend":
-      return recur(ast.thunk())
-    default:
-      return false
-  }
-}
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {

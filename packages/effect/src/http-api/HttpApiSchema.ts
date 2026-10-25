@@ -28,6 +28,11 @@ declare module "../Schema.ts" {
     interface Augment {
       readonly httpApiStatus?: number | undefined
       /**
+       * Marks a query parameter or header as sensitive so HTTP API tracing
+       * redacts it. Set it with {@link sensitive}.
+       */
+      readonly httpApiSensitive?: boolean | undefined
+      /**
        * The encoding of the payload or response.
        * This is kept internal because encodings are only exposed through the `as*` functions.
        * @internal
@@ -155,6 +160,46 @@ export function status(code: number | StatusLiteral) {
       ? self.annotateKey({ httpApiStatus: statusCode })
       : self.annotate({ httpApiStatus: statusCode })
 }
+
+/**
+ * Marks a query parameter or header field as sensitive, so its value is
+ * redacted in HTTP API client and server spans.
+ *
+ * **When to use**
+ *
+ * Use for fields that can carry secrets but are not modelled as `Redacted`,
+ * such as URLs with credentials or maps of build arguments.
+ *
+ * **Details**
+ *
+ * Fields whose schema contains `Redacted` are redacted automatically. This
+ * annotation extends the same treatment to plain values without changing the
+ * types callers build or read, and the value is still sent as is. Nested
+ * parameters under the field, such as `field[key]`, are redacted too.
+ *
+ * The field's wire names are added to `UrlParams.CurrentRedactedNames` or
+ * `Headers.CurrentRedactedNames` while the request is traced. If a struct-level
+ * encoding such as `Schema.encodeKeys` can rename keys, every query parameter
+ * or header of that schema is redacted instead.
+ *
+ * **Example** (Redacting a query parameter)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * HttpApiEndpoint.post("build", "/build", {
+ *   query: {
+ *     remote: Schema.optional(Schema.String.pipe(HttpApiSchema.sensitive))
+ *   }
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.7
+ */
+export const sensitive = <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotate({ httpApiSensitive: true })
 
 /**
  * Creates a void schema with the given HTTP status code.

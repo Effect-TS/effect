@@ -293,6 +293,12 @@ const responseSpanExit = (
   }
 }
 
+const withStateNames = (
+  names: ReadonlyArray<string | RegExp>,
+  stateNames: ReadonlyArray<string> | undefined
+): ReadonlyArray<string | RegExp> =>
+  stateNames === undefined || stateNames.length === 0 ? names : [...names, ...stateNames]
+
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -309,6 +315,7 @@ export const tracer: <E, R>(
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
+    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
     const span = internalEffect.makeSpanUnsafe(fiber, nameGenerator(request), {
       parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
       kind: "server"
@@ -322,7 +329,10 @@ export const tracer: <E, R>(
         span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
-      const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+      const redactedHeaderNames = withStateNames(
+        fiber.getRef(Headers.CurrentRedactedNames),
+        state?.redactedHeaderNames
+      )
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       // Complete the span before the request fiber exits so shutdown can flush it.
       let response: HttpServerResponse
@@ -342,7 +352,11 @@ export const tracer: <E, R>(
         span.attribute("http.request.method", request.method)
         const url = Request.toURL(request)
         if (Option.isSome(url)) {
-          tracing.addUrlAttributes(span, url.value, fiber.getRef(UrlParams.CurrentRedactedNames))
+          tracing.addUrlAttributes(
+            span,
+            url.value,
+            withStateNames(fiber.getRef(UrlParams.CurrentRedactedNames), state?.redactedUrlParamNames)
+          )
         }
         if (request.headers["user-agent"] !== undefined) {
           span.attribute("user_agent.original", request.headers["user-agent"])
