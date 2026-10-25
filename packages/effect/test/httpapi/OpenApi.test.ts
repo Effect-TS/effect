@@ -28,6 +28,19 @@ class HeaderAuthUpper extends HttpApiMiddleware.Service<HeaderAuthUpper>()("Head
   }
 }) {}
 
+class BearerAuth extends HttpApiMiddleware.Service<BearerAuth>()("BearerAuth", {
+  security: {
+    bearer: HttpApiSecurity.bearer
+  }
+}) {}
+
+class BearerOrKeyAuth extends HttpApiMiddleware.Service<BearerOrKeyAuth>()("BearerOrKeyAuth", {
+  security: {
+    bearer: HttpApiSecurity.bearer,
+    apiKey: HttpApiSecurity.apiKey({ key: "x-alternative-key" })
+  }
+}) {}
+
 class QueryAuth extends HttpApiMiddleware.Service<QueryAuth>()("QueryAuth", {
   security: {
     auth: HttpApiSecurity.apiKey({ key: "api_key", in: "query" })
@@ -925,6 +938,33 @@ describe("OpenApi", () => {
     assert.isDefined(second)
     assert.isFalse(Object.hasOwn(first, "operationId"))
     assert.isFalse(Object.hasOwn(second, "operationId"))
+  })
+
+  it("requires all stacked security middlewares", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("first", "/first").middleware(HeaderAuthA)
+      ).middleware(BearerAuth)
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/first"]?.get?.security, [{ auth: [], bearer: [] }])
+  })
+
+  it("combines alternatives within stacked security middlewares", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("first", "/first").middleware(BearerOrKeyAuth).middleware(HeaderAuthA)
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/first"]?.get?.security, [
+      { bearer: [], auth: [] },
+      { apiKey: [], auth: [] }
+    ])
   })
 
   it("rejects incompatible security schemes with the same name", () => {

@@ -544,14 +544,17 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         op.externalDocs = externalDocs
       })
 
+      let requirements: Array<OpenAPISecurityRequirement> = [{}]
       middleware.forEach((middleware) => {
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }
-        for (const [name, security] of Object.entries(middleware.security)) {
+        const entries = Object.entries(middleware.security)
+        for (const [name, security] of entries) {
           processHttpApiSecurity(name, security)
-          op.security.push({ [name]: [] })
         }
+        requirements = requirements.flatMap((requirement) => entries.map(([name]) => ({ ...requirement, [name]: [] })))
+        op.security = requirements
       })
 
       function processHttpApiSecurity(
