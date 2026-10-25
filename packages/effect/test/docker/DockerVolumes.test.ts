@@ -50,6 +50,8 @@ describe("DockerVolumes", () => {
       const stub = makeStubEngine(withPing("1.50", (request) =>
         request.url.pathname.endsWith("/missing")
           ? json({ message: "no such volume" }, 404)
+          : request.url.pathname.endsWith("/create")
+          ? json({ message: "This node is not a swarm manager." }, 503)
           : request.url.pathname.endsWith("/broken")
           ? json({ Name: 5 })
           : json({}, 202)))
@@ -66,6 +68,14 @@ describe("DockerVolumes", () => {
       const unexpected = yield* fail("other")
       assert(unexpected.reason._tag === "InvalidResponse")
       assert.include(unexpected.message, "unexpected status 202")
+      // Swarm serves cluster volumes
+      const cluster = yield* DockerVolumes.DockerVolumes.use((volumes) =>
+        volumes.create({ Name: "v", ClusterVolumeSpec: {} })
+      ).pipe(stub.provide, Effect.flip)
+      assert.deepStrictEqual(
+        [cluster.reason, cluster.reason.isRetryable],
+        [new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." }), false]
+      )
     }))
 
   it.effect("reads an error body that isn't the Engine's JSON as text, and classifies any status", () =>
