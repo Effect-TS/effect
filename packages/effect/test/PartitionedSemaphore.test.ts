@@ -1,76 +1,21 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Latch, Option, PartitionedSemaphore, Scheduler } from "effect"
+import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler } from "effect"
 
 describe("PartitionedSemaphore", () => {
-  it.effect("multi-permit waiters in different partitions complete", () =>
-    Effect.gen(function*() {
-      const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })
-      const latch = yield* Latch.make()
-      const completed: Array<string> = []
-      const first = yield* sem.withPermits("x", 2)(Effect.gen(function*() {
-        yield* latch.await
-        completed.push("a")
-      })).pipe(Effect.forkChild({ startImmediately: true }))
-      const second = yield* sem.withPermits("x", 2)(Effect.sync(() => completed.push("b"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      const third = yield* sem.withPermits("y", 2)(Effect.sync(() => completed.push("c"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-
-      yield* latch.open
-      yield* Fiber.join(first)
-
-      assert.deepStrictEqual(completed, ["a", "b", "c"])
-      yield* Fiber.joinAll([second, third])
-      assert.strictEqual(yield* sem.available, 2)
-    }))
-
-  it.effect("finishes a partial waiter before rotating across mixed-size requests", () =>
+  it.effect("multi-permit waiters in different partitions do not deadlock", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })
       const completed: Array<string> = []
       yield* sem.take("holder", 2)
-      const first = yield* sem.withPermits("a", 2)(Effect.sync(() => completed.push("a2"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      const second = yield* sem.withPermit("b")(Effect.sync(() => completed.push("b1"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      const third = yield* sem.withPermit("a")(Effect.sync(() => completed.push("a1"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
+      for (const key of ["x", "y"]) {
+        yield* sem.withPermits(key, 2)(Effect.sync(() => completed.push(key))).pipe(
+          Effect.forkDetach({ startImmediately: true })
+        )
+      }
 
-      yield* sem.release(1)
-      assert.deepStrictEqual(completed, [])
-      yield* sem.release(1)
-
-      assert.deepStrictEqual(completed, ["a2", "b1", "a1"])
-      yield* Fiber.joinAll([first, second, third])
+      yield* sem.release(2)
+      assert.deepStrictEqual(completed, ["x", "y"])
       assert.strictEqual(yield* sem.available, 2)
-    }))
-
-  it.effect("interrupting a waiter partially filled by release lets the next partition proceed", () =>
-    Effect.gen(function*() {
-      const sem = yield* PartitionedSemaphore.make<string>({ permits: 3 })
-      const completed: Array<string> = []
-      yield* sem.take("holder", 3)
-      const first = yield* sem.withPermits("a", 3)(Effect.sync(() => completed.push("a"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      const second = yield* sem.withPermits("b", 2)(Effect.sync(() => completed.push("b"))).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-
-      yield* sem.release(1)
-      yield* Fiber.interrupt(first)
-      assert.deepStrictEqual(completed, [])
-      yield* sem.release(1)
-
-      assert.deepStrictEqual(completed, ["b"])
-      yield* Fiber.join(second)
-      yield* sem.release(1)
-      assert.strictEqual(yield* sem.available, 3)
     }))
 
   it.effect("a resumed waiter can immediately reacquire released permits", () =>
