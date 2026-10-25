@@ -122,7 +122,8 @@ interface Helpers {
 /**
  * Complete paths through the choice helper, reading `compgen` line by line so
  * a name containing whitespace or glob characters stays one quoted candidate.
- * A leading `~user` or `$VAR` is left unquoted so it still expands.
+ * A leading `~user`, `$NAME` or `${NAME}` that would expand is kept as typed,
+ * and only the rest is quoted.
  */
 const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`${helpers.paths}()`)
@@ -132,18 +133,46 @@ const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`  local _prefix="$_cur"`)
   lines.push(`  ${removeQuotes("_prefix")}`)
   lines.push(``)
-  lines.push(`  local _lead=""`)
-  lines.push(`  if [[ "$_cur" == "$_word" && "$_prefix" == [~$]*/* ]]; then`)
-  lines.push(`    _lead="\${_prefix%%/*}"`)
-  // An escaped or quoted lead is literal.
-  lines.push(`    [[ "$_cur" == "$_lead"/* ]] || _lead=""`)
+  lines.push(`  local _head="\${_cur%"$_word"}" _lead="" _plain="" _value="" _name`)
+  lines.push(`  if [[ "$_word" == */* ]]; then`)
+  lines.push(`    _lead="\${_word%%/*}"`)
+  lines.push(`    _plain="$_lead"`)
+  // A double-quoted lead still expands.
+  lines.push(`    [[ "$_plain" == \\"*\\" ]] && { _plain="\${_plain#\\"}"; _plain="\${_plain%\\"}"; }`)
+  lines.push(`    case "$_plain" in`)
+  lines.push(`      '~'*)`)
+  lines.push(`        _value="$_plain"`)
+  // A tilde expands only unquoted.
+  lines.push(`        [[ -z "$_head" && "$_plain" == "$_lead" && "\${_plain#\\~}" != *[!A-Za-z0-9._-]* ]] || _lead=""`)
+  lines.push(`        ;;`)
+  lines.push(`      '$'*)`)
+  lines.push(`        _name="\${_plain#\\$}"`)
+  lines.push(`        [[ "$_name" == {*} ]] && { _name="\${_name#\\{}"; _name="\${_name%\\}}"; }`)
+  lines.push(`        if [[ "$_head" != *\\' && "$_name" == [A-Za-z_]* && "$_name" != *[!A-Za-z0-9_]* ]]; then`)
+  lines.push(`          _value="\${!_name}"`)
+  lines.push(`        else`)
+  lines.push(`          _lead=""`)
+  lines.push(`        fi`)
+  lines.push(`        ;;`)
+  lines.push(`      *) _lead="" ;;`)
+  lines.push(`    esac`)
   lines.push(`  fi`)
   lines.push(``)
   lines.push(`  local _path _paths=()`)
   lines.push(`  while IFS= read -r _path; do`)
-  lines.push(`    _paths+=("\${_path#"$_lead"}")`)
+  lines.push(`    if [[ -n "$_lead" ]]; then`)
+  // compgen keeps the lead as typed or, on Bash 3.2, expands it.
+  lines.push(`      if [[ "$_path" == "$_plain"/* ]]; then`)
+  lines.push(`        _path="\${_path#"$_plain"}"`)
+  lines.push(`      elif [[ "$_path" == "$_value"/* ]]; then`)
+  lines.push(`        _path="\${_path#"$_value"}"`)
+  lines.push(`      else`)
+  lines.push(`        continue`)
+  lines.push(`      fi`)
+  lines.push(`    fi`)
+  lines.push(`    _paths+=("$_path")`)
   lines.push(`  done < <(compgen "$_kind" -- "$_prefix")`)
-  lines.push(`  ${helpers.choices} "\${_cur#"$_lead"}" "\${_word#"$_lead"}" "\${_paths[@]}"`)
+  lines.push(`  ${helpers.choices} "$_head\${_word#"$_lead"}" "\${_word#"$_lead"}" "\${_paths[@]}"`)
   lines.push(``)
   lines.push(`  local _i`)
   lines.push(`  for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
