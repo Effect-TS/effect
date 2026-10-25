@@ -321,22 +321,21 @@ export const causeCombine: {
   }
 )
 
-const includesAnnotations = (
-  self: ReadonlyMap<string, unknown>,
-  that: ReadonlyMap<string, unknown>
-): boolean => {
-  if (self === that) return true
-  if (self.size < that.size) return false
-  for (const [key, value] of that) {
-    if (!Object.is(self.get(key), value) || !self.has(key)) return false
+/**
+ * Whether `self` already records the interruption `that`: the same fiber id
+ * and every annotation of `that`. Annotating a cause only adds annotations,
+ * so an annotated copy of an interrupt still records it.
+ */
+const interruptIncludes = (self: Cause.Interrupt, that: Cause.Interrupt): boolean => {
+  if (self.fiberId !== that.fiberId) return false
+  for (const [key, value] of that.annotations) {
+    if (!self.annotations.has(key) || !Object.is(self.annotations.get(key), value)) return false
   }
   return true
 }
 
 /**
- * Appends the interrupts from `interrupts` that `self` does not contain yet.
- * An interrupt is contained when `self` has an interrupt from the same fiber
- * that includes all of its annotations, as annotating a cause only adds them.
+ * Appends the interrupts from `interrupts` that `self` does not record yet.
  * Unlike `causeCombine`, it never calls hash or equality methods, which can be
  * user-defined, random, or throwing.
  *
@@ -347,9 +346,7 @@ export const causeAddInterrupts = <E>(self: Cause.Cause<E>, interrupts: Cause.Ca
   for (const reason of interrupts.reasons) {
     if (
       isInterruptReason(reason) &&
-      !reasons.some((r) =>
-        isInterruptReason(r) && r.fiberId === reason.fiberId && includesAnnotations(r.annotations, reason.annotations)
-      )
+      !reasons.some((r) => isInterruptReason(r) && interruptIncludes(r, reason))
     ) {
       reasons.push(reason)
     }
