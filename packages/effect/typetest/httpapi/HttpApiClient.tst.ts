@@ -1155,6 +1155,32 @@ describe("HttpApiClient", () => {
       expect(decode).type.toBeCallableWith(response, { sseOptions: hole<Sse.DecodeOptions>() })
     })
 
+    it("requires the decoding services of middleware error schemas but not client middleware", () => {
+      class ClientError extends Schema.TaggedError<ClientError>()("ClientError", {}) {}
+      class Middleware extends HttpApiMiddleware.Service<Middleware, {
+        clientError: ClientError
+      }>()("Middleware", {
+        error: hole<Schema.Codec<{ readonly c: string }, unknown, "MiddlewareErrorDecoding", never>>(),
+        requiredForClient: true
+      }) {}
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", { success: Success, error: Error }).middleware(Middleware)
+            )
+        )
+      const decode = HttpApiClient.decodeResponse(Api, { group: "group", endpoint: "a" })
+
+      expect(decode(hole<HttpClientResponse.HttpClientResponse>())).type.toBe<
+        Effect.Effect<
+          { readonly a: number },
+          { readonly b: string } | { readonly c: string } | HttpClientError.HttpClientError | Schema.SchemaError,
+          "SuccessDecoding" | "ErrorDecoding" | "MiddlewareErrorDecoding"
+        >
+      >()
+    })
+
     it("rejects unknown endpoint identifiers", () => {
       expect(HttpApiClient.decodeResponse).type.not.toBeCallableWith(Api, { group: "group", endpoint: "missing" })
     })
