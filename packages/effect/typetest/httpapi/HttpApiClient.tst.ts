@@ -1794,5 +1794,56 @@ describe("HttpApiClient", () => {
         >
       >()
     })
+
+    it("keeps any and generic mapper results mapped", () => {
+      const make = HttpApiClient.makeWith(Api, {
+        httpClient,
+        mapError: (): any => new ApiError({ operation: "", cause: 1 })
+      })
+      const client = hole<Effect.Success<typeof make>>()
+
+      expect(client.users.inspect()).type.toBe<Effect.Effect<Item, any, CustomService>>()
+      expect(client.users.statsWithHeaders()).type.toBe<
+        Effect.Effect<
+          HttpApiSchema.withHeaders<Stream.Stream<Uint8Array, any>, { readonly "x-count": number }>,
+          any,
+          CustomService
+        >
+      >()
+
+      // a generic SDK wrapper must see the mapper's error, not a deferred type
+      const makeSdk = <E>(mapError: (error: unknown) => E) =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(Api, { httpClient, mapError })
+          expect(client.users.inspect()).type.toBe<Effect.Effect<Item, E, CustomService>>()
+          expect(client.users.statsStream()).type.toBe<
+            Effect.Effect<Stream.Stream<Item, E>, E, CustomService>
+          >()
+        })
+    })
+
+    it("rejects a mapper that may be undefined", () => {
+      const mapError = hole<((error: unknown) => ApiError) | undefined>()
+
+      expect(HttpApiClient.make).type.not.toBeCallableWith(Api, { mapError })
+      expect(HttpApiClient.makeWith).type.not.toBeCallableWith(Api, { httpClient, mapError })
+      expect(HttpApiClient.group).type.not.toBeCallableWith(Api, { group: "users", httpClient, mapError })
+      expect(HttpApiClient.endpoint).type.not.toBeCallableWith(Api, {
+        group: "users",
+        endpoint: "inspect",
+        httpClient,
+        mapError
+      })
+
+      const make = HttpApiClient.makeWith(Api, { httpClient, mapError: undefined })
+      const client = hole<Effect.Success<typeof make>>()
+      expect(client.users.inspect({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<
+          HttpClientResponse.HttpClientResponse,
+          MiddlewareClientError | "middleware-error" | CustomClientError | HttpClientError.HttpClientError,
+          CustomService
+        >
+      >()
+    })
   })
 })
