@@ -330,11 +330,12 @@ class TomlParser {
       } else if (escape === "u" || escape === "U") {
         const length = escape === "u" ? 4 : 8
         const hex = this.input.slice(this.index, this.index + length)
-        if (!new RegExp(`^[0-9A-Fa-f]{${length}}$`).test(hex)) {
-          this.fail("Invalid unicode escape")
-        }
         const codePoint = Number.parseInt(hex, 16)
-        if ((codePoint >= 0xD800 && codePoint <= 0xDFFF) || codePoint > 0x10FFFF) {
+        if (
+          !new RegExp(`^[0-9A-Fa-f]{${length}}$`).test(hex) ||
+          (codePoint >= 0xD800 && codePoint <= 0xDFFF) ||
+          codePoint > 0x10FFFF
+        ) {
           this.fail("Invalid unicode escape")
         }
         output += String.fromCodePoint(codePoint)
