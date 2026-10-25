@@ -35,6 +35,22 @@ describe("PartitionedSemaphore", () => {
       assert.strictEqual(yield* sem.available, 2)
     }))
 
+  it.effect("rotates partitions after a waiter that reserved free permits on entry", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 3 })
+      const completed: Array<string> = []
+      yield* sem.take("holder", 2)
+      for (const [name, key, permits] of [["a1", "a", 3], ["a2", "a", 1], ["b1", "b", 1]] as const) {
+        yield* sem.withPermits(key, permits)(Effect.sync(() => completed.push(name))).pipe(
+          Effect.forkDetach({ startImmediately: true })
+        )
+      }
+
+      yield* sem.release(2)
+      assert.deepStrictEqual(completed, ["a1", "b1", "a2"])
+      assert.strictEqual(yield* sem.available, 3)
+    }))
+
   it.effect("a resumed waiter can immediately reacquire released permits", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
