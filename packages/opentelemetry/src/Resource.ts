@@ -14,7 +14,6 @@
 import type * as OtelApi from "@opentelemetry/api"
 import * as Resources from "@opentelemetry/resources"
 import * as OtelSemConv from "@opentelemetry/semantic-conventions"
-import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -64,12 +63,28 @@ const sdkAttributes = (): Record<string, string> => ({
   [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
 })
 
-const decodeAttributeComponent = (component: string): string => {
-  try {
-    return decodeURIComponent(component)
-  } catch {
-    return component
+const parseResourceAttributes = (input: string): OtelApi.Attributes | undefined => {
+  const attributes: OtelApi.Attributes = {}
+  for (const attr of input.split(",")) {
+    const eqIndex = attr.indexOf("=")
+    if (eqIndex === -1) {
+      continue
+    }
+    const key = attr.substring(0, eqIndex).trim()
+    if (key === "") {
+      continue
+    }
+    try {
+      Rec.assignProperty(
+        attributes,
+        decodeURIComponent(key),
+        decodeURIComponent(attr.substring(eqIndex + 1).trim())
+      )
+    } catch {
+      return undefined
+    }
   }
+  return attributes
 }
 
 /**
@@ -113,6 +128,10 @@ export const configToAttributes = (options: {
  * Creates a `Resource` layer from SDK defaults, then environment variables,
  * then additional attributes (later values take precedence).
  *
+ * Keys and values in `OTEL_RESOURCE_ATTRIBUTES` are percent-decoded. If any of
+ * them is not valid percent-encoding, the whole variable is discarded and a
+ * warning is logged.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -126,25 +145,14 @@ export const layerFromEnv = (
     Resource,
     Effect.gen(function*() {
       const serviceName = yield* Config.option(Config.String("OTEL_SERVICE_NAME"))
-      const attributes = yield* Config.String("OTEL_RESOURCE_ATTRIBUTES").pipe(
-        Config.withDefault(""),
-        Config.map((s) => {
-          const attrs = s.split(",")
-          return Arr.reduce(attrs, {} as OtelApi.Attributes, (acc, attr) => {
-            const eqIndex = attr.indexOf("=")
-            if (eqIndex === -1) {
-              return acc
-            }
-            const key = decodeAttributeComponent(attr.substring(0, eqIndex).trim())
-            const value = decodeAttributeComponent(attr.substring(eqIndex + 1).trim())
-            if (key === "") {
-              return acc
-            }
-            Rec.assignProperty(acc, key, value)
-            return acc
-          })
-        })
+      const rawAttributes = yield* Config.String("OTEL_RESOURCE_ATTRIBUTES").pipe(
+        Config.withDefault("")
       )
+      let attributes = parseResourceAttributes(rawAttributes)
+      if (attributes === undefined) {
+        yield* Effect.logWarning("Discarding OTEL_RESOURCE_ATTRIBUTES: invalid percent-encoding")
+        attributes = {}
+      }
       if (serviceName._tag === "Some") {
         attributes[OtelSemConv.ATTR_SERVICE_NAME] = serviceName.value
       }
