@@ -11,6 +11,7 @@
 import * as Clock from "../Clock.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import type * as Stream from "../Stream.ts"
@@ -1133,17 +1134,24 @@ export const make: (
 ) => Effect.Effect<M.Owner, M.VirtualFileSystemError> = Effect.fnUntraced(
   function*(configuration) {
     const clock = yield* Clock.Clock
-    return yield* R.evaluate(() => {
-      E.checkOptions(configuration, ["limits", "root"], "make")
-      const limits = R.configure(configuration?.limits)
-      E.checkOptions(configuration?.root, ["uid", "gid", "mode"], "make")
-      const root = {
-        uid: E.identity(configuration?.root?.uid ?? 0, "make", "uid"),
-        gid: E.identity(configuration?.root?.gid ?? 0, "make", "gid"),
-        mode: E.mode(configuration?.root?.mode ?? DEFAULT_ROOT_MODE, "directory", "make")
-      }
-      return ownerFor(new E.Engine(new R.Runtime(limits, clock), root))
-    })
+    return yield* Effect.suspend(() =>
+      Result.match(
+        Result.try(() =>
+          Result.gen(function*() {
+            yield* E.checkOptionsResult(configuration, ["limits", "root"], "make")
+            const limits = yield* R.configureResult(configuration?.limits)
+            yield* E.checkOptionsResult(configuration?.root, ["uid", "gid", "mode"], "make")
+            const root = {
+              uid: yield* E.identityResult(configuration?.root?.uid ?? 0, "make", "uid"),
+              gid: yield* E.identityResult(configuration?.root?.gid ?? 0, "make", "gid"),
+              mode: yield* E.modeResult(configuration?.root?.mode ?? DEFAULT_ROOT_MODE, "directory", "make")
+            }
+            return yield* ownerFor(new E.Engine(new R.Runtime(limits, clock), root))
+          })
+        ),
+        { onFailure: R.failure, onSuccess: Effect.fromResult }
+      )
+    )
   }
 )
 
@@ -1194,7 +1202,7 @@ export const restore = <Error = never, Services = never>(
   source: M.Capture | Stream.Stream<M.CaptureRecord, Error, Services>,
   options?: M.RestoreOptions
 ): Effect.Effect<M.Owner, M.VirtualFileSystemError | Error, Services | Clock.Clock> =>
-  Effect.map(C.restoreEngine(source, options), ownerFor)
+  Effect.flatMap(C.restoreEngine(source, options), (engine) => Effect.fromResult(ownerFor(engine)))
 
 /**
  * Creates independent filesystem state and provides its scoped caller as the VirtualFileSystem service.
@@ -1277,25 +1285,33 @@ const simple = <Target extends M.Target, Value>(
   caller: E.Caller,
   operation: string,
   target: Target,
-  body: (tx: E.Transaction, target: E.TargetSnapshot<Target>) => Value
+  body: (tx: E.Transaction, target: E.TargetSnapshot<Target>) => Result.Result<Value, M.OperationError>
 ): Effect.Effect<Value, M.OperationError> =>
-  E.runAtomic(caller, operation, [target], () => {}, () => {
-    const copy = E.snapshotTarget(target)
-    return (tx) => body(tx, copy)
-  })
+  E.runAtomicResult(
+    caller,
+    operation,
+    [target],
+    () => Result.succeed(undefined),
+    () => Result.map(E.snapshotTargetResult(target), (copy) => (tx: E.Transaction) => body(tx, copy))
+  )
 
 const withOptions = <Target extends M.Target, Operation extends A.Operation, Value>(
   caller: E.Caller,
   operation: Operation,
   target: Target,
   options: A.OptionsByOperation[Operation],
-  body: (tx: E.Transaction, target: E.TargetSnapshot<Target>, options: A.OptionsByOperation[Operation]) => Value
+  body: (
+    tx: E.Transaction,
+    target: E.TargetSnapshot<Target>,
+    options: A.OptionsByOperation[Operation]
+  ) => Result.Result<Value, M.OperationError>
 ): Effect.Effect<Value, M.OperationError> =>
-  E.runAtomic(caller, operation, [target], () => A.validate(operation, options), () => {
-    const copy = E.snapshotTarget(target)
-    const fixed = P.snapshotOptions[operation](options)
-    return (tx) => body(tx, copy, fixed)
-  })
+  E.runAtomicResult(caller, operation, [target], () => A.validate(operation, options), () =>
+    Result.gen(function*() {
+      const copy = yield* E.snapshotTargetResult(target)
+      const fixed = yield* P.snapshotOptions[operation](options)
+      return (tx: E.Transaction) => body(tx, copy, fixed)
+    }))
 
 const write = <Target extends M.Target, Operation extends "writeFile" | "publishCopiedFile", Value>(
   caller: E.Caller,
@@ -1308,40 +1324,53 @@ const write = <Target extends M.Target, Operation extends "writeFile" | "publish
     target: E.TargetSnapshot<Target>,
     input: Uint8Array,
     options: A.OptionsByOperation[Operation]
-  ) => Value
+  ) => Result.Result<Value, M.OperationError>
 ): Effect.Effect<Value, M.OperationError> =>
-  E.runAtomic(caller, operation, [target], () => {
-    A.validate(operation, options)
-    P.inputLength(input, operation, caller.runtime.limits)
-  }, (work) => {
-    const targetCopy = E.snapshotTarget(target)
-    const fixed = P.snapshotOptions[operation](options)
-    const bytes = P.snapshotInput(work, input)
-    return (tx) => body(tx, targetCopy, bytes, fixed)
-  })
+  E.runAtomicResult(caller, operation, [target], () =>
+    Result.gen(function*() {
+      yield* A.validate(operation, options)
+      yield* P.inputLength(input, operation, caller.runtime.limits)
+    }), (work) =>
+    Result.gen(function*() {
+      const targetCopy = yield* E.snapshotTargetResult(target)
+      const fixed = yield* P.snapshotOptions[operation](options)
+      const bytes = yield* P.snapshotInput(work, input)
+      return (tx: E.Transaction) => body(tx, targetCopy, bytes, fixed)
+    }))
 
 const U32 = Schema.Number.check(Schema.isUint32())
 
 const Umask = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o777 }))
 
+const isBoolean = Schema.is(Schema.Boolean)
+
+const isGroups = Schema.is(Schema.Array(U32))
+
+const isUmask = Schema.is(Umask)
+
 const credentials = (
   options: M.CallerOptions,
   operation: string
-): Omit<E.Policy, "root" | "cwd" | "boundaries"> => {
-  E.checkOptions(options, ["credentials", "umask", "root", "cwd"], operation)
-  const input = options?.credentials
-  E.checkOptions(input, ["uid", "gid", "supplementaryGroups", "privileged"], operation)
-  const uid = E.identity(input?.uid, operation, "uid")
-  const gid = E.identity(input?.gid, operation, "gid")
-  if (input.privileged !== undefined && !Schema.is(Schema.Boolean)(input.privileged)) {
-    return R.invalid(operation, "privileged")
-  }
-  const groups = input.supplementaryGroups ?? []
-  if (!Schema.is(Schema.Array(U32))(groups)) return R.invalid(operation, "supplementaryGroups")
-  const umask = options.umask ?? DEFAULT_UMASK
-  if (!Schema.is(Umask)(umask)) return R.invalid(operation, "umask", "range")
-  return { uid, gid, groups, privileged: input.privileged ?? false, umask }
-}
+): Result.Result<Omit<E.Policy, "root" | "cwd" | "boundaries">, M.OperationError> =>
+  Result.gen(function*() {
+    yield* E.checkOptionsResult(options, ["credentials", "umask", "root", "cwd"], operation)
+    const input = options?.credentials
+    yield* E.checkOptionsResult(input, ["uid", "gid", "supplementaryGroups", "privileged"], operation)
+    const uid = yield* E.identityResult(input?.uid, operation, "uid")
+    const gid = yield* E.identityResult(input?.gid, operation, "gid")
+    if (input.privileged !== undefined && !isBoolean(input.privileged)) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "privileged", reason: "malformed" }))
+    }
+    const groups = input.supplementaryGroups ?? []
+    if (!isGroups(groups)) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "supplementaryGroups", reason: "malformed" }))
+    }
+    const umask = options.umask ?? DEFAULT_UMASK
+    if (!isUmask(umask)) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "umask", reason: "range" }))
+    }
+    return { uid, gid, groups, privileged: input.privileged ?? false, umask }
+  })
 
 const makeCaller = (caller: E.Caller): M.VirtualFileSystem => {
   const value: M.VirtualFileSystem = {
@@ -1365,60 +1394,93 @@ const makeCaller = (caller: E.Caller): M.VirtualFileSystem => {
     writeFile: (target: M.Target, data: Uint8Array, options?: M.WriteFileOptions) =>
       write(caller, "writeFile", target, data, options, A.writeFile),
     truncate: (target, length, options) =>
-      E.runAtomic(caller, "truncate", [target], () => {
-        A.validate("truncate", options)
-        R.size(length, "truncate", "length")
-      }, () => {
-        const fixed = P.snapshotOptions.truncate(options)
-        const copy = E.snapshotTarget(target)
-        const amount = length
-        return (tx) => A.truncate(tx, copy, amount, fixed)
-      }),
+      E.runAtomicResult(
+        caller,
+        "truncate",
+        [target],
+        () =>
+          Result.gen(function*() {
+            yield* E.checkOptionsResult(options, A.optionFields.truncate, "truncate")
+            yield* R.sizeResult(length, "truncate", "length")
+          }),
+        () =>
+          Result.gen(function*() {
+            const fixed = yield* P.snapshotTruncateOptions(options)
+            const copy = yield* E.snapshotTargetResult(target)
+            return (tx: E.Transaction) => A.truncate(tx, copy, length, fixed)
+          })
+      ),
     setAttributes: (target, attributes, options) =>
-      E.runAtomic(caller, "setAttributes", [target], () => {
-        A.validate("setAttributes", options)
-        A.validateAttributes(attributes, "setAttributes")
-      }, () => {
-        const fixed = P.snapshotOptions.setAttributes(options)
-        const attrs = P.snapshotAttributes(attributes, "setAttributes")
-        const copy = E.snapshotTarget(target)
-        return (tx) => A.setAttributes(tx, copy, attrs, fixed)
-      }),
+      E.runAtomicResult(caller, "setAttributes", [target], () =>
+        Result.gen(function*() {
+          yield* A.validate("setAttributes", options)
+          yield* A.validateAttributes(attributes, "setAttributes")
+        }), () =>
+        Result.gen(function*() {
+          const fixed = yield* P.snapshotOptions.setAttributes(options)
+          const attrs = yield* P.snapshotAttributes(attributes, "setAttributes")
+          const copy = yield* E.snapshotTargetResult(target)
+          return (tx: E.Transaction) => A.setAttributes(tx, copy, attrs, fixed)
+        })),
     createFile: (target, options) => withOptions(caller, "createFile", target, options, A.createFile),
     makeDirectory: (target, options) => withOptions(caller, "makeDirectory", target, options, A.makeDirectory),
     makeDirectoryEntry: (target, options) =>
       withOptions(caller, "makeDirectoryEntry", target, options, A.makeDirectoryEntry),
     makeSymlink: (target, linkTarget, options) =>
-      E.runAtomic(caller, "makeSymlink", [target, linkTarget], () => A.validate("makeSymlink", options), () => {
-        const copy = E.snapshotTarget(target)
-        const link = E.pathValue(linkTarget, "makeSymlink")
-        const fixed = P.snapshotOptions.makeSymlink(options)
-        return (tx) => A.makeSymlink(tx, copy, link, fixed)
-      }),
+      E.runAtomicResult(
+        caller,
+        "makeSymlink",
+        [target, linkTarget],
+        () => A.validate("makeSymlink", options),
+        () =>
+          Result.gen(function*() {
+            const copy = yield* E.snapshotTargetResult(target)
+            const link = yield* E.pathValueResult(linkTarget, "makeSymlink")
+            const fixed = yield* P.snapshotOptions.makeSymlink(options)
+            return (tx: E.Transaction) => A.makeSymlink(tx, copy, link, fixed)
+          })
+      ),
     makeHardLink: (source, destination, options) =>
-      E.runAtomic(
+      E.runAtomicResult(
         caller,
         "makeHardLink",
-        () => ["reference" in source ? source.reference : source.entry, destination],
-        () => {
-          if (source === null || typeof source !== "object") R.invalid("makeHardLink", "source")
-          E.checkOptions(source, "reference" in source ? ["reference"] : ["entry", "conditions"], "makeHardLink")
-          A.validate("makeHardLink", options)
-        },
-        () => {
-          const fixedSource = P.snapshotHardLinkSource(source)
-          const fixed = P.snapshotOptions.makeHardLink(options)
-          const target = E.snapshotTarget(destination)
-          return (tx) => A.makeHardLink(tx, fixedSource, target, fixed)
-        }
+        () => Result.succeed(["reference" in source ? source.reference : source.entry, destination]),
+        () =>
+          Result.gen(function*() {
+            if (source === null || typeof source !== "object") {
+              return yield* Result.fail(
+                new M.InvalidInput({ operation: "makeHardLink", field: "source", reason: "malformed" })
+              )
+            }
+            yield* E.checkOptionsResult(
+              source,
+              "reference" in source ? ["reference"] : ["entry", "conditions"],
+              "makeHardLink"
+            )
+            yield* A.validate("makeHardLink", options)
+          }),
+        () =>
+          Result.gen(function*() {
+            const fixedSource = yield* P.snapshotHardLinkSource(source)
+            const fixed = yield* P.snapshotOptions.makeHardLink(options)
+            const target = yield* E.snapshotTargetResult(destination)
+            return (tx: E.Transaction) => A.makeHardLink(tx, fixedSource, target, fixed)
+          })
       ),
     rename: (source, destination, options) =>
-      E.runAtomic(caller, "rename", [source, destination], () => A.validate("rename", options), () => {
-        const from = E.snapshotTarget(source)
-        const to = E.snapshotTarget(destination)
-        const fixed = P.snapshotOptions.rename(options)
-        return (tx) => A.rename(tx, from, to, fixed)
-      }),
+      E.runAtomicResult(
+        caller,
+        "rename",
+        [source, destination],
+        () => A.validate("rename", options),
+        () =>
+          Result.gen(function*() {
+            const from = yield* E.snapshotTargetResult(source)
+            const to = yield* E.snapshotTargetResult(destination)
+            const fixed = yield* P.snapshotOptions.rename(options)
+            return (tx: E.Transaction) => A.rename(tx, from, to, fixed)
+          })
+      ),
     unlink: (target, options) => withOptions(caller, "unlink", target, options, A.unlink),
     removeDirectory: (target, options) => withOptions(caller, "removeDirectory", target, options, A.removeDirectory),
     open: (target: M.Target, options?: M.OpenOptions) => H.open(caller, target, options),
@@ -1430,17 +1492,18 @@ const makeCaller = (caller: E.Caller): M.VirtualFileSystem => {
     publishCopiedFile: (destination, data, options) =>
       write(caller, "publishCopiedFile", destination, data, options, A.publishCopiedFile),
     publishCopiedSymlink: (destination, target, options) =>
-      E.runAtomic(
+      E.runAtomicResult(
         caller,
         "publishCopiedSymlink",
         [destination, target],
         () => A.validate("publishCopiedSymlink", options),
-        () => {
-          const copy = E.snapshotTarget(destination)
-          const fixed = P.snapshotOptions.publishCopiedSymlink(options)
-          const link = target
-          return (tx) => A.publishCopiedSymlink(tx, copy, link, fixed)
-        }
+        () =>
+          Result.gen(function*() {
+            const copy = yield* E.snapshotTargetResult(destination)
+            const fixed = yield* P.snapshotOptions.publishCopiedSymlink(options)
+            const link = target
+            return (tx: E.Transaction) => A.publishCopiedSymlink(tx, copy, link, fixed)
+          })
       ),
     acquireOperation: (options) => O.acquireOperation(caller, options),
     acquireTraversal: (options) => O.acquireTraversal(caller, options),
@@ -1458,115 +1521,136 @@ const derive = Effect.fnUntraced(
   ): Effect.fn.Return<M.VirtualFileSystem, M.OperationError, Scope.Scope> {
     const scope = yield* Scope.Scope
 
-    return yield* source.runtime.run(source.resource, narrow ? "withRoot" : "withCurrentDirectory", () => ({
-      bytes: E.addressBytes(directory, "derive", source.runtime.limits),
-      snapshot: (work) => {
-        const acquired = work.acquireResource("caller")
-        const fixed = directory
+    return yield* source.runtime.runResult(
+      source.resource,
+      narrow ? "withRoot" : "withCurrentDirectory",
+      () =>
+        Result.gen(function*() {
+          const bytes = yield* E.addressBytesResult(directory, "derive", source.runtime.limits)
+          return {
+            bytes,
+            snapshot: (work) =>
+              Result.gen(function*() {
+                const acquired = yield* work.acquireResourceResult("caller")
+                const fixed = directory
 
-        return {
-          enroll: acquired.enroll(scope, "derive"),
-          execute: () => {
-            if (acquired.state !== "open") throw R.closed("derive", acquired.state)
+                return {
+                  enroll: acquired.enroll(scope, "derive"),
+                  execute: () =>
+                    Result.gen(function*() {
+                      yield* acquired.checkOpenResult("derive")
 
-            const tx = new E.Transaction(source, work)
-            const dir = tx.selectDirectory(fixed)
+                      const tx = new E.Transaction(source, work)
+                      const dir = yield* tx.selectDirectoryResult(fixed)
 
-            if (!tx.contained(dir.id, source.policy.root)) {
-              throw new M.AccessDenied({ operation: "derive", reason: "confinement" })
-            }
+                      if (!(yield* tx.containedResult(dir.id, source.policy.root))) {
+                        return yield* Result.fail(new M.AccessDenied({ operation: "derive", reason: "confinement" }))
+                      }
 
-            const policy: E.Policy = narrow
-              ? {
-                ...source.policy,
-                root: dir.id,
-                cwd: dir.id,
-                boundaries: Object.freeze([...source.policy.boundaries, source.policy.root])
-              }
-              : { ...source.policy, cwd: dir.id }
-            const caller = E.createCaller(tx.engine, policy, acquired)
-            const value = makeCaller(caller)
+                      const policy: E.Policy = narrow
+                        ? {
+                          ...source.policy,
+                          root: dir.id,
+                          cwd: dir.id,
+                          boundaries: Object.freeze([...source.policy.boundaries, source.policy.root])
+                        }
+                        : { ...source.policy, cwd: dir.id }
+                      const caller = yield* E.createCallerResult(tx.engine, policy, acquired)
+                      const value = makeCaller(caller)
 
-            tx.stageCallerRetention(caller)
+                      tx.stageCallerRetention(caller)
 
-            return tx.transition(value)
+                      return yield* tx.transitionResult(value)
+                    })
+                }
+              })
           }
-        }
-      }
-    }))
+        })
+    )
   }
 )
 
-const ownerFor = (engine: E.Engine): M.Owner => {
-  const ownerResource = engine.runtime.resource("lease", "owner")
-  const authorityContext = {
-    runtime: engine.runtime,
-    inputLimits: engine.inputLimits,
-    engineCell: ownerResource.retainContext(engine),
-    resource: ownerResource
-  }
-  const owner: M.Owner = {
-    [M.OwnerTypeId]: M.OwnerTypeId,
-    limits: engine.runtime.limits,
-    usage: Effect.sync(() => engine.usage()),
-    capture: () => C.capture(engine),
-    authorize: Effect.fnUntraced(function*(options: M.CallerOptions) {
-      const scope = yield* Scope.Scope
+const ownerFor = (engine: E.Engine): Result.Result<M.Owner, M.OperationError> =>
+  Result.gen(function*() {
+    const ownerResource = yield* engine.runtime.resourceResult("lease", "owner")
+    const authorityContext = {
+      runtime: engine.runtime,
+      inputLimits: engine.inputLimits,
+      engineCell: yield* ownerResource.retainContextResult(engine),
+      resource: ownerResource
+    }
+    const owner: M.Owner = {
+      [M.OwnerTypeId]: M.OwnerTypeId,
+      limits: engine.runtime.limits,
+      usage: Effect.sync(() => engine.usage()),
+      capture: () => C.capture(engine),
+      authorize: Effect.fnUntraced(function*(options: M.CallerOptions) {
+        const scope = yield* Scope.Scope
 
-      return yield* engine.runtime.run(ownerResource, "authorize", () => {
-        const validated = credentials(options, "authorize")
-        const targets = [options.root, options.cwd].filter((target): target is M.DirectorySelector =>
-          target !== undefined
-        )
-
-        return {
-          bytes: targets.reduce(
-            (sum, target) => sum + E.addressBytes(target, "authorize", engine.runtime.limits),
-            BigInt("0")
-          ),
-          snapshot: (work) => {
-            const base = { ...validated, groups: Object.freeze(validated.groups.slice()) }
-            const acquired = work.acquireResource("caller")
-            const rootSelector = options.root
-            const cwdSelector = options.cwd
-            // NOTE: Owner privilege resolves the initial root and cwd. The delivered caller uses the supplied credentials.
-            const ownerPolicy: E.Policy = {
-              ...base,
-              privileged: true,
-              root: engine.root,
-              cwd: engine.root,
-              boundaries: []
+        return yield* engine.runtime.runResult(ownerResource, "authorize", () =>
+          Result.gen(function*() {
+            const validated = yield* credentials(options, "authorize")
+            const targets = [options.root, options.cwd].filter((target): target is M.DirectorySelector =>
+              target !== undefined
+            )
+            let bytes = BigInt("0")
+            for (const target of targets) {
+              bytes += yield* E.addressBytesResult(target, "authorize", engine.runtime.limits)
             }
 
             return {
-              enroll: acquired.enroll(scope, "authorize"),
-              execute: () => {
-                if (acquired.state !== "open") throw R.closed("authorize", acquired.state)
+              bytes,
+              snapshot: (work) =>
+                Result.gen(function*() {
+                  const base = { ...validated, groups: Object.freeze(validated.groups.slice()) }
+                  const acquired = yield* work.acquireResourceResult("caller")
+                  const rootSelector = options.root
+                  const cwdSelector = options.cwd
+                  // NOTE: Owner privilege resolves the initial root and cwd. The delivered caller uses the supplied credentials.
+                  const ownerPolicy: E.Policy = {
+                    ...base,
+                    privileged: true,
+                    root: engine.root,
+                    cwd: engine.root,
+                    boundaries: []
+                  }
 
-                const authority: E.Caller = { ...authorityContext, policy: ownerPolicy }
-                const tx = new E.Transaction(authority, work)
-                const root = rootSelector === undefined ? engine.root : tx.selectDirectory(rootSelector).id
-                const initial: E.Policy = { ...ownerPolicy, root, cwd: root }
-                const restricted = new E.Transaction({ ...authority, policy: initial }, work)
-                const cwd = cwdSelector === undefined ? root : restricted.selectDirectory(cwdSelector).id
+                  return {
+                    enroll: acquired.enroll(scope, "authorize"),
+                    execute: () =>
+                      Result.gen(function*() {
+                        yield* acquired.checkOpenResult("authorize")
 
-                if (!restricted.contained(cwd, root)) {
-                  throw new M.AccessDenied({ operation: "authorize", reason: "confinement" })
-                }
+                        const authority: E.Caller = { ...authorityContext, policy: ownerPolicy }
+                        const tx = new E.Transaction(authority, work)
+                        const root = rootSelector === undefined
+                          ? engine.root
+                          : (yield* tx.selectDirectoryResult(rootSelector)).id
+                        const initial: E.Policy = { ...ownerPolicy, root, cwd: root }
+                        const restricted = new E.Transaction({ ...authority, policy: initial }, work)
+                        const cwd = cwdSelector === undefined
+                          ? root
+                          : (yield* restricted.selectDirectoryResult(cwdSelector)).id
 
-                const policy: E.Policy = { ...base, root, cwd, boundaries: [] }
-                const caller = E.createCaller(engine, policy, acquired)
+                        if (!(yield* restricted.containedResult(cwd, root))) {
+                          return yield* Result.fail(
+                            new M.AccessDenied({ operation: "authorize", reason: "confinement" })
+                          )
+                        }
 
-                tx.stageCallerRetention(caller)
+                        const policy: E.Policy = { ...base, root, cwd, boundaries: [] }
+                        const caller = yield* E.createCallerResult(engine, policy, acquired)
 
-                return tx.transition(makeCaller(caller))
-              }
+                        tx.stageCallerRetention(caller)
+
+                        return yield* tx.transitionResult(makeCaller(caller))
+                      })
+                  }
+                })
             }
-          }
-        }
+          }))
       })
-    })
-  }
+    }
 
-  return Object.freeze(owner)
-}
+    return Object.freeze(owner)
+  })

@@ -2,6 +2,7 @@ import * as BytePath from "../../BytePath.ts"
 import type * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
+import * as Result from "../../Result.ts"
 import * as Scope from "../../Scope.ts"
 import * as A from "./atomic.ts"
 import * as E from "./engine.ts"
@@ -20,9 +21,7 @@ interface OperationContext {
 }
 
 const zero = BigInt(0)
-
 const two = BigInt(2)
-
 const three = BigInt(3)
 
 interface Lease {
@@ -30,17 +29,26 @@ interface Lease {
   readonly resource: R.Resource
 }
 
-const requireOpen = (context: OperationContext, operation: string, lease?: R.Resource): void => {
-  if (context.caller.runtime.inTurn) throw new M.ReentrantOperation({ operation, reason: "sameInstance" })
-  if (context.resource.state !== "open") throw R.closed(operation, context.resource.state)
-  if (lease !== undefined && lease.state !== "open") throw R.closed(operation, lease.state)
+const requireOpenResult = (
+  context: OperationContext,
+  operation: string,
+  lease?: R.Resource
+) => {
+  if (context.caller.runtime.inTurn) return Result.fail(new M.ReentrantOperation({ operation, reason: "sameInstance" }))
+  if (context.resource.state !== "open") return Result.fail(R.closed(operation, context.resource.state))
+  if (lease !== undefined && lease.state !== "open") return Result.fail(R.closed(operation, lease.state))
+  return Result.succeed(undefined)
 }
 
-const checkLease = <L extends Lease>(context: OperationContext, lease: L | undefined, operation: string): L => {
-  if (lease === undefined) return R.invalid(operation, "lease")
-  if (lease.context !== context) throw new M.InvalidResource({ operation, reason: "foreign" })
-  if (lease.resource.state !== "open") throw R.closed(operation, lease.resource.state)
-  return lease
+const checkLeaseResult = <L extends Lease>(
+  context: OperationContext,
+  lease: L | undefined,
+  operation: string
+) => {
+  if (lease === undefined) return Result.fail(new M.InvalidInput({ operation, field: "lease", reason: "malformed" }))
+  if (lease.context !== context) return Result.fail(new M.InvalidResource({ operation, reason: "foreign" }))
+  if (lease.resource.state !== "open") return Result.fail(R.closed(operation, lease.resource.state))
+  return Result.succeed(lease)
 }
 
 // -----------------------------------------------------------------------------
@@ -51,34 +59,40 @@ const reserveManual = Effect.fnUntraced(
   function*(
     context: OperationContext,
     input: ByteSize.Input
-  ): Effect.fn.Return<M.PayloadReservation, M.OperationError> {
+  ) {
     const operation = "reservePayload"
     const runtime = context.caller.runtime
-    const { resource, bytes } = yield* R.evaluate(() => {
-      requireOpen(context, operation)
-      const bytes = R.size(input, operation, "bytes")
-      return { resource: runtime.resource("lease", operation), bytes }
-    })
+    const { resource, bytes } = yield* Effect.suspend(() =>
+      Effect.fromResult(Result.gen(function*() {
+        yield* requireOpenResult(context, operation)
+        const bytes = yield* R.sizeResult(input, operation, "bytes")
+        return { resource: yield* runtime.resourceResult("lease", operation), bytes }
+      }))
+    )
     return yield* Effect.onError(
-      R.evaluate(() => {
-        context.resource.own(resource)
-        const charge = new R.ChargedBytes(runtime, operation)
-        resource.releaseWith(() => charge.clear())
-        charge.reserve(bytes)
-        const value: M.PayloadReservation = {
-          [M.PayloadHoldTypeId]: M.PayloadHoldTypeId,
-          [M.PayloadReservationTypeId]: M.PayloadReservationTypeId,
-          release: resource.close,
-          resize: (input) =>
-            budgetOnly(R.evaluate(() => {
-              const operation = "resizePayload"
-              requireOpen(context, operation, resource)
-              const next = R.size(input, operation, "totalBytes")
-              charge.resize(next, operation)
-            }))
-        }
-        return Object.freeze(value)
-      }),
+      Effect.suspend(() =>
+        Effect.fromResult(Result.gen(function*() {
+          yield* context.resource.ownResult(resource)
+          const charge = new R.ChargedBytes(runtime, operation)
+          yield* resource.releaseWithResult(() => charge.clear())
+          yield* charge.reserveResult(bytes)
+          const value: M.PayloadReservation = {
+            [M.PayloadHoldTypeId]: M.PayloadHoldTypeId,
+            [M.PayloadReservationTypeId]: M.PayloadReservationTypeId,
+            release: resource.close,
+            resize: (input) =>
+              budgetOnly(Effect.suspend(() =>
+                Effect.fromResult(Result.gen(function*() {
+                  const operation = "resizePayload"
+                  yield* requireOpenResult(context, operation, resource)
+                  const next = yield* R.sizeResult(input, operation, "totalBytes")
+                  yield* charge.resizeResult(next, operation)
+                }))
+              ))
+          }
+          return Object.freeze(value)
+        }))
+      ),
       () => resource.close
     )
   },
@@ -87,7 +101,7 @@ const reserveManual = Effect.fnUntraced(
 
 const budgetOnly = <A>(
   effect: Effect.Effect<A, M.OperationError>
-): Effect.Effect<A, M.InvalidInput | M.InvalidResource | M.LimitExceeded | M.ReentrantOperation> =>
+) =>
   Effect.catchTag(effect, [
     "NotFound",
     "AlreadyExists",
@@ -98,25 +112,29 @@ const budgetOnly = <A>(
     "CapabilityUnavailable"
   ], Effect.die)
 
-const traversalOnly = <A>(effect: Effect.Effect<A, M.OperationError>): Effect.Effect<A, M.TraversalError> =>
+const traversalOnly = <A>(effect: Effect.Effect<A, M.OperationError>) =>
   Effect.catchTag(effect, ["AlreadyExists", "ConditionFailed", "CapabilityUnavailable"], Effect.die)
 
-const makeBudget = (context: OperationContext): M.OperationBudget =>
+const makeBudget = (context: OperationContext) =>
   Object.freeze<M.OperationBudget>({
     [M.OperationBudgetTypeId]: M.OperationBudgetTypeId,
     reservePayload: (bytes) => budgetOnly(reserveManual(context, bytes)),
     consumeComparisons: (input) =>
-      budgetOnly(R.evaluate(() => {
-        const operation = "consumeComparisons"
-        requireOpen(context, operation)
-        const count = R.count(input, operation, "count")
-        const ledger = context.ticket.ledger
-        if (count > ledger.maxComparisons - ledger.comparisons) return R.limit(operation, "comparisons", "traversal")
-        ledger.comparisons += count
-      }))
+      budgetOnly(Effect.suspend(() =>
+        Effect.fromResult(Result.gen(function*() {
+          const operation = "consumeComparisons"
+          yield* requireOpenResult(context, operation)
+          const count = yield* R.countResult(input, operation, "count")
+          const ledger = context.ticket.ledger
+          if (count > ledger.maxComparisons - ledger.comparisons) {
+            return yield* Result.fail(new M.LimitExceeded({ operation, domain: "comparisons", stage: "traversal" }))
+          }
+          ledger.comparisons += count
+        }))
+      ))
   })
 
-const makeSession = (context: OperationContext): M.OperationSession => {
+const makeSession = (context: OperationContext) => {
   const budget = makeBudget(context)
   return Object.freeze<M.OperationSession>({
     [M.OperationSessionTypeId]: M.OperationSessionTypeId,
@@ -131,39 +149,60 @@ export const acquireOperation = Effect.fnUntraced(
   function*(
     source: E.Caller,
     options?: M.OperationOptions
-  ): Effect.fn.Return<M.OperationSession, M.OperationError, Scope.Scope> {
+  ) {
     const scope = yield* Scope.Scope
     const runtime = source.runtime
-    const { engine, settings } = yield* R.evaluate(() => {
-      if (runtime.inTurn) throw new M.ReentrantOperation({ operation: "acquireOperation", reason: "sameInstance" })
-      if (source.resource.state !== "open") throw R.closed("acquireOperation", source.resource.state)
-      E.checkOptions(options, ["maxVisits", "maxComparisons", "maxCopyBytes"], "acquireOperation")
-      const ledger = runtime.ledger(
-        options === undefined ? undefined : {
-          maxVisits: options.maxVisits,
-          maxComparisons: options.maxComparisons,
-          maxCopyBytes: options.maxCopyBytes
-        },
-        "acquireOperation"
+    const { engine, settings } = yield* Effect.suspend(() =>
+      Result.match(
+        Result.try(() =>
+          Result.gen(function*() {
+            if (runtime.inTurn) {
+              return yield* Result.fail(
+                new M.ReentrantOperation({ operation: "acquireOperation", reason: "sameInstance" })
+              )
+            }
+            if (source.resource.state !== "open") {
+              return yield* Result.fail(R.closed("acquireOperation", source.resource.state))
+            }
+            yield* E.checkOptionsResult(options, ["maxVisits", "maxComparisons", "maxCopyBytes"], "acquireOperation")
+            const ledger = yield* runtime.ledgerResult(
+              options === undefined ? undefined : {
+                maxVisits: options.maxVisits,
+                maxComparisons: options.maxComparisons,
+                maxCopyBytes: options.maxCopyBytes
+              },
+              "acquireOperation"
+            )
+            if (source.resource.state !== "open") {
+              return yield* Result.fail(R.closed("acquireOperation", source.resource.state))
+            }
+            return {
+              engine: E.resolveEngine(source),
+              settings: {
+                maxVisits: ledger.maxVisits,
+                maxComparisons: ledger.maxComparisons,
+                maxCopyBytes: ledger.maxCopyBytes
+              }
+            }
+          })
+        ),
+        { onFailure: R.failure, onSuccess: Effect.fromResult }
       )
-      if (source.resource.state !== "open") throw R.closed("acquireOperation", source.resource.state)
-      return {
-        engine: E.resolveEngine(source),
-        settings: {
-          maxVisits: ledger.maxVisits,
-          maxComparisons: ledger.maxComparisons,
-          maxCopyBytes: ledger.maxCopyBytes
-        }
-      }
-    })
-    return yield* runtime.acquireScopedResource("operation", "acquireOperation", scope, (resource) => {
-      engine.retain(source.policy, resource)
-      const ticket = runtime.ticket("acquireOperation", settings)
-      resource.releaseWith(() => runtime.releaseTicket(ticket))
-      const caller = E.createCaller(engine, source.policy, resource)
-      const context = { caller, resource, ticket }
-      return makeSession(context)
-    })
+    )
+    return yield* runtime.acquireScopedResourceResult(
+      "operation",
+      "acquireOperation",
+      scope,
+      (resource) =>
+        Result.gen(function*() {
+          yield* engine.retainResult(source.policy, resource)
+          const ticket = yield* runtime.ticketResult("acquireOperation", settings)
+          yield* resource.releaseWithResult(() => runtime.releaseTicket(ticket))
+          const caller = yield* E.createCallerResult(engine, source.policy, resource)
+          const context = { caller, resource, ticket }
+          return makeSession(context)
+        })
+    )
   },
   Effect.uninterruptible
 )
@@ -172,16 +211,29 @@ export const acquireTraversal = Effect.fnUntraced(
   function*(
     source: E.Caller,
     options?: M.TraversalOptions
-  ): Effect.fn.Return<M.NamespaceTraversal, M.OperationError, Scope.Scope> {
-    yield* R.evaluate(() => {
-      if (source.runtime.inTurn) {
-        throw new M.ReentrantOperation({ operation: "acquireTraversal", reason: "sameInstance" })
-      }
-      if (source.resource.state !== "open") {
-        throw R.closed("acquireTraversal", source.resource.state)
-      }
-      E.checkOptions(options, ["base", "maxVisits", "maxComparisons", "maxCopyBytes"], "acquireTraversal")
-    })
+  ) {
+    yield* Effect.suspend(() =>
+      Result.match(
+        Result.try(() =>
+          Result.gen(function*() {
+            if (source.runtime.inTurn) {
+              return yield* Result.fail(
+                new M.ReentrantOperation({ operation: "acquireTraversal", reason: "sameInstance" })
+              )
+            }
+            if (source.resource.state !== "open") {
+              return yield* Result.fail(R.closed("acquireTraversal", source.resource.state))
+            }
+            yield* E.checkOptionsResult(
+              options,
+              ["base", "maxVisits", "maxComparisons", "maxCopyBytes"],
+              "acquireTraversal"
+            )
+          })
+        ),
+        { onFailure: R.failure, onSuccess: Effect.fromResult }
+      )
+    )
     const session = yield* acquireOperation(
       source,
       options === undefined ? undefined : {
@@ -207,84 +259,93 @@ interface RouteLease extends Lease {
 
 // Membership finds the issued state; checkLease still enforces its session and lifetime.
 const directoryLeases = new WeakMap<object, RouteLease>()
-
 const selectionLeases = new WeakMap<object, RouteLease>()
 
-const directoryLease = (candidate: unknown): RouteLease | undefined =>
+const directoryLease = (candidate: unknown) =>
   typeof candidate === "object" && candidate !== null ? directoryLeases.get(candidate) : undefined
 
-const selectionLease = (candidate: unknown): RouteLease | undefined =>
+const selectionLease = (candidate: unknown) =>
   typeof candidate === "object" && candidate !== null ? selectionLeases.get(candidate) : undefined
 
 const isSelection = (candidate: unknown): candidate is M.TraversalSelection => selectionLease(candidate) !== undefined
 
-const registerDirectory = (view: M.TraversalDirectory, lease: RouteLease): void => {
+const registerDirectory = (view: M.TraversalDirectory, lease: RouteLease) => {
   directoryLeases.set(view, lease)
 }
 
-const registerSelection = (view: M.TraversalSelection, lease: RouteLease): void => {
+const registerSelection = (view: M.TraversalSelection, lease: RouteLease) => {
   selectionLeases.set(view, lease)
 }
 
-const location = (context: OperationContext, tx: E.Transaction, route: E.Route): M.TraversalDirectory => {
-  if (route.object.kind !== "directory") return tx.wrongKind()
-  const lease = { context, ...tx.retainRoute(context.resource, { kind: "traversal", route, outputBytes: zero }) }
-  const value = Object.freeze<M.TraversalDirectory>({
-    [M.TraversalDirectoryTypeId]: M.TraversalDirectoryTypeId,
-    release: lease.resource.close
+const location = (
+  context: OperationContext,
+  tx: E.Transaction,
+  route: E.Route
+) =>
+  Result.gen(function*() {
+    if (route.object.kind !== "directory") {
+      return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+    }
+    const retained = yield* tx.retainRouteResult(context.resource, { kind: "traversal", route, outputBytes: zero })
+    const lease = { context, ...retained }
+    const value = Object.freeze<M.TraversalDirectory>({
+      [M.TraversalDirectoryTypeId]: M.TraversalDirectoryTypeId,
+      release: lease.resource.close
+    })
+    registerDirectory(value, lease)
+    return value
   })
-  registerDirectory(value, lease)
-  return value
-}
 
 const selection = (
   context: OperationContext,
   tx: E.Transaction,
   route: E.Route,
   named: boolean
-): { readonly value: M.TraversalSelection; readonly lease: RouteLease } => {
-  const entry = named && route.parent !== undefined && route.binding !== undefined
-    ? tx.entry(route.parent, route.binding.name, route.binding)
-    : undefined
-  if (entry !== undefined && entry.state !== "present") return tx.wrongKind()
-  const lease = {
-    context,
-    ...tx.retainRoute(context.resource, {
+) =>
+  Result.gen(function*() {
+    const entry = named && route.parent !== undefined && route.binding !== undefined
+      ? yield* tx.entryResult(route.parent, route.binding.name, route.binding)
+      : undefined
+    if (entry !== undefined && entry.state !== "present") {
+      return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+    }
+    const retained = yield* tx.retainRouteResult(context.resource, {
       kind: "traversal",
       route,
       outputBytes: entry === undefined ? zero : BigInt(BytePath.byteLength(entry.name))
     })
-  }
-  const value = Object.freeze<M.TraversalSelection>({
-    [M.TraversalSelectionTypeId]: M.TraversalSelectionTypeId,
-    object: entry === undefined ? tx.observation(route.object) : entry.object,
-    entry: entry === undefined ? Option.none() : Option.some(entry),
-    release: lease.resource.close
+    const lease = { context, ...retained }
+    const value = Object.freeze<M.TraversalSelection>({
+      [M.TraversalSelectionTypeId]: M.TraversalSelectionTypeId,
+      object: entry === undefined ? tx.observation(route.object) : entry.object,
+      entry: entry === undefined ? Option.none() : Option.some(entry),
+      release: lease.resource.close
+    })
+    registerSelection(value, lease)
+    return { value, lease }
   })
-  registerSelection(value, lease)
-  return { value, lease }
-}
 
-const step = <A>(
+const stepResult = <A>(
   context: OperationContext,
   operation: string,
   targets: ReadonlyArray<M.Target | M.DirectorySelector>,
   leases: ReadonlyArray<Lease>,
-  snapshot: (work: R.Work) => (tx: E.Transaction) => A
-): Effect.Effect<A, M.OperationError> =>
-  E.runAtomic(
+  snapshot: (work: R.Work) => Result.Result<(tx: E.Transaction) => Result.Result<A, M.OperationError>, M.OperationError>
+) =>
+  E.runAtomicResult(
     context.caller,
     operation,
     targets,
-    () => {},
-    (work) => {
-      requireOpen(context, operation)
-      for (const lease of leases) {
-        checkLease(context, lease, operation)
-        work.borrow(lease.resource)
-      }
-      return snapshot(work)
-    },
+    () => Result.succeed(undefined),
+    (work) =>
+      Result.gen(function*() {
+        yield* requireOpenResult(context, operation)
+        for (const lease of leases) {
+          yield* checkLeaseResult(context, lease, operation)
+          yield* work.borrowResult(lease.resource)
+        }
+        return yield* snapshot(work)
+      }),
     context.resource,
     context.ticket
   )
@@ -293,228 +354,314 @@ const makeTraversal = (
   context: OperationContext,
   budget: M.OperationBudget,
   options?: M.TraversalViewOptions
-): Effect.Effect<M.NamespaceTraversal, M.TraversalError> =>
-  traversalOnly(Effect.flatten(R.evaluate(() => {
-    requireOpen(context, "traversal")
-    E.checkOptions(options, ["base"], "traversal")
-    const base = options?.base ?? "."
-    return step(context, "traversal", [base], [], () => (tx) => {
-      const directory = location(context, tx, tx.selectDirectoryRoute(base))
-      return Object.freeze<M.NamespaceTraversal>({
-        [M.NamespaceTraversalTypeId]: M.NamespaceTraversalTypeId,
-        base: directory,
-        select: (directory, probe) => select(context, directory, probe),
-        list: (directory) => list(context, directory),
-        classify: (selected) => classify(context, selected),
-        budget,
-        close: context.resource.close
-      })
-    })
-  })))
+) =>
+  traversalOnly(Effect.suspend(() =>
+    Result.match(
+      Result.try(() =>
+        Result.gen(function*() {
+          yield* requireOpenResult(context, "traversal")
+          yield* E.checkOptionsResult(options, ["base"], "traversal")
+          const base = options?.base ?? "."
+          return stepResult(context, "traversal", [base], [], () =>
+            Result.succeed((tx: E.Transaction) =>
+              Result.gen(function*() {
+                const route = yield* tx.selectDirectoryRouteResult(base)
+                const directory = yield* location(context, tx, route)
+                return Object.freeze<M.NamespaceTraversal>({
+                  [M.NamespaceTraversalTypeId]: M.NamespaceTraversalTypeId,
+                  base: directory,
+                  select: (directory, probe) => select(context, directory, probe),
+                  list: (directory) => list(context, directory),
+                  classify: (selected) =>
+                    classify(context, selected),
+                  budget,
+                  close: context.resource.close
+                })
+              })
+            ))
+        })
+      ),
+      {
+        onFailure: R.failure,
+        onSuccess: (prepared) => Effect.flatten(Effect.fromResult(prepared))
+      }
+    )
+  ))
 
 const select = (
   context: OperationContext,
   directory: M.TraversalDirectory,
   probe: M.TraversalProbe
-): Effect.Effect<Option.Option<M.TraversalSelection>, M.TraversalError> =>
-  traversalOnly(Effect.flatten(R.evaluate(() => {
-    requireOpen(context, "select")
-    const lease = checkLease(context, directoryLease(directory), "select")
-    const navigation = probe?._tag
-    let fixed: M.TraversalProbe
-    if (navigation === "Name") fixed = { _tag: navigation, name: probe.name }
-    else if (navigation === "Current" || navigation === "Parent" || navigation === "Root") fixed = { _tag: navigation }
-    else return R.failure(new M.InvalidInput({ operation: "select", field: "probe", reason: "malformed" }))
-    return step(context, "select", fixed._tag === "Name" ? [fixed.name] : [], [lease], () => (tx) => {
-      let route: E.Route
-      if (fixed._tag === "Root") route = tx.resolve(E.asciiPath("/"), true)
-      else {
-        const path = fixed._tag === "Name"
-          ? E.nameValue(fixed.name, tx.operation)
-          : E.asciiPath(fixed._tag === "Parent" ? ".." : ".")
-        if (fixed._tag === "Name" && BigInt(BytePath.byteLength(path)) > tx.engine.runtime.limits.nameBytes) {
-          return R.limit(tx.operation, "name", "resolution")
-        }
-        try {
-          route = tx.childRoute(lease.route, path, false)
-        } catch (error) {
-          if (fixed._tag === "Name" && error instanceof M.NotFound && error.reason === "missingEntry") {
-            return Option.none()
+) =>
+  traversalOnly(Effect.suspend(() =>
+    Result.match(
+      Result.try(() =>
+        Result.gen(function*() {
+          yield* requireOpenResult(context, "select")
+          const lease = yield* checkLeaseResult(context, directoryLease(directory), "select")
+          const navigation = probe?._tag
+          let fixed: M.TraversalProbe
+          if (navigation === "Name") fixed = { _tag: navigation, name: probe.name }
+          else if (navigation === "Current" || navigation === "Parent" || navigation === "Root") {
+            fixed = { _tag: navigation }
+          } else {
+            return yield* Result.fail(new M.InvalidInput({ operation: "select", field: "probe", reason: "malformed" }))
           }
-          throw error
-        }
+          return stepResult(context, "select", fixed._tag === "Name" ? [fixed.name] : [], [lease], () =>
+            Result.succeed((tx: E.Transaction) =>
+              Result.gen(function*() {
+                let route: E.Route
+                if (fixed._tag === "Root") {
+                  route = yield* tx.resolveResult(E.asciiPath("/"), true)
+                } else {
+                  const path = fixed._tag === "Name"
+                    ? yield* E.nameValueResult(fixed.name, tx.operation)
+                    : E.asciiPath(fixed._tag === "Parent" ? ".." : ".")
+                  if (fixed._tag === "Name" && BigInt(BytePath.byteLength(path)) > tx.engine.runtime.limits.nameBytes) {
+                    return yield* Result.fail(
+                      new M.LimitExceeded({ operation: tx.operation, domain: "name", stage: "resolution" })
+                    )
+                  }
+                  const child = tx.childRouteResult(lease.route, path, false)
+                  if (
+                    Result.isFailure(child) && fixed._tag === "Name" && child.failure instanceof M.NotFound &&
+                    child.failure.reason === "missingEntry"
+                  ) {
+                    return Option.none()
+                  }
+                  route = yield* child
+                }
+                const selected = yield* selection(context, tx, route, fixed._tag === "Name")
+                return Option.some(selected.value)
+              })
+            ))
+        })
+      ),
+      {
+        onFailure: R.failure,
+        onSuccess: (prepared) => Effect.flatten(Effect.fromResult(prepared))
       }
-      return Option.some(selection(context, tx, route, fixed._tag === "Name").value)
-    })
-  })))
+    )
+  ))
 
 const list = (
   context: OperationContext,
   directory: M.TraversalDirectory
-): Effect.Effect<M.TraversalListing, M.TraversalError> =>
-  traversalOnly(Effect.flatten(R.evaluate(() => {
-    requireOpen(context, "list")
-    const lease = checkLease(context, directoryLease(directory), "list")
-    return step(context, "list", [], [lease], () => (tx) => {
-      const route = tx.validateRoute(lease.route)
-      if (route.object.kind !== "directory") return tx.wrongKind()
-      tx.require(route.object, E.READ_PERMISSION | E.EXECUTE_PERMISSION)
-      const bindings = [...route.object.entries.values()].sort((a, b) => BytePath.Order(a.name, b.name))
-      const entries: Array<M.NamedTraversalSelection> = []
-      for (const binding of bindings) {
-        tx.visit()
-        const child: E.Route = {
-          object: tx.get(binding.object),
-          parent: route.object,
-          binding,
-          support: [...lease.route.support, E.routeEdge(route.object.id, binding)]
-        }
-        const created = selection(context, tx, child, true)
-        const selected = created.value
-        if (Option.isNone(selected.entry)) return tx.wrongKind()
-        const named = Object.freeze({ ...selected, entry: selected.entry })
-        registerSelection(named, created.lease)
-        entries.push(named)
-      }
-      tx.touch(route.object.id, ["atime"])
-      const observation = tx.observation(tx.get(route.object.id))
-      if (observation.kind !== "directory") return tx.wrongKind()
-      return { directory: observation, entries }
-    })
-  })))
+) =>
+  traversalOnly(Effect.suspend(() => {
+    return Effect.flatten(Effect.fromResult(Result.gen(function*() {
+      yield* requireOpenResult(context, "list")
+      const lease = yield* checkLeaseResult(context, directoryLease(directory), "list")
+      return stepResult(context, "list", [], [lease], () =>
+        Result.succeed((tx: E.Transaction) =>
+          Result.gen(function*() {
+            const route = yield* tx.validateRouteResult(lease.route)
+            if (route.object.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+            }
+            yield* tx.requireResult(route.object, E.READ_PERMISSION | E.EXECUTE_PERMISSION)
+            const bindings = [...route.object.entries.values()].sort((a, b) => BytePath.Order(a.name, b.name))
+            const entries: Array<M.NamedTraversalSelection> = []
+            for (const binding of bindings) {
+              yield* tx.visitResult()
+              const child: E.Route = {
+                object: yield* tx.getResult(binding.object),
+                parent: route.object,
+                binding,
+                support: [...lease.route.support, E.routeEdge(route.object.id, binding)]
+              }
+              const created = yield* selection(context, tx, child, true)
+              const selected = created.value
+              if (Option.isNone(selected.entry)) {
+                return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+              }
+              const named = Object.freeze({ ...selected, entry: selected.entry })
+              registerSelection(named, created.lease)
+              entries.push(named)
+            }
+            yield* tx.touchResult(route.object.id, ["atime"])
+            const observation = tx.observation(yield* tx.getResult(route.object.id))
+            if (observation.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+            }
+            return { directory: observation, entries }
+          })
+        ))
+    })))
+  }))
 
 const classify = (
   context: OperationContext,
   selected: M.TraversalSelection
-): Effect.Effect<M.TraversalClassification, M.TraversalError> =>
-  traversalOnly(Effect.flatten(R.evaluate(() => {
-    requireOpen(context, "classify")
-    const lease = checkLease(context, selectionLease(selected), "classify")
-    return step(context, "classify", [], [lease], () => (tx): M.TraversalClassification => {
-      let route = tx.validateRoute(lease.route)
-      if (route.object.kind === "symlink") {
-        try {
-          route = tx.followRoute(lease.route)
-        } catch (error) {
-          if (error instanceof M.NotFound && error.reason === "missingEntry") return { kind: "nonDirectory" }
-          throw error
-        }
-      }
-      return route.object.kind === "directory"
-        ? { kind: "directory", directory: location(context, tx, route) }
-        : { kind: "nonDirectory" }
-    })
-  })))
+) =>
+  traversalOnly(Effect.suspend(() => {
+    return Effect.flatten(Effect.fromResult(Result.gen(function*() {
+      yield* requireOpenResult(context, "classify")
+      const lease = yield* checkLeaseResult(context, selectionLease(selected), "classify")
+      return stepResult(context, "classify", [], [lease], () =>
+        Result.succeed((tx: E.Transaction): Result.Result<M.TraversalClassification, M.OperationError> =>
+          Result.gen(function*() {
+            let route = yield* tx.validateRouteResult(lease.route)
+            if (route.object.kind === "symlink") {
+              const followed = tx.followRouteResult(lease.route)
+              if (
+                Result.isFailure(followed) && followed.failure instanceof M.NotFound &&
+                followed.failure.reason === "missingEntry"
+              ) {
+                return { kind: "nonDirectory" }
+              }
+              route = yield* followed
+            }
+            return route.object.kind === "directory"
+              ? { kind: "directory", directory: yield* location(context, tx, route) }
+              : { kind: "nonDirectory" }
+          })
+        ))
+    })))
+  }))
 
 // -----------------------------------------------------------------------------
 // Payload leases and reads
 // -----------------------------------------------------------------------------
 
-const fixedHold = (context: OperationContext, work: R.Work, bytes: bigint): M.PayloadHold => {
-  const resource = work.acquireResource("lease", context.resource)
-  work.retain(bytes, resource)
-  return Object.freeze<M.PayloadHold>({ [M.PayloadHoldTypeId]: M.PayloadHoldTypeId, release: resource.close })
-}
+const fixedHold = (
+  context: OperationContext,
+  work: R.Work,
+  bytes: bigint
+) =>
+  Result.gen(function*() {
+    const resource = yield* work.acquireResourceResult("lease", context.resource)
+    yield* work.retainResult(bytes, resource)
+    return Object.freeze<M.PayloadHold>({ [M.PayloadHoldTypeId]: M.PayloadHoldTypeId, release: resource.close })
+  })
 
-const readLease = <A>(hold: M.PayloadHold, value: A): M.ReadLease<A> =>
+const readLease = <A>(hold: M.PayloadHold, value: A) =>
   Object.freeze<M.ReadLease<A>>({
     ...hold,
     [M.ReadLeaseTypeId]: M.ReadLeaseTypeId,
     value
   })
 
-const readLimits = (tx: E.Transaction, bytes: bigint, file: boolean): void => {
-  if (bytes > tx.engine.runtime.limits.ioBytes) return R.limit(tx.operation, "io", "reservation")
-  if (file && bytes > tx.engine.runtime.limits.fileBytes) return R.limit(tx.operation, "file", "reservation")
+const readLimits = (tx: E.Transaction, bytes: bigint, file: boolean) => {
+  if (bytes > tx.engine.runtime.limits.ioBytes) {
+    return Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "io", stage: "reservation" }))
+  }
+  if (file && bytes > tx.engine.runtime.limits.fileBytes) {
+    return Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "file", stage: "reservation" }))
+  }
+  return Result.succeed(undefined)
 }
 
-const readForText = (context: OperationContext, target: M.Target): Effect.Effect<M.TextRead, M.ReadError> =>
-  R.readOnly(step(context, "readForText", [target], [], () => {
-    const selected = E.snapshotTarget(target)
-    return (tx) => {
-      const node = tx.target(selected).object
-      if (node.kind !== "file") return tx.wrongKind()
-      tx.require(node, E.READ_PERMISSION)
-      const bytes = BigInt(node.data.length)
-      readLimits(tx, bytes, true)
-      tx.reserve(three * bytes)
-      const input = fixedHold(context, tx.work, bytes)
-      const output = fixedHold(context, tx.work, two * bytes)
-      const value = node.data.slice()
-      tx.touch(node.id, ["atime"])
-      return { bytes: readLease(input, value), output }
-    }
-  }))
+const readForText = (context: OperationContext, target: M.Target) =>
+  R.readOnly(
+    stepResult(context, "readForText", [target], [], () =>
+      Result.map(E.snapshotTargetResult(target), (selected) =>
+      (tx: E.Transaction) =>
+        Result.gen(function*() {
+          const { object: node } = yield* tx.targetResult(selected)
+          if (node.kind !== "file") {
+            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+          }
+          yield* tx.requireResult(node, E.READ_PERMISSION)
+          const bytes = BigInt(node.data.length)
+          yield* readLimits(tx, bytes, true)
+          yield* tx.reserveResult(three * bytes)
+          const input = yield* fixedHold(context, tx.work, bytes)
+          const output = yield* fixedHold(context, tx.work, two * bytes)
+          const value = node.data.slice()
+          yield* tx.touchResult(node.id, ["atime"])
+          return { bytes: readLease(input, value), output }
+        })))
+  )
 
 const readForCopy = (
   context: OperationContext,
   source: M.EntryTarget | M.TraversalSelection,
   options?: M.CopyReadOptions
-): Effect.Effect<M.ReadLease<M.CopySourceRead>, M.TraversalError> =>
-  traversalOnly(Effect.flatten(R.evaluate(() => {
-    requireOpen(context, "readForCopy")
-    const sourcePlan: { readonly kind: "selection"; readonly lease: RouteLease } | {
-      readonly kind: "target"
-      readonly target: M.EntryTarget
-    } = isSelection(source)
-      ? { kind: "selection", lease: checkLease(context, selectionLease(source), "readForCopy") }
-      : M.isToken(source)
-      ? R.invalid("readForCopy", "source")
-      : { kind: "target", target: source }
-    E.checkOptions(options, ["followFinalSymlink"], "readForCopy")
-    if (options?.followFinalSymlink !== undefined && typeof options.followFinalSymlink !== "boolean") {
-      return R.failure(
-        new M.InvalidInput({ operation: "readForCopy", field: "followFinalSymlink", reason: "malformed" })
-      )
-    }
-    const follow = options?.followFinalSymlink ?? false
-    return step(
-      context,
-      "readForCopy",
-      sourcePlan.kind === "target" ? [sourcePlan.target] : [],
-      sourcePlan.kind === "selection" ? [sourcePlan.lease] : [],
-      () => {
-        let resolve: (tx: E.Transaction) => E.Route
-        if (sourcePlan.kind === "target") {
-          const target = E.snapshotTarget(sourcePlan.target)
-          resolve = (tx) => tx.target(target, follow)
-        } else {
-          const selected = sourcePlan.lease
-          resolve = (tx) => follow ? tx.followRoute(selected.route) : tx.validateRoute(selected.route)
-        }
-        return (tx) => {
-          const route = resolve(tx)
-          const node = route.object
-          if (node.kind !== "file" && (follow || node.kind !== "symlink")) return tx.wrongKind()
-          if (node.kind === "file") tx.require(node, E.READ_PERMISSION)
-          const bytes = BigInt(node.kind === "file" ? node.data.length : BytePath.byteLength(node.target))
-          readLimits(tx, bytes, node.kind === "file")
-          const ledger = context.ticket.ledger
-          if (bytes > ledger.maxCopyBytes - ledger.copyBytes) return R.limit(tx.operation, "copyBytes", "traversal")
-          ledger.copyBytes += bytes
-          tx.reserve(bytes)
-          const hold = fixedHold(context, tx.work, bytes)
-          const accessTimeBeforeRead = node.atime
-          const value = node.kind === "file" ? node.data.slice() : node.target
-          tx.touch(node.id, ["atime"])
-          const observation = tx.observation(tx.get(node.id))
-          if (node.kind === "file" && observation.kind === "file" && value instanceof Uint8Array) {
-            return readLease<M.CopySourceRead>(hold, {
-              kind: "file",
-              read: { value, object: observation, accessTimeBeforeRead }
-            })
+) =>
+  traversalOnly(Effect.suspend(() =>
+    Result.match(
+      Result.try(() =>
+        Result.gen(function*() {
+          yield* requireOpenResult(context, "readForCopy")
+          const sourcePlan: { readonly kind: "selection"; readonly lease: RouteLease } | {
+            readonly kind: "target"
+            readonly target: M.EntryTarget
+          } = isSelection(source)
+            ? { kind: "selection", lease: yield* checkLeaseResult(context, selectionLease(source), "readForCopy") }
+            : M.isToken(source)
+            ? yield* Result.fail(new M.InvalidInput({ operation: "readForCopy", field: "source", reason: "malformed" }))
+            : { kind: "target", target: source }
+          yield* E.checkOptionsResult(options, ["followFinalSymlink"], "readForCopy")
+          if (options?.followFinalSymlink !== undefined && typeof options.followFinalSymlink !== "boolean") {
+            return yield* Result.fail(
+              new M.InvalidInput({ operation: "readForCopy", field: "followFinalSymlink", reason: "malformed" })
+            )
           }
-          if (node.kind === "symlink" && observation.kind === "symlink" && BytePath.isBytePath(value)) {
-            return readLease<M.CopySourceRead>(hold, {
-              kind: "symlink",
-              read: { value, object: observation, accessTimeBeforeRead }
-            })
-          }
-          return tx.wrongKind()
-        }
+          const follow = options?.followFinalSymlink ?? false
+          return stepResult(
+            context,
+            "readForCopy",
+            sourcePlan.kind === "target" ? [sourcePlan.target] : [],
+            sourcePlan.kind === "selection" ? [sourcePlan.lease] : [],
+            () =>
+              Result.gen(function*() {
+                let resolve: (tx: E.Transaction) => Result.Result<E.Route, M.OperationError>
+                if (sourcePlan.kind === "target") {
+                  const target = yield* E.snapshotTargetResult(sourcePlan.target)
+                  resolve = (tx) => tx.targetResult(target, follow)
+                } else {
+                  const selected = sourcePlan.lease
+                  resolve = (tx) =>
+                    follow ? tx.followRouteResult(selected.route) : tx.validateRouteResult(selected.route)
+                }
+                return (tx: E.Transaction) =>
+                  Result.gen(function*() {
+                    const route = yield* resolve(tx)
+                    const node = route.object
+                    if (node.kind !== "file" && (follow || node.kind !== "symlink")) {
+                      return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+                    }
+                    if (node.kind === "file") yield* tx.requireResult(node, E.READ_PERMISSION)
+                    const bytes = BigInt(node.kind === "file" ? node.data.length : BytePath.byteLength(node.target))
+                    yield* readLimits(tx, bytes, node.kind === "file")
+                    const ledger = context.ticket.ledger
+                    if (bytes > ledger.maxCopyBytes - ledger.copyBytes) {
+                      return yield* Result.fail(
+                        new M.LimitExceeded({ operation: tx.operation, domain: "copyBytes", stage: "traversal" })
+                      )
+                    }
+                    ledger.copyBytes += bytes
+                    yield* tx.reserveResult(bytes)
+                    const hold = yield* fixedHold(context, tx.work, bytes)
+                    const accessTimeBeforeRead = node.atime
+                    const value = node.kind === "file" ? node.data.slice() : node.target
+                    yield* tx.touchResult(node.id, ["atime"])
+                    const observation = tx.observation(yield* tx.getResult(node.id))
+                    if (node.kind === "file" && observation.kind === "file" && value instanceof Uint8Array) {
+                      return readLease<M.CopySourceRead>(hold, {
+                        kind: "file",
+                        read: { value, object: observation, accessTimeBeforeRead }
+                      })
+                    }
+                    if (node.kind === "symlink" && observation.kind === "symlink" && BytePath.isBytePath(value)) {
+                      return readLease<M.CopySourceRead>(hold, {
+                        kind: "symlink",
+                        read: { value, object: observation, accessTimeBeforeRead }
+                      })
+                    }
+                    return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+                  })
+              })
+          )
+        })
+      ),
+      {
+        onFailure: R.failure,
+        onSuccess: (prepared) => Effect.flatten(Effect.fromResult(prepared))
       }
     )
-  })))
+  ))
 
 // -----------------------------------------------------------------------------
 // Target planning and mutations
@@ -523,7 +670,10 @@ const readForCopy = (
 interface TargetPlan<Target extends M.Target = M.Target> {
   readonly targets: ReadonlyArray<M.Target | M.DirectorySelector>
   readonly leases: ReadonlyArray<Lease>
-  readonly snapshot: () => (tx: E.Transaction) => Target
+  readonly snapshot: () => Result.Result<
+    (tx: E.Transaction) => Result.Result<Target, M.OperationError>,
+    M.OperationError
+  >
 }
 
 type OperationTarget = M.Target | M.OperationEntryAddress | M.TraversalDirectory
@@ -536,48 +686,60 @@ function planTarget<Target extends OperationTarget>(
   context: OperationContext,
   target: Target,
   operation: string
-): TargetPlan<PlannedTarget<Target>>
-function planTarget(context: OperationContext, target: OperationTarget, operation: string): TargetPlan {
-  const direct = directoryLease(target)
-  if (direct !== undefined) {
-    checkLease(context, direct, operation)
-    return {
-      targets: [],
-      leases: [direct],
-      snapshot: () => (tx) => {
-        tx.validateRoute(direct.route)
-        return tx.engine.reference(direct.route.id)
+): Result.Result<TargetPlan<PlannedTarget<Target>>, M.OperationError>
+function planTarget(
+  context: OperationContext,
+  target: OperationTarget,
+  operation: string
+): Result.Result<TargetPlan, M.OperationError> {
+  return Result.gen(function*() {
+    const direct = directoryLease(target)
+    if (direct !== undefined) {
+      yield* checkLeaseResult(context, direct, operation)
+      return {
+        targets: [],
+        leases: [direct],
+        snapshot: () =>
+          Result.succeed((tx: E.Transaction) =>
+            Result.gen(function*() {
+              yield* tx.validateRouteResult(direct.route)
+              return tx.engine.reference(direct.route.id)
+            })
+          )
       }
     }
-  }
-  if (target !== null && typeof target === "object" && "directory" in target) {
-    const directory = directoryLease(target.directory)
-    if (directory !== undefined) {
-      checkLease(context, directory, operation)
-      const name = target.name
-      return {
-        targets: [name],
-        leases: [directory],
-        snapshot: () => (tx) => {
-          tx.validateRoute(directory.route)
-          return { directory: tx.engine.reference(directory.route.id), name: E.nameValue(name, operation) }
+    if (target !== null && typeof target === "object" && "directory" in target) {
+      const directory = directoryLease(target.directory)
+      if (directory !== undefined) {
+        yield* checkLeaseResult(context, directory, operation)
+        const name = target.name
+        return {
+          targets: [name],
+          leases: [directory],
+          snapshot: () =>
+            Result.succeed((tx: E.Transaction) =>
+              Result.gen(function*() {
+                yield* tx.validateRouteResult(directory.route)
+                return {
+                  directory: tx.engine.reference(directory.route.id),
+                  name: yield* E.nameValueResult(name, operation)
+                }
+              })
+            )
         }
       }
     }
-  }
-  // NOTE: Failed membership leaves an untrusted candidate, not an authenticated lease.
-  // This transport assertion only hands it to addressBytes, which rejects malformed
-  // address shapes before snapshot(). Transaction still checks token kinds,
-  // instance identity and current authority; registered leases were checked above.
-  const candidate = target as M.Target
-  return {
-    targets: [candidate],
-    leases: [],
-    snapshot: () => {
-      const selected = E.snapshotTarget(candidate)
-      return () => selected
+    // NOTE: Failed membership leaves an untrusted candidate, not an authenticated lease.
+    // This transport assertion only hands it to addressBytes, which rejects malformed
+    // address shapes before snapshot(). Transaction still checks token kinds,
+    // instance identity and current authority; registered leases were checked above.
+    const candidate = target as M.Target
+    return {
+      targets: [candidate],
+      leases: [],
+      snapshot: () => Result.map(E.snapshotTargetResult(candidate), (selected) => () => Result.succeed(selected))
     }
-  }
+  })
 }
 
 const mutate = <Operation extends A.Operation, Target extends OperationTarget, Value>(
@@ -587,57 +749,80 @@ const mutate = <Operation extends A.Operation, Target extends OperationTarget, V
   options: A.OptionsByOperation[Operation],
   prepare: (
     work: R.Work
-  ) => (tx: E.Transaction, target: PlannedTarget<Target>, options: A.OptionsByOperation[Operation]) => Value,
-  validate?: () => void
-): Effect.Effect<Value, M.OperationError> =>
-  Effect.flatten(R.evaluate(() => {
-    requireOpen(context, operation)
-    A.validate(operation, options)
-    validate?.()
-    const plan = planTarget(context, target, operation)
-    return step(context, operation, plan.targets, plan.leases, (work) => {
-      A.validate(operation, options)
-      const selected = plan.snapshot()
-      const fixedOptions = P.snapshotOptions[operation](options)
-      const body = prepare(work)
-      return (tx) => body(tx, selected(tx), fixedOptions)
-    })
-  }))
+  ) => Result.Result<
+    (
+      tx: E.Transaction,
+      target: PlannedTarget<Target>,
+      options: A.OptionsByOperation[Operation]
+    ) => Result.Result<Value, M.OperationError>,
+    M.OperationError
+  >,
+  validate?: () => Result.Result<unknown, M.OperationError>
+) =>
+  Effect.suspend(() =>
+    Result.match(
+      Result.try(() =>
+        Result.gen(function*() {
+          yield* requireOpenResult(context, operation)
+          yield* A.validate(operation, options)
+          if (validate !== undefined) yield* validate()
+          const plan = yield* planTarget(context, target, operation)
+          return stepResult(context, operation, plan.targets, plan.leases, (work) =>
+            Result.gen(function*() {
+              yield* A.validate(operation, options)
+              const selected = yield* plan.snapshot()
+              const fixedOptions = yield* P.snapshotOptions[operation](options)
+              const body = yield* prepare(work)
+              return (tx: E.Transaction) => Result.flatMap(selected(tx), (target) => body(tx, target, fixedOptions))
+            }))
+        })
+      ),
+      {
+        onFailure: R.failure,
+        onSuccess: (prepared) => Effect.flatten(Effect.fromResult(prepared))
+      }
+    )
+  )
 
-const makeFiles = (context: OperationContext): M.OperationFiles =>
+const makeFiles = (context: OperationContext) =>
   Object.freeze<M.OperationFiles>({
     [M.OperationFilesTypeId]: M.OperationFilesTypeId,
     readForText: (target) => readForText(context, target),
     readForCopy: (target, options) => readForCopy(context, target, options),
     writeFile: (target: M.Target | M.OperationEntryAddress, data: Uint8Array, options?: M.WriteFileOptions) =>
-      mutate(context, "writeFile", target, options, (work) => {
-        const fixed = P.snapshotInput(work, data)
-        return (tx, target, options) => A.writeFile(tx, target, fixed, options)
-      }, () => {
-        P.inputLength(data, "writeFile", context.caller.runtime.limits)
-      }),
+      mutate(context, "writeFile", target, options, (work) =>
+        Result.map(P.snapshotInput(work, data), (fixed) => (tx, target, options) =>
+          A.writeFile(tx, target, fixed, options)), () =>
+        P.inputLength(data, "writeFile", context.caller.runtime.limits)),
     publishCopiedFile: (target, data, options) =>
-      mutate(context, "publishCopiedFile", target, options, (work) => {
-        const fixed = P.snapshotInput(work, data)
-        return (tx, target, options) => A.publishCopiedFile(tx, target, fixed, options)
-      }, () => {
-        P.inputLength(data, "publishCopiedFile", context.caller.runtime.limits)
-      }),
+      mutate(context, "publishCopiedFile", target, options, (work) =>
+        Result.map(P.snapshotInput(work, data), (fixed) => (tx, target, options) =>
+          A.publishCopiedFile(tx, target, fixed, options)), () =>
+        P.inputLength(data, "publishCopiedFile", context.caller.runtime.limits)),
     publishCopiedSymlink: (target, link, options) =>
-      mutate(context, "publishCopiedSymlink", target, options, (work) => {
-        if (!BytePath.isBytePath(link)) return R.invalid(work.operation, "target")
-        work.reserve(BigInt(BytePath.byteLength(link)))
-        return (tx, target, options) => A.publishCopiedSymlink(tx, target, link, options)
-      }),
+      mutate(context, "publishCopiedSymlink", target, options, (work) =>
+        Result.gen(function*() {
+          if (!BytePath.isBytePath(link)) {
+            return yield* Result.fail(
+              new M.InvalidInput({ operation: work.operation, field: "target", reason: "malformed" })
+            )
+          }
+          yield* work.reserveResult(BigInt(BytePath.byteLength(link)))
+          return (tx, target, options) =>
+            A.publishCopiedSymlink(tx, target, link, options)
+        })),
     makeDirectory: (target, options) =>
-      mutate(context, "makeDirectory", target, options, () => (tx, target, options) =>
-        A.makeDirectory(tx, target, options)),
+      mutate(context, "makeDirectory", target, options, () =>
+        Result.succeed((tx, target, options) =>
+          A.makeDirectory(tx, target, options)
+        )),
     setAttributes: (target, attributes, options) =>
-      mutate(context, "setAttributes", target, options, () => {
-        A.validateAttributes(attributes, "setAttributes")
-        const fixed = P.snapshotAttributes(attributes, "setAttributes")
-        return (tx, target, options) =>
-          A.setAttributes(tx, target, fixed, options)
-      }, () =>
+      mutate(context, "setAttributes", target, options, () =>
+        Result.gen(function*() {
+          yield* A.validateAttributes(attributes, "setAttributes")
+          const fixed = yield* P.snapshotAttributes(attributes, "setAttributes")
+          return (tx, target, options) =>
+            A.setAttributes(tx, target, fixed, options)
+        }), () =>
         A.validateAttributes(attributes, "setAttributes"))
   })
