@@ -398,77 +398,11 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         options.onGroup?.(onGroupOptions)
       },
       onEndpoint(onEndpointOptions) {
-        const { group, endpoint, errors, successes, mergedAnnotations } = onEndpointOptions
+        const { group, endpoint, mergedAnnotations } = onEndpointOptions
         const parseOptions = HttpApi.getSlotParseOptions(mergedAnnotations)
         const makeUrl = compilePath(endpoint.path, endpoint.params)
-        const decodeMap: Record<number | "orElse", ResponseDecoder> = { orElse: statusOrElse }
-        const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
-        for (const [status, schemas] of errors.entries()) {
-          const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(
-              errorAlternatives,
-              status,
-              contentType,
-              schemasToResponse(schemas, parseOptions.error, parseOptions.headers)
-            )
-          }
-        }
-        for (const [status, alternatives] of errorAlternatives.entries()) {
-          const decode = makeResponseDecoder(alternatives)
-          decodeMap[status] = (response) =>
-            Effect.flatMap(
-              Effect.catchCause(decode(response), (cause) =>
-                Effect.failCause(Cause.combine(
-                  Cause.fail(
-                    new HttpClientError.HttpClientError({
-                      reason: new HttpClientError.StatusCodeError({
-                        request: response.request,
-                        response
-                      })
-                    })
-                  ),
-                  cause
-                ))),
-              Effect.fail
-            )
-        }
-
-        const successAlternatives = new Map<number, Array<ResponseAlternative>>()
-        for (const [status, schemas] of successes.entries()) {
-          const grouped = groupSchemasByContentType(schemas)
-          for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(
-              successAlternatives,
-              status,
-              contentType,
-              schemasToResponse(schemas, parseOptions.success, parseOptions.headers)
-            )
-          }
-        }
-        for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
-          const streamSchema = isWithHeadersStreamSuccess(streamSuccess) ? streamSuccess.schema : streamSuccess
-          const status = HttpApiSchema.getStatusSuccessSchema(streamSuccess)
-          const decode = streamToResponse(streamSuccess, parseOptions.success, parseOptions.headers)
-          for (const contentType of streamSchema.contentTypes) {
-            addResponseAlternative(successAlternatives, status, contentType, decode)
-          }
-        }
-        for (const [status, alternatives] of successAlternatives.entries()) {
-          decodeMap[status] = makeResponseDecoder(alternatives)
-        }
         const upgrade = getUpgradeSuccessSchema(endpoint)
-        if (upgrade !== undefined) {
-          const decodeHeaders = upgrade.headers === undefined
-            ? Effect.succeed
-            : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
-          decodeMap[101] = (response) =>
-            Effect.zipWith(
-              decodeHeaders(response.headers),
-              response.upgrade,
-              (headers, socket): Upgraded<unknown> => ({ headers, socket })
-            )
-        }
+        const decodeEndpointResponse = makeEndpointDecoder(onEndpointOptions)
 
         const encodeParams = UndefinedOr.map(
           endpoint.params,
@@ -587,7 +521,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             return response
           }
 
-          const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, request?.sseOptions)
+          const decoded = decodeEndpointResponse(response, request?.sseOptions)
           const value = yield* (options.transformResponse === undefined
             ? decoded
             : options.transformResponse(decoded))
@@ -765,6 +699,111 @@ export const endpoint = <
   }).pipe(Effect.map(() => client)) as any
 }
 
+type DecodeResponse<
+  Groups extends HttpApiGroup.Constraint,
+  GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+  EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
+  Endpoint extends HttpApiEndpoint.ConstraintRequest = Extract<
+    HttpApiEndpoint.WithIdentifier<HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>, EndpointIdentifier>,
+    HttpApiEndpoint.ConstraintRequest
+  >
+> = (
+  response: HttpClientResponse.HttpClientResponse,
+  options?: {
+    readonly sseOptions?: Sse.DecodeOptions | undefined
+  }
+) => Effect.Effect<
+  SuccessType<Endpoint["~Success"]>,
+  HttpApiEndpoint.Errors<Endpoint> | HttpClientError.HttpClientError | Schema.SchemaError,
+  SuccessDecodingServices<Endpoint["~Success"]> | Endpoint["~Error"]["DecodingServices"]
+>
+
+/**
+ * Builds a decoder for raw responses of one endpoint in one API group, using
+ * the same success and error decoding as a generated client method in
+ * `"decoded-only"` mode.
+ *
+ * **When to use**
+ *
+ * Use with `responseMode: "response-only"` when the response head and body
+ * arrive at different times, such as long polling, and the body should be
+ * decoded later.
+ *
+ * **Details**
+ *
+ * The response does not need to come from a generated client. Declared error
+ * responses fail with the decoded error, and undeclared statuses fail with a
+ * `StatusCodeError`. Parse options are resolved from the API, group and
+ * endpoint annotations. The body is only read when the returned effect runs,
+ * so it must run inside the scope that owns the response. Middleware and
+ * `transformResponse` are not applied.
+ *
+ * Building the decoder walks the API declaration, so build it once per
+ * endpoint and reuse it.
+ *
+ * **Example** (Decoding a response body after the head arrives)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
+ *
+ * const Api = HttpApi.make("Api").add(
+ *   HttpApiGroup.make("containers").add(
+ *     HttpApiEndpoint.post("wait", "/containers/:id/wait", {
+ *       params: { id: Schema.String },
+ *       success: Schema.Struct({ StatusCode: Schema.Number })
+ *     })
+ *   )
+ * )
+ *
+ * const decodeWait = HttpApiClient.decodeResponse(Api, {
+ *   group: "containers",
+ *   endpoint: "wait"
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* HttpApiClient.make(Api)
+ *   // Succeeds as soon as the response head arrives
+ *   const response = yield* client.containers.wait({
+ *     params: { id: "my-container" },
+ *     responseMode: "response-only"
+ *   })
+ *   // Waits for the body, then decodes it with the endpoint schemas
+ *   return yield* decodeWait(response)
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.7
+ */
+export const decodeResponse = <
+  ApiId extends string,
+  Groups extends HttpApiGroup.Constraint,
+  const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+  const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"]
+>(
+  api: HttpApi.HttpApi<ApiId, Groups>,
+  options: {
+    readonly group: GroupIdentifier
+    readonly endpoint: EndpointIdentifier
+  }
+): DecodeResponse<Groups, GroupIdentifier, EndpointIdentifier> => {
+  let decode: ResponseDecoder | undefined
+  HttpApi.reflect(api, {
+    predicate: ({ endpoint, group }) => group.identifier === options.group && endpoint.identifier === options.endpoint,
+    onGroup() {},
+    onEndpoint(endpointOptions) {
+      decode = makeEndpointDecoder(endpointOptions)
+    }
+  })
+  return ((response, decodeOptions) => decode!(response, decodeOptions?.sseOptions)) as DecodeResponse<
+    Groups,
+    GroupIdentifier,
+    EndpointIdentifier
+  >
+}
+
 /**
  * Creates a type-safe URL builder that mirrors `HttpApiClient.make`.
  *
@@ -926,6 +965,86 @@ function toCodecArrayBufferWithHeaders(
         Effect.fail(new SchemaIssue.Forbidden({ message: "Decode only schema" }, input, options))
     })
   ))
+}
+
+const makeEndpointDecoder = (options: {
+  readonly endpoint: HttpApiEndpoint.Top
+  readonly mergedAnnotations: Context.Context<never>
+  readonly successes: ReadonlyMap<number, readonly [Schema.Top, ...Array<Schema.Top>]>
+  readonly errors: ReadonlyMap<number, readonly [Schema.Top, ...Array<Schema.Top>]>
+}): ResponseDecoder => {
+  const { endpoint, errors, successes, mergedAnnotations } = options
+  const parseOptions = HttpApi.getSlotParseOptions(mergedAnnotations)
+  const decodeMap: Record<number | "orElse", ResponseDecoder> = { orElse: statusOrElse }
+  const errorAlternatives = new Map<number, Array<ResponseAlternative>>()
+  for (const [status, schemas] of errors.entries()) {
+    const grouped = groupSchemasByContentType(schemas)
+    for (const [contentType, schemas] of grouped.entries()) {
+      addResponseAlternative(
+        errorAlternatives,
+        status,
+        contentType,
+        schemasToResponse(schemas, parseOptions.error, parseOptions.headers)
+      )
+    }
+  }
+  for (const [status, alternatives] of errorAlternatives.entries()) {
+    const decode = makeResponseDecoder(alternatives)
+    decodeMap[status] = (response) =>
+      Effect.flatMap(
+        Effect.catchCause(decode(response), (cause) =>
+          Effect.failCause(Cause.combine(
+            Cause.fail(
+              new HttpClientError.HttpClientError({
+                reason: new HttpClientError.StatusCodeError({
+                  request: response.request,
+                  response
+                })
+              })
+            ),
+            cause
+          ))),
+        Effect.fail
+      )
+  }
+
+  const successAlternatives = new Map<number, Array<ResponseAlternative>>()
+  for (const [status, schemas] of successes.entries()) {
+    const grouped = groupSchemasByContentType(schemas)
+    for (const [contentType, schemas] of grouped.entries()) {
+      addResponseAlternative(
+        successAlternatives,
+        status,
+        contentType,
+        schemasToResponse(schemas, parseOptions.success, parseOptions.headers)
+      )
+    }
+  }
+  for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
+    const streamSchema = isWithHeadersStreamSuccess(streamSuccess) ? streamSuccess.schema : streamSuccess
+    const status = HttpApiSchema.getStatusSuccessSchema(streamSuccess)
+    const decode = streamToResponse(streamSuccess, parseOptions.success, parseOptions.headers)
+    for (const contentType of streamSchema.contentTypes) {
+      addResponseAlternative(successAlternatives, status, contentType, decode)
+    }
+  }
+  for (const [status, alternatives] of successAlternatives.entries()) {
+    decodeMap[status] = makeResponseDecoder(alternatives)
+  }
+  const upgrade = getUpgradeSuccessSchema(endpoint)
+  if (upgrade !== undefined) {
+    const decodeHeaders = upgrade.headers === undefined
+      ? Effect.succeed
+      : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
+    decodeMap[101] = (response) =>
+      Effect.zipWith(
+        decodeHeaders(response.headers),
+        response.upgrade,
+        (headers, socket): Upgraded<unknown> => ({ headers, socket })
+      )
+  }
+
+  return (response, sseOptions) => (decodeMap[response.status] ?? decodeMap.orElse)(response, sseOptions)
 }
 
 type ResponseDecoder = (
