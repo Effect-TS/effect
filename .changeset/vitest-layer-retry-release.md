@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-Fix `it.layer` without a name releasing its shared layer before later tests run when a test uses `retry` or `repeats`.
+Fix unnamed `it.layer` blocks releasing their shared layer before later tests run when a test uses `retry` or `repeats`. Such blocks now keep their resources alive until the enclosing suite ends, so they may overlap with later blocks.
