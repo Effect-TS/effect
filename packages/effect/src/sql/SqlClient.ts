@@ -89,7 +89,9 @@ export interface SqlClient extends Constructor {
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
    * that don't go through `makeWithTransaction`, such as those of
-   * `@effect/sql-sqlite-do`, invalidate immediately.
+   * `@effect/sql-sqlite-do`, invalidate immediately, and `SqlResolver` only
+   * recognizes them when this client is the `SqlClient` in the caller's
+   * context.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -515,10 +517,7 @@ const makeAfterCommit =
       }
       // Runs later with the services in scope now, without the transaction.
       buffer.callbacks.push(
-        Effect.provideContext(
-          effect,
-          Context.omit(transactionService)(fiber.context) as Context.Context<R>
-        )
+        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
       )
       return Effect.void
     })
@@ -528,6 +527,10 @@ const makeAfterCommit =
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
+ *
+ * Transactions started this way are also recognized by `SqlResolver` when the
+ * caller's context has no `SqlClient`, so their requests don't share a batch
+ * with requests outside the transaction.
  *
  * @stability unstable
  * @category transactions
