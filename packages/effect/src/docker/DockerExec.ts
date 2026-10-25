@@ -302,7 +302,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
     function*(id: string, options?: { readonly consoleSize?: DockerApi.TtySize | undefined }) {
       const info = yield* inspect(id)
       const tty = info.ProcessConfig?.tty === true
-      const body: DockerSchema.ExecStartConfig = {
+      const body: DockerApi.ExecStartConfig = {
         Detach: false,
         Tty: tty,
         ...(options?.consoleSize !== undefined
@@ -314,7 +314,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         return yield* makeHandle({
           engine,
           socket,
-          framing: fromContentType(headers["content-type"]) ?? (tty ? "raw" : "multiplexed"),
+          contentType: headers["content-type"] ?? contentTypeOf(tty),
           stdin: info.OpenStdin === true,
           exitCode: (outputDone) => Effect.andThen(outputDone, exitCodeWith(inspect, id)),
           resize: (size) => resize(id, size)
@@ -412,7 +412,8 @@ export const layer: Layer.Layer<DockerExec, never, DockerEngine> = Layer.effect(
 // -----------------------------------------------------------------------------
 
 /*
- * The Engine's stream framing for logs, attach and exec.
+ * The Engine's stream framing for logs, attach and exec, which the response's
+ * `Content-Type` names (`DockerApi.StreamContentType`).
  *
  * Without a TTY the Engine multiplexes stdout and stderr: each frame has an
  * 8-byte header `[type, 0, 0, 0, size (uint32, big-endian)]` followed by `size`
@@ -422,26 +423,13 @@ export const layer: Layer.Layer<DockerExec, never, DockerEngine> = Layer.effect(
  */
 
 /**
- * How to read a stream: multiplexed frames, or raw stdout.
+ * The content type of a stream that has none: raw with a TTY, multiplexed
+ * otherwise.
  *
  * @internal
  */
-export type Framing = "multiplexed" | "raw"
-
-/**
- * Picks the framing from a `Content-Type`, when it is one of the two stream
- * types. Any other content type, or none, decides nothing.
- *
- * @internal
- */
-export const fromContentType = (contentType: string | undefined): Framing | undefined => {
-  const type = contentType?.split(";")[0].trim().toLowerCase()
-  return type === "application/vnd.docker.multiplexed-stream"
-    ? "multiplexed"
-    : type === "application/vnd.docker.raw-stream"
-    ? "raw"
-    : undefined
-}
+export const contentTypeOf = (tty: boolean): DockerApi.StreamContentType =>
+  tty ? "application/vnd.docker.raw-stream" : "application/vnd.docker.multiplexed-stream"
 
 /**
  * The result of feeding bytes to a demultiplexer. `SystemError` ends the
@@ -505,15 +493,17 @@ const truncatedFrame = (pending: number): DockerError =>
   })
 
 /**
- * Turns a byte stream into frames with the given framing.
+ * Turns a byte stream into frames, as its content type frames it.
  *
  * @internal
  */
 export const frames = <E, R>(
   bytes: Stream.Stream<Uint8Array, E, R>,
-  framing: Framing
+  contentType: DockerApi.StreamContentType
 ): Stream.Stream<LogFrame, E | DockerError, R> => {
-  if (framing === "raw") return Stream.map(bytes, (data): LogFrame => ({ stream: "stdout", data }))
+  if (contentType === "application/vnd.docker.raw-stream") {
+    return Stream.map(bytes, (data): LogFrame => ({ stream: "stdout", data }))
+  }
   return Stream.suspend(() => {
     const demuxer = makeDemuxer()
     return Stream.flatMap(bytes, (chunk): Stream.Stream<LogFrame, DockerError> => {
@@ -567,7 +557,7 @@ const isEnd = (error: Socket.SocketError): boolean =>
 export const makeHandle = (options: {
   readonly engine: DockerEngine["Service"]
   readonly socket: Socket.Socket
-  readonly framing: Framing
+  readonly contentType: DockerApi.StreamContentType
   readonly stdin: boolean
   /**
    * For exec, runs once the output has ended (`outputDone` fails with the
@@ -594,7 +584,7 @@ export const makeHandle = (options: {
         )
         if (chunks === undefined) break
         for (const chunk of chunks) {
-          if (options.framing === "raw") {
+          if (options.contentType === "application/vnd.docker.raw-stream") {
             yield* Queue.offer(stdout, chunk)
             continue
           }

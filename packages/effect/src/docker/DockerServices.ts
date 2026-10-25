@@ -41,7 +41,7 @@ import type * as DockerConfig from "./DockerConfig.ts"
 import { type LogFrame, logsQuery } from "./DockerContainers.ts"
 import { apiClient, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse } from "./DockerError.ts"
-import { frames, fromContentType } from "./DockerExec.ts"
+import { frames } from "./DockerExec.ts"
 import * as DockerImages from "./DockerImages.ts"
 import { authConfig, DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
@@ -189,17 +189,17 @@ export const parseLogLine = (line: string, options?: { readonly timestamps?: boo
  */
 export const logFrames = (
   logs: {
-    readonly headers: { readonly "content-type"?: string | undefined }
+    readonly headers: { readonly "content-type"?: DockerApi.StreamContentType | undefined }
     readonly body: Stream.Stream<Uint8Array, DockerError>
   },
   operation: string
 ): Stream.Stream<LogFrame, DockerError> => {
-  const framing = fromContentType(logs.headers["content-type"])
-  return framing === undefined
+  const contentType = logs.headers["content-type"]
+  return contentType === undefined
     ? Stream.fail(
       new DockerError({ reason: new InvalidResponse({ issue: "the logs have no stream Content-Type" }), operation })
     )
-    : frames(logs.body, framing)
+    : frames(logs.body, contentType)
 }
 
 // -----------------------------------------------------------------------------

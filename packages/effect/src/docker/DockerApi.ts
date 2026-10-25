@@ -222,8 +222,31 @@ export class SwarmErrors extends HttpApiMiddleware.Service<SwarmErrors>()("effec
 const id = { id: Schema.String }
 const name = { name: Schema.String }
 
-/** The headers of a logs response: its `Content-Type` says whether it is raw or multiplexed. */
-const logsHeaders = { "content-type": Schema.optional(Schema.String) }
+/**
+ * The media type of a container's output stream, which logs, attach and exec
+ * start answer with: `multiplexed-stream` frames stdout and stderr,
+ * `raw-stream` is the output of a TTY as it is.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const StreamContentType = Schema.Literals([
+  "application/vnd.docker.raw-stream",
+  "application/vnd.docker.multiplexed-stream"
+])
+
+/**
+ * The media type of a container's output stream, see {@link StreamContentType}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type StreamContentType = typeof StreamContentType.Type
+
+/** The headers of an output stream's response, or of its `101`: the `Content-Type` says how it is framed. */
+const streamHeaders = { "content-type": Schema.optional(StreamContentType) }
 
 /**
  * Filters of a list or prune: values by key, one value as a string, as the Engine's JSON `map[string][]string` query parameter.
@@ -703,7 +726,7 @@ export const Containers = HttpApiGroup.make("containers").add(
       tail: Schema.optional(Schema.Union([Schema.Number, Schema.Literal("all")]))
     },
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
   }),
   HttpApiEndpoint.get("stats", "/containers/:id/stats", {
     params: id,
@@ -735,7 +758,7 @@ export const Containers = HttpApiGroup.make("containers").add(
       logs: Schema.optional(Schema.Boolean),
       detachKeys: Schema.optional(Schema.String)
     },
-    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders })
   }),
   HttpApiEndpoint.head("statPath", "/containers/:id/archive", {
     params: id,
@@ -788,9 +811,32 @@ export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fi
 export type ExecConfig = typeof ExecConfig.Type
 
 /**
+ * How to start an exec, as the Engine's `ExecStartConfig`, attached to its
+ * stdio: `Detach` can only be `false`. A detached start answers `200` instead
+ * of upgrading the connection, which an upgrade endpoint can't declare.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExecStartConfig = DockerSchema.ExecStartConfig.mapFields((fields) => ({
+  ...fields,
+  Detach: Schema.optionalKey(Schema.Literal(false))
+}))
+
+/**
+ * How to start an exec, see {@link ExecStartConfig}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ExecStartConfig = typeof ExecStartConfig.Type
+
+/**
  * The Engine's exec endpoints, which `DockerExec` is a client of. Starting an
  * exec upgrades its request, which carries the start options, to the exec's
- * stdio.
+ * stdio, framed as the `101`'s `Content-Type` says.
  *
  * @stability unstable
  * @category groups
@@ -808,8 +854,8 @@ export const Exec = HttpApiGroup.make("exec").add(
   }),
   HttpApiEndpoint.post("start", "/exec/:id/start", {
     params: id,
-    payload: DockerSchema.ExecStartConfig,
-    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+    payload: ExecStartConfig,
+    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders })
   }),
   HttpApiEndpoint.post("resize", "/exec/:id/resize", {
     params: id,
@@ -1431,7 +1477,7 @@ export const Services = HttpApiGroup.make("services").add(
     params: id,
     query: LogsQuery,
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
   })
 ).middleware(SwarmErrors)
 
@@ -1459,7 +1505,7 @@ export const Tasks = HttpApiGroup.make("tasks").add(
     params: id,
     query: LogsQuery,
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
   })
 ).middleware(SwarmErrors)
 

@@ -54,7 +54,7 @@ import {
   withStreamOperation
 } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse, StreamFailed } from "./DockerError.ts"
-import { frames, type Framing, fromContentType, type Handle, makeHandle, releaseOnFailure } from "./DockerExec.ts"
+import { contentTypeOf, frames, type Handle, makeHandle, releaseOnFailure } from "./DockerExec.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 
 /**
@@ -589,13 +589,14 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
   const inspect: DockerContainers["Service"]["inspect"] = (id, options) =>
     api.inspect({ params: { id }, query: options ?? {} })
   const resize: DockerContainers["Service"]["resize"] = (id, size) => api.resize({ params: { id }, query: size })
-  /** The framing of a stream, from its `Content-Type`, otherwise from whether the container has a TTY. */
-  const framingOf = (id: string, contentType: string | undefined): Effect.Effect<Framing, DockerError> => {
-    const framing = fromContentType(contentType)
-    return framing !== undefined
-      ? Effect.succeed(framing)
-      : Effect.map(inspect(id), (info) => info.Config?.Tty === true ? "raw" : "multiplexed")
-  }
+  /** A stream's content type, as the Engine sends it, otherwise from whether the container has a TTY. */
+  const contentTypeFor = (
+    id: string,
+    contentType: DockerApi.StreamContentType | undefined
+  ): Effect.Effect<DockerApi.StreamContentType, DockerError> =>
+    contentType !== undefined
+      ? Effect.succeed(contentType)
+      : Effect.map(inspect(id), (info) => contentTypeOf(info.Config?.Tty === true))
 
   const getArchive: DockerContainers["Service"]["getArchive"] = (id, containerPath) =>
     Effect.map(
@@ -637,7 +638,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           query: logsQuery(options)
         }).pipe(
           Effect.flatMap(({ body, headers }) =>
-            Effect.map(framingOf(id, headers["content-type"]), (framing) => frames(body, framing))
+            Effect.map(contentTypeFor(id, headers["content-type"]), (contentType) => frames(body, contentType))
           )
         )
       ).pipe(withStreamOperation(engine, "docker.Containers.logs", id))
@@ -675,7 +676,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
         return yield* makeHandle({
           engine,
           socket,
-          framing: yield* framingOf(id, headers["content-type"]),
+          contentType: yield* contentTypeFor(id, headers["content-type"]),
           stdin: options?.stdin === true,
           exitCode: () => Fiber.join(exitCode),
           resize: (size) => resize(id, size)
