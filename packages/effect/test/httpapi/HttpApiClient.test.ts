@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -915,6 +915,48 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("decodeResponse", () => {
+    it.effect("decodes a response-only body that arrives after the head", () =>
+      Effect.gen(function*() {
+        let body!: ReadableStreamDefaultController<Uint8Array>
+        const client = yield* HttpApiClient.makeWith(WaitApi, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response(
+              new ReadableStream({
+                start(controller) {
+                  body = controller
+                }
+              }),
+              { headers: { "content-type": "application/json" } }
+            )
+          )
+        })
+
+        const response = yield* client.containers.wait({ params: { id: "1" }, responseMode: "response-only" })
+        const decode = HttpApiClient.decodeResponse(WaitApi, { group: "containers", endpoint: "wait" })
+        const fiber = yield* Effect.forkChild(decode(response))
+        body.enqueue(textEncoder.encode(JSON.stringify({ StatusCode: 0 })))
+        body.close()
+        assert.deepStrictEqual(yield* Fiber.join(fiber), { StatusCode: 0 })
+      }))
+
+    it.effect("fails with declared errors like decoded-only", () =>
+      Effect.gen(function*() {
+        const response = HttpClientResponse.fromWeb(
+          HttpClientRequest.post("http://test/containers/1/wait"),
+          new Response(JSON.stringify({ _tag: "EndpointError", message: "no such container" }), {
+            status: 400,
+            headers: { "content-type": "application/json" }
+          })
+        )
+
+        const decode = HttpApiClient.decodeResponse(WaitApi, { group: "containers", endpoint: "wait" })
+        const error = yield* Effect.flip(decode(response))
+        assert.deepStrictEqual(error, new EndpointError({ message: "no such container" }))
+      }))
+  })
+
   it.effect("decodes form-urlencoded responses", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
@@ -1333,6 +1375,16 @@ const MixedSuccessApi = HttpApi.make("MixedSuccessApi").add(
         ]
       })
     )
+)
+
+const WaitApi = HttpApi.make("WaitApi").add(
+  HttpApiGroup.make("containers").add(
+    HttpApiEndpoint.post("wait", "/containers/:id/wait", {
+      params: { id: Schema.String },
+      success: Schema.Struct({ StatusCode: Schema.Number }),
+      error: EndpointError
+    })
+  )
 )
 
 const JsonResponseError = Schema.Struct({
