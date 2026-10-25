@@ -1912,164 +1912,99 @@ describe("AnthropicLanguageModel", () => {
         })
         assert.strictEqual(response.toolResults[0]?.name, "AnthropicMemory")
       }))
-
-    describe("request tool names", () => {
-      const Lookup = Tool.make("Lookup", {
-        parameters: Schema.Struct({ query: Schema.String }),
-        success: Schema.String
-      })
-      const toolkit = Toolkit.make(AnthropicTool.Memory_20250818({}), Lookup)
-      const toolkitLayer = toolkit.toLayer({
-        AnthropicMemory: () => Effect.succeed("ok"),
-        Lookup: () => Effect.succeed("ok")
-      })
-
-      const captureRequestBody = Effect.fnUntraced(function*(
-        options: Omit<LanguageModel.GenerateTextOptions<typeof toolkit.tools>, "toolkit">
-      ) {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-sonnet-4-20250514",
-                content: [{ type: "text", text: "Done" }],
-                stop_reason: "end_turn",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 10,
-                  output_tokens: 5,
-                  service_tier: null
-                }
-              }))
-            })
-          ))
-        )
-
-        yield* LanguageModel.generateText({ ...options, toolkit }).pipe(
-          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
-          Effect.provide(toolkitLayer),
-          Effect.provide(layer)
-        )
-
-        assertDefined(capturedRequest)
-        return yield* getRequestBody(capturedRequest)
-      })
-
-      it.effect("sends the provider name for an explicit tool choice", () =>
-        Effect.gen(function*() {
-          const body = yield* captureRequestBody({
-            prompt: "remember this",
-            toolChoice: { tool: "AnthropicMemory" }
-          })
-
-          assert.deepStrictEqual(body.tool_choice, { type: "tool", name: "memory" })
-        }))
-
-      it.effect("keeps provider tools allowed by a oneOf tool choice", () =>
-        Effect.gen(function*() {
-          const body = yield* captureRequestBody({
-            prompt: "remember this",
-            toolChoice: { oneOf: ["AnthropicMemory", "Lookup"] }
-          })
-
-          assert.deepStrictEqual(body.tools.map((tool: any) => tool.name), ["Lookup", "memory"])
-        }))
-
-      it.effect("replays client tool calls with the provider name", () =>
-        Effect.gen(function*() {
-          const body = yield* captureRequestBody({
-            prompt: Prompt.make([
-              { role: "user", content: "what do you remember?" },
-              {
-                role: "assistant",
-                content: [{
-                  type: "tool-call",
-                  id: "toolu_mem_1",
-                  name: "AnthropicMemory",
-                  params: { command: "view", path: "/memories" },
-                  providerExecuted: false
-                }]
-              },
-              {
-                role: "tool",
-                content: [{
-                  type: "tool-result",
-                  id: "toolu_mem_1",
-                  name: "AnthropicMemory",
-                  isFailure: false,
-                  result: "ok"
-                }]
-              }
-            ])
-          })
-
-          assert.strictEqual(body.messages[1].content[0].type, "tool_use")
-          assert.strictEqual(body.messages[1].content[0].name, "memory")
-        }))
-    })
   })
 
-  describe("ComputerUse_20241022 tool", () => {
-    it.effect("resolves the computer tool call to the tool's handler", () =>
+  describe("provider tool names", () => {
+    const toolkit = Toolkit.make(
+      AnthropicTool.Memory_20250818({}),
+      AnthropicTool.ComputerUse_20241022({ displayWidthPx: 800, displayHeightPx: 600 })
+    )
+
+    const generate = Effect.fnUntraced(function*(
+      options: Omit<LanguageModel.GenerateTextOptions<typeof toolkit.tools>, "toolkit">,
+      content: ReadonlyArray<unknown> = [{ type: "text", text: "Done" }]
+    ) {
+      let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) => {
+            capturedRequest = request
+            return Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model: "claude-sonnet-4-20250514",
+              content,
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 1,
+                output_tokens: 1,
+                service_tier: null
+              }
+            }))
+          })
+        ))
+      )
+
+      const response = yield* LanguageModel.generateText({
+        ...options,
+        toolkit,
+        disableToolCallResolution: true
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+        Effect.provide(layer)
+      )
+
+      assertDefined(capturedRequest)
+      return { body: yield* getRequestBody(capturedRequest), response }
+    })
+
+    it.effect("sends provider names for an explicit tool choice and replayed tool calls", () =>
       Effect.gen(function*() {
-        let receivedParams: unknown = undefined
-        const toolkit = Toolkit.make(
-          AnthropicTool.ComputerUse_20241022({ displayWidthPx: 800, displayHeightPx: 600 })
-        )
-        const toolkitLayer = toolkit.toLayer({
-          AnthropicComputerUse: (params) => {
-            receivedParams = params
-            return Effect.succeed("screenshot")
-          }
+        const { body } = yield* generate({
+          prompt: Prompt.make([
+            { role: "user", content: "what do you remember?" },
+            {
+              role: "assistant",
+              content: [{
+                type: "tool-call",
+                id: "toolu_mem_1",
+                name: "AnthropicMemory",
+                params: { command: "view", path: "/memories" },
+                providerExecuted: false
+              }]
+            }
+          ]),
+          toolChoice: { tool: "AnthropicMemory" }
         })
 
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-3-5-sonnet-20241022",
-                content: [{ type: "tool_use", id: "toolu_cu_1", name: "computer", input: { action: "screenshot" } }],
-                stop_reason: "tool_use",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 10,
-                  output_tokens: 5,
-                  service_tier: null
-                }
-              }))
-            )
-          ))
-        )
+        assert.deepStrictEqual(body.tool_choice, { type: "tool", name: "memory" })
+        assert.strictEqual(body.messages[1].content[0].name, "memory")
+      }))
 
-        const response = yield* LanguageModel.generateText({
-          prompt: "take a screenshot",
-          toolkit
-        }).pipe(
-          Effect.provide(AnthropicLanguageModel.model("claude-3-5-sonnet-20241022")),
-          Effect.provide(toolkitLayer),
-          Effect.provide(layer)
-        )
+    it.effect("keeps provider tools selected by a oneOf tool choice", () =>
+      Effect.gen(function*() {
+        const { body } = yield* generate({
+          prompt: "remember this",
+          toolChoice: { oneOf: ["AnthropicMemory"] }
+        })
 
-        assert.deepStrictEqual(receivedParams, { action: "screenshot" })
-        assert.strictEqual(response.toolResults[0]?.name, "AnthropicComputerUse")
+        assert.deepStrictEqual(body.tools.map((tool: any) => tool.name), ["memory"])
+      }))
+
+    it.effect("decodes ComputerUse_20241022 calls named computer", () =>
+      Effect.gen(function*() {
+        const { response } = yield* generate({ prompt: "take a screenshot" }, [
+          { type: "tool_use", id: "toolu_cu_1", name: "computer", input: { action: "screenshot" } }
+        ])
+
+        assert.strictEqual(response.toolCalls[0]?.name, "AnthropicComputerUse")
       }))
   })
 
