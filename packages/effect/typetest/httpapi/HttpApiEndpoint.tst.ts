@@ -247,6 +247,11 @@ describe("HttpApiEndpoint", () => {
         const payload = HttpApiSchema.StreamNdjson({ schema: Schema.Number, error: Schema.String })
         expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload })
       })
+
+      it("accepts a payload schema with an unrelated error property", () => {
+        const payload = hole<Schema.String & { readonly error: Schema.String }>()
+        expect(HttpApiEndpoint.post).type.toBeCallableWith("a", "/a", { payload })
+      })
     })
   })
 

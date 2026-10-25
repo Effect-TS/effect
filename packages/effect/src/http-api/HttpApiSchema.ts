@@ -449,6 +449,7 @@ export interface StreamNdjson<S extends Schema.Constraint, E extends Schema.Cons
   readonly error: E
   readonly maxBytes: ByteSize.ByteSize | undefined
   readonly maxElementBytes: ByteSize.ByteSize
+  readonly "~effect/http-api/StreamNdjson/Error"?: E | undefined
 }
 
 /**

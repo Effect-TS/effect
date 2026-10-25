@@ -1074,7 +1074,10 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
   PayloadSchema | ReadonlyArray<PayloadSchema>
 
 // `StreamSse` and a `StreamNdjson` with an `error` schema are response-only.
-type PayloadSchema = Schema.Top & { readonly sseMode?: never; readonly error?: Schema.Never }
+type PayloadSchema = Schema.Top & {
+  readonly sseMode?: never
+  readonly "~effect/http-api/StreamNdjson/Error"?: Schema.Never | undefined
+}
 
 /**
  * Payload constraint used when automatic codecs are enabled: no-body methods
