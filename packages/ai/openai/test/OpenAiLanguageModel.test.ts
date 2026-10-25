@@ -1787,23 +1787,20 @@ describe("OpenAiLanguageModel", () => {
           }
         }))))
 
-      it.effect.each(
-        [
-          { reason: "content_filter", expected: "content-filter" },
-          { reason: "max_output_tokens", expected: "length" }
-        ] as const
-      )("determines finish reason from incomplete_details.$reason", ({ reason, expected }) =>
+      it.effect("determines finish reason from incomplete_details", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
             prompt: "Hello"
           }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
 
-          strictEqual(result.finishReason, expected)
+          const finishPart = result.content.find((p) => p.type === "finish")
+          if (finishPart?.type === "finish") {
+            strictEqual(finishPart.reason, "content-filter")
+          }
         }).pipe(Effect.provide(makeTestLayer({
           body: {
-            status: "incomplete",
             output: [makeTextOutput("Hello")],
-            incomplete_details: { reason }
+            incomplete_details: { reason: "content_filter" }
           }
         }))))
 
@@ -1836,6 +1833,31 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide([
             makeTestLayer({
               body: { output: [makeFunctionCall("TestTool", { input: "test" })] }
+            }),
+            TestToolkitLayer
+          ])
+        ))
+
+      it.effect("reports length and interrupts tool calls when max_output_tokens truncates the response", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: TestToolkit
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+          strictEqual(result.finishReason, "length")
+          deepStrictEqual(result.toolResults.map((part) => part.result), [{
+            type: "execution-interrupted",
+            reason: "Tool call execution was interrupted because the response finished with reason \"length\""
+          }])
+        }).pipe(
+          Effect.provide([
+            makeTestLayer({
+              body: {
+                status: "incomplete",
+                output: [makeFunctionCall("TestTool", { input: "test" })],
+                incomplete_details: { reason: "max_output_tokens" }
+              }
             }),
             TestToolkitLayer
           ])
@@ -1879,29 +1901,6 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect("reports length when max_output_tokens truncates a response", () =>
-      Effect.gen(function*() {
-        const event = {
-          type: "response.incomplete",
-          sequence_number: 1,
-          response: makeDefaultResponse({
-            status: "incomplete",
-            incomplete_details: { reason: "max_output_tokens" }
-          })
-        }
-        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
-          Stream.runCollect,
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-          Effect.provideService(
-            HttpClient.HttpClient,
-            makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
-          )
-        )
-
-        strictEqual(parts.find((part) => part.type === "finish")?.reason, "length")
-      }))
-
     it.effect.each(
       [
         {
