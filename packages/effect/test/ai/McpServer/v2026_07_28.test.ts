@@ -509,12 +509,14 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     it.effect("should advertise configured cache hints and keep defaults for other results", () =>
       Effect.gen(function*() {
         const hint = (ttlMs: number) => ({ ttlMs, cacheScope: "private" }) as const
+        // Structurally compatible hints can carry extra properties that must not reach the wire result.
+        const toolsHint = { ...hint(60_000), internalOnly: true }
         const registrations = Layer.mergeAll(
           McpServer.resource({ uri: "file:///cached", name: "Cached", content: Effect.succeed("cached") }),
           McpServer.prompt({ name: "Cached", content: () => Effect.succeed("cached") })
         )
         const configs: ReadonlyArray<readonly [McpServer.CacheHints, Partial<Record<string, number>>]> = [
-          [{ tools: hint(60_000) }, { "tools/list": 60_000 }],
+          [{ tools: toolsHint }, { "tools/list": 60_000 }],
           [
             {
               discover: hint(1),
@@ -550,9 +552,11 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
             }))))
             for (const [method, params, name] of cases) {
               const response = yield* harness.post(request(method, method, params), headers(method, name))
+              const body = yield* readMcpHttpResponse(response)
               const message = Schema.decodeUnknownSync(Schema.Struct({
                 result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
-              }))(yield* readMcpHttpResponse(response))
+              }))(body)
+              assert.notProperty((body as { readonly result: object }).result, "internalOnly", `${mode} ${method}`)
               assert.deepStrictEqual(
                 message.result,
                 { ttlMs: ttls[method] ?? 0, cacheScope: "private" },
