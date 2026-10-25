@@ -1872,5 +1872,58 @@ describe("HttpApiClient", () => {
         NonNullable<Parameters<typeof HttpApiClient.make>[1]>
       >()
     })
+
+    it("keeps the original errors when mapError is an optional property", () => {
+      const options = hole<{ readonly mapError?: (error: unknown) => ApiError }>()
+      const make = HttpApiClient.makeWith(Api, { httpClient, ...options })
+      const client = hole<Effect.Success<typeof make>>()
+      const makeGroup = HttpApiClient.group(Api, { group: "users", httpClient, ...options })
+      const users = hole<Effect.Success<typeof makeGroup>>()
+      const makeEndpoint = HttpApiClient.endpoint(Api, { group: "users", endpoint: "inspect", httpClient, ...options })
+      const inspect = hole<Effect.Success<typeof makeEndpoint>>()
+      const makeDefault = HttpApiClient.make(Api, options)
+      const defaultClient = hole<Effect.Success<typeof makeDefault>>()
+
+      type InspectError =
+        | ApiError
+        | EndpointError
+        | MiddlewareClientError
+        | "middleware-error"
+        | HttpClientError.HttpClientError
+        | Schema.SchemaError
+      expect(client.users.inspect()).type.toBe<Effect.Effect<Item, InspectError | CustomClientError, CustomService>>()
+      expect(client.users.statsWithHeaders()).type.toBe<
+        Effect.Effect<
+          HttpApiSchema.withHeaders<
+            Stream.Stream<Uint8Array, ApiError | HttpClientError.HttpClientError>,
+            { readonly "x-count": number }
+          >,
+          ApiError | CustomClientError | HttpClientError.HttpClientError | Schema.SchemaError,
+          CustomService
+        >
+      >()
+      expect(users.inspect()).type.toBe<Effect.Effect<Item, InspectError | CustomClientError, CustomService>>()
+      expect(inspect()).type.toBe<Effect.Effect<Item, InspectError | CustomClientError, CustomService>>()
+      expect(defaultClient.users.inspect()).type.toBe<Effect.Effect<Item, InspectError>>()
+    })
+
+    it("keeps explicit type arguments consistent with mapError", () => {
+      expect(HttpApiClient.make<"Api", typeof Users>).type.not.toBeCallableWith(Api, {
+        mapError: () => new ApiError({ operation: "", cause: 1 })
+      })
+
+      const make = HttpApiClient.make<"Api", typeof Users, () => ApiError>(Api)
+      const client = hole<Effect.Success<typeof make>>()
+      expect(client.users.inspect()).type.toBe<
+        Effect.Effect<
+          Item,
+          | EndpointError
+          | MiddlewareClientError
+          | "middleware-error"
+          | HttpClientError.HttpClientError
+          | Schema.SchemaError
+        >
+      >()
+    })
   })
 })
