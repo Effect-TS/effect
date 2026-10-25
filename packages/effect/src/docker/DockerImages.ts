@@ -798,6 +798,8 @@ export class DockerImages extends Context.Service<DockerImages, {
    * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageBuild).
    * See {@link BuildOptions} and `build`. The stream fails with
    * `StreamFailed` on the build's first error.
+   *
+   * Typical reasons: `build`'s.
    */
   readonly buildStream: (
     context: Stream.Stream<Uint8Array, DockerError> | string,

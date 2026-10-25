@@ -400,6 +400,12 @@ Use the `effect/process` modules to define child processes and run them with `Ch
 
 - **[Working with child processes](./ai-docs/src/60_child-process/10_working-with-child-processes.ts)**: This example shows how to collect process output, compose pipelines, and stream long-running command output.
 
+## Working with Docker
+
+Use the `effect/docker` modules to talk to a Docker Engine: containers, exec, images, networks, volumes, Swarm and plugins, as Effect services. `NodeDocker` from `@effect/platform-node` provides them, configured as the Docker CLI is.
+
+- **[Working with Docker](./ai-docs/src/61_docker/10_working-with-docker.ts)**: Define a service that runs commands in a sandbox container, with the image pulled and the container cleaned up by its layer.
+
 ## Building CLI applications
 
 Use the "effect/cli" modules to build CLI applications. These modules
