@@ -2340,7 +2340,7 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 // {"text":"three"}
 ```
 
-`StreamNdjson` has no `error` schema. If the handler's stream fails after the response has started, the connection is aborted, so the client sees a body read error and never a clean end. Typed failures mid-stream need `StreamSse` (see [Typed Stream Failures](#typed-stream-failures)).
+If the handler's stream fails after the response has started, the connection is aborted, so the client sees a body read error and never a clean end, unless the failure is accepted by an `error` schema (see [Typed Stream Failures](#typed-stream-failures)).
 
 ### Consuming Streams with the Derived Client
 
@@ -2355,11 +2355,11 @@ yield * Stream.runForEach(events, (message) => Console.log(message.text))
 
 The element types and errors are:
 
-| Success schema             | Client stream                                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `StreamUint8Array()`       | `Stream<Uint8Array, HttpClientError>`                                                                  |
-| `StreamNdjson({ schema })` | `Stream<A, HttpClientError \| SchemaError>`                                                            |
-| `StreamSse(options)`       | `Stream<A, E \| HttpClientError \| SchemaError \| Retry \| SseError>`, where `E` is the `error` schema |
+| Success schema          | Client stream                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| `StreamUint8Array()`    | `Stream<Uint8Array, HttpClientError>`                                                                  |
+| `StreamNdjson(options)` | `Stream<A, E \| HttpClientError \| SchemaError>`, where `E` is the `error` schema                      |
+| `StreamSse(options)`    | `Stream<A, E \| HttpClientError \| SchemaError \| Retry \| SseError>`, where `E` is the `error` schema |
 
 An NDJSON response is decoded with the same rules as an NDJSON request payload. A malformed line or an element that fails to decode is a `SchemaError`. The client also enforces the declared `maxElementBytes` (1 MiB by default), so a server that never sends `\n` can't make it buffer forever. A breach is an `HttpClientError` with a `DecodeError` reason. A server failure mid-stream is the `HttpClientError` from reading the body.
 
@@ -2386,6 +2386,27 @@ const Api = HttpApi.make("myApi").add(
   )
 )
 ```
+
+`HttpApiSchema.StreamNdjson` also accepts an `error` schema, for APIs that end a successful response with an error record in their own JSON format. There is no reserved record or `Cause` encoding. A handler stream failure accepted by `error` is encoded with it and written as the last line, and the body ends cleanly. Any other failure, defect or encoding failure still aborts the connection. The client decodes each line against `error` first and `schema` second, and fails the stream with the first error record after delivering every element before it.
+
+**Example** (Ending an NDJSON Response with an Error Record)
+
+```ts
+const BuildMessage = Schema.Struct({ stream: Schema.String })
+const BuildFailed = Schema.Struct({ error: Schema.String })
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("build", "/build", {
+      // {"stream":"Step 1/2"}
+      // {"error":"The command returned a non-zero code: 3"}
+      success: HttpApiSchema.StreamNdjson({ schema: BuildMessage, error: BuildFailed })
+    })
+  )
+)
+```
+
+A line that matches both schemas is treated as an error, so keep recoverable notifications in `schema`. The `error` schema is response-only, and endpoint construction rejects it on a payload. In OpenAPI, the media type schema is `anyOf` the element and error schemas, and `x-effect-stream.errorSchema` identifies the error record.
 
 Things to know:
 

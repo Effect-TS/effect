@@ -495,11 +495,21 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
           }
         }
         if (HttpApiSchema.isStreamNdjson(stream)) {
-          // Each line is one element, so the media type documents the element schema.
+          // Each line is one record, so the media type documents the record schemas.
+          // Error records are matched first, so the branches may overlap.
+          if (SchemaAST.isNever(stream.error.ast)) {
+            return {
+              schema: registerSchema(stream.schema.ast),
+              "x-effect-stream": {
+                encoding: "ndjson"
+              }
+            }
+          }
           return {
-            schema: registerSchema(stream.schema.ast),
+            schema: registerSchema(new SchemaAST.Union([stream.schema.ast, stream.error.ast])),
             "x-effect-stream": {
-              encoding: "ndjson"
+              encoding: "ndjson",
+              errorSchema: registerSchema(stream.error.ast)
             }
           }
         }
@@ -1320,6 +1330,7 @@ export type OpenApiSpecEffectStream =
   }
   | {
     encoding: "ndjson"
+    errorSchema?: JsonSchema.JsonSchema
   }
 
 /**

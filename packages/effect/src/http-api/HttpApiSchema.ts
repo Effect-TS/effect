@@ -403,28 +403,41 @@ export interface StreamUint8Array extends
  * read. Malformed lines and elements that fail to decode are an
  * `HttpApiSchemaError`, and limit breaches are an `HttpApiPayloadTooLarge`.
  *
+ * `error` describes a record that ends a success response with a typed
+ * failure, in the API's own JSON format. It defaults to `Schema.Never`. The
+ * server writes a stream failure accepted by `error` as the last line and ends
+ * the body. The client decodes each line against `error` first and `schema`
+ * second, and fails the stream with the first error record, after every
+ * element before it has been delivered.
+ *
  * **Gotchas**
  *
- * There is no `error` schema. A failure mid-stream aborts the connection, so
- * the reader sees a body read error, never a clean end. Typed failures
- * mid-stream are a {@link StreamSse} feature. A body cut cleanly at a line
+ * A line that matches both `error` and `schema` is treated as an error, so
+ * keep recoverable notifications out of `error`.
+ *
+ * Any other failure mid-stream aborts the connection, including a failure
+ * `error` does not accept and an error record that fails to encode. The reader
+ * sees a body read error, never a clean end. A body cut cleanly at a line
  * boundary can't be told apart from a complete one.
+ *
+ * `error` is response-only. Endpoint construction rejects it on a payload.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface StreamNdjson<S extends Schema.Constraint> extends
-  Schema.BottomLazy<
-    SchemaAST.Declaration,
-    StreamNdjson<S>
-  >
+export interface StreamNdjson<S extends Schema.Constraint, E extends Schema.Constraint = Schema.Never>
+  extends
+    Schema.BottomLazy<
+      SchemaAST.Declaration,
+      StreamNdjson<S, E>
+    >
 {
   readonly "Type": Stream.Stream<S["Type"], unknown, never>
   readonly "Encoded": Stream.Stream<S["Type"], unknown, never>
-  readonly "DecodingServices": S["DecodingServices"]
-  readonly "EncodingServices": S["EncodingServices"]
-  readonly "Rebuild": StreamNdjson<S>
+  readonly "DecodingServices": S["DecodingServices"] | E["DecodingServices"]
+  readonly "EncodingServices": S["EncodingServices"] | E["EncodingServices"]
+  readonly "Rebuild": StreamNdjson<S, E>
   readonly "~type.make.in": Stream.Stream<S["Type"], unknown, never>
   readonly "~type.make": Stream.Stream<S["Type"], unknown, never>
   readonly "Iso": Stream.Stream<S["Type"], unknown, never>
@@ -433,6 +446,7 @@ export interface StreamNdjson<S extends Schema.Constraint> extends
   readonly mode: "ndjson"
   readonly contentType: string
   readonly schema: S
+  readonly error: E
   readonly maxBytes: ByteSize.ByteSize | undefined
   readonly maxElementBytes: ByteSize.ByteSize
 }
@@ -453,7 +467,7 @@ export interface StreamNdjson<S extends Schema.Constraint> extends
 export type StreamSchema =
   | StreamSse<Sse.EventCodec, Schema.Top, unknown>
   | StreamUint8Array
-  | StreamNdjson<Schema.Top>
+  | StreamNdjson<Schema.Top, Schema.Top>
 
 const streamSchema = Schema.declare(Stream.isStream)
 
@@ -535,7 +549,8 @@ export const StreamUint8Array = (options?: {
  * **Details**
  *
  * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
- * MiB. `maxBytes` has no default.
+ * MiB. `maxBytes` has no default. `error` defaults to `Schema.Never` and only
+ * applies to success responses.
  *
  * **Example** (Declaring an NDJSON request payload)
  *
@@ -557,22 +572,46 @@ export const StreamUint8Array = (options?: {
  * payload.maxElementBytes // => 1048576n
  * ```
  *
+ * **Example** (Declaring a response that can end with an error record)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * const BuildMessage = Schema.Struct({ stream: Schema.String })
+ * const BuildFailed = Schema.Struct({ error: Schema.String })
+ *
+ * // Handlers fail the Stream with a BuildFailed to write it as the last line,
+ * // and clients receive it in the Stream's error channel
+ * const build = HttpApiEndpoint.post("build", "/build", {
+ *   success: HttpApiSchema.StreamNdjson({
+ *     schema: BuildMessage,
+ *     error: BuildFailed,
+ *     contentType: "application/json"
+ *   })
+ * })
+ *
+ * build.path // => "/build"
+ * ```
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const StreamNdjson = <S extends Schema.Constraint>(options: {
+export const StreamNdjson = <S extends Schema.Constraint, E extends Schema.Constraint = Schema.Never>(options: {
   readonly schema: S
+  readonly error?: E | undefined
   readonly contentType?: string | undefined
   readonly maxBytes?: ByteSize.Input | undefined
   readonly maxElementBytes?: ByteSize.Input | undefined
-}): StreamNdjson<S> =>
-  Schema.make<StreamNdjson<S>>(streamSchema.ast, {
+}): StreamNdjson<S, E> =>
+  Schema.make<StreamNdjson<S, E>>(streamSchema.ast, {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamNdjson",
     mode: "ndjson",
     contentType: options.contentType ?? defaultStreamContentType("ndjson"),
     schema: options.schema,
+    error: (options.error ?? Schema.Never) as E,
     maxBytes: options.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes),
     maxElementBytes: options.maxElementBytes === undefined
       ? defaultMaxElementBytes
@@ -600,7 +639,7 @@ export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
 /**
  * @internal
  */
-export const isStreamNdjson = (u: unknown): u is StreamNdjson<Schema.Top> =>
+export const isStreamNdjson = (u: unknown): u is StreamNdjson<Schema.Top, Schema.Top> =>
   isStreamSchema(u) && u._tag === "StreamNdjson"
 
 const UpgradeTypeId = "~effect/http-api/HttpApiSchema/Upgrade"

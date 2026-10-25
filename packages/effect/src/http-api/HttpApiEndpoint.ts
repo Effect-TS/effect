@@ -60,7 +60,7 @@ type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
     infer _Value
   > ? Stream.Stream<_Value, _Error["Type"], never>
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, unknown, never>
-  : S extends HttpApiSchema.StreamNdjson<infer _S> ? Stream.Stream<_S["Type"], unknown, never>
+  : S extends HttpApiSchema.StreamNdjson<infer _S, infer _E> ? Stream.Stream<_S["Type"], unknown, never>
   : S extends HttpApiSchema.Upgrade ? void
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -71,7 +71,7 @@ type SuccessEncodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Value
 > ? _Events["EncodingServices"] | _Error["EncodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
-  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["EncodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _S, infer _E> ? _S["EncodingServices"] | _E["EncodingServices"]
   : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["EncodingServices"]
   : S extends Schema.Constraint ? S["EncodingServices"]
   : never
@@ -82,7 +82,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Value
 > ? _Events["DecodingServices"] | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
-  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _S, infer _E> ? _S["DecodingServices"] | _E["DecodingServices"]
   : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
@@ -1060,7 +1060,8 @@ export type QueryConstraint =
  * - for body methods, payload may be any `Schema.Top` (or content-type keyed
  *   schemas) and OpenAPI uses `requestBody` instead of `parameters`. This
  *   includes one `HttpApiSchema.StreamUint8Array` or `HttpApiSchema.StreamNdjson`,
- *   but not `HttpApiSchema.StreamSse`, which is response-only
+ *   but not `HttpApiSchema.StreamSse` or a `StreamNdjson` with an `error`
+ *   schema, which are response-only
  *
  * @stability unstable
  * @category utility types
@@ -1072,8 +1073,8 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
   > :
   PayloadSchema | ReadonlyArray<PayloadSchema>
 
-// `StreamSse` is response-only, so it is the one stream schema excluded here.
-type PayloadSchema = Schema.Top & { readonly sseMode?: never }
+// `StreamSse` and a `StreamNdjson` with an `error` schema are response-only.
+type PayloadSchema = Schema.Top & { readonly sseMode?: never; readonly error?: Schema.Never }
 
 /**
  * Payload constraint used when automatic codecs are enabled: no-body methods
@@ -1286,6 +1287,9 @@ function getPayload(
     if (HttpApiSchema.isStreamSchema(schema)) {
       if (HttpApiSchema.isStreamSse(schema)) {
         throw new Error("StreamSse is response-only and cannot be used as a payload")
+      }
+      if (HttpApiSchema.isStreamNdjson(schema) && !AST.isNever(schema.error.ast)) {
+        throw new Error("A StreamNdjson error schema is response-only and cannot be used in a payload")
       }
       if (!hasBody(method)) {
         throw new Error(`${method} endpoints cannot declare a streaming payload`)

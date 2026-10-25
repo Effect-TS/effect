@@ -1219,16 +1219,30 @@ function makeStreamBodyEncoder(
       Schema.NonEmptyArray(Schema.toCodecJson(streamSchema.schema)),
       options
     )
-    // There is no error schema, so a bad element aborts the response
+    const encodeError = makeNdjsonErrorEncoder(streamSchema.error, options)
+    // A bad element or error record, and any failure `error` does not accept,
+    // aborts the response
     return (stream) =>
       stream.pipe(
         Stream.mapArrayEffect((elements) => Effect.orDie(encodeElements(elements))),
+        encodeError,
         Stream.pipeThroughChannel(Ndjson.encode()),
         Stream.catchIf(isNdjsonPackError, Stream.die)
       )
   }
   const sseEncoder = makeSseEncoder(streamSchema, options)
   return (stream) => encodeSseStream(stream, sseEncoder)
+}
+
+// Ends the stream with the encoded failure when the error schema accepts it
+function makeNdjsonErrorEncoder(
+  error: Schema.Top,
+  options: SchemaAST.ParseOptions | undefined
+): <A>(stream: Stream.Stream<A, unknown, unknown>) => Stream.Stream<A | unknown, unknown, unknown> {
+  if (SchemaAST.isNever(error.ast)) return Function.identity
+  const isError = Schema.is(error)
+  const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(error), options)
+  return Stream.catchIf(isError, (failure) => Stream.fromEffect(Effect.orDie(encode(failure))))
 }
 
 function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {

@@ -100,8 +100,8 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
       never
     >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
-  : S extends HttpApiSchema.StreamNdjson<infer _S> ?
-    Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError, never>
+  : S extends HttpApiSchema.StreamNdjson<infer _S, infer _E> ?
+    Stream.Stream<_S["Type"], _E["Type"] | HttpClientError.HttpClientError | Schema.SchemaError, never>
   : S extends HttpApiSchema.Upgrade<infer _Headers> ? [_Headers] extends [never] ? Upgraded : Upgraded<_Headers["Type"]>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -134,7 +134,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
     | _Events["DecodingServices"]
     | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
-  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _S, infer _E> ? _S["DecodingServices"] | _E["DecodingServices"]
   : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
@@ -1068,7 +1068,7 @@ function makeStreamBodyDecoder(
     return (response) => response.stream
   }
   if (HttpApiSchema.isStreamNdjson(streamSchema)) {
-    const decodeElement = Schema.decodeUnknownEffect(Schema.toCodecJson(streamSchema.schema), options)
+    const decodeRecord = makeNdjsonRecordDecoder(streamSchema, options)
     const maxElementBytes = ByteSize.toNumberUnsafe(streamSchema.maxElementBytes)
     return (response) =>
       response.stream.pipe(
@@ -1084,11 +1084,43 @@ function makeStreamBodyDecoder(
             })
           })
         }),
-        Stream.mapEffect((json) => decodeElement(json))
+        Stream.mapEffect(decodeRecord)
       )
   }
   const decoder = makeSseDecoder(streamSchema, options)
   return (response, sseOptions) => decodeSseStream(response.stream, streamSchema, decoder(sseOptions))
+}
+
+class NdjsonErrorRecord {
+  readonly error: unknown
+  constructor(error: unknown) {
+    this.error = error
+  }
+}
+
+const NdjsonErrorRecordSchema = Schema.declare((u): u is NdjsonErrorRecord => u instanceof NdjsonErrorRecord)
+
+// Error records come first in one union decode and decode to a marker, so a
+// line matching both schemas is an error
+function makeNdjsonRecordDecoder(
+  streamSchema: HttpApiSchema.StreamNdjson<Schema.Top, Schema.Top>,
+  options: SchemaAST.ParseOptions | undefined
+): (json: unknown) => Effect.Effect<unknown, unknown, unknown> {
+  const element = Schema.toCodecJson(streamSchema.schema)
+  if (SchemaAST.isNever(streamSchema.error.ast)) return Schema.decodeUnknownEffect(element, options)
+  const errorRecord = Schema.toCodecJson(streamSchema.error).pipe(Schema.decodeTo(
+    NdjsonErrorRecordSchema,
+    SchemaTransformation.transform({
+      decode: (error) => new NdjsonErrorRecord(error),
+      encode: (record) => record.error
+    })
+  ))
+  const decode = Schema.decodeUnknownEffect(Schema.Union([errorRecord, element]), options)
+  return (json) =>
+    Effect.flatMap(
+      decode(json),
+      (record) => record instanceof NdjsonErrorRecord ? Effect.fail(record.error) : Effect.succeed(record)
+    )
 }
 
 // `JSON.stringify` found no JSON representation for an encoded element
@@ -1270,7 +1302,7 @@ const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
 
 const $HttpBody = Schema.declare(HttpBody.isHttpBody)
 
-type StreamPayloadSchema = HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>
+type StreamPayloadSchema = HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top, Schema.Top>
 
 function makeStreamPayloadEncoder(
   schema: StreamPayloadSchema,
