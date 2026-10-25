@@ -80,7 +80,8 @@ import {
   type ErrorResponse,
   ErrorResponses,
   type SwarmErrorResponse,
-  SwarmErrorResponses
+  SwarmErrorResponses,
+  System
 } from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
 import {
@@ -116,21 +117,31 @@ export class DockerEngine extends Context.Service<DockerEngine, {
 }>()("effect/docker/DockerEngine") {}
 
 /**
- * The Engine's maximum API version from the unversioned `/_ping`: `HEAD`
- * first, then `GET` if that doesn't answer 200. As in moby's client, a
- * connection failure doesn't dial again.
+ * The Engine's maximum API version from the unversioned `/_ping`, through
+ * `DockerApi.System`: `HEAD` first, then `GET` if that fails for any reason
+ * but the connection. As in moby's client, a connection failure doesn't dial
+ * again.
  */
 const pingApiVersion = (
-  unversioned: HttpClient.HttpClient.With<DockerError>
-): Effect.Effect<string | undefined, DockerError> =>
-  unversioned.head("/_ping").pipe(
-    Effect.flatMap((response) =>
-      response.status === 200
-        ? Effect.succeed(response)
-        : Effect.flatMap(unversioned.get("/_ping"), filterStatus("docker.Engine.apiVersion"))
+  config: DockerConfig.ResolvedConfig,
+  httpClient: HttpClient.HttpClient
+): Effect.Effect<Effect.Effect<string | undefined, DockerError>> =>
+  Effect.map(
+    apiClient(
+      DockerEngine.of({
+        config,
+        client: makeClient(config, httpClient),
+        // a version gate needs the negotiated version, and no endpoint of `/_ping` has one
+        apiVersion: Effect.die(new Error("The unversioned client has no API version"))
+      }),
+      System,
+      "docker.Engine"
     ),
-    Effect.tap((response) => Effect.ignore(response.text)),
-    Effect.map((response) => response.headers["api-version"] || undefined)
+    (system) =>
+      system.pingHead().pipe(
+        Effect.catchIf((error) => error.reason._tag !== "ConnectionFailed", () => system.ping()),
+        Effect.map((ping) => ping.apiVersion)
+      )
   )
 
 /**
@@ -200,7 +211,7 @@ export const make = (
     const config = yield* DockerConfig.DockerConfig
     const apiVersion = config.apiVersion !== undefined
       ? Effect.succeed(config.apiVersion)
-      : onceSuccessful(Effect.flatMap(pingApiVersion(makeClient(config, httpClient)), negotiate))
+      : onceSuccessful(Effect.flatMap(yield* pingApiVersion(config, httpClient), negotiate))
     return DockerEngine.of({
       config,
       client: makeClient(config, httpClient, apiVersion),
@@ -371,8 +382,9 @@ const errorBodyText = (response: HttpClientResponse.HttpClientResponse): Effect.
   })
 
 /**
- * Fails a response of `operation` that isn't a success as `apiClient` does,
- * for a request outside `DockerApi`, or one that asks for the response alone.
+ * Fails a response of `operation` that isn't a success, as `apiClient` does
+ * for a status `DockerApi` doesn't declare and for a request that asks for the
+ * response alone.
  *
  * @internal
  */
