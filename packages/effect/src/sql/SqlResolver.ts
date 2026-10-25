@@ -418,11 +418,7 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
 
 function transactionKey<A>(entry: Request.Entry<A>): object | undefined {
   const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
-  if (!client) {
-    const transaction = Context.get(entry.context, CurrentTransactionBatchKey)
-    return transaction && Equal.byReferenceUnsafe(transaction)
-  }
-  const conn = Context.getOrUndefined(entry.context, client.transactionService)
-  if (!conn) return undefined
-  return Equal.byReferenceUnsafe(conn)
+  const transaction = (client && Context.getOrUndefined(entry.context, client.transactionService)) ??
+    Context.get(entry.context, CurrentTransactionBatchKey)
+  return transaction && Equal.byReferenceUnsafe(transaction)
 }
