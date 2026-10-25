@@ -264,9 +264,6 @@ export const makeUnsafe = <K = unknown>(options: {
         }
 
         waiters.add(entry)
-        if (needed < permits) {
-          partial = entry
-        }
 
         return Effect.sync(() => {
           cleanup()
