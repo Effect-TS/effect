@@ -513,7 +513,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           McpServer.resource({ uri: "file:///cached", name: "Cached", content: Effect.succeed("cached") }),
           McpServer.prompt({ name: "Cached", content: () => Effect.succeed("cached") })
         )
-        const configs = [
+        const configs: ReadonlyArray<readonly [McpServer.CacheHints, Partial<Record<string, number>>]> = [
           [{ tools: hint(60_000) }, { "tools/list": 60_000 }],
           [
             {
@@ -531,7 +531,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
               "prompts/list": 5
             }
           ]
-        ] as const
+        ]
         const cases = [
           ["server/discover", {}, undefined],
           ["tools/list", {}, undefined],
@@ -553,8 +553,11 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
               const message = Schema.decodeUnknownSync(Schema.Struct({
                 result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
               }))(yield* readMcpHttpResponse(response))
-              const ttlMs = (ttls as Partial<Record<string, number>>)[method] ?? 0
-              assert.deepStrictEqual(message.result, { ttlMs, cacheScope: "private" }, `${mode} ${method}`)
+              assert.deepStrictEqual(
+                message.result,
+                { ttlMs: ttls[method] ?? 0, cacheScope: "private" },
+                `${mode} ${method}`
+              )
             }
           }
         }

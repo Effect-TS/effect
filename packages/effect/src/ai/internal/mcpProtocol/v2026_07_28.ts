@@ -328,10 +328,8 @@ export const makeHandlers = (
     context.serverInfo.extensions,
     (value): value is Readonly<Record<string, unknown>> => Predicate.isReadonlyObject(value)
   )
-  const cacheHint = (family: keyof PublicMcpServer.CacheHints) => {
-    const hint = context.serverInfo.cacheHints?.[family]
-    return hint === undefined ? privateStaleCache : { ttlMs: hint.ttlMs, cacheScope: hint.cacheScope }
-  }
+  const cacheHint = (family: keyof PublicMcpServer.CacheHints) =>
+    context.serverInfo.cacheHints?.[family] ?? privateStaleCache
   const getDiscovery = Effect.map(context.registrationPresence, (presence) => {
     const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
     if (extensions !== undefined) capabilities.extensions = extensions
