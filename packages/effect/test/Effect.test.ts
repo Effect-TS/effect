@@ -2361,6 +2361,12 @@ describe("Effect", () => {
           const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
           assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
         }
+        class Value extends Context.Service<Value, number>()("InterruptValue") {}
+        const fiber = yield* Effect.forkChild(Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")))
+        yield* Effect.yieldNow
+        yield* Fiber.interruptAs(fiber, 123, Context.make(Value, NaN))
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
       }))
 
     it.effect("an interrupt is recorded once when an earlier one contains its annotations", () =>

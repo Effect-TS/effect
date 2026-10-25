@@ -328,7 +328,7 @@ const includesAnnotations = (
   if (self === that) return true
   if (self.size < that.size) return false
   for (const [key, value] of that) {
-    if (self.get(key) !== value || !self.has(key)) return false
+    if (!Object.is(self.get(key), value) || !self.has(key)) return false
   }
   return true
 }
