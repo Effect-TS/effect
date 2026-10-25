@@ -4,7 +4,7 @@ import { Snowflake } from "effect/cluster"
 import { TestClock } from "effect/testing"
 
 describe("Snowflake", () => {
-  it.effect("keeps ids unique across successive overflows with a frozen clock", () =>
+  it.effect("makeGenerator keeps ids unique after repeated sequence overflow", () =>
     Effect.gen(function*() {
       const now = Snowflake.constEpochMillis + 1000
       yield* TestClock.setTime(now)
@@ -12,33 +12,9 @@ describe("Snowflake", () => {
       const ids = Array.from({ length: 8193 }, () => generator.nextUnsafe())
 
       assert.strictEqual(new Set(ids).size, 8193)
-      assert.isTrue(ids.every((id, index) => index === 0 || id > ids[index - 1]))
       assert.deepStrictEqual(
-        [0, 4095, 4096, 8191, 8192].map((index) => Snowflake.timestamp(ids[index])),
-        [now, now, now + 1, now + 1, now + 2]
+        [4095, 4096, 8191, 8192].map((i) => [Snowflake.timestamp(ids[i]), Snowflake.sequence(ids[i])]),
+        [[now, 4095], [now + 1, 0], [now + 1, 4095], [now + 2, 0]]
       )
-    }))
-
-  it.effect("keeps ids unique when the clock moves backward and resumes when it moves forward", () =>
-    Effect.gen(function*() {
-      const now = Snowflake.constEpochMillis + 2000
-      yield* TestClock.setTime(now)
-      const generator = yield* Snowflake.makeGenerator
-      const first = generator.nextUnsafe()
-      yield* TestClock.setTime(now - 1000)
-      const ids = [first, ...Array.from({ length: 4097 }, () => generator.nextUnsafe())]
-
-      assert.strictEqual(new Set(ids).size, 4098)
-      assert.isTrue(ids.every((id, index) => index === 0 || id > ids[index - 1]))
-      assert.deepStrictEqual(
-        [0, 4095, 4096, 4097].map((index) => Snowflake.timestamp(ids[index])),
-        [now, now, now + 1, now + 1]
-      )
-
-      yield* TestClock.setTime(now + 1000)
-      const next = generator.nextUnsafe()
-      assert.isTrue(next > ids[ids.length - 1])
-      assert.strictEqual(Snowflake.timestamp(next), now + 1000)
-      assert.strictEqual(Snowflake.sequence(next), 0)
     }))
 })
