@@ -128,6 +128,8 @@ export const configToAttributes = (options: {
  * Creates a `Resource` layer from SDK defaults, then environment variables,
  * then additional attributes (later values take precedence).
  *
+ * **Details**
+ *
  * Keys and values in `OTEL_RESOURCE_ATTRIBUTES` are percent-decoded. If any of
  * them is not valid percent-encoding, the whole variable is discarded and a
  * warning is logged.
