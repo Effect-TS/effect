@@ -107,9 +107,9 @@ export class DockerEngine extends Context.Service<DockerEngine, {
   /**
    * The Engine's `HttpClient`: requests take an unversioned path such as
    * `/containers/json`. It adds the base URL, the negotiated `/v{version}`
-   * prefix (negotiating on first use) and the config's `httpHeaders`, and
-   * fails with `DockerError` only for `ConnectionFailed`: a response is
-   * returned whatever its status.
+   * prefix (negotiating on first use) and the config's `httpHeaders`. It
+   * fails with `DockerError` only for `ConnectionFailed` and a failed
+   * negotiation: a response is returned whatever its status.
    */
   readonly client: HttpClient.HttpClient.With<DockerError>
   /** The negotiated (or pinned) API version. Negotiates on first use. */
@@ -223,23 +223,11 @@ export const make = (
 // requests
 // -----------------------------------------------------------------------------
 
-/**
- * The Endpoint's address as the Docker CLI writes it, `unix:///path` or
- * `tcp://host:port`, without TLS material.
- *
- * @internal
- */
-export const target = (endpoint: typeof DockerConfig.Endpoint.Type): string =>
-  endpoint._tag === "Unix" ? `unix://${endpoint.path}` : `tcp://${hostAndPort(endpoint)}`
-
-const hostAndPort = (endpoint: typeof DockerConfig.Endpoint.cases.Tcp.Type): string =>
-  `${endpoint.host.includes(":") ? `[${endpoint.host}]` : endpoint.host}:${endpoint.port}`
-
 /** The base URL that transports receive: the host only matters for TCP. */
 const baseUrl = (endpoint: typeof DockerConfig.Endpoint.Type): string =>
   endpoint._tag === "Unix"
     ? "http://localhost"
-    : `${endpoint.tls !== undefined ? "https" : "http"}://${hostAndPort(endpoint)}`
+    : `${endpoint.tls !== undefined ? "https" : "http"}://${DockerConfig.hostAndPort(endpoint)}`
 
 /** The first `code` in an error's cause chain, as Node's errors carry them. */
 const errorCode = (u: unknown): string | undefined => {
@@ -334,7 +322,7 @@ export const connectionFailed = (endpoint: typeof DockerConfig.Endpoint.Type, ca
   new DockerError({
     reason: new ConnectionFailed({
       cause: sanitizeCause(cause),
-      target: target(endpoint),
+      target: DockerConfig.formatHost(endpoint),
       ...connectionHint(cause, endpoint)
     })
   })

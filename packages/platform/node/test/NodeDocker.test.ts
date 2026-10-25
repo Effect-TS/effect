@@ -125,17 +125,17 @@ describe("NodeDocker", () => {
       )
       assert.strictEqual(yield* connect({ _tag: "Unix", path: socketPath }), "hello")
       assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+    }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("fails with a permanent ConnectionFailed when the Engine's certificate can't be verified", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const { server } = yield* makeTlsEngine
       const port = (server.address() as Net.AddressInfo).port
       const error = yield* connect({ _tag: "Tcp", host: "localhost", port, tls: { verify: true } }).pipe(Effect.flip)
       assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
       assert.strictEqual(error.reason.hint, "the Engine's TLS certificate couldn't be verified")
       assert.isFalse(error.isRetryable)
-    })))
+    }))
 
   it.effect("fails with a permanent ConnectionFailed when the client speaks TLS to a plain Engine", () =>
     Effect.gen(function*() {
@@ -149,7 +149,7 @@ describe("NodeDocker", () => {
       assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
       assert.strictEqual(error.reason.hint, "TLS/plain mismatch: the Engine and the client disagree about TLS")
       assert.isFalse(error.isRetryable)
-    }).pipe(Effect.scoped))
+    }))
 
   it.effect("fails with a hint when the socket doesn't exist", () =>
     Effect.gen(function*() {
@@ -193,5 +193,5 @@ esac
       assert.strictEqual(ghcr?.username, "helper-user")
       assert.strictEqual(ghcr?.password && Redacted.value(ghcr.password), "helper-secret")
       assert.isUndefined(other)
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+    }).pipe(Effect.provide(NodeServices.layer)))
 })

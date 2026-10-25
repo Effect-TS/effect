@@ -62,7 +62,7 @@ const DockerLive = NodeDocker.layer.pipe(
 
 An endpoint is a unix socket or TCP, with TLS material as PEM contents rather than file paths. `DockerConfig.parseHost` reads a `DOCKER_HOST` string. The rest of the configuration is what changes what the client sends: a pinned `apiVersion`, where registry credentials come from, `httpHeaders` for every request, the proxy passed to builds and new containers, and the default `platform`, `builder` and `detachKeys`. Docker Desktop and rootless Docker are found through the contexts they create; nothing probes for sockets.
 
-`ssh://`, `fd://` and `npipe://` hosts aren't supported.
+`ssh://` hosts aren't supported yet: they need an SSH transport, which is planned on top of Effect's SSH client. `fd://` and `npipe://` hosts aren't supported.
 
 ## Services
 
@@ -243,4 +243,24 @@ const FakeDocker = Layer.unwrap(Effect.gen(function*() {
 
 Attach and exec upgrade the connection, which `fetch` can't, so test them against a real Engine.
 
-To check what your code sends rather than what it gets back, an `HttpClient` made with `HttpClient.make` that records requests and answers them is enough: build the engine over it with `DockerEngine.make`, as above.
+To check what your code sends rather than what it gets back, a stub `HttpClient` that records requests and answers them is enough:
+
+```ts
+import { Effect, Layer } from "effect"
+import { Docker, DockerConfig, DockerEngine, DockerRegistryAuth } from "effect/docker"
+import { HttpClient, type HttpClientRequest, HttpClientResponse } from "effect/http"
+
+const requests: Array<HttpClientRequest.HttpClientRequest> = []
+const httpClient = HttpClient.make((request) => {
+  requests.push(request)
+  return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ Volumes: [], Warnings: [] })))
+})
+
+const StubDocker = Docker.layer.pipe(Layer.provideMerge(Layer.mergeAll(
+  Layer.effect(DockerEngine.DockerEngine, DockerEngine.make(httpClient)).pipe(
+    Layer.provide(DockerConfig.layer({ apiVersion: "1.56" }))
+  ),
+  Layer.succeed(DockerRegistryAuth.DockerRegistryAuth, { credential: () => Effect.succeed(undefined) })
+)))
+// after `volumes.list()`, `requests` holds `GET http://localhost/v1.56/volumes`
+```

@@ -49,35 +49,6 @@ import * as DockerImages from "./DockerImages.ts"
 import { DockerRegistryAuth, registryAuthHeader } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
-/**
- * The options of `install`.
- *
- * **Details**
- *
- * - `accept` decides on the privileges the plugin asks for: it returns the
- *   ones to grant, which must be all of them for the Engine to install it,
- *   or fails to refuse, and `install` fails with that error before
- *   anything is pulled.
- * - `name` is the local name, by default the remote reference.
- * - `args` are `set`'s `KEY=value` settings, applied before enabling; any
- *   of them can be `Redacted`.
- * - `disabled` leaves the plugin disabled.
- * - `auth` replaces the credential `DockerRegistryAuth` resolves.
- * - `timeout` is `enable`'s.
- *
- * @stability unstable
- * @category models
- * @since 4.0.6
- */
-export interface InstallOptions<E = never, R = never> {
-  readonly accept: (privileges: DockerApi.Privileges) => Effect.Effect<DockerApi.Privileges, E, R>
-  readonly name?: string | undefined
-  readonly args?: ReadonlyArray<string | Redacted.Redacted<string>> | undefined
-  readonly disabled?: boolean | undefined
-  readonly auth?: DockerConfig.Credential | undefined
-  readonly timeout?: number | undefined
-}
-
 // -----------------------------------------------------------------------------
 // service
 // -----------------------------------------------------------------------------
@@ -158,17 +129,35 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * It reads the privileges, asks `accept` (see {@link InstallOptions}),
-   * pulls with the accepted ones, applies `args`, and enables the plugin
-   * unless `disabled`. When the pull, the settings or the enabling fail, it
-   * removes the plugin again and fails with that error.
+   * It reads the privileges, asks `accept`, pulls with the accepted ones,
+   * applies `args`, and enables the plugin unless `disabled`. When the pull,
+   * the settings or the enabling fail, it removes the plugin again and fails
+   * with that error.
+   *
+   * - `accept` decides on the privileges the plugin asks for: it returns the
+   *   ones to grant, which must be all of them for the Engine to install it,
+   *   or fails to refuse, and `install` fails with that error before
+   *   anything is pulled.
+   * - `name` is the local name, by default the remote reference.
+   * - `args` are `set`'s `KEY=value` settings, applied before enabling; any
+   *   of them can be `Redacted`.
+   * - `disabled` leaves the plugin disabled.
+   * - `auth` replaces the credential `DockerRegistryAuth` resolves.
+   * - `timeout` is `enable`'s.
    *
    * Typical reasons: `pull`'s, `set`'s and `enable`'s, and `accept`'s own
    * error.
    */
   readonly install: <E = never, R = never>(
     remote: string,
-    options: InstallOptions<E, R>
+    options: {
+      readonly accept: (privileges: DockerApi.Privileges) => Effect.Effect<DockerApi.Privileges, E, R>
+      readonly name?: string | undefined
+      readonly args?: ReadonlyArray<string | Redacted.Redacted<string>> | undefined
+      readonly disabled?: boolean | undefined
+      readonly auth?: DockerConfig.Credential | undefined
+      readonly timeout?: number | undefined
+    }
   ) => Effect.Effect<string, DockerError | E, R>
   /**
    * Upgrades a disabled plugin to another image, and returns the progress

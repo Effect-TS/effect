@@ -166,8 +166,9 @@ export class InvalidContext extends Data.TaggedError("InvalidContext")<{
 }> {}
 
 /**
- * The Docker host uses a scheme other than `unix://` and `tcp://`
- * (`npipe://`, `ssh://` and `fd://` are not supported).
+ * The Docker host uses a scheme other than `unix://` and `tcp://`.
+ * `npipe://` and `fd://` are not supported. `ssh://` isn't yet: it needs an
+ * SSH transport, which is planned on top of Effect's SSH client.
  *
  * @stability unstable
  * @category errors
@@ -356,6 +357,23 @@ export const parseHost = (host: string): Result.Result<typeof Endpoint.Type, Doc
   }
   return Result.succeed({ _tag: "Tcp", host: hostname, port })
 }
+
+/**
+ * A TCP Endpoint's `host:port`, an IPv6 host in brackets.
+ *
+ * @internal
+ */
+export const hostAndPort = (endpoint: typeof Endpoint.cases.Tcp.Type): string =>
+  `${endpoint.host.includes(":") ? `[${endpoint.host}]` : endpoint.host}:${endpoint.port}`
+
+/**
+ * An Endpoint as the Docker CLI writes a host, `unix:///path` or
+ * `tcp://host:port`, without TLS material: what {@link parseHost} reads.
+ *
+ * @internal
+ */
+export const formatHost = (endpoint: typeof Endpoint.Type): string =>
+  endpoint._tag === "Unix" ? `unix://${endpoint.path}` : `tcp://${hostAndPort(endpoint)}`
 
 // -----------------------------------------------------------------------------
 // the Docker CLI's files
@@ -978,11 +996,8 @@ export const layerFromEnv = (
       })
     // `proxies` is keyed by the Docker host string; the CLI ignores empty settings
     const proxies = given("proxy") ? undefined : (yield* configFile)?.proxies
-    const host = endpoint._tag === "Unix"
-      ? `unix://${endpoint.path}`
-      : `tcp://${endpoint.host.includes(":") ? `[${endpoint.host}]` : endpoint.host}:${endpoint.port}`
     const proxy = given("proxy") ? override("proxy") : Object.fromEntries(
-      Object.entries(proxies?.[host] ?? proxies?.default ?? {}).filter(([, value]) => value !== "")
+      Object.entries(proxies?.[formatHost(endpoint)] ?? proxies?.default ?? {}).filter(([, value]) => value !== "")
     )
 
     return yield* Schema.decodeUnknownEffect(ResolvedConfig)({
