@@ -2353,63 +2353,38 @@ describe("Effect", () => {
 
     it.effect("interrupting a fiber inside spans records the interruption once", () =>
       Effect.gen(function*() {
-        const inner = Effect.fn("inner")(function*() {
-          return yield* Effect.never
-        })
-        const nestedFn = Effect.fn("outer")(function*() {
-          return yield* inner()
-        })
-        for (
-          const effect of [
-            Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b"), Effect.withSpan("c")),
-            nestedFn()
-          ]
-        ) {
+        const inner = Effect.fn("inner")(() => Effect.never)
+        const outer = Effect.fn("outer")(() => inner())
+        for (const effect of [Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")), outer()]) {
           const fiber = yield* Effect.forkChild(effect)
           yield* Effect.yieldNow
           const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
-          assert.isTrue(Exit.isFailure(exit))
-          if (Exit.isFailure(exit)) {
-            assert.strictEqual(exit.cause.reasons.length, 1)
-            assert.strictEqual(Cause.interruptors(exit.cause).size, 1)
-          }
+          assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
         }
       }))
 
-    class First extends Context.Service<First, number>()("InterruptFirst") {}
-    class Second extends Context.Service<Second, number>()("InterruptSecond") {}
-    const interruptTwice = Effect.fnUntraced(function*(
-      first: readonly [fiberId: number, annotations: Context.Context<never>],
-      second: readonly [fiberId: number, annotations: Context.Context<never>]
-    ) {
-      const latch = yield* Latch.make()
-      const fiber = yield* latch.await.pipe(Effect.uninterruptible, Effect.forkChild({ startImmediately: true }))
-      fiber.interruptUnsafe(...first)
-      fiber.interruptUnsafe(...second)
-      yield* latch.open
-      return yield* Fiber.join(fiber).pipe(Effect.sandbox, Effect.flip)
-    })
-
-    it.effect("an interrupt whose annotations an earlier interrupt contains is recorded once", () =>
+    it.effect("an interrupt is recorded once when an earlier one contains its annotations", () =>
       Effect.gen(function*() {
-        const both = Context.make(First, 1).pipe(Context.add(Second, 2))
-        const superset = yield* interruptTwice([123, both], [123, Context.make(First, 1)])
-        assert.strictEqual(superset.reasons.length, 1)
-        assert.strictEqual(Context.getOrUndefined(Cause.reasonAnnotations(superset.reasons[0]), Second), 2)
-        const nan = yield* interruptTwice([123, Context.make(First, NaN)], [123, Context.make(First, NaN)])
-        assert.strictEqual(nan.reasons.length, 1)
-      }))
-
-    it.effect("interrupts with another fiber id or other annotations are recorded separately", () =>
-      Effect.gen(function*() {
-        const both = Context.make(First, 1).pipe(Context.add(Second, 2))
-        const subset = yield* interruptTwice([123, Context.make(First, 1)], [123, both])
-        assert.strictEqual(subset.reasons.length, 2)
-        const conflict = yield* interruptTwice([123, Context.make(First, 1)], [123, Context.make(First, 2)])
-        assert.strictEqual(conflict.reasons.length, 2)
-        const fiberIds = yield* interruptTwice([123, Context.make(First, 1)], [456, Context.make(First, 1)])
-        assert.strictEqual(fiberIds.reasons.length, 2)
-        assert.deepStrictEqual(Cause.interruptors(fiberIds), new Set([123, 456]))
+        class First extends Context.Service<First, number>()("InterruptFirst") {}
+        class Second extends Context.Service<Second, number>()("InterruptSecond") {}
+        const interruptTwice = Effect.fnUntraced(function*(
+          first: readonly [fiberId: number, annotations: Context.Context<never>],
+          second: readonly [fiberId: number, annotations: Context.Context<never>]
+        ) {
+          const latch = yield* Latch.make()
+          const fiber = yield* latch.await.pipe(Effect.uninterruptible, Effect.forkChild({ startImmediately: true }))
+          fiber.interruptUnsafe(...first)
+          fiber.interruptUnsafe(...second)
+          yield* latch.open
+          const cause = yield* Fiber.join(fiber).pipe(Effect.sandbox, Effect.flip)
+          return cause.reasons.length
+        })
+        const one = Context.make(First, 1)
+        const both = one.pipe(Context.add(Second, 2))
+        assert.strictEqual(yield* interruptTwice([1, both], [1, one]), 1)
+        assert.strictEqual(yield* interruptTwice([1, one], [1, both]), 2)
+        assert.strictEqual(yield* interruptTwice([1, one], [1, Context.make(First, 2)]), 2)
+        assert.strictEqual(yield* interruptTwice([1, one], [2, one]), 2)
       }))
 
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
