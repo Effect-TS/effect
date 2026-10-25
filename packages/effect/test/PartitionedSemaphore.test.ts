@@ -18,6 +18,23 @@ describe("PartitionedSemaphore", () => {
       assert.strictEqual(yield* sem.available, 2)
     }))
 
+  it.effect("interrupting a waiter partially filled by release passes its permits on", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })
+      const completed: Array<string> = []
+      yield* sem.take("holder", 2)
+      const waiter = yield* sem.take("a", 2).pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* sem.withPermit("b")(Effect.sync(() => completed.push("b"))).pipe(
+        Effect.forkDetach({ startImmediately: true })
+      )
+
+      yield* sem.release(1)
+      yield* Fiber.interrupt(waiter)
+      assert.deepStrictEqual(completed, ["b"])
+      yield* sem.release(1)
+      assert.strictEqual(yield* sem.available, 2)
+    }))
+
   it.effect("a resumed waiter can immediately reacquire released permits", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
