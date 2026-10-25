@@ -264,8 +264,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
         sequence = 0
         sequenceAt = now
       } else if (sequence >= 4096) {
-        // if we've hit the max sequence for this millisecond, go to the next
-        // millisecond
+        // sequence exhausted and the clock hasn't advanced, so borrow the next millisecond
         sequenceAt++
         sequence = 0
       }
