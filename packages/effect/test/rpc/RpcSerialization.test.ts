@@ -392,6 +392,35 @@ describe("RpcSerialization", () => {
     ])
   })
 
+  for (
+    const [name, serialization] of [
+      ["jsonRpc", RpcSerialization.jsonRpc()],
+      ["ndJsonRpc", RpcSerialization.ndJsonRpc()]
+    ] as const
+  ) {
+    it(`${name} keeps stream chunks of a batched request in order`, () => {
+      const parser = serialization.makeUnsafe()
+      parser.decode(
+        "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]\n"
+      )
+
+      const responses: Array<RpcMessage.FromServerEncoded> = [
+        { _tag: "Chunk", requestId: 1, values: ["a"] },
+        { _tag: "Chunk", requestId: 1, values: ["b"] },
+        { _tag: "Exit", requestId: 2, exit: { _tag: "Success", value: "two" } },
+        { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: null } }
+      ]
+      const client = serialization.makeUnsafe()
+      const encoded = responses.map((response) => parser.encode(response))
+      const decoded = encoded.map((frame) => frame === undefined ? undefined : client.decode(frame))
+
+      assert.deepStrictEqual(decoded[0], [responses[0]])
+      assert.deepStrictEqual(decoded[1], [responses[1]])
+      assert.strictEqual(encoded[2], undefined)
+      assert.deepStrictEqual(decoded[3], [responses[2], responses[3]])
+    })
+  }
+
   it("jsonRpc preserves id 0 across decode and encode", () => {
     const parser = RpcSerialization.jsonRpc().makeUnsafe()
     const decoded = parser.decode("{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"users.get\"}")

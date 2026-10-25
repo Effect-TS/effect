@@ -716,6 +716,49 @@ describe("RpcClient", () => {
         }))
     }
 
+    it.effect("delivers every jsonRpc stream chunk in order when batched with another request", () =>
+      Effect.gen(function*() {
+        const streamDone = yield* Deferred.make<void>()
+        const httpEffect = yield* RpcServer.toHttpEffect(ChunkGroup).pipe(
+          Effect.provide(Layer.mergeAll(
+            ChunkGroup.toLayer({
+              Bad: () => Stream.empty,
+              Good: () =>
+                Stream.make("a", "b", "c").pipe(
+                  Stream.rechunk(1),
+                  Stream.ensuring(Deferred.succeed(streamDone, void 0))
+                ),
+              Unary: () => Deferred.await(streamDone).pipe(Effect.as("unary"))
+            }),
+            RpcSerialization.layerJsonRpc()
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const httpClient = HttpClient.make((request) =>
+          Effect.gen(function*() {
+            const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
+            const response = yield* Effect.promise(() => handler(webRequest))
+            return HttpClientResponse.fromWeb(request, response)
+          })
+        )
+        const client = yield* RpcClient.make(ChunkGroup).pipe(
+          Effect.provide(
+            RpcClient.layerProtocolHttp({ url: "http://localhost/rpc", batch: { window: "5 millis" } }).pipe(
+              Layer.provideMerge(RpcSerialization.layerJsonRpc()),
+              Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, httpClient))
+            )
+          )
+        )
+
+        const results = yield* Effect.all(
+          [Stream.runCollect(client.Good()), client.Unary()],
+          { concurrency: "unbounded" }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+
+        assert.deepStrictEqual(yield* Fiber.join(results), [["a", "b", "c"], "unary"])
+      }))
+
     it.effect("sends a batch as soon as it reaches maxSize", () =>
       Effect.gen(function*() {
         const { client, httpRequests } = yield* makeBatchingClient(RpcSerialization.layerJson, {

@@ -406,7 +406,7 @@ function encodeJsonRpcRaw(
   if (!("requestId" in response)) {
     return encodeJsonRpcMessage(response)
   }
-  const batch = batches.get(response.requestId)
+  const batch = response._tag === "Exit" ? batches.get(response.requestId) : undefined
   if (batch) {
     batches.delete(response.requestId)
     batch.responses.set(response.requestId, response as any)
