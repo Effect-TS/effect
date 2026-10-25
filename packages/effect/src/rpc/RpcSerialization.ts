@@ -403,13 +403,13 @@ function encodeJsonRpcRaw(
     readonly responses: Map<string | number, RpcMessage.FromServerEncoded>
   }>
 ) {
-  if (!("requestId" in response)) {
+  if (response._tag !== "Exit") {
     return encodeJsonRpcMessage(response)
   }
-  const batch = response._tag === "Exit" ? batches.get(response.requestId) : undefined
+  const batch = batches.get(response.requestId)
   if (batch) {
     batches.delete(response.requestId)
-    batch.responses.set(response.requestId, response as any)
+    batch.responses.set(response.requestId, response)
     if (batch.size === batch.responses.size) {
       return Array.from(batch.responses.values(), encodeJsonRpcMessage)
     }
