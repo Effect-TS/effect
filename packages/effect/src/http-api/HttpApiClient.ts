@@ -753,15 +753,30 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
 type MapperFn<Error, Info> = (error: Error, info: Info) => unknown
 
-// The `NoInfer` member types the mapper's parameters without first fixing
-// `Mapper` to its `undefined` default
+// Types a `mapError` callback's parameters while `Mapper` is still being
+// inferred. `NoInfer` keeps `Mapper` from being fixed to its `undefined`
+// default first. Callbacks that return a value don't match it, so one passed
+// with explicit type arguments that leave `Mapper` undefined is rejected
+type ContextualMapper<Error, Info> = (error: Error, info: Info) => never
+
 type MapErrorOption<Mapper, Error, Info> = {
-  readonly mapError?: Mapper | NoInfer<MapperFn<Error, Info>>
+  readonly mapError?: Mapper | NoInfer<ContextualMapper<Error, Info>>
 }
 
-// Distributes, so a mapper that may be `undefined` keeps the original errors
-// next to the mapped one
-type MappingOf<Mapper> = Mapper extends (...args: ReadonlyArray<any>) => infer E ? Client.Mapped<E> : Client.Unmapped
+// Inferred from the options argument, keeping optional modifiers, without
+// taking part in typing the `mapError` callback. `Options` comes before
+// `Mapper`, so explicit type arguments can't select a mapper without also
+// describing the options
+type InferredOptions<Options> = { readonly [K in keyof Options]: Options[K] }
+
+// Distributes over `Mapper`, so a mapper that may be `undefined`, or an
+// optional `mapError` property, keeps the original errors next to the mapped
+// one
+type MappingOf<Options, Mapper> = Mapper extends (...args: ReadonlyArray<any>) => infer E ?
+  Options extends { readonly mapError: unknown } ? Client.Mapped<E>
+  : "mapError" extends keyof Options ? Client.Unmapped | Client.Mapped<E>
+  : Client.Mapped<E>
+  : Client.Unmapped
 
 type TransformResponseOptions<Info> = {
   readonly transformResponse?:
@@ -781,8 +796,9 @@ type TransformResponseOptions<Info> = {
  * group and endpoint identifiers. Defects and interruptions are not mapped,
  * and neither are failures of an upgraded socket or of reading a response
  * returned with `responseMode: "response-only"`. When `mapError` may be
- * `undefined`, the client keeps the original failures in its types next to
- * the mapper's result.
+ * missing or `undefined`, such as an optional property spread into the
+ * options, the client keeps the original failures in its types next to the
+ * mapper's result.
  *
  * `transformResponse` wraps the decoding of each response and receives the
  * same identifiers. It runs inside `mapError`, so its failures are mapped too.
@@ -794,6 +810,7 @@ type TransformResponseOptions<Info> = {
 export const make = <
   ApiId extends string,
   Groups extends HttpApiGroup.Constraint,
+  Options = {},
   Mapper extends MapperFn<Client.Error<Groups>, GroupsInfo<Groups>> | undefined = undefined
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
@@ -803,14 +820,15 @@ export const make = <
     & {
       readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     }
+    & InferredOptions<Options>
 ): Effect.Effect<
-  Client<Groups, never, never, MappingOf<Mapper>>,
+  Client<Groups, never, never, MappingOf<Options, Mapper>>,
   never,
   HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>
 > =>
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
     makeWith(api, {
-      ...options as MakeClientOptions<never, never>,
+      ...options as Omit<MakeClientOptions<never, never>, "httpClient">,
       httpClient: options?.transformClient ? options.transformClient(httpClient) : httpClient
     })) as any
 
@@ -833,6 +851,7 @@ export const makeWith = <
   Groups extends HttpApiGroup.Constraint,
   E,
   R,
+  Options = {},
   Mapper extends MapperFn<Client.Error<Groups, NoInfer<E>>, GroupsInfo<Groups>> | undefined = undefined
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
@@ -840,8 +859,9 @@ export const makeWith = <
     & TransformResponseOptions<GroupsInfo<Groups>>
     & MapErrorOption<Mapper, Client.Error<Groups, NoInfer<E>>, GroupsInfo<Groups>>
     & { readonly httpClient: HttpClient.HttpClient.With<E, R> }
+    & InferredOptions<Options>
 ): Effect.Effect<
-  Client<Groups, Exclude<E, HttpClientError.HttpClientError>, R, MappingOf<Mapper>>,
+  Client<Groups, Exclude<E, HttpClientError.HttpClientError>, R, MappingOf<Options, Mapper>>,
   never,
   HttpApiGroup.MiddlewareClient<Groups>
 > => {
@@ -880,6 +900,7 @@ export const group = <
   const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
   E,
   R,
+  Options = {},
   Mapper extends
     | MapperFn<
       Client.Error<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, NoInfer<E>>,
@@ -899,8 +920,9 @@ export const group = <
       readonly group: GroupIdentifier
       readonly httpClient: HttpClient.HttpClient.With<E, R>
     }
+    & InferredOptions<Options>
 ): Effect.Effect<
-  Client.Group<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, E, R, MappingOf<Mapper>>,
+  Client.Group<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, E, R, MappingOf<Options, Mapper>>,
   never,
   HttpApiGroup.MiddlewareClient<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>
 > => {
@@ -950,6 +972,7 @@ export const endpoint = <
   const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
   E,
   R,
+  Options = {},
   Mapper extends
     | MapperFn<
       Client.MethodError<EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>, NoInfer<E>>,
@@ -973,7 +996,13 @@ export const endpoint = <
         | ((client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
         | undefined
     }
-): EndpointReturn<EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>, E, R, MappingOf<Mapper>> => {
+    & InferredOptions<Options>
+): EndpointReturn<
+  EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>,
+  E,
+  R,
+  MappingOf<Options, Mapper>
+> => {
   let client: any = undefined
   return makeClient(api, {
     ...options as MakeClientOptions<E, R>,
