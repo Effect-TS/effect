@@ -45,9 +45,14 @@ const TypeId = "~effect/Cron"
  * - `"both"` includes both occurrences, in chronological order.
  *
  * Time zones without repeated times, such as UTC or fixed offsets, behave the
- * same under every policy. Local times skipped when clocks move forward are not
- * affected: a matching time inside the gap resolves to the instant after the
- * gap.
+ * same under every policy.
+ *
+ * **Gotchas**
+ *
+ * The policy does not apply to local times skipped when clocks move forward. A
+ * matching time inside such a gap resolves to the instant after the gap, the
+ * same under every policy, and near a gap `next` and `prev` are not guaranteed
+ * to return the nearest matching instant.
  *
  * **Example** (Running every occurrence of a repeated hour)
  *
@@ -68,7 +73,7 @@ const TypeId = "~effect/Cron"
  *
  * @stability stable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export type RepeatedTimesPolicy = "earlier" | "later" | "both"
 
@@ -953,6 +958,39 @@ const stepCron = (
     (current: Date) => resolve(current) >= zoned.epochMilliseconds :
     (current: Date) => resolve(current) <= zoned.epochMilliseconds
 
+  // A fold near the input shows as a larger offset a day before it than a day
+  // after it (DateTime disambiguation assumes the same single transition).
+  // Inside a fold the resolved instant moves in the same direction as the wall
+  // time, so the rejected candidates form one interval no longer than the
+  // fold: when the wall time one fold length ahead is in range, binary search
+  // for the first second in range instead of stepping through the interval.
+  // Gaps break that ordering, so they keep stepping one second at a time.
+  let foldMillis: number | undefined
+  const skipOutOfRange = (current: Date) => {
+    if (foldMillis === undefined) {
+      const offsetAt = (millis: number) =>
+        dateTime.zonedOffset(dateTime.makeZonedUnsafe(millis, { timeZone: zoned.zone }))
+      foldMillis = offsetAt(zoned.epochMilliseconds - 86_400_000) - offsetAt(zoned.epochMilliseconds + 86_400_000)
+    }
+    let inRange = current.getTime() + tick * 1000
+    if (foldMillis > 0) {
+      const bound = new Date(current.getTime() + tick * foldMillis)
+      if (!isOutOfRange(bound)) {
+        let outOfRange = current.getTime()
+        inRange = bound.getTime()
+        while (Math.abs(inRange - outOfRange) > 1000) {
+          const mid = new Date(outOfRange + tick * Math.floor(Math.abs(inRange - outOfRange) / 2000) * 1000)
+          if (isOutOfRange(mid)) {
+            outOfRange = mid.getTime()
+          } else {
+            inRange = mid.getTime()
+          }
+        }
+      }
+    }
+    current.setTime(inRange)
+  }
+
   const result = dateTime.mutate(zoned, (current) => {
     // When the input is in the occurrence the policy excludes, eligible
     // instants of the same fold can lie behind its wall time in the search
@@ -1110,7 +1148,7 @@ const stepCron = (
       }
 
       if (isOutOfRange(current)) {
-        current.setUTCSeconds(current.getUTCSeconds() + tick)
+        skipOutOfRange(current)
         i = -1 // skipped fold candidates do not count against the search budget
         continue
       }
