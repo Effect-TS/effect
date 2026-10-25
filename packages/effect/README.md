@@ -83,4 +83,6 @@ const program = Effect.gen(function*() {
 )
 ```
 
+For encrypted JWTs, use `Jwt.encrypt` and `Jwt.decrypt`. Both `Jwe.decrypt` and `Jwt.decrypt` accept effectful key resolvers for key rotation; resolver headers are unauthenticated and must be used only to select a key.
+
 See [third-party notices](THIRD_PARTY_NOTICES.md) for test attribution.

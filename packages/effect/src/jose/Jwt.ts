@@ -1,16 +1,18 @@
 /**
- * Compact JSON Web Tokens whose claims are encoded and decoded with a
- * `Schema`.
+ * Signed or encrypted compact JSON Web Tokens whose claims are encoded and
+ * decoded with a `Schema`.
  *
- * Verification authenticates the token first, then checks the registered
- * claims and the verification policy, and only then decodes the application
- * claims. `exp` and `nbf` are checked whenever they are present; require them
- * with `requiredClaims`.
+ * Verification and decryption authenticate the token first, then check the
+ * registered claims and the validation policy, and only then decode the
+ * application claims. `exp` and `nbf` are checked whenever they are present;
+ * require them with `requiredClaims`.
  *
  * @stability unstable
  * @since 4.1.0
  */
 import * as Clock from "../Clock.ts"
+import type * as Aead from "../crypto/Aead.ts"
+import type * as SecureRandom from "../crypto/SecureRandom.ts"
 import type * as Signature from "../crypto/Signature.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -18,7 +20,8 @@ import type * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import { fail, invalidToken, millis, parseJsonObject, utf8 } from "./internal/compact.ts"
 import * as JoseError from "./JoseError.ts"
-import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
+import * as Jwe from "./Jwe.ts"
+import type { PublicKey, SecretKey, SigningKey, VerificationKey } from "./Jwk.ts"
 import type { Jwks } from "./Jwks.ts"
 import * as Jws from "./Jws.ts"
 
@@ -50,7 +53,7 @@ export const RegisteredClaims = Schema.Struct({
 export type RegisteredClaims = typeof RegisteredClaims.Type
 
 /**
- * The policy a verified JWT must satisfy.
+ * The claim validation policy for a signed or encrypted JWT.
  *
  * @stability unstable
  * @category models
@@ -109,7 +112,21 @@ export interface Verified<A> {
 }
 
 /**
- * The protected header and claims of a JWT that has not been verified.
+ * A decrypted and validated JWT: decoded application claims, its registered
+ * claims, and the authenticated protected header.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface Decrypted<A> {
+  readonly claims: A
+  readonly registeredClaims: RegisteredClaims
+  readonly protectedHeader: Jwe.ProtectedHeader
+}
+
+/**
+ * The protected header and claims of a signed JWT that has not been verified.
  *
  * @stability unstable
  * @category models
@@ -170,7 +187,7 @@ const mediaType = (value: string): string => {
 
 const checkClaims = Effect.fnUntraced(function*(
   claims: Readonly<Record<string, Schema.Json>>,
-  header: Jws.ProtectedHeader,
+  header: { readonly typ?: string | undefined },
   policy: Policy
 ): Effect.fn.Return<RegisteredClaims, JoseError.JoseError> {
   const registered: Record<string, unknown> = {}
@@ -215,22 +232,43 @@ const checkClaims = Effect.fnUntraced(function*(
   return registered as RegisteredClaims
 })
 
-const decodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+const decodeClaims = Effect.fnUntraced(function*<
+  S extends Schema.Constraint,
+  H extends Jws.ProtectedHeader | Jwe.ProtectedHeader
+>(
   schema: S,
-  verified: Jws.Verified,
+  payload: Uint8Array,
+  protectedHeader: H,
   policy: Policy
-): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"]> {
-  const claims = parseJsonObject(verified.payload)
+): Effect.fn.Return<
+  {
+    readonly claims: S["Type"]
+    readonly registeredClaims: RegisteredClaims
+    readonly protectedHeader: H
+  },
+  JwtError,
+  S["DecodingServices"]
+> {
+  const claims = parseJsonObject(payload)
   if (claims === undefined) return yield* invalidToken("The JWT payload is not a JSON object")
-  const registeredClaims = yield* checkClaims(claims, verified.protectedHeader, policy)
+  const registeredClaims = yield* checkClaims(claims, protectedHeader, policy)
   return {
     claims: yield* Schema.decodeUnknownEffect(schema)(claims),
     registeredClaims,
-    protectedHeader: verified.protectedHeader
+    protectedHeader
   }
 })
 
 const ClaimsJson = Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.is(RegisteredClaims)(claims)))
+
+const encodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+  schema: S,
+  claims: S["Type"]
+): Effect.fn.Return<Uint8Array, Schema.SchemaError, S["EncodingServices"]> {
+  const encoded = yield* Schema.encodeEffect(schema)(claims)
+  const json = yield* Schema.decodeUnknownEffect(ClaimsJson)(encoded)
+  return utf8(JSON.stringify(json))
+})
 
 /**
  * Encodes claims with a schema and signs them as a compact JWT.
@@ -241,6 +279,7 @@ const ClaimsJson = Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.
  * {@link RegisteredClaims}.
  *
  * @see {@link verify}
+ * @see {@link encrypt} for encrypted JWTs
  *
  * @stability unstable
  * @category cryptography
@@ -252,9 +291,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint, K e
   key: K,
   header?: Jws.Header
 ): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.KeyRequirements<K>> {
-  const encoded = yield* Schema.encodeEffect(schema)(claims)
-  const json = yield* Schema.decodeUnknownEffect(ClaimsJson)(encoded)
-  return yield* Jws.sign(utf8(JSON.stringify(json)), key, header)
+  return yield* Jws.sign(yield* encodeClaims(schema, claims), key, header)
 })
 
 /**
@@ -288,6 +325,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint, K e
  * ```
  *
  * @see {@link verifyWithKeySet} for resolving the key from the `Jwks` service
+ * @see {@link decrypt} for encrypted JWTs
  *
  * @stability unstable
  * @category cryptography
@@ -300,7 +338,8 @@ export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint, K
   options?: VerifyOptions
 ): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"] | Jws.KeyRequirements<K>> {
   const policy = yield* readPolicy(options)
-  return yield* decodeClaims(schema, yield* Jws.verify(token, key), policy)
+  const verified = yield* Jws.verify(token, key)
+  return yield* decodeClaims(schema, verified.payload, verified.protectedHeader, policy)
 })
 
 /**
@@ -324,11 +363,100 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
 > {
   const policy = yield* readPolicy(options)
   const verified = yield* Jws.verifyWithKeySet(token, options)
-  return { ...(yield* decodeClaims(schema, verified, policy)), key: verified.key }
+  return {
+    ...(yield* decodeClaims(schema, verified.payload, verified.protectedHeader, policy)),
+    key: verified.key
+  }
 })
 
 /**
- * Reads the protected header and claims of a JWT without verifying it.
+ * Encodes claims with a schema and encrypts them as a compact `dir`/A256GCM
+ * JWT.
+ *
+ * **Details**
+ *
+ * The encoded claims must be a JSON object whose registered claims match
+ * {@link RegisteredClaims}.
+ *
+ * **Example** (Encrypting and validating application claims)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Redacted, Schema } from "effect"
+ * import { Aead, SecureRandom } from "effect/crypto"
+ * import { Jwk, Jwt } from "effect/jose"
+ *
+ * const layer = Aead.layerWebCrypto.pipe(Layer.provideMerge(SecureRandom.layerWebCrypto))
+ * const Claims = Schema.Struct({ sub: Schema.String })
+ *
+ * const claims = await Effect.runPromise(Effect.gen(function*() {
+ *   // Fixed public example material; generate application secrets securely.
+ *   const key = yield* Jwk.importSecret(
+ *     Redacted.make({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const),
+ *     "dir"
+ *   )
+ *   const token = yield* Jwt.encrypt(Claims, { sub: "user-123" }, key, { typ: "session+jwt" })
+ *   const decrypted = yield* Jwt.decrypt(Claims, token, key, { typ: "session+jwt" })
+ *   return decrypted.claims
+ * }).pipe(Effect.provide(layer)))
+ * claims // => ({ sub: "user-123" })
+ * ```
+ *
+ * @see {@link decrypt}
+ * @see {@link sign} for signed JWTs
+ *
+ * @stability unstable
+ * @category cryptography
+ * @since 4.1.0
+ */
+export const encrypt = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+  schema: S,
+  claims: S["Type"],
+  key: SecretKey<"dir">,
+  header?: Jwe.Header
+): Effect.fn.Return<
+  Redacted.Redacted<string>,
+  JwtError,
+  S["EncodingServices"] | Aead.Aead | SecureRandom.SecureRandom
+> {
+  return yield* Jwe.encrypt(yield* encodeClaims(schema, claims), key, header)
+})
+
+/**
+ * Decrypts a compact `dir`/A256GCM JWT, checks its claims against the policy,
+ * and decodes the claims with a schema.
+ *
+ * **Details**
+ *
+ * Accepts a key or an effectful resolver for key rotation. The same claim
+ * policy as {@link verify} is applied after authenticated decryption and
+ * before the application schema is decoded.
+ *
+ * **Gotchas**
+ *
+ * The resolver receives an unauthenticated header and must use it only for
+ * key selection.
+ *
+ * @see {@link encrypt}
+ * @see {@link verify} for signed JWTs
+ * @see {@link Jwe.KeyResolver}
+ *
+ * @stability unstable
+ * @category cryptography
+ * @since 4.1.0
+ */
+export const decrypt = Effect.fnUntraced(function*<S extends Schema.Constraint, E = never, R = never>(
+  schema: S,
+  token: string | Redacted.Redacted<string>,
+  key: SecretKey<"dir"> | Jwe.KeyResolver<E, R>,
+  options?: VerifyOptions
+): Effect.fn.Return<Decrypted<S["Type"]>, JwtError | E, S["DecodingServices"] | Aead.Aead | R> {
+  const policy = yield* readPolicy(options)
+  const decrypted = yield* Jwe.decrypt(token, key)
+  return yield* decodeClaims(schema, decrypted.plaintext, decrypted.protectedHeader, policy)
+})
+
+/**
+ * Reads the protected header and claims of a signed JWT without verifying it.
  *
  * **Gotchas**
  *

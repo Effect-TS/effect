@@ -15,6 +15,9 @@ declare const payload: Uint8Array
 
 class Decode extends Context.Service<Decode, { readonly prefix: string }>()("test/Decode") {}
 class Encode extends Context.Service<Encode, { readonly prefix: string }>()("test/Encode") {}
+class KeyStore extends Context.Service<KeyStore, { readonly key: Jwk.SecretKey<"dir"> }>()("test/KeyStore") {}
+
+declare const resolveKey: Jwe.KeyResolver<"UnknownKey", KeyStore>
 
 const Claims = Schema.Struct({
   sub: Schema.String.pipe(Schema.decodeTo(Schema.String, {
@@ -106,18 +109,55 @@ describe("Jws and Jwe", () => {
     expect<Jws.Verified["protectedHeader"]>().type.toBe<Jws.ProtectedHeader>()
     expect<Jws.ProtectedHeader["alg"]>().type.toBe<Jwk.Algorithm>()
   })
+
+  it("infers JWE resolver headers and propagates lookup failures and services", () => {
+    const decrypted = Jwe.decrypt(token, (header) => {
+      expect(header).type.toBe<Jwe.ProtectedHeader>()
+      return resolveKey(header)
+    })
+    expect(decrypted).type.toBe<
+      Effect.Effect<Jwe.Decrypted, JoseError.JoseError | "UnknownKey", Aead.Aead | KeyStore>
+    >()
+    expect<Jwe.KeyResolver>().type.toBe<(header: Jwe.ProtectedHeader) => Effect.Effect<Jwk.SecretKey<"dir">>>()
+    expect(Jwe.decrypt).type.toBeCallableWith("a..b.c.d", dir)
+    expect(Jwe.decrypt).type.not.toBeCallableWith(token, hmac)
+    expect(Jwe.decrypt).type.not.toBeCallableWith(token, () => Effect.succeed(hmac))
+  })
 })
 
 describe("Jwt", () => {
   it("keeps encoding and decoding services distinct", () => {
     const signed = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, hmac)
     const verified = Jwt.verify(Claims, token, hmac)
+    const encrypted = Jwt.encrypt(Claims, { sub: "user:42", quota: 3 }, dir)
+    const decrypted = Jwt.decrypt(Claims, token, dir)
     expect<Effect.Services<typeof signed>>().type.toBe<Encode | Mac.Mac>()
     expect<Effect.Services<typeof verified>>().type.toBe<Decode | Mac.Mac>()
+    expect<Effect.Services<typeof encrypted>>().type.toBe<Encode | Aead.Aead | SecureRandom.SecureRandom>()
+    expect<Effect.Services<typeof decrypted>>().type.toBe<Decode | Aead.Aead>()
     expect<Effect.Success<typeof signed>>().type.toBe<Redacted.Redacted<string>>()
     expect<Effect.Success<typeof verified>>().type.toBe<Jwt.Verified<typeof Claims.Type>>()
+    expect<Effect.Success<typeof encrypted>>().type.toBe<Redacted.Redacted<string>>()
+    expect<Effect.Success<typeof decrypted>>().type.toBe<Jwt.Decrypted<typeof Claims.Type>>()
+    expect<Jwt.Decrypted<typeof Claims.Type>["protectedHeader"]>().type.toBe<Jwe.ProtectedHeader>()
     expect<Effect.Error<typeof signed>>().type.toBe<Jwt.JwtError>()
+    expect<Effect.Error<typeof encrypted>>().type.toBe<Jwt.JwtError>()
+    expect<Effect.Error<typeof decrypted>>().type.toBe<Jwt.JwtError>()
     expect<Jwt.JwtError>().type.toBe<JoseError.JoseError | Schema.SchemaError>()
+  })
+
+  it("combines encrypted JWT schema and resolver requirements", () => {
+    const decrypted = Jwt.decrypt(Claims, token, (header) => {
+      expect(header).type.toBe<Jwe.ProtectedHeader>()
+      return resolveKey(header)
+    }, { issuer: "example", maxTokenAge: "5 minutes" })
+    expect(decrypted).type.toBe<
+      Effect.Effect<Jwt.Decrypted<typeof Claims.Type>, Jwt.JwtError | "UnknownKey", Decode | Aead.Aead | KeyStore>
+    >()
+    expect(Jwt.encrypt).type.not.toBeCallableWith(Claims, { sub: "user:42", quota: 3 }, hmac)
+    expect(Jwt.decrypt).type.not.toBeCallableWith(Claims, token, hmac)
+    expect(Jwt.decrypt).type.not.toBeCallableWith(Claims, token, () => Effect.succeed(hmac))
+    expect(Jwt.decrypt).type.toBeCallableWith(Claims, "a..b.c.d", dir, { audience: "api" })
   })
 
   it("requires only the service the key uses", () => {

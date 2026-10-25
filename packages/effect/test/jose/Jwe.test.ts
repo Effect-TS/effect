@@ -62,3 +62,80 @@ it.effect("rejects tampered ciphertext, other content encryption, and foreign ke
     assertReason(yield* Jwe.decrypt(`${header}.AAAA.${iv}.${ciphertext}.${tag}`, key).pipe(Effect.flip), "InvalidToken")
     assertReason(yield* Jwe.decrypt(`${header}.${iv}.${ciphertext}.${tag}`, key).pipe(Effect.flip), "InvalidToken")
   }).pipe(Effect.provide(layer)))
+
+it.effect("resolves current and previous keys by kid and preserves lookup failures", () =>
+  Effect.gen(function*() {
+    const previous = yield* Jwk.importSecret(Redacted.make({ ...secretJwk, kid: "previous" }), "dir")
+    const current = yield* Jwk.importSecret(
+      Redacted.make({ kty: "oct", k: jose.base64url.encode(new Uint8Array(32).fill(9)), kid: "current" }),
+      "dir"
+    )
+    const missing = { _tag: "UnknownKey" } as const
+    const resolve: Jwe.KeyResolver<typeof missing> = (header) => {
+      const key = [previous, current].find((key) => key.kid === header.kid)
+      return key === undefined ? Effect.fail(missing) : Effect.succeed(key)
+    }
+
+    for (const key of [previous, current]) {
+      const token = yield* Jwe.encrypt(utf8("private message"), key)
+      const decrypted = yield* Jwe.decrypt(token, resolve)
+      assert.strictEqual(text(decrypted.plaintext), "private message")
+      assert.strictEqual(decrypted.protectedHeader.kid, key.kid)
+    }
+
+    const unknown = yield* Jwe.encrypt(utf8("private message"), current, { kid: "unknown" })
+    assert.strictEqual(yield* Jwe.decrypt(unknown, resolve).pipe(Effect.flip), missing)
+  }).pipe(Effect.provide(layer)))
+
+it.effect("rejects malformed tokens and unsupported headers before resolving a key", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
+    const token = Redacted.value(yield* Jwe.encrypt(utf8("private message"), key))
+    const [header, , iv, ciphertext, tag] = token.split(".")
+    let resolutions = 0
+    const resolve: Jwe.KeyResolver = () => {
+      resolutions++
+      return Effect.succeed(key)
+    }
+    const invalidHeaders = [
+      { alg: "A256KW", enc: "A256GCM" },
+      { alg: "dir", enc: "A128GCM" },
+      { alg: "dir", enc: "A256GCM", crit: ["kid"] },
+      { alg: "dir", enc: "A256GCM", zip: "DEF" }
+    ].map((header) => `${jose.base64url.encode(utf8(JSON.stringify(header)))}..${iv}.${ciphertext}.${tag}`)
+
+    for (
+      const invalid of [
+        "not.a.jwe",
+        `${header}.AAAA.${iv}.${ciphertext}.${tag}`,
+        `${jose.base64url.encode(utf8("{"))}..${iv}.${ciphertext}.${tag}`,
+        `${header}..AA.${ciphertext}.${tag}`,
+        `${header}..${iv}.!.${tag}`,
+        `${header}..${iv}.${ciphertext}.AA`,
+        ...invalidHeaders
+      ]
+    ) {
+      assertReason(yield* Jwe.decrypt(invalid, resolve).pipe(Effect.flip), "InvalidToken")
+    }
+    assert.strictEqual(resolutions, 0)
+  }).pipe(Effect.provide(layer)))
+
+it.effect("isolates resolver header mutations and authenticates the original header", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(Redacted.make({ ...secretJwk, kid: "enc-1" }), "dir")
+    const token = yield* Jwe.encrypt(utf8("private message"), key, { typ: "JWT" })
+    const requestedKids: Array<string | undefined> = []
+    const resolve: Jwe.KeyResolver = (header) => {
+      requestedKids.push(header.kid)
+      Object.assign(header, { kid: "mutated", typ: "mutated" })
+      return Effect.succeed(key)
+    }
+
+    const decrypted = yield* Jwe.decrypt(token, resolve)
+    assert.deepStrictEqual(decrypted.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", typ: "JWT" })
+
+    const parts = Redacted.value(token).split(".")
+    parts[0] = jose.base64url.encode(utf8(JSON.stringify({ ...decrypted.protectedHeader, kid: "forged" })))
+    assertReason(yield* Jwe.decrypt(parts.join("."), resolve).pipe(Effect.flip), "DecryptionFailed")
+    assert.deepStrictEqual(requestedKids, ["enc-1", "forged"])
+  }).pipe(Effect.provide(layer)))

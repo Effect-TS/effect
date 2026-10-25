@@ -27,8 +27,7 @@ import * as JoseError from "./JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
 /**
- * Schema for an authenticated JWE protected header. Other parameters are
- * dropped.
+ * Schema for a JWE protected header. Other parameters are dropped.
  *
  * @stability unstable
  * @category schemas
@@ -43,7 +42,7 @@ export const ProtectedHeader = Schema.Struct({
 })
 
 /**
- * An authenticated JWE protected header.
+ * A JWE protected header. It is authenticated only after decryption succeeds.
  *
  * @stability unstable
  * @category models
@@ -64,6 +63,22 @@ export interface Header {
   readonly typ?: string | undefined
   readonly cty?: string | undefined
 }
+
+/**
+ * Resolves a decryption key from a parsed, unauthenticated protected header.
+ *
+ * **Gotchas**
+ *
+ * Use the header only to select a key. Its contents are authenticated only
+ * after decryption succeeds.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type KeyResolver<E = never, R = never> = (
+  header: ProtectedHeader
+) => Effect.Effect<SecretKey<"dir">, E, R>
 
 /**
  * The protected header and plaintext of a decrypted JWE.
@@ -131,16 +146,28 @@ export const encrypt = Effect.fnUntraced(function*(
  * Decrypts a compact `dir`/A256GCM JWE and authenticates its protected
  * header.
  *
+ * **Details**
+ *
+ * Accepts a key or an effectful resolver for key rotation. The token's
+ * structure and supported header parameters are checked before the resolver
+ * runs. Resolver failures and service requirements are preserved.
+ *
+ * **Gotchas**
+ *
+ * The resolver receives an unauthenticated header and must use it only for
+ * key selection.
+ *
  * @see {@link encrypt}
+ * @see {@link KeyResolver}
  *
  * @stability unstable
  * @category cryptography
  * @since 4.1.0
  */
-export const decrypt = Effect.fnUntraced(function*(
+export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
   token: string | Redacted.Redacted<string>,
-  key: SecretKey<"dir">
-): Effect.fn.Return<Decrypted, JoseError.JoseError, Aead.Aead> {
+  key: SecretKey<"dir"> | KeyResolver<E, R>
+): Effect.fn.Return<Decrypted, JoseError.JoseError | E, Aead.Aead | R> {
   const [header, encryptedKey, iv, ciphertext, tag] = yield* split(token, 5)
   if (encryptedKey !== "") return yield* invalidToken("A dir token must have an empty encrypted key")
   const protectedHeader = yield* decodeHeader(header, ProtectedHeader, ["crit", "zip"])
@@ -153,11 +180,13 @@ export const decrypt = Effect.fnUntraced(function*(
   ) {
     return yield* invalidToken("The IV, ciphertext, or tag is malformed")
   }
+  // Keep resolver mutations out of the authenticated result.
+  const resolvedKey = typeof key === "function" ? yield* key({ ...protectedHeader }) : key
   const sealed = new Uint8Array(data.length + tagLength)
   sealed.set(data)
   sealed.set(authTag, data.length)
   const aead = yield* Aead.Aead
-  const plaintext = yield* aead.decrypt(key.key, sealed, { nonce, aad: utf8(header) }).pipe(
+  const plaintext = yield* aead.decrypt(resolvedKey.key, sealed, { nonce, aad: utf8(header) }).pipe(
     Effect.mapError((error) =>
       error.reason._tag === "DecryptionFailed"
         ? new JoseError.JoseError({ reason: new JoseError.DecryptionFailed() })

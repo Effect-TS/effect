@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { Jwk, Jwks, Jwt } from "effect/jose"
+import { Jwe, Jwk, Jwks, Jwt } from "effect/jose"
 import type * as JoseError from "effect/jose/JoseError"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
@@ -67,12 +67,45 @@ it.effect("encodes claims through the schema before signing and decodes them aft
     assert.strictEqual((yield* Jwt.verify(Claims, guest, key).pipe(Effect.flip))._tag, "SchemaError")
   }).pipe(Effect.provide(layer)))
 
+it.effect("encrypts schema-encoded claims and decrypts encrypted JWTs interoperably", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(Redacted.make({ ...secretJwk, kid: "enc-1" }), "dir")
+    const token = yield* Jwt.encrypt(Claims, { sub: "user_1", role: "member", quota: 3 }, key, { typ: "JWT" })
+
+    const theirs = yield* Effect.promise(() => jose.jwtDecrypt(Redacted.value(token), secret))
+    assert.deepStrictEqual(theirs.payload, { sub: "user_1", role: "member", quota: "3" })
+    assert.deepStrictEqual(theirs.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", typ: "JWT" })
+
+    const roundTrip = yield* Jwt.decrypt(Claims, token, key, { subject: "user_1", typ: "JWT" })
+    assert.deepStrictEqual(roundTrip.claims, { sub: "user_1", role: "member", quota: 3 })
+    assert.deepStrictEqual(roundTrip.registeredClaims, { sub: "user_1" })
+
+    const encrypted = yield* Effect.promise(() =>
+      new jose.EncryptJWT({ sub: "user_2", role: "admin", quota: "4" })
+        .setProtectedHeader({ alg: "dir", enc: "A256GCM", kid: "enc-1", typ: "JWT" })
+        .encrypt(secret)
+    )
+    const decrypted = yield* Jwt.decrypt(Claims, encrypted, (header) => {
+      assert.strictEqual(header.kid, "enc-1")
+      return Effect.succeed(key)
+    }, { subject: "user_2", typ: "JWT" })
+    assert.deepStrictEqual(decrypted.claims, { sub: "user_2", role: "admin", quota: 4 })
+    assert.deepStrictEqual(decrypted.registeredClaims, { sub: "user_2" })
+    assert.deepStrictEqual(decrypted.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", typ: "JWT" })
+  }).pipe(Effect.provide(layer)))
+
 const now = 1604416038
 
-it.effect("validates registered claims against the verification policy", () =>
+it.effect.each(["signed", "encrypted"] as const)("validates %s JWT claim policies", (format) =>
   Effect.gen(function*() {
     yield* TestClock.setTime(now * 1000)
-    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
+    const signingKey = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
+    const encryptionKey = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
+    const verify = Effect.fnUntraced(function*(token: string | Redacted.Redacted<string>, options?: Jwt.VerifyOptions) {
+      return yield* format === "signed"
+        ? Jwt.verify(Jwt.RegisteredClaims, token, signingKey, options)
+        : Jwt.decrypt(Jwt.RegisteredClaims, token, encryptionKey, options)
+    })
     const registered: Jwt.RegisteredClaims = {
       iss: "https://issuer.example",
       sub: "user_1",
@@ -81,9 +114,11 @@ it.effect("validates registered claims against the verification policy", () =>
       nbf: now - 10,
       iat: now - 20
     }
-    const token = yield* Jwt.sign(Jwt.RegisteredClaims, registered, key, { typ: "at+jwt" })
+    const token = yield* format === "signed"
+      ? Jwt.sign(Jwt.RegisteredClaims, registered, signingKey, { typ: "at+jwt" })
+      : Jwt.encrypt(Jwt.RegisteredClaims, registered, encryptionKey, { typ: "at+jwt" })
 
-    const accepted = yield* Jwt.verify(Jwt.RegisteredClaims, token, key, {
+    const accepted = yield* verify(token, {
       issuer: ["https://other.example", "https://issuer.example"],
       audience: "web",
       subject: "user_1",
@@ -102,7 +137,7 @@ it.effect("validates registered claims against the verification policy", () =>
       [{ maxTokenAge: "10 seconds" }, { claim: "iat", reason: "tooOld" }]
     ]
     for (const [options, expected] of failures) {
-      const error = yield* Jwt.verify(Jwt.RegisteredClaims, token, key, options).pipe(Effect.flip)
+      const error = yield* verify(token, options).pipe(Effect.flip)
       assertReason(error, "ClaimValidationFailed")
       assert.deepInclude(error.reason, expected)
     }
@@ -120,24 +155,70 @@ it.effect("validates registered claims against the verification policy", () =>
       ] satisfies Array<Duration.Input>
     ) {
       assertReason(
-        yield* Jwt.verify(Jwt.RegisteredClaims, token, key, { clockTolerance }).pipe(Effect.flip),
+        yield* verify(token, { clockTolerance }).pipe(Effect.flip),
         "InvalidArgument"
       )
     }
 
     yield* TestClock.setTime((now - 11) * 1000)
-    const early = yield* Jwt.verify(Jwt.RegisteredClaims, token, key).pipe(Effect.flip)
+    const early = yield* verify(token).pipe(Effect.flip)
     assertReason(early, "ClaimValidationFailed")
     assert.deepInclude(early.reason, { claim: "nbf", reason: "notYetValid" })
-    yield* Jwt.verify(Jwt.RegisteredClaims, token, key, { clockTolerance: 1000 })
+    yield* verify(token, { clockTolerance: 1000 })
+
+    yield* TestClock.setTime((now + 10) * 1000)
+    const expired = yield* verify(token).pipe(Effect.flip)
+    assertReason(expired, "ClaimValidationFailed")
+    assert.deepInclude(expired.reason, { claim: "exp", reason: "expired" })
+    yield* verify(token, { clockTolerance: "1 second" })
 
     // Registered claims with the wrong shape are rejected before any schema.
-    const malformed = yield* Effect.promise(() =>
-      new jose.CompactSign(utf8("{\"exp\":\"tomorrow\"}")).setProtectedHeader({ alg: "HS256" }).sign(secret)
-    )
-    const invalid = yield* Jwt.verify(Jwt.RegisteredClaims, malformed, key).pipe(Effect.flip)
+    const malformed = yield* format === "signed"
+      ? Effect.promise(() =>
+        new jose.CompactSign(utf8("{\"exp\":\"tomorrow\"}")).setProtectedHeader({ alg: "HS256" }).sign(secret)
+      )
+      : Jwe.encrypt(utf8("{\"exp\":\"tomorrow\"}"), encryptionKey)
+    const invalid = yield* verify(malformed).pipe(Effect.flip)
     assertReason(invalid, "ClaimValidationFailed")
     assert.deepInclude(invalid.reason, { claim: "exp", reason: "invalid" })
+  }).pipe(Effect.provide(layer)))
+
+it.effect("authenticates and checks encrypted JWT claims before decoding the application schema", () =>
+  Effect.gen(function*() {
+    yield* TestClock.setTime(now * 1000)
+    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
+    let decoded = false
+    const ApplicationClaims = Schema.Struct({ role: Schema.String }).check(Schema.makeFilter(({ role }) => {
+      decoded = true
+      return role === "admin"
+    }))
+    const token = yield* Jwe.encrypt(utf8(JSON.stringify({ role: "member", exp: now })), key)
+    const parts = Redacted.value(token).split(".")
+    parts[4] = jose.base64url.encode(
+      jose.base64url.decode(parts[4]).map((byte, index) => index === 0 ? byte ^ 1 : byte)
+    )
+
+    assertReason(yield* Jwt.decrypt(ApplicationClaims, parts.join("."), key).pipe(Effect.flip), "DecryptionFailed")
+    assert.isFalse(decoded)
+
+    const expired = yield* Jwt.decrypt(ApplicationClaims, token, key).pipe(Effect.flip)
+    assertReason(expired, "ClaimValidationFailed")
+    assert.deepInclude(expired.reason, { claim: "exp", reason: "expired" })
+    assert.isFalse(decoded)
+
+    const malformed = yield* Jwe.encrypt(utf8("{\"role\":\"member\",\"exp\":\"tomorrow\"}"), key)
+    const invalid = yield* Jwt.decrypt(ApplicationClaims, malformed, key).pipe(Effect.flip)
+    assertReason(invalid, "ClaimValidationFailed")
+    assert.deepInclude(invalid.reason, { claim: "exp", reason: "invalid" })
+    assert.isFalse(decoded)
+
+    const nonObject = yield* Jwe.encrypt(utf8("[]"), key)
+    assertReason(yield* Jwt.decrypt(ApplicationClaims, nonObject, key).pipe(Effect.flip), "InvalidToken")
+    assert.isFalse(decoded)
+
+    const member = yield* Jwe.encrypt(utf8("{\"role\":\"member\"}"), key)
+    assert.strictEqual((yield* Jwt.decrypt(ApplicationClaims, member, key).pipe(Effect.flip))._tag, "SchemaError")
+    assert.isTrue(decoded)
   }).pipe(Effect.provide(layer)))
 
 it.effect("verifies with a key resolved from the Jwks service", () =>
