@@ -16427,6 +16427,10 @@ function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Stru
  *
  * **Gotchas**
  *
+ * To subclass a `Schema.Class`, use `Base.extend<Self>(...)`, even when only
+ * adding methods or getters. Pass `{}` for the fields when none are added.
+ * Plain `class Child extends Base` is unsupported.
+ *
  * Passing `disableChecks: true` skips filters and checks, not parsing of types
  * and structure. Wrong types and shapes are still rejected, and constructor
  * defaults still apply.

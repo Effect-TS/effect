@@ -4411,6 +4411,8 @@ console.log(A.ast.annotations?.title)
 
 Use `extend` to create a subclass that adds fields to the base schema. Instance fields declared on the base class are also available on the subclass.
 
+To subclass a `Schema.Class`, use `Base.extend<Self>(...)`, even when only adding methods or getters. Pass `{}` for the fields when none are added. Plain `class Child extends Base` is unsupported.
+
 Fields with the same name replace inherited fields. Use this to refine validation or change encoding. Effect does not check compatibility; the caller must ensure the replacement preserves the base class contract.
 
 **Example** (Extending a class with new fields)
