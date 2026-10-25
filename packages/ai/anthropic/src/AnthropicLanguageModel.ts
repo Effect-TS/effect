@@ -1400,13 +1400,7 @@ const prepareTools = Effect.fnUntraced(
     const userTools: Array<AnthropicUserDefinedTool> = []
     const providerTools: Array<AnthropicProviderDefinedTool> = []
 
-    let allowedTools = options.tools
-    if (typeof options.toolChoice === "object" && "oneOf" in options.toolChoice) {
-      const allowedToolNames = new Set(options.toolChoice.oneOf)
-      allowedTools = options.tools.filter((tool) => allowedToolNames.has(tool.name))
-    }
-
-    for (const tool of allowedTools) {
+    for (const tool of options.tools) {
       if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
         const description = Tool.getDescription(tool)
         const input_schema = yield* tryToolJsonSchema(tool, "prepareTools")
