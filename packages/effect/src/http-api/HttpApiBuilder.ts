@@ -939,6 +939,8 @@ function handlerToHttpEffect(
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
   const upgrade = getUpgradeSuccessSchema(endpoint)
+  // The server may decline the upgrade with one of these instead.
+  const hasOrdinarySuccess = upgrade !== undefined && endpoint.success.size > 1
   const encodeUpgradeHeaders = UndefinedOr.map(
     upgrade?.headers,
     (schema) => Schema.encodeUnknownEffect(schema, options.headers)
@@ -971,19 +973,23 @@ function handlerToHttpEffect(
       if (decodeQuery) {
         request.query = yield* HttpApiSchemaError.wrap("Query", decodeQuery(query))
       }
+      let upgraded = false
       if (upgrade !== undefined) {
         if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
           return upgradeRequired(upgrade.protocol)
         }
         request.upgrade = (options?: { readonly headers?: unknown }) =>
-          Effect.orDie(
-            encodeUpgradeHeaders === undefined
-              ? httpRequest.upgrade
-              : Effect.flatMap(
-                HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
-                (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
-              )
-          )
+          Effect.suspend(() => {
+            upgraded = true
+            return Effect.orDie(
+              encodeUpgradeHeaders === undefined
+                ? httpRequest.upgrade
+                : Effect.flatMap(
+                  HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
+                  (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
+                )
+            )
+          })
       }
       if (payloadBy) {
         const result = decodePayload(payloadBy, httpRequest, query)
@@ -998,7 +1004,10 @@ function handlerToHttpEffect(
       if (Response.isHttpServerResponse(response)) {
         return response
       }
-      if (upgrade !== undefined) {
+      if (upgrade !== undefined && (upgraded || !hasOrdinarySuccess)) {
+        if (hasOrdinarySuccess && response !== undefined) {
+          return yield* Effect.die(new Error("Cannot return a success value after calling upgrade()"))
+        }
         // The server replaces this with the 101 once the connection is upgraded.
         return Response.empty()
       }
@@ -1349,8 +1358,8 @@ function makeSuccessSchema(
   endpoint: HttpApiEndpoint.Top,
   headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
-  const schemas = HttpApiEndpoint.getSuccessSchemas(endpoint).map((schema) =>
-    toResponseSuccessSchema(schema, headersOptions)
+  const schemas = HttpApiEndpoint.getSuccessSchemas(endpoint).filter((schema) => !HttpApiSchema.isUpgrade(schema)).map(
+    (schema) => toResponseSuccessSchema(schema, headersOptions)
   )
   return schemas.length === 1 ? schemas[0] : Schema.Union(schemas)
 }

@@ -1371,10 +1371,16 @@ function getErrorResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, payload: PayloadMap) {
-  if (schemas.some(HttpApiSchema.isUpgrade)) {
-    if (schemas.length > 1) {
-      throw new Error("Cannot combine an upgrade with other success responses")
+function validateSuccessResponse(
+  allSchemas: ReadonlyArray<Schema.Constraint>,
+  method: HttpMethod,
+  payload: PayloadMap
+) {
+  const upgrades = allSchemas.filter(HttpApiSchema.isUpgrade)
+  const hasUpgrade = upgrades.length > 0
+  if (hasUpgrade) {
+    if (upgrades.length > 1) {
+      throw new Error("Cannot declare more than one upgrade")
     }
     if (method === "HEAD") {
       throw new Error("HEAD endpoints cannot declare an upgrade")
@@ -1385,8 +1391,9 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
         throw new Error("Upgrade endpoints cannot declare a streaming payload")
       }
     }
-    return
   }
+  // The server may decline an upgrade (RFC 9110 §7.8) and answer with an ordinary success instead.
+  const schemas = hasUpgrade ? allSchemas.filter((schema) => !HttpApiSchema.isUpgrade(schema)) : allSchemas
   let hasStream = false
   const statuses = new Map<number, {
     readonly stream?: HttpApiSchema.StreamSchema | undefined
@@ -1397,7 +1404,13 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
   for (const schema of schemas) {
     const inner = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     const status = HttpApiSchema.getStatusSuccessSchema(schema)
+    if (hasUpgrade && status === 101) {
+      throw new Error("Cannot combine an upgrade with another success response for status: 101")
+    }
     if (HttpApiSchema.isStreamSchema(inner)) {
+      if (hasUpgrade) {
+        throw new Error("Cannot combine an upgrade with a streaming success response")
+      }
       validateStreamSuccess(inner, method)
       if (hasStream) {
         throw new Error("Multiple streaming success responses are not supported")
