@@ -64,6 +64,14 @@ const sdkAttributes = (): Record<string, string> => ({
   [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
 })
 
+const decodeAttributeComponent = (component: string): string => {
+  try {
+    return decodeURIComponent(component)
+  } catch {
+    return component
+  }
+}
+
 /**
  * Converts service metadata into OpenTelemetry attributes with SDK defaults.
  *
@@ -127,8 +135,8 @@ export const layerFromEnv = (
             if (eqIndex === -1) {
               return acc
             }
-            const key = attr.substring(0, eqIndex).trim()
-            const value = attr.substring(eqIndex + 1).trim()
+            const key = decodeAttributeComponent(attr.substring(0, eqIndex).trim())
+            const value = decodeAttributeComponent(attr.substring(eqIndex + 1).trim())
             if (key === "") {
               return acc
             }
