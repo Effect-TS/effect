@@ -163,7 +163,7 @@ export function status(code: number | StatusLiteral) {
 
 /**
  * Marks a query parameter or header field as sensitive, so its value is
- * redacted in HTTP API client and server spans.
+ * redacted in `HttpApiClient` spans and in `HttpApiBuilder` server spans.
  *
  * **When to use**
  *
@@ -180,7 +180,16 @@ export function status(code: number | StatusLiteral) {
  * The field's wire names are added to `UrlParams.CurrentRedactedNames` or
  * `Headers.CurrentRedactedNames` while the request is traced. If a struct-level
  * encoding such as `Schema.encodeKeys` can rename keys, every query parameter
- * or header of that schema is redacted instead.
+ * or header of that schema is redacted instead. The annotation is kept through
+ * later checks and transformations of the field.
+ *
+ * **Gotchas**
+ *
+ * On the server, only the span recorded by `HttpMiddleware.tracer` for
+ * `HttpApiBuilder` endpoints is covered, including the URL in its failure for
+ * `5xx` responses. Plain `HttpRouter` routes and other places that render the
+ * request URL, such as error logs and `HttpServerRequest` inspection, only
+ * use `UrlParams.CurrentRedactedNames` and `Headers.CurrentRedactedNames`.
  *
  * **Example** (Redacting a query parameter)
  *

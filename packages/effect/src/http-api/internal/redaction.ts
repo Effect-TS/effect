@@ -1,7 +1,13 @@
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 
-const isSensitive = SchemaAST.resolveAt<boolean>("httpApiSensitive")
+// Checks every check as well as the node, as `annotate` targets the last check.
+const isSensitive = (ast: SchemaAST.AST): boolean =>
+  ast.annotations?.httpApiSensitive === true || (ast.checks?.some(isSensitiveCheck) ?? false)
+
+const isSensitiveCheck = (check: SchemaAST.Check<unknown>): boolean =>
+  check.annotations?.httpApiSensitive === true ||
+  (check._tag === "FilterGroup" && check.checks.some(isSensitiveCheck))
 
 /**
  * Collects the wire names of query or header fields whose schema contains a
@@ -18,7 +24,7 @@ export const getRedactedNames = (schema: Schema.Top | undefined): ReadonlyArray<
   const ast = schema.ast
   if (!containsSecret(ast)) return []
   if (
-    isSensitive(ast) === true || !SchemaAST.isObjects(ast) || ast.encoding !== undefined ||
+    isSensitive(ast) || !SchemaAST.isObjects(ast) || ast.encoding !== undefined ||
     ast.indexSignatures.some((is) => containsSecret(is.type))
   ) {
     return undefined
@@ -43,8 +49,10 @@ export const getRedactedKeys = (
 const containsSecret = (ast: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean => {
   if (seen.has(ast)) return false
   seen.add(ast)
-  if (isSensitive(ast) === true) return true
+  if (isSensitive(ast)) return true
   const recur = (ast: SchemaAST.AST) => containsSecret(ast, seen)
+  // Annotations can sit on an encoded side, such as before a `Schema.decodeTo`.
+  if (ast.encoding?.some((link) => recur(link.to))) return true
   switch (ast._tag) {
     case "Declaration":
       return (ast.annotations as Schema.Annotations.Declaration<unknown> | undefined)?.representation?.id ===
