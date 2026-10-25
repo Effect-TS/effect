@@ -103,3 +103,57 @@ describe("top-level it.layer isolation", () => {
     assert.deepStrictEqual(observedStateIds, [1, 2, 3])
   })
 })
+
+describe("top-level it.layer with retried and repeated tests", { concurrent: false }, () => {
+  class Resource extends Context.Service<Resource, { readonly isOpen: () => boolean }>()("Resource") {}
+
+  let open = false
+  const resourceLayer = Layer.effect(Resource)(
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        open = true
+        return { isOpen: () => open }
+      }),
+      () =>
+        Effect.sync(() => {
+          open = false
+        })
+    )
+  )
+
+  const failOnFirstAttempt = () => {
+    let attempts = 0
+    return () =>
+      Effect.gen(function*() {
+        const resource = yield* Resource
+        assert.isTrue(resource.isOpen())
+        if (++attempts % 2 === 1) {
+          return yield* Effect.die("flaky")
+        }
+      })
+  }
+
+  describe("unnamed layer block", () => {
+    it.layer(resourceLayer)((it) => {
+      it.effect("retried test", failOnFirstAttempt(), { retry: 1 })
+
+      it.effect("repeated test", () =>
+        Effect.gen(function*() {
+          const resource = yield* Resource
+          assert.isTrue(resource.isOpen())
+        }), { repeats: 1 })
+
+      it.effect("repeated and retried test", failOnFirstAttempt(), { repeats: 1, retry: 1 })
+
+      it.effect("later test keeps the layer", () =>
+        Effect.gen(function*() {
+          const resource = yield* Resource
+          assert.isTrue(resource.isOpen())
+        }))
+    })
+  })
+
+  it("releases the layer when the enclosing suite ends", () => {
+    assert.isFalse(open)
+  })
+})

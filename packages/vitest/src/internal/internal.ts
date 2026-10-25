@@ -231,6 +231,11 @@ const collectTasks = (tasks: ReadonlyArray<CollectedTask>, acc: Array<V.TestCont
   return acc
 }
 
+const runsMoreThanOnce = (task: V.TestContext["task"]) => {
+  const retries = typeof task.retry === "number" ? task.retry : task.retry?.count ?? 0
+  return retries > 0 || (task.repeats ?? 0) > 0
+}
+
 const registerProp = <ExtraContext, A>(
   it: V.TestAPI<ExtraContext>,
   name: string,
@@ -425,6 +430,9 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
           return
         }
         onTestFinished(() => {
+          if (runsMoreThanOnce(task)) {
+            return
+          }
           remaining--
           if (remaining === 0) {
             return closeScope()
