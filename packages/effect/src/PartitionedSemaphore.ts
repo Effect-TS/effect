@@ -187,7 +187,6 @@ export const makeUnsafe = <K = unknown>(options: {
           pendingPermits -= granted
 
           if (waiter.permits === 0) {
-            partial = undefined
             waiter.resume()
           } else {
             partial = waiter
@@ -258,6 +257,9 @@ export const makeUnsafe = <K = unknown>(options: {
         }
 
         const cleanup = () => {
+          if (partial === entry) {
+            partial = undefined
+          }
           if (waiters.delete(entry) && waiters.size === 0) {
             MutableHashMap.remove(partitions, key)
           }
@@ -267,9 +269,6 @@ export const makeUnsafe = <K = unknown>(options: {
 
         return Effect.sync(() => {
           cleanup()
-          if (partial === entry) {
-            partial = undefined
-          }
           waitingPermits -= entry.permits
           releaseUnsafe(permits - entry.permits)
         })
