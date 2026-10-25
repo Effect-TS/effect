@@ -432,14 +432,18 @@ export const layerFileSystem = (
               })
           )),
       remove: (key: string) =>
-        withKeyPath("remove", key, (path) =>
-          Effect.mapError(fs.remove(path), (cause) =>
-            new KeyValueStoreError({
-              method: "remove",
-              key,
-              message: `Unable to remove item with key ${key}`,
-              cause
-            }))),
+        withKeyPath(
+          "remove",
+          key,
+          (path) =>
+            Effect.mapError(fs.remove(path, { force: true }), (cause) =>
+              new KeyValueStoreError({
+                method: "remove",
+                key,
+                message: `Unable to remove item with key ${key}`,
+                cause
+              }))
+        ),
       has: (key: string) =>
         withKeyPath("has", key, (path) =>
           Effect.mapError(fs.exists(path), (cause) =>
