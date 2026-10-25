@@ -231,10 +231,8 @@ const collectTasks = (tasks: ReadonlyArray<CollectedTask>, acc: Array<V.TestCont
   return acc
 }
 
-const runsMoreThanOnce = (task: V.TestContext["task"]) => {
-  const retries = typeof task.retry === "number" ? task.retry : task.retry?.count ?? 0
-  return retries > 0 || (task.repeats ?? 0) > 0
-}
+const runsMoreThanOnce = (task: V.TestContext["task"]) =>
+  (typeof task.retry === "number" ? task.retry : task.retry?.count ?? 0) > 0 || (task.repeats ?? 0) > 0
 
 const registerProp = <ExtraContext, A>(
   it: V.TestAPI<ExtraContext>,
@@ -421,6 +419,9 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     }
 
     const blockTaskSet = new Set(blockTasks)
+    // Vitest runs test hooks once per retry and repeat attempt, so the final
+    // attempt cannot be detected. Such blocks are released by `afterAll`.
+    const releaseAfterLastTest = !blockTasks.some(runsMoreThanOnce)
     let remaining = blockTasks.length
 
     V.beforeEach(
@@ -429,15 +430,14 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
         if (!blockTaskSet.has(task)) {
           return
         }
-        onTestFinished(() => {
-          if (runsMoreThanOnce(task)) {
-            return
-          }
-          remaining--
-          if (remaining === 0) {
-            return closeScope()
-          }
-        })
+        if (releaseAfterLastTest) {
+          onTestFinished(() => {
+            remaining--
+            if (remaining === 0) {
+              return closeScope()
+            }
+          })
+        }
         return runPromise(Effect.asVoid(contextEffect), { signal })
       },
       hookTimeout(options?.timeout)
