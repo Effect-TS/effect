@@ -3,4 +3,4 @@
 "@effect/ai-anthropic": patch
 ---
 
-Fix `LanguageModel.generateText` and `LanguageModel.streamText` reporting `finishReason: "unknown"` instead of `"length"` when OpenAI hits `max_output_tokens` or Anthropic exceeds the model context window.
+Fix `LanguageModel` responses reporting `finishReason: "unknown"` instead of `"length"` when OpenAI stops with `max_output_tokens` or Anthropic stops with `model_context_window_exceeded`. A truncated OpenAI response that contains a tool call now reports `"length"` and no longer runs the tool handler.
