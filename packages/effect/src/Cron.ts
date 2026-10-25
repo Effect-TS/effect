@@ -862,13 +862,7 @@ const daysInMonth = (date: Date): number =>
  * @since 2.0.0
  */
 export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  if (cron.repeatedTimes !== "both") {
-    return stepCron(cron, now, "next", cron.repeatedTimes)
-  }
-  const start = now ?? new Date()
-  const earlier = stepCron(cron, start, "next", "earlier")
-  const later = stepCron(cron, start, "next", "later")
-  return earlier <= later ? earlier : later
+  return stepCron(cron, now, "next")
 }
 
 /**
@@ -897,23 +891,32 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  * @since 3.20.0
  */
 export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  if (cron.repeatedTimes !== "both") {
-    return stepCron(cron, now, "prev", cron.repeatedTimes)
-  }
+  return stepCron(cron, now, "prev")
+}
+
+const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const start = now ?? new Date()
-  const earlier = stepCron(cron, start, "prev", "earlier")
-  const later = stepCron(cron, start, "prev", "later")
+  if (cron.repeatedTimes !== "both") {
+    return searchCron(cron, start, direction, cron.repeatedTimes)
+  }
+  // Both occurrences are eligible, so the result is the nearest of the two
+  // single-occurrence searches in the search direction.
+  const earlier = searchCron(cron, start, direction, "earlier")
+  const later = searchCron(cron, start, direction, "later")
+  if (direction === "next") {
+    return earlier <= later ? earlier : later
+  }
   return earlier >= later ? earlier : later
 }
 
-const stepCron = (
+const searchCron = (
   cron: Cron,
-  now: DateTime.DateTime.Input | undefined,
+  now: DateTime.DateTime.Input,
   direction: "next" | "prev",
   repeatedTimes: "earlier" | "later"
 ): Date => {
   const tz = Option.getOrUndefined(cron.tz)
-  const zoned = dateTime.makeZonedUnsafe(now ?? new Date(), {
+  const zoned = dateTime.makeZonedUnsafe(now, {
     timeZone: tz
   })
 
@@ -945,8 +948,8 @@ const stepCron = (
   // Repeated wall times resolve to the occurrence chosen by the policy. Gaps
   // resolve to the instant after the gap under either disambiguation.
   const disambiguation = repeatedTimes === "later" ? "later" : "compatible"
-  const resolve = (current: Date) =>
-    dateTime.makeZonedUnsafe(current, {
+  const resolve = (wallMillis: number) =>
+    dateTime.makeZonedUnsafe(wallMillis, {
       timeZone: zoned.zone,
       adjustForTimeZone: true,
       disambiguation
@@ -955,8 +958,8 @@ const stepCron = (
   // Inside a fold, wall-clock order differs from instant order, so a candidate
   // can resolve to an instant on the wrong side of the input.
   const isOutOfRange = utc ? constFalse : reverse ?
-    (current: Date) => resolve(current) >= zoned.epochMilliseconds :
-    (current: Date) => resolve(current) <= zoned.epochMilliseconds
+    (wallMillis: number) => resolve(wallMillis) >= zoned.epochMilliseconds :
+    (wallMillis: number) => resolve(wallMillis) <= zoned.epochMilliseconds
 
   // A fold near the input shows as a larger offset a day before it than a day
   // after it (DateTime disambiguation assumes the same single transition).
@@ -965,30 +968,30 @@ const stepCron = (
   // fold: when the wall time one fold length ahead is in range, binary search
   // for the first second in range instead of stepping through the interval.
   // Gaps break that ordering, so they keep stepping one second at a time.
-  let foldMillis: number | undefined
+  let foldSeconds: number | undefined
   const skipOutOfRange = (current: Date) => {
-    if (foldMillis === undefined) {
+    if (foldSeconds === undefined) {
       const offsetAt = (millis: number) =>
         dateTime.zonedOffset(dateTime.makeZonedUnsafe(millis, { timeZone: zoned.zone }))
-      foldMillis = offsetAt(zoned.epochMilliseconds - 86_400_000) - offsetAt(zoned.epochMilliseconds + 86_400_000)
+      foldSeconds = Math.floor(
+        (offsetAt(zoned.epochMilliseconds - 86_400_000) - offsetAt(zoned.epochMilliseconds + 86_400_000)) / 1000
+      )
     }
-    let inRange = current.getTime() + tick * 1000
-    if (foldMillis > 0) {
-      const bound = new Date(current.getTime() + tick * foldMillis)
-      if (!isOutOfRange(bound)) {
-        let outOfRange = current.getTime()
-        inRange = bound.getTime()
-        while (Math.abs(inRange - outOfRange) > 1000) {
-          const mid = new Date(outOfRange + tick * Math.floor(Math.abs(inRange - outOfRange) / 2000) * 1000)
-          if (isOutOfRange(mid)) {
-            outOfRange = mid.getTime()
-          } else {
-            inRange = mid.getTime()
-          }
+    const after = (seconds: number) => current.getTime() + tick * seconds * 1000
+    let outOfRange = 0
+    let inRange = 1
+    if (foldSeconds > 0 && !isOutOfRange(after(foldSeconds))) {
+      inRange = foldSeconds
+      while (inRange - outOfRange > 1) {
+        const mid = outOfRange + Math.floor((inRange - outOfRange) / 2)
+        if (isOutOfRange(after(mid))) {
+          outOfRange = mid
+        } else {
+          inRange = mid
         }
       }
     }
-    current.setTime(inRange)
+    current.setTime(after(inRange))
   }
 
   const result = dateTime.mutate(zoned, (current) => {
@@ -997,7 +1000,7 @@ const stepCron = (
     // direction. Start from the wall time of the input under the policy's
     // offset so they are visited; candidates that resolve on the wrong side
     // of the input are skipped below.
-    const shift = utc ? 0 : zoned.epochMilliseconds - resolve(current)
+    const shift = utc ? 0 : zoned.epochMilliseconds - resolve(current.getTime())
     if (reverse ? shift > 0 : shift < 0) {
       current.setTime(current.getTime() + shift)
     }
@@ -1147,7 +1150,7 @@ const stepCron = (
         }
       }
 
-      if (isOutOfRange(current)) {
+      if (isOutOfRange(current.getTime())) {
         skipOutOfRange(current)
         i = -1 // skipped fold candidates do not count against the search budget
         continue
