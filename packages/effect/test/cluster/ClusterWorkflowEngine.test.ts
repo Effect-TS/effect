@@ -1977,6 +1977,74 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("reacquires shards after a forced release abandons a parent waking from its child", () =>
+    Effect.gen(function*() {
+      let storageDown = false
+      let probeRuns = 0
+      const Child = Workflow.make("AbandonedWakeChild", { payload: {}, idempotencyKey: () => "child" })
+      const Parent = Workflow.make("AbandonedWakeParent", { payload: {}, idempotencyKey: () => "parent" })
+      const Probe = Workflow.make("AbandonedWakeProbe", { payload: {}, idempotencyKey: () => "probe" })
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(RunnerStorage.makeMemory, (storage) => ({
+          ...storage,
+          refresh: (address, shardIds) =>
+            storageDown
+              ? Effect.fail(new ClusterError.PersistenceError({ cause: "runner storage outage" }))
+              : storage.refresh(address, shardIds)
+        }))
+      )
+      const layer = Layer.mergeAll(
+        Child.toLayer(() => Effect.void),
+        // The child completes while the parent's run is still active, so its
+        // wake waits for that run's reply until the forced release retires it.
+        Parent.toLayer(() => Effect.andThen(Child.execute({}, { discard: true }), Effect.never)),
+        Probe.toLayer(() =>
+          Effect.sync(() => {
+            probeRuns++
+          })
+        )
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+        shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
+        config: {
+          shardsPerGroup: 1,
+          shardLockRefreshInterval: 500,
+          shardLockExpiration: 3000,
+          entityTerminationTimeout: 500,
+          entityMessagePollInterval: 20,
+          entityReplyPollInterval: 20,
+          refreshAssignmentsInterval: 100
+        }
+      })))
+
+      // Keep a regressed teardown bounded, so the assertions are reported.
+      const scope = yield* Effect.acquireRelease(Scope.make(), (scope) =>
+        Effect.gen(function*() {
+          const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+          yield* advanceUntil(() => closing.pollUnsafe() !== undefined, "the runner must shut down", 100, 20)
+        }))
+      const context = yield* Layer.buildWithScope(layer, scope)
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("parent"), "default")
+        yield* Parent.execute({}, { discard: true })
+        yield* pollUntil(Child, yield* Child.executionId({}), "Complete")
+        yield* TestClock.adjust(1500)
+        assert.isTrue(sharding.hasShardId(shardId))
+
+        storageDown = true
+        yield* advanceUntil(() => !sharding.hasShardId(shardId), "the outage must force the shard release", 100, 14)
+        storageDown = false
+
+        // Release must finish before the shard can be reacquired.
+        yield* TestClock.adjust(4000)
+        assert.isTrue(sharding.hasShardId(shardId), "the shard must be reacquired after recovery")
+        yield* Probe.execute({}, { discard: true })
+        yield* TestClock.adjust(1000)
+        assert.strictEqual(probeRuns, 1, "an independent workflow must run after recovery")
+      }).pipe(Effect.provide(context))
+    }).pipe(Effect.scoped))
+
   it.effect("interrupts a failure-suspended workflow", () =>
     Effect.gen(function*() {
       let attempts = 0
