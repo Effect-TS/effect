@@ -1822,27 +1822,54 @@ describe("HttpApiClient", () => {
       expect(makeSdk).type.toBeCallableWith((error: unknown) => String(error))
     })
 
-    it("rejects a mapper that may be undefined", () => {
+    it("keeps the original errors next to a mapper that may be undefined", () => {
       const mapError = hole<((error: unknown) => ApiError) | undefined>()
+      const make = HttpApiClient.makeWith(Api, { httpClient, mapError })
+      const client = hole<Effect.Success<typeof make>>()
 
-      expect(HttpApiClient.make).type.not.toBeCallableWith(Api, { mapError })
-      expect(HttpApiClient.makeWith).type.not.toBeCallableWith(Api, { httpClient, mapError })
-      expect(HttpApiClient.group).type.not.toBeCallableWith(Api, { group: "users", httpClient, mapError })
-      expect(HttpApiClient.endpoint).type.not.toBeCallableWith(Api, {
+      expect(client.users.inspect({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<
+          HttpClientResponse.HttpClientResponse,
+          ApiError | MiddlewareClientError | "middleware-error" | CustomClientError | HttpClientError.HttpClientError,
+          CustomService
+        >
+      >()
+      expect(client.users.statsWithHeaders()).type.toBe<
+        Effect.Effect<
+          HttpApiSchema.withHeaders<
+            Stream.Stream<Uint8Array, ApiError | HttpClientError.HttpClientError>,
+            { readonly "x-count": number }
+          >,
+          ApiError | CustomClientError | HttpClientError.HttpClientError | Schema.SchemaError,
+          CustomService
+        >
+      >()
+      expect(HttpApiClient.make).type.toBeCallableWith(Api, { mapError })
+      expect(HttpApiClient.group).type.toBeCallableWith(Api, { group: "users", httpClient, mapError })
+      expect(HttpApiClient.endpoint).type.toBeCallableWith(Api, {
         group: "users",
         endpoint: "inspect",
         httpClient,
         mapError
       })
 
-      const make = HttpApiClient.makeWith(Api, { httpClient, mapError: undefined })
-      const client = hole<Effect.Success<typeof make>>()
-      expect(client.users.inspect({ responseMode: "response-only" })).type.toBe<
+      const makeUnmapped = HttpApiClient.makeWith(Api, { httpClient, mapError: undefined })
+      const unmapped = hole<Effect.Success<typeof makeUnmapped>>()
+      expect(unmapped.users.inspect({ responseMode: "response-only" })).type.toBe<
         Effect.Effect<
           HttpClientResponse.HttpClientResponse,
           MiddlewareClientError | "middleware-error" | CustomClientError | HttpClientError.HttpClientError,
           CustomService
         >
+      >()
+    })
+
+    it("keeps the constructors usable as values without mapError", () => {
+      const makeClient = Effect.succeed(Api).pipe(Effect.flatMap(HttpApiClient.make))
+      expect<Effect.Success<typeof makeClient>>().type.toBe<HttpApiClient.ForApi<typeof Api>>()
+
+      expect<{ readonly baseUrl: "http://test" }>().type.toBeAssignableTo<
+        NonNullable<Parameters<typeof HttpApiClient.make>[1]>
       >()
     })
   })
