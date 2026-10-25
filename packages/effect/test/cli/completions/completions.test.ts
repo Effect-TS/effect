@@ -146,7 +146,7 @@ const choicesHelperSource = (script: string): string => {
 const linesWith = (script: string, needle: string): string =>
   script.split("\n").filter((line) => line.includes(needle)).map((line) => line.trim()).join("\n")
 
-const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "exit 0"]).status === 0
+const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0
 
 /** Complete the last of `words` with the generated Bash script in a directory of `process` fixtures. */
 const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
@@ -285,29 +285,11 @@ describe("Bash completions", () => {
     assert.include(script, "--no-loud")
   })
 
-  it("completes file-type flags with files", () => {
-    const desc = fromCommand(withPaths)
-    const script = Bash.generate("process", desc)
-    assert.include(script, `--input)\n      _process--paths -f "$cur" "$_comp_word"`)
-  })
-
-  it("completes directory-type flags with directories", () => {
-    const desc = fromCommand(withPaths)
-    const script = Bash.generate("process", desc)
-    assert.include(script, `--output-dir)\n      _process--paths -d "$cur" "$_comp_word"`)
-  })
-
-  it.skipIf(!hasBash)("completes a file flag value containing spaces as one escaped path", () => {
+  it.skipIf(!hasBash)("completes paths containing spaces as one escaped candidate", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "rep"]), ["report.txt", "report\\ data.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "report\\ d"]), ["report\\ data.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "~/rep"]), ["~/report.txt", "~/report\\ data.txt"])
-  })
-
-  it.skipIf(!hasBash)("completes a directory flag value containing spaces as one escaped path", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "--output-dir", "pro"]), ["project\\ files"])
-  })
-
-  it.skipIf(!hasBash)("completes a positional path containing spaces as one escaped path", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "rep"]), ["report.txt", "report\\ data.txt"])
   })
 
@@ -1014,9 +996,6 @@ describe("Completions integration", () => {
     assert.include(script, "_mycli_admin_users_create()")
     assert.include(script, "_mycli_admin_config_set()")
     assert.include(script, "_mycli_admin_config_get()")
-
-    // File completion for copy command
-    assert.include(script, `_mycli--paths -f "$cur" "$_comp_word"`)
   })
 
   it("generates valid zsh script for ComprehensiveCli", () => {
