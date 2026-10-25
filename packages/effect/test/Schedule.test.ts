@@ -507,12 +507,12 @@ describe("Schedule", () => {
   })
 
   describe("fibonacci", () => {
-    it.effect("sums the two preceding delays, starting with two equal delays", () =>
+    it.effect("repeats the initial delay", () =>
       Effect.gen(function*() {
         const schedule = Schedule.fibonacci("100 millis")
-        const inputs = Array.makeBy(6, constUndefined)
+        const inputs = Array.makeBy(5, constUndefined)
         const output = yield* runDelays(schedule, inputs)
-        assert.deepStrictEqual(output, [100, 100, 200, 300, 500, 800].map(Duration.millis))
+        expect(output).toEqual([100, 100, 200, 300, 500].map(Duration.millis))
       }))
   })
 
