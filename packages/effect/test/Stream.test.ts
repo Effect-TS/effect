@@ -2111,6 +2111,31 @@ describe("Stream", () => {
       assert.deepStrictEqual(groupedResults, expected)
     }))
 
+  it.effect("grouped - emits elements properly when a failure occurs", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(Array.empty<Array.NonEmptyReadonlyArray<number>>())
+      const result = yield* Stream.fromArrays([1, 2, 3, 4], [5, 6, 7], [8]).pipe(
+        Stream.concat(Stream.fail("Ouch")),
+        Stream.grouped(3),
+        Stream.runForEach((chunk) => Ref.update(ref, Array.append(chunk))),
+        Effect.flip
+      )
+      const batches = yield* Ref.get(ref)
+      assert.strictEqual(result, "Ouch")
+      assert.deepStrictEqual(batches, [[1, 2, 3], [4, 5, 6], [7, 8]])
+    }))
+
+  it.effect("rechunk - emits buffered elements before a recovered failure", () =>
+    Effect.gen(function*() {
+      const result = yield* Stream.make(1, 2, 3).pipe(
+        Stream.concat(Stream.fail("Ouch")),
+        Stream.rechunk(10),
+        Stream.catchCause(() => Stream.make(-1)),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(result, [1, 2, 3, -1])
+    }))
+
   describe("transduce", () => {
     it.effect("no remainder", () =>
       Effect.gen(function*() {
