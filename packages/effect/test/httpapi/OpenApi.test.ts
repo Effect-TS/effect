@@ -871,6 +871,42 @@ describe("OpenApi", () => {
     })
   })
 
+  it("emits each listed stream content type in declared order", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("logs", "/logs", {
+          success: HttpApiSchema.StreamUint8Array({
+            contentType: ["application/vnd.docker.raw-stream", "application/vnd.docker.multiplexed-stream"]
+          })
+        }),
+        HttpApiEndpoint.post("ingest", "/ingest", {
+          payload: HttpApiSchema.StreamNdjson({
+            schema: Schema.Finite,
+            contentType: ["application/jsonl", "application/json"]
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    const bytes = { schema: { type: "string", format: "binary" }, "x-effect-stream": { encoding: "uint8array" } }
+    const ndjson = { schema: { type: "number" }, "x-effect-stream": { encoding: "ndjson" } }
+    const logs = spec.paths["/logs"]?.get?.responses[200]?.content
+    assert.deepStrictEqual(logs, {
+      "application/vnd.docker.raw-stream": bytes,
+      "application/vnd.docker.multiplexed-stream": bytes
+    })
+    assert.deepStrictEqual(Object.keys(logs ?? {}), [
+      "application/vnd.docker.raw-stream",
+      "application/vnd.docker.multiplexed-stream"
+    ])
+    assert.deepStrictEqual(spec.paths["/ingest"]?.post?.requestBody, {
+      content: { "application/jsonl": ndjson, "application/json": ndjson },
+      required: true
+    })
+  })
+
   it("rejects duplicate method and path pairs", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

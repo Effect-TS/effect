@@ -86,6 +86,22 @@ describe("HttpApiEndpoint streaming payload schemas", () => {
     )
   })
 
+  it("rejects buffered payloads and successes on any listed stream content type", () => {
+    const stream = HttpApiSchema.StreamNdjson({
+      schema: Schema.Number,
+      contentType: ["application/x-ndjson", "application/json"]
+    })
+
+    assert.throws(
+      () => HttpApiEndpoint.post("upload", "/upload", { payload: [stream, Schema.Struct({ ok: Schema.Boolean })] }),
+      /Cannot combine buffered and streaming payloads for content-type: application\/json/
+    )
+    assert.throws(
+      () => HttpApiEndpoint.get("export", "/export", { success: [stream, Schema.Struct({ ok: Schema.Boolean })] }),
+      /Cannot combine buffered and streaming success responses for status 200 and content-type: application\/json/
+    )
+  })
+
   it("rejects streaming payloads on no-body methods", () => {
     const payload: any = HttpApiSchema.StreamUint8Array()
     assert.throws(() => HttpApiEndpoint.get("upload", "/upload", { payload }), /GET/)

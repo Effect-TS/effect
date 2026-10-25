@@ -498,6 +498,31 @@ describe("HttpApiClient", () => {
         assert.deepStrictEqual(first.map((chunk) => Array.from(chunk)), [[1, 2]])
       }))
 
+    it.effect("decodes a stream with listed content types regardless of the received content type", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("events", "/events", {
+              success: HttpApiSchema.StreamNdjson({
+                schema: Schema.Struct({ id: Schema.Number }),
+                contentType: ["application/jsonl", "application/json"]
+              })
+            })
+          )
+        )
+        for (const contentType of ["application/json", "text/plain"]) {
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(textStream([`{"id":1}\n`]), { status: 200, headers: { "content-type": contentType } })
+            )
+          })
+
+          const items = yield* client.test.events().pipe(Effect.flatMap(Stream.runCollect))
+          assert.deepStrictEqual(items, [{ id: 1 }])
+        }
+      }))
+
     it.effect("decodes WithHeaders StreamUint8Array bodies and headers", () =>
       Effect.gen(function*() {
         const Api = HttpApi.make("Api").add(
