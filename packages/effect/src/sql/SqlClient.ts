@@ -528,6 +528,8 @@ const makeAfterCommit =
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
  *
+ * **Details**
+ *
  * Transactions started this way are also recognized by `SqlResolver` when the
  * caller's context has no `SqlClient`, so their requests don't share a batch
  * with requests outside the transaction.
