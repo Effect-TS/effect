@@ -111,30 +111,64 @@ const choicesHelper = (helperName: string, lines: Array<string>): void => {
   lines.push(``)
 }
 
-const choiceCompletion = (helperName: string, values: ReadonlyArray<string>): string =>
-  `${helperName} "$cur" "$_comp_word" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
+/**
+ * Complete paths one `compgen` line at a time, so names containing whitespace
+ * stay whole, and insert them with the choice helper's quoting.
+ */
+const pathsHelper = (helperName: string, choicesHelperName: string, lines: Array<string>): void => {
+  lines.push(`${helperName}()`)
+  lines.push(`{`)
+  lines.push(`  local _kind="$1" _cur="$2" _word="$3"`)
+  lines.push(``)
+  lines.push(`  local _prefix="$_cur"`)
+  lines.push(`  _prefix=\${_prefix//\\\\/}; _prefix=\${_prefix//\\"/}; _prefix=\${_prefix//\\'/}`)
+  lines.push(``)
+  lines.push(`  local _path _paths=()`)
+  lines.push(`  while IFS= read -r _path; do`)
+  lines.push(`    _paths+=("$_path")`)
+  lines.push(`  done < <(compgen "$_kind" -- "$_prefix")`)
+  lines.push(`  ${choicesHelperName} "$_cur" "$_word" \${_paths[@]+"\${_paths[@]}"}`)
+  lines.push(``)
+  // Keep a typed leading tilde or variable expandable.
+  lines.push(`  [[ "$_cur" == [~$]* ]] || return 0`)
+  lines.push(`  local _i`)
+  lines.push(`  for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
+  lines.push(`    [[ "\${COMPREPLY[_i]}" == \\\\[~$]* ]] && COMPREPLY[_i]="\${COMPREPLY[_i]#\\\\}"`)
+  lines.push(`  done`)
+  lines.push(`}`)
+  lines.push(``)
+}
 
-const flagValueCompletion = (type: Completions.FlagType, helperName: string): string | undefined => {
+interface Helpers {
+  readonly choices: string
+  readonly paths: string
+}
+
+const choiceCompletion = (helpers: Helpers, values: ReadonlyArray<string>): string =>
+  `${helpers.choices} "$cur" "$_comp_word" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
+
+const pathCompletion = (helpers: Helpers, pathType: "file" | "directory" | "either"): string =>
+  `${helpers.paths} ${pathType === "directory" ? "-d" : "-f"} "$cur" "$_comp_word"`
+
+const flagValueCompletion = (type: Completions.FlagType, helpers: Helpers): string | undefined => {
   switch (type._tag) {
     case "Boolean":
       return undefined
     case "Choice":
-      return choiceCompletion(helperName, type.values)
+      return choiceCompletion(helpers, type.values)
     case "Path":
-      if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
-      return `COMPREPLY=( $(compgen -f -- "$cur") )`
+      return pathCompletion(helpers, type.pathType)
     default:
       return undefined
   }
 }
 
-const argCompletion = (type: Completions.ArgumentType, helperName: string): string | undefined => {
+const argCompletion = (type: Completions.ArgumentType, helpers: Helpers): string | undefined => {
   switch (type._tag) {
     case "Choice":
-      return choiceCompletion(helperName, type.values)
+      return choiceCompletion(helpers, type.values)
     case "Path":
-      if (type.pathType === "directory") return `COMPREPLY=( $(compgen -d -- "$cur") )`
-      return `COMPREPLY=( $(compgen -f -- "$cur") )`
+      return pathCompletion(helpers, type.pathType)
     default:
       return undefined
   }
@@ -148,7 +182,7 @@ const generateFunction = (
   descriptor: Completions.CommandDescriptor,
   parentPath: ReadonlyArray<string>,
   lines: Array<string>,
-  helperName: string
+  helpers: Helpers
 ): void => {
   const currentPath = [...parentPath, descriptor.name]
   const funcName = `_${currentPath.map(sanitizeFunctionName).join("_")}`
@@ -175,7 +209,7 @@ const generateFunction = (
       for (const alias of flag.aliases) {
         longNames.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
       }
-      const completion = flagValueCompletion(flag.type, helperName)
+      const completion = flagValueCompletion(flag.type, helpers)
       if (completion) {
         lines.push(`    ${longNames.join("|")})`)
         lines.push(`      ${completion}`)
@@ -231,7 +265,7 @@ const generateFunction = (
 
   // Positional argument completion
   const argsWithCompletions = descriptor.arguments.flatMap((argument, index) => {
-    const completion = argCompletion(argument.type, helperName)
+    const completion = argCompletion(argument.type, helpers)
     return completion === undefined ? [] : [{ argument, completion, index }]
   })
   if (argsWithCompletions.length > 0) {
@@ -287,7 +321,7 @@ const generateFunction = (
 
   // Recurse into subcommands
   for (const sub of descriptor.subcommands) {
-    generateFunction(sub, currentPath, lines, helperName)
+    generateFunction(sub, currentPath, lines, helpers)
   }
 }
 
@@ -301,7 +335,7 @@ export const generate = (
   const lines: Array<string> = []
   const safeName = sanitizeFunctionName(executableName)
   // Sanitized command names cannot contain `-`.
-  const helperName = `_${safeName}--choices`
+  const helpers: Helpers = { choices: `_${safeName}--choices`, paths: `_${safeName}--paths` }
 
   lines.push(`###-begin-${escapeForBash(executableName)}-completions-###`)
   lines.push(`#`)
@@ -341,8 +375,9 @@ export const generate = (
   lines.push(`fi`)
   lines.push(``)
 
-  choicesHelper(helperName, lines)
-  generateFunction(descriptor, [], lines, helperName)
+  choicesHelper(helpers.choices, lines)
+  pathsHelper(helpers.paths, helpers.choices, lines)
+  generateFunction(descriptor, [], lines, helpers)
 
   lines.push(`complete -F _${safeName} ${escapeForBash(executableName)}`)
   lines.push(`###-end-${escapeForBash(executableName)}-completions-###`)
