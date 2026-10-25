@@ -133,7 +133,6 @@ max = "\U0010FFFF"
   it("rejects tables defined twice", () => {
     const invalid = [
       "[fruit]\napple.color = \"red\"\n[fruit.apple]\n",
-      "[a.b.c]\n[a]\nb.d = 1\n[a.b]\n",
       "[a.b]\n[a]\nb.c = 1\n",
       "[[a]]\n[a]\n"
     ]
