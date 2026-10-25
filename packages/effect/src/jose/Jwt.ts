@@ -246,12 +246,12 @@ const ClaimsJson = Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.
  * @category cryptography
  * @since 4.1.0
  */
-export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint, K extends SigningKey>(
   schema: S,
   claims: S["Type"],
-  key: SigningKey,
+  key: K,
   header?: Jws.Header
-): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.Requirements> {
+): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.KeyRequirements<K>> {
   const encoded = yield* Schema.encodeEffect(schema)(claims)
   const json = yield* Schema.decodeUnknownEffect(ClaimsJson)(encoded)
   return yield* Jws.sign(utf8(JSON.stringify(json)), key, header)
@@ -293,12 +293,12 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * @category cryptography
  * @since 4.1.0
  */
-export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint, K extends VerificationKey>(
   schema: S,
   token: string | Redacted.Redacted<string>,
-  key: VerificationKey,
+  key: K,
   options?: VerifyOptions
-): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"] | Jws.Requirements> {
+): Effect.fn.Return<Verified<S["Type"]>, JwtError, S["DecodingServices"] | Jws.KeyRequirements<K>> {
   const policy = yield* readPolicy(options)
   return yield* decodeClaims(schema, yield* Jws.verify(token, key), policy)
 })

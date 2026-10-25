@@ -28,7 +28,14 @@ import {
   utf8
 } from "./internal/compact.ts"
 import * as JoseError from "./JoseError.ts"
-import { Algorithm, type AsymmetricAlgorithm, type PublicKey, type SigningKey, type VerificationKey } from "./Jwk.ts"
+import {
+  Algorithm,
+  type AsymmetricAlgorithm,
+  type PublicKey,
+  type SecretKey,
+  type SigningKey,
+  type VerificationKey
+} from "./Jwk.ts"
 import { Jwks } from "./Jwks.ts"
 
 /**
@@ -103,6 +110,18 @@ export interface VerifyWithKeySetOptions {
  * @since 4.1.0
  */
 export type Requirements = Mac.Mac | Signature.Signature
+
+/**
+ * Services required to sign or verify with a key of type `K`: `Mac` for
+ * HS256 keys and `Signature` for asymmetric keys. A union of key types
+ * requires both.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type KeyRequirements<K extends SigningKey | VerificationKey> = K extends SecretKey<"HS256"> ? Mac.Mac
+  : Signature.Signature
 
 interface Parsed {
   readonly protectedHeader: ProtectedHeader
@@ -188,7 +207,11 @@ const verifySignature = Effect.fnUntraced(function*(
  * @category cryptography
  * @since 4.1.0
  */
-export const sign = Effect.fnUntraced(function*(
+export const sign: <K extends SigningKey>(
+  payload: Uint8Array,
+  key: K,
+  header?: Header
+) => Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>> = Effect.fnUntraced(function*(
   payload: Uint8Array,
   key: SigningKey,
   header?: Header
@@ -204,7 +227,8 @@ export const sign = Effect.fnUntraced(function*(
     signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(signFailure))
   }
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
-})
+  // Each branch uses only the service its key type requires.
+}) as any
 
 /**
  * Verifies a compact JWS with a key. The token's `alg` must be the key's
@@ -217,7 +241,10 @@ export const sign = Effect.fnUntraced(function*(
  * @category cryptography
  * @since 4.1.0
  */
-export const verify = Effect.fnUntraced(function*(
+export const verify: <K extends VerificationKey>(
+  token: string | Redacted.Redacted<string>,
+  key: K
+) => Effect.Effect<Verified, JoseError.JoseError, KeyRequirements<K>> = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>,
   key: VerificationKey
 ): Effect.fn.Return<Verified, JoseError.JoseError, Requirements> {
@@ -229,7 +256,8 @@ export const verify = Effect.fnUntraced(function*(
     Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
-})
+  // Each branch uses only the service its key type requires.
+}) as any
 
 /**
  * Verifies a compact JWS with a public key resolved from the `Jwks` service by
