@@ -408,8 +408,8 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
 )
 
 /**
- * Provides {@link DockerPlugins} over the `DockerEngine` in context, built
- * with {@link make}. `Docker.layer` provides every service.
+ * Provides {@link DockerPlugins} over the `DockerEngine` and `DockerRegistryAuth`
+ * in context, built with {@link make}. `Docker.layer` provides every service.
  *
  * @stability unstable
  * @category layers
