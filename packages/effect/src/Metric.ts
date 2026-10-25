@@ -576,7 +576,7 @@ export interface GaugeState<in Input extends number | bigint> {
  *         start: 1,
  *         factor: 2,
  *         count: 10
- *       }) // 1, 2, 4, 8, ..., 512
+ *       }) // 1, 2, 4, 8, ..., 256, Infinity
  *     }
  *   )
  *
@@ -696,8 +696,8 @@ export interface Histogram<Input> extends Metric<Input, HistogramState> {}
  *       totalRequests: state.count, // 5
  *       fastestResponse: state.min, // 50
  *       slowestResponse: state.max, // 750
- *       averageResponse: state.sum / state.count, // 268
- *       totalTime: state.sum, // 1340
+ *       averageResponse: state.sum / state.count, // 259
+ *       totalTime: state.sum, // 1295
  *       distribution: bucketAnalysis
  *       // Example distribution:
  *       // [{ range: "0-100ms", count: 2, percentage: 40.0 },
