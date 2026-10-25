@@ -544,17 +544,18 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         op.externalDocs = externalDocs
       })
 
-      let requirements: Array<OpenAPISecurityRequirement> = [{}]
       middleware.forEach((middleware) => {
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }
-        const entries = Object.entries(middleware.security)
-        for (const [name, security] of entries) {
-          processHttpApiSecurity(name, security)
+        const names = Object.keys(middleware.security)
+        for (const name of names) {
+          processHttpApiSecurity(name, middleware.security[name])
         }
-        requirements = requirements.flatMap((requirement) => entries.map(([name]) => ({ ...requirement, [name]: [] })))
-        op.security = requirements
+        // Stacked security middleware must all pass, while the schemes within one
+        // middleware are alternatives, so every requirement so far gains one of its schemes.
+        const requirements = op.security.length === 0 ? [{}] : op.security
+        op.security = requirements.flatMap((requirement) => names.map((name) => ({ ...requirement, [name]: [] })))
       })
 
       function processHttpApiSecurity(
