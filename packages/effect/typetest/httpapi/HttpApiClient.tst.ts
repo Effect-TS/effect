@@ -1812,14 +1812,14 @@ describe("HttpApiClient", () => {
       >()
 
       // a generic SDK wrapper must see the mapper's error, not a deferred type
-      const makeSdk = <E>(mapError: (error: unknown) => E) =>
-        Effect.gen(function*() {
-          const client = yield* HttpApiClient.makeWith(Api, { httpClient, mapError })
-          expect(client.users.inspect()).type.toBe<Effect.Effect<Item, E, CustomService>>()
-          expect(client.users.statsStream()).type.toBe<
-            Effect.Effect<Stream.Stream<Item, E>, E, CustomService>
-          >()
-        })
+      const makeSdk = Effect.fnUntraced(function*<E>(mapError: (error: unknown) => E) {
+        const client = yield* HttpApiClient.makeWith(Api, { httpClient, mapError })
+        expect(client.users.inspect()).type.toBe<Effect.Effect<Item, E, CustomService>>()
+        expect(client.users.statsStream()).type.toBe<
+          Effect.Effect<Stream.Stream<Item, E>, E, CustomService>
+        >()
+      })
+      expect(makeSdk).type.toBeCallableWith((error: unknown) => String(error))
     })
 
     it("rejects a mapper that may be undefined", () => {
