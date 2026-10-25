@@ -1784,6 +1784,37 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       }
     }))
 
+  it.effect("rejects endpoints that share a method and path", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("stats").add(
+            HttpApiEndpoint.get("once", "/stats/:id", { params: { id: Schema.String } })
+          )
+        )
+        .add(
+          HttpApiGroup.make("streams").add(
+            HttpApiEndpoint.get("stream", "/stats/:statsId", { params: { statsId: Schema.String } })
+          )
+        )
+      const exit = yield* Effect.exit(HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(Api).pipe(
+          Layer.provide([
+            HttpApiBuilder.group(Api, "stats", (handlers) => handlers.handle("once", () => Effect.void)),
+            HttpApiBuilder.group(Api, "streams", (handlers) => handlers.handle("stream", () => Effect.void))
+          ])
+        )
+      ))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        assert.include(
+          String(Cause.squash(exit.cause)),
+          `HttpApiEndpoint "streams.stream" (GET /stats/:statsId) has the same method and path as "stats.once"`
+        )
+      }
+    }))
+
   it.effect("rejects duplicate handle and handleAll registrations", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
