@@ -47,7 +47,7 @@ class TomlParser {
   private line = 1
   private column = 1
   private readonly explicitTables = new Set<Table>()
-  // Tables on a dotted key's path are defined by it; headers cannot open them again.
+  // Tables defined by dotted keys; a header cannot define them again.
   private readonly dottedTables = new Set<Table>()
 
   constructor(input: string) {
