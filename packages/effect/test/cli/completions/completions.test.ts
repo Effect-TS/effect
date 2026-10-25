@@ -148,6 +148,21 @@ const linesWith = (script: string, needle: string): string =>
 
 const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0
 
+/** `script` arguments that run `command` on a pseudo-terminal. */
+const scriptArgs = (command: string): Array<string> =>
+  process.platform === "linux" ? ["-qec", command, "/dev/null"] : ["-q", "/dev/null", ...command.split(" ")]
+
+const hasReadline = hasBash && spawnSync("script", scriptArgs("bash --noprofile --norc -c true")).status === 0
+
+const writeBashFixtures = (directory: string): void => {
+  mkdirSync(join(directory, "project files"))
+  writeFileSync(join(directory, "project.txt"), "")
+  writeFileSync(join(directory, "report data.txt"), "")
+  writeFileSync(join(directory, "report.txt"), "")
+  writeFileSync(join(directory, "other"), "")
+  writeFileSync(join(directory, "other.txt"), "")
+}
+
 /**
  * Complete the last of `words` like interactive Bash in a directory of
  * `process` fixtures, and return the normalized argument each candidate expands
@@ -156,10 +171,7 @@ const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"
 const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
   const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
   try {
-    mkdirSync(join(directory, "project files"))
-    writeFileSync(join(directory, "project.txt"), "")
-    writeFileSync(join(directory, "report data.txt"), "")
-    writeFileSync(join(directory, "report.txt"), "")
+    writeBashFixtures(directory)
     const quote = (word: string) => `'${word.replace(/'/g, "'\\''")}'`
     const line = words.join(" ")
     const last = words[words.length - 1]
@@ -206,6 +218,36 @@ const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
       .filter((text) => text !== "")
       .map((text) => normalize(text).replaceAll(directory, "<home>"))
       .sort()
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Type `line` and a tab into interactive Bash on a pseudo-terminal in a
+ * directory of `process` fixtures, press Enter, and return the arguments
+ * `process` receives.
+ */
+const replayBashReadline = (line: string): Array<string> => {
+  const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
+  try {
+    writeBashFixtures(directory)
+    writeFileSync(
+      join(directory, "rc.bash"),
+      [Bash.generate("process", fromCommand(withPaths)), `process() { printf '<%s>\\n' "$@"; }`, `PS1='$ ' TMOUT=1`]
+        .join("\n")
+    )
+    // Ctrl-D exits, or on Bash 5 ends a quote left open; TMOUT exits once the
+    // input runs out.
+    return spawnSync("script", scriptArgs("bash --noprofile --rcfile rc.bash -i"), {
+      cwd: directory,
+      encoding: "utf8",
+      env: { ...process.env, HOME: directory },
+      input: `${line}\t\n\x04exit\n`,
+      timeout: 10_000
+    }).stdout
+      .split(/\r?\n/)
+      .flatMap((text) => text.startsWith("<") && text.endsWith(">") ? [text.slice(1, -1)] : [])
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
@@ -334,6 +376,11 @@ describe("Bash completions", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `"$HOME/"project.`]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `$HOME/"project."`]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `~/"project."`]), ["<home>/project.txt"])
+  })
+
+  it.skipIf(!hasReadline)("leaves no quote open when Readline inserts the common prefix of paths", () => {
+    assert.deepStrictEqual(replayBashReadline(`process --input "./"ot`), ["--input", "./other"])
+    assert.deepStrictEqual(replayBashReadline(`process --input './'ot`), ["--input", "./other"])
   })
 
   it("inlines choice values for choice flags", () => {
