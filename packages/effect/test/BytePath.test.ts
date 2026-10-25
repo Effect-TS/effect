@@ -6,6 +6,16 @@ const fromBytes = (input: Uint8Array) => Result.getOrThrow(BytePath.fromBytes(in
 const failure = <A, E>(result: Result.Result<A, E>): E => Result.getOrThrow(Result.flip(result))
 
 describe("BytePath", () => {
+  it("reports exact byte lengths without exposing mutable storage", () => {
+    assert.strictEqual(BytePath.byteLength(BytePath.empty), 0)
+    assert.strictEqual(BytePath.byteLength(fromString("é😀")), 6)
+    const raw = fromBytes(new Uint8Array([255, 128, 47]))
+    assert.strictEqual(BytePath.byteLength(raw), 3)
+    BytePath.toBytes(raw).fill(0)
+    assert.deepStrictEqual(BytePath.toBytes(raw), new Uint8Array([255, 128, 47]))
+    assert.strictEqual(BytePath.byteLength(raw), 3)
+  })
+
   it("should preserve exact spelling when constructing valid paths", () => {
     for (const input of ["", "/a//./../b/", "a\\b", "é", "e\u0301", "\ufeffa", "😀"]) {
       const path = fromString(input)
