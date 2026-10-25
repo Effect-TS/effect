@@ -948,6 +948,70 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* TestConsole.errorLines, [])
       }).pipe(Effect.provide(TestLayer)))
 
+    describe("invalid flag values", () => {
+      const Region = GlobalFlag.Setting("region")({
+        flag: Flag.Literals("region", ["us", "eu"]).pipe(Flag.withDefault("us"))
+      })
+      const deploy = Command.make("deploy", {
+        count: Flag.Int("count").pipe(Flag.withDefault(1))
+      }, () => Effect.void).pipe(Command.withGlobalFlags([Region]))
+      const command = Command.make("app").pipe(Command.withSubcommands([deploy]))
+
+      for (const flag of ["count", "completions", "log-level", "region"]) {
+        it.effect(`should format an invalid --${flag} value with command help`, () =>
+          Effect.gen(function*() {
+            const error = yield* Effect.flip(
+              Command.runWith(command, { version: "1.0.0" })(["deploy", `--${flag}`, "bad"])
+            )
+
+            assert.instanceOf(error, CliError.ShowHelp)
+            assert.deepStrictEqual(error.commandPath, ["app", "deploy"])
+            assert.lengthOf(error.errors, 1)
+            assert.instanceOf(error.errors[0], CliError.InvalidValue)
+            assert.strictEqual(Runtime.getErrorExitCode(error), 1)
+            assert.include((yield* TestConsole.logLines).join("\n"), "app deploy")
+            const stderr = (yield* TestConsole.errorLines).join("\n")
+            assert.include(stderr, `Invalid value for flag --${flag}: "bad"`)
+          }).pipe(Effect.provide(TestLayer)))
+
+        it.effect(`should present an invalid --${flag} value according to renderErrors`, () =>
+          Effect.gen(function*() {
+            const events: Array<CliOutput.Presenter.Event> = []
+            const PresenterLayer = CliOutput.layerPresenter({
+              present: (event) =>
+                Effect.sync(() => {
+                  events.push(event)
+                })
+            })
+
+            for (const renderErrors of [true, false]) {
+              const error = yield* Command.runWith(command, { version: "1.0.0", renderErrors })([
+                "deploy",
+                `--${flag}`,
+                "bad"
+              ]).pipe(Effect.flip, Effect.provide(PresenterLayer))
+
+              assert.instanceOf(error, CliError.ShowHelp)
+              assert.strictEqual(Runtime.getErrorExitCode(error), 1)
+            }
+
+            assert.deepStrictEqual(events.map((event) => event._tag), ["InvalidInvocation", "Help"])
+            for (const event of events) {
+              if (event._tag === "InvalidInvocation") {
+                assert.deepStrictEqual(event.commandPath, ["app", "deploy"])
+                assert.lengthOf(event.errors, 1)
+                assert.instanceOf(event.errors[0], CliError.InvalidValue)
+              } else if (event._tag === "Help") {
+                assert.deepStrictEqual(event.commandPath, ["app", "deploy"])
+                assert.strictEqual(event.reason, "Implicit")
+              }
+            }
+            assert.deepStrictEqual(yield* TestConsole.logLines, [])
+            assert.deepStrictEqual(yield* TestConsole.errorLines, [])
+          }).pipe(Effect.provide(TestLayer)))
+      }
+    })
+
     it.effect("should propagate handler errors from run", () =>
       Effect.gen(function*() {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
