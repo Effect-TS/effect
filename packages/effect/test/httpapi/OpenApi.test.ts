@@ -839,6 +839,9 @@ describe("OpenApi", () => {
         }),
         HttpApiEndpoint.get("export", "/export", {
           success: HttpApiSchema.StreamNdjson({ schema: Item })
+        }),
+        HttpApiEndpoint.get("build", "/build", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item, error: Schema.Struct({ error: Schema.String }) })
         })
       )
     )
@@ -867,6 +870,19 @@ describe("OpenApi", () => {
       "application/x-ndjson": {
         schema: itemJsonSchema,
         "x-effect-stream": { encoding: "ndjson" }
+      }
+    })
+    const errorJsonSchema = {
+      type: "object",
+      properties: { error: { type: "string" } },
+      required: ["error"],
+      additionalProperties: false
+    }
+    // Error records are matched first, so a record may fit both branches
+    assert.deepStrictEqual(spec.paths["/build"]?.get?.responses[200]?.content, {
+      "application/x-ndjson": {
+        schema: { anyOf: [itemJsonSchema, errorJsonSchema] },
+        "x-effect-stream": { encoding: "ndjson", errorSchema: errorJsonSchema }
       }
     })
   })

@@ -748,6 +748,9 @@ describe("HttpApiClient", () => {
         }),
         HttpApiEndpoint.get("limited", "/limited", {
           success: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 13 })
+        }),
+        HttpApiEndpoint.get("build", "/build", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item, error: Schema.Struct({ error: Schema.String }) })
         })
       )
     )
@@ -775,6 +778,19 @@ describe("HttpApiClient", () => {
 
         assert.deepStrictEqual(result.delivered, [{ text: "a" }])
         assert.instanceOf(result.error, Schema.SchemaError)
+      }))
+
+    it.effect("fails with the first record that decodes as the error schema and stops reading", () =>
+      Effect.gen(function*() {
+        // One chunk, and the error line also matches the element schema
+        const client = yield* makeClient(() =>
+          textStream(["{\"text\":\"a\"}\n{\"text\":\"b\",\"error\":\"boom\"}\n{\"text\":\"c\"}\n"])
+        )
+
+        const result = yield* client.test.build().pipe(Effect.flatMap(collectUntilFailure))
+
+        assert.deepStrictEqual(result.delivered, [{ text: "a" }])
+        assert.deepStrictEqual(result.error, { error: "boom" })
       }))
 
     it.effect("fails with a DecodeError when a line exceeds maxElementBytes in UTF-8 bytes", () =>

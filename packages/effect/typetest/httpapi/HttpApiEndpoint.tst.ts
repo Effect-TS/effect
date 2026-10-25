@@ -242,6 +242,11 @@ describe("HttpApiEndpoint", () => {
         const payload = HttpApiSchema.StreamSse({ data: Schema.String })
         expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload })
       })
+
+      it("rejects StreamNdjson with an error schema as a payload", () => {
+        const payload = HttpApiSchema.StreamNdjson({ schema: Schema.Number, error: Schema.String })
+        expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload })
+      })
     })
   })
 
@@ -604,6 +609,22 @@ describe("HttpApiEndpoint", () => {
 
       expect<HttpApiEndpoint.ServerServices<typeof endpoint>>().type.toBe<"EventsEncoding" | "ErrorEncoding">()
       expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"EventsDecoding" | "ErrorDecoding">()
+    })
+
+    it("includes StreamNdjson element and error schema services", () => {
+      type Item = { readonly text: string }
+      type StreamError = { readonly error: string }
+
+      const Item = hole<Schema.Codec<Item, Item, "ItemDecoding", "ItemEncoding">>()
+      const Error = hole<Schema.Codec<StreamError, StreamError, "ErrorDecoding", "ErrorEncoding">>()
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.StreamNdjson({ schema: Item, error: Error })
+      })
+
+      // Failures the error schema does not accept still abort the response
+      expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Stream.Stream<Item, unknown>>()
+      expect<HttpApiEndpoint.ServerServices<typeof endpoint>>().type.toBe<"ItemEncoding" | "ErrorEncoding">()
+      expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"ItemDecoding" | "ErrorDecoding">()
     })
   })
 

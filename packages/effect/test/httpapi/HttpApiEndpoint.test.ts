@@ -86,6 +86,11 @@ describe("HttpApiEndpoint streaming payload schemas", () => {
     )
   })
 
+  it("rejects an NDJSON payload with an error schema", () => {
+    const payload: any = HttpApiSchema.StreamNdjson({ schema: Schema.Number, error: Schema.String })
+    assert.throws(() => HttpApiEndpoint.post("upload", "/upload", { payload }), /error/)
+  })
+
   it("rejects streaming payloads on no-body methods", () => {
     const payload: any = HttpApiSchema.StreamUint8Array()
     assert.throws(() => HttpApiEndpoint.get("upload", "/upload", { payload }), /GET/)

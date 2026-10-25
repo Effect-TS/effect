@@ -457,6 +457,53 @@ it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
       const decoded = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
       assert.deepStrictEqual(decoded, [{ text: "a" }, { text: "b" }])
     }))
+
+  const Item = Schema.Struct({ text: Schema.String })
+  const BuildFailed = Schema.Struct({ error: Schema.String, code: Schema.FiniteFromString })
+  const ErrorApi = HttpApi.make("Api").add(
+    HttpApiGroup.make("test").add(
+      HttpApiEndpoint.get("build", "/build", {
+        success: HttpApiSchema.StreamNdjson({ schema: Item, error: BuildFailed })
+      })
+    )
+  )
+  const makeErrorClient = (stream: Stream.Stream<typeof Item.Type, unknown>) =>
+    HttpApiTest.groups(ErrorApi, ["test"]).pipe(
+      Effect.provide(
+        HttpApiBuilder.group(ErrorApi, "test", (handlers) => handlers.handle("build", () => Effect.succeed(stream)))
+      )
+    )
+
+  it.effect("ends with the encoded error record when the stream fails with a declared error", () =>
+    Effect.gen(function*() {
+      const client = yield* makeErrorClient(
+        Stream.make({ text: "a" }, { text: "b" }).pipe(Stream.concat(Stream.fail({ error: "boom", code: 3 })))
+      )
+
+      const response = yield* client.test.build({ responseMode: "response-only" })
+      assert.strictEqual(
+        yield* response.text,
+        "{\"text\":\"a\"}\n{\"text\":\"b\"}\n{\"error\":\"boom\",\"code\":\"3\"}\n"
+      )
+
+      const delivered: Array<typeof Item.Type> = []
+      const error = yield* client.test.build().pipe(
+        Effect.flatMap(Stream.runForEach((item) => Effect.sync(() => delivered.push(item)))),
+        Effect.flip
+      )
+      assert.deepStrictEqual(delivered, [{ text: "a" }, { text: "b" }])
+      assert.deepStrictEqual(error, { error: "boom", code: 3 })
+    }))
+
+  it.effect("aborts the response on failures the error schema does not accept", () =>
+    Effect.gen(function*() {
+      for (const failure of [Stream.fail("other"), Stream.die("boom")]) {
+        const client = yield* makeErrorClient(Stream.make({ text: "a" }).pipe(Stream.concat(failure)))
+        const response = yield* client.test.build({ responseMode: "response-only" })
+        const exit = yield* Effect.exit(response.text)
+        assert.strictEqual(exit._tag, "Failure")
+      }
+    }))
 })
 
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
