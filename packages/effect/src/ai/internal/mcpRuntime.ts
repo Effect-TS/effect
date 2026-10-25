@@ -21,6 +21,7 @@ import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import type * as PublicMcpServer from "../McpServer.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
@@ -139,6 +140,7 @@ export interface HandlerInstallationOptions {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
     readonly extensions?: NonNullable<PublicMcpSchema.ServerCapabilities["extensions"]> | undefined
+    readonly cacheHints?: PublicMcpServer.CacheHints | undefined
   }
 }
 

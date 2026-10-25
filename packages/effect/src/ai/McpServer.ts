@@ -1441,6 +1441,75 @@ class McpClientKey extends Data.Class<{
 }> {}
 
 /**
+ * A client cache hint for one kind of `v2026_07_28` result.
+ *
+ * **Details**
+ *
+ * `ttlMs` is how long, in milliseconds, a client may treat the result as
+ * fresh. It must be a nonnegative integer. Only `"private"` scope is
+ * supported, so shared caches must not store the result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CacheHint {
+  readonly ttlMs: number
+  readonly cacheScope: "private"
+}
+
+/**
+ * Client cache hints for `v2026_07_28` discovery and list results.
+ *
+ * **Details**
+ *
+ * Each entry sets the `ttlMs` and `cacheScope` of one result kind:
+ * `server/discover`, `tools/list`, `resources/list`,
+ * `resources/templates/list` and `prompts/list`. Omitted entries, and
+ * `resources/read` results, keep `{ ttlMs: 0, cacheScope: "private" }`.
+ * Earlier protocol revisions have no cache hints and ignore this option.
+ *
+ * These are hints for clients. The server does not cache results, and
+ * visibility and invocation checks still run on every request.
+ *
+ * **Gotchas**
+ *
+ * A positive `ttlMs` lets a client keep showing a list after registrations or
+ * per-request visibility change, until the hint expires. Private scope does
+ * not key a client's cache by user, so a client shared between users can
+ * reuse one user's list for another.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CacheHints {
+  readonly discover?: CacheHint | undefined
+  readonly tools?: CacheHint | undefined
+  readonly resources?: CacheHint | undefined
+  readonly resourceTemplates?: CacheHint | undefined
+  readonly prompts?: CacheHint | undefined
+}
+
+const isCacheHint = Schema.is(Schema.Struct({
+  ttlMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  cacheScope: Schema.Literal("private")
+}))
+
+const validateCacheHints = (cacheHints: CacheHints | undefined): Effect.Effect<void, Cause.IllegalArgumentError> => {
+  for (const [name, hint] of Object.entries(cacheHints ?? {})) {
+    if (hint !== undefined && !isCacheHint(hint)) {
+      return Effect.fail(
+        new Cause.IllegalArgumentError(
+          `McpServer cacheHints.${name} must have a nonnegative integer ttlMs and a "private" cacheScope`
+        )
+      )
+    }
+  }
+  return Effect.void
+}
+
+/**
  * Runs an MCP server over the current `RpcServer.Protocol`.
  *
  * **Details**
@@ -1462,6 +1531,7 @@ export const run: (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
 }) => Effect.Effect<
   never,
   Cause.IllegalArgumentError,
@@ -1475,7 +1545,9 @@ export const run: (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
 }) {
+  yield* validateCacheHints(options.cacheHints)
   const runtimeOption = yield* Effect.serviceOption(McpRuntime.ServerRuntime)
   const runtime = Option.isSome(runtimeOption)
     ? runtimeOption.value
@@ -1492,6 +1564,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
     readonly extensions?: ServerExtensions | undefined
+    readonly cacheHints?: CacheHints | undefined
     readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
@@ -2241,6 +2314,7 @@ export const layer = <
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2261,11 +2335,13 @@ const layerWithRuntime = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<any, any, any> | undefined
 }, transport: "custom" | "http" | "stdio") =>
   Layer.effectDiscard(
     Effect.gen(function*() {
+      yield* validateCacheHints(options.cacheHints)
       const runtime = yield* McpRuntime.ServerRuntime
       yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
     })
@@ -2315,6 +2391,7 @@ export const layerStdio = <
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2471,6 +2548,7 @@ export const layerHttp = <
   readonly path: HttpRouter.PathInput
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
@@ -2545,6 +2623,7 @@ export const layerHttpRequestScoped = <
   readonly path: HttpRouter.PathInput
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2562,6 +2641,7 @@ export const layerHttpRequestScoped = <
         `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
       )
     }
+    yield* validateCacheHints(options.cacheHints)
     const server = yield* McpServer
     const { core, notificationDelivery } = internalState.get(server)!
     // Subscriptions are disabled, so handlers hold no per-request state and

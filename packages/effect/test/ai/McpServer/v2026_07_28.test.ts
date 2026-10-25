@@ -514,7 +514,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           }))
           const cases = [
             ["tools/list", 60_000],
-            ["prompts/list", 0],
+            ["resources/list", 0],
             ["server/discover", 0]
           ] as const
           for (const [method, ttlMs] of cases) {
