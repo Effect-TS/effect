@@ -29,6 +29,50 @@ import type { Mutable } from "./Types.ts"
 const TypeId = "~effect/Cron"
 
 /**
+ * Chooses which occurrences of a repeated wall-clock time a `Cron` schedule
+ * includes.
+ *
+ * **When to use**
+ *
+ * Use to control how a schedule behaves when clocks fall back, for example at
+ * the end of daylight saving time, and a range of local times occurs twice.
+ *
+ * **Details**
+ *
+ * - `"earlier"` (default) includes only the first occurrence, before the
+ *   offset change.
+ * - `"later"` includes only the second occurrence, after the offset change.
+ * - `"both"` includes both occurrences, in chronological order.
+ *
+ * Time zones without repeated times, such as UTC or fixed offsets, behave the
+ * same under every policy. Local times skipped when clocks move forward are not
+ * affected: a matching time inside the gap resolves to the instant after the
+ * gap.
+ *
+ * **Example** (Running every occurrence of a repeated hour)
+ *
+ * ```ts import.meta.vitest
+ * import { Cron } from "effect"
+ *
+ * // Europe/Berlin repeats 02:00-02:59 on 2026-10-25, first at +02:00
+ * // (00:30Z) and again at +01:00 (01:30Z)
+ * const earlier = Cron.parseUnsafe("30 2 * * *", "Europe/Berlin")
+ * const both = Cron.parseUnsafe("30 2 * * *", "Europe/Berlin", { repeatedTimes: "both" })
+ *
+ * Cron.next(earlier, "2026-10-25T00:30:00Z").toISOString() // => "2026-10-26T01:30:00.000Z"
+ * Cron.next(both, "2026-10-25T00:30:00Z").toISOString() // => "2026-10-25T01:30:00.000Z"
+ * ```
+ *
+ * @see {@link make} for setting the policy from explicit field constraints
+ * @see {@link parse} for setting the policy when parsing an expression
+ *
+ * @stability stable
+ * @category models
+ * @since 4.0.0
+ */
+export type RepeatedTimesPolicy = "earlier" | "later" | "both"
+
+/**
  * Represents a cron schedule with time constraints and timezone information.
  *
  * **When to use**
@@ -79,6 +123,7 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly days: ReadonlySet<number>
   readonly months: ReadonlySet<number>
   readonly weekdays: ReadonlySet<number>
+  readonly repeatedTimes: RepeatedTimesPolicy
   /** @internal */
   readonly and: boolean
   /** @internal */
@@ -128,7 +173,8 @@ function toPojo(cron: Cron): Record<string, unknown> {
     hours: Arr.fromIterable(cron.hours),
     days: Arr.fromIterable(cron.days),
     months: Arr.fromIterable(cron.months),
-    weekdays: Arr.fromIterable(cron.weekdays)
+    weekdays: Arr.fromIterable(cron.weekdays),
+    repeatedTimes: cron.repeatedTimes
   }
   return out
 }
@@ -147,7 +193,8 @@ const CronProto = {
       Hash.combine(Hash.array(Arr.fromIterable(this.hours))),
       Hash.combine(Hash.array(Arr.fromIterable(this.days))),
       Hash.combine(Hash.array(Arr.fromIterable(this.months))),
-      Hash.combine(Hash.array(Arr.fromIterable(this.weekdays)))
+      Hash.combine(Hash.array(Arr.fromIterable(this.weekdays))),
+      Hash.combine(Hash.hash(this.repeatedTimes))
     )
   },
   toObject(this: Cron) {
@@ -223,8 +270,9 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * time unit unrestricted. If only days or weekdays are restricted, that field
  * must match. When both are restricted, the default matches either field; set
  * `and: true` to require both fields to match. Weekdays range from `0` (Sunday)
- * to `7` (also Sunday). The constructor throws a `RangeError` when a field
- * contains a non-integer or out-of-range value.
+ * to `7` (also Sunday). `repeatedTimes` chooses which occurrences of repeated
+ * local times are included and defaults to `"earlier"`. The constructor throws a
+ * `RangeError` when a field contains a non-integer or out-of-range value.
  *
  * **Example** (Creating schedules from constraints)
  *
@@ -304,6 +352,7 @@ export const make = (values: {
   readonly weekdays: Iterable<number>
   readonly and?: boolean | undefined
   readonly tz?: DateTime.TimeZone | undefined
+  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
   o.seconds = restrictions.seconds(values.seconds ?? [0])
@@ -314,6 +363,7 @@ export const make = (values: {
   o.weekdays = restrictions.weekdays(values.weekdays)
   o.and = values.and === true
   o.tz = Option.fromUndefinedOr(values.tz)
+  o.repeatedTimes = values.repeatedTimes ?? "earlier"
 
   const seconds = Array.from(o.seconds)
   const minutes = Array.from(o.minutes)
@@ -529,6 +579,8 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * `CronParseError`. When both the day-of-month and weekday fields are
  * restricted, a date matches if either field matches. When either field starts
  * with `*`, both fields must match; an unrestricted field always matches.
+ * `options.repeatedTimes` chooses which occurrences of repeated local times are
+ * included and defaults to `"earlier"`.
  *
  * **Example** (Parsing cron expressions)
  *
@@ -549,7 +601,9 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * @category constructors
  * @since 2.0.0
  */
-export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Result<Cron, CronParseError> => {
+export const parse = (cron: string, tz?: DateTime.TimeZone | string, options?: {
+  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
+}): Result.Result<Cron, CronParseError> => {
   const segments = cron.trim().split(/\s+/).filter(String.isNonEmpty)
   if (segments.length !== 5 && segments.length !== 6) {
     return Result.fail(new CronParseError({ message: `Invalid number of segments in cron expression`, input: cron }))
@@ -584,7 +638,8 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
       days: days.values,
       months: months.values,
       weekdays: weekdays.values,
-      and: (days.wildcard || weekdays.wildcard) && days.values.size !== 0 && weekdays.values.size !== 0
+      and: (days.wildcard || weekdays.wildcard) && days.values.size !== 0 && weekdays.values.size !== 0,
+      repeatedTimes: options?.repeatedTimes
     })
   ))
 }
@@ -618,7 +673,9 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
  * @category constructors
  * @since 4.0.0
  */
-export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron => Result.getOrThrow(parse(cron, tz))
+export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string, options?: {
+  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
+}): Cron => Result.getOrThrow(parse(cron, tz, options))
 
 /**
  * Formats a `Cron` instance as a cron expression.
@@ -630,8 +687,8 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  *
  * **Gotchas**
  *
- * Formatting drops the timezone information and the `and` restriction between
- * days and weekdays. Parsing the result is therefore not guaranteed to produce
+ * Formatting drops the timezone information, the `repeatedTimes` policy, and
+ * the `and` restriction between days and weekdays. Parsing the result is therefore not guaranteed to produce
  * an equivalent schedule.
  *
  * **Example** (Formatting a cron expression)
@@ -777,7 +834,9 @@ const daysInMonth = (date: Date): number =>
  *
  * Searches for the next date and time when the cron schedule should trigger,
  * starting after the specified date/time or after the current time when no
- * date is provided.
+ * date is provided. The result is always strictly after the starting point.
+ * Repeated local times are included according to the schedule's
+ * `repeatedTimes` policy.
  *
  * **Example** (Finding the next occurrence)
  *
@@ -798,7 +857,13 @@ const daysInMonth = (date: Date): number =>
  * @since 2.0.0
  */
 export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  return stepCron(cron, now, "next")
+  if (cron.repeatedTimes !== "both") {
+    return stepCron(cron, now, "next", cron.repeatedTimes)
+  }
+  const start = now ?? new Date()
+  const earlier = stepCron(cron, start, "next", "earlier")
+  const later = stepCron(cron, start, "next", "later")
+  return earlier <= later ? earlier : later
 }
 
 /**
@@ -812,6 +877,8 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  * **Details**
  *
  * When no date/time is provided, the search starts from the current time.
+ * Repeated local times are included according to the schedule's
+ * `repeatedTimes` policy.
  *
  * **Gotchas**
  *
@@ -825,10 +892,21 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  * @since 3.20.0
  */
 export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  return stepCron(cron, now, "prev")
+  if (cron.repeatedTimes !== "both") {
+    return stepCron(cron, now, "prev", cron.repeatedTimes)
+  }
+  const start = now ?? new Date()
+  const earlier = stepCron(cron, start, "prev", "earlier")
+  const later = stepCron(cron, start, "prev", "later")
+  return earlier >= later ? earlier : later
 }
 
-const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
+const stepCron = (
+  cron: Cron,
+  now: DateTime.DateTime.Input | undefined,
+  direction: "next" | "prev",
+  repeatedTimes: "earlier" | "later"
+): Date => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.makeZonedUnsafe(now ?? new Date(), {
     timeZone: tz
@@ -844,28 +922,48 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     (next: number, current: number) => next > current
 
   const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
-  const adjustDst = utc ? constVoid : (current: Date) => {
+  // Going backward, a candidate inside a gap is left in place: it resolves to
+  // the instant after the gap, and the range check below rejects it when that
+  // instant is not before the input.
+  const adjustDst = utc || reverse ? constVoid : (current: Date) => {
     const adjusted = dateTime.makeZonedUnsafe(current, {
       timeZone: zoned.zone,
-      adjustForTimeZone: true,
-      disambiguation: reverse ? "later" : undefined
+      adjustForTimeZone: true
     }).pipe(dateTime.toDate)
 
     const drift = current.getTime() - adjusted.getTime()
-    if (reverse ? drift !== 0 : drift > 0) {
-      current.setTime(reverse ? adjusted.getTime() : current.getTime() + drift)
+    if (drift > 0) {
+      current.setTime(current.getTime() + drift)
     }
   }
 
-  // Repeated wall times resolve to their first occurrence, so when the search
-  // starts in the second occurrence, matches inside that fold are in the past.
-  const isBeforeStart = reverse || utc ? constFalse : (current: Date) =>
+  // Repeated wall times resolve to the occurrence chosen by the policy. Gaps
+  // resolve to the instant after the gap under either disambiguation.
+  const disambiguation = repeatedTimes === "later" ? "later" : "compatible"
+  const resolve = (current: Date) =>
     dateTime.makeZonedUnsafe(current, {
       timeZone: zoned.zone,
-      adjustForTimeZone: true
-    }).epochMilliseconds <= zoned.epochMilliseconds
+      adjustForTimeZone: true,
+      disambiguation
+    }).epochMilliseconds
+
+  // Inside a fold, wall-clock order differs from instant order, so a candidate
+  // can resolve to an instant on the wrong side of the input.
+  const isOutOfRange = utc ? constFalse : reverse ?
+    (current: Date) => resolve(current) >= zoned.epochMilliseconds :
+    (current: Date) => resolve(current) <= zoned.epochMilliseconds
 
   const result = dateTime.mutate(zoned, (current) => {
+    // When the input is in the occurrence the policy excludes, eligible
+    // instants of the same fold can lie behind its wall time in the search
+    // direction. Start from the wall time of the input under the policy's
+    // offset so they are visited; candidates that resolve on the wrong side
+    // of the input are skipped below.
+    const shift = utc ? 0 : zoned.epochMilliseconds - resolve(current)
+    if (reverse ? shift > 0 : shift < 0) {
+      current.setTime(current.getTime() + shift)
+    }
+
     // Start from the nearest whole second strictly past the input in the search
     // direction. Going backward, a fractional input already has one.
     const offset = reverse && current.getUTCMilliseconds() > 0 ? 0 : tick
@@ -1011,8 +1109,8 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         }
       }
 
-      if (isBeforeStart(current)) {
-        current.setUTCSeconds(current.getUTCSeconds() + 1)
+      if (isOutOfRange(current)) {
+        current.setUTCSeconds(current.getUTCSeconds() + tick)
         i = -1 // skipped fold candidates do not count against the search budget
         continue
       }
@@ -1021,7 +1119,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     }
 
     throw new Error("Unable to find cron date")
-  })
+  }, { disambiguation })
 
   return dateTime.toDateUtc(result)
 }
@@ -1084,7 +1182,8 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  * **Details**
  *
  * This comparison checks the optional timezone, the `and` day-matching mode,
- * seconds, minutes, hours, days, months, and weekdays.
+ * the `repeatedTimes` policy, seconds, minutes, hours, days, months, and
+ * weekdays.
  *
  * **Example** (Comparing schedules with equivalence)
  *
@@ -1119,6 +1218,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
 export const Equivalence: Equ.Equivalence<Cron> = Equ.make((self, that) =>
   Equal.equals(self.tz, that.tz) &&
   self.and === that.and &&
+  self.repeatedTimes === that.repeatedTimes &&
   restrictionsEquals(self.seconds, that.seconds) &&
   restrictionsEquals(self.minutes, that.minutes) &&
   restrictionsEquals(self.hours, that.hours) &&
@@ -1143,7 +1243,8 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
  * **Details**
  *
  * The comparison checks the optional timezone, the `and` day-matching mode,
- * seconds, minutes, hours, days, months, and weekdays.
+ * the `repeatedTimes` policy, seconds, minutes, hours, days, months, and
+ * weekdays.
  *
  * **Example** (Checking schedule equality)
  *
