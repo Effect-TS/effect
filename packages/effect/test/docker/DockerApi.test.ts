@@ -1,79 +1,76 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaAST } from "effect"
+import { Schema } from "effect"
 import { DockerApi } from "effect/docker"
-import { HttpApi, HttpApiSchema } from "effect/http-api"
+import { HttpApi, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import * as fs from "node:fs"
+
+const Operation = Schema.Struct({
+  method: Schema.String,
+  path: Schema.String,
+  query: Schema.Array(Schema.String),
+  required: Schema.Array(Schema.String),
+  headers: Schema.Array(Schema.String),
+  requiredHeaders: Schema.Array(Schema.String),
+  body: Schema.Literals(["none", "optional", "required"]),
+  consumes: Schema.Array(Schema.String),
+  success: Schema.Array(Schema.Number),
+  produces: Schema.Array(Schema.String),
+  errors: Schema.Array(Schema.Number)
+})
+
+type Operation = typeof Operation.Type
 
 // The pinned API document's operations, written by `docker-codegen`.
 const Manifest = Schema.Struct({
   apiVersion: Schema.String,
-  operations: Schema.Array(Schema.Struct({
-    operationId: Schema.String,
-    method: Schema.String,
-    path: Schema.String,
-    query: Schema.Array(Schema.String),
-    required: Schema.Array(Schema.String),
-    headers: Schema.Array(Schema.String),
-    body: Schema.Boolean,
-    success: Schema.Array(Schema.Number),
-    errors: Schema.Array(Schema.Number)
-  }))
+  operations: Schema.Array(Schema.Struct({ operationId: Schema.String, ...Operation.fields }))
 })
 
 const manifest = Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(
   fs.readFileSync(new URL("./fixtures/engine-api.json", import.meta.url), "utf8")
 )
 
-interface Declared {
-  readonly id: string
-  readonly method: string
-  readonly path: string
-  readonly query: ReadonlyArray<string>
-  readonly required: ReadonlyArray<string>
-  readonly headers: ReadonlyArray<string>
-  readonly body: boolean
-  readonly success: ReadonlyArray<number>
-  readonly errors: ReadonlyArray<number>
-}
-
-/** The fields of a struct as encoded, that is by their wire names, and which of them are required. */
-const fieldsOf = (schema: Schema.Top | undefined) => {
-  if (schema === undefined) return { names: [], required: [] }
-  const ast = SchemaAST.toEncoded(schema.ast)
-  assert(SchemaAST.isObjects(ast))
-  return {
-    names: ast.propertySignatures.map((property) => String(property.name)),
-    required: ast.propertySignatures.filter((property) => !SchemaAST.isOptional(property.type)).map((property) =>
-      String(property.name)
-    )
+/**
+ * An endpoint as `DockerApi`'s OpenAPI document states it, built for the
+ * endpoint alone: the document and `DockerApi` split some operations into
+ * endpoints on the same path. OpenAPI marks every request body required, so
+ * an optional one is read from the payload.
+ */
+const declare = (group: HttpApiGroup.Top, endpoint: HttpApiGroup.Top["endpoints"][string]) => {
+  const spec = OpenApi.fromApi(HttpApi.make("docker").add(HttpApiGroup.make(group.identifier).add(endpoint)))
+  const [[path, item]] = Object.entries(spec.paths)
+  const operation = item[endpoint.method.toLowerCase() as "get"]!
+  const parameters = (location: string, required: boolean) =>
+    (operation.parameters ?? [])
+      .filter((parameter) => parameter.in === location && (!required || parameter.required))
+      .map((parameter) => location === "header" ? parameter.name.toLowerCase() : parameter.name)
+  const statuses = Object.keys(operation.responses).map(Number)
+  const success = statuses.filter((status) => status < 400)
+  const payloads = Array.from(endpoint.payload.values()).flatMap(({ schemas }) => schemas)
+  const declared: Operation = {
+    method: endpoint.method,
+    path: path.replaceAll(/\{(\w+)\}/g, ":$1"),
+    query: parameters("query", false),
+    required: parameters("query", true),
+    headers: parameters("header", false),
+    requiredHeaders: parameters("header", true),
+    body: payloads.length === 0
+      ? "none"
+      : payloads.some((schema) => HttpApiSchema.isNoContent(schema.ast))
+      ? "optional"
+      : "required",
+    consumes: Object.keys(operation.requestBody?.content ?? {}),
+    success,
+    produces: success.flatMap((status) => Object.keys(operation.responses[status].content ?? {})),
+    errors: statuses.filter((status) => status >= 400)
   }
+  return { id: `${group.identifier}.${endpoint.identifier}`, ...declared }
 }
 
-const successStatus = (schema: Schema.Top): ReadonlyArray<number> =>
-  HttpApiSchema.isUpgrade(schema)
-    ? [101]
-    : HttpApiSchema.isStreamSchema(schema) ||
-        (HttpApiSchema.isWithHeaders(schema) && HttpApiSchema.isStreamSchema(schema.schema))
-    ? [HttpApiSchema.getStatusSuccessSchema(schema)]
-    : []
-
-const declared: Array<Declared> = []
+const declared: Array<ReturnType<typeof declare>> = []
 HttpApi.reflect(DockerApi.DockerApi, {
   onGroup() {},
-  onEndpoint({ endpoint, errors, group, successes }) {
-    const query = fieldsOf(endpoint.query)
-    declared.push({
-      id: `${group.identifier}.${endpoint.identifier}`,
-      method: endpoint.method,
-      path: endpoint.path,
-      query: query.names,
-      required: query.required,
-      headers: fieldsOf(endpoint.headers).names.map((name) => name.toLowerCase()),
-      body: endpoint.payload.size > 0,
-      success: [...successes.keys(), ...Array.from(endpoint.success).flatMap(successStatus)],
-      errors: [...errors.keys()]
-    })
-  }
+  onEndpoint: ({ endpoint, group }) => declared.push(declare(group, endpoint))
 })
 
 /** A path with its parameters unnamed: the document and `DockerApi` name some differently. */
@@ -93,27 +90,33 @@ const differences = (): Record<string, ReadonlyArray<string>> => {
       out[operation.operationId] = ["not declared"]
       continue
     }
-    const all = (f: (endpoint: Declared) => ReadonlyArray<string | number>) => [...new Set(endpoints.flatMap(f))]
-    const query = all((endpoint) => endpoint.query) as Array<string>
-    const required = all((endpoint) => endpoint.required) as Array<string>
-    // `content-type` comes from the payload's encoding
+    const all = <A>(f: (endpoint: Operation) => ReadonlyArray<A>) => [...new Set(endpoints.flatMap(f))]
+    // what the document requires, every endpoint of a split must require
+    const optional = (f: (endpoint: Operation) => ReadonlyArray<string>, required: ReadonlyArray<string>) =>
+      required.filter((name) => endpoints.some((endpoint) => !f(endpoint).includes(name)))
+    // `content-type` is the request body's media type
     const headers = without(operation.headers, ["content-type"])
-    const declaredHeaders = all((endpoint) => endpoint.headers) as Array<string>
-    const success = all((endpoint) => endpoint.success) as Array<number>
-    const errors = all((endpoint) => endpoint.errors) as Array<number>
+    // media types where the document states some: many of its bodies and responses have no schema, so no media type
+    const mediaTypes = (documented: ReadonlyArray<string>, declared: ReadonlyArray<string>) =>
+      documented.length === 0 ? [] : without(declared, documented)
     const found = [
-      ...without(operation.query, query).map((name) => `query ${name} not declared`),
-      ...without(query, operation.query).map((name) => `query ${name} not in the document`),
-      ...without(required, operation.required).map((name) => `query ${name} required`),
-      ...without(operation.required, required).map((name) => `query ${name} optional`),
-      ...without(headers, declaredHeaders).map((name) => `header ${name} not declared`),
-      ...without(declaredHeaders, operation.headers).map((name) => `header ${name} not in the document`),
-      ...without(operation.success, success).map((status) => `success ${status} not declared`),
-      ...without(success, operation.success).map((status) => `success ${status} not in the document`),
-      ...without(operation.errors, errors).map((status) => `error ${status} not declared`),
-      ...(endpoints.some((endpoint) => endpoint.body) !== operation.body
-        ? [`body ${operation.body ? "not declared" : "not in the document"}`]
-        : [])
+      ...without(operation.query, all((e) => e.query)).map((name) => `query ${name} not declared`),
+      ...without(all((e) => e.query), operation.query).map((name) => `query ${name} not in the document`),
+      ...without(all((e) => e.required), operation.required).map((name) => `query ${name} required`),
+      ...optional((e) => e.required, operation.required).map((name) => `query ${name} optional`),
+      ...without(headers, all((e) => e.headers)).map((name) => `header ${name} not declared`),
+      ...without(all((e) => e.headers), operation.headers).map((name) => `header ${name} not in the document`),
+      ...without(all((e) => e.requiredHeaders), operation.requiredHeaders).map((name) => `header ${name} required`),
+      ...optional((e) => e.requiredHeaders, operation.requiredHeaders).map((name) => `header ${name} optional`),
+      // the document marks only some bodies required, so a required body counts as optional, but not the reverse
+      ...(operation.body === "none" && endpoints.some((e) => e.body !== "none") ? ["body not in the document"] : []),
+      ...(operation.body !== "none" && endpoints.every((e) => e.body === "none") ? ["body not declared"] : []),
+      ...(operation.body === "required" && endpoints.some((e) => e.body !== "required") ? ["body optional"] : []),
+      ...mediaTypes(operation.consumes, all((e) => e.consumes)).map((type) => `request ${type} not in the document`),
+      ...without(operation.success, all((e) => e.success)).map((status) => `success ${status} not declared`),
+      ...without(all((e) => e.success), operation.success).map((status) => `success ${status} not in the document`),
+      ...mediaTypes(operation.produces, all((e) => e.produces)).map((type) => `response ${type} not in the document`),
+      ...without(operation.errors, all((e) => e.errors)).map((status) => `error ${status} not declared`)
     ]
     if (found.length > 0) out[operation.operationId] = found
   }
@@ -137,7 +140,7 @@ describe("DockerApi", () => {
       ContainerAttachWebsocket: ["not declared"],
       // deprecated since API 1.52: a BuildKit session is gRPC over h2c, with headers the document doesn't list
       Session: ["not declared"],
-      // the client always asks to upgrade, which the Engine answers with 101
+      // the client always asks to upgrade, which the Engine answers with 101; `Detach: false` rules out exec's 200
       ContainerAttach: ["success 200 not declared"],
       ExecStart: ["success 200 not declared", "success 101 not in the document"],
       // pull and upgrade answer a progress stream with 200, verified live
@@ -150,15 +153,25 @@ describe("DockerApi", () => {
       PluginPush: ["header x-registry-auth not in the document"],
       // Engines before API 1.48 read only `keep-storage`, which the document dropped
       BuildPrune: ["query keep-storage not in the document"],
-      // the Engine answers 400 without a container, and a no-op 200 without a repository
+      // the Engine answers 400 without a container, verified live
       ImageCommit: ["query container required"],
-      ImageTag: ["query repo required"],
+      // without a repository, the Engine does nothing and answers 200, verified live
+      ImageTag: ["success 200 not in the document"],
       // the Engine answers 400 without a timeout, verified live
       PluginEnable: ["query timeout required"],
-      // each endpoint of a split requires what tells it apart
-      ImageBuild: ["query remote required"],
-      ImageCreate: ["query fromImage required", "query fromSrc required"],
-      ContainerStats: ["query stream required"]
+      // each endpoint of a split requires what tells it apart; a build context and an import are tar archives,
+      // which the Engine reads whatever the media type, verified live
+      ImageBuild: ["query remote required", "request application/x-tar not in the document"],
+      ImageCreate: [
+        "query fromImage required",
+        "query fromSrc required",
+        "request application/x-tar not in the document"
+      ],
+      ContainerStats: ["query stream required"],
+      // HttpApi gives a stream one media type; the declared `Content-Type` header says which of the two it is
+      ContainerLogs: ["response application/octet-stream not in the document"],
+      ServiceLogs: ["response application/octet-stream not in the document"],
+      TaskLogs: ["response application/octet-stream not in the document"]
     })
   })
 })

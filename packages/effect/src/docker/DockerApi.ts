@@ -472,10 +472,10 @@ export const System = HttpApiGroup.make("system").add(
   HttpApiEndpoint.get("info", "/info", { success: Schema.toCodecGoJson(DockerSchema.SystemInfo) }),
   HttpApiEndpoint.get("events", "/events", {
     query: { since: Schema.optional(UnixSeconds), until: Schema.optional(UnixSeconds), filters },
-    // the Engine answers `application/json`, one message per line
+    // one message per line, as `application/jsonl`; before API 1.52 the Engine answers `application/json`
     success: HttpApiSchema.StreamNdjson({
       schema: Schema.toCodecGoJson(DockerSchema.EventMessage),
-      contentType: "application/json"
+      contentType: "application/jsonl"
     })
   }),
   HttpApiEndpoint.get("df", "/system/df", {
@@ -738,7 +738,7 @@ export const Containers = HttpApiGroup.make("containers").add(
   HttpApiEndpoint.get("statsStream", "/containers/:id/stats", {
     params: id,
     query: { stream: Schema.Literal(true) },
-    // the Engine answers `application/json`, one sample per line
+    // one sample per line; the document says `application/json`, the Engine sends no `Content-Type`
     success: HttpApiSchema.StreamNdjson({
       schema: Schema.toCodecGoJson(DockerSchema.ContainerStatsResponse),
       contentType: "application/json"
@@ -980,6 +980,9 @@ const RegistryAuth = Schema.String.pipe(
   Schema.decodeTo(Schema.fromJsonString(AuthConfig), base64UrlPadded)
 )
 
+/** The headers of a request a Registry answers: without `X-Registry-Auth`, the Engine is anonymous. */
+const optionalRegistryAuth = { "x-registry-auth": Schema.optional(RegistryAuth) }
+
 /**
  * `X-Registry-Config` of a build: credentials keyed by registry, each as the
  * Engine's `AuthConfig` JSON with the registry it is for.
@@ -1133,8 +1136,9 @@ export const Images = HttpApiGroup.make("images").add(
   }).annotate(ApiVersions, { endpoint: "1.55" }),
   HttpApiEndpoint.post("tag", "/images/:name/tag", {
     params: name,
-    query: { repo: Schema.String, tag: Schema.optional(Schema.String) },
-    success: HttpApiSchema.Empty(201)
+    query: { repo: Schema.optional(Schema.String), tag: Schema.optional(Schema.String) },
+    // without a repository, the Engine does nothing and answers 200
+    success: [HttpApiSchema.Empty(201), HttpApiSchema.Empty(200)]
   }),
   HttpApiEndpoint.delete("remove", "/images/:name", {
     params: name,
@@ -1151,7 +1155,7 @@ export const Images = HttpApiGroup.make("images").add(
   }),
   HttpApiEndpoint.get("search", "/images/search", {
     query: { term: Schema.String, limit: Schema.optional(Schema.Number), filters },
-    headers: { "x-registry-auth": RegistryAuth },
+    headers: optionalRegistryAuth,
     success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageSearchResponseItem))
   }),
   HttpApiEndpoint.post("commit", "/commit", {
@@ -1169,7 +1173,7 @@ export const Images = HttpApiGroup.make("images").add(
   }),
   HttpApiEndpoint.get("distribution", "/distribution/:name/json", {
     params: name,
-    headers: { "x-registry-auth": RegistryAuth },
+    headers: optionalRegistryAuth,
     success: Schema.toCodecGoJson(DockerSchema.DistributionInspect)
   }),
   HttpApiEndpoint.get("save", "/images/:name/get", {
@@ -1190,7 +1194,7 @@ export const Images = HttpApiGroup.make("images").add(
   HttpApiEndpoint.post("pull", "/images/create", {
     // `tag` is a tag or a digest; without one, the Engine pulls every tag
     query: { fromImage: Schema.String, tag: Schema.optional(Schema.String), platform: Schema.optional(Schema.String) },
-    headers: { "x-registry-auth": RegistryAuth },
+    headers: optionalRegistryAuth,
     success: progress
   }),
   HttpApiEndpoint.post("importUrl", "/images/create", {
@@ -1437,8 +1441,6 @@ export const ServiceSpec = DockerSchema.ServiceSpec.mapFields((fields) => ({
  */
 export type ServiceSpec = typeof ServiceSpec.Type
 
-const optionalRegistryAuth = { "x-registry-auth": Schema.optional(RegistryAuth) }
-
 /**
  * The Engine's service endpoints, which `DockerServices` is a client of.
  *
@@ -1660,7 +1662,6 @@ export const SwarmConfigs = HttpApiGroup.make("configs").add(
 // plugins
 // -----------------------------------------------------------------------------
 
-const registryAuth = { "x-registry-auth": RegistryAuth }
 /**
  * The privileges a plugin asks for, as the Engine lists them.
  *
@@ -1698,12 +1699,12 @@ export const Plugins = HttpApiGroup.make("plugins").add(
   }),
   HttpApiEndpoint.get("privileges", "/plugins/privileges", {
     query: { remote: Schema.String },
-    headers: registryAuth,
+    headers: optionalRegistryAuth,
     success: Schema.toCodecGoJson(Privileges)
   }),
   HttpApiEndpoint.post("pull", "/plugins/pull", {
     query: { remote: Schema.String, name: Schema.optional(Schema.String) },
-    headers: registryAuth,
+    headers: optionalRegistryAuth,
     payload: Privileges,
     success: installProgress
   }),
@@ -1731,7 +1732,7 @@ export const Plugins = HttpApiGroup.make("plugins").add(
   HttpApiEndpoint.post("upgrade", "/plugins/:name/upgrade", {
     params: name,
     query: { remote: Schema.String },
-    headers: registryAuth,
+    headers: optionalRegistryAuth,
     payload: Privileges,
     success: installProgress
   }),
@@ -1742,7 +1743,7 @@ export const Plugins = HttpApiGroup.make("plugins").add(
   }),
   HttpApiEndpoint.post("push", "/plugins/:name/push", {
     params: name,
-    headers: registryAuth,
+    headers: optionalRegistryAuth,
     success: progress
   }),
   HttpApiEndpoint.post("set", "/plugins/:name/set", {

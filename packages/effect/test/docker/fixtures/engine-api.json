@@ -9,9 +9,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "text/plain"
       ],
       "errors": [
         500
@@ -24,9 +29,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "text/plain"
       ],
       "errors": [
         500
@@ -39,10 +49,17 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200,
         204
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         401,
@@ -85,10 +102,15 @@
         "content-type",
         "x-registry-config"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/octet-stream"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         500
@@ -107,9 +129,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -130,9 +157,16 @@
       ],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -148,9 +182,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500,
@@ -164,10 +203,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500,
@@ -181,9 +223,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -202,10 +249,16 @@
         "version"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -220,9 +273,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         409,
@@ -241,10 +301,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -263,10 +326,13 @@
         "path"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -284,10 +350,13 @@
         "path"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -307,10 +376,16 @@
         "path"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/octet-stream",
+        "application/x-tar"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         403,
@@ -332,11 +407,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         101,
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -357,11 +435,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         101,
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -375,9 +456,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -391,9 +477,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -408,10 +501,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -426,9 +522,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -444,10 +545,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         409,
@@ -469,9 +573,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/vnd.docker.multiplexed-stream",
+        "application/vnd.docker.raw-stream"
       ],
       "errors": [
         404,
@@ -485,10 +595,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -505,10 +618,13 @@
         "name"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         409,
@@ -528,10 +644,13 @@
         "w"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -547,10 +666,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -565,11 +687,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204,
         304
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -586,9 +711,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -605,11 +735,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204,
         304
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -624,9 +757,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -640,10 +779,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -656,9 +798,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -674,9 +823,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -694,9 +848,17 @@
       ],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json",
+        "application/octet-stream"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -717,9 +879,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -735,9 +902,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -750,9 +922,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         401,
@@ -770,9 +947,16 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json-seq",
+        "application/jsonl",
+        "application/x-ndjson"
       ],
       "errors": [
         400,
@@ -786,9 +970,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -808,10 +997,13 @@
         "w"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -825,10 +1017,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         409
@@ -845,9 +1042,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -866,9 +1068,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -886,9 +1093,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/x-tar"
       ],
       "errors": [
         500
@@ -903,9 +1115,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -922,9 +1139,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -943,10 +1165,15 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": false,
+      "requiredHeaders": [
+        "x-registry-auth"
+      ],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -962,10 +1189,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         201
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -990,10 +1220,16 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/octet-stream",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1009,9 +1245,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/x-tar"
       ],
       "errors": [
         500
@@ -1031,9 +1272,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1049,10 +1295,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/x-tar"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         500
       ]
@@ -1066,9 +1317,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1087,9 +1343,14 @@
         "term"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1102,9 +1363,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1119,9 +1385,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1134,10 +1405,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         403,
         404,
@@ -1154,9 +1428,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -1170,10 +1449,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         403,
@@ -1188,10 +1472,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         403,
         404,
@@ -1205,9 +1494,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -1225,9 +1521,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1242,9 +1543,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         500,
@@ -1260,10 +1567,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500,
@@ -1277,9 +1587,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -1298,10 +1614,16 @@
         "version"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -1318,9 +1640,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1335,9 +1662,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -1353,10 +1686,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1371,10 +1707,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1387,9 +1726,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -1403,10 +1748,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1419,10 +1767,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1441,10 +1794,13 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500
@@ -1461,10 +1817,15 @@
         "name"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/x-tar"
+      ],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         500
       ]
@@ -1480,9 +1841,15 @@
         "remote"
       ],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         500
@@ -1502,10 +1869,13 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         500
       ]
@@ -1519,9 +1889,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500,
@@ -1535,10 +1910,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         500,
@@ -1552,9 +1930,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -1573,10 +1956,16 @@
         "version"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -1591,9 +1980,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         409,
@@ -1611,9 +2007,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         500,
@@ -1627,10 +2029,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         404,
         500,
@@ -1646,9 +2051,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -1671,9 +2082,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/vnd.docker.multiplexed-stream",
+        "application/vnd.docker.raw-stream"
       ],
       "errors": [
         404,
@@ -1696,9 +2113,16 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -1716,9 +2140,16 @@
       "headers": [
         "x-registry-auth"
       ],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         400,
@@ -1735,10 +2166,13 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         101
       ],
+      "produces": [],
       "errors": [
         400,
         500
@@ -1751,9 +2185,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         404,
@@ -1768,9 +2208,18 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         400,
@@ -1785,10 +2234,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         500,
@@ -1804,10 +2259,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         500,
         503
@@ -1820,10 +2278,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         500,
         503
@@ -1836,9 +2299,15 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         500,
@@ -1859,10 +2328,16 @@
         "version"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json",
+        "text/plain"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         500,
@@ -1879,9 +2354,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json",
+        "text/plain"
       ],
       "errors": [
         500
@@ -1896,9 +2377,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500,
@@ -1912,9 +2398,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -1937,9 +2428,15 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/vnd.docker.multiplexed-stream",
+        "application/vnd.docker.raw-stream"
       ],
       "errors": [
         404,
@@ -1954,9 +2451,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1971,9 +2473,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -1988,10 +2495,13 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         204
       ],
+      "produces": [],
       "errors": [
         404,
         409,
@@ -2005,9 +2515,14 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         404,
@@ -2025,10 +2540,15 @@
         "version"
       ],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "optional",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         200
       ],
+      "produces": [],
       "errors": [
         400,
         404,
@@ -2043,9 +2563,16 @@
       "query": [],
       "required": [],
       "headers": [],
-      "body": true,
+      "requiredHeaders": [],
+      "body": "required",
+      "consumes": [
+        "application/json"
+      ],
       "success": [
         201
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
@@ -2060,9 +2587,14 @@
       ],
       "required": [],
       "headers": [],
-      "body": false,
+      "requiredHeaders": [],
+      "body": "none",
+      "consumes": [],
       "success": [
         200
+      ],
+      "produces": [
+        "application/json"
       ],
       "errors": [
         500
