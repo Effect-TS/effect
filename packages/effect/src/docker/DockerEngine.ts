@@ -522,6 +522,14 @@ const spanOptions = (resource: string | undefined) =>
   resource === undefined ? undefined : { attributes: { "docker.resource_id": resource } }
 
 /**
+ * The operation that {@link withOperation} or {@link withStreamOperation} runs:
+ * an endpoint of the same name called inside it runs in its span.
+ */
+const CurrentOperation = Context.Reference<string | undefined>("effect/docker/DockerEngine/CurrentOperation", {
+  defaultValue: () => undefined
+})
+
+/**
  * Runs an effect as the operation `name`: in a span of that name, with the
  * `resource` it acts on as `docker.resource_id`, and its failures as
  * `DockerError` naming the operation. For methods that aren't one HttpApi
@@ -534,6 +542,7 @@ export const withOperation =
   <A, R>(self: Effect.Effect<A, MethodError, R>): Effect.Effect<A, DockerError, R> =>
     self.pipe(
       Effect.mapError(toDockerError(engine, name)),
+      Effect.provideService(CurrentOperation, name),
       Effect.withSpan(name, spanOptions(resource))
     )
 
@@ -548,6 +557,7 @@ export const withStreamOperation =
   <A, R>(self: Stream.Stream<A, MethodError, R>): Stream.Stream<A, DockerError, R> =>
     self.pipe(
       Stream.mapError(toDockerError(engine, name)),
+      Stream.provideService(CurrentOperation, name),
       Stream.withSpan(name, spanOptions(resource))
     )
 
@@ -691,7 +701,9 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
  * `name` path parameter as `docker.resource_id`, and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
  * `Stream`, whose span lasts until it ends, and its failures are mapped too,
- * also for a stream with headers.
+ * also for a stream with headers. Called inside the {@link withOperation} of
+ * the same name, such as a method that resolves credentials first, a method
+ * runs in that operation's span.
  *
  * @internal
  */
@@ -742,10 +754,16 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
             const options = spanOptions(request?.params?.id ?? request?.params?.name)
             // a decoded stream's span lasts until the stream ends
             return streamed && (request?.responseMode === undefined || request.responseMode === "decoded-only")
-              ? Stream.unwrap(response as Effect.Effect<Stream.Stream<unknown, DockerError>, DockerError>).pipe(
-                Stream.withSpan(name, options)
+              ? Stream.unwrap(Effect.map(Effect.service(CurrentOperation), (current) => {
+                const stream = Stream.unwrap(
+                  response as Effect.Effect<Stream.Stream<unknown, DockerError>, DockerError>
+                )
+                return current === name ? stream : Stream.withSpan(stream, name, options)
+              }))
+              : Effect.flatMap(
+                Effect.service(CurrentOperation),
+                (current) => current === name ? response : Effect.withSpan(response, name, options)
               )
-              : Effect.withSpan(response, name, options)
           }]
         })
       ) as ApiClient<Group>

@@ -157,7 +157,8 @@ describe("DockerContainers", () => {
       assert.isFalse(isOpen("docker.Containers.logs") || isOpen("docker.Containers.statsStream"))
       const recorded = attributes()
       for (const operation of ["inspect", "logs", "statsStream"]) {
-        assert.include(recorded, `docker.Containers.${operation} docker.resource_id=c`)
+        // one span each, also for `logs`, which runs the endpoint of the same name
+        assert.lengthOf(recorded.filter((line) => line === `docker.Containers.${operation} docker.resource_id=c`), 1)
       }
     }))
 

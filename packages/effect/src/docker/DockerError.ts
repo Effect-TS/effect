@@ -48,8 +48,10 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  *
  * **Details**
  *
- * The `reason` holds the specific failure, and `operation` the operation
- * that failed, as its span names it (`docker.Containers.inspect`).
+ * The `reason` holds the specific failure, and `operation` the innermost
+ * operation that failed, as its span names it: a method that runs others
+ * reports theirs, such as `docker.Exec.inspect` for `start` with an unknown
+ * exec.
  * `isRetryable` is `true` only for {@link ConnectionFailed} (unless it names a
  * misconfiguration), {@link TooManyRequests} and {@link Unavailable}. The
  * original error (an `HttpClientError` or a Schema issue) is kept as the
@@ -61,7 +63,7 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  */
 export class DockerError extends Data.TaggedError("DockerError")<{
   readonly reason: DockerErrorReason
-  /** The operation that failed, as its span names it (`docker.Containers.inspect`). */
+  /** The innermost operation that failed, as its span names it (`docker.Containers.inspect`). */
   readonly operation?: string | undefined
 }> {
   constructor(props: {

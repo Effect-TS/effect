@@ -1,7 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted, Stream } from "effect"
 import { DockerError, DockerExec } from "effect/docker"
-import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
+import {
+  concat,
+  type Connection,
+  connection,
+  frame,
+  json,
+  makeStubEngine,
+  recordSpans,
+  withPing
+} from "./utils/stub.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -18,6 +27,22 @@ const execEngine = (upgrade: Connection, exitCode = 0) =>
   )
 
 describe("DockerExec", () => {
+  it.effect("starts an exec in one span, which runs the endpoint of the same name", () =>
+    Effect.gen(function*() {
+      const { attributes, tracer } = recordSpans()
+      yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["true"])).pipe(
+        execEngine(connection([])).provide,
+        Effect.withTracer(tracer)
+      )
+      assert.deepStrictEqual(attributes().filter((line) => line.includes("docker.resource_id")), [
+        "docker.Exec.run docker.resource_id=c",
+        "docker.Exec.create docker.resource_id=c",
+        "docker.Exec.start docker.resource_id=e",
+        "docker.Exec.inspect docker.resource_id=e",
+        "docker.Exec.inspect docker.resource_id=e"
+      ])
+    }))
+
   it.effect("runs a command and returns its output and exit code", () =>
     Effect.gen(function*() {
       // frames split across reads, one byte at a time
