@@ -753,10 +753,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
 type MapperFn<Error, Info> = (error: Error, info: Info) => unknown
 
-// Types a `mapError` callback's parameters while `Mapper` is still being
-// inferred. `NoInfer` keeps `Mapper` from being fixed to its `undefined`
-// default first. Callbacks that return a value don't match it, so one passed
-// with explicit type arguments that leave `Mapper` undefined is rejected
+// Types a `mapError` callback's parameters while the mapper is still being
+// inferred. `NoInfer` keeps it from being fixed to its `undefined` default
+// first. Callbacks that return a value don't match it, so one passed with
+// explicit type arguments that leave the mapper undefined is rejected
 type ContextualMapper<Error, Info> = (error: Error, info: Info) => never
 
 type MapErrorOption<Mapper, Error, Info> = {
@@ -769,13 +769,31 @@ type MapErrorOption<Mapper, Error, Info> = {
 // describing the options
 type InferredOptions<Options> = { readonly [K in keyof Options]: Options[K] }
 
-// Distributes over `Mapper`, so a mapper that may be `undefined`, or an
-// optional `mapError` property, keeps the original errors next to the mapped
-// one
+// Only an options type that requires `mapError` gives a mapped client. A
+// mapper that may be `undefined` (`MappingOf` distributes over `Mapper`), an
+// optional `mapError` property, or explicit type arguments that name a mapper
+// the options don't require keep the original errors next to the mapped one
 type MappingOf<Options, Mapper> = Mapper extends (...args: ReadonlyArray<any>) => infer E ?
-  Options extends { readonly mapError: unknown } ? Client.Mapped<E>
-  : "mapError" extends keyof Options ? Client.Unmapped | Client.Mapped<E>
-  : Client.Mapped<E>
+  Options extends { readonly mapError: unknown } ? Client.Mapped<E> : Client.Unmapped | Client.Mapped<E>
+  : Client.Unmapped
+
+type MakeOptions<Groups extends HttpApiGroup.Constraint, MapError> =
+  & TransformResponseOptions<GroupsInfo<Groups>>
+  & {
+    readonly mapError?: MapError | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+  }
+
+// The options argument of `make` is optional, so its mapping is read from the
+// whole argument list: no argument, or one that may be `undefined`, keeps the
+// original errors
+type MakeMapping<Args> = Args extends readonly [] ? Client.Unmapped
+  : Args extends readonly [infer Options] ? undefined extends Options ? Client.Unmapped | OptionsMapping<Options>
+    : OptionsMapping<Options>
+  : Args extends readonly [(infer Options)?] ? Client.Unmapped | OptionsMapping<Options>
+  : Client.Unmapped
+
+type OptionsMapping<Options> = Options extends { readonly mapError?: infer Mapper } ? MappingOf<Options, Mapper>
   : Client.Unmapped
 
 type TransformResponseOptions<Info> = {
@@ -797,8 +815,8 @@ type TransformResponseOptions<Info> = {
  * and neither are failures of an upgraded socket or of reading a response
  * returned with `responseMode: "response-only"`. When `mapError` may be
  * missing or `undefined`, such as an optional property spread into the
- * options, the client keeps the original failures in its types next to the
- * mapper's result.
+ * options or an options argument that may be `undefined`, the client keeps
+ * the original failures in its types next to the mapper's result.
  *
  * `transformResponse` wraps the decoding of each response and receives the
  * same identifiers. It runs inside `mapError`, so its failures are mapped too.
@@ -810,26 +828,23 @@ type TransformResponseOptions<Info> = {
 export const make = <
   ApiId extends string,
   Groups extends HttpApiGroup.Constraint,
-  Options = {},
-  Mapper extends MapperFn<Client.Error<Groups>, GroupsInfo<Groups>> | undefined = undefined
+  Args extends readonly [
+    options?: MakeOptions<Groups, MapperFn<Client.Error<Groups>, GroupsInfo<Groups>>> | undefined
+  ] = readonly [
+    options?: MakeOptions<Groups, NoInfer<ContextualMapper<Client.Error<Groups>, GroupsInfo<Groups>>>> | undefined
+  ]
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
-  options?:
-    & TransformResponseOptions<GroupsInfo<Groups>>
-    & MapErrorOption<Mapper, Client.Error<Groups>, GroupsInfo<Groups>>
-    & {
-      readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-    }
-    & InferredOptions<Options>
+  ...options: Args
 ): Effect.Effect<
-  Client<Groups, never, never, MappingOf<Options, Mapper>>,
+  Client<Groups, never, never, MakeMapping<Args>>,
   never,
   HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>
 > =>
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
     makeWith(api, {
-      ...options as Omit<MakeClientOptions<never, never>, "httpClient">,
-      httpClient: options?.transformClient ? options.transformClient(httpClient) : httpClient
+      ...options[0] as Omit<MakeClientOptions<never, never>, "httpClient">,
+      httpClient: options[0]?.transformClient ? options[0].transformClient(httpClient) : httpClient
     })) as any
 
 /**
