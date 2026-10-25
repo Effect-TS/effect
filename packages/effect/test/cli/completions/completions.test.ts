@@ -9,7 +9,7 @@ import * as Zsh from "effect/cli/internal/completions/zsh"
 import { execFileSync, spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, normalize } from "node:path"
 import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 
 // ---------------------------------------------------------------------------
@@ -150,8 +150,8 @@ const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"
 
 /**
  * Complete the last of `words` like interactive Bash in a directory of
- * `process` fixtures, and return the argument each candidate expands to once
- * inserted, with `<home>` standing for the fixture directory.
+ * `process` fixtures, and return the normalized argument each candidate expands
+ * to once inserted, with `<home>` standing for the fixture directory.
  */
 const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
   const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
@@ -204,7 +204,7 @@ const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
     })
       .split("\n")
       .filter((text) => text !== "")
-      .map((text) => text.replaceAll(directory, "<home>"))
+      .map((text) => normalize(text).replaceAll(directory, "<home>"))
       .sort()
   } finally {
     rmSync(directory, { recursive: true, force: true })
@@ -328,6 +328,9 @@ describe("Bash completions", () => {
     assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/project."]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}/project.`]), ["<home>/project.txt"])
     assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}"/project.`]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/./project."]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", "~+/project."]), ["<home>/project.txt"])
+    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME:-/tmp}"/project.`]), ["<home>/project.txt"])
   })
 
   it("inlines choice values for choice flags", () => {
