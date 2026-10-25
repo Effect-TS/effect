@@ -928,10 +928,6 @@ export const Volumes = HttpApiGroup.make("volumes").add(
     query: { filters },
     success: Schema.toCodecGoJson(DockerSchema.VolumeListResponse)
   }),
-  HttpApiEndpoint.post("create", "/volumes/create", {
-    payload: DockerSchema.VolumeCreateRequest,
-    success: Schema.toCodecGoJson(DockerSchema.Volume).pipe(HttpApiSchema.status(201))
-  }),
   HttpApiEndpoint.get("inspect", "/volumes/:name", {
     params: name,
     success: Schema.toCodecGoJson(DockerSchema.Volume)
@@ -946,7 +942,11 @@ export const Volumes = HttpApiGroup.make("volumes").add(
     success: Schema.toCodecGoJson(DockerSchema.VolumePruneResponse)
   })
 ).middleware(EngineErrors).add(
-  // cluster volumes: Swarm serves the update
+  // Swarm serves cluster volumes: a create with a `ClusterVolumeSpec`, outside a Swarm manager a 503, and updates
+  HttpApiEndpoint.post("create", "/volumes/create", {
+    payload: DockerSchema.VolumeCreateRequest,
+    success: Schema.toCodecGoJson(DockerSchema.Volume).pipe(HttpApiSchema.status(201))
+  }).middleware(SwarmErrors),
   HttpApiEndpoint.put("update", "/volumes/:name", {
     params: name,
     query: { version: Schema.Number },

@@ -43,7 +43,8 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    * **Details**
    *
    * [Engine API: VolumeCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeCreate).
-   * Typical reasons: `ServerError`, `ConnectionFailed`.
+   * Typical reasons: `ServerError`, `SwarmUnavailable` (a cluster volume,
+   * outside a Swarm manager), `ConnectionFailed`.
    */
   readonly create: (
     config?: DockerSchema.VolumeCreateRequest
