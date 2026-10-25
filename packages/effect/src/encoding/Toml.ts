@@ -47,6 +47,8 @@ class TomlParser {
   private line = 1
   private column = 1
   private readonly explicitTables = new Set<Table>()
+  // Tables on a dotted key's path are defined by it; headers cannot open them again.
+  private readonly dottedTables = new Set<Table>()
 
   constructor(input: string) {
     this.input = input
@@ -87,7 +89,7 @@ class TomlParser {
     this.finishStatement()
 
     const table = this.resolveTable(path, array)
-    if (!array && this.explicitTables.has(table)) {
+    if (!array && (this.explicitTables.has(table) || this.dottedTables.has(table))) {
       this.fail(`Cannot redefine table '${path.join(".")}'`)
     }
     if (!array) {
@@ -120,7 +122,7 @@ class TomlParser {
         value = makeTable()
         table[key] = value
       }
-      if (Array.isArray(value)) {
+      if (Array.isArray(value) && !last) {
         value = value[value.length - 1]
       }
       if (!isTable(value)) {
@@ -140,11 +142,12 @@ class TomlParser {
         const child = makeTable()
         table[key] = child
         table = child
-      } else if (isTable(existing)) {
+      } else if (isTable(existing) && !this.explicitTables.has(existing)) {
         table = existing
       } else {
         this.fail(`Cannot redefine existing key '${keys.slice(0, index + 1).join(".")}'`)
       }
+      this.dottedTables.add(table)
     }
     const key = keys[keys.length - 1]
     if (hasOwn.call(table, key)) {

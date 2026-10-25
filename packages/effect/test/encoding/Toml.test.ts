@@ -7,9 +7,9 @@ describe("Toml", () => {
       Toml.parse(`
 title = "Effect"
 ports = [8000, 8001]
-database.connection.timeout = 30
 
 [database]
+connection.timeout = 30
 enabled = true
 credentials = { user = "root", roles = ["admin", "writer"] }
 `),
@@ -128,5 +128,21 @@ max = "\U0010FFFF"
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))
+  })
+
+  it("rejects tables defined twice", () => {
+    const invalid = [
+      "[fruit]\napple.color = \"red\"\n[fruit.apple]\n",
+      "[a.b.c]\n[a]\nb.d = 1\n[a.b]\n",
+      "[a.b]\n[a]\nb.c = 1\n",
+      "[[a]]\n[a]\n"
+    ]
+    for (const input of invalid) {
+      assert.throws(() => Toml.parse(input))
+    }
+    assert.deepStrictEqual(
+      Toml.parse("[fruit]\napple.color = \"red\"\napple.taste.sweet = true\n[fruit.apple.texture]\nsmooth = true\n"),
+      { fruit: { apple: { color: "red", taste: { sweet: true }, texture: { smooth: true } } } }
+    )
   })
 })
