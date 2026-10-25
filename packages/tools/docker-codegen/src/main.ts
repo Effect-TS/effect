@@ -126,8 +126,9 @@ export const run = Effect.gen(function*() {
   yield* writeFormatted(output, Generate.generate(patched, config), path.dirname(configPath))
   yield* Console.log(`Wrote ${output}`)
 
+  // the manifest is the document as published: the conformance test lists where the Engine differs from it
   const manifest = path.resolve(path.dirname(configPath), config.manifest)
-  const operations = Manifest.make(patched, { apiVersion: config.apiVersion, spec: config.spec })
+  const operations = Manifest.make(document, { apiVersion: config.apiVersion, spec: config.spec })
   yield* writeFormatted(manifest, JSON.stringify(operations, null, 2) + "\n", path.dirname(configPath))
   yield* Console.log(`Wrote ${manifest}`)
 })
