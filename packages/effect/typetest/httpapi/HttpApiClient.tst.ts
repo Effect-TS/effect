@@ -1,5 +1,5 @@
 /** @effect-diagnostics missingEffectContext:skip-file */
-import { Effect, hole, Schema, type Stream } from "effect"
+import { Data, Effect, hole, Schema, type Stream } from "effect"
 import type * as Sse from "effect/encoding/Sse"
 import { FetchHttpClient, HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
 import {
@@ -1616,6 +1616,181 @@ describe("HttpApiClient", () => {
           | RequiredClientError
           | HttpClientError.HttpClientError
           | Schema.SchemaError
+        >
+      >()
+    })
+  })
+
+  describe("mapError", () => {
+    class ApiError extends Data.TaggedError("ApiError")<{
+      readonly operation: string
+      readonly cause: unknown
+    }> {}
+    class EndpointError extends Schema.TaggedError<EndpointError>()("EndpointError", {}) {}
+    class MiddlewareClientError extends Schema.TaggedError<MiddlewareClientError>()("MiddlewareClientError", {}) {}
+    class CustomClientError extends Schema.Error<CustomClientError>("CustomClientError")({
+      _tag: Schema.tag("CustomClientError")
+    }) {}
+    interface CustomService {
+      readonly customService: "customService"
+    }
+    class Middleware extends HttpApiMiddleware.Service<Middleware, {
+      clientError: MiddlewareClientError
+    }>()("Middleware", {
+      error: Schema.Literal("middleware-error"),
+      requiredForClient: true
+    }) {}
+
+    type Item = { readonly text: string }
+    const Item = Schema.Struct({ text: Schema.String })
+    const Users = HttpApiGroup.make("users").add(
+      HttpApiEndpoint.get("inspect", "/inspect", { success: Item, error: EndpointError }).middleware(Middleware),
+      HttpApiEndpoint.get("statsStream", "/stats", {
+        success: HttpApiSchema.StreamSse({ data: Item, error: Schema.Struct({ reason: Schema.String }) })
+      }),
+      HttpApiEndpoint.get("statsWithHeaders", "/stats", {
+        success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), { "x-count": Schema.Int })
+      })
+    )
+    const Api = HttpApi.make("Api").add(Users)
+    const httpClient = hole<
+      HttpClient.HttpClient.With<HttpClientError.HttpClientError | CustomClientError, CustomService>
+    >()
+
+    type EndpointIdentifier = "inspect" | "statsStream" | "statsWithHeaders"
+    type ClientError =
+      | EndpointError
+      | MiddlewareClientError
+      | "middleware-error"
+      | { readonly reason: string }
+      | Sse.Retry
+      | Sse.SseError
+      | HttpClientError.HttpClientError
+      | Schema.SchemaError
+
+    it("replaces method and stream errors with the mapped error", () => {
+      const make = HttpApiClient.makeWith(Api, {
+        httpClient,
+        mapError: (error, info) => {
+          expect(error).type.toBe<ClientError | CustomClientError>()
+          expect(info.group).type.toBe<"users">()
+          expect(info.endpoint).type.toBe<EndpointIdentifier>()
+          return new ApiError({ operation: `${info.group}.${info.endpoint}`, cause: error })
+        }
+      })
+      const client = hole<Effect.Success<typeof make>>()
+
+      expect<HttpApiClient.Client.Error<typeof Users, CustomClientError>>().type.toBe<
+        ClientError | CustomClientError
+      >()
+      expect(client.users.inspect()).type.toBe<Effect.Effect<Item, ApiError, CustomService>>()
+      expect(client.users.inspect({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<HttpClientResponse.HttpClientResponse, ApiError, CustomService>
+      >()
+      expect(client.users.statsStream()).type.toBe<
+        Effect.Effect<Stream.Stream<Item, ApiError>, ApiError, CustomService>
+      >()
+      expect(client.users.statsStream({ responseMode: "decoded-and-response" })).type.toBe<
+        Effect.Effect<[Stream.Stream<Item, ApiError>, HttpClientResponse.HttpClientResponse], ApiError, CustomService>
+      >()
+      expect(client.users.statsWithHeaders()).type.toBe<
+        Effect.Effect<
+          HttpApiSchema.withHeaders<Stream.Stream<Uint8Array, ApiError>, { readonly "x-count": number }>,
+          ApiError,
+          CustomService
+        >
+      >()
+    })
+
+    it("accepts mapError in make and treats a never result as mapped", () => {
+      const make = HttpApiClient.make(Api, {
+        mapError: (error, { group, endpoint }) => {
+          expect(error).type.toBe<HttpApiClient.Client.Error<typeof Users>>()
+          return new ApiError({ operation: `${group}.${endpoint}`, cause: error })
+        }
+      })
+      const client = hole<Effect.Success<typeof make>>()
+      const makeNever = HttpApiClient.make(Api, { mapError: () => hole<never>() })
+      const clientNever = hole<Effect.Success<typeof makeNever>>()
+
+      expect<HttpApiClient.Client.Error<typeof Users>>().type.toBe<ClientError>()
+      expect(client.users.inspect()).type.toBe<Effect.Effect<Item, ApiError>>()
+      expect(clientNever.users.inspect()).type.toBe<Effect.Effect<Item, never>>()
+    })
+
+    it("accepts mapError in group and endpoint", () => {
+      const makeGroup = HttpApiClient.group(Api, {
+        group: "users",
+        httpClient,
+        mapError: (error, info) => {
+          expect(error).type.toBe<ClientError | CustomClientError>()
+          expect(info.group).type.toBe<"users">()
+          expect(info.endpoint).type.toBe<EndpointIdentifier>()
+          return new ApiError({ operation: `${info.group}.${info.endpoint}`, cause: error })
+        }
+      })
+      const makeEndpoint = HttpApiClient.endpoint(Api, {
+        group: "users",
+        endpoint: "statsStream",
+        httpClient,
+        mapError: (error, info) => {
+          expect(error).type.toBe<
+            | { readonly reason: string }
+            | Sse.Retry
+            | Sse.SseError
+            | HttpClientError.HttpClientError
+            | Schema.SchemaError
+            | CustomClientError
+          >()
+          expect(info.group).type.toBe<"users">()
+          expect(info.endpoint).type.toBe<"statsStream">()
+          return new ApiError({ operation: `${info.group}.${info.endpoint}`, cause: error })
+        }
+      })
+      const users = hole<Effect.Success<typeof makeGroup>>()
+      const statsStream = hole<Effect.Success<typeof makeEndpoint>>()
+
+      expect(users.inspect()).type.toBe<Effect.Effect<Item, ApiError, CustomService>>()
+      expect(statsStream()).type.toBe<
+        Effect.Effect<Stream.Stream<Item, ApiError>, ApiError, CustomService>
+      >()
+    })
+
+    it("keeps endpoint errors without mapError and passes identifiers to transformResponse", () => {
+      const make = HttpApiClient.makeWith(Api, {
+        httpClient,
+        transformResponse: (effect, info) => {
+          expect(info.group).type.toBe<"users">()
+          expect(info.endpoint).type.toBe<EndpointIdentifier>()
+          return effect
+        }
+      })
+      const client = hole<Effect.Success<typeof make>>()
+
+      expect(client.users.inspect()).type.toBe<
+        Effect.Effect<
+          Item,
+          | EndpointError
+          | MiddlewareClientError
+          | "middleware-error"
+          | CustomClientError
+          | HttpClientError.HttpClientError
+          | Schema.SchemaError,
+          CustomService
+        >
+      >()
+      expect(client.users.statsStream()).type.toBe<
+        Effect.Effect<
+          Stream.Stream<
+            Item,
+            | { readonly reason: string }
+            | HttpClientError.HttpClientError
+            | Schema.SchemaError
+            | Sse.Retry
+            | Sse.SseError
+          >,
+          CustomClientError | HttpClientError.HttpClientError | Schema.SchemaError,
+          CustomService
         >
       >()
     })

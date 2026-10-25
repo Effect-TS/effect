@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Schema, Stream } from "effect"
+import { Cause, Data, Effect, Exit, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -937,6 +937,120 @@ describe("HttpApiClient", () => {
 
         assert.strictEqual(bodyError._tag, "SchemaError")
         assert.strictEqual(headerError._tag, bodyError._tag)
+      }))
+  })
+
+  describe("mapError", () => {
+    class ApiError extends Data.TaggedError("ApiError")<{
+      readonly operation: string
+      readonly cause: unknown
+    }> {}
+    const Item = Schema.Struct({ text: Schema.String })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("users").add(
+        HttpApiEndpoint.get("inspect", "/inspect", { success: Item, error: EndpointError }),
+        HttpApiEndpoint.get("statsStream", "/stats", { success: HttpApiSchema.StreamSse({ data: Item }) }),
+        HttpApiEndpoint.get("statsWithHeaders", "/stats", {
+          success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamSse({ data: Item }), { "x-count": Schema.Int })
+        })
+      )
+    )
+    const httpClient = HttpClient.make((request, url) =>
+      Effect.succeed(HttpClientResponse.fromWeb(
+        request,
+        url.pathname === "/inspect"
+          ? new Response(JSON.stringify({ _tag: "EndpointError", message: "bad request" }), {
+            status: 400,
+            headers: { "content-type": "application/json" }
+          })
+          : new Response(textStream(["data: invalid\n\n"]), {
+            headers: { "content-type": "text/event-stream", "x-count": "1" }
+          })
+      ))
+    )
+
+    it.effect("maps outer and streamed failures once with endpoint identifiers", () =>
+      Effect.gen(function*() {
+        const transformed: Array<string> = []
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient,
+          mapError: (cause, { group, endpoint }) => new ApiError({ operation: `${group}.${endpoint}`, cause }),
+          transformResponse: (effect, { group, endpoint }) => {
+            transformed.push(`${group}.${endpoint}`)
+            return effect
+          }
+        })
+
+        const outer = yield* Effect.flip(client.users.inspect())
+        assert.strictEqual(outer.operation, "users.inspect")
+        assert.deepStrictEqual(outer.cause, new EndpointError({ message: "bad request" }))
+
+        const streamed = yield* client.users.statsStream().pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+        assert.strictEqual(streamed.operation, "users.statsStream")
+        assert.ok(Schema.isSchemaError(streamed.cause))
+
+        const [stream] = yield* client.users.statsStream({ responseMode: "decoded-and-response" })
+        const tupled = yield* Effect.flip(Stream.runCollect(stream))
+        assert.strictEqual(tupled.operation, "users.statsStream")
+        assert.ok(Schema.isSchemaError(tupled.cause))
+
+        const withHeaders = yield* client.users.statsWithHeaders()
+        const body = yield* Effect.flip(Stream.runCollect(withHeaders.body))
+        assert.deepStrictEqual(withHeaders.headers, { "x-count": 1 })
+        assert.strictEqual(body.operation, "users.statsWithHeaders")
+        assert.ok(Schema.isSchemaError(body.cause))
+
+        assert.deepStrictEqual(transformed, [
+          "users.inspect",
+          "users.statsStream",
+          "users.statsStream",
+          "users.statsWithHeaders"
+        ])
+      }))
+
+    it.effect("maps response-only failures without decoding the response", () =>
+      Effect.gen(function*() {
+        let fail = false
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request) =>
+            fail
+              ? Effect.fail(
+                new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+              )
+              : httpClient.execute(request)
+          ),
+          mapError: (cause, { group, endpoint }) => new ApiError({ operation: `${group}.${endpoint}`, cause })
+        })
+
+        const response = yield* client.users.inspect({ responseMode: "response-only" })
+        assert.strictEqual(response.status, 400)
+
+        fail = true
+        const error = yield* Effect.flip(client.users.inspect({ responseMode: "response-only" }))
+        assert.strictEqual(error.operation, "users.inspect")
+        assert.ok(HttpClientError.isHttpClientError(error.cause))
+      }))
+
+    it.effect("maps failures from group and endpoint clients", () =>
+      Effect.gen(function*() {
+        const mapError = (cause: unknown, { group, endpoint }: { readonly group: string; readonly endpoint: string }) =>
+          new ApiError({ operation: `${group}.${endpoint}`, cause })
+        const users = yield* HttpApiClient.group(Api, { group: "users", baseUrl: "http://test", httpClient, mapError })
+        const statsStream = yield* HttpApiClient.endpoint(Api, {
+          group: "users",
+          endpoint: "statsStream",
+          baseUrl: "http://test",
+          httpClient,
+          mapError
+        })
+
+        const outer = yield* Effect.flip(users.inspect())
+        const streamed = yield* statsStream().pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+        assert.strictEqual(outer.operation, "users.inspect")
+        assert.strictEqual(streamed.operation, "users.statsStream")
+        assert.ok(Schema.isSchemaError(streamed.cause))
       }))
   })
 
