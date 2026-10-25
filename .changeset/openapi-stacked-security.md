@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `OpenApi.fromApi` listing stacked security middlewares as alternatives instead of requiring all of them.
+Fix `OpenApi.fromApi` to require all stacked security middleware instead of documenting them as alternatives.

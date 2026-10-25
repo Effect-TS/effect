@@ -552,8 +552,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         for (const name of names) {
           processHttpApiSecurity(name, middleware.security[name])
         }
-        // Stacked security middleware must all pass, while the schemes within one
-        // middleware are alternatives, so every requirement so far gains one of its schemes.
+        // Stacked middleware must all pass (AND); schemes within one middleware are alternatives (OR).
         const requirements = op.security.length === 0 ? [{}] : op.security
         op.security = requirements.flatMap((requirement) => names.map((name) => ({ ...requirement, [name]: [] })))
       })
