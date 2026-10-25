@@ -13,6 +13,7 @@ import {
   SchemaParser
 } from "effect"
 import { format, formatJson } from "effect/Formatter"
+import { inspect } from "node:util"
 import { runInNewContext } from "node:vm"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "./utils/assert.ts"
 
@@ -444,6 +445,54 @@ describe("Formatter", () => {
       // JSON.stringify reads array indices regardless of enumerability
       Object.defineProperty(array, "0", { get: () => data })
       strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
+    })
+  })
+
+  describe("Inspectable.BaseProto", () => {
+    it("serializes own fields", () => {
+      const value = Object.assign(Object.create(Inspectable.BaseProto) as Inspectable.Inspectable, {
+        name: "example",
+        value: 42
+      })
+
+      deepStrictEqual(value.toJSON(), { name: "example", value: 42 })
+      strictEqual(JSON.stringify(value), `{"name":"example","value":42}`)
+      strictEqual(value.toString(), `{"name":"example","value":42}`)
+      strictEqual(inspect(value), `{ name: 'example', value: 42 }`)
+    })
+
+    it("preserves redaction", () => {
+      const value = Object.assign(
+        Object.create({
+          ...Inspectable.BaseProto,
+          [Redactable.symbolRedactable]() {
+            return { password: "<hidden>" }
+          }
+        }) as Inspectable.Inspectable,
+        { password: "secret" }
+      )
+
+      deepStrictEqual(value.toJSON(), { password: "<hidden>" })
+      strictEqual(JSON.stringify(value), `{"password":"<hidden>"}`)
+      strictEqual(value.toString(), `{"password":"<hidden>"}`)
+      strictEqual(inspect(value), `{ password: '<hidden>' }`)
+    })
+
+    it("contains a throwing redaction", () => {
+      const value = Object.assign(
+        Object.create({
+          ...Inspectable.BaseProto,
+          [Redactable.symbolRedactable]() {
+            throw new Error("boom")
+          }
+        }) as Inspectable.Inspectable,
+        { password: "secret" }
+      )
+
+      strictEqual(value.toJSON(), "[toJSON threw]")
+      strictEqual(JSON.stringify(value), `"[toJSON threw]"`)
+      strictEqual(value.toString(), `"[toJSON threw]"`)
+      strictEqual(inspect(value), "[toJSON threw]")
     })
   })
 

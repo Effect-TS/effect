@@ -224,7 +224,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
  * myObject.name = "example"
  * myObject.value = 42
  *
- * myObject.toString() // => "\"[toJSON threw]\""
+ * myObject.toString() // => "{\"name\":\"example\",\"value\":42}"
  *
  * // Or extend in a constructor
  * function MyClass(this: any, name: string) {
@@ -240,7 +240,12 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
  */
 export const BaseProto: Inspectable = {
   toJSON() {
-    return toJson(this)
+    try {
+      const redacted = redact(this)
+      return redacted === this ? { ...this } : toJson(redacted)
+    } catch {
+      return "[toJSON threw]"
+    }
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
