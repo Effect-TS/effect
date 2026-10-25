@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add unstable `BytePath` values with immutable byte ownership, strict text conversion, byte ordering, and Schema codecs.
+Add immutable `BytePath` values with strict text conversion, byte ordering, Schema codecs, and byte-length inspection without copying.
