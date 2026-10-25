@@ -3,7 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, FileSystem, Iterable, Schema } from "effect"
 import { Reactivity } from "effect/reactivity"
-import { SqlError, SqlResolver } from "effect/sql"
+import { SqlClient, SqlError, SqlResolver } from "effect/sql"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -185,6 +185,7 @@ describe("Resolver", () => {
       Effect.gen(function*() {
         const batches: Array<Array<number>> = []
         const sql = yield* makeClient
+        const other = yield* makeClient
         yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
         const insert = SqlResolver.request(SqlResolver.void({
           Request: Schema.Number,
@@ -201,7 +202,7 @@ describe("Resolver", () => {
             )
           )),
           insert(2)
-        ], { concurrency: "unbounded" })
+        ], { concurrency: "unbounded" }).pipe(Effect.provideService(SqlClient.SqlClient, other))
         assert.deepStrictEqual(batches, [[1, 3], [2]])
         assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
       }))
