@@ -1238,7 +1238,7 @@ function makeStreamBodyEncoder(
 function makeNdjsonErrorEncoder(
   error: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
-): <A>(stream: Stream.Stream<A, unknown, unknown>) => Stream.Stream<A | unknown, unknown, unknown> {
+): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<unknown, unknown, unknown> {
   if (SchemaAST.isNever(error.ast)) return Function.identity
   const isError = Schema.is(error)
   const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(error), options)

@@ -1098,8 +1098,6 @@ class NdjsonErrorRecord {
   }
 }
 
-const NdjsonErrorRecordSchema = Schema.declare((u): u is NdjsonErrorRecord => u instanceof NdjsonErrorRecord)
-
 // Error records come first in one union decode and decode to a marker, so a
 // line matching both schemas is an error
 function makeNdjsonRecordDecoder(
@@ -1109,7 +1107,7 @@ function makeNdjsonRecordDecoder(
   const element = Schema.toCodecJson(streamSchema.schema)
   if (SchemaAST.isNever(streamSchema.error.ast)) return Schema.decodeUnknownEffect(element, options)
   const errorRecord = Schema.toCodecJson(streamSchema.error).pipe(Schema.decodeTo(
-    NdjsonErrorRecordSchema,
+    Schema.instanceOf(NdjsonErrorRecord),
     SchemaTransformation.transform({
       decode: (error) => new NdjsonErrorRecord(error),
       encode: (record) => record.error
