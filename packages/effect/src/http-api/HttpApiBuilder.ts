@@ -96,10 +96,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
     )
     const groups = Object.values(api.groups) as ReadonlyArray<HttpApiGroup.Top>
     for (const group of groups) {
-      const service = services.mapUnsafe.get(group.key) as {
-        readonly routes: Array<HttpRouter.Route<any, any>>
-        readonly handlers: Map<string, HandlerRuntime>
-      } | undefined
+      const service = services.mapUnsafe.get(group.key) as GroupService | undefined
       if (service === undefined) {
         const available = availableGroups.length === 0 ? "none" : availableGroups.join(", ")
         return yield* Effect.die(
@@ -108,12 +105,12 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
       }
       for (const { endpoint } of service.handlers.values()) {
         const owner = `${group.identifier}.${endpoint.identifier}`
-        const key = routeKey(endpoint)
+        const key = `${endpoint.method} ${HttpApiPath.toRouterPath(endpoint.path, endpoint.params)}`
         const existing = routeOwners.get(key)
         if (existing !== undefined) {
           return yield* Effect.die(
             new Error(
-              `HttpApiEndpoint "${owner}" (${endpoint.method} ${endpoint.path}) has the same method and path as "${existing}". Endpoints cannot share a method and path: declare one endpoint whose query, headers, payload or success schemas cover each variant instead.`
+              `HttpApiEndpoint "${owner}" (${endpoint.method} ${endpoint.path}) has the same method and path as "${existing}". Declare one endpoint whose query, headers, payload or success schemas cover each variant instead.`
             )
           )
         }
@@ -133,10 +130,6 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
       )
     }
   }))
-
-// Keys only collide for routes the router rejects as duplicates; other conflicts keep its error.
-const routeKey = (endpoint: HttpApiEndpoint.Top): string =>
-  `${endpoint.method} ${HttpApiPath.toRouterPath(endpoint.path, endpoint.params).replace(/\/:\w+(?=\/|$)/g, "/:")}`
 
 /**
  * Create a `Layer` that implements all endpoints in an `HttpApi` group.
@@ -180,12 +173,8 @@ export const group = <
     for (const item of handlers.handlers.values()) {
       routes.push(handlerToRoute(api, group as any, item, services))
     }
-    return Context.makeUnsafe(
-      new Map([[group.key, {
-        routes,
-        handlers: handlers.handlers
-      }]])
-    )
+    const service: GroupService = { routes, handlers: handlers.handlers }
+    return Context.makeUnsafe(new Map([[group.key, service]]))
   })) as any
 
 /**
@@ -264,6 +253,14 @@ export interface HandlerRuntime {
   readonly handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, unknown, unknown>
   readonly isRaw: boolean
   readonly uninterruptible: boolean
+}
+
+/**
+ * @internal
+ */
+export interface GroupService {
+  readonly routes: Array<HttpRouter.Route<any, any>>
+  readonly handlers: Map<string, HandlerRuntime>
 }
 
 type HandleAllEntry<Endpoint extends HttpApiEndpoint.Constraint> =
