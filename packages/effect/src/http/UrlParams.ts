@@ -645,7 +645,7 @@ const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
  *
  * **Details**
  *
- * Defaults are the OpenTelemetry list for `url.full`: `X-Amz-Signature`,
+ * Defaults match the OpenTelemetry `url.full` list: `X-Amz-Signature`,
  * `X-Amz-Credential`, `X-Amz-Security-Token`, `AWSAccessKeyId`, `Signature`,
  * `sig` and `X-Goog-Signature`.
  * A custom list replaces the defaults. Matching uses `isRedactedName`.
