@@ -1,8 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
+import * as McpServer from "effect/ai/McpServer"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
@@ -502,27 +505,79 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }
       }))
 
-    // SEP-2549 cache hints are server-advertised freshness; omitted families keep the stale default.
-    it.effect("should advertise a configured tools cache hint and keep defaults for other results", () =>
+    // SEP-2549 cache hints are server-advertised freshness; omitted families and resource reads keep the stale default.
+    it.effect("should advertise configured cache hints and keep defaults for other results", () =>
       Effect.gen(function*() {
+        const hint = (ttlMs: number) => ({ ttlMs, cacheScope: "private" }) as const
+        const registrations = Layer.mergeAll(
+          McpServer.resource({ uri: "file:///cached", name: "Cached", content: Effect.succeed("cached") }),
+          McpServer.prompt({ name: "Cached", content: () => Effect.succeed("cached") })
+        )
+        const configs = [
+          [{ tools: hint(60_000) }, { "tools/list": 60_000 }],
+          [
+            {
+              discover: hint(1),
+              tools: hint(2),
+              resources: hint(3),
+              resourceTemplates: hint(4),
+              prompts: hint(5)
+            },
+            {
+              "server/discover": 1,
+              "tools/list": 2,
+              "resources/list": 3,
+              "resources/templates/list": 4,
+              "prompts/list": 5
+            }
+          ]
+        ] as const
+        const cases = [
+          ["server/discover", {}, undefined],
+          ["tools/list", {}, undefined],
+          ["resources/list", {}, undefined],
+          ["resources/templates/list", {}, undefined],
+          ["prompts/list", {}, undefined],
+          ["resources/read", { uri: "file:///cached" }, "file:///cached"]
+        ] as const
         for (const mode of ["server", "request"] as const) {
-          const harness = yield* makeHttpHarness(makeServerLayer({
-            name: "CacheHintServer",
-            protocols: [protocol],
-            mode,
-            cacheHints: { tools: { ttlMs: 60_000, cacheScope: "private" } }
-          }))
-          const cases = [
-            ["tools/list", 60_000],
-            ["resources/list", 0],
-            ["server/discover", 0]
-          ] as const
-          for (const [method, ttlMs] of cases) {
-            const response = yield* harness.post(request(method, method), headers(method))
-            const message = Schema.decodeUnknownSync(Schema.Struct({
-              result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
-            }))(yield* readMcpHttpResponse(response))
-            assert.deepStrictEqual(message.result, { ttlMs, cacheScope: "private" }, `${mode} ${method}`)
+          for (const [cacheHints, ttls] of configs) {
+            const harness = yield* makeHttpHarness(registrations.pipe(Layer.provideMerge(makeServerLayer({
+              name: "CacheHintServer",
+              protocols: [protocol],
+              mode,
+              cacheHints
+            }))))
+            for (const [method, params, name] of cases) {
+              const response = yield* harness.post(request(method, method, params), headers(method, name))
+              const message = Schema.decodeUnknownSync(Schema.Struct({
+                result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
+              }))(yield* readMcpHttpResponse(response))
+              const ttlMs = (ttls as Partial<Record<string, number>>)[method] ?? 0
+              assert.deepStrictEqual(message.result, { ttlMs, cacheScope: "private" }, `${mode} ${method}`)
+            }
+          }
+        }
+      }))
+
+    it.effect("should fail layer construction when a cache hint is outside the wire schema", () =>
+      Effect.gen(function*() {
+        const invalid = [
+          { ttlMs: -1, cacheScope: "private" },
+          { ttlMs: 1.5, cacheScope: "private" },
+          { ttlMs: 1, cacheScope: "public" }
+        ]
+        for (const mode of ["server", "request"] as const) {
+          for (const tools of invalid) {
+            const error = yield* makeServerLayer({
+              name: "InvalidCacheHintServer",
+              protocols: [protocol],
+              mode,
+              cacheHints: { tools: tools as McpServer.CacheHint }
+            }).pipe(Layer.provide(HttpRouter.layer), Layer.build, Effect.scoped, Effect.flip)
+
+            assert.strictEqual(error._tag, "IllegalArgumentError", `${mode} ${JSON.stringify(tools)}`)
+            assert.match(error.message, /cacheHints\.tools/)
           }
         }
       }))
