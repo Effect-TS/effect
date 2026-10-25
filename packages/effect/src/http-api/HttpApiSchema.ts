@@ -167,8 +167,8 @@ export function status(code: number | StatusLiteral) {
  *
  * **When to use**
  *
- * Use for fields that can carry secrets but are not modelled as `Redacted`,
- * such as URLs with credentials or maps of build arguments.
+ * Use when a field can carry secrets but is not modelled as `Redacted`, such
+ * as a URL with credentials or a map of build arguments.
  *
  * **Details**
  *

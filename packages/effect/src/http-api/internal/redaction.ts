@@ -2,8 +2,11 @@ import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 
 // Checks every check as well as the node, as `annotate` targets the last check.
+// `Schema.flip` moves the checks of composite schemas to `encodingChecks`.
 const isSensitive = (ast: SchemaAST.AST): boolean =>
-  ast.annotations?.httpApiSensitive === true || (ast.checks?.some(isSensitiveCheck) ?? false)
+  ast.annotations?.httpApiSensitive === true ||
+  (ast.checks?.some(isSensitiveCheck) ?? false) ||
+  ("encodingChecks" in ast && (ast.encodingChecks?.some(isSensitiveCheck) ?? false))
 
 const isSensitiveCheck = (check: SchemaAST.Check<unknown>): boolean =>
   check.annotations?.httpApiSensitive === true ||

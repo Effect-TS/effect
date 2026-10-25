@@ -1198,25 +1198,35 @@ describe("HttpApiClient", () => {
         strictEqual(capture.sent.url, "http://test/join?token=s3cret&nested%5Btoken%5D=s3cret&page=1")
       }))
 
-    it.effect.each([
-      Schema.String.pipe(HttpApiSchema.sensitive).check(Schema.isMinLength(1)),
-      Schema.String.check(Schema.isMinLength(1)).pipe(HttpApiSchema.sensitive).check(Schema.isMaxLength(10)),
-      Schema.String.pipe(HttpApiSchema.sensitive, Schema.decodeTo(Schema.String))
-    ])("keeps sensitive fields redacted through checks and transformations", (Sensitive) =>
-      Effect.gen(function*() {
-        const Api = HttpApi.make("Api").add(
-          HttpApiGroup.make("test").add(
-            HttpApiEndpoint.get("join", "/join", { query: { token: Sensitive, page: Schema.String } })
+    it.effect.each<readonly [Schema.Codec<unknown, string | ReadonlyArray<string>>, unknown]>([
+      [Schema.String.pipe(HttpApiSchema.sensitive).check(Schema.isMinLength(1)), "s3cret"],
+      [
+        Schema.String.check(Schema.isMinLength(1)).pipe(HttpApiSchema.sensitive).check(Schema.isMaxLength(10)),
+        "s3cret"
+      ],
+      [Schema.String.pipe(HttpApiSchema.sensitive, Schema.decodeTo(Schema.String)), "s3cret"],
+      // `Schema.flip` moves the checks of composite schemas to `encodingChecks`.
+      [Schema.Array(Schema.String).check(Schema.isMinLength(1)).pipe(HttpApiSchema.sensitive, Schema.flip), [
+        "s3cret"
+      ]]
+    ])(
+      "keeps sensitive fields redacted through checks and transformations",
+      ([Sensitive, token]) =>
+        Effect.gen(function*() {
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("test").add(
+              HttpApiEndpoint.get("join", "/join", { query: { token: Sensitive, page: Schema.String } })
+            )
           )
-        )
-        const capture = captureRequest()
-        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+          const capture = captureRequest()
+          const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
 
-        yield* capture.trace(client.test.join({ query: { token: "s3cret", page: "1" } }))
+          yield* capture.trace(client.test.join({ query: { token, page: "1" } }))
 
-        strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
-        strictEqual(capture.sent.url, "http://test/join?token=s3cret&page=1")
-      }))
+          strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
+          strictEqual(capture.sent.url, "http://test/join?token=s3cret&page=1")
+        })
+    )
   })
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>
