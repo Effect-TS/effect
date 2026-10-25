@@ -206,5 +206,28 @@ describe("Resolver", () => {
         assert.deepStrictEqual(batches, [[1, 3], [2]])
         assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
       }))
+
+    it.effect("keeps requests in another client's transaction out of its batch", () =>
+      Effect.gen(function*() {
+        const batches: Array<Array<number>> = []
+        const sql = yield* makeClient
+        const other = yield* makeClient
+        yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
+        const insert = SqlResolver.request(SqlResolver.void({
+          Request: Schema.Number,
+          execute: (ids) => {
+            batches.push(ids)
+            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+          }
+        }))
+        yield* other.withTransaction(Effect.all([
+          Effect.exit(sql.withTransaction(Effect.andThen(insert(1), Effect.fail("rollback")))).pipe(
+            Effect.provideService(SqlClient.SqlClient, other)
+          ),
+          insert(2)
+        ], { concurrency: "unbounded" }))
+        assert.deepStrictEqual(batches, [[1], [2]])
+        assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
+      }))
   })
 })
