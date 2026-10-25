@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `KeyValueStore.layerFileSystem` removal failing when the key does not exist.
+Make `remove` on `KeyValueStore.layerFileSystem` succeed when the key does not exist, matching the other backends.
