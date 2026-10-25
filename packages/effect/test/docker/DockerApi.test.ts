@@ -288,6 +288,17 @@ describe("DockerApi", () => {
     assert.deepStrictEqual(fieldDifferences(), {
       // an unlock can't succeed without the key
       SwarmUnlock: ["request UnlockKey required"],
+      // the Engine answers `{ "ID" }` (moby's `SecretCreateResponse` and `ConfigCreateResponse`), verified live
+      SecretCreate: ["response Id not declared", "response ID not in the document"],
+      ConfigCreate: ["response Id not declared", "response ID not in the document"],
+      // Engines before API 1.52 answer these too, down to 1.44, which the client decodes
+      SystemDataUsage: [
+        "response BuildCache not in the document",
+        "response Containers not in the document",
+        "response Images not in the document",
+        "response LayersSize not in the document",
+        "response Volumes not in the document"
+      ],
       // the Engine's AuthConfig has `identitytoken`, which the document leaves out
       SystemAuth: ["request identitytoken not in the document"]
     })

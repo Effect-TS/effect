@@ -1,6 +1,8 @@
 /**
- * The operations of the patched Docker Engine API document, written as the
- * manifest `effect/docker`'s conformance test checks `DockerApi` against.
+ * The operations of the pinned Docker Engine API document as published,
+ * without the codegen's patches, written as the manifest `effect/docker`'s
+ * conformance test checks `DockerApi` against: where the document is wrong,
+ * the test lists the difference.
  *
  * Each operation records what a declaration of it has to match: the method,
  * the path, the query and header parameters by their wire names, its body and
@@ -141,7 +143,7 @@ export const fields = (document: Patches.Node, nodesWithContent: ReadonlyArray<u
 }
 
 /**
- * Reads every operation of a patched OpenAPI 3.0 document, ordered by path
+ * Reads every operation of an OpenAPI 3.0 document, ordered by path
  * and method.
  *
  * @category constructors
