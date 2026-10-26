@@ -9,6 +9,9 @@ import * as Tls from "node:tls"
 const endpoint = { host: "127.0.0.1", port: 0 }
 const cert = Fs.readFileSync(new URL("../../../bun/test/fixtures/tls/cert.pem", import.meta.url))
 const key = Fs.readFileSync(new URL("../../../bun/test/fixtures/tls/key.pem", import.meta.url))
+// Names `localhost` only, unlike `cert`, which also names 127.0.0.1.
+const localhostCert = Fs.readFileSync(new URL("../fixtures/tls/localhost-only-cert.pem", import.meta.url))
+const localhostKey = Fs.readFileSync(new URL("../fixtures/tls/localhost-only-key.pem", import.meta.url))
 
 const listen = (server: Net.Server) =>
   Effect.acquireRelease(
@@ -302,6 +305,25 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         }).connect({ ...endpoint, tls: { handshakeFraming: handshakeFraming() } }).pipe(Effect.flip)
         assert.strictEqual(error.reason._tag, "SocketOpenError")
         assert.isFalse(opened)
+      }))
+
+    it.live("verifies an IP endpoint's own address when upgrading", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert: localhostCert, key: localhostKey }, echo))
+        server.on("tlsClientError", () => {})
+        const transport = yield* make().connect(address(server))
+        const error = yield* transport.upgrade({ ca: localhostCert }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+      }))
+
+    it.live("accepts a certificate naming an IP endpoint when upgrading", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const transport = yield* make().connect(address(server))
+        yield* transport.upgrade({ ca: cert })
+        yield* transport.write("verified")
+        const received = yield* transport.pull
+        assert.strictEqual(Buffer.concat(received.map((bytes) => Buffer.from(bytes))).toString(), "verified")
       }))
 
     it.live("frames a verified TLS handshake before switching to raw TLS records", () =>

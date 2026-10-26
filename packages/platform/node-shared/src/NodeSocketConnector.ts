@@ -114,7 +114,9 @@ export const make = (options: Options = {}): SocketConnector.SocketConnector["Se
         noDelay: true,
         destroyOnClose: true,
         openTimeout,
-        tlsUpgradeOptions: options.tls
+        // An upgrade wraps the connected socket, so without `host` Node checks
+        // an IP endpoint's certificate against "localhost".
+        tlsUpgradeOptions: endpoint.path === undefined ? { host: endpoint.host, ...options.tls } : options.tls
       })
     const connection = yield* SocketConnector.fromSocket(socket)
     return {

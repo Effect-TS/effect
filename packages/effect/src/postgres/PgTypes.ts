@@ -39,6 +39,7 @@ import * as NetAddress from "../net/NetAddress.ts"
 import * as Result from "../Result.ts"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
+import { utf8Slice } from "./internal/utf8Slice.ts"
 
 /**
  * Failure returned when a value cannot be encoded or decoded for its OID.
@@ -201,17 +202,6 @@ const region = (bytes: Uint8Array, offset: number, size: number): Uint8Array =>
  * Above it the per-character cost of about 3 ns takes over.
  */
 const asciiDecodeLimit = 10
-
-/**
- * Node's own UTF-8 decoder, which reads straight out of the buffer with no
- * view and about a quarter less overhead than `TextDecoder`. It swaps
- * replacement characters in where `TextDecoder` would fail, so a result that
- * contains one is handed to the strict decoder after all: either the
- * character was really in the text and the same string comes back, or the
- * bytes were invalid and the failure is the one `TextDecoder` always raised.
- */
-const utf8Slice: ((this: Uint8Array, start: number, end: number) => string) | undefined = (globalThis as any).Buffer
-  ?.prototype?.utf8Slice
 
 const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => {
   if (size <= asciiDecodeLimit) {

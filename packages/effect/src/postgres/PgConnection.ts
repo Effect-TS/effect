@@ -236,7 +236,8 @@ export interface PgConnection {
   /**
    * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
-   * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
+   * closes, when it runs `UNLISTEN` and shuts down the queue. A session that
+   * does not confirm `UNLISTEN` within 5 seconds is closed. PostgreSQL
    * registration errors fail the acquiring effect.
    * Connection failures after registration fail the queue with the original
    * `SqlError`. Intentional scope closure interrupts consumers.
@@ -361,6 +362,8 @@ class PgConnectionImpl implements PgConnection {
   /** Exclusive-ownership queue used by `pin` and unpinned statements. */
   readonly owner = Semaphore.makeUnsafe(1)
   pinned = false
+  /** Counts pin releases, so a listener can tell its pin is gone. */
+  pinEpoch = 0
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
@@ -743,6 +746,7 @@ class PgConnectionImpl implements PgConnection {
     () =>
       Effect.suspend(() => {
         this.pinned = false
+        this.pinEpoch++
         return this.owner.release(1)
       })
   )
@@ -1858,6 +1862,7 @@ const listenChannel = (
       const scope = yield* Scope.fork(parentScope)
       return yield* restore(Effect.gen(function*() {
         const pinned = yield* Scope.provide(pin, scope)
+        const epoch = conn.pinEpoch
         if (conn.deadWith !== undefined) return yield* conn.deadWith
         const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)
@@ -1875,10 +1880,7 @@ const listenChannel = (
             current.delete(queue)
             if (current.size > 0) return Queue.shutdown(queue)
             conn.channels.delete(channel)
-            const unlisten = conn.deadWith === undefined
-              ? Effect.ignore(pinned.query(`UNLISTEN ${identifier}`))
-              : Effect.void
-            return Effect.andThen(unlisten, Queue.shutdown(queue))
+            return Effect.andThen(unlisten(conn, epoch, identifier), Queue.shutdown(queue))
           })
         )
         yield* pinned.query(`LISTEN ${identifier}`)
@@ -1888,6 +1890,29 @@ const listenChannel = (
       )
     })
   )
+
+/** How long a closing listener waits for PostgreSQL to confirm `UNLISTEN`. */
+const unlistenTimeoutMillis = 5000
+
+/**
+ * Runs `UNLISTEN` and closes the session if PostgreSQL does not answer in time.
+ * The timer starts once the wire is free, so a long statement on the same
+ * pinned session does not count against it. Nothing is sent once the session
+ * is dead or the listener's pin released, as the session may already have a
+ * new owner.
+ */
+const unlisten = (conn: PgConnectionImpl, epoch: number, identifier: string): Effect.Effect<void> =>
+  conn.wire.withPermit(Effect.suspend(() => {
+    if (conn.deadWith !== undefined || !conn.pinned || conn.pinEpoch !== epoch) return Effect.void
+    const timeout = setTimeout(
+      () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
+      unlistenTimeoutMillis
+    )
+    return Effect.ensuring(
+      Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+      Effect.sync(() => clearTimeout(timeout))
+    )
+  }))
 
 /** Bridges the protocol's synchronous admission to one scoped socket writer. */
 class Transport {

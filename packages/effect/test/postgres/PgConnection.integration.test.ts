@@ -1,18 +1,33 @@
 import { assert, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scope, Stream } from "effect"
 import { type PgConnection, PgTypes } from "effect/postgres"
 import type { SqlError } from "effect/sql/SqlError"
+import * as TestClock from "effect/testing/TestClock"
+import * as Net from "node:net"
 import { makeConnection } from "./transport.ts"
 import { PgContainer } from "./utils.ts"
 import { startPostgres } from "./utils/postgres-server.ts"
 
-const makeContainerConnection = (options?: PgConnection.Config) =>
+const makeContainerConnection = (options?: Partial<Parameters<typeof makeConnection>[0]>) =>
   Effect.gen(function*() {
     const container = yield* PgContainer
     return yield* makeConnection({
       url: Redacted.make(container.getConnectionUri()),
       ...options
     })
+  })
+
+const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
+  Effect.gen(function*() {
+    for (let attempt = 0; attempt < 1000; attempt++) {
+      const active = yield* observer.query(
+        "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
+        [pid]
+      )
+      if (active.rows[0].active === 1) return
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+    }
+    return yield* Effect.fail(new Error(`PostgreSQL backend ${pid} did not become active`))
   })
 
 const assertPreparedPipeline = (connection: PgConnection.PgConnection, large: boolean) =>
@@ -85,6 +100,63 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const notifications = yield* Scope.provide(connection.listen("closed_listener"), scope)
       yield* assertInterruptedOnClose(scope, notifications)
     }))
+
+  it.effect("closes a listener whose connection stops responding", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const sockets: Array<Net.Socket> = []
+      const connection = yield* makeContainerConnection({
+        stream: () => {
+          const socket = Net.connect({ host: container.getHost(), port: container.getMappedPort(5432) })
+          sockets.push(socket)
+          return socket
+        }
+      })
+      const scope = yield* Scope.make()
+      yield* Scope.provide(connection.listen("unanswered_listener"), scope)
+      for (const socket of sockets) socket.pause()
+
+      const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Effect.gen(function*() {
+        const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("10 seconds"))
+        assert.isTrue(Option.isSome(closed), "listener scope did not close within 10 seconds")
+        assert.isTrue(Exit.isFailure(yield* Effect.exit(connection.query("SELECT 1"))))
+      }).pipe(Effect.ensuring(Effect.sync(() => sockets.forEach((socket) => socket.destroy()))))
+    }).pipe(TestClock.withLive), { timeout: 30000 })
+
+  it.effect("keeps a busy pinned session when a listener closes", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeContainerConnection()
+      const observer = yield* makeContainerConnection()
+      const pinned = yield* connection.pin
+      const scope = yield* Scope.make()
+      yield* Scope.provide(pinned.listen("busy_listener"), scope)
+      const slow = yield* Effect.forkChild(pinned.query("SELECT pg_sleep(6)"))
+      yield* waitUntilActive(observer, pinned.processId)
+
+      yield* Scope.close(scope, Exit.void)
+      yield* Fiber.join(slow)
+      const result = yield* pinned.query("SELECT 1 AS one")
+      assert.deepStrictEqual(result.rows, [{ one: 1 }])
+    }).pipe(TestClock.withLive), { timeout: 30000 })
+
+  it.effect("skips UNLISTEN queued behind a pin release", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeContainerConnection()
+      const pinScope = yield* Scope.make()
+      const pinned = yield* Scope.provide(connection.pin, pinScope)
+      const listenScope = yield* Scope.make()
+      yield* Scope.provide(pinned.listen("released_listener"), listenScope)
+      // Queue the listener cleanup behind a statement that holds the wire.
+      const closing = yield* Effect.forkDetach(Effect.andThen(Effect.yieldNow, Scope.close(listenScope, Exit.void)))
+      yield* pinned.query("SELECT pg_sleep(0.05)")
+
+      yield* Scope.close(pinScope, Exit.void)
+      const next = yield* Effect.forkDetach(connection.query("SELECT 1 AS one"))
+      const result = yield* Fiber.join(next).pipe(Effect.timeout("2 seconds"))
+      assert.deepStrictEqual(result.rows, [{ one: 1 }])
+      yield* Fiber.join(closing)
+    }).pipe(TestClock.withLive))
 
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
