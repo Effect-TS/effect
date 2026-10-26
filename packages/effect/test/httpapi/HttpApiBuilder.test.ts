@@ -946,8 +946,23 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         [Schema.Record(Schema.TemplateLiteral(["meta[", Schema.String, "]"]), Schema.String)]
       )
 
+      const SomeBracketKeys = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String, abc: Schema.String })) }),
+        [Schema.Record(Schema.TemplateLiteral(["meta[a", Schema.String, "]"]), Schema.String)]
+      )
+
       assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { "meta[k]": "v" })
       assert.deepStrictEqual(yield* decodeRawQuery(BracketKeys, "meta%5Bk%5D="), { "meta[k]": "" })
+      for (const search of ["meta%5Bk%5D=v&meta%5Babc%5D=w", "meta%5Babc%5D=w&meta%5Bk%5D=v"]) {
+        assert.deepStrictEqual(yield* decodeRawQuery(SomeBracketKeys, search), { "meta[abc]": "w" })
+      }
+    }))
+
+  it.effect("rebuilds object-valued record entries", () =>
+    Effect.gen(function*() {
+      const Query = Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.String))
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { meta: { k: "v" } })
     }))
 
   it.effect("rebuilds required object fields an index signature covers", () =>
