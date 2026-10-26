@@ -12,8 +12,10 @@
 import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
@@ -429,21 +431,24 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
-  // Only the wait is interruptible: the permit is taken and its release
-  // registered while masked, so an interrupted lease never holds a permit.
-  // Waiting with `withPermit` releases the permit again, so retry if another
-  // fiber takes it first.
+  // Take a free permit while masked. Otherwise a separate fiber waits for and
+  // holds the permit with `withPermit`, so an interruption at any point leaves
+  // the permit with that fiber, and interrupting it in the finalizer always
+  // releases it.
   const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) => {
-      const take: Effect.Effect<void> = Effect.flatMap(
-        semaphore.takeIfAvailable(1),
-        (taken) =>
-          taken
-            ? Scope.addFinalizer(scope, semaphore.release(1))
-            : Effect.andThen(restore(semaphore.withPermit(Effect.void)), take)
-      )
-      return Effect.andThen(take, available)
-    })
+    Effect.flatMap(Effect.scope, (scope) =>
+      Effect.flatMap(semaphore.takeIfAvailable(1), (taken) => {
+        if (taken) {
+          return Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1)), available)
+        }
+        const acquired = Deferred.makeUnsafe<void>()
+        const hold = semaphore.withPermit(Effect.andThen(Deferred.succeed(acquired, undefined), Effect.never))
+        return Effect.forkDetach(hold).pipe(
+          Effect.flatMap((fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))),
+          Effect.andThen(restore(Deferred.await(acquired))),
+          Effect.andThen(available)
+        )
+      }))
   )
 
   return {
