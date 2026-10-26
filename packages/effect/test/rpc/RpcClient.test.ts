@@ -9,7 +9,9 @@ import {
   Exit,
   Fiber,
   identity,
+  Latch,
   Layer,
+  Option,
   Queue,
   Request,
   RequestResolver,
@@ -504,6 +506,54 @@ describe("RpcClient", () => {
       // The cancelled handler must end interrupted, not with the decode defect it already handled.
       assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
       assert.isTrue(observedInterrupt)
+    }))
+
+  it.effect("closes the client scope when a malformed chunk arrives as the socket closes for good", () =>
+    Effect.gen(function*() {
+      const frames = yield* Queue.unbounded<string, Socket.SocketError>()
+      const writes = yield* Queue.unbounded<string>()
+      // Like a disconnected WebSocket, writes wait for a reconnect that never happens.
+      const open = yield* Latch.make()
+      let connections = 0
+      const socket = Socket.make({
+        reader: Effect.suspend(() => {
+          if (connections++ > 0) return Effect.never
+          open.openUnsafe()
+          return Effect.succeed({
+            pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+            upgrade: Socket.SocketUpgradeError.unsupported
+          })
+        }),
+        writer: Effect.succeed({
+          write: (data) => open.whenOpen(Queue.offer(writes, data as string).pipe(Effect.asVoid)),
+          writeAll: () => Effect.void
+        })
+      })
+      const scope = yield* Scope.make()
+      const client = yield* RpcClient.make(ChunkGroup).pipe(
+        Effect.provideServiceEffect(RpcClient.Protocol, RpcClient.makeProtocolSocket()),
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json),
+        Scope.provide(scope)
+      )
+      const bad = yield* client.Bad().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+      const requestId = JSON.parse(yield* Queue.take(writes)).id
+
+      yield* Effect.sync(() => {
+        Queue.offerUnsafe(frames, JSON.stringify({ _tag: "Chunk", requestId, values: [null] }))
+        open.closeUnsafe()
+        Queue.failCauseUnsafe(
+          frames,
+          Cause.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1012 }) }))
+        )
+      })
+      assert(Exit.isFailure(yield* Fiber.join(bad)))
+
+      // Detached so a hung, uninterruptible close cannot block the test's own teardown.
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkDetach)
+      const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isSome(yield* Fiber.join(closed)))
     }))
 
   it.effect("releases a chunk blocked on a full buffer when its stream consumer is interrupted", () =>
