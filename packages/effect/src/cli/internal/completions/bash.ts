@@ -170,13 +170,14 @@ const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`  local _replies=()`)
   lines.push(`  if ((\${#_names[@]})); then`)
   lines.push(`    if [[ -n "$_open" ]]; then`)
-  lines.push(`      ${helpers.choices} "$_open\${_prefix##*/}" "\${_prefix##*/}" "\${_names[@]}"`)
+  // Close the quote before the name, so a common prefix of several matches
+  // stays balanced.
+  lines.push(`      _typed+="$_open"`)
+  lines.push(`      ${helpers.choices} "\${_prefix##*/}" "\${_prefix##*/}" "\${_names[@]}"`)
   lines.push(`    else`)
   lines.push(`      ${helpers.choices} "\${_cur%"$_word"}\${_word#"$_typed"}" "\${_word#"$_typed"}" "\${_names[@]}"`)
   lines.push(`    fi`)
   lines.push(`    for _path in "\${COMPREPLY[@]}"; do`)
-  // Readline will not close a quote opened in the typed directory.
-  lines.push(`      [[ -z "$_open" || "$_path" == *"$_open" ]] || _path+="$_open"`)
   lines.push(`      _replies+=("$_typed$_path")`)
   lines.push(`    done`)
   lines.push(`  fi`)
