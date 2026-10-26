@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as ByteSize from "../ByteSize.ts"
+import * as Duration from "../Duration.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
@@ -325,6 +326,7 @@ export interface StreamSse<
   readonly contentType: string
   readonly events: Events
   readonly error: Error
+  readonly keepAlive: Duration.Duration | undefined
   readonly "~Value"?: Value | undefined
 }
 
@@ -466,6 +468,11 @@ const defaultMaxElementBytes = ByteSize.mebibytes(1)
  *
  * `StreamSse` is response-only. Endpoint construction rejects it in `payload`.
  *
+ * When `keepAlive` is set, the server writes a `: keepalive` comment each
+ * time the interval elapses while the response is open, and stops when the
+ * event stream ends. SSE clients ignore comment lines, so idle connections stay
+ * open through proxies and runtimes that close silent responses.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -475,17 +482,20 @@ export const StreamSse: {
     readonly contentType?: string | undefined
     readonly events: Events
     readonly error?: Error | undefined
+    readonly keepAlive?: Duration.Input | undefined
   }): StreamSse<Events, Error, Events["Type"]>
   <Data extends Schema.Constraint, Error extends Schema.Constraint = Schema.Never>(options: {
     readonly contentType?: string | undefined
     readonly data: Data
     readonly error?: Error | undefined
+    readonly keepAlive?: Duration.Input | undefined
   }): StreamSse<SseEventFromData<Data>, Error, Data["Type"]>
 } = (options: {
   readonly contentType?: string | undefined
   readonly events?: Sse.EventCodec | undefined
   readonly data?: Schema.Constraint | undefined
   readonly error?: Schema.Constraint | undefined
+  readonly keepAlive?: Duration.Input | undefined
 }): StreamSse<Sse.EventCodec, Schema.Top, unknown> => {
   const events = options.events ?? (options.data === undefined ? undefined : Schema.Struct({
     ...Sse.EventEncoded.fields,
@@ -501,7 +511,8 @@ export const StreamSse: {
     sseMode: options.events === undefined ? "data" : "events",
     contentType: options.contentType ?? defaultStreamContentType("sse"),
     events,
-    error: options.error ?? Schema.Never
+    error: options.error ?? Schema.Never,
+    keepAlive: options.keepAlive === undefined ? undefined : Duration.fromInputUnsafe(options.keepAlive)
   })
 }
 

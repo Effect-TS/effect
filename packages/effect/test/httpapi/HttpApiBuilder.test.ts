@@ -4,6 +4,7 @@ import {
   DateTime,
   Effect,
   type Exit,
+  Fiber,
   FileSystem,
   Layer,
   Path,
@@ -34,6 +35,7 @@ import {
   HttpApiSecurity,
   HttpApiTest
 } from "effect/http-api"
+import { TestClock } from "effect/testing"
 
 const textDecoder = new TextDecoder()
 
@@ -1471,6 +1473,34 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         Array.from(chunks, (chunk) => textDecoder.decode(chunk)),
         ["event: first\ndata: one\n\n", "event: second\ndata: two\n\n"]
       )
+    }))
+
+  it.effect("writes StreamSse keepAlive comments while the event stream is idle", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("events", "/test", {
+            success: HttpApiSchema.StreamSse({ data: Schema.String, keepAlive: "15 seconds" })
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("events", () => Effect.succeed(Stream.concat(Stream.make("hello"), Stream.never)))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const fiber = yield* response.stream.pipe(Stream.take(3), Stream.runCollect, Effect.forkChild)
+      yield* TestClock.adjust("30 seconds")
+      const chunks = yield* Fiber.join(fiber)
+
+      assert.deepStrictEqual(Array.from(chunks, (chunk) => textDecoder.decode(chunk)), [
+        `data: "hello"\n\n`,
+        ": keepalive\n\n",
+        ": keepalive\n\n"
+      ])
     }))
 
   it.effect("unwraps WithHeaders StreamSse responses before SSE encoding", () =>

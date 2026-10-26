@@ -1228,8 +1228,18 @@ function makeStreamBodyEncoder(
       )
   }
   const sseEncoder = makeSseEncoder(streamSchema, options)
-  return (stream) => encodeSseStream(stream, sseEncoder)
+  const keepAlive = streamSchema.keepAlive
+  if (keepAlive === undefined) {
+    return (stream) => encodeSseStream(stream, sseEncoder)
+  }
+  const keepAliveComments = Stream.tick(keepAlive).pipe(
+    Stream.drop(1),
+    Stream.map(() => keepAliveComment)
+  )
+  return (stream) => Stream.merge(encodeSseStream(stream, sseEncoder), keepAliveComments, { haltStrategy: "left" })
 }
+
+const keepAliveComment = new TextEncoder().encode(": keepalive\n\n")
 
 function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
   for (const schema of endpoint.success) {
