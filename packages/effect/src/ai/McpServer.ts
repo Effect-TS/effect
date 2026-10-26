@@ -770,11 +770,19 @@ const runWithRuntime = Effect.fnUntraced(function*(
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
   }
-  const sendRequestError = (clientId: number, requestId: string | number, error: unknown) =>
+  // The exit is sent already encoded, so it must carry only the JSON-RPC error members.
+  const sendRequestError = (
+    clientId: number,
+    requestId: string | number,
+    { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown }
+  ) =>
     protocol.send(clientId, {
       _tag: "Exit",
       requestId,
-      exit: { _tag: "Failure", cause: [{ _tag: "Fail", error }] }
+      exit: {
+        _tag: "Failure",
+        cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
+      }
     })
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
