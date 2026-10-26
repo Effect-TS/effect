@@ -821,15 +821,42 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
 
   it.effect("rejects an invalid nested object when another union member has a record", () =>
     Effect.gen(function*() {
-      const Query = Schema.Union([
-        Schema.Struct({ kind: Schema.Literal("nested"), ...OptionalMeta }),
-        Schema.StructWithRest(
-          Schema.Struct({ kind: Schema.Literal("flat") }),
-          [Schema.Record(Schema.String, Schema.String)]
-        )
-      ])
+      const Nested = Schema.Struct({ kind: Schema.Literal("nested"), ...OptionalMeta })
+      const Flat = Schema.StructWithRest(
+        Schema.Struct({ kind: Schema.Literal("flat") }),
+        [Schema.Record(Schema.String, Schema.String)]
+      )
+      const TransformedFlat = Flat.pipe(Schema.decodeTo(
+        Flat,
+        SchemaTransformation.transform({ decode: (value) => value, encode: (value) => value })
+      ))
 
-      assert.strictEqual(yield* Effect.flip(decodeRawQuery(Query, "kind=nested&meta%5Bk%5D=")), "Query")
+      for (const Query of [Schema.Union([Nested, Flat]), Schema.Union([Nested, TransformedFlat])]) {
+        assert.strictEqual(yield* Effect.flip(decodeRawQuery(Query, "kind=nested&meta%5Bk%5D=")), "Query")
+      }
+    }))
+
+  it.effect("only runs the key schemas of the union member that decoded", () =>
+    Effect.gen(function*() {
+      const Active = Schema.StructWithRest(
+        Schema.Struct({ kind: Schema.Literal("active"), meta: Schema.optional(Schema.String) }),
+        [Schema.Record(Schema.String, Schema.String)]
+      )
+      const Unused = Schema.String.pipe(Schema.decode(SchemaTransformation.transformEffect<string, string>({
+        decode: () => Effect.die("Unused key schema"),
+        encode: Effect.succeed
+      })))
+      const Inactive = Schema.StructWithRest(
+        Schema.Struct({ kind: Schema.Literal("inactive") }),
+        [Schema.Record(Unused, Schema.String)]
+      )
+
+      for (const Query of [Schema.Union([Active, Inactive]), Schema.Union([Inactive, Active])]) {
+        assert.deepStrictEqual(
+          yield* decodeRawQuery(Query, "kind=active&meta%5Bk%5D=v"),
+          { kind: "active", "meta[k]": "v" }
+        )
+      }
     }))
 
   it.effect("keeps flat record keys without re-encoding them", () =>
