@@ -133,9 +133,9 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    * **Details**
    *
    * It reads the privileges, asks `accept`, pulls with the accepted ones,
-   * applies `args`, and enables the plugin unless `disabled`. When the pull,
-   * the settings or the enabling fail, it removes the plugin again and fails
-   * with that error.
+   * applies `args`, and enables the plugin unless `disabled`. When the
+   * settings or the enabling fail, it removes the plugin again and fails with
+   * that error. A failed pull installed nothing, so nothing is removed.
    *
    * - `accept` decides on the privileges the plugin asks for: it returns the
    *   ones to grant, which must be all of them for the Engine to install it,
@@ -364,12 +364,13 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
           const asked = yield* privilegesOf(remote, { auth: options.auth })
           const accepted = yield* options.accept(asked)
           const pulled = yield* pullWith(remote, { privileges: accepted, name: options.name, auth: options.auth })
+          // a pull that failed installed nothing, and its name can be another install's
+          yield* Stream.runDrain(pulled.progress)
           yield* Effect.gen(function*() {
-            yield* Stream.runDrain(pulled.progress)
             if (options.args !== undefined && options.args.length > 0) yield* set(pulled.name, options.args)
             if (options.disabled !== true) yield* enable(pulled.name, { timeout: options.timeout })
           }).pipe(
-            // nothing is left behind; a pull that failed installed nothing
+            // the pulled plugin is this call's: nothing is left behind
             Effect.onError(() => Effect.ignore(remove(pulled.name, { force: true })))
           )
           return pulled.name

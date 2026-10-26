@@ -1,7 +1,7 @@
 import { NodeDocker, NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Queue, Redacted } from "effect"
-import { DockerConfig, DockerEngine, DockerRegistryAuth } from "effect/docker"
+import { DockerConfig, DockerContainers, DockerEngine, DockerExec, DockerRegistryAuth } from "effect/docker"
 import { HttpClientRequest } from "effect/http"
 import * as Fs from "node:fs"
 import * as Http from "node:http"
@@ -61,6 +61,66 @@ const makeTlsEngine = makeEngine(
 )
 
 const decoder = new TextDecoder()
+
+/**
+ * An Engine whose upgrades succeed but whose setup then fails: exec start
+ * answers with an invalid `Content-Type`; attach answers with none, and the
+ * container inspect that would tell the framing is a 404. It hands over each
+ * upgraded connection's server side, and the services over the Engine, which
+ * live as long as the test: a connection must close with its operation's
+ * scope, not with the engine.
+ */
+const makeFailingUpgradeEngine = Effect.flatMap(Queue.unbounded<Net.Socket>(), (upgraded) => {
+  const sockets: Array<Net.Socket> = []
+  return Effect.acquireRelease(
+    Effect.callback<Http.Server>((resume) => {
+      const server = Http.createServer((request, response) => {
+        const url = request.url ?? ""
+        if (url.endsWith("/exec/e/json")) {
+          response.writeHead(200, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ ID: "e", Running: true, OpenStdin: false, ProcessConfig: { tty: false } }))
+        } else if (url.includes("/containers/c/wait")) {
+          // the head now, the body when the container exits
+          response.writeHead(200, { "Content-Type": "application/json" }).flushHeaders()
+        } else {
+          response.writeHead(404, { "Content-Type": "application/json" })
+            .end(JSON.stringify({ message: "No such container: c" }))
+        }
+      })
+      server.on("connection", (socket: Net.Socket) => sockets.push(socket))
+      server.on("upgrade", (request: Http.IncomingMessage, socket: Net.Socket) => {
+        const contentType = request.url?.includes("/exec/") === true ? "Content-Type: text/plain\r\n" : ""
+        socket.write(`HTTP/1.1 101 UPGRADED\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n${contentType}\r\n`)
+        Queue.offerUnsafe(upgraded, socket)
+      })
+      server.listen(0, () => resume(Effect.succeed(server)))
+    }),
+    (server) =>
+      Effect.callback<void>((resume) => {
+        for (const socket of sockets) socket.destroy()
+        server.close(() => resume(Effect.void))
+      })
+  ).pipe(
+    Effect.flatMap((server) =>
+      Layer.build(NodeDocker.layer.pipe(Layer.provide(DockerConfig.layer({
+        endpoint: { _tag: "Tcp", host: "127.0.0.1", port: (server.address() as Net.AddressInfo).port },
+        apiVersion: "1.50"
+      }))))
+    ),
+    Effect.map((services) => ({ upgraded, services }))
+  )
+})
+
+/** Waits until the client closes its side of a connection: the server sees its end, or the connection closes. */
+const closed = (socket: Net.Socket) =>
+  Effect.callback<void>((resume) => {
+    if (socket.readableEnded || socket.destroyed) return resume(Effect.void)
+    const done = () => resume(Effect.void)
+    socket.once("end", done)
+    socket.once("close", done)
+    // the server side must read for `end` to arrive
+    socket.resume()
+  }).pipe(Effect.timeout("2 seconds"))
 
 /**
  * Negotiates through `NodeDocker.layer` (a request), then sends an upgrade
@@ -149,6 +209,26 @@ describe("NodeDocker", () => {
       assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
       assert.strictEqual(error.reason.hint, "TLS/plain mismatch: the Engine and the client disagree about TLS")
       assert.isFalse(error.isRetryable)
+    }))
+
+  it.live("closes an upgraded connection when exec start fails before handing it over", () =>
+    Effect.gen(function*() {
+      const { services, upgraded } = yield* makeFailingUpgradeEngine
+      const error = yield* DockerExec.DockerExec.use((exec) => Effect.scoped(exec.start("e"))).pipe(
+        Effect.provideContext(services),
+        Effect.flip
+      )
+      assert.strictEqual(error.reason._tag, "InvalidResponse")
+      yield* closed(yield* Queue.take(upgraded))
+    }))
+
+  it.live("closes an upgraded connection when attach fails before handing it over", () =>
+    Effect.gen(function*() {
+      const { services, upgraded } = yield* makeFailingUpgradeEngine
+      const error = yield* DockerContainers.DockerContainers.use((containers) => Effect.scoped(containers.attach("c")))
+        .pipe(Effect.provideContext(services), Effect.flip)
+      assert.strictEqual(error.reason._tag, "NotFound")
+      yield* closed(yield* Queue.take(upgraded))
     }))
 
   it.effect("runs credential helpers as child processes", () =>

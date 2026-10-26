@@ -61,6 +61,24 @@ describe("DockerImages", () => {
       assert.strictEqual(stub.requests.length, 0)
     }))
 
+  it.effect("rejects a digest where a push or a tag target needs a tag, before sending anything", () =>
+    Effect.gen(function*() {
+      const digest = `sha256:${"ab".repeat(32)}`
+      const stub = makeStubEngine(withPing("1.44"))
+      const outcome = <A>(effect: Effect.Effect<A, DockerError.DockerError>) =>
+        Effect.match(effect, { onFailure: (error) => error.reason._tag, onSuccess: () => "sent" })
+      const outcomes = yield* Images.use((images) =>
+        Effect.all([
+          // the Engine would push every tag of the repository
+          outcome(images.push(`ghcr.io/org/app@${digest}`)),
+          // the Engine would tag `latest`
+          outcome(images.tag("alpine", `ghcr.io/org/app@${digest}`))
+        ])
+      ).pipe(stub.provide)
+      assert.deepStrictEqual(outcomes, ["InvalidReference", "InvalidReference"])
+      assert.deepStrictEqual(stub.requests.map((request) => request.url.pathname), [])
+    }))
+
   it.effect("always sends X-Registry-Auth, as padded base64url JSON: the resolved credential, the call's, or {}", () =>
     Effect.gen(function*() {
       const stub = makeStubEngine(

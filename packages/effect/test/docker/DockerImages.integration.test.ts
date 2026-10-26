@@ -2,7 +2,7 @@ import { assert, it } from "@effect/vitest"
 import { Effect, Redacted, Schedule, Stream } from "effect"
 import { DockerContainers, DockerImages } from "effect/docker"
 import { Tar } from "effect/encoding"
-import { ensureImage, image, labels, layer, scopedContainer } from "./utils/live.ts"
+import { ensureImage, image, layer, scopedContainer, scopedImages } from "./utils/live.ts"
 
 const registryImage = "docker.io/library/registry:2"
 
@@ -61,26 +61,27 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
   it.effect("tags, saves, loads and removes", () =>
     Effect.gen(function*() {
       const images = yield* Images
+      const tagged = (yield* scopedImages).tag("tagged")
       yield* ensureImage(image)
       const inspected = yield* images.inspect(image)
-      yield* images.tag(image, "localhost/effect-docker-test:tagged")
-      assert.strictEqual((yield* images.inspect("localhost/effect-docker-test:tagged")).Id, inspected.Id)
-      const archive = yield* Stream.runCollect(images.save("localhost/effect-docker-test:tagged"))
+      yield* images.tag(image, tagged)
+      assert.strictEqual((yield* images.inspect(tagged)).Id, inspected.Id)
+      const archive = yield* Stream.runCollect(images.save(tagged))
       const entries = yield* Stream.fromIterable(archive).pipe(
         Stream.pipeThroughChannel(Tar.decode()),
         Stream.mapEffect((entry) => Effect.as(Stream.runDrain(entry.body), entry.header.path)),
         Stream.runCollect
       )
       assert.include(entries, "manifest.json")
-      assert.isAbove((yield* images.remove("localhost/effect-docker-test:tagged")).length, 0)
+      assert.isAbove((yield* images.remove(tagged)).length, 0)
       yield* Stream.runDrain(images.load(Stream.fromIterable(archive)))
-      assert.strictEqual((yield* images.inspect("localhost/effect-docker-test:tagged")).Id, inspected.Id)
-      yield* images.remove("localhost/effect-docker-test:tagged")
+      assert.strictEqual((yield* images.inspect(tagged)).Id, inspected.Id)
     }), 120_000)
 
   it.effect("builds with the classic builder and with BuildKit", () =>
     Effect.gen(function*() {
       const images = yield* Images
+      const { labels } = yield* scopedImages
       yield* ensureImage(image)
       const classic = yield* images.build(dockerfile(image), { builder: "classic", labels })
       assert.match(classic.id, /^sha256:/)
@@ -96,16 +97,15 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
         )
         assert(failed.reason._tag === "StreamFailed", failed.message)
       }
-      const built = yield* images.list({ all: true, filters: { label: "effect-docker-test=1" } })
-      yield* Effect.forEach(built, (summary) => Effect.ignore(images.remove(summary.Id, { force: true })))
     }), 120_000)
 
   it.effect("round-trips a private registry: push and pull with credentials", () =>
     Effect.gen(function*() {
       const images = yield* Images
+      const { labels, reference } = yield* scopedImages
       yield* ensureImage(image)
       const registry = yield* privateRegistry
-      const target = `${registry}/effect/alpine:1`
+      const target = reference(`${registry}/effect/alpine:1`)
       yield* images.tag(image, target)
       // anonymous pushes are refused
       const anonymous = yield* Effect.flip(images.push(target))
@@ -129,7 +129,5 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
       // BuildKit can't authenticate without a session, but uses the pulled image
       const prePulled = yield* images.build(dockerfile(target), { builder: "buildkit", labels })
       assert.match(prePulled.id, /^sha256:/)
-      yield* Effect.forEach([classic.id, prePulled.id, target], (name) =>
-        Effect.ignore(images.remove(name, { force: true })))
     }), 240_000)
 })
