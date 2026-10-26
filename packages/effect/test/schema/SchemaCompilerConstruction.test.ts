@@ -6,6 +6,32 @@ import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { constructionCases, constructionEvents, constructionOptions } from "./fixtures/construction.ts"
 
 describe("Schema compiler construction", { concurrent: false }, () => {
+  it("uses an installed constructor for Class.make", () => {
+    class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
+    const instance = new C({ value: "installed" })
+    let calls = 0
+    SchemaCompiler.set(SchemaAST.toType(C.ast), {
+      decodeEffect: Effect.succeed,
+      makeEffect: () => {
+        calls++
+        return Effect.succeed(instance)
+      }
+    })
+
+    assert.strictEqual(C.make({ value: "input" }), instance)
+    assert.strictEqual(C.make(instance), instance)
+    assert.strictEqual(calls, 2)
+  })
+
+  it("propagates selective compilation through Class.make", () => {
+    class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
+    const ast = SchemaAST.toType(C.ast) as SchemaAST.Declaration
+    SchemaJITCompiler.enable(ast)
+
+    assert.deepStrictEqual(C.make({ value: "input" }), new C({ value: "input" }))
+    assert.isDefined(Registry.resolve(ast.typeParameters[0]).compiled)
+  })
+
   it.effect("initializes and caches makers on first access", () =>
     Effect.gen(function*() {
       const schema = Schema.Struct({ value: Schema.NumberFromString })

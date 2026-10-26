@@ -44,6 +44,7 @@ import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
+import * as CompilerRegistry from "./internal/schema/compilerRegistry.ts"
 import * as InternalMake from "./internal/schema/make.ts"
 import * as InternalStandardSchema from "./internal/schema/standardSchema.ts"
 import * as InternalToCodec from "./internal/schema/toCodec.ts"
@@ -16280,7 +16281,21 @@ function makeClass<
       return getClassSchema(this).rebuild(ast)
     }
     static make(input: S["~type.make.in"], options?: MakeOptions): Self {
-      return SchemaParser.make(getClassSchema(this) as any)(input ?? {}, options) as Self
+      const schema = getClassSchema(this)
+      const entry = CompilerRegistry.resolve(SchemaAST.toType(schema.ast))
+      if (entry.compiled !== undefined || entry.resolve !== undefined) {
+        return SchemaParser.make(schema as any)(input ?? {}, options) as Self
+      }
+      if (input instanceof this || Predicate.hasProperty(input, ClassTypeId)) {
+        return input as Self
+      }
+      const value = struct.make(input ?? {}, options)
+      try {
+        // Keep construction outside the parser so error stacks retain the caller.
+        return makeClassTrusted(this, value) as Self
+      } catch (error) {
+        throw new globalThis.Error("Constructor adapter can only throw schema issues", { cause: Cause_.die(error) })
+      }
     }
     static makeOption(input: S["~type.make.in"], options?: MakeOptions): Option_.Option<Self> {
       return SchemaParser.makeOption(getClassSchema(this) as any)(input ?? {}, options) as any
