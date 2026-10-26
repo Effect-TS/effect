@@ -131,9 +131,14 @@ export const propertyKey = (key: string): string =>
 /** `acme/v1/user.proto` → `acme/v1/user.proto.ts` */
 export const generatedFileName = (protoFile: string): string => protoFile.replace(/\.proto$/, "") + ".proto.ts"
 
-/** The namespace a generated module is imported as: `acme/v1/user.proto` → `acme_v1_user_proto`. */
-export const importAlias = (protoFile: string): string =>
-  protoFile.replace(/\.proto$/, "").replace(/[^A-Za-z0-9_]/g, "_") + "_proto"
+/**
+ * The namespace a generated module is imported as: `acme/v1/user.proto` →
+ * `acme_v1_user_proto`, and `123/user.proto` → `_123_user_proto`.
+ */
+export const importAlias = (protoFile: string): string => {
+  const alias = protoFile.replace(/\.proto$/, "").replace(/[^A-Za-z0-9_]/g, "_") + "_proto"
+  return /^[0-9]/.test(alias) ? `_${alias}` : alias
+}
 
 /** A relative import of the module generated for `to` from the module generated for `from`. */
 export const relativeImport = (from: string, to: string, extension: "js" | "ts" | "none"): string => {

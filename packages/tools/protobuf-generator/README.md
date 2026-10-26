@@ -68,7 +68,9 @@ opt:
 
 A file maps to a module; a directory ending in `/` maps to a specifier ending
 in `/`, followed by the rest of the path (`acme/common/v1/money.proto` is
-imported from `@acme/common-proto/v1/money.proto`). `descriptor.proto` and
+imported from `@acme/common-proto/v1/money.proto`). Several files can map to
+the same module, such as the entry point of a library, and the first entry
+that matches a file applies. `descriptor.proto` and
 `plugin.proto` map to `effect/protobuf/ProtobufDescriptor` and
 `effect/protobuf/ProtobufPlugin` unless mapped otherwise.
 

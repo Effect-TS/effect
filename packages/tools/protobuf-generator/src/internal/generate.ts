@@ -270,12 +270,9 @@ const effectModules: Record<string, { readonly alias: string; readonly specifier
   }
 }
 
-/** The module that `protoMap` maps a `.proto` file to. */
+/** The module that `protoMap` maps a `.proto` file to: the first entry that matches. */
 const protoMapModule = (options: Options, name: string): string | undefined => {
   for (const [key, specifier] of Object.entries(options.protoMap ?? {})) {
-    if (key.endsWith("/") !== specifier.endsWith("/")) {
-      throw new GeneratorError(`proto map ${key}=${specifier}: a directory maps to a specifier ending in /`)
-    }
     if (key === name) return specifier
     if (key.endsWith("/") && name.startsWith(key)) return specifier + name.slice(key.length)
   }
@@ -389,7 +386,10 @@ const compareSpecifiers = (a: string, b: string): number => {
   return lowerA < lowerB ? -1 : lowerA > lowerB ? 1 : a < b ? -1 : a > b ? 1 : 0
 }
 
+/** The namespace of an imported module, which keeps its first alias when several files map to it. */
 const useModule = (ctx: Context, specifier: string, alias: string): string => {
+  const existing = ctx.imports.get(specifier)
+  if (existing !== undefined) return existing
   ctx.imports.set(specifier, alias)
   return alias
 }
@@ -409,19 +409,27 @@ const moduleOfFile = (ctx: Context, name: string): string | undefined => {
 const moduleOf = (ctx: Context, t: NamedType): string | undefined =>
   t.file === ctx.file ? undefined : moduleOfFile(ctx, t.file.name ?? "")
 
-/** Generated names must be unique, since nested names are flattened. */
-const checkNames = (ctx: Context, declared: ReadonlyArray<readonly [string, string]>) => {
+/**
+ * Generated names must be unique, since nested names are flattened and
+ * property keys are camel-cased. `names` pairs each name with what it is
+ * generated from.
+ */
+const checkUnique = (where: string, names: Iterable<readonly [string, string]>, what: string) => {
   const seen = new Map<string, string>()
-  const add = (name: string, source: string) => {
+  for (const [name, source] of names) {
     const previous = seen.get(name)
     if (previous !== undefined) {
-      throw new GeneratorError(`${ctx.fileName}: ${previous} and ${source} would both be generated as ${name}`)
+      throw new GeneratorError(`${where}: ${previous} and ${source} would both be generated as ${what} ${name}`)
     }
     seen.set(name, source)
   }
-  for (const alias of ctx.imports.values()) add(alias, `the import of ${alias}`)
-  for (const [name, source] of declared) add(name, source)
 }
+
+const checkNames = (ctx: Context, declared: ReadonlyArray<readonly [string, string]>) =>
+  checkUnique(ctx.fileName, [
+    ...Array.from(ctx.imports.values(), (alias) => [alias, `the import of ${alias}`] as const),
+    ...declared
+  ], "declaration")
 
 // -----------------------------------------------------------------------------
 // ordering
@@ -759,6 +767,8 @@ const featureOptions = (ctx: Context, field: FieldDescriptorProto, features: Fea
 /** A property of a generated struct. */
 interface Member {
   readonly key: string
+  /** What the property is generated from, for errors. */
+  readonly source: string
   /** The key in the object literal. */
   readonly property: string
   readonly schema: string
@@ -799,8 +809,9 @@ const renderField = (
   const key = protoCamelCase(name)
   const number = field.number ?? 0
   const features = fieldFeatures(ctx.edition, message.features, field)
+  const defaultTo = defaultValue(ctx, field, where)
   const doc = jsDoc(comment(ctx, path), [
-    defaultTag(ctx, field, where),
+    defaultTo === undefined ? undefined : `@default ${defaultTo}`,
     deprecatedTag(ctx, field.options?.deprecated)
   ], "  ")
   const v = renderFieldValue(ctx, message, field, where)
@@ -810,10 +821,11 @@ const renderField = (
     ...nameOptions(field, key),
     ...featureOptions(ctx, field, features),
     required: required && !isMessage(field) ? true : undefined,
-    default: defaultValue(ctx, field, where)
+    default: defaultTo
   })
   return {
     key,
+    source: `field ${name}`,
     property: propertyKey(key),
     schema: `${optional ? `${useSchema(ctx)}.optionalKey(${v.schema})` : v.schema}.pipe(${options})`,
     doc
@@ -828,6 +840,11 @@ const renderOneof = (
 ): Member => {
   const decl = message.desc.oneofDecl[index]
   const key = protoCamelCase(decl?.name ?? "")
+  checkUnique(
+    message.fullName,
+    fields.map(([field]) => [protoCamelCase(field.name ?? ""), `field ${field.name}`] as const),
+    `a case of oneof ${decl?.name}`
+  )
   const features = mergeFeatures(message.features, decl?.options?.features)
   const cases = fields.map(([field, i]) => {
     const where = `${message.fullName}.${field.name}`
@@ -846,6 +863,7 @@ const renderOneof = (
   })
   return {
     key,
+    source: `oneof ${decl?.name}`,
     property: propertyKey(key),
     schema: [
       `${useProtobuf(ctx)}.Oneof({`,
@@ -935,11 +953,6 @@ const unescapeBytes = (escaped: string, where: string): Array<number> => {
   return out
 }
 
-const defaultTag = (ctx: Context, field: FieldDescriptorProto, where: string): string | undefined => {
-  const value = defaultValue(ctx, field, where)
-  return value === undefined ? undefined : `@default ${value}`
-}
-
 // -----------------------------------------------------------------------------
 // declarations
 // -----------------------------------------------------------------------------
@@ -967,13 +980,7 @@ const renderMessage = (ctx: Context, message: MessageType): string => {
     }
     members.push(renderField(ctx, message, field, [...message.path, MESSAGE_FIELD, i]))
   })
-  const keys = new Set<string>()
-  for (const member of members) {
-    if (keys.has(member.key)) {
-      throw new GeneratorError(`${message.fullName}: two fields would both be generated as property ${member.key}`)
-    }
-    keys.add(member.key)
-  }
+  checkUnique(message.fullName, members.map((m) => [m.key, m.source] as const), "property")
   const schema = useSchema(ctx)
   const name = message.tsName
   const doc = exportDoc(comment(ctx, message.path), `Schema for the \`${message.fullName}\` message.`, [
@@ -1050,20 +1057,21 @@ const renderExtension = (ctx: Context, extension: Extension): string => {
 }
 
 const renderRegistry = (ctx: Context, local: ReadonlyArray<NamedType>, extensions: ReadonlyArray<Extension>) => {
-  const entries: Array<string> = []
+  // A Set, since files mapped to the same module share its registry.
+  const entries = new Set<string>()
   for (const t of local) {
-    if (t._tag === "message") entries.push(t.tsName)
+    if (t._tag === "message") entries.add(t.tsName)
   }
-  for (const extension of extensions) entries.push(extension.tsName)
+  for (const extension of extensions) entries.add(extension.tsName)
   for (const dependency of ctx.file.dependency) {
     if (Object.hasOwn(wellKnownFiles, dependency)) {
       for (const typeName of wellKnownFiles[dependency]) {
-        entries.push(renderMessageRef(ctx, typeName, undefined, ctx.fileName))
+        entries.add(renderMessageRef(ctx, typeName, undefined, ctx.fileName))
       }
       continue
     }
     const module = moduleOfFile(ctx, dependency)
-    if (module !== undefined) entries.push(`${module}.registry`)
+    if (module !== undefined) entries.add(`${module}.registry`)
   }
   return [
     ...exportDoc(
@@ -1071,9 +1079,9 @@ const renderRegistry = (ctx: Context, local: ReadonlyArray<NamedType>, extension
       `The messages and extensions of \`${ctx.fileName}\` and of its imports, for \`Protobuf.anyUnpack\`.`,
       []
     ),
-    entries.length === 0
+    entries.size === 0
       ? `export const registry = ${useProtobuf(ctx)}.registry()`
-      : [`export const registry = ${useProtobuf(ctx)}.registry(`, `  ${entries.join(",\n  ")}`, ")"].join("\n")
+      : [`export const registry = ${useProtobuf(ctx)}.registry(`, `  ${[...entries].join(",\n  ")}`, ")"].join("\n")
   ].join("\n")
 }
 

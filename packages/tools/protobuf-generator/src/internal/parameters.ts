@@ -26,7 +26,12 @@ export const parseParameters = (parameter: string): Options => {
     if (key === "proto_map") {
       const separator = value.indexOf("=")
       if (separator <= 0) throw new GeneratorError(`plugin parameter proto_map=${value} is not <proto>=<specifier>`)
-      protoMap[value.slice(0, separator)] = value.slice(separator + 1)
+      const proto = value.slice(0, separator)
+      const specifier = value.slice(separator + 1)
+      if (proto.endsWith("/") !== specifier.endsWith("/")) {
+        throw new GeneratorError(`proto map ${proto}=${specifier}: a directory maps to a specifier ending in /`)
+      }
+      protoMap[proto] = specifier
       continue
     }
     if (Object.hasOwn(entries, key)) throw new GeneratorError(`plugin parameter ${key} is set more than once`)
