@@ -441,6 +441,23 @@ describe("Client", () => {
       })
   )
 
+  it.effect("releases the connection when a queued reserve is interrupted in an open scope", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+      const release = yield* Deferred.make<void>()
+      const holder = yield* Effect.forkChild(sql.withTransaction(Deferred.await(release)), {
+        startImmediately: true
+      })
+      // The test's scope stays open, so only the interruption can end the lease.
+      const reserve = yield* Effect.forkChild(sql.reserve, { startImmediately: true })
+      yield* Fiber.interrupt(reserve)
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(holder)
+      const next = yield* Effect.forkChild(sql`SELECT 3 AS value`)
+      for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
+      assert.isDefined(next.pollUnsafe())
+    }))
+
   it.effect("uses a 5 second busy timeout", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
