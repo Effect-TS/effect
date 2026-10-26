@@ -9852,9 +9852,9 @@ Arbitrary.schema(schema)
 
 - `Duration.decodeUnknown` -> `Duration.fromInput`: The safe decoder was renamed and accepts Duration.Input, returning Option\<Duration\>.
 
-- `Duration.formatIso` -> `none`: ISO 8601 duration formatting was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; retain a local formatter when this wire format is required.
+- `Duration.formatIso` -> `Duration.formatIso`: Available again from 4.1. The output is balanced into days, hours, minutes and seconds and never contains weeks, months or years; infinite durations return Option.none().
 
-- `Duration.fromIso` -> `none`: ISO 8601 duration parsing was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; use a dedicated ISO parser and pass the resulting parts to Duration.fromInput.
+- `Duration.fromIso` -> `Duration.fromIso`: Available again from 4.1 for exact units only (weeks, days, hours, minutes and seconds). Years and months are rejected instead of approximated. Use Schema.DurationFromIsoString for a Schema codec.
 
 - `Duration.greaterThan` -> `Duration.isGreaterThan`: The comparison was renamed with the is prefix.
 
@@ -9868,7 +9868,7 @@ Arbitrary.schema(schema)
 
 - `Duration.unsafeDivide` -> `Duration.divideUnsafe`: The unsafe prefix moved to the end of the division function name.
 
-- `Duration.unsafeFormatIso` -> `none`: ISO 8601 duration formatting was removed from v4. The v4 Duration exports and migration guides contain no direct unsafe formatter; retain a local formatter if required.
+- `Duration.unsafeFormatIso` -> `none`: There is no throwing variant. Use Duration.formatIso and handle Option.none() for infinite durations.
 
 - `Duration.unsafeToNanos` -> `Duration.toNanosUnsafe`: The unsafe prefix moved to the end of the nanosecond conversion name.
 
