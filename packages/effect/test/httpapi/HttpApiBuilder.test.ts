@@ -1825,6 +1825,41 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       }
     }))
 
+  it.effect("rejects endpoints that share a method and path", () =>
+    Effect.gen(function*() {
+      const Stats = Schema.Struct({ cpu: Schema.Number })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("stats").add(
+          HttpApiEndpoint.get("once", "/stats", {
+            query: { stream: Schema.Literal(false) },
+            success: Stats
+          }),
+          HttpApiEndpoint.get("stream", "/stats", {
+            query: { stream: Schema.Literal(true) },
+            success: HttpApiSchema.StreamNdjson({ schema: Stats })
+          })
+        )
+      )
+      const exit = yield* Effect.exit(HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(Api).pipe(
+          Layer.provide(HttpApiBuilder.group(Api, "stats", (handlers) =>
+            handlers
+              .handle("once", () => Effect.succeed({ cpu: 1 }))
+              .handle("stream", () => Effect.succeed(Stream.make({ cpu: 1 })))))
+        )
+      ))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause)
+        assert.instanceOf(error, Error)
+        assert.strictEqual(
+          error.message,
+          `HttpApiEndpoint "stats.stream" (GET /stats) has the same method and path as "stats.once". Declare one endpoint whose query, headers, payload or success schemas cover each variant instead.`
+        )
+      }
+    }))
+
   it.effect("rejects duplicate handle and handleAll registrations", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

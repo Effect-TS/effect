@@ -9,6 +9,62 @@
  * constructors, payload and response schema helpers, and type utilities used by
  * builders and generated clients.
  *
+ * **Request variants**
+ *
+ * A server needs a distinct method and path per endpoint.
+ * `HttpApiBuilder.layer` rejects two endpoints that share them, even when their
+ * query, headers or payload differ. Declare the variants of one operation as a
+ * single endpoint instead:
+ *
+ * - discriminate with a `query` or `headers` field, such as `stream: Schema.Boolean`
+ * - list several `payload` schemas, chosen by the request `Content-Type`
+ * - list several `success` schemas with distinct content types or statuses. One
+ *   of them can be a stream. The server encodes whichever value the handler
+ *   returns, and the client decodes by the response `Content-Type`
+ *
+ * The handler branches on the decoded request, and OpenAPI documents one
+ * operation with every alternative. The generated client returns the union of
+ * the success types. Wrap the client method to narrow the result per variant
+ * when callers need it.
+ *
+ * **Example** (Buffered and streaming variants of one operation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, Stream } from "effect"
+ * import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+ *
+ * const Stats = Schema.Struct({ cpu: Schema.Number })
+ *
+ * const Api = HttpApi.make("Docker").add(
+ *   HttpApiGroup.make("containers").add(
+ *     // GET /stats?stream=false returns JSON, ?stream=true returns NDJSON
+ *     HttpApiEndpoint.get("stats", "/stats", {
+ *       query: { stream: Schema.Boolean },
+ *       success: [Stats, HttpApiSchema.StreamNdjson({ schema: Stats })]
+ *     }),
+ *     // POST /images accepts a JSON pull request or a tar archive
+ *     HttpApiEndpoint.post("createImage", "/images", {
+ *       payload: [
+ *         Schema.Struct({ fromImage: Schema.String }),
+ *         HttpApiSchema.StreamUint8Array({ contentType: "application/x-tar" })
+ *       ],
+ *       success: Schema.String
+ *     })
+ *   )
+ * )
+ *
+ * const ContainersLive = HttpApiBuilder.group(Api, "containers", (handlers) =>
+ *   handlers
+ *     .handle("stats", ({ query }) =>
+ *       Effect.succeed(query.stream ? Stream.make({ cpu: 1 }, { cpu: 2 }) : { cpu: 1 })
+ *     )
+ *     .handle("createImage", ({ payload }) =>
+ *       Stream.isStream(payload)
+ *         ? Effect.as(Stream.runDrain(payload), "imported")
+ *         : Effect.succeed(`pulled ${payload.fromImage}`)
+ *     ))
+ * ```
+ *
  * @stability unstable
  * @since 4.0.0
  */
