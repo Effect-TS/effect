@@ -94,6 +94,33 @@ describe("CodeGenerator path selection", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
+describe("CodeGenerator included schemas", () => {
+  it.effect("passes included schemas to the OpenAPI generator", () =>
+    Effect.gen(function*() {
+      const generator = yield* Generator.CodeGenerator
+      const output = yield* generator.generate({
+        ...provider("[]"),
+        config: new Config.CodegenConfig({
+          spec: "spec.json",
+          output: "Generated.ts",
+          includeSchemas: ["BetaMessageStreamEvent"]
+        })
+      }, {
+        openapi: "3.1.0",
+        info: { title: "Test", version: "1.0.0" },
+        paths: {}
+      })
+      assert.strictEqual(output, JSON.stringify(["BetaMessageStreamEvent"]))
+    }).pipe(Effect.provide(
+      Generator.layer.pipe(
+        Layer.provide(Layer.succeed(OpenApiGenerator.OpenApiGenerator, {
+          generate: (_spec, options) => Effect.succeed(JSON.stringify(options.includeSchemas))
+        })),
+        Layer.provideMerge(NodeServices.layer)
+      )
+    )))
+})
+
 describe("CodeGenerator warnings", () => {
   it.effect("reports OpenAPI generator warnings to stderr without changing the generated code", () =>
     Effect.gen(function*() {

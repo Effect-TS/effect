@@ -988,6 +988,41 @@ export const TestClientError = <Tag extends string, E>(
         ]
       ))
 
+    it.effect("emits included components that no operation references, with their dependencies", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const result = yield* generator.generate({
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/ping": {
+              get: {
+                operationId: "ping",
+                responses: { 204: { description: "No content" } }
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Command: { anyOf: [{ $ref: "#/components/schemas/CreateCommand" }] },
+              CreateCommand: {
+                type: "object",
+                properties: { path: { type: "string" } },
+                required: ["path"]
+              },
+              Unused: { type: "string" }
+            }
+          }
+        } as unknown as OpenAPISpec, {
+          name: "TestClient",
+          format: "httpclient",
+          includeSchemas: ["Command"]
+        })
+        assert.include(result, "export const Command = ")
+        assert.include(result, "export const CreateCommand = ")
+        assert.notInclude(result, "Unused")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     it.effect("sse operation decodes event payload from json string", () =>
       assertRuntimeIncludes(
         {
