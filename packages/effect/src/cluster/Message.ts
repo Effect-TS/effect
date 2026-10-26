@@ -18,7 +18,7 @@ import * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
-import type { PersistenceError } from "./ClusterError.ts"
+import type { EntityNotAssignedToRunner, PersistenceError } from "./ClusterError.ts"
 import { MalformedMessage } from "./ClusterError.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
@@ -96,7 +96,14 @@ export const incomingLocalFromOutgoing = <R extends Rpc.Any>(self: Outgoing<R>):
 export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("IncomingRequest")<{
   readonly envelope: Envelope.PartialRequest
   readonly lastSentReply: Option.Option<Reply.Encoded>
-  readonly respond: (reply: Reply.ReplyWithContext<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
+  /**
+   * Persists a reply. Fails with `EntityNotAssignedToRunner` when the runner
+   * no longer owns the shard of the request, in which case nothing is
+   * persisted and the request is left for the owner.
+   */
+  readonly respond: (
+    reply: Reply.ReplyWithContext<R>
+  ) => Effect.Effect<void, MalformedMessage | PersistenceError | EntityNotAssignedToRunner>
   /**
    * Codec that filled the payload and reply holes of this message.
    *
@@ -128,7 +135,13 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
 export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("IncomingRequestLocal")<{
   readonly envelope: Envelope.Request<R>
   readonly lastSentReply: Option.Option<Reply.Reply<R>>
-  readonly respond: (reply: Reply.Reply<R>) => Effect.Effect<void, MalformedMessage | PersistenceError>
+  /**
+   * Delivers a reply. Fails with `EntityNotAssignedToRunner` when the runner
+   * no longer owns the shard of a persisted request.
+   */
+  readonly respond: (
+    reply: Reply.Reply<R>
+  ) => Effect.Effect<void, MalformedMessage | PersistenceError | EntityNotAssignedToRunner>
   readonly annotations: Context.Context<never>
   /**
    * Scope that cancels interruptible, non-persisted requests when closed.

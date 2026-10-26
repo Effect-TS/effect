@@ -129,7 +129,7 @@ const staleOwnerTest = Effect.fnUntraced(
     // A partition: A stops observing lock storage and loses its lock session.
     frozen.value = true
     if (options.advisory) {
-      yield* sql`SELECT pg_terminate_backend(pid) FROM pg_locks
+      yield* sql`SELECT pg_terminate_backend(pid, 10000) FROM pg_locks
         WHERE locktype = 'advisory' AND objsubid = 2
         AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`
     }

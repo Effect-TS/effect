@@ -513,6 +513,61 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
+  // Ownership checks run on the caller's connection, never on the reserved lock
+  // connection, so they can fence owner-only writes made on the pool.
+  const ownedLeases = (address: string, shardIds: ReadonlyArray<string>) =>
+    sql`
+      SELECT shard_id FROM ${locksTableSql}
+      WHERE address = ${address}
+      AND acquired_at >= ${lockExpiresAt}
+      AND shard_id IN ${stringLiteralArr(shardIds)}
+    `.values.pipe(
+      Effect.map((rows) => rows.map((row) => row[0] as string))
+    )
+
+  // Advisory locks belong to a session rather than an address, so remember
+  // which runners acquired them through this storage.
+  const advisoryLockAddresses = new Set<string>()
+
+  const ownedShards = sql.onDialectOrElse({
+    pg: () => {
+      if (disableAdvisoryLocks) return ownedLeases
+      return (address: string, shardIds: ReadonlyArray<string>) => {
+        // A rebuild of the reserved connection releases every advisory lock.
+        const held = lockConn?.getUnsafe()
+        if (held === undefined || !advisoryLockAddresses.has(address)) return Effect.succeed([])
+        const toCheck = new Map<number, string>()
+        for (const shardId of shardIds) {
+          const lockNum = lockNumbers.get(shardId)
+          if (lockNum !== undefined) toCheck.set(lockNum, shardId)
+        }
+        if (toCheck.size === 0) return Effect.succeed([])
+        return sql.unsafe(
+          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${
+            held[1]
+          } AND objid IN (${Array.from(toCheck.keys()).join(", ")})`
+        ).values.pipe(
+          Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
+        )
+      }
+    },
+    mysql: () => {
+      if (disableAdvisoryLocks) return ownedLeases
+      return (address: string, shardIds: ReadonlyArray<string>) => {
+        const held = lockConn?.getUnsafe()
+        if (held === undefined || !advisoryLockAddresses.has(address)) return Effect.succeed([])
+        const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
+        if (toCheck.length === 0) return Effect.succeed([])
+        return sql.unsafe(
+          `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
+        ).values.pipe(
+          Effect.map((rows) => toCheck.filter((_, i) => Number(rows[0][i]) === held[1]))
+        )
+      }
+    },
+    orElse: () => ownedLeases
+  })
+
   // On failure, replace the connection ready at entry. If none was ready,
   // retry only a failed rebuild, leaving pending or newly ready connections alone.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
@@ -613,7 +668,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         ),
 
     acquire: (address, shardIds) =>
-      withLockOperationDeadline(acquireLock(address, shardIds)).pipe(
+      withLockOperationDeadline(Effect.suspend(() => {
+        advisoryLockAddresses.add(address)
+        return acquireLock(address, shardIds)
+      })).pipe(
         PersistenceError.refail,
         withTracerDisabled
       ),
@@ -651,6 +709,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     releaseAll: (address) =>
       withLockOperationDeadline(releaseAllShards(address)).pipe(
         Effect.asVoid,
+        PersistenceError.refail,
+        withTracerDisabled
+      ),
+
+    owned: (address, shardIds) =>
+      ownedShards(address, shardIds).pipe(
         PersistenceError.refail,
         withTracerDisabled
       )

@@ -591,7 +591,7 @@ describe("SqlRunnerStorage", () => {
 
           if (label === "pg") {
             // The lock session dies before this runner refreshes its locks.
-            yield* sql`SELECT pg_terminate_backend(pid) FROM pg_locks
+            yield* sql`SELECT pg_terminate_backend(pid, 10000) FROM pg_locks
               WHERE locktype = 'advisory' AND objsubid = 2
               AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`
             expect(yield* ownedIds(runnerAddress1)).toEqual([])

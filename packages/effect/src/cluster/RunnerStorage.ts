@@ -15,6 +15,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
+import * as MutableHashSet from "../MutableHashSet.ts"
 import type { PersistenceError } from "./ClusterError.ts"
 import * as MachineId from "./MachineId.ts"
 import { Runner } from "./Runner.ts"
@@ -80,6 +81,22 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
    * Release all the shards assigned to the given runner.
    */
   readonly releaseAll: (address: RunnerAddress) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Returns the subset of `shardIds` that lock storage currently attributes to
+   * `address`.
+   *
+   * **Details**
+   *
+   * Runs on the caller's connection, never on a connection reserved for shard
+   * locks, so it can fence owner-only writes such as replies against shard
+   * ownership. The answer is a snapshot of the lock state, not a lock. Each
+   * call costs one storage query.
+   */
+  readonly owned: (
+    address: RunnerAddress,
+    shardIds: Iterable<ShardId.ShardId>
+  ) => Effect.Effect<Array<ShardId.ShardId>, PersistenceError>
 }>()("effect/cluster/RunnerStorage") {}
 
 /**
@@ -141,6 +158,15 @@ export interface Encoded {
    * Release the lock on all shards for the given runner.
    */
   readonly releaseAll: (address: string) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Returns the given shards that lock storage currently attributes to the
+   * given runner.
+   */
+  readonly owned: (
+    address: string,
+    shardIds: NonEmptyArray<string>
+  ) => Effect.Effect<ReadonlyArray<string>, PersistenceError>
 }
 
 /**
@@ -191,6 +217,13 @@ export const makeEncoded = (encoded: Encoded) =>
     },
     releaseAll(address) {
       return encoded.releaseAll(encodeRunnerAddress(address))
+    },
+    owned: (address, shardIds) => {
+      const arr = Array.from(shardIds, (id) => id.toString())
+      if (!isArrayNonEmpty(arr)) return Effect.succeed([])
+      return encoded.owned(encodeRunnerAddress(address), arr).pipe(
+        Effect.map((shards) => shards.map(ShardId.fromString))
+      )
     }
   })
 
@@ -208,6 +241,8 @@ export const makeEncoded = (encoded: Encoded) =>
 export const makeMemory = Effect.gen(function*() {
   const runners = MutableHashMap.empty<RunnerAddress, readonly [runner: Runner, healthy: boolean]>()
   let acquired: Array<ShardId.ShardId> = []
+  // every shard acquired and not yet released
+  const held = MutableHashSet.empty<ShardId.ShardId>()
   let id = 0
 
   return RunnerStorage.of({
@@ -227,11 +262,19 @@ export const makeMemory = Effect.gen(function*() {
       }),
     acquire: (_address, shardIds) => {
       acquired = Array.from(shardIds)
+      for (const shardId of acquired) MutableHashSet.add(held, shardId)
       return Effect.succeed(acquired)
     },
     refresh: () => Effect.sync(() => acquired),
-    release: () => Effect.void,
-    releaseAll: () => Effect.void
+    release: (_address, shardId) =>
+      Effect.sync(() => {
+        MutableHashSet.remove(held, shardId)
+      }),
+    releaseAll: () =>
+      Effect.sync(() => {
+        MutableHashSet.clear(held)
+      }),
+    owned: (_address, shardIds) => Effect.sync(() => Array.from(shardIds).filter((id) => MutableHashSet.has(held, id)))
   })
 })
 

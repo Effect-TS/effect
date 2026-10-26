@@ -4463,7 +4463,8 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
             call.completed = true
           })
         )
-      })
+      }),
+    owned: (_address, shardIds) => Effect.succeed(globalThis.Array.from(shardIds))
   })
 
 const otherRunner = Runner.make({
@@ -4799,7 +4800,8 @@ const SingletonReassignmentSharding = (state: SingletonStorageState) => {
       acquire: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
       refresh: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
       release: () => Effect.void,
-      releaseAll: () => Effect.void
+      releaseAll: () => Effect.void,
+      owned: (_address, shards) => Effect.succeed(globalThis.Array.from(shards))
     }))
   )
   return TestShardingWithoutRunnerStorage.pipe(

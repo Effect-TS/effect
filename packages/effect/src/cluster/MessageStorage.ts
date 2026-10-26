@@ -617,7 +617,10 @@ export const make = (
           const entry: ReplyHandler = {
             message,
             shardSet,
-            respond: message._tag === "IncomingRequest" ? message.respond : (reply) => message.respond(reply.reply),
+            respond: message._tag === "IncomingRequest"
+              // Only replies an owner saved are delivered here.
+              ? (reply) => Effect.catchTag(message.respond(reply), "EntityNotAssignedToRunner", () => Effect.void)
+              : (reply) => message.respond(reply.reply),
             resume
           }
           handlers.push(entry)
