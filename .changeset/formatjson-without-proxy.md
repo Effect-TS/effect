@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Let `Formatter.formatJson`, and so `Cause.pretty`, format values with own getters on engines without `Proxy` instead of throwing a `ReferenceError`.
+Stop `Formatter.formatJson`, and so `Cause.pretty`, from depending on `Proxy`, so values with own getters format and redact on engines without it instead of throwing a `ReferenceError`.

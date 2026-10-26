@@ -336,23 +336,12 @@ export function formatJson(input: unknown, options?: {
         ancestors.push(current)
       }
       // Leave boxed primitives intact so JSON.stringify can unbox them natively.
-      // Engines without Proxy (e.g. Chrome < 49) let JSON.stringify read
-      // getters directly, as before getter redaction was added.
-      if (typeof Proxy !== "function" || !hasGetter(current) || isJsonPrimitiveWrapper(current)) {
+      if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
         return current
       }
-      // JSON.stringify reads a getter once, then calls toJSON on the result
-      // before the replacer sees it. Intercept that read to redact the value
-      // first, instead of re-reading the getter in the replacer, which could
-      // repeat side effects or return a different value.
-      const serialized = new Proxy(current, {
-        get(target, key) {
-          const value = Reflect.get(target, key, target)
-          return Object.getOwnPropertyDescriptor(target, key)?.get !== undefined ? redact(value) : value
-        }
-      })
-      ancestors.push(serialized)
-      return serialized
+      const snapshot = snapshotGetters(current)
+      ancestors.push(snapshot)
+      return snapshot
     },
     options?.space
   ) ?? "null"
@@ -365,6 +354,22 @@ function hasGetter(object: object): boolean {
     }
   }
   return false
+}
+
+// JSON.stringify reads a getter once, then calls toJSON on the result before
+// the replacer sees it. Copy the object instead, reading each getter once with
+// the original receiver and redacting the result, without relying on Proxy.
+function snapshotGetters(object: object): object {
+  // JSON.stringify reads every array index, regardless of enumerability
+  const keys = Array.isArray(object)
+    ? Array.from({ length: object.length }, (_, i) => String(i))
+    : Object.keys(object)
+  const snapshot = (Array.isArray(object) ? [] : {}) as Record<string, unknown>
+  for (const key of keys) {
+    const value = (object as Record<string, unknown>)[key]
+    snapshot[key] = Object.getOwnPropertyDescriptor(object, key)?.get !== undefined ? redact(value) : value
+  }
+  return snapshot
 }
 
 function isJsonPrimitiveWrapper(object: object): boolean {
