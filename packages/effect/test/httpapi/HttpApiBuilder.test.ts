@@ -774,7 +774,7 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
-  const rawQueryError = Effect.fnUntraced(function*(query: Schema.Top, search: string) {
+  const rawQueryError = Effect.fnUntraced(function*(query: Schema.Codec<unknown, unknown>, search: string) {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", { query }))
     )
