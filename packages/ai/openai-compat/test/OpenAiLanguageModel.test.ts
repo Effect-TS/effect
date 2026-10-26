@@ -741,65 +741,76 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
-    it.effect("sends the serialized tool result when the tool result has model output", () =>
-      Effect.gen(function*() {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+    const modelOutputCases = [
+      {
+        label: "as text with file placeholders",
+        modelOutput: [
+          Prompt.textPart({ text: "Screenshot" }),
+          Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+        ],
+        content: "Screenshot\n[image/png screenshot.png omitted]"
+      },
+      { label: "as an empty string when it is empty", modelOutput: [], content: "" }
+    ]
 
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
-            })
-          ))
-        )
+    for (const { content, label, modelOutput } of modelOutputCases) {
+      it.effect(`sends tool result model output ${label}`, () =>
+        Effect.gen(function*() {
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
 
-        yield* LanguageModel.generateText({
-          prompt: Prompt.make([
-            {
-              role: "assistant",
-              content: [Prompt.toolCallPart({
-                id: "call_1",
-                name: "TestTool",
-                params: { input: "screenshot" },
-                providerExecuted: false
-              })]
-            },
-            {
-              role: "tool",
-              content: [Prompt.toolResultPart({
-                id: "call_1",
-                name: "TestTool",
-                isFailure: false,
-                result: { output: "screenshot.png" },
-                modelOutput: [
-                  Prompt.textPart({ text: "Screenshot" }),
-                  Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" })
-                ],
-                providerExecuted: false
-              })]
-            }
-          ]),
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(layer)
-        )
+          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+              })
+            ))
+          )
 
-        assert.isDefined(capturedRequest)
-        if (capturedRequest === undefined) {
-          return
-        }
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              {
+                role: "assistant",
+                content: [Prompt.toolCallPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  params: { input: "screenshot" },
+                  providerExecuted: false
+                })]
+              },
+              {
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  isFailure: false,
+                  result: { output: "APPLICATION_ONLY" },
+                  modelOutput,
+                  providerExecuted: false
+                })]
+              }
+            ]),
+            toolkit: TestToolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(layer)
+          )
 
-        const requestBody = yield* getRequestBody(capturedRequest)
-        assert.deepStrictEqual(requestBody.messages[1], {
-          role: "tool",
-          tool_call_id: "call_1",
-          content: JSON.stringify({ output: "screenshot.png" })
-        })
-      }))
+          assert.isDefined(capturedRequest)
+          if (capturedRequest === undefined) {
+            return
+          }
+
+          const requestBody = yield* getRequestBody(capturedRequest)
+          assert.deepStrictEqual(requestBody.messages[1], {
+            role: "tool",
+            tool_call_id: "call_1",
+            content
+          })
+        }))
+    }
 
     it.effect("echoes tool call extra_content in follow-up requests", () =>
       Effect.gen(function*() {
