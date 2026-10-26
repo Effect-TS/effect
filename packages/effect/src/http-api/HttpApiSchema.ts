@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as ByteSize from "../ByteSize.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
@@ -22,6 +23,7 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
+import * as MediaType from "./internal/mediaType.ts"
 
 declare module "../Schema.ts" {
   namespace Annotations {
@@ -323,6 +325,7 @@ export interface StreamSse<
   readonly mode: "sse"
   readonly sseMode: StreamSseMode
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly events: Events
   readonly error: Error
   readonly "~Value"?: Value | undefined
@@ -381,6 +384,7 @@ export interface StreamUint8Array extends
   readonly _tag: "StreamUint8Array"
   readonly mode: "uint8array"
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly maxBytes: ByteSize.ByteSize | undefined
 }
 
@@ -432,6 +436,7 @@ export interface StreamNdjson<S extends Schema.Constraint> extends
   readonly _tag: "StreamNdjson"
   readonly mode: "ndjson"
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly schema: S
   readonly maxBytes: ByteSize.ByteSize | undefined
   readonly maxElementBytes: ByteSize.ByteSize
@@ -499,7 +504,7 @@ export const StreamSse: {
     _tag: "StreamSse",
     mode: "sse",
     sseMode: options.events === undefined ? "data" : "events",
-    contentType: options.contentType ?? defaultStreamContentType("sse"),
+    ...streamContentTypes(options.contentType, "sse"),
     events,
     error: options.error ?? Schema.Never
   })
@@ -510,22 +515,24 @@ export const StreamSse: {
  *
  * **Details**
  *
- * `contentType` defaults to `application/octet-stream`. `maxBytes` only applies
- * to request payloads and has no default.
+ * `contentType` defaults to `application/octet-stream`. Pass a list when the
+ * same stream is sent under several media types. The first entry is the
+ * default response type, and payloads are accepted under every entry.
+ * `maxBytes` only applies to request payloads and has no default.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const StreamUint8Array = (options?: {
-  readonly contentType?: string | undefined
+  readonly contentType?: string | ReadonlyArray<string> | undefined
   readonly maxBytes?: ByteSize.Input | undefined
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(streamSchema.ast, {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamUint8Array",
     mode: "uint8array",
-    contentType: options?.contentType ?? defaultStreamContentType("uint8array"),
+    ...streamContentTypes(options?.contentType, "uint8array"),
     maxBytes: options?.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes)
   })
 
@@ -535,7 +542,8 @@ export const StreamUint8Array = (options?: {
  * **Details**
  *
  * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
- * MiB. `maxBytes` has no default.
+ * MiB. `maxBytes` has no default. Pass a list of content types to accept
+ * aliases such as `application/jsonl`. The first entry is the default.
  *
  * **Example** (Declaring an NDJSON request payload)
  *
@@ -563,7 +571,7 @@ export const StreamUint8Array = (options?: {
  */
 export const StreamNdjson = <S extends Schema.Constraint>(options: {
   readonly schema: S
-  readonly contentType?: string | undefined
+  readonly contentType?: string | ReadonlyArray<string> | undefined
   readonly maxBytes?: ByteSize.Input | undefined
   readonly maxElementBytes?: ByteSize.Input | undefined
 }): StreamNdjson<S> =>
@@ -571,7 +579,7 @@ export const StreamNdjson = <S extends Schema.Constraint>(options: {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamNdjson",
     mode: "ndjson",
-    contentType: options.contentType ?? defaultStreamContentType("ndjson"),
+    ...streamContentTypes(options.contentType, "ndjson"),
     schema: options.schema,
     maxBytes: options.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes),
     maxElementBytes: options.maxElementBytes === undefined
@@ -738,6 +746,26 @@ export const rebuildUpgrade = (protocol: string, headers: Schema.Top | undefined
  * @internal
  */
 export const isUpgrade = (u: unknown): u is Upgrade => Schema.isSchema(u) && Predicate.hasProperty(u, UpgradeTypeId)
+
+function streamContentTypes(
+  contentType: string | ReadonlyArray<string> | undefined,
+  mode: StreamMode
+): { readonly contentType: string; readonly contentTypes: Arr.NonEmptyReadonlyArray<string> } {
+  if (contentType === undefined) contentType = defaultStreamContentType(mode)
+  if (typeof contentType === "string") return { contentType, contentTypes: [contentType] }
+  if (!Arr.isReadonlyArrayNonEmpty(contentType)) {
+    throw new Error("Stream schemas require at least one content type")
+  }
+  const seen = new Set<string>()
+  for (const entry of contentType) {
+    const normalized = MediaType.normalize(entry)
+    if (seen.has(normalized)) {
+      throw new Error(`Duplicate stream content type: ${entry}`)
+    }
+    seen.add(normalized)
+  }
+  return { contentType: contentType[0], contentTypes: contentType }
+}
 
 function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {

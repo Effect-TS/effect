@@ -448,12 +448,11 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
           const streamSchema = isWithHeadersStreamSuccess(streamSuccess) ? streamSuccess.schema : streamSuccess
-          addResponseAlternative(
-            successAlternatives,
-            HttpApiSchema.getStatusSuccessSchema(streamSuccess),
-            streamSchema.contentType,
-            streamToResponse(streamSuccess, parseOptions.success, parseOptions.headers)
-          )
+          const status = HttpApiSchema.getStatusSuccessSchema(streamSuccess)
+          const decode = streamToResponse(streamSuccess, parseOptions.success, parseOptions.headers)
+          for (const contentType of streamSchema.contentTypes) {
+            addResponseAlternative(successAlternatives, status, contentType, decode)
+          }
         }
         for (const [status, alternatives] of successAlternatives.entries()) {
           decodeMap[status] = makeResponseDecoder(alternatives)
@@ -956,7 +955,7 @@ function addResponseAlternative(
 
 function makeResponseDecoder(alternatives: ReadonlyArray<ResponseAlternative>): ResponseDecoder {
   const first = alternatives[0]
-  if (alternatives.length === 1 && first !== undefined) {
+  if (first !== undefined && alternatives.every((alternative) => alternative.decode === first.decode)) {
     return first.decode
   }
   return (response, sseOptions) => {
