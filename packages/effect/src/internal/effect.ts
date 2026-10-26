@@ -412,12 +412,6 @@ const cleanErrorStack = (
   const lines = (stack.startsWith(message) ? stack.slice(message.length) : stack).split("\n")
   const out: Array<string> = [message]
   for (let i = 1; i < lines.length; i++) {
-    // V8 names a thunk called via `this[args]()` after the args key, so keep
-    // it when it is the throw site
-    if (i === 1 && /~effect\/Effect\/args\b/.test(lines[i])) {
-      out.push(lines[i])
-      continue
-    }
     if (/Generator\.next|~effect\/(?:Effect|Utils)/.test(lines[i])) {
       break
     }
@@ -1026,6 +1020,33 @@ export const suspend: <A, E, R>(
     return this[args]()
   }
 })
+
+// V8 names a thunk frame after the property holding the thunk, so frames of
+// thunks stored under `args` are cut from rendered stacks as internal. The
+// public constructors store the thunk under a key the cutoff ignores instead,
+// keeping the throw location of defects raised directly in user thunks. `args`
+// stays readable through a getter, which V8 skips when naming frames.
+const userThunk = "~effect/thunk"
+
+const withUserThunk = <Fn extends (thunk: LazyArg<any>) => Effect.Effect<any, any, any>>(primitive: Fn): Fn => {
+  const UserThunkPrimitive = function(this: any, thunk: LazyArg<any>) {
+    this[userThunk] = thunk
+  } as unknown as new(thunk: LazyArg<any>) => Effect.Effect<any, any, any>
+  UserThunkPrimitive.prototype = Object.create(Object.getPrototypeOf(primitive(undefined as any)), {
+    [args]: {
+      get(this: any) {
+        return this[userThunk]
+      }
+    }
+  })
+  return ((thunk: LazyArg<any>) => new UserThunkPrimitive(thunk)) as Fn
+}
+
+/** @internal */
+export const userSync: typeof sync = withUserThunk(sync)
+
+/** @internal */
+export const userSuspend: typeof suspend = withUserThunk(suspend)
 
 /** @internal */
 export const fromOption: <
