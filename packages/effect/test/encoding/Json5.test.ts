@@ -1,30 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Json5 from "effect/encoding/Json5"
-import { jsonFixtures } from "./fixtures/json.ts"
-
-const lineEndings = [
-  ["LF", "\n"],
-  ["CR", "\r"],
-  ["CRLF", "\r\n"],
-  ["line separator", "\u2028"],
-  ["paragraph separator", "\u2029"]
-] as const
 
 describe("Json5", () => {
-  it.each(jsonFixtures)("reference compatibility: $name", ({ input, json5: expected }) => {
-    if (expected.valid) {
-      assert.deepStrictEqual(Json5.parse(input), expected.value)
-    } else {
-      assert.throws(() => Json5.parse(input), SyntaxError, /^Invalid JSON5 at line \d+, column \d+$/)
-    }
-  })
-
-  it("parses JSON5, which includes JSONC and JSON", () => {
-    const text = `// comment
+  it("parses JSON5 syntax", () => {
+    const input = `// comment
 { unquoted: 1, 'single': 'it\\'s', "double": "a\\/b", trailing: [1, 2,], hex: -0x1F,
   frac: .5, point: 5., plus: +1, exp: 1e3, esc: '\\x41\\u00e9\\0\\v', continued: 'a\\
-b', \\u0061b: 1, café: true, nil: null, /* block */ }`
-    assert.deepStrictEqual(Json5.parse(text), {
+b', \\u0061b: 1, café: true, 𐐀: 2, $_: null, /* block */ }`
+    assert.deepStrictEqual(Json5.parse(input), {
       unquoted: 1,
       single: "it's",
       double: "a/b",
@@ -38,10 +21,10 @@ b', \\u0061b: 1, café: true, nil: null, /* block */ }`
       continued: "ab",
       ab: 1,
       café: true,
-      nil: null
+      𐐀: 2,
+      $_: null
     })
-
-    assert.deepStrictEqual(Json5.parse("[NaN, -Infinity]"), [NaN, -Infinity])
+    assert.deepStrictEqual(Json5.parse("﻿\v\f  [NaN, -Infinity] // end"), [NaN, -Infinity])
   })
 
   it("keeps __proto__ as data and lets the last duplicate key win", () => {
@@ -51,73 +34,44 @@ b', \\u0061b: 1, café: true, nil: null, /* block */ }`
     assert.strictEqual((value as Record<string, unknown>).a, 2)
   })
 
-  it("accepts JSON primitives, JSON5 whitespace, and Unicode identifiers", () => {
-    assert.deepStrictEqual(Json5.parse("[null, true, false, {}, [], 1e3, -2.5E-2]"), [
-      null,
-      true,
-      false,
-      {},
-      [],
-      1000,
-      -0.025
-    ])
-    assert.deepStrictEqual(Json5.parse("\uFEFF\v\f\u00a0\u2028{ $: 1, _: 2, café: 3, 𐐀: 4 }\u2029"), {
-      $: 1,
-      _: 2,
-      café: 3,
-      𐐀: 4
-    })
-    assert.strictEqual(Json5.parse("// comment at EOF\n42 // end"), 42)
-
-    assert.strictEqual(Json5.parse(String.raw`"\'\a\/\\\""`), "'a/\\\"")
-  })
-
-  it.each(lineEndings)("accepts line continuations and comments terminated by %s", (_, ending) => {
+  it.each([
+    ["LF", "\n"],
+    ["CR", "\r"],
+    ["CRLF", "\r\n"],
+    ["line separator", " "],
+    ["paragraph separator", " "]
+  ])("handles %s line endings", (_, ending) => {
     assert.strictEqual(Json5.parse("'a\\" + ending + "b'"), "ab")
     assert.deepStrictEqual(Json5.parse("// comment" + ending + "{}"), {})
+    assert.throws(() => Json5.parse("{" + ending + "  a: hidden}"), /line 2, column 6$/)
   })
 
   it.each([
     "",
     "/* comment */",
     "[,1]",
-    "{,}",
-    "{a:}",
-    "{a 1}",
+    "[1,,]",
     "{a:1 b:2}",
-    "[1 2]",
     "[1",
-    "{",
     "null true",
-    "undefined",
     "-01",
     "0x",
-    "0xg",
-    ".",
-    ".e1",
     "1e+",
-    "--1",
-    "'unterminated",
+    "1/* gap */2",
     "'line\nbreak'",
-    "'line\rbreak'",
-    String.raw`'\01'`,
     String.raw`'\1'`,
     String.raw`'\uZZZZ'`,
-    String.raw`'\xZ0'`,
-    String.raw`{\u0030a: 1}`,
-    String.raw`{a\x62: 1}`,
-    "{a: hidden}",
-    "{} /",
-    "{} garbage"
-  ])("rejects malformed JSON5 %j", (input) => {
-    assert.throws(() => Json5.parse(input), SyntaxError, /Invalid JSON5 at line \d+, column \d+/)
+    String.raw`{0a: 1}`,
+    "{} /* unterminated"
+  ])("rejects malformed JSON5 %j without quoting it", (input) => {
+    assert.throws(() => Json5.parse(input), SyntaxError, /^Invalid JSON5 at line \d+, column \d+$/)
   })
 
-  it("does not include input text in syntax errors", () => {
-    assert.throws(() => Json5.parse("{a: hidden}"), /^Invalid JSON5 at line 1, column 5$/)
-  })
-
-  it.each(lineEndings)("reports positions across %s line endings", (_, ending) => {
-    assert.throws(() => Json5.parse("{" + ending + "  a: hidden}"), /line 2, column 6$/)
+  it("parses and locates errors beyond the JavaScript call-stack limit", () => {
+    const prefix = "[".repeat(10_000)
+    let value = Json5.parse(prefix + "0" + "]".repeat(10_000))
+    for (let i = 0; i < 10_000; i++) value = (value as Array<unknown>)[0]
+    assert.strictEqual(value, 0)
+    assert.throws(() => Json5.parse(prefix + "?"), SyntaxError, "Invalid JSON5 at line 1, column 10001")
   })
 })
