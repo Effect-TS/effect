@@ -308,6 +308,8 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   }
 
   function feed(chunk: string): SseError | undefined {
+    if (chunk.length === 0) return
+
     // Strip any UTF-8 byte order mark (BOM) at the start of the stream.
     // Note that we do not strip any non - UTF8 BOM, as eventsource streams are
     // always decoded as UTF8 as per the specification.

@@ -80,6 +80,7 @@ describe("Sse", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
 
+    parser.feed("")
     parser.feed("\uFEFFdata: ok\n\n")
 
     assert.deepStrictEqual(events, [{
