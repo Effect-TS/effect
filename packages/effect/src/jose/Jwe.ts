@@ -180,8 +180,7 @@ export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
   ) {
     return yield* invalidToken("The IV, ciphertext, or tag is malformed")
   }
-  // Keep resolver mutations out of the authenticated result.
-  const resolvedKey = typeof key === "function" ? yield* key({ ...protectedHeader }) : key
+  const resolvedKey = typeof key === "function" ? yield* key(protectedHeader) : key
   const sealed = new Uint8Array(data.length + tagLength)
   sealed.set(data)
   sealed.set(authTag, data.length)
