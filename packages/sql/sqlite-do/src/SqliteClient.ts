@@ -5,15 +5,13 @@
  * queries only, or `storage` for transactions and migrations. SQLite blobs are
  * returned as `Uint8Array`; `updateValues` is unsupported.
  *
- * Transactions call `storage.transaction()` without emitting transaction SQL.
- * The outer transaction holds the connection semaphore until storage completes.
- * Nested `withTransaction` calls reuse that connection and open a nested
- * `storage.transaction()`. Child failures and interruptions roll back the
- * child; uncaught failures also roll back the parent.
+ * Transactions use `storage.transaction()` instead of transaction SQL, and
+ * hold the connection until storage completes. A failed or interrupted nested
+ * transaction rolls back only itself, unless the failure reaches the parent.
  *
- * Fibers inheriting the transaction context must finish their transaction
- * work before the enclosing transaction exits; later use can bypass the
- * connection semaphore.
+ * Fibers that inherit the transaction context must finish their transaction
+ * work before the transaction exits; later use can bypass the connection
+ * semaphore.
  *
  * @stability unstable
  * @since 4.0.0
@@ -135,13 +133,11 @@ const makeStorageBackedWithTransaction = (
   acquirer: Effect.Effect<Connection, never, Scope.Scope>,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>
 ): Client.SqlClient["withTransaction"] => {
-  // The open `storage.transaction()` callback of each level, by depth. The
-  // connection semaphore and the sibling semaphore of `makeWithTransaction`
-  // keep one level open per depth.
+  // The open storage transaction at each depth. Transactions at the same depth
+  // never overlap.
   const levels: Array<StorageLevel> = []
 
-  // Opens a storage transaction and parks its callback, so the body runs on
-  // the fiber instead of inside the callback's promise.
+  // Parks the storage callback so the body runs on the fiber.
   const open = (id: number) =>
     Effect.callback<void, SqlError>((resume) => {
       const done: Promise<Exit.Exit<void, SqlError>> = storage.transaction((txn) =>
@@ -154,23 +150,22 @@ const makeStorageBackedWithTransaction = (
         () => Exit.void,
         (cause) => {
           const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
-          // Report rejection before the transaction callback starts; later resumes are ignored.
+          // Only takes effect if storage rejects before the callback starts.
           resume(exit)
           return exit
         }
       )
     })
 
-  // Lets the storage transaction of a level complete and waits for it.
   const close = (id: number) =>
     Effect.suspend(() => {
       const level = levels[id]
       levels.length = id
-      // Throwing from a child callback can abort its parent.
       level.resolve()
       return Effect.flatten(Effect.promise(() => level.done))
     })
 
+  // Uses `txn.rollback()` because rejecting a nested callback can abort its parent.
   const rollback = (id: number) => Effect.sync(() => levels[id].txn.rollback())
 
   const withTransaction = Client.makeWithTransaction({
@@ -182,7 +177,7 @@ const makeStorageBackedWithTransaction = (
     releaseSavepoint: (_, id) => close(id),
     commit: () => close(0),
     rollback: () => Effect.andThen(rollback(0), close(0)),
-    // `makeWithTransaction` calls `releaseSavepoint` next, which closes the level.
+    // `releaseSavepoint` runs next and closes the level.
     rollbackSavepoint: (_, id) => rollback(id)
   })
 
