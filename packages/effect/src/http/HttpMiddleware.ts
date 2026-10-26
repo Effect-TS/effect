@@ -277,11 +277,9 @@ export const isTracerDisabledUnsafe = (
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
 // OpenTelemetry requires failed server spans for 5xx responses.
-// The URL is redacted up front, as exporters format the error after the request.
 const responseSpanExit = (
   request: HttpServerRequest,
-  response: HttpServerResponse,
-  redactedNames: ReadonlyArray<string | RegExp>
+  response: HttpServerResponse
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
@@ -289,18 +287,11 @@ const responseSpanExit = (
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
   try {
-    const redacted = request.modify({ url: UrlParams.redactUrl(request.url, redactedNames) })
-    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request: redacted, response }) }))
+    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
   } finally {
     setStackTraceLimit(stackTraceLimit)
   }
 }
-
-const withStateNames = (
-  names: ReadonlyArray<string | RegExp>,
-  stateNames: ReadonlyArray<string> | undefined
-): ReadonlyArray<string | RegExp> =>
-  stateNames === undefined || stateNames.length === 0 ? names : [...names, ...stateNames]
 
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
@@ -318,7 +309,6 @@ export const tracer: <E, R>(
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
-    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
     const span = internalEffect.makeSpanUnsafe(fiber, nameGenerator(request), {
       parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
       kind: "server"
@@ -328,18 +318,11 @@ export const tracer: <E, R>(
     internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
-      const redactedUrlParamNames = withStateNames(
-        fiber.getRef(UrlParams.CurrentRedactedNames),
-        state?.redactedUrlParamNames
-      )
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(request, exit.value, redactedUrlParamNames))
+        span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
-      const redactedHeaderNames = withStateNames(
-        fiber.getRef(Headers.CurrentRedactedNames),
-        state?.redactedHeaderNames
-      )
+      const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       // Complete the span before the request fiber exits so shutdown can flush it.
       let response: HttpServerResponse
@@ -350,23 +333,19 @@ export const tracer: <E, R>(
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
           ? Exit.failCause(cause.value)
-          : responseSpanExit(request, response, redactedUrlParamNames)
+          : responseSpanExit(request, response)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(request, response, redactedUrlParamNames)
+        spanExit = responseSpanExit(request, response)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)
         const url = Request.toURL(request)
         if (Option.isSome(url)) {
-          tracing.addUrlAttributes(span, url.value, redactedUrlParamNames)
+          tracing.addUrlAttributes(span, url.value, fiber.getRef(UrlParams.CurrentRedactedNames))
         }
-        // Recorded regardless of `TracerHeaderFilter`, as a standard attribute, but still redacted.
         if (request.headers["user-agent"] !== undefined) {
-          span.attribute(
-            "user_agent.original",
-            Headers.isRedactedName("user-agent", redactedHeaderNames) ? "<redacted>" : request.headers["user-agent"]
-          )
+          span.attribute("user_agent.original", request.headers["user-agent"])
         }
         tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
         if (Option.isSome(request.remoteAddress)) {

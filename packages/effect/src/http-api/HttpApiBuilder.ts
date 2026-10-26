@@ -31,7 +31,6 @@ import { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import * as Respondable from "../http/HttpServerRespondable.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
-import { CurrentRequestState } from "../http/internal/requestState.ts"
 import * as Multipart from "../http/Multipart.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import { stringOrRedacted } from "../internal/redacted.ts"
@@ -58,7 +57,6 @@ import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
-import { getRedactedKeys, getRedactedNames } from "./internal/redaction.ts"
 import * as OpenApi from "./OpenApi.ts"
 
 /**
@@ -949,117 +947,89 @@ function handlerToHttpEffect(
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
 
-  return withRedactedNames(
+  return applyMiddleware(
+    group,
     endpoint,
-    applyMiddleware(
-      group,
-      endpoint,
-      context,
-      Effect.gen(function*() {
-        const fiber = Fiber.getCurrent()!
-        const context = fiber.context
-        const httpRequest = Context.getUnsafe(context, HttpServerRequest)
-        const routeContext = Context.getUnsafe(context, HttpRouter.RouteContext)
-        const query = Context.getUnsafe(context, Request.ParsedSearchParams)
-        const request: any = {
-          request: httpRequest,
-          endpoint,
-          group
+    context,
+    Effect.gen(function*() {
+      const fiber = Fiber.getCurrent()!
+      const context = fiber.context
+      const httpRequest = Context.getUnsafe(context, HttpServerRequest)
+      const routeContext = Context.getUnsafe(context, HttpRouter.RouteContext)
+      const query = Context.getUnsafe(context, Request.ParsedSearchParams)
+      const request: any = {
+        request: httpRequest,
+        endpoint,
+        group
+      }
+      if (decodeParams) {
+        request.params = yield* HttpApiSchemaError.wrap("Params", decodeParams(routeContext.params))
+      }
+      if (decodeHeaders) {
+        request.headers = yield* HttpApiSchemaError.wrap("Headers", decodeHeaders(httpRequest.headers))
+      }
+      if (decodeQuery) {
+        request.query = yield* HttpApiSchemaError.wrap("Query", decodeQuery(query))
+      }
+      if (upgrade !== undefined) {
+        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
+          return upgradeRequired(upgrade.protocol)
         }
-        if (decodeParams) {
-          request.params = yield* HttpApiSchemaError.wrap("Params", decodeParams(routeContext.params))
+        request.upgrade = (options?: { readonly headers?: unknown }) =>
+          Effect.orDie(
+            encodeUpgradeHeaders === undefined
+              ? httpRequest.upgrade
+              : Effect.flatMap(
+                HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
+                (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
+              )
+          )
+      }
+      if (payloadBy) {
+        const result = decodePayload(payloadBy, httpRequest, query)
+        if (Response.isHttpServerResponse(result)) {
+          return result
         }
-        if (decodeHeaders) {
-          request.headers = yield* HttpApiSchemaError.wrap("Headers", decodeHeaders(httpRequest.headers))
+        if (result !== undefined) {
+          request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
-        if (decodeQuery) {
-          request.query = yield* HttpApiSchemaError.wrap("Query", decodeQuery(query))
-        }
-        if (upgrade !== undefined) {
-          if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
-            return upgradeRequired(upgrade.protocol)
-          }
-          request.upgrade = (options?: { readonly headers?: unknown }) =>
-            Effect.orDie(
-              encodeUpgradeHeaders === undefined
-                ? httpRequest.upgrade
-                : Effect.flatMap(
-                  HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
-                  (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
-                )
-            )
-        }
-        if (payloadBy) {
-          const result = decodePayload(payloadBy, httpRequest, query)
-          if (Response.isHttpServerResponse(result)) {
-            return result
-          }
-          if (result !== undefined) {
-            request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
-          }
-        }
-        let response = yield* handler(request)
-        if (Response.isHttpServerResponse(response)) {
-          return response
-        }
-        if (upgrade !== undefined) {
-          // The server replaces this with the 101 once the connection is upgraded.
-          return Response.empty()
-        }
-        let responseHeaders: unknown | undefined
-        if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
-          responseHeaders = response.headers
-          response = response.body
-        }
-        const encoded = yield* HttpApiSchemaError.wrap(
-          "Body",
-          encodeStream?.(response, context) ??
-            (responseHeaders !== undefined ? encodeWithHeaders!.encodeBody(response) : encodeSuccess(response))
-        )
-        if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
-        const encodedHeaders = yield* HttpApiSchemaError.wrap(
-          "ResponseHeaders",
-          encodeWithHeaders.encodeHeaders.get(encoded.status)!(responseHeaders)
-        )
-        return Response.setHeaders(encoded, encodedHeaders as any)
-      })
-    ).pipe(
-      Effect.withErrorReporting,
-      Effect.catch((error) => {
-        if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
-        return Effect.catch(encodeError(error), (schemaError) =>
-          Respondable.isRespondable(error)
-            ? Respondable.toResponse(error)
-            : Effect.die(schemaError))
-      }),
-      Effect.provideContext(context)
-    )
+      }
+      let response = yield* handler(request)
+      if (Response.isHttpServerResponse(response)) {
+        return response
+      }
+      if (upgrade !== undefined) {
+        // The server replaces this with the 101 once the connection is upgraded.
+        return Response.empty()
+      }
+      let responseHeaders: unknown | undefined
+      if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
+        responseHeaders = response.headers
+        response = response.body
+      }
+      const encoded = yield* HttpApiSchemaError.wrap(
+        "Body",
+        encodeStream?.(response, context) ??
+          (responseHeaders !== undefined ? encodeWithHeaders!.encodeBody(response) : encodeSuccess(response))
+      )
+      if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
+      const encodedHeaders = yield* HttpApiSchemaError.wrap(
+        "ResponseHeaders",
+        encodeWithHeaders.encodeHeaders.get(encoded.status)!(responseHeaders)
+      )
+      return Response.setHeaders(encoded, encodedHeaders as any)
+    })
+  ).pipe(
+    Effect.withErrorReporting,
+    Effect.catch((error) => {
+      if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
+      return Effect.catch(encodeError(error), (schemaError) =>
+        Respondable.isRespondable(error)
+          ? Respondable.toResponse(error)
+          : Effect.die(schemaError))
+    }),
+    Effect.provideContext(context)
   )
-}
-
-// Server spans are recorded after the handler exits, so the names of secret fields
-// are passed through the request state rather than a scoped `CurrentRedactedNames`.
-function withRedactedNames<A, E, R>(
-  endpoint: HttpApiEndpoint.Top,
-  effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> {
-  const queryNames = getRedactedNames(endpoint.query)
-  const headerNames = getRedactedNames(endpoint.headers)
-  if (queryNames?.length === 0 && headerNames?.length === 0) return effect
-  return Effect.withFiber((fiber) => {
-    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
-    if (state === undefined) return effect
-    if (queryNames === undefined || queryNames.length > 0) {
-      const query = Context.getOrUndefined(fiber.context, Request.ParsedSearchParams)
-      const keys = getRedactedKeys(query === undefined ? [] : Object.keys(query), queryNames)
-      state.redactedUrlParamNames = [...state.redactedUrlParamNames, ...keys]
-    }
-    if (headerNames === undefined || headerNames.length > 0) {
-      const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      state.redactedHeaderNames = [...state.redactedHeaderNames, ...(headerNames ?? Object.keys(request.headers))]
-    }
-    return effect
-  })
 }
 
 /**
