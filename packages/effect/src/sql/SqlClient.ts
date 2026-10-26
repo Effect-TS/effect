@@ -429,12 +429,21 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
+  // Only the wait is interruptible: the permit is taken and its release
+  // registered while masked, so an interrupted lease never holds a permit.
+  // Waiting with `withPermit` releases the permit again, so retry if another
+  // fiber takes it first.
   const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) =>
-      restore(semaphore.take(1)).pipe(
-        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-        Effect.andThen(available)
-      ))
+    Effect.flatMap(Effect.scope, (scope) => {
+      const take: Effect.Effect<void> = Effect.flatMap(
+        semaphore.takeIfAvailable(1),
+        (taken) =>
+          taken
+            ? Scope.addFinalizer(scope, semaphore.release(1))
+            : Effect.andThen(restore(semaphore.withPermit(Effect.void)), take)
+      )
+      return Effect.andThen(take, available)
+    })
   )
 
   return {

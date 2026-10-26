@@ -388,12 +388,13 @@ describe("Client", () => {
             yield* Effect.scoped(Effect.gen(function*() {
               const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
               const holder = yield* Effect.forkChild(sql`SELECT 1`)
-              const queued = yield* (mode === "withTransaction"
+              const acquire: Effect.Effect<unknown, SqlError> = mode === "withTransaction"
                 ? sql.withTransaction(sql`SELECT 2`)
-                : Effect.scoped(sql.reserve)).pipe(
-                  Effect.provideService(References.MaxOpsBeforeYield, budget),
-                  Effect.forkChild
-                )
+                : Effect.scoped(sql.reserve)
+              const queued = yield* acquire.pipe(
+                Effect.provideService(References.MaxOpsBeforeYield, budget),
+                Effect.forkChild
+              )
               for (let i = 0; i < lead; i++) yield* Effect.yieldNow
               yield* Fiber.interrupt(queued)
               yield* Fiber.join(holder)
