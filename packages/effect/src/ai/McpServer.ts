@@ -1008,16 +1008,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
           response.exit._tag === "Failure" &&
           !response.exit.cause.some((failure) => failure._tag === "Fail")
         ) {
-          return protocol.send(clientId, {
-            _tag: "Exit",
-            requestId: response.requestId,
-            exit: {
-              _tag: "Failure",
-              cause: [{
-                _tag: "Fail",
-                error: new InternalError({ message: "Internal error" })
-              }]
-            }
+          return sendRequestError(clientId, response.requestId, {
+            code: McpSchema.INTERNAL_ERROR_CODE,
+            message: "Internal error"
           })
         }
       }
