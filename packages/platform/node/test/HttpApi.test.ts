@@ -1591,7 +1591,7 @@ describe("HttpApi", () => {
           const error = yield* client.users.upload({ params: {}, payload: new FormData() }).pipe(
             Effect.flip
           )
-          assert(error._tag === "HttpClientError" && error.reason._tag === "StatusCodeError")
+          assert(error._tag === "HttpClientError" && error.reason._tag === "DecodeError")
           assert.strictEqual(error.reason.response.status, 400)
         }).pipe(Effect.provide(HttpLayer)))
     })

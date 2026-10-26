@@ -860,7 +860,7 @@ describe("HttpApiClient", () => {
         assert.strictEqual(error, "NoContentError")
       }))
 
-    it.effect("reports undeclared statuses as a StatusCodeError", () =>
+    it.effect("describes undeclared statuses in the DecodeError", () =>
       Effect.gen(function*() {
         const client = yield* makeClient(() =>
           new Response(JSON.stringify({ message: "valid but undeclared" }), {
@@ -871,7 +871,8 @@ describe("HttpApiClient", () => {
 
         const error = yield* Effect.flip(client.test.textFirst({}))
         assert.ok(HttpClientError.isHttpClientError(error))
-        assert.strictEqual(error.reason._tag, "StatusCodeError")
+        assert.strictEqual(error.reason._tag, "DecodeError")
+        assert.strictEqual(error.reason.description, "undeclared status code")
         assert.strictEqual(error.response?.status, 418)
       }))
 
