@@ -17,6 +17,8 @@ describe("Jsonc", () => {
 
   it("accepts a single leading byte order mark", () => {
     assert.deepStrictEqual(Jsonc.parse("﻿{}"), {})
+    assert.deepStrictEqual(Jsonc.parse("\uFEFF// comment\n[1, /* comment */ true]"), [1, true])
+    assert.strictEqual(Jsonc.parse("\uFEFF\"\uFEFF\""), "\uFEFF")
     assert.throws(() => Jsonc.parse("﻿﻿{}"), SyntaxError, "Invalid JSONC at line 1, column 2")
   })
 
@@ -54,6 +56,13 @@ describe("Jsonc", () => {
   it.each(
     [
       ["empty input", "", 1, 1],
+      ["unexpected token after a leading BOM", "\uFEFF?", 1, 2],
+      ["empty document after a leading BOM", "\uFEFF", 1, 2],
+      ["unterminated comment after a leading BOM", "\uFEFF/*", 1, 4],
+      ["BOM after whitespace", " \uFEFF{}", 1, 2],
+      ["BOM between members", "{\"a\":1,\uFEFF\"b\":2}", 1, 8],
+      ["trailing comma after a leading BOM", "\uFEFF[1,]", 1, 5],
+      ["error after a leading BOM and line comment", "\uFEFF// comment\n?", 2, 1],
       ["only a comment", "// only a comment", 1, 18],
       ["value after a line comment", "{\n  // note\n  \"a\": hidden\n}", 3, 8],
       ["value after a multiline comment", "/* first\nsecond */\n?", 3, 1],

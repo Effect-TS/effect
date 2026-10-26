@@ -3,8 +3,9 @@
  *
  * The syntax target is the [JSONC draft specification](https://jsonc.org/)
  * with `jsonc-parser` 3.3.1's default profile: JSON plus line and block comments,
- * with trailing commas disabled. Decoded values follow `JSON.parse` semantics;
- * invalid documents throw instead of returning a partial result.
+ * with trailing commas disabled. One leading BOM is accepted, matching the
+ * TOML and YAML parsers. Decoded values follow `JSON.parse` semantics; invalid
+ * documents throw instead of returning a partial result.
  *
  * @stability unstable
  * @since 4.0.7
@@ -23,8 +24,9 @@ const fail = (input: string): never => {
  *
  * **Details**
  *
- * Accepts line and block comments wherever JSON permits whitespace. All other
- * syntax follows `JSON.parse`, including duplicate keys and `__proto__` handling.
+ * Accepts one leading BOM and line and block comments wherever JSON permits
+ * whitespace. All other syntax follows `JSON.parse`, including duplicate keys
+ * and `__proto__` handling.
  *
  * **Gotchas**
  *
@@ -38,6 +40,8 @@ const fail = (input: string): never => {
  * @since 4.0.7
  */
 export const parse = (input: string): unknown => {
+  // Ignore one leading BOM without shifting original-input error positions.
+  if (input.charCodeAt(0) === 0xfeff) input = " " + input.slice(1)
   const parts: Array<string> = []
   let start = 0
   let index = 0
