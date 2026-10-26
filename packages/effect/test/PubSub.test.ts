@@ -725,5 +725,44 @@ describe("PubSub", () => {
         const sub3 = yield* PubSub.subscribe(pubsub)
         deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
       }))
+
+    // An exhausted replay window must not keep a node of the replay buffer's list, or every message
+    // published later stays reachable for as long as the subscription lives.
+    const replayHead = (dequeue: Queue.Dequeue<number>) => (dequeue as any).replayWindow.head
+
+    it.scoped("releases the replay buffer when subscribed before anything is published", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 1 })
+        const sub = yield* PubSub.subscribe(pubsub)
+        strictEqual(replayHead(sub), undefined)
+        yield* PubSub.publishAll(pubsub, [1, 2, 3])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [1, 2, 3])
+        strictEqual(replayHead(sub), undefined)
+      }))
+
+    it.scoped("releases the replay buffer once take drains the window", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 2 })
+        yield* PubSub.publishAll(pubsub, [1, 2, 3])
+        const sub = yield* PubSub.subscribe(pubsub)
+        strictEqual(yield* Queue.take(sub), 2)
+        strictEqual(replayHead(sub) === undefined, false)
+        strictEqual(yield* Queue.take(sub), 3)
+        strictEqual(replayHead(sub), undefined)
+        yield* PubSub.publishAll(pubsub, [4, 5])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [4, 5])
+      }))
+
+    it.scoped("releases the replay buffer once takeUpTo drains the window", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
+        yield* PubSub.publishAll(pubsub, [1, 2, 3, 4])
+        const sub = yield* PubSub.subscribe(pubsub)
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, 2)), [2, 3])
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, 5)), [4])
+        strictEqual(replayHead(sub), undefined)
+        yield* PubSub.publish(pubsub, 5)
+        strictEqual(yield* Queue.take(sub), 5)
+      }))
   })
 })

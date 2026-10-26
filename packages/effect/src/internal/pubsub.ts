@@ -1708,17 +1708,19 @@ interface ReplayWindow<A> {
 }
 
 class ReplayWindowImpl<A> implements ReplayWindow<A> {
-  head: ReplayNode<A>
+  // Cleared once the window is exhausted: the buffer keeps appending to the node list, so holding
+  // on to a node would keep every later message reachable for as long as the subscription lives.
+  head: ReplayNode<A> | undefined
   index: number
   remaining: number
   constructor(readonly buffer: ReplayBuffer<A>) {
     this.index = buffer.index
     this.remaining = buffer.size
-    this.head = buffer.head
+    this.head = this.remaining === 0 ? undefined : buffer.head
   }
   fastForward() {
     while (this.index < this.buffer.index) {
-      this.head = this.head.next!
+      this.head = this.head!.next!
       this.index++
     }
   }
@@ -1729,8 +1731,8 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
       this.fastForward()
     }
     this.remaining--
-    const value = this.head.value
-    this.head = this.head.next!
+    const value = this.head!.value
+    this.head = this.remaining === 0 ? undefined : this.head!.next!
     return value as A
   }
   takeN(n: number): Chunk.Chunk<A> {
@@ -1742,11 +1744,14 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     const len = Math.min(n, this.remaining)
     const items = new Array(len)
     for (let i = 0; i < len; i++) {
-      const value = this.head.value as A
-      this.head = this.head.next!
+      const value = this.head!.value as A
+      this.head = this.head!.next!
       items[i] = value
     }
     this.remaining -= len
+    if (this.remaining === 0) {
+      this.head = undefined
+    }
     return Chunk.unsafeFromArray(items)
   }
   takeAll(): Chunk.Chunk<A> {
