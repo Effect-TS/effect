@@ -251,6 +251,25 @@ export const parseReference = (input: string): Result.Result<ImageReference, Doc
 const referenceOf = (input: string | ImageReference): Effect.Effect<ImageReference, DockerError> =>
   typeof input === "string" ? Effect.fromResult(parseReference(input)) : Effect.succeed(input)
 
+/**
+ * A reference that names a tag, as a push or a tag target needs: the Engine
+ * would drop a digest, pushing every tag of the repository or tagging
+ * `latest`.
+ */
+const taggedReferenceOf = (input: string | ImageReference): Effect.Effect<ImageReference, DockerError> =>
+  Effect.flatMap(
+    referenceOf(input),
+    (reference) =>
+      reference.digest === undefined ? Effect.succeed(reference) : Effect.fail(
+        new DockerError({
+          reason: new InvalidReference({
+            reference: typeof input === "string" ? input : formatReference(input),
+            issue: new SchemaIssue.InvalidValue({ message: "a digest can't be pushed or tagged; name a tag instead" })
+          })
+        })
+      )
+  )
+
 /** A reference as a span's `docker.resource_id`: as given, when it is a string. */
 const resourceOf = (input: string | ImageReference): string =>
   typeof input === "string" ? input : formatReference(input)
@@ -509,7 +528,8 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * [Engine API: ImageTag](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageTag).
    * `target` is the new reference, such as `registry.example.com/app:1.0`; a
-   * string is parsed with {@link parseReference}.
+   * string is parsed with {@link parseReference}. A target with a digest fails
+   * with `InvalidReference`.
    *
    * Typical reasons: `NotFound`, `InvalidReference`, `BadRequest`, `Conflict`,
    * `ConnectionFailed`.
@@ -675,7 +695,8 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * [Engine API: ImagePush](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImagePush).
    * A string reference is parsed with {@link parseReference}; its tag is
-   * pushed, or every tag of the repository without one. `platform` selects one
+   * pushed, or every tag of the repository without one. A reference with a
+   * digest fails with `InvalidReference`. `platform` selects one
    * manifest of a multi-platform image and requires API 1.46. The pushed
    * manifest is reported in an `aux` message.
    *
@@ -849,7 +870,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | 
 
     const pushStream: DockerImages["Service"]["pushStream"] = (input, options) =>
       Stream.unwrap(Effect.gen(function*() {
-        const reference = yield* referenceOf(input)
+        const reference = yield* taggedReferenceOf(input)
         const auth = yield* registryAuthOf(reference.registry, options?.auth)
         return failOnError(api.push({
           params: { name: `${reference.registry}/${reference.repository}` },
@@ -921,7 +942,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | 
       attestations: (name, options) => api.attestations({ params: { name }, query: options ?? {} }),
       tag: (name, target) =>
         Effect.flatMap(
-          referenceOf(target),
+          taggedReferenceOf(target),
           (target) =>
             api.tag({ params: { name }, query: { repo: `${target.registry}/${target.repository}`, tag: target.tag } })
         ),

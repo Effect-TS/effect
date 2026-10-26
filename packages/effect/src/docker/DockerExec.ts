@@ -313,7 +313,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         return yield* makeHandle({
           engine,
           socket,
-          contentType: headers["content-type"] ?? contentTypeOf(tty),
+          contentType: Effect.succeed(headers["content-type"] ?? contentTypeOf(tty)),
           stdin: info.OpenStdin === true,
           exitCode: (outputDone) => Effect.andThen(outputDone, exitCodeWith(inspect, id)),
           resize: (size) => resize(id, size)

@@ -657,7 +657,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
         return yield* makeHandle({
           engine,
           socket,
-          contentType: yield* contentTypeFor(id, headers["content-type"]),
+          contentType: contentTypeFor(id, headers["content-type"]),
           stdin: options?.stdin === true,
           exitCode: () => Fiber.join(exitCode),
           resize: (size) => resize(id, size)

@@ -9,7 +9,7 @@ import * as Headers from "../../http/Headers.ts"
 import * as HttpClient from "../../http/HttpClient.ts"
 import * as HttpClientError from "../../http/HttpClientError.ts"
 import * as HttpClientRequest from "../../http/HttpClientRequest.ts"
-import type * as HttpClientResponse from "../../http/HttpClientResponse.ts"
+import * as HttpClientResponse from "../../http/HttpClientResponse.ts"
 import * as UrlParams from "../../http/UrlParams.ts"
 import * as Schema from "../../Schema.ts"
 import * as Stream from "../../Stream.ts"
@@ -186,6 +186,22 @@ const errorBodyText = (response: HttpClientResponse.HttpClientResponse): Effect.
   })
 
 /**
+ * An error response with its body read up to {@link maxErrorBody}, whatever
+ * decodes it next: `DockerApi`'s error schemas, or {@link filterStatus}.
+ */
+const boundErrorBody = (
+  response: HttpClientResponse.HttpClientResponse
+): Effect.Effect<HttpClientResponse.HttpClientResponse> =>
+  response.status < 400 ? Effect.succeed(response) : Effect.map(
+    errorBodyText(response),
+    (text) =>
+      HttpClientResponse.fromWeb(
+        response.request,
+        new Response(text, { status: response.status, headers: response.headers })
+      )
+  )
+
+/**
  * Fails a response of `operation` that isn't a success, as `apiClient` does
  * for a status `DockerApi` doesn't declare and for a request that asks for the
  * response alone.
@@ -243,7 +259,8 @@ const withRedactedNames = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effe
  * The Engine's `HttpClient`: the runtime's client with the negotiated
  * `/v{version}` prefix (when `apiVersion` is given; `/_ping` has none), the
  * Endpoint's base URL, the configured headers, registry headers and secret
- * query parameters redacted, and transport failures as `ConnectionFailed`.
+ * query parameters redacted, error bodies read up to 1 MiB, and transport
+ * failures as `ConnectionFailed`.
  * Statuses are left to `DockerApi`'s error responses, or {@link filterStatus}.
  *
  * @internal
@@ -276,6 +293,7 @@ export const makeClient = (
         ])
       )
     ),
+    HttpClient.transformResponse(Effect.flatMap(boundErrorBody)),
     // a request body stream that fails with a `DockerError` (the caller's input) keeps it
     HttpClient.transform(withRedactedNames),
     HttpClient.catchTag("HttpClientError", (cause) =>

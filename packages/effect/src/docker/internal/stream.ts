@@ -203,7 +203,11 @@ const isEnd = (error: Socket.SocketError): boolean =>
 export const makeHandle = (options: {
   readonly engine: DockerEngine["Service"]
   readonly socket: Socket.Socket
-  readonly contentType: DockerApi.StreamContentType
+  /**
+   * The framing, resolved once the connection is owned: a failure closes the
+   * connection with the current scope.
+   */
+  readonly contentType: Effect.Effect<DockerApi.StreamContentType, DockerError>
   readonly stdin: boolean
   /**
    * For exec, runs once the output has ended (`outputDone` fails with the
@@ -217,6 +221,7 @@ export const makeHandle = (options: {
     const failed = (cause: unknown) => connectionFailed(endpoint, cause)
     // releasing the reader's scope (the caller's) closes the connection
     const pull = yield* Effect.mapError(Socket.readerBytes(options.socket), failed)
+    const contentType = yield* options.contentType
     const stdout = yield* Queue.bounded<Uint8Array, DockerError | Cause.Done>(bufferChunks)
     const stderr = yield* Queue.bounded<Uint8Array, DockerError | Cause.Done>(bufferChunks)
     const outputDone = yield* Deferred.make<void, DockerError>()
@@ -230,7 +235,7 @@ export const makeHandle = (options: {
         )
         if (chunks === undefined) break
         for (const chunk of chunks) {
-          if (options.contentType === "application/vnd.docker.raw-stream") {
+          if (contentType === "application/vnd.docker.raw-stream") {
             yield* Queue.offer(stdout, chunk)
             continue
           }
