@@ -2989,7 +2989,7 @@ const getCacheControl = (
     | Prompt.ToolMessagePart
 ): typeof Generated.CacheControlEphemeral.Encoded | null => part.options.anthropic?.cacheControl ?? null
 
-// Skip thinking blocks without crossing the part/message boundary.
+// Skip thinking and fallback blocks, which cannot carry `cache_control`, without crossing the part/message boundary.
 // Preserve existing part-level breakpoints over message-level ones.
 const setLastCacheControl = (
   content: Array<typeof Generated.BetaInputContentBlock.Encoded>,
@@ -3001,7 +3001,7 @@ const setLastCacheControl = (
   }
   for (let i = content.length - 1; i >= start; i--) {
     const block = content[i]
-    if (block.type === "thinking" || block.type === "redacted_thinking") {
+    if (block.type === "thinking" || block.type === "redacted_thinking" || block.type === "fallback") {
       continue
     }
     if (Predicate.isNullish(block.cache_control)) {
