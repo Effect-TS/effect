@@ -15,7 +15,6 @@ import {
 import {
   Etag,
   HttpClient,
-  HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
   HttpEffect,
@@ -532,9 +531,12 @@ it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
       )
 
       // Had the element been written, the client would fail with { code: 3 }
-      for (const stream of [client.test.typed(), client.test.encoded()]) {
-        const error = yield* stream.pipe(Effect.flatMap(Stream.runDrain), Effect.flip)
-        assert.instanceOf(error, HttpClientError.HttpClientError)
+      const exits = [
+        yield* client.test.typed().pipe(Effect.flatMap(Stream.runDrain), Effect.exit),
+        yield* client.test.encoded().pipe(Effect.flatMap(Stream.runDrain), Effect.exit)
+      ]
+      for (const exit of exits) {
+        assert.isTrue(exit._tag === "Failure" && Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause))
       }
     }))
 })
