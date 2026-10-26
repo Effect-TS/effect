@@ -861,6 +861,24 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
+  it.effect("keeps flat record keys when the top level is transformed", () =>
+    Effect.gen(function*() {
+      const Flat = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optionalKey(Schema.String) }),
+        [Schema.Record(Schema.String, Schema.String)]
+      )
+      const Pairs = Schema.Struct({ entries: Schema.Array(Schema.Tuple([Schema.String, Schema.String])) })
+      const Entries = Flat.pipe(Schema.decodeTo(
+        Pairs,
+        SchemaTransformation.transform<typeof Pairs.Type, typeof Flat.Type>({
+          decode: (record) => ({ entries: Object.entries(record) }),
+          encode: ({ entries }) => Object.fromEntries(entries)
+        })
+      ))
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Entries, "meta%5Bk%5D=v"), { entries: [["meta[k]", "v"]] })
+    }))
+
   it.effect("rebuilds __proto__ segments as own properties", () =>
     Effect.gen(function*() {
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
