@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `Json5.parse` and `Jsonc.parse` in `effect/encoding` for parsing JSON5 and JSON with comments without external dependencies.
+Add dependency-free `Json5.parse` and `Jsonc.parse` APIs with positioned syntax errors under `effect/encoding`.

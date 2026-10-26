@@ -5,6 +5,14 @@
  * @since 4.0.7
  */
 
+import * as internal from "../internal/jsonParser.ts"
+
+const fail = (input: string): never => {
+  // Native error wording and positions differ across engines and may quote secrets.
+  internal.parse(input, "JSONC")
+  throw internal.syntaxError(input, input.length, "JSONC")
+}
+
 /**
  * Parses a JSONC document into a JavaScript value.
  *
@@ -15,7 +23,8 @@
  *
  * **Gotchas**
  *
- * Throws a `SyntaxError` on invalid input without including the input text.
+ * Throws a `SyntaxError` with a 1-based line and column on invalid input,
+ * without including the input text. Columns count UTF-16 code units.
  * Trailing commas and JSON5 extensions are not accepted. Unlike `JSON.parse`,
  * this function has no reviver.
  *
@@ -45,7 +54,7 @@ export const parse = (input: string): unknown => {
         while (index < input.length && input[index] !== "\r" && input[index] !== "\n") index++
       } else {
         const end = input.indexOf("*/", index + 2)
-        if (end === -1) throw new SyntaxError("Invalid JSONC: unterminated block comment")
+        if (end === -1) fail(input)
         index = end + 2
       }
       // A space prevents comments inside invalid tokens from joining those tokens.
@@ -58,7 +67,6 @@ export const parse = (input: string): unknown => {
   try {
     return JSON.parse(parts.join(""))
   } catch {
-    // Native parser messages may quote configuration secrets.
-    throw new SyntaxError("Invalid JSONC")
+    return fail(input)
   }
 }
