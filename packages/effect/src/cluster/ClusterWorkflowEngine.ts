@@ -815,7 +815,7 @@ export const make = Effect.gen(function*() {
           if (exit) {
             return Option.some(exit)
           }
-          const request = yield* storage.requestForPrimaryKey({
+          const key = {
             address: entityAddressFor({
               workflow: instance.workflow,
               entityType: `Workflow/${instance.workflow._tag}`,
@@ -823,11 +823,18 @@ export const make = Effect.gen(function*() {
             }),
             tag: "deferred",
             id: deferred.name
-          })
-          if (Option.isNone(request)) {
+          }
+          // Storage without `requestForPrimaryKey` only exposes processed completions.
+          const request = storage.requestForPrimaryKey
+            ? yield* storage.requestForPrimaryKey(key)
+            : undefined
+          const requestId = request
+            ? Option.map(request, (request) => Snowflake.Snowflake(request.requestId))
+            : yield* storage.requestIdForPrimaryKey(key)
+          if (Option.isNone(requestId)) {
             return Option.none<Exit.Exit<unknown, unknown>>()
           }
-          const reply = yield* replyForRequestId(Snowflake.Snowflake(request.value.requestId))
+          const reply = yield* replyForRequestId(requestId.value)
           if (Option.isSome(reply)) {
             const decoded = decodeDeferredWithExit(reply.value as any)
             return Option.some(
@@ -835,6 +842,9 @@ export const make = Effect.gen(function*() {
                 ? decoded.exit.value
                 : decoded.exit
             )
+          }
+          if (!request || Option.isNone(request)) {
+            return Option.none<Exit.Exit<unknown, unknown>>()
           }
           // The first completion saved under the deferred name wins, so a
           // request the owner has not processed yet already holds the result.

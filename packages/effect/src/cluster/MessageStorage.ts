@@ -120,14 +120,20 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   /**
    * Retrieves the encoded request for the specified primary key, whether or
    * not it has been processed.
+   *
+   * Optional for existing storage implementations. Without it, a workflow
+   * replay cannot read a durable deferred completion that is persisted but
+   * not yet processed.
    */
-  readonly requestForPrimaryKey: (
-    options: {
-      readonly address: EntityAddress
-      readonly tag: string
-      readonly id: string
-    }
-  ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>
+  readonly requestForPrimaryKey?:
+    | ((
+      options: {
+        readonly address: EntityAddress
+        readonly tag: string
+        readonly id: string
+      }
+    ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>)
+    | undefined
 
   /**
    * For locally sent messages, register a handler to process the replies.
@@ -409,10 +415,15 @@ export type Encoded = {
   /**
    * Retrieves the request for the specified primary key, whether or not it
    * has been processed.
+   *
+   * Optional for existing drivers. Without it, a workflow replay cannot read a
+   * durable deferred completion that is persisted but not yet processed.
    */
-  readonly requestForPrimaryKey: (
-    primaryKey: string
-  ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>
+  readonly requestForPrimaryKey?:
+    | ((
+      primaryKey: string
+    ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>)
+    | undefined
 
   /**
    * Retrieves the replies for the specified requests.
@@ -721,6 +732,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
 > = Effect.fnUntraced(function*(encoded: Encoded) {
   const snowflakeGen = yield* Snowflake.Generator
   const clock = yield* Clock
+  const requestForPrimaryKey = encoded.requestForPrimaryKey
 
   const storage: MessageStorage["Service"] = yield* make({
     saveRequest: (message) =>
@@ -799,9 +811,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
-    requestForPrimaryKey(options) {
-      return encoded.requestForPrimaryKey(Envelope.primaryKeyByAddress(options))
-    },
+    requestForPrimaryKey: requestForPrimaryKey &&
+      ((options) => requestForPrimaryKey(Envelope.primaryKeyByAddress(options))),
     unprocessedMessages(shardIds, options) {
       const storage = this as unknown as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
