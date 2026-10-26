@@ -194,5 +194,11 @@ describe("Generator", () => {
       error: undefined,
       file: []
     })
+    // A directory must map to a specifier ending in /, even when no file is generated.
+    for (const parameter of ["proto_map=acme/=pkg", "proto_map=acme.proto=pkg/"]) {
+      const response = Generator.generate(request({ fileToGenerate: [], parameter, protoFile: [a] }))
+      assert.match(response.error ?? "", /a directory maps to a specifier ending in \//)
+      assert.deepStrictEqual(response.file, [])
+    }
   })
 })
