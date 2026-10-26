@@ -499,7 +499,7 @@ const operators = "|&;<>()"
 const globs = "*?["
 const expansionStart = /[A-Za-z_0-9{(@*#?$!'"-]/
 const quotedExpansionStart = /[A-Za-z_0-9{(@*#?$!-]/
-const assignmentName = /^[A-Za-z_][A-Za-z0-9_]*$/
+const assignmentName = /^[A-Za-z_][A-Za-z0-9_]*\+?$/
 
 const isBlank = (char: string | undefined): boolean => char === " " || char === "\t" || char === "\n"
 
