@@ -216,6 +216,8 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
       if (options?.overwrite !== true && newAnnotations.has(key)) return
       newAnnotations.set(key, value)
     })
+    // Keep the reason when nothing was added, so interrupts still match by identity.
+    if (options?.overwrite !== true && newAnnotations.size === this.annotations.size) return this
     const self = Object.assign(Object.create(Object.getPrototypeOf(this)), this)
     self.annotations = newAnnotations
     return self
@@ -322,18 +324,6 @@ export const causeCombine: {
 )
 
 /**
- * Annotating a cause only adds annotations, so an interrupt from the same
- * fiber that has every annotation of `that` already records it.
- */
-const interruptIncludes = (self: Cause.Interrupt, that: Cause.Interrupt): boolean => {
-  if (self.fiberId !== that.fiberId) return false
-  for (const [key, value] of that.annotations) {
-    if (!self.annotations.has(key) || !Object.is(self.annotations.get(key), value)) return false
-  }
-  return true
-}
-
-/**
  * Appends the interrupts from `interrupts` that `self` does not contain yet.
  * Unlike `causeCombine`, it never calls hash or equality methods, which can be
  * user-defined, random, or throwing.
@@ -345,7 +335,7 @@ export const causeAddInterrupts = <E>(self: Cause.Cause<E>, interrupts: Cause.Ca
   for (const reason of interrupts.reasons) {
     if (
       isInterruptReason(reason) &&
-      !reasons.some((r) => isInterruptReason(r) && interruptIncludes(r, reason))
+      !reasons.some((r) => isInterruptReason(r) && r.fiberId === reason.fiberId && r.annotations === reason.annotations)
     ) {
       reasons.push(reason)
     }
