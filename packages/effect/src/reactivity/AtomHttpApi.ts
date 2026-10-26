@@ -19,12 +19,14 @@ import * as HttpApiClient from "../http-api/HttpApiClient.ts"
 import * as HttpApiEndpoint from "../http-api/HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "../http-api/HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "../http-api/HttpApiMiddleware.ts"
+import * as HttpApiSchema from "../http-api/HttpApiSchema.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as Layer from "../Layer.ts"
 import * as Schema from "../Schema.ts"
 import type { SchemaError } from "../Schema.ts"
-import type { Mutable, Simplify } from "../Types.ts"
+import type * as Stream from "../Stream.ts"
+import type { Mutable, NoInfer, Simplify } from "../Types.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
 import * as Reactivity from "./Reactivity.ts"
@@ -88,6 +90,10 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     >
     : never
 
+  /**
+   * Creates an endpoint query. Supply `staleTime` to enable shared freshness
+   * and hydration for finite, decoded results; omit it for the default behavior.
+   */
   readonly query: <
     GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
     EndpointIdentifier extends HttpApiEndpoint.Identifier<HttpApiGroup.Endpoints<Group>>,
@@ -118,7 +124,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
-      }
+      } & QueryFreshness<NoInfer<_Success>, NoInfer<ResponseMode>>
       : never
   ) => [Endpoint] extends [
     HttpApiEndpoint.HttpApiEndpoint<
@@ -258,19 +264,29 @@ export const Service =
       })) as any
 
     const queryFamily = Atom.family((opts: QueryKey) => {
-      let atom = self.runtime.atom(self.use((client_) => {
+      const endpoint = groups[opts.group].endpoints[opts.endpoint]
+      const freshness = opts.staleTime !== undefined
+      if (
+        freshness &&
+        (opts.responseMode !== "decoded-only" || Array.from(endpoint.success).some(isNonFiniteSuccess))
+      ) {
+        throw new TypeError("AtomHttpApi.query freshness requires a finite decoded-only response")
+      }
+      const effect = self.use((client_) => {
         const client = client_ as any
         const groupClient = groups[opts.group].topLevel ? client : client[opts.group]
         return catchErrors(groupClient[opts.endpoint](opts) as Effect.Effect<
           any,
           HttpClientError.HttpClientError | SchemaError
         >)
-      }))
-      if (opts.reactivityKeys) {
+      })
+      let atom = freshness
+        ? self.runtime.query(effect as Effect.Effect<unknown, unknown, Self>, opts)
+        : self.runtime.atom(effect)
+      if (!freshness && opts.reactivityKeys) {
         atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
       }
       if (opts.responseMode === "decoded-only" && opts.serializationKey) {
-        const endpoint = groups[opts.group].endpoints[opts.endpoint]
         atom = Atom.serializable(atom, {
           key: `AtomHttpApi:${opts.group}:${opts.endpoint}:${opts.serializationKey}`,
           schema: AsyncResult.Schema({
@@ -279,7 +295,7 @@ export const Service =
           }) as any
         })
       }
-      if (opts.timeToLive) {
+      if (!freshness && opts.timeToLive) {
         atom = Duration.isFinite(opts.timeToLive)
           ? Atom.setIdleTTL(atom, opts.timeToLive)
           : Atom.keepAlive(atom)
@@ -300,6 +316,9 @@ export const Service =
         readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
+        readonly staleTime?: Duration.Input | undefined
+        readonly revalidateOnFocus?: boolean | "always" | undefined
+        readonly focusSignal?: Atom.Atom<any> | undefined
       }
     ) => {
       const key: QueryKey = {
@@ -315,7 +334,12 @@ export const Service =
         timeToLive: request.timeToLive !== undefined
           ? Duration.fromInputUnsafe(request.timeToLive)
           : undefined,
-        serializationKey: request.serializationKey
+        serializationKey: request.serializationKey,
+        staleTime: request.staleTime !== undefined
+          ? Duration.fromInputUnsafe(request.staleTime)
+          : undefined,
+        revalidateOnFocus: request.revalidateOnFocus,
+        focusSignal: request.focusSignal
       }
       return queryFamily(key)
     }) as any
@@ -341,6 +365,32 @@ interface QueryKey {
   sseOptions: Sse.DecodeOptions | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
+  staleTime: Duration.Duration | undefined
+  revalidateOnFocus: boolean | "always" | undefined
+  focusSignal: Atom.Atom<any> | undefined
+}
+
+type QueryFreshness<Success, ResponseMode> =
+  | {
+    readonly staleTime?: undefined
+    readonly revalidateOnFocus?: undefined
+    readonly focusSignal?: undefined
+  }
+  | ([ResponseMode] extends ["decoded-only"] ? [NonFiniteSuccess<Success>] extends [never] ? {
+        readonly staleTime: Duration.Input
+        readonly revalidateOnFocus?: boolean | "always" | undefined
+        readonly focusSignal?: Atom.Atom<any> | undefined
+      }
+    : never
+    : never)
+
+type NonFiniteSuccess<Success> = Success extends HttpApiSchema.WithHeaders<infer Inner, infer _Headers>
+  ? NonFiniteSuccess<Inner>
+  : Extract<HttpApiClient.SuccessType<Success>, Stream.Stream<any, any, any> | HttpApiClient.Upgraded<any>>
+
+const isNonFiniteSuccess = (schema: unknown): boolean => {
+  while (HttpApiSchema.isWithHeaders(schema)) schema = schema.schema
+  return HttpApiSchema.isStreamSchema(schema) || HttpApiSchema.isUpgrade(schema)
 }
 
 type ResponseByMode<

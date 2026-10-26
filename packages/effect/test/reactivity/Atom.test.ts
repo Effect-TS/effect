@@ -2114,6 +2114,369 @@ describe("Atom", { concurrent: false }, () => {
     assert.strictEqual(rebuilds, 2)
   })
 
+  describe("query", () => {
+    it("reuses a fresh seed while tracking factory dependencies and explicit refresh", () => {
+      const dependency = Atom.make(1)
+      let builds = 0
+      let runs = 0
+      const atom = Atom.query((get) => {
+        builds++
+        const value = get(dependency)
+        return Effect.sync(() => {
+          runs++
+          return value
+        })
+      }, { staleTime: 1_000 })
+      const seed = AsyncResult.success(10, { timestamp: Date.now() - 10 })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, seed)] })
+      try {
+        r.mount(atom)
+        assert.strictEqual(r.get(atom), seed)
+        assert.strictEqual(builds, 1)
+        assert.strictEqual(runs, 0)
+
+        r.set(dependency, 2)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(2))
+        assert.strictEqual(runs, 1)
+
+        r.refresh(atom)
+        assert.strictEqual(runs, 2)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it.each([
+      { staleTime: undefined, age: 0 },
+      { staleTime: 1_000, age: 1_000 }
+    ])("returns stale data before one deferred refresh (staleTime: $staleTime)", async ({ age, staleTime }) => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs), { staleTime })
+      const seed = AsyncResult.success(0, { timestamp: Date.now() - age })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, seed)] })
+      try {
+        const heard: Array<number> = []
+        r.subscribe(atom, (result) => {
+          if (AsyncResult.isSuccess(result)) heard.push(result.value)
+        }, { immediate: true })
+        r.mount(atom)
+        assert.strictEqual(r.get(atom), seed)
+        assert.deepStrictEqual(heard, [0])
+        assert.strictEqual(runs, 0)
+
+        await Effect.runPromise(Effect.yieldNow)
+        assert.deepStrictEqual(heard, [0, 1])
+        assert.strictEqual(runs, 1)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("starts a non-immediate subscription once, including a synchronous result", async () => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make()
+      try {
+        r.subscribe(atom, () => {})
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("shares a cold synchronous snapshot with subscribers in the same turn", async () => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make()
+      try {
+        const snapshot = r.get(atom)
+        r.subscribe(atom, () => {})
+        for (let i = 0; i < 3; i++) {
+          assert.strictEqual(r.get(atom), snapshot)
+        }
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(r.get(atom), snapshot)
+        assert.deepStrictEqual(AsyncResult.value(snapshot), Option.some(1))
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("lets explicit refresh supersede queued stale work even at staleTime zero", async () => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(0))] })
+      try {
+        r.mount(atom)
+        r.refresh(atom)
+        assert.strictEqual(runs, 1)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        assert.strictEqual(runs, 1)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("checks retained results on remount and unobserved reads, without polling observed reads", async () => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs), { staleTime: 100, timeToLive: 10_000 })
+      const r = AtomRegistry.make()
+      try {
+        const unmount = r.mount(atom)
+        unmount()
+        await vitest.advanceTimersByTimeAsync(99)
+
+        const unmountFresh = r.mount(atom)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+        unmountFresh()
+
+        await vitest.advanceTimersByTimeAsync(1)
+        assert.strictEqual(runs, 1)
+
+        const unmountAgain = r.mount(atom)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 2)
+
+        await vitest.advanceTimersByTimeAsync(100)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(2))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 2)
+
+        unmountAgain()
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(2))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 3)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("rechecks a retained wrapper whose source still has an internal subscription", async () => {
+      let runs = 0
+      const source = Atom.query(Effect.sync(() => ++runs), { staleTime: 100 })
+      const atom = source.pipe(Atom.withReactivity(["wrapped-query"]), Atom.setIdleTTL(10_000))
+      const r = AtomRegistry.make()
+      try {
+        r.mount(atom)()
+        await vitest.advanceTimersByTimeAsync(100)
+
+        r.mount(atom)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 2)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("keeps a failure and its fresh previous success, then revalidates their age", async () => {
+      let runs = 0
+      const atom = Atom.query<number, string>(
+        Effect.suspend(() => {
+          runs++
+          return Effect.fail("offline")
+        }),
+        { staleTime: 100, timeToLive: 10_000 }
+      )
+      const seed = AsyncResult.fail("offline", { previousSuccess: Option.some(AsyncResult.success(42)) })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, seed)] })
+      try {
+        r.mount(atom)()
+        assert.strictEqual(r.get(atom), seed)
+        assert.strictEqual(runs, 0)
+
+        await vitest.advanceTimersByTimeAsync(100)
+        r.mount(atom)
+        assert.strictEqual(r.get(atom), seed)
+        await Effect.runPromise(Effect.yieldNow)
+        assert(AsyncResult.isFailure(r.get(atom)))
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(42))
+        assert.strictEqual(runs, 1)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("fetches a failure without cached data once per activation", async () => {
+      let runs = 0
+      const atom = Atom.query(
+        Effect.suspend(() => {
+          runs++
+          return Effect.fail("offline")
+        }),
+        { staleTime: Infinity, timeToLive: 10_000 }
+      )
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.fail("offline"))] })
+      try {
+        const unmount = r.mount(atom)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+        assert(AsyncResult.isFailure(r.get(atom)))
+        unmount()
+        r.mount(atom)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 2)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("shares stale focus and activation requests while preserving cached data", async () => {
+      const focusSignal = Atom.make(0)
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs).pipe(Effect.tap(() => Effect.sleep(50))), {
+        staleTime: 100,
+        timeToLive: 10_000,
+        revalidateOnFocus: true,
+        focusSignal
+      })
+      const seed = AsyncResult.success(0)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, seed)] })
+      try {
+        const unmount = r.mount(atom)
+        r.set(focusSignal, 1)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 0)
+
+        await vitest.advanceTimersByTimeAsync(100)
+        r.set(focusSignal, 2)
+        unmount()
+        r.mount(atom)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+        assert(r.get(atom).waiting)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(0))
+
+        r.set(focusSignal, 3)
+        await Effect.runPromise(Effect.yieldNow)
+        assert.strictEqual(runs, 1)
+        await vitest.advanceTimersByTimeAsync(50)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+        assert.strictEqual(r.get(atom).waiting, false)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("forces focus refresh with always, including an in-flight request", async () => {
+      const focusSignal = Atom.make(0)
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs).pipe(Effect.tap(() => Effect.sleep(50))), {
+        staleTime: Infinity,
+        revalidateOnFocus: "always",
+        focusSignal
+      })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(0))] })
+      try {
+        r.mount(atom)
+        r.set(focusSignal, 1)
+        assert.strictEqual(runs, 1)
+        r.set(focusSignal, 2)
+        assert.strictEqual(runs, 2)
+        await vitest.advanceTimersByTimeAsync(50)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(2))
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("registers reactivity keys even when an infinitely fresh seed skips execution", () => {
+      const runtime = Atom.runtime(Layer.empty)
+      let runs = 0
+      const atom = runtime.query(Effect.sync(() => ++runs), {
+        staleTime: Infinity,
+        reactivityKeys: ["query-count"]
+      })
+      const invalidate = runtime.fn(() => Effect.void, { reactivityKeys: ["query-count"] })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(0))] })
+      try {
+        r.mount(atom)
+        assert.strictEqual(runs, 0)
+        r.set(invalidate, void 0)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(1))
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it.each([
+      { reconfigure: false, expected: 0 },
+      { reconfigure: true, expected: 1 }
+    ])("keeps a seed across async runtime setup only when unchanged (reconfigure: $reconfigure)", async ({
+      expected,
+      reconfigure
+    }) => {
+      const config = Atom.make(0)
+      const runtime = Atom.runtime((get) => {
+        get(config)
+        return Layer.effectDiscard(Effect.sleep(10))
+      })
+      let runs = 0
+      const atom = runtime.query(Effect.sync(() => ++runs), { staleTime: Infinity })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(0))] })
+      try {
+        r.mount(atom)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(0))
+        if (reconfigure) r.set(config, 1)
+        await vitest.advanceTimersByTimeAsync(10)
+        assert.strictEqual(runs, expected)
+        assert.deepStrictEqual(AsyncResult.value(r.get(atom)), Option.some(expected))
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("allows TTL removal to discard a result even when it never becomes stale", async () => {
+      let runs = 0
+      const atom = Atom.query(Effect.sync(() => ++runs), { staleTime: Infinity, timeToLive: 10 })
+      const r = AtomRegistry.make({ timeoutResolution: 1 })
+      try {
+        r.mount(atom)()
+        await vitest.advanceTimersByTimeAsync(20)
+        r.mount(atom)
+        assert.strictEqual(runs, 2)
+      } finally {
+        r.dispose()
+      }
+    })
+
+    it("cancels queued work and interrupts owned work when disposed", async () => {
+      let runs = 0
+      let interrupted = 0
+      const queued = Atom.query(Effect.sync(() => ++runs))
+      const running = Atom.query(Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted++))))
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(queued, AsyncResult.success(0))] })
+      r.mount(queued)
+      r.mount(running)
+      r.dispose()
+      await Effect.runPromise(Effect.yieldNow)
+      assert.strictEqual(runs, 0)
+      assert.strictEqual(interrupted, 1)
+    })
+
+    it("rejects stream inputs and stream-valued effects at runtime", () => {
+      assert.throws(() => Atom.query(Stream.empty as never), TypeError)
+      const r = AtomRegistry.make()
+      try {
+        assert.throws(() => r.get(Atom.query((() => Stream.empty) as never)), TypeError)
+        const result = r.get(Atom.query(Effect.succeed(Stream.empty) as never))
+        assert(AsyncResult.isFailure(result))
+        assert(Cause.hasDies(result.cause))
+      } finally {
+        r.dispose()
+      }
+    })
+  })
+
   test(`swr refresh is forceful while fresh`, () => {
     const r = AtomRegistry.make()
     let runs = 0

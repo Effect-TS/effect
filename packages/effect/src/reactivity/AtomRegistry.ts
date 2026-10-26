@@ -15,6 +15,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constVoid, dual } from "../Function.ts"
+import * as Query from "../internal/atomQuery.ts"
 import { shouldHydrate } from "../internal/hydration.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -440,7 +441,7 @@ class RegistryImpl implements AtomRegistry {
     const node = this.ensureNode(atom)
     if (options?.immediate) {
       f(node.value())
-    } else if (node.state === NodeState.stale) {
+    } else if (node.state === NodeState.stale || node.query !== undefined) {
       // a listener hears the next change, which only reaches an up-to-date node
       node.value()
     }
@@ -489,8 +490,8 @@ class RegistryImpl implements AtomRegistry {
         target = target.initialValueTarget
       }
       const targetNode = target === atom ? node : this.ensureNode(target)
-      if (shouldHydrate(targetNode._value, decoded)) {
-        targetNode.setInitialValue(decoded, serializable.skipInitialRun)
+      if (targetNode.query !== undefined || shouldHydrate(targetNode._value, decoded)) {
+        targetNode.setInitialValue(decoded, serializable.skipInitialRun, node.isObserved)
       }
     }
     return node
@@ -645,6 +646,18 @@ const NodeState = {
 } as const
 type NodeState = number
 
+interface QueryState {
+  readonly policy: Query.Policy
+  readonly target: Atom.Atom<any> | undefined
+  activation: number
+  activated: boolean
+  seedConsumed: boolean
+  started: boolean
+  forced: boolean
+  running: object | undefined
+  queued: object | undefined
+}
+
 class NodeImpl<A> {
   constructor(
     registry: RegistryImpl,
@@ -653,10 +666,24 @@ class NodeImpl<A> {
     this.registry = registry
     this.atom = atom
     this.writeContext = new WriteContextImpl(registry, this)
+    const target = atom.initialValueTarget
+    const policy = Query.policy(target ?? atom)
+    this.query = policy === undefined ? undefined : {
+      policy,
+      target,
+      activation: -1,
+      activated: false,
+      seedConsumed: false,
+      started: false,
+      forced: false,
+      running: undefined,
+      queued: undefined
+    }
   }
 
   readonly registry: RegistryImpl
   readonly atom: Atom.Atom<A>
+  readonly query: QueryState | undefined
   state: NodeState = NodeState.uninitialized
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
@@ -713,6 +740,7 @@ class NodeImpl<A> {
   }
 
   observedChanged(delta: 1 | -1): void {
+    if (delta === 1 && this.query !== undefined) this.activateQuery()
     for (const parent of this.parents) {
       parent.childObserved(delta)
     }
@@ -720,12 +748,48 @@ class NodeImpl<A> {
 
   _value: A = undefined as any
   value(): A {
+    if (this.query !== undefined) {
+      if (!this.isObserved) this.activateQuery()
+      this.query.activated = true
+    }
     // a build can be superseded by a nested one, and that one staled again
     // before the outer read returns
     while ((this.state & NodeFlags.waitingForValue) !== 0) {
       this.build()
     }
     return this._value
+  }
+
+  activateQuery(): void {
+    const query = this.query!
+    if (query.target !== undefined) {
+      this.registry.ensureNode(query.target).activateQuery()
+    } else if (
+      this.state === NodeState.valid &&
+      (query.activation === -1 || query.activation !== Query.currentActivation())
+    ) {
+      this.queueQuery()
+    }
+  }
+
+  queueQuery(): void {
+    const query = this.query!
+    if (
+      !query.activated || query.forced || query.running !== undefined || query.queued !== undefined ||
+      (Query.canReuse(this._value) && !Query.isStale(this._value, query.policy.staleTime))
+    ) return
+    const token = query.queued = {}
+    this.registry.dispatcher.scheduleTask(() => {
+      if (query.queued !== token || this.state === NodeState.removed) return
+      query.queued = undefined
+      if (
+        query.forced || query.running !== undefined ||
+        (Query.canReuse(this._value) && !Query.isStale(this._value, query.policy.staleTime))
+      ) return
+      this.skipInitialRun = false
+      this.invalidate()
+      this.value()
+    }, 0)
   }
 
   build(): void {
@@ -827,7 +891,43 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
-  setInitialValue(value: A, skipInitialRun = false): void {
+  setInitialValue(value: A, skipInitialRun = false, ownerActive = this.isObserved): void {
+    const query = this.query
+    if (query !== undefined) {
+      if (query.target !== undefined) {
+        this.registry.ensureNode(query.target).setInitialValue(value, false, ownerActive)
+        return
+      }
+      if (
+        query.forced || !Query.isUsable(value) ||
+        (query.started && Result.isFailure(value)) || !shouldHydrate(this._value, value)
+      ) return
+      const previousTime = Query.isUsable(this._value) ? Query.timestamp(this._value) : undefined
+      if (Result.isSuccess(value) && previousTime !== undefined && value.timestamp < previousTime) return
+      query.activation = -1
+      query.queued = undefined
+      const reuse = !query.started && !query.seedConsumed && Query.canReuse(value)
+      if (!query.activated) {
+        this.preserveInitialValueOnBuild = reuse
+        this.skipInitialRun = this.preserveInitialValueOnBuild
+        this.state = NodeState.stale
+        this._value = value
+        return
+      }
+      if (reuse) {
+        this.skipInitialRun = true
+        this.keptParents = Array.from(this.parents, (parent) => [parent, parent.lifetime] as const)
+      } else if (this.skipInitialRun) {
+        this.skipInitialRun = false
+        this.keptParents = undefined
+      }
+      try {
+        this.setValue(value)
+      } finally {
+        if (ownerActive && this._value === value) this.queueQuery()
+      }
+      return
+    }
     if ((this.state & NodeFlags.initialized) === 0) {
       this.preserveInitialValueOnBuild = true
       this.skipInitialRun = skipInitialRun
@@ -843,6 +943,9 @@ class NodeImpl<A> {
   }
 
   setValue(value: A): void {
+    if (this.query !== undefined && this.query.target === undefined && this._value !== value) {
+      this.query.queued = undefined
+    }
     // dependents that failed along with this node get another try
     const recovered = this.failed
     this.failed = false
@@ -882,6 +985,17 @@ class NodeImpl<A> {
   }
 
   invalidate(): void {
+    const query = this.query
+    if (query !== undefined && query.target === undefined) {
+      query.queued = undefined
+      if (
+        !this.skipInitialRun ||
+        this.keptParents?.some(([parent, lifetime]) => parent.lifetime !== lifetime)
+      ) {
+        this.skipInitialRun = false
+        query.forced = true
+      }
+    }
     if (this.state === NodeState.valid) {
       this.state = NodeState.stale
       try {
@@ -955,6 +1069,7 @@ class NodeImpl<A> {
   }
 
   remove() {
+    if (this.query !== undefined) this.query.queued = undefined
     const observed = this.isObserved
     this.state = NodeState.removed
     this.listeners.clear()
@@ -1004,8 +1119,48 @@ export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
   const keptParents = node.keptParents
   node.skipInitialRun = false
   node.keptParents = undefined
-  return !lifetime.isFn && !Result.isInitial(node._value) &&
+  const skipped = !lifetime.isFn && !Result.isInitial(node._value) &&
     (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))
+  if (skipped && node.query !== undefined) node.query.seedConsumed = true
+  return skipped
+}
+
+/** @internal */
+export const startQuery = (ctx: Atom.AtomContext): () => void => {
+  const node = (ctx as Lifetime<any>).node
+  const query = node.query!
+  query.activation = Query.currentActivation()
+  query.started = true
+  query.forced = false
+  query.queued = undefined
+  node.skipInitialRun = false
+  node.preserveInitialValueOnBuild = false
+  const token = query.running = {}
+  return () => {
+    if (query.running === token) query.running = undefined
+  }
+}
+
+/** @internal */
+export const revalidateQuery = (ctx: Atom.AtomContext, force = false): void => {
+  const lifetime = ctx as Lifetime<any>
+  if (lifetime.disposed) return
+  const target = lifetime.node.query?.target
+  const node = target === undefined ? lifetime.node : lifetime.node.registry.ensureNode(target)
+  if (force) {
+    node.skipInitialRun = false
+    node.invalidate()
+  } else {
+    node.queueQuery()
+  }
+}
+
+/** @internal */
+export const hydrateQuery = (node: Node<any>, value: unknown): boolean => {
+  const internal = node as NodeImpl<any>
+  if (internal.query === undefined) return false
+  internal.setInitialValue(value)
+  return true
 }
 
 interface Lifetime<A> extends Atom.AtomContext {
@@ -1127,6 +1282,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   refreshSelf(this: Lifetime<any>): void {
     if (this.disposed) return
+    if (this.node.query !== undefined) this.node.skipInitialRun = false
     this.node.invalidate()
   },
 

@@ -1,9 +1,50 @@
-import { Effect, hole, Layer, Schema, SubscriptionRef } from "effect"
-import type { AsyncResult } from "effect/reactivity"
-import { Atom } from "effect/reactivity"
+import { Context, Effect, hole, Layer, Schema, Stream, SubscriptionRef } from "effect"
+import type { Scope } from "effect"
+import { type AsyncResult, Atom, type AtomRegistry, type Reactivity } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
 describe("Atom", () => {
+  describe("query", () => {
+    it("infers success and error types for Effects and synchronous factories", () => {
+      const effect = hole<Effect.Effect<number, "load-failed", Scope.Scope | AtomRegistry.AtomRegistry>>()
+      const input = Atom.make(1)
+
+      expect(Atom.query(effect, { staleTime: "30 seconds" }))
+        .type.toBe<Atom.Atom<AsyncResult.AsyncResult<number, "load-failed">>>()
+      expect(Atom.query((get) => Effect.succeed(get(input))))
+        .type.toBe<Atom.Atom<AsyncResult.AsyncResult<number>>>()
+    })
+
+    it("preserves runtime requirements and errors for both input forms", () => {
+      class Service extends Context.Service<Service, { readonly value: number }>()("Service") {}
+      const runtime = Atom.runtime(hole<Layer.Layer<Service, "setup-failed">>())
+      const effect = hole<Effect.Effect<number, "load-failed", Service | Reactivity.Reactivity>>()
+
+      expect(runtime.query(effect))
+        .type.toBe<Atom.Atom<AsyncResult.AsyncResult<number, "load-failed" | "setup-failed">>>()
+      expect(runtime.query(() => effect))
+        .type.toBe<Atom.Atom<AsyncResult.AsyncResult<number, "load-failed" | "setup-failed">>>()
+      expect(Atom.query).type.not.toBeCallableWith(effect)
+      expect(Atom.runtime(Layer.empty).query).type.not.toBeCallableWith(effect)
+    })
+
+    it("rejects Streams and stream-valued Effects without widening their success type", () => {
+      const stream = Stream.make(1)
+      const effect = Effect.succeed(stream)
+      const mixed = hole<Effect.Effect<number | Stream.Stream<number>>>()
+      const runtime = Atom.runtime(Layer.empty)
+
+      expect(Atom.query).type.not.toBeCallableWith(stream)
+      expect(Atom.query).type.not.toBeCallableWith(() => stream)
+      expect(Atom.query).type.not.toBeCallableWith(effect)
+      expect(Atom.query).type.not.toBeCallableWith(() => effect)
+      expect(Atom.query).type.not.toBeCallableWith(mixed)
+      expect(runtime.query).type.not.toBeCallableWith(stream)
+      expect(runtime.query).type.not.toBeCallableWith(effect)
+      expect(runtime.query).type.not.toBeCallableWith(() => mixed)
+    })
+  })
+
   describe("serializable", () => {
     it("rejects Date values as JSON-encoded input", () => {
       const atom = Atom.serializable(Atom.make(new Date()), { key: "date", schema: Schema.Date })
