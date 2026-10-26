@@ -862,7 +862,7 @@ export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
  *
  * @stability stable
  * @category getters
- * @since 4.0.0
+ * @since 4.0.7
  */
 export const toMicros = (self: Input): number =>
   match(fromInputUnsafe(self), {
