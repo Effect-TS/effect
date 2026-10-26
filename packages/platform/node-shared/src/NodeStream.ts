@@ -235,7 +235,9 @@ export const toReadableNever = <E>(stream: Stream.Stream<string | Uint8Array, E,
  * Consumes a Node readable stream into a string using the selected encoding,
  * failing through `onError` on stream errors or when `maxBytes` is exceeded
  * and destroying the stream on interruption or failure.
- * `maxBytes` counts the bytes read from the stream before decoding.
+ * `maxBytes` counts the bytes read before decoding. Streams that already emit
+ * strings are counted by encoded string length, which can differ from the
+ * bytes originally read.
  * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
  * destroying the stream when the byte limit is exceeded.
  *
@@ -257,8 +259,8 @@ export const toString = <E = Cause.UnknownError>(
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
     const stream = readable() as Readable
-    // Decode chunks here so `maxBytes` counts the bytes read. A stream that
-    // already decodes its data only exposes text, counted in its encoding.
+    // Decode here so `maxBytes` sees raw bytes. A stream with an encoding
+    // already set only emits strings, so switch it to the requested encoding.
     const decodes = stream.readableEncoding !== null
     if (decodes) stream.setEncoding(encoding)
     const decoder = new StringDecoder(encoding)
