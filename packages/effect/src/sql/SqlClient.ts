@@ -433,8 +433,8 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
 
   // Take a free permit while masked. Otherwise a separate fiber waits for and
   // holds the permit with `withPermit`, so an interruption at any point leaves
-  // the permit with that fiber, and interrupting it in the finalizer always
-  // releases it.
+  // the permit with that fiber, and interrupting it when the lease fails or its
+  // scope closes always releases it.
   const lease = Effect.uninterruptibleMask((restore) =>
     Effect.flatMap(Effect.scope, (scope) =>
       Effect.flatMap(semaphore.takeIfAvailable(1), (taken) => {
@@ -443,11 +443,13 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
         }
         const acquired = Deferred.makeUnsafe<void>()
         const hold = semaphore.withPermit(Effect.andThen(Deferred.succeed(acquired, undefined), Effect.never))
-        return Effect.forkDetach(hold).pipe(
-          Effect.flatMap((fiber) => Scope.addFinalizer(scope, Fiber.interrupt(fiber))),
-          Effect.andThen(restore(Deferred.await(acquired))),
-          Effect.andThen(available)
-        )
+        return Effect.flatMap(Effect.forkDetach(hold), (fiber) =>
+          Scope.addFinalizer(scope, Fiber.interrupt(fiber)).pipe(
+            Effect.andThen(restore(Deferred.await(acquired))),
+            Effect.andThen(available),
+            // The caller's scope can outlive a failed lease, as with `reserve`.
+            Effect.onError(() => Fiber.interrupt(fiber))
+          ))
       }))
   )
 
