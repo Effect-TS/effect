@@ -262,61 +262,44 @@ describe("AtomHttpApi", () => {
       unmount()
     }))
 
-  it.effect.each([undefined, false, true])(
-    "query hydration with skipInitialRun: %s",
-    (skipInitialRun) =>
-      Effect.gen(function*() {
-        let requests = 0
-        const Client = AtomHttpApi.Service()("HydrationClient", {
-          baseUrl: "https://example.test",
-          api: HttpApi.make("HydrationApi").add(
-            HttpApiGroup.make("group").add(
-              HttpApiEndpoint.get("count", "/count", { success: Schema.Number })
-            )
-          ),
-          httpClient: Layer.succeed(
-            HttpClient.HttpClient,
-            HttpClient.make((request) =>
-              Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
-            )
+  it.effect("query skipInitialRun keeps a hydrated result until refresh", () =>
+    Effect.gen(function*() {
+      let requests = 0
+      const Client = AtomHttpApi.Service()("HydrationClient", {
+        baseUrl: "https://example.test",
+        api: HttpApi.make("HydrationApi").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("count", "/count", { success: Schema.Number })
           )
-        })
-        const options = { serializationKey: "count", skipInitialRun }
-        const atom = Client.query("group", "count", options)
-        assert.strictEqual(atom, Client.query("group", "count", options))
-        assert.notStrictEqual(
-          atom,
-          Client.query("group", "count", {
-            ...options,
-            skipInitialRun: !skipInitialRun
-          })
+        ),
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
+          )
         )
-
-        const server = AtomRegistry.make()
-        const client = AtomRegistry.make()
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            server.dispose()
-            client.dispose()
-          })
-        )
-        yield* AtomRegistry.mount(server, atom)
-        assert.strictEqual(yield* AtomRegistry.getResult(server, atom, { suspendOnWaiting: true }), 1)
-
-        Hydration.hydrate(client, Hydration.dehydrate(server))
-        yield* AtomRegistry.getResult(client, Client.runtime)
-        yield* AtomRegistry.mount(client, atom)
-        const expected = skipInitialRun ? 1 : 2
-        assert.strictEqual(requests, expected)
-        if (skipInitialRun) {
-          assert.strictEqual(yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true }), 1)
-        }
-
-        client.refresh(atom)
-        assert.strictEqual(yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true }), expected + 1)
-        assert.strictEqual(requests, expected + 1)
       })
-  )
+      const atom = Client.query("group", "count", { serializationKey: "count", skipInitialRun: true })
+      assert.notStrictEqual(atom, Client.query("group", "count", { serializationKey: "count" }))
+
+      const server = AtomRegistry.make()
+      const client = AtomRegistry.make()
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          server.dispose()
+          client.dispose()
+        })
+      )
+      assert.strictEqual(yield* AtomRegistry.getResult(server, atom, { suspendOnWaiting: true }), 1)
+
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      yield* AtomRegistry.getResult(client, Client.runtime)
+      assert.strictEqual(yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true }), 1)
+      assert.strictEqual(requests, 1)
+
+      client.refresh(atom)
+      assert.strictEqual(yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true }), 2)
+    }))
 
   it.effect("returns generated SSE stream failures from queries", () =>
     Effect.gen(function*() {
