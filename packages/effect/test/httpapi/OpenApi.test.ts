@@ -28,6 +28,13 @@ class HeaderAuthUpper extends HttpApiMiddleware.Service<HeaderAuthUpper>()("Head
   }
 }) {}
 
+class BearerOrKeyAuth extends HttpApiMiddleware.Service<BearerOrKeyAuth>()("BearerOrKeyAuth", {
+  security: {
+    bearer: HttpApiSecurity.bearer,
+    apiKey: HttpApiSecurity.apiKey({ key: "x-alternative-key" })
+  }
+}) {}
+
 class QueryAuth extends HttpApiMiddleware.Service<QueryAuth>()("QueryAuth", {
   security: {
     auth: HttpApiSecurity.apiKey({ key: "api_key", in: "query" })
@@ -964,6 +971,23 @@ describe("OpenApi", () => {
     assert.isDefined(second)
     assert.isFalse(Object.hasOwn(first, "operationId"))
     assert.isFalse(Object.hasOwn(second, "operationId"))
+  })
+
+  it("requires every stacked security middleware", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("secured", "/secured").middleware(BearerOrKeyAuth).middleware(HeaderAuthA),
+        HttpApiEndpoint.get("public", "/public")
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/secured"]?.get?.security, [
+      { bearer: [], auth: [] },
+      { apiKey: [], auth: [] }
+    ])
+    assert.deepStrictEqual(spec.paths["/public"]?.get?.security, [])
   })
 
   it("rejects incompatible security schemes with the same name", () => {

@@ -548,10 +548,13 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }
-        for (const [name, security] of Object.entries(middleware.security)) {
-          processHttpApiSecurity(name, security)
-          op.security.push({ [name]: [] })
+        const names = Object.keys(middleware.security)
+        for (const name of names) {
+          processHttpApiSecurity(name, middleware.security[name])
         }
+        // Stacked middleware must all pass (AND); schemes within one middleware are alternatives (OR).
+        const requirements = op.security.length === 0 ? [{}] : op.security
+        op.security = requirements.flatMap((requirement) => names.map((name) => ({ ...requirement, [name]: [] })))
       })
 
       function processHttpApiSecurity(
