@@ -33,10 +33,6 @@ import type { LogsOptions } from "./DockerServices.ts"
 import { apiClient, withStreamOperation } from "./internal/engine.ts"
 import { logFrames, logsQuery } from "./internal/stream.ts"
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The tasks API.
  *

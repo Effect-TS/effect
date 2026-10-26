@@ -31,10 +31,6 @@ import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 import { apiClient } from "./internal/engine.ts"
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The volumes API.
  *

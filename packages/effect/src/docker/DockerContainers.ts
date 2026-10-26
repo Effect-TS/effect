@@ -67,10 +67,6 @@ export interface LogFrame {
 
 const decodeWaitResponse = Schema.decodeUnknownEffect(Schema.toCodecGoJson(DockerSchema.ContainerWaitResponse))
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The containers API.
  *

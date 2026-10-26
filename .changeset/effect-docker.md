@@ -3,4 +3,4 @@
 "@effect/platform-node": patch
 ---
 
-Add `effect/docker`, an Effect client for the Docker Engine API, and `NodeDocker` in `@effect/platform-node`, which provides it on Node.js.
+Add `effect/docker`, a client for the Docker Engine API (1.44 to 1.56) as Effect services: containers, exec, images, networks, volumes, Swarm and plugins. `NodeDocker` in `@effect/platform-node` provides them on Node.js, configured as the Docker CLI is.

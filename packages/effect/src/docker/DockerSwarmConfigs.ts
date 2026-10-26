@@ -28,10 +28,6 @@ import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 import { apiClient, modifyWith, withOperation } from "./internal/engine.ts"
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The Swarm configs API.
  *

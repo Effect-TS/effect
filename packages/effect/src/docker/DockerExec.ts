@@ -136,10 +136,6 @@ const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   return out
 }
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The exec API.
  *
@@ -350,10 +346,8 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
           : input instanceof Uint8Array
           ? Stream.make(input)
           : input
-        // An error of the caller's input fails `run` at once, without a half-close. The command
-        // still sees the end of its stdin when the connection then closes, so what protects the
-        // caller is that `run` fails. A write error of the connection is set aside: it means the
-        // command stopped reading, which only counts as done once the command has exited.
+        // the caller's input failing fails `run` at once; a write error is set aside, because it
+        // means the command stopped reading, which only counts once the command has exited
         const writeStdin: Effect.Effect<Exit.Exit<void, DockerError>, DockerError> = source === undefined
           ? Effect.succeed(Exit.void)
           : Stream.run(Stream.mapError(source, (error) => new InputFailed(error)), exec.stdin).pipe(
@@ -380,10 +374,8 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         const failed = Exit.isFailure(stdoutExit) ? stdoutExit : Exit.isFailure(stderrExit) ? stderrExit : undefined
         const result = (exitCode: number): RunResult => ({ exitCode, stdout: concat(stdout), stderr: concat(stderr) })
         if (failed === undefined) return result(yield* exec.exitCode)
-        // The command stopped reading its stdin and the connection then dropped (a write to a
-        // closed connection can reset it): the exit code counts once the exec has stopped, which
-        // the Engine may record a moment later. A connection that dropped while the command keeps
-        // running is a real failure.
+        // the command stopped reading its stdin and the connection then dropped: the exit code
+        // counts once the exec has stopped, which the Engine may record a moment later
         const error = Cause.findErrorOption(failed.cause)
         if (Exit.isFailure(stdin) && error._tag === "Some" && error.value.reason._tag === "ConnectionFailed") {
           return result(yield* exitCodeWith(inspect, Id, error.value))

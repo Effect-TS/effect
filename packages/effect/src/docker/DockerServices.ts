@@ -179,10 +179,6 @@ export const parseLogLine = (line: string, options?: { readonly timestamps?: boo
   return { timestamp, details, message: space === -1 ? "" : rest.slice(space + 1) }
 }
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The services API.
  *
