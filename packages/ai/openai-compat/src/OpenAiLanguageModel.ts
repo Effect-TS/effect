@@ -13,7 +13,7 @@ import * as AiError from "effect/ai/AiError"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
 import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import * as Tool from "effect/ai/Tool"
 import * as Arr from "effect/Array"
@@ -920,7 +920,11 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               role: "tool",
               tool_call_id: part.id,
-              content: typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+              content: Predicate.isNotUndefined(part.modelOutput)
+                ? Prompt.toolModelOutputToText(part.modelOutput)
+                : typeof part.result === "string"
+                ? part.result
+                : JSON.stringify(part.result)
             })
           }
 

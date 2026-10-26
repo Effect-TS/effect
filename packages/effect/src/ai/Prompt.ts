@@ -711,6 +711,39 @@ export const ToolModelOutputPart: Schema.Union<readonly [typeof TextPart, typeof
 ])
 
 /**
+ * Converts tool model output parts to text for providers that only accept
+ * text tool results.
+ *
+ * **Details**
+ *
+ * Text parts are joined with newlines. Each file part is replaced with a
+ * placeholder naming its media type and, when present, its file name. An empty
+ * array produces an empty string.
+ *
+ * **Example** (Converting tool model output to text)
+ *
+ * ```ts import.meta.vitest
+ * import { Prompt } from "effect/ai"
+ *
+ * const text = Prompt.toolModelOutputToText([
+ *   Prompt.textPart({ text: "Screenshot" }),
+ *   Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+ * ])
+ * text // => "Screenshot\n[image/png screenshot.png omitted]"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const toolModelOutputToText = (parts: ReadonlyArray<ToolModelOutputPart>): string =>
+  parts.map((part) =>
+    part.type === "text"
+      ? part.text
+      : `[${part.mediaType}${part.fileName === undefined ? "" : ` ${part.fileName}`} omitted]`
+  ).join("\n")
+
+/**
  * Content part representing the result of a tool call.
  *
  * **Example** (Creating tool result parts)
