@@ -12,10 +12,11 @@ type FlatParams = { readonly [key: string]: unknown }
  * inside a URL parameters codec.
  *
  * Each object on the codec's encoded side, through unions and suspensions,
- * rebuilds only its own fields that can decode an object and that none of its
- * index signatures covers. Every other key reaches the schema flat, as before,
- * so union members keep their own interpretation and flat keys an index
- * signature accepts keep decoding.
+ * rebuilds only its own fields that can decode an object. Keys of an optional
+ * field that an index signature accepts, by field name or wire key, reach the
+ * schema flat, as before, as does every other key. So union members keep
+ * their own interpretation and flat keys an index signature accepts keep
+ * decoding.
  *
  * @internal
  */
@@ -35,14 +36,22 @@ const rebuildAST: (ast: SchemaAST.AST) => SchemaAST.AST = SchemaAST.applyToSelfO
 })
 
 function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
+  const isIndexKey = makeIsIndexKey(ast)
   const declared = new Set<string>()
-  const nestable = new Set<string>()
+  const required = new Set<string>()
+  const optional = new Set<string>()
   for (const ps of ast.propertySignatures) {
     if (typeof ps.name !== "string") continue
     declared.add(ps.name)
-    if (canBeObject(ps.type) && !isIndexed(ast, ps.name)) nestable.add(ps.name)
+    if (!canBeObject(ps.type)) continue
+    if (!SchemaAST.isOptional(ps.type)) required.add(ps.name)
+    else if (!isIndexKey(ps.name)) optional.add(ps.name)
   }
-  if (nestable.size === 0) return ast
+  if (required.size === 0 && optional.size === 0) return ast
+  // A required object has no flat interpretation, so its keys are always
+  // rebuilt. An optional one leaves any key an index signature accepts flat,
+  // as it was before nested objects were rebuilt.
+  const isNestable = (base: string, key: string) => required.has(base) || (optional.has(base) && !isIndexKey(key))
   // The flat input keeps the wire literals of the required literal fields, so
   // unions still select members by them before any rebuilding
   const discriminators: Array<SchemaAST.PropertySignature> = []
@@ -57,7 +66,7 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
     flat,
     ast,
     SchemaTransformation.transform<unknown, unknown>({
-      decode: (input) => isObject(input) ? fromFlatParams(input, declared, nestable) : input,
+      decode: (input) => isObject(input) ? fromFlatParams(input, declared, isNestable) : input,
       encode: identity
     })
   )
@@ -68,7 +77,9 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
 function getWireLiteral(field: SchemaAST.AST): SchemaAST.AST | undefined {
   let ast = field
   while (ast.encoding !== undefined) {
-    if (ast.encoding.some((link) => link.transformation._tag === "Middleware")) return undefined
+    if (
+      ast.encoding.some((link) => link.transformation._tag === "Middleware" && link.transformation.decode !== identity)
+    ) return undefined
     ast = ast.encoding[ast.encoding.length - 1].to
   }
   return SchemaAST.isLiteral(ast) || SchemaAST.isUniqueSymbol(ast)
@@ -100,29 +111,28 @@ function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
   return false
 }
 
-// Flat keys of a field an index signature covers keep reaching the index
-// signature, as they did before nested objects were rebuilt
-function isIndexed(ast: SchemaAST.Objects, name: string): boolean {
-  return ast.indexSignatures.some((is) => Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter)))(name))
+function makeIsIndexKey(ast: SchemaAST.Objects): (key: string) => boolean {
+  const matchers = ast.indexSignatures.map((is) => Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter))))
+  return (key) => matchers.some((matches) => matches(key))
 }
 
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
 
 /**
- * Rebuilds the `a[b][c]` keys whose base is one of `nestable`. Keys listed in
+ * Rebuilds the `a[b][c]` keys `isNestable` accepts for their base. Keys listed in
  * `declared` are kept as is, so literal bracket keys keep decoding. A key that
  * conflicts with a shorter one, such as `a[b]` next to `a`, stays flat.
  */
 function fromFlatParams(
   params: FlatParams,
   declared: ReadonlySet<string>,
-  nestable: ReadonlySet<string>
+  isNestable: (base: string, key: string) => boolean
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   const nested: Array<{ readonly key: string; readonly path: ReadonlyArray<string> }> = []
   for (const key of Object.keys(params)) {
     const match = declared.has(key) ? null : bracketKey.exec(key)
-    if (match !== null && nestable.has(match[1])) {
+    if (match !== null && isNestable(match[1], key)) {
       nested.push({ key, path: [match[1], ...match[2].slice(1, -1).split("][")] })
     } else {
       assignProperty(out, key, params[key])
