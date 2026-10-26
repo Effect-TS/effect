@@ -57,6 +57,7 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   typeOnly: Schema.optional(Schema.Boolean),
   header: Schema.optional(Schema.String),
   patches: Schema.optional(Schema.Array(Schema.String)),
+  includePaths: Schema.optional(Schema.Array(Schema.String)),
   replacements: Schema.optional(Schema.Array(Replacement)),
   excludeAnnotations: Schema.optional(Schema.Array(Schema.String)),
   disableAdditionalProperties: Schema.optional(Schema.Boolean)
@@ -86,6 +87,15 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
    */
   get patchList(): ReadonlyArray<string> {
     return this.patches ?? []
+  }
+
+  /**
+   * Get the spec path keys to generate, or `undefined` to generate every path.
+   *
+   * @since 4.0.0
+   */
+  get includePathList(): ReadonlyArray<string> | undefined {
+    return this.includePaths
   }
 
   /**

@@ -557,12 +557,24 @@ export const layer: Layer.Layer<
     )
   })
 
+  const selectPaths = (spec: Schema.Json, includePaths: ReadonlyArray<string> | undefined): Schema.Json => {
+    const { paths, ...rest } = spec as Schema.JsonObject
+    if (includePaths === undefined || !Predicate.isObject(paths)) {
+      return spec
+    }
+    const include = new Set(includePaths)
+    return { ...rest, paths: Record.filter(paths as Schema.JsonObject, (_, path) => include.has(path)) }
+  }
+
   const generate = Effect.fn("generate")(function*(
     provider: DiscoveredProvider,
     spec: unknown
   ) {
-    // Apply patches if any are configured
-    const patchedSpec = yield* applyPatches(provider, spec as Schema.Json)
+    // Apply patches if any are configured, then keep only the configured paths
+    const patchedSpec = selectPaths(
+      yield* applyPatches(provider, spec as Schema.Json),
+      provider.config.includePathList
+    )
 
     const excludeAnnotations = provider.config.excludeAnnotationsList
     const disableAdditionalProperties = provider.config.shouldDisableAdditionalProperties

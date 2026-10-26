@@ -56,6 +56,13 @@
         "type": "string"
       }
     },
+    "includePaths": {
+      "type": "array",
+      "description": "Spec path keys to generate (e.g. [\"/v1/messages\"]). Applied after patches; other paths are dropped. Generates every path when omitted.",
+      "items": {
+        "type": "string"
+      }
+    },
     "replacements": {
       "type": "array",
       "description": "Text replacements to apply to generated code.",
