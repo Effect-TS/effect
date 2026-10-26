@@ -15,6 +15,7 @@ import {
 import {
   Etag,
   HttpClient,
+  HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
   HttpEffect,
@@ -502,6 +503,38 @@ it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
         const response = yield* client.test.build({ responseMode: "response-only" })
         const exit = yield* Effect.exit(response.text)
         assert.strictEqual(exit._tag, "Failure")
+      }
+    }))
+
+  it.effect("aborts instead of writing an element the error schema would decode", () =>
+    Effect.gen(function*() {
+      const Failed = Schema.Struct({ code: Schema.FiniteFromString })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          // An element with a code is also a Failed
+          HttpApiEndpoint.get("typed", "/typed", {
+            success: HttpApiSchema.StreamNdjson({
+              schema: Schema.Struct({ text: Schema.String, code: Schema.optional(Schema.FiniteFromString) }),
+              error: Failed
+            })
+          }),
+          // Only the encoded records overlap, {"code":"3"} decodes as a Failed
+          HttpApiEndpoint.get("encoded", "/encoded", {
+            success: HttpApiSchema.StreamNdjson({ schema: Schema.Struct({ code: Schema.String }), error: Failed })
+          })
+        )
+      )
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(
+        Effect.provide(HttpApiBuilder.group(Api, "test", (handlers) =>
+          handlers
+            .handle("typed", () => Effect.succeed(Stream.make({ text: "a" }, { text: "b", code: 3 }, { text: "c" })))
+            .handle("encoded", () => Effect.succeed(Stream.make({ code: "n/a" }, { code: "3" }, { code: "c" })))))
+      )
+
+      // Had the element been written, the client would fail with { code: 3 }
+      for (const stream of [client.test.typed(), client.test.encoded()]) {
+        const error = yield* stream.pipe(Effect.flatMap(Stream.runDrain), Effect.flip)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
       }
     }))
 })
