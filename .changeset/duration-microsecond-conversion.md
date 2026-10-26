@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Support microsecond duration measurements without an intermediate millisecond conversion.
+Add `Duration.toMicros` for converting durations to microseconds.
