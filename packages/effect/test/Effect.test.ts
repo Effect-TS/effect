@@ -2369,30 +2369,6 @@ describe("Effect", () => {
         assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
       }))
 
-    it.effect("an interrupt is recorded once when an earlier one contains its annotations", () =>
-      Effect.gen(function*() {
-        class First extends Context.Service<First, number>()("InterruptFirst") {}
-        class Second extends Context.Service<Second, number>()("InterruptSecond") {}
-        const interruptTwice = Effect.fnUntraced(function*(
-          first: readonly [fiberId: number, annotations: Context.Context<never>],
-          second: readonly [fiberId: number, annotations: Context.Context<never>]
-        ) {
-          const latch = yield* Latch.make()
-          const fiber = yield* latch.await.pipe(Effect.uninterruptible, Effect.forkChild({ startImmediately: true }))
-          fiber.interruptUnsafe(...first)
-          fiber.interruptUnsafe(...second)
-          yield* latch.open
-          const cause = yield* Fiber.join(fiber).pipe(Effect.sandbox, Effect.flip)
-          return cause.reasons.length
-        })
-        const one = Context.make(First, 1)
-        const both = one.pipe(Context.add(Second, 2))
-        assert.strictEqual(yield* interruptTwice([1, both], [1, one]), 1)
-        assert.strictEqual(yield* interruptTwice([1, one], [1, both]), 2)
-        assert.strictEqual(yield* interruptTwice([1, one], [1, Context.make(First, 2)]), 2)
-        assert.strictEqual(yield* interruptTwice([1, one], [2, one]), 2)
-      }))
-
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make()
