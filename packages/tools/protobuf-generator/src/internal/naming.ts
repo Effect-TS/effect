@@ -25,7 +25,8 @@ export const protoCamelCase = (name: string): string => {
 
 /** Names that generated declarations must not shadow. */
 const reserved = new Set([
-  // namespaces imported by generated code
+  // namespaces imported by generated code; the Rpc ones are reserved for
+  // services, so that generating them later renames nothing
   "Schema",
   "Protobuf",
   "ProtobufDescriptor",

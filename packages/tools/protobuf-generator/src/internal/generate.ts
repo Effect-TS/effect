@@ -38,11 +38,10 @@ export interface Options {
   /** How `google.protobuf.Duration` is decoded: a `Duration`, or its seconds and nanos. */
   readonly duration: "duration" | "parts"
   /**
-   * The modules of `.proto` files that are generated elsewhere, such as in a
-   * library, which are imported rather than generated. A key is a file, such
-   * as `acme/common/v1/common.proto`, or a directory ending in `/`, whose
-   * specifier ends in `/` too and is followed by the rest of the path, such as
-   * `acme/common/` and `@acme/common-proto/`.
+   * Modules of `.proto` files generated elsewhere, imported instead of
+   * generated. A key is a file (`acme/common/v1/common.proto`) or a directory
+   * ending in `/` (`acme/common/`), whose specifier also ends in `/` and is
+   * followed by the rest of the path (`@acme/common-proto/`).
    */
   readonly protoMap?: Readonly<Record<string, string>> | undefined
 }
@@ -53,9 +52,8 @@ export interface GeneratedFile {
 }
 
 /**
- * Generates a module for each file in `filesToGenerate`, except those that
- * `protoMap` maps to modules generated elsewhere; `files` holds them and all
- * of their dependencies.
+ * Generates a module for each of `filesToGenerate` that `protoMap` does not
+ * map elsewhere. `files` holds them and their dependencies.
  */
 export const generateFiles = (
   files: ReadonlyArray<FileDescriptorProto>,
@@ -232,9 +230,8 @@ const fileExtensions = (file: FileDescriptorProto, { features, types }: FileType
 // -----------------------------------------------------------------------------
 
 /**
- * The `.proto` files of the well-known types, which have no generated module,
- * and their messages, whose schemas in `effect/protobuf/Protobuf` have the
- * same names.
+ * The messages of the well-known types by file. They get no generated module:
+ * `effect/protobuf/Protobuf` has a schema of the same name for each.
  */
 const wellKnownFiles: Record<string, ReadonlyArray<string>> = {
   "google/protobuf/any.proto": [".google.protobuf.Any"],
@@ -262,7 +259,7 @@ const wellKnownEnums = new Set([".google.protobuf.NullValue"])
 /** The schema of a well-known type in `effect/protobuf/Protobuf`, which has its unqualified name. */
 const wellKnownName = (typeName: string): string => typeName.slice(typeName.lastIndexOf(".") + 1)
 
-/** `.proto` files whose types are modules of `effect`, which `protoMap` can map elsewhere. */
+/** `.proto` files whose schemas are modules of `effect`, unless `protoMap` maps them elsewhere. */
 const effectModules: Record<string, { readonly alias: string; readonly specifier: string }> = {
   "google/protobuf/descriptor.proto": {
     alias: "ProtobufDescriptor",
@@ -429,7 +426,7 @@ const checkNames = (ctx: Context, declared: ReadonlyArray<readonly [string, stri
 // ordering
 // -----------------------------------------------------------------------------
 
-/** The types of the same file that the fields of a message refer to, through map entries. */
+/** The types of the same file that the fields of a message refer to, including through map entries. */
 const dependencies = (t: NamedType, registry: Registry): Array<NamedType> => {
   if (t._tag === "enum") return []
   const out: Array<NamedType> = []
@@ -518,9 +515,8 @@ const jsDoc = (
 }
 
 /**
- * The JSDoc of an export: its description, with a default for an undocumented
- * declaration and the paragraphs after the first under `**Details**`, and its
- * tags.
+ * The JSDoc of an export: its description, or `fallback` when it has none,
+ * with the paragraphs after the first under `**Details**`.
  */
 const exportDoc = (
   description: string | undefined,
@@ -613,8 +609,8 @@ const isNumeric = (type: FieldType | undefined): type is NumericType =>
 /** 64-bit integers are `bigint`s, or `number`s or `string`s as `[jstype]` asks. */
 const int64Suffix = { normal: "", number: "Number", string: "String" } as const
 
-// `from` is the message of the field, which may refer to the messages of its
-// reference cycle only through `Schema.suspend`.
+// `from` is the message of the field, which refers to messages of its own
+// reference cycle through `Schema.suspend`.
 const renderValue = (
   ctx: Context,
   field: FieldDescriptorProto,
@@ -1041,10 +1037,7 @@ const renderRegistry = (ctx: Context, local: ReadonlyArray<NamedType>, extension
   ].join("\n")
 }
 
-/**
- * Services become an `RpcGroup` once ConnectRPC support lands in
- * `effect/rpc`. Until then, the module lists the services it leaves out.
- */
+/** Services are not generated yet, so the module notes each one it leaves out. */
 const renderService = (ctx: Context, service: ServiceDescriptorProto): string => {
   const fullName = ctx.file.package ? `${ctx.file.package}.${service.name}` : service.name ?? ""
   return `// service ${fullName} is not generated: protoc-gen-effect does not support services yet`
