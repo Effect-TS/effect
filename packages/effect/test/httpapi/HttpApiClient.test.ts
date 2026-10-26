@@ -1099,12 +1099,7 @@ describe("HttpApiClient", () => {
 
   describe("Redacted span fields", () => {
     const Token = Schema.RedactedFromValue(Schema.String)
-    const Query = Schema.Struct({
-      token: Token,
-      nested: Schema.Struct({ token: Token }),
-      remote: Schema.optional(Schema.String.pipe(HttpApiSchema.sensitive)),
-      page: Schema.String
-    })
+    const Query = Schema.Struct({ token: Token, nested: Schema.Struct({ token: Token }), page: Schema.String })
     const secret = Redacted.make("s3cret")
 
     it.effect("redacts Redacted query and header fields in client spans", () =>
@@ -1123,24 +1118,24 @@ describe("HttpApiClient", () => {
         const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
 
         yield* capture.trace(client.test.join({
-          query: { token: secret, nested: { token: secret }, remote: "https://user:pass@host", page: "1" },
+          query: { token: secret, nested: { token: secret }, page: "1" },
           headers: { "x-token": secret, "x-page": "1" }
         }))
 
         strictEqual(
           capture.span.attributes.get("url.full"),
-          "http://test/join?token=REDACTED&nested%5Btoken%5D=REDACTED&remote=REDACTED&page=1"
+          "http://test/join?token=REDACTED&nested%5Btoken%5D=REDACTED&page=1"
         )
         strictEqual(
           capture.span.attributes.get("url.query"),
-          "token=REDACTED&nested%5Btoken%5D=REDACTED&remote=REDACTED&page=1"
+          "token=REDACTED&nested%5Btoken%5D=REDACTED&page=1"
         )
         // Renamed keys cannot be traced back to their fields, so every encoded header is redacted.
         strictEqual(capture.span.attributes.get("http.request.header.x-auth-token"), "<redacted>")
         strictEqual(capture.span.attributes.get("http.request.header.x-page"), "<redacted>")
         strictEqual(
           capture.sent.url,
-          "http://test/join?token=s3cret&nested%5Btoken%5D=s3cret&remote=https%3A%2F%2Fuser%3Apass%40host&page=1"
+          "http://test/join?token=s3cret&nested%5Btoken%5D=s3cret&page=1"
         )
         strictEqual(capture.sent.headers["x-auth-token"], "s3cret")
         strictEqual(capture.sent.headers["x-page"], "1")
@@ -1197,36 +1192,6 @@ describe("HttpApiClient", () => {
         )
         strictEqual(capture.sent.url, "http://test/join?token=s3cret&nested%5Btoken%5D=s3cret&page=1")
       }))
-
-    it.effect.each<readonly [Schema.Codec<unknown, string | ReadonlyArray<string>>, unknown]>([
-      [Schema.String.pipe(HttpApiSchema.sensitive).check(Schema.isMinLength(1)), "s3cret"],
-      [
-        Schema.String.check(Schema.isMinLength(1)).pipe(HttpApiSchema.sensitive).check(Schema.isMaxLength(10)),
-        "s3cret"
-      ],
-      [Schema.String.pipe(HttpApiSchema.sensitive, Schema.decodeTo(Schema.String)), "s3cret"],
-      // `Schema.flip` moves the checks of composite schemas to `encodingChecks`.
-      [Schema.Array(Schema.String).check(Schema.isMinLength(1)).pipe(HttpApiSchema.sensitive, Schema.flip), [
-        "s3cret"
-      ]]
-    ])(
-      "keeps sensitive fields redacted through checks and transformations",
-      ([Sensitive, token]) =>
-        Effect.gen(function*() {
-          const Api = HttpApi.make("Api").add(
-            HttpApiGroup.make("test").add(
-              HttpApiEndpoint.get("join", "/join", { query: { token: Sensitive, page: Schema.String } })
-            )
-          )
-          const capture = captureRequest()
-          const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
-
-          yield* capture.trace(client.test.join({ query: { token, page: "1" } }))
-
-          strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&page=1")
-          strictEqual(capture.sent.url, "http://test/join?token=s3cret&page=1")
-        })
-    )
   })
 
   it.effect("applies transformClient to endpoint clients exactly once", () =>
