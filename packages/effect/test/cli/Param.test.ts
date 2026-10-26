@@ -185,6 +185,18 @@ describe("Param", () => {
       assert.deepStrictEqual(result, [[], ["README.md"]])
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("rejects repeated occurrences of a single-valued flag", () =>
+    Effect.gen(function*() {
+      const flag = Flag.Int("window-minutes")
+
+      for (const values of [["2", "3"], ["2", "not-an-integer"]]) {
+        const error = yield* Effect.flip(flag.parse({ flags: { "window-minutes": values }, arguments: [] }))
+        assert.instanceOf(error, CliError.InvalidValue)
+        assert.strictEqual(error.option, "window-minutes")
+        assert.strictEqual(error.value, "2 occurrences")
+      }
+    }).pipe(Effect.provide(TestLayer)))
+
   describe("withFallbackPrompt", () => {
     it.effect("prompts for missing flag values and preserves remaining args", () =>
       Effect.gen(function*() {
