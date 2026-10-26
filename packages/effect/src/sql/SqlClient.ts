@@ -443,9 +443,8 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
         }
         const acquired = Deferred.makeUnsafe<void>()
         const hold = semaphore.withPermit(Effect.andThen(Deferred.succeed(acquired, undefined), Effect.never))
-        return Effect.flatMap(Effect.forkDetach(hold), (fiber) =>
-          Scope.addFinalizer(scope, Fiber.interrupt(fiber)).pipe(
-            Effect.andThen(restore(Deferred.await(acquired))),
+        return Effect.flatMap(Effect.forkIn(hold, scope), (fiber) =>
+          restore(Deferred.await(acquired)).pipe(
             Effect.andThen(available),
             // The caller's scope can outlive a failed lease, as with `reserve`.
             Effect.onError(() => Fiber.interrupt(fiber))
