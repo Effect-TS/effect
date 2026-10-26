@@ -33,7 +33,7 @@ type Frame =
   | { readonly object: true; readonly entries: Array<[string, unknown]>; first: boolean }
   | { readonly object: false; readonly items: Array<unknown>; first: boolean }
 
-// JSONC uses the strict mode only to locate errors after the native parser fails.
+// JSONC only uses the strict mode to locate errors after JSON.parse fails.
 export const parse = (text: string, format: Format): unknown => {
   const json5 = format === "JSON5"
   const space = json5 ? json5Space : jsoncSpace
@@ -45,9 +45,8 @@ export const parse = (text: string, format: Format): unknown => {
 
   /** Skips whitespace and comments, rejecting a `/` that starts neither. */
   const skip = () => {
+    // ASCII whitespace dominates formatted documents; the pattern handles the rest.
     let code = text.charCodeAt(i)
-    // Plain ASCII whitespace dominates formatted documents; comments and JSON5's
-    // Unicode whitespace fall through to the full pattern.
     while (code === 0x20 || code === 0x0a || code === 0x0d || code === 0x09) code = text.charCodeAt(++i)
     if (code > 0x20 && code !== 0x2f && code < 0xa0) return
     space.lastIndex = i
@@ -58,20 +57,21 @@ export const parse = (text: string, format: Format): unknown => {
     }
   }
 
+  /** Advances past a sticky pattern at `i`, returning the matched length. */
   const run = (pattern: RegExp) => {
     pattern.lastIndex = i
-    return pattern.test(text) ? pattern.lastIndex - i : 0
+    const length = pattern.test(text) ? pattern.lastIndex - i : 0
+    i += length
+    return length
   }
 
   const word = <A>(literal: string, result: A): A => {
-    if (text.startsWith(literal, i)) {
-      i += literal.length
-      return result
+    if (!text.startsWith(literal, i)) {
+      let at = i
+      while (text.charAt(at) === literal[at - i]) at++
+      fail(at)
     }
-    for (const c of literal) {
-      if (text.charAt(i) !== c) fail(i)
-      i++
-    }
+    i += literal.length
     return result
   }
 
@@ -83,10 +83,8 @@ export const parse = (text: string, format: Format): unknown => {
 
   const number = () => {
     if (!json5) {
-      const length = run(jsonNumber)
-      if (length === 0) fail(i)
       const start = i
-      i += length
+      if (run(jsonNumber) === 0) fail(i)
       return Number(text.slice(start, i))
     }
     let sign = 1
@@ -100,22 +98,19 @@ export const parse = (text: string, format: Format): unknown => {
     if (c === "0" && (text.charAt(i + 1) === "x" || text.charAt(i + 1) === "X")) {
       i += 2
       if (run(hexDigits) === 0) fail(i)
-      i = hexDigits.lastIndex
     } else {
       if (c === "0") i++
-      else if (isDigit(c)) i += run(digits)
+      else if (isDigit(c)) run(digits)
       else if (c !== ".") fail(i)
       if (text.charAt(i) === ".") {
         i++
         // A leading decimal point needs digits after it; a trailing one does not.
         if (run(digits) === 0 && i === start + 1) fail(i)
-        i = digits.lastIndex
       }
       if (text.charAt(i) === "e" || text.charAt(i) === "E") {
         i++
         if (text.charAt(i) === "+" || text.charAt(i) === "-") i++
         if (run(digits) === 0) fail(i)
-        i = digits.lastIndex
       }
     }
     return sign * Number(text.slice(start, i))
@@ -125,12 +120,9 @@ export const parse = (text: string, format: Format): unknown => {
     const plain = quote === "'" ? json5Single : json5 ? json5Double : jsonDouble
     let result = ""
     for (i++;;) {
-      plain.lastIndex = i
-      plain.test(text)
-      if (plain.lastIndex > i) {
-        result += text.slice(i, plain.lastIndex)
-        i = plain.lastIndex
-      }
+      const start = i
+      run(plain)
+      result += text.slice(start, i)
       const c = text.charAt(i++)
       if (c === quote) return result
       // Anything else that stops a plain run is an escape or a forbidden character.
@@ -145,21 +137,18 @@ export const parse = (text: string, format: Format): unknown => {
         if (isDigit(text.charAt(i))) fail(i)
         result += "\0"
       } else if (e === "\r") {
-        // A line continuation: CR LF, like a single line terminator, contributes nothing.
+        // A CR LF line continuation contributes nothing, like a single line terminator.
         if (text.charAt(i) === "\n") i++
       } else if (!"\n\u2028\u2029".includes(e)) result += e
     }
   }
 
   const identifier = () => {
-    let name = ""
-    idName.lastIndex = i
-    if (idName.test(text)) {
-      name = text.slice(i, idName.lastIndex)
-      i = idName.lastIndex
-      if (text.charAt(i) !== "\\") return name
-    }
-    // Escapes are validated one code unit at a time.
+    const start = i
+    run(idName)
+    let name = text.slice(start, i)
+    if (name !== "" && text.charAt(i) !== "\\") return name
+    // Escapes are validated one code point at a time.
     for (;;) {
       const at = i
       const valid = name === "" ? idStart : idPart
@@ -206,7 +195,7 @@ export const parse = (text: string, format: Format): unknown => {
 
   skip()
   let result = value()
-  // An explicit stack also lets the JSONC diagnostic path locate errors in deeply nested documents.
+  // An explicit stack keeps deep nesting off the call stack.
   while (stack.length > 0) {
     const frame = stack[stack.length - 1]
     const close = frame.object ? "}" : "]"
