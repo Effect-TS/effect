@@ -99,31 +99,26 @@ export interface VerifyWithKeySetOptions extends VerifyOptions, Jws.VerifyWithKe
 
 /**
  * A verified JWT: decoded application claims, its registered claims, and the
- * protected header.
+ * authenticated protected header.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export interface Verified<A> {
+export interface Verified<A, H = Jws.ProtectedHeader> {
   readonly claims: A
   readonly registeredClaims: RegisteredClaims
-  readonly protectedHeader: Jws.ProtectedHeader
+  readonly protectedHeader: H
 }
 
 /**
- * A decrypted and validated JWT: decoded application claims, its registered
- * claims, and the authenticated protected header.
+ * A decrypted and validated JWT, with the JWE protected header.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export interface Decrypted<A> {
-  readonly claims: A
-  readonly registeredClaims: RegisteredClaims
-  readonly protectedHeader: Jwe.ProtectedHeader
-}
+export type Decrypted<A> = Verified<A, Jwe.ProtectedHeader>
 
 /**
  * The protected header and claims of a signed JWT that has not been verified.
@@ -240,15 +235,7 @@ const decodeClaims = Effect.fnUntraced(function*<
   payload: Uint8Array,
   protectedHeader: H,
   policy: Policy
-): Effect.fn.Return<
-  {
-    readonly claims: S["Type"]
-    readonly registeredClaims: RegisteredClaims
-    readonly protectedHeader: H
-  },
-  JwtError,
-  S["DecodingServices"]
-> {
+): Effect.fn.Return<Verified<S["Type"], H>, JwtError, S["DecodingServices"]> {
   const claims = parseJsonObject(payload)
   if (claims === undefined) return yield* invalidToken("The JWT payload is not a JSON object")
   const registeredClaims = yield* checkClaims(claims, protectedHeader, policy)
