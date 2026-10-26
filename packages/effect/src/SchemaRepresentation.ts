@@ -1977,6 +1977,19 @@ export const SemVerRangeReviver: DeclarationReviver<null> = makeFixedDeclaration
 )
 
 /**
+ * Reviver for persisted {@link Schema.Rational} declarations.
+ *
+ * @see {@link Schema.Rational} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.7
+ */
+export const RationalReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Rational",
+  Schema.Rational
+)
+
+/**
  * Reviver for persisted `File` declarations.
  *
  * **When to use**

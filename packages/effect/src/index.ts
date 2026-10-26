@@ -543,6 +543,12 @@ export * as Queue from "./Queue.ts"
 export * as Random from "./Random.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.7
+ */
+export * as Rational from "./Rational.ts"
+
+/**
  * @stability stable
  * @since 3.5.0
  */

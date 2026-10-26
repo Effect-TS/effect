@@ -69,6 +69,7 @@ import * as Option_ from "./Option.ts"
 import * as Order from "./Order.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
+import * as Rational_ from "./Rational.ts"
 import * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
 import * as RegExp_ from "./RegExp.ts"
@@ -10933,6 +10934,112 @@ export interface BigDecimalFromString extends decodeTo<BigDecimal, String> {
  */
 export const BigDecimalFromString: BigDecimalFromString = BigDecimalString.pipe(
   decodeTo(BigDecimal, bigDecimalFromString)
+)
+
+// -----------------------------------------------------------------------------
+// Rational schemas
+// -----------------------------------------------------------------------------
+
+const rationalFromString: SchemaTransformation.Transformation<Rational_.Rational, string> = SchemaTransformation
+  .transformEffect<Rational_.Rational, string>({
+    decode: (s, options) => {
+      const result = Rational_.fromString(s)
+      return Option_.isNone(result)
+        ? Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid Rational string" },
+            s,
+            options
+          )
+        )
+        : Effect.succeed(result.value)
+    },
+    encode: (rational) => Effect.succeed(Rational_.format(rational))
+  })
+/**
+ * Type-level representation of {@link Rational}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.7
+ */
+export interface Rational extends declare<Rational_.Rational> {
+  readonly "Rebuild": Rational
+}
+const RationalString = String.annotate({ expected: "a string that will be decoded as a Rational" })
+/**
+ * Schema for `Rational` values.
+ *
+ * **Details**
+ *
+ * The JSON codec encodes a rational as its canonical `numerator/denominator`
+ * string.
+ *
+ * @see {@link RationalFromString} for parsing fraction strings into a Rational
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.7
+ */
+export const Rational: Rational = declare(
+  Rational_.isRational,
+  {
+    representation: {
+      id: "effect/schema/Rational",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.Rational`,
+      Type: `Rational.Rational`,
+      importDeclarations: [`import * as Rational from "effect/Rational"`]
+    }),
+    expected: "Rational",
+    toCodecArbitrary: () =>
+      linkDecoding<Rational_.Rational>()(
+        Struct({
+          numerator: BigInt,
+          denominator: BigInt.check(isGreaterThanOrEqualToBigInt(globalThis.BigInt(1)))
+        }),
+        SchemaGetter.transform(({ denominator, numerator }) => Rational_.makeUnsafe(numerator, denominator))
+      ),
+    toCodecJson: () =>
+      link<Rational_.Rational>()(
+        RationalString,
+        rationalFromString
+      ),
+    toFormatter: () => Rational_.format
+  }
+)
+/**
+ * Type-level representation of {@link RationalFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.7
+ */
+export interface RationalFromString extends decodeTo<Rational, String> {
+  readonly "Rebuild": RationalFromString
+}
+/**
+ * Schema that parses a fraction string into a `Rational`.
+ *
+ * **Details**
+ *
+ * Decoding accepts `[+-]digits` or `[+-]digits/[+-]digits` via
+ * `Rational.fromString`; reducible fractions and negative denominators are
+ * normalized, and a zero denominator is rejected. Encoding uses
+ * `Rational.format`, so the output is always a reduced `numerator/denominator`
+ * string.
+ *
+ * @see {@link Rational} for validating values that are already Rational values
+ * @see {@link BigDecimalFromString} for parsing decimal strings
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.7
+ */
+export const RationalFromString: RationalFromString = RationalString.pipe(
+  decodeTo(Rational, rationalFromString)
 )
 
 // -----------------------------------------------------------------------------
