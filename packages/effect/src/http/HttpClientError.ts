@@ -252,7 +252,8 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
 }
 
 /**
- * Response error for failures while decoding an HTTP response body.
+ * Response error for failures while decoding an HTTP response, including a
+ * response with an undeclared status.
  *
  * @stability unstable
  * @category errors

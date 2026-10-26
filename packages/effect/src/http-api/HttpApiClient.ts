@@ -1263,7 +1263,8 @@ const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
     new HttpClientError.HttpClientError({
       reason: new HttpClientError.DecodeError({
         request: response.request,
-        response
+        response,
+        description: "undeclared status code"
       })
     })
   )
