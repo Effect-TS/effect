@@ -361,6 +361,17 @@ describe("Stream", () => {
       assert.strictEqual(text, "é")
     }))
 
+  it.effect("toString limits object-mode strings by their UTF-8 length", () =>
+    Effect.gen(function*() {
+      const error = yield* NodeStream.toString(() => Readable.from(["a", "b", "c", "d"]), {
+        encoding: "hex",
+        maxBytes: 3,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
+    }))
+
   it.effect("toArrayBuffer enforces a zero maxBytes limit", () =>
     Effect.gen(function*() {
       let emitted = false
