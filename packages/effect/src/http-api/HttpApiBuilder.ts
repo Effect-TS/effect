@@ -787,9 +787,14 @@ function makeUrlParamsDecoder(
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
   const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
   const names = UrlParamsTree.getPropertyNames(schema.ast)
-  return names.size === 0
-    ? decode
-    : (input) => decode(UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names))
+  if (names.size === 0) return decode
+  return (input) => {
+    const tree = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
+    if (tree === undefined) return decode(input)
+    // Flat bracket keys that decoded before, such as ones a record accepts,
+    // keep decoding when the rebuilt objects do not
+    return Effect.catch(decode(tree), (error) => Effect.mapError(decode(input), () => error))
+  }
 }
 
 function decodePayload(

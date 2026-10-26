@@ -40,10 +40,14 @@ const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
  * Only keys whose base is one of `names` are rebuilt, and keys listed in
  * `names` are kept as is, so literal bracket keys keep decoding. A key that
  * conflicts with a shorter one, such as `a[b]` next to `a`, stays flat.
+ * Returns `undefined` when no key was rebuilt.
  *
  * @internal
  */
-export function fromFlatParams(params: FlatParams, names: ReadonlySet<string>): Record<string, unknown> {
+export function fromFlatParams(
+  params: FlatParams,
+  names: ReadonlySet<string>
+): Record<string, unknown> | undefined {
   const out: Record<string, unknown> = {}
   const nested: Array<{ readonly key: string; readonly path: ReadonlyArray<string> }> = []
   for (const key of Object.keys(params)) {
@@ -56,12 +60,15 @@ export function fromFlatParams(params: FlatParams, names: ReadonlySet<string>): 
   }
   // Shorter paths win, whatever order the keys arrived in
   nested.sort((a, b) => a.path.length - b.path.length)
+  let rebuilt = false
   for (const { key, path } of nested) {
-    if (!setPath(out, path, params[key])) {
+    if (setPath(out, path, params[key])) {
+      rebuilt = true
+    } else {
       assignProperty(out, key, params[key])
     }
   }
-  return out
+  return rebuilt ? out : undefined
 }
 
 function setPath(out: Record<string, unknown>, path: ReadonlyArray<string>, value: unknown): boolean {
