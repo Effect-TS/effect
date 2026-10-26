@@ -1017,7 +1017,10 @@ export const suspend: <A, E, R>(
 ) => Effect.Effect<A, E, R> = makePrimitive({
   op: "Suspend",
   [evaluate](_fiber) {
-    return this[args]()
+    // JavaScriptCore drops the frame of a tail call, which the stack cleaner
+    // needs to cut internal frames
+    const effect = this[args]()
+    return effect
   }
 })
 
