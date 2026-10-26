@@ -33,5 +33,6 @@ it.layer(layer, { timeout: "120 seconds", excludeTestServices: true })("DockerSy
       const id = yield* scopedContainer({ Image: image, Cmd: ["true"] })
       assert.strictEqual((yield* DockerContainers.DockerContainers.use((containers) => containers.inspect(id))).Id, id)
       assert.isDefined((yield* DockerImages.DockerImages.use((images) => images.inspect(image))).Id)
-    }).pipe(Effect.provide(NodeDocker.layerFromEnv({ apiVersion: "1.44" }))), 60_000)
+      // `local`: a fresh engine, not the suite's, which an enclosing provide already built
+    }).pipe(Effect.provide(NodeDocker.layerFromEnv({ apiVersion: "1.44" }), { local: true })), 60_000)
 })
