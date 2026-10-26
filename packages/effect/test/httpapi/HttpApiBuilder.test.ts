@@ -915,12 +915,23 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         decode: () => Effect.die("Unused member decoded"),
         encode: Effect.succeed
       })))
-      const Query = Schema.Union([
+      const Numeric = Schema.Union([
         Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Unused })), kind: Schema.Literal(1) }),
         Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })), kind: Schema.Literal(2) })
       ])
+      const EncodingMiddleware = Schema.Union([
+        Schema.Struct({
+          meta: Schema.optional(Schema.Struct({ k: Unused })),
+          kind: Schema.Literal("a").pipe(Schema.middlewareEncoding((effect) => effect))
+        }),
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })), kind: Schema.Literal("b") })
+      ])
 
-      assert.deepStrictEqual(yield* decodeRawQuery(Query, "kind=2&meta%5Bk%5D=v"), { meta: { k: "v" }, kind: 2 })
+      assert.deepStrictEqual(yield* decodeRawQuery(Numeric, "kind=2&meta%5Bk%5D=v"), { meta: { k: "v" }, kind: 2 })
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(EncodingMiddleware, "kind=b&meta%5Bk%5D=v"),
+        { meta: { k: "v" }, kind: "b" }
+      )
     }))
 
   it.effect("keeps flat keys an index signature accepts for an object field", () =>
@@ -930,7 +941,23 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Struct({ j: Schema.String })]))]
       )
 
+      const BracketKeys = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.NonEmptyString })) }),
+        [Schema.Record(Schema.TemplateLiteral(["meta[", Schema.String, "]"]), Schema.String)]
+      )
+
       assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { "meta[k]": "v" })
+      assert.deepStrictEqual(yield* decodeRawQuery(BracketKeys, "meta%5Bk%5D="), { "meta[k]": "" })
+    }))
+
+  it.effect("rebuilds required object fields an index signature covers", () =>
+    Effect.gen(function*() {
+      const Query = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.Struct({ k: Schema.String }) }),
+        [Schema.Record(Schema.String, Schema.Unknown)]
+      )
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { meta: { k: "v" } })
     }))
 
   it.effect("rebuilds optional Unknown and ObjectKeyword fields", () =>
