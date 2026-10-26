@@ -1219,13 +1219,13 @@ function makeStreamBodyEncoder(
       Schema.NonEmptyArray(Schema.toCodecJson(streamSchema.schema)),
       options
     )
-    const encodeError = makeNdjsonErrorEncoder(streamSchema.error, options)
+    const encodeErrorRecords = makeNdjsonErrorRecordEncoder(streamSchema.error, options)
     // A bad element or error record, and any failure `error` does not accept,
     // aborts the response
     return (stream) =>
       stream.pipe(
         Stream.mapArrayEffect((elements) => Effect.orDie(encodeElements(elements))),
-        encodeError,
+        encodeErrorRecords,
         Stream.pipeThroughChannel(Ndjson.encode()),
         Stream.catchIf(isNdjsonPackError, Stream.die)
       )
@@ -1234,15 +1234,32 @@ function makeStreamBodyEncoder(
   return (stream) => encodeSseStream(stream, sseEncoder)
 }
 
-// Ends the stream with the encoded failure when the error schema accepts it
-function makeNdjsonErrorEncoder(
+// Ends the stream with the encoded failure when the error schema accepts it.
+// The client reads any line with the error schema's encoded shape as an error
+// record, so an encoded element with that shape aborts the response. This
+// check is structural, so it also rejects a record that the error schema's
+// decoding would fail on, and it adds no decoding services.
+function makeNdjsonErrorRecordEncoder(
   error: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
 ): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<unknown, unknown, unknown> {
   if (SchemaAST.isNever(error.ast)) return Function.identity
   const isError = Schema.is(error)
+  const isErrorRecord = Schema.is(Schema.toEncoded(Schema.toCodecJson(error)))
   const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(error), options)
-  return Stream.catchIf(isError, (failure) => Stream.fromEffect(Effect.orDie(encode(failure))))
+  return (stream) =>
+    stream.pipe(
+      Stream.mapArrayEffect((records) =>
+        records.some(isErrorRecord)
+          ? Effect.die(
+            new Error(
+              "NDJSON element matches the encoded error schema, so the client would read it as an error record"
+            )
+          )
+          : Effect.succeed(records)
+      ),
+      Stream.catchIf(isError, (failure) => Stream.fromEffect(Effect.orDie(encode(failure))))
+    )
 }
 
 function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {

@@ -413,7 +413,11 @@ export interface StreamUint8Array extends
  * **Gotchas**
  *
  * A line that matches both `error` and `schema` is treated as an error, so
- * keep recoverable notifications out of `error`.
+ * keep recoverable notifications out of `error`. The server never writes such
+ * a line: an encoded element with the encoded shape of `error` dies instead.
+ * The check is structural, so it also rejects an element that `error` would
+ * fail to decode, for example `{"code":"x"}` against
+ * `Schema.Struct({ code: Schema.FiniteFromString })`.
  *
  * Any other failure mid-stream aborts the connection, including a failure
  * `error` does not accept and an error record that fails to encode. The reader

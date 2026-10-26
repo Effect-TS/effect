@@ -2406,7 +2406,7 @@ const Api = HttpApi.make("myApi").add(
 )
 ```
 
-A line that matches both schemas is treated as an error, so keep recoverable notifications in `schema`. The `error` schema is response-only, and endpoint construction rejects it on a payload. In OpenAPI, the media type schema is `anyOf` the element and error schemas, and `x-effect-stream.errorSchema` identifies the error record.
+A line that matches both schemas is treated as an error, so keep recoverable notifications in `schema`. The server never writes an element the client would read as an error. If an encoded element has the encoded shape of `error`, the stream dies and the connection is aborted. This check is structural and needs no decoding services, so it is stricter than the client: it also rejects an element that `error` would fail to decode, such as `{"code":"x"}` when `error` is `Schema.Struct({ code: Schema.FiniteFromString })`. The `error` schema is response-only, and endpoint construction rejects it on a payload. In OpenAPI, the media type schema is `anyOf` the element and error schemas, and `x-effect-stream.errorSchema` identifies the error record.
 
 Things to know:
 
