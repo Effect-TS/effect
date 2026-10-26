@@ -914,10 +914,14 @@ const retryPolicy = Schedule.min([
   Schedule.spaced("1 minute")
 ])
 
+// A cluster abandonment means this owner can no longer complete the effect, so
+// retrying it would only wait on a retired run. Re-raise it as an annotated
+// interrupt, so the activation can unwind and its shard can be released.
 const ensureSuccess = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.sandbox,
-    Effect.retry(retryPolicy),
+    Effect.retry({ schedule: retryPolicy, while: (cause) => !ClusterAbandon.isCause(cause) }),
+    Effect.catchIf(ClusterAbandon.isCause, () => ClusterAbandon.interrupt),
     Effect.orDie
   )
 
