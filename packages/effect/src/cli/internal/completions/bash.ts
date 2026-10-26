@@ -123,8 +123,8 @@ interface Helpers {
  * Complete paths through the choice helper, reading `compgen` line by line so
  * a name containing whitespace or glob characters stays one quoted candidate.
  * The typed directory is kept as written, so expansions in it still apply, and
- * only the completed name is quoted. When `compgen` returns an expanded path
- * instead, that whole path is quoted and replaces the word.
+ * only the completed name is quoted. When `compgen` returns expanded paths
+ * instead (Bash 3.2), the quoted path replaces the whole word.
  */
 const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`${helpers.paths}()`)
@@ -135,86 +135,58 @@ const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`  ${removeQuotes("_prefix")}`)
   lines.push(`  ${removeQuotes("_committed")}`)
   lines.push(``)
-  // Keep the typed directory as written, noting a quote it leaves open.
-  lines.push(`  local _typed="" _dir="$_committed" _open="" _i _c`)
+  // Split off the typed directory, noting a quote it leaves open.
+  lines.push(`  local _typed="" _dir="$_committed" _open="" _i`)
   lines.push(`  if [[ "$_word" == */* ]]; then`)
   lines.push(`    _typed="\${_word%/*}/"`)
   lines.push(`    _dir="\${_prefix%/*}/"`)
   lines.push(`    if [[ "$_cur" == "$_word" ]]; then`)
   lines.push(`      for ((_i = 0; _i < \${#_typed}; _i++)); do`)
-  lines.push(`        _c="\${_typed:_i:1}"`)
-  lines.push(`        if [[ -z "$_open" ]]; then`)
-  lines.push(`          case "$_c" in`)
-  lines.push(`            \\\\) ((_i += 1)) ;;`)
-  lines.push(`            \\"|\\') _open="$_c" ;;`)
-  lines.push(`          esac`)
-  lines.push(`        elif [[ "$_c" == "$_open" ]]; then`)
-  lines.push(`          _open=""`)
-  lines.push(`        elif [[ "$_c$_open" == '\\"' ]]; then`)
-  lines.push(`          ((_i += 1))`)
-  lines.push(`        fi`)
+  lines.push(`        case "$_open\${_typed:_i:1}" in`)
+  lines.push(`          \\\\|\\"\\\\) ((_i += 1)) ;;`)
+  lines.push(`          \\"|\\') _open="\${_typed:_i:1}" ;;`)
+  lines.push(`          \\"\\"|\\'\\') _open="" ;;`)
+  lines.push(`        esac`)
   lines.push(`      done`)
   lines.push(`    fi`)
   lines.push(`  fi`)
   lines.push(``)
-  lines.push(`  local _path _names=() _expanded=()`)
+  lines.push(`  local _path _names=() _rest="\${_word#"$_typed"}"`)
   lines.push(`  while IFS= read -r _path; do`)
-  // compgen echoes the typed directory or, on Bash 3.2, returns the expanded path.
   lines.push(`    if [[ "$_path" == "$_dir"* ]]; then`)
   lines.push(`      _names+=("$_committed\${_path#"$_dir"}")`)
   lines.push(`    elif [[ -z "$_committed" ]]; then`)
-  lines.push(`      _expanded+=("$_path")`)
+  // Bash 3.2 expands the typed directory: the quoted path replaces the word.
+  lines.push(`      _names+=("$_path")`)
+  lines.push(`      _typed="" _rest="" _open=""`)
   lines.push(`    fi`)
   lines.push(`  done < <(compgen "$_kind" -- "$_prefix")`)
-  lines.push(``)
-  lines.push(`  local _replies=()`)
-  lines.push(`  if ((\${#_names[@]})); then`)
-  lines.push(`    if [[ -n "$_open" ]]; then`)
   // Close the quote before the name, so a common prefix of several matches
   // stays balanced.
-  lines.push(`      _typed+="$_open"`)
-  lines.push(`      ${helpers.choices} "\${_prefix##*/}" "\${_prefix##*/}" "\${_names[@]}"`)
-  lines.push(`    else`)
-  lines.push(`      ${helpers.choices} "\${_cur%"$_word"}\${_word#"$_typed"}" "\${_word#"$_typed"}" "\${_names[@]}"`)
-  lines.push(`    fi`)
-  lines.push(`    for _path in "\${COMPREPLY[@]}"; do`)
-  lines.push(`      _replies+=("$_typed$_path")`)
-  lines.push(`    done`)
+  lines.push(`  if [[ -n "$_open" ]]; then`)
+  lines.push(`    _typed+="$_open"`)
+  lines.push(`    _rest="\${_prefix##*/}"`)
   lines.push(`  fi`)
-  lines.push(`  if ((\${#_expanded[@]})); then`)
-  lines.push(`    ${helpers.choices} "\${_cur%"$_word"}" "" "\${_expanded[@]}"`)
-  lines.push(`    _replies+=("\${COMPREPLY[@]}")`)
-  lines.push(`  fi`)
-  lines.push(`  COMPREPLY=("\${_replies[@]}")`)
+  lines.push(``)
+  lines.push(`  ${helpers.choices} "\${_cur%"$_word"}$_rest" "$_rest" "\${_names[@]}"`)
+  lines.push(`  for ((_i = 0; _i < \${#COMPREPLY[@]}; _i++)); do`)
+  lines.push(`    COMPREPLY[_i]="$_typed\${COMPREPLY[_i]}"`)
+  lines.push(`  done`)
   lines.push(`}`)
   lines.push(``)
 }
 
-const choiceCompletion = (helpers: Helpers, values: ReadonlyArray<string>): string =>
-  `${helpers.choices} "$cur" "$_comp_word" ${values.map((value) => `'${escapeForBash(value)}'`).join(" ")}`
-
-const pathCompletion = (helpers: Helpers, pathType: "file" | "directory" | "either"): string =>
-  `${helpers.paths} ${pathType === "directory" ? "-d" : "-f"} "$cur" "$_comp_word"`
-
-const flagValueCompletion = (type: Completions.FlagType, helpers: Helpers): string | undefined => {
+const valueCompletion = (
+  type: Completions.FlagType | Completions.ArgumentType,
+  helpers: Helpers
+): string | undefined => {
   switch (type._tag) {
-    case "Boolean":
-      return undefined
-    case "Choice":
-      return choiceCompletion(helpers, type.values)
+    case "Choice": {
+      const values = type.values.map((value) => `'${escapeForBash(value)}'`).join(" ")
+      return `${helpers.choices} "$cur" "$_comp_word" ${values}`
+    }
     case "Path":
-      return pathCompletion(helpers, type.pathType)
-    default:
-      return undefined
-  }
-}
-
-const argCompletion = (type: Completions.ArgumentType, helpers: Helpers): string | undefined => {
-  switch (type._tag) {
-    case "Choice":
-      return choiceCompletion(helpers, type.values)
-    case "Path":
-      return pathCompletion(helpers, type.pathType)
+      return `${helpers.paths} ${type.pathType === "directory" ? "-d" : "-f"} "$cur" "$_comp_word"`
     default:
       return undefined
   }
@@ -255,7 +227,7 @@ const generateFunction = (
       for (const alias of flag.aliases) {
         longNames.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
       }
-      const completion = flagValueCompletion(flag.type, helpers)
+      const completion = valueCompletion(flag.type, helpers)
       if (completion) {
         lines.push(`    ${longNames.join("|")})`)
         lines.push(`      ${completion}`)
@@ -311,7 +283,7 @@ const generateFunction = (
 
   // Positional argument completion
   const argsWithCompletions = descriptor.arguments.flatMap((argument, index) => {
-    const completion = argCompletion(argument.type, helpers)
+    const completion = valueCompletion(argument.type, helpers)
     return completion === undefined ? [] : [{ argument, completion, index }]
   })
   if (argsWithCompletions.length > 0) {
