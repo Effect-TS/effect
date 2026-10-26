@@ -31,10 +31,6 @@ import type * as DockerSchema from "./DockerSchema.ts"
 import { compareApiVersions } from "./internal/config.ts"
 import { apiClient } from "./internal/engine.ts"
 
-// -----------------------------------------------------------------------------
-// service
-// -----------------------------------------------------------------------------
-
 /**
  * The system API.
  *

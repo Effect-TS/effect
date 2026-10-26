@@ -128,15 +128,18 @@ const errorResponse = <
     HttpApiSchema.status(status)
   )
 
-const BadRequestResponse = errorResponse(DockerError.BadRequest, "BadRequest", 400)
-const UnauthorizedResponse = errorResponse(DockerError.Unauthorized, "Unauthorized", 401)
-const ForbiddenResponse = errorResponse(DockerError.Forbidden, "Forbidden", 403)
-const NotFoundResponse = errorResponse(DockerError.NotFound, "NotFound", 404)
-const ConflictResponse = errorResponse(DockerError.Conflict, "Conflict", 409)
-const PreconditionFailedResponse = errorResponse(DockerError.PreconditionFailed, "PreconditionFailed", 412)
-const TooManyRequestsResponse = errorResponse(DockerError.TooManyRequests, "TooManyRequests", 429)
-const ServerErrorResponse = errorResponse(DockerError.ServerError, "ServerError", 500)
-const NotImplementedResponse = errorResponse(DockerError.NotImplemented, "NotImplemented", 501)
+/** The error responses every endpoint shares; 503 differs between the Engine and Swarm. */
+const commonErrorResponses = [
+  errorResponse(DockerError.BadRequest, "BadRequest", 400),
+  errorResponse(DockerError.Unauthorized, "Unauthorized", 401),
+  errorResponse(DockerError.Forbidden, "Forbidden", 403),
+  errorResponse(DockerError.NotFound, "NotFound", 404),
+  errorResponse(DockerError.Conflict, "Conflict", 409),
+  errorResponse(DockerError.PreconditionFailed, "PreconditionFailed", 412),
+  errorResponse(DockerError.TooManyRequests, "TooManyRequests", 429),
+  errorResponse(DockerError.ServerError, "ServerError", 500),
+  errorResponse(DockerError.NotImplemented, "NotImplemented", 501)
+] as const
 
 /**
  * The Engine's error responses, one per status of moby's table: every
@@ -150,15 +153,7 @@ const NotImplementedResponse = errorResponse(DockerError.NotImplemented, "NotImp
  * @since 4.0.7
  */
 export const ErrorResponses = [
-  BadRequestResponse,
-  UnauthorizedResponse,
-  ForbiddenResponse,
-  NotFoundResponse,
-  ConflictResponse,
-  PreconditionFailedResponse,
-  TooManyRequestsResponse,
-  ServerErrorResponse,
-  NotImplementedResponse,
+  ...commonErrorResponses,
   errorResponse(DockerError.Unavailable, "Unavailable", 503)
 ] as const
 
@@ -181,15 +176,7 @@ export type ErrorResponse = typeof ErrorResponses[number]["Type"]
  * @since 4.0.7
  */
 export const SwarmErrorResponses = [
-  BadRequestResponse,
-  UnauthorizedResponse,
-  ForbiddenResponse,
-  NotFoundResponse,
-  ConflictResponse,
-  PreconditionFailedResponse,
-  TooManyRequestsResponse,
-  ServerErrorResponse,
-  NotImplementedResponse,
+  ...commonErrorResponses,
   errorResponse(DockerError.SwarmUnavailable, "SwarmUnavailable", 503)
 ] as const
 
