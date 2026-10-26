@@ -320,7 +320,7 @@ export const Service =
           ? Duration.fromInputUnsafe(request.timeToLive)
           : undefined,
         serializationKey: request.serializationKey,
-        skipInitialRun: request.skipInitialRun
+        skipInitialRun: request.skipInitialRun === true
       }
       return queryFamily(key)
     }) as any
@@ -346,7 +346,7 @@ interface QueryKey {
   sseOptions: Sse.DecodeOptions | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
-  skipInitialRun: boolean | undefined
+  skipInitialRun: boolean
 }
 
 type ResponseByMode<
