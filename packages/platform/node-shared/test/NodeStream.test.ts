@@ -323,6 +323,47 @@ describe("Stream", () => {
       assert.isTrue(stream.destroyed)
     }))
 
+  it.effect("toString limits input bytes before decoding", () =>
+    Effect.gen(function*() {
+      const cases: ReadonlyArray<readonly [Buffer, BufferEncoding, string]> = [
+        [Buffer.from([0xe9]), "latin1", "é"],
+        [Buffer.from("abcd", "utf16le"), "utf16le", "abcd"],
+        [Buffer.from([0xca, 0xfe]), "hex", "cafe"],
+        [Buffer.from([0xff, 0xfe]), "base64", "//4="],
+        [Buffer.from([0xff, 0xfe]), "utf8", "\ufffd\ufffd"]
+      ]
+      for (const [bytes, encoding, expected] of cases) {
+        const text = yield* NodeStream.toString(() => Readable.from([bytes]), { encoding, maxBytes: bytes.length })
+        assert.strictEqual(text, expected)
+        const error = yield* NodeStream.toString(() => Readable.from([bytes]), {
+          encoding,
+          maxBytes: bytes.length - 1,
+          onError: (error) => error
+        }).pipe(Effect.flip)
+        assert.instanceOf(error, NodeStream.MaxBytesError)
+      }
+    }))
+
+  it.effect("toString decodes characters split across chunks", () =>
+    Effect.gen(function*() {
+      const chunks = [Buffer.from([0xe2, 0x82]), Buffer.from([0xac, 0x61])]
+      const text = yield* NodeStream.toString(() => Readable.from(chunks), { maxBytes: 4 })
+      assert.strictEqual(text, "€a")
+    }))
+
+  it.effect("toString counts the input bytes of a stream that already decodes", () =>
+    Effect.gen(function*() {
+      const stream = new Readable({
+        read() {
+          this.push(Buffer.from([0xe9]))
+          this.push(null)
+        }
+      })
+      stream.setEncoding("utf8")
+      const text = yield* NodeStream.toString(() => stream, { encoding: "latin1", maxBytes: 1 })
+      assert.strictEqual(text, "é")
+    }))
+
   it.effect("toArrayBuffer enforces a zero maxBytes limit", () =>
     Effect.gen(function*() {
       let emitted = false
