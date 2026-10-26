@@ -1186,7 +1186,6 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
   let reference: unknown = undefined
   let prefixItems: unknown = undefined
   let items: unknown = undefined
-  let hasEmptyEnum = false
 
   for (const key of Object.keys(source)) {
     const value = source[key]
@@ -1222,15 +1221,9 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
       case "unevaluatedItems":
         unsupported(key, "Draft-07", "the target dialect has no equivalent")
       case "required":
+      case "enum":
         if (Array.isArray(value) && value.length === 0) break
         InternalRecord.assignProperty(out, key, value)
-        break
-      case "enum":
-        if (Array.isArray(value) && value.length === 0) {
-          hasEmptyEnum = true
-        } else {
-          InternalRecord.assignProperty(out, key, value)
-        }
         break
       default:
         InternalRecord.assignProperty(out, key, value)
@@ -1254,9 +1247,7 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
   convertDependencies(source, out, context, "draft-07")
   convertLegacyId(source, out, "$id", "Draft-07")
 
-  if (hasEmptyEnum) {
-    appendAllOf(out, { not: {} })
-  }
+  if (Array.isArray(source.enum) && source.enum.length === 0) appendAllOf(out, { not: {} })
 
   convertReference(out, reference, context)
 
