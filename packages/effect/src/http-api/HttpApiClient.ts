@@ -1252,7 +1252,7 @@ function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
 const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
   Effect.fail(
     new HttpClientError.HttpClientError({
-      reason: new HttpClientError.StatusCodeError({
+      reason: new HttpClientError.DecodeError({
         request: response.request,
         response,
         description: "undeclared status code"

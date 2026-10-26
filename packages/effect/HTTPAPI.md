@@ -1614,7 +1614,7 @@ Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
 
 Things to know:
 
-- A `400` or `413` from the server is an `HttpClientError` with a `StatusCodeError` reason, as a buffered `400` is today. There's no client-side `HttpApiPayloadTooLarge`, because the `413` body is empty.
+- A `400` or `413` from the server is an `HttpClientError` with a `DecodeError` reason, as a buffered `400` is today. There's no client-side `HttpApiPayloadTooLarge`, because the `413` body is empty.
 - The client doesn't check `maxBytes` or `maxElementBytes` before sending. A `HttpClient.mapRequest` that sets `content-length` lets the server answer an early `413` on Node clients. `FetchHttpClient` strips `content-length`.
 - With a streaming success response, the upload runs until either side ends. Otherwise it's interrupted once the method has decoded the response, whether that's an error status or a buffered success.
 - Retries and redirects replay the stream. `HttpClient.retry` and 307/308 redirects run the payload stream again. That's right for a source that can be re-read, like a file, and wrong for a one-shot source like `Stream.fromQueue`: a retry would send only what is left in the queue. Don't retry uploads from such sources, or buffer them first.
