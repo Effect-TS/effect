@@ -45,6 +45,13 @@ export class BytePathError extends Data.TaggedError("BytePathError")<{
   readonly message: string
 }> {}
 
+const byteViewErrors = {
+  InvalidInput: { reason: "InvalidInput", message: "Expected a Uint8Array" },
+  SharedBuffer: { reason: "SharedBuffer", message: "SharedArrayBuffer-backed paths are not supported" },
+  DetachedBuffer: { reason: "DetachedBuffer", message: "The input buffer is detached" },
+  OutOfBounds: { reason: "InvalidInput", message: "The Uint8Array view is out of bounds or cannot be copied" }
+} as const
+
 const registry = new WeakMap<object, Uint8Array<ArrayBuffer>>()
 
 const encoder = new TextEncoder()
@@ -112,37 +119,22 @@ export const isBytePath = (input: unknown): input is BytePath =>
  */
 export const fromBytes = (input: Uint8Array): Result.Result<BytePath, BytePathError> => {
   if (!ArrayBuffer.isView(input) || !(input instanceof Uint8Array)) {
-    return Result.fail(new BytePathError({ reason: "InvalidInput", message: "Expected a Uint8Array" }))
+    return Result.fail(new BytePathError(byteViewErrors.InvalidInput))
   }
-  // Read the built-in getters so input properties cannot hide shared storage
-  // or change the view being copied.
-  const buffer = Reflect.get(Uint8Array.prototype, "buffer", input)
   return Result.gen(function*() {
-    yield* Result.try({
-      try: () => Reflect.get(ArrayBuffer.prototype, "byteLength", buffer),
-      catch: () =>
-        new BytePathError({ reason: "SharedBuffer", message: "SharedArrayBuffer-backed paths are not supported" })
-    })
-    const attached = yield* Result.try({
-      // A zero-length view still checks attachment, unlike byteLength alone.
-      try: () => new Uint8Array(buffer, 0, 0),
-      catch: () => new BytePathError({ reason: "DetachedBuffer", message: "The input buffer is detached" })
-    })
+    const length = yield* Result.mapError(
+      Bytes.byteLength(input),
+      (error) => new BytePathError(byteViewErrors[error.reason])
+    )
     const copy = yield* Result.try({
       try: () => {
-        // Validate bounds before reading length: invalid views can report zero.
-        Uint8Array.prototype.set.call(input, attached)
-        const length: number = Reflect.get(Uint8Array.prototype, "length", input)
+        const buffer = Reflect.get(Uint8Array.prototype, "buffer", input)
         const offset: number = Reflect.get(Uint8Array.prototype, "byteOffset", input)
         const copy = new Uint8Array(length)
         copy.set(new Uint8Array(buffer, offset, length))
         return copy
       },
-      catch: () =>
-        new BytePathError({
-          reason: "InvalidInput",
-          message: "The Uint8Array view is out of bounds or cannot be copied"
-        })
+      catch: () => new BytePathError(byteViewErrors.OutOfBounds)
     })
     if (copy.includes(0)) {
       return yield* Result.fail(new BytePathError({ reason: "NulByte", message: "BytePath cannot contain NUL bytes" }))
