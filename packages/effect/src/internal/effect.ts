@@ -1017,10 +1017,15 @@ export const suspend: <A, E, R>(
 ) => Effect.Effect<A, E, R> = makePrimitive({
   op: "Suspend",
   [evaluate](_fiber) {
-    // JavaScriptCore drops the frame of a tail call, which the stack cleaner
-    // needs to cut internal frames
-    const effect = this[args]()
-    return effect
+    // A call inside `try` is never a tail call, so JavaScriptCore keeps this
+    // frame, which the stack cleaner needs to cut internal frames. Minifiers
+    // drop an empty `finally`, but keep a rethrowing `catch`.
+    try {
+      return this[args]()
+      // oxlint-disable-next-line no-useless-catch
+    } catch (error) {
+      throw error
+    }
   }
 })
 
