@@ -2111,6 +2111,17 @@ describe("Stream", () => {
       assert.deepStrictEqual(groupedResults, expected)
     }))
 
+  it.effect("rechunk emits buffered elements before failing", () =>
+    Effect.gen(function*() {
+      const result = yield* Stream.make(1, 2, 3).pipe(
+        Stream.concat(Stream.fail("Ouch")),
+        Stream.rechunk(10),
+        Stream.catch((error) => Stream.make(error)),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(result, [1, 2, 3, "Ouch"])
+    }))
+
   describe("transduce", () => {
     it.effect("no remainder", () =>
       Effect.gen(function*() {
