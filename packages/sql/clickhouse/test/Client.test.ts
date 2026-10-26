@@ -187,29 +187,34 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.provide(Reactivity.layer)
     ))
 
-  it.effect("records a migration only after it succeeds", () =>
+  it.effect("retries a failed migration and the ones after it on the next run", () =>
     Effect.gen(function*() {
       connectImmediately = true
-      const queries: Array<[string, unknown]> = []
+      const ledger: Array<{ migration_id: unknown; name: unknown }> = []
       queryImpl = (options) => {
-        queries.push([String(options.query), options.query_params])
-        return Promise.resolve({ json: () => Promise.resolve({ data: [] }) })
+        const query = String(options.query)
+        if (query.startsWith(`INSERT INTO "effect_sql_migrations"`)) {
+          const params = Object.values(options.query_params as Record<string, unknown>)
+          for (let i = 0; i < params.length; i += 2) {
+            ledger.unshift({ migration_id: params[i], name: params[i + 1] })
+          }
+        }
+        const data = query.startsWith("SELECT migration_id") ? ledger : []
+        return Promise.resolve({ json: () => Promise.resolve({ data }) })
       }
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
-      const error = yield* ClickhouseMigrator.run({
+      let attempts = 0
+      const run = ClickhouseMigrator.run({
         loader: ClickhouseMigrator.fromRecord({
           "1_first": client`CREATE TABLE first`,
-          "2_rejected": Effect.fail("rejected"),
+          "2_second": Effect.suspend(() => attempts++ === 0 ? Effect.fail("rejected") : Effect.void),
           "3_third": client`CREATE TABLE third`
         })
-      }).pipe(Effect.provideService(SqlClient.SqlClient, client), Effect.flip)
+      }).pipe(Effect.provideService(SqlClient.SqlClient, client))
 
-      assert.strictEqual(error.message, `Migration "2_rejected" failed`)
-      const [migration, record, ...rest] = queries.slice(2)
-      assert.strictEqual(migration[0], "CREATE TABLE first")
-      assert.match(record[0], /^INSERT INTO "effect_sql_migrations"/)
-      assert.deepStrictEqual(record[1], { p1: 1, p2: "first" })
-      assert.deepStrictEqual(rest, [])
+      const error = yield* Effect.flip(run)
+      assert.strictEqual(error.message, `Migration "2_second" failed`)
+      assert.deepStrictEqual(yield* run, [[2, "second"], [3, "third"]])
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         queryImpl = undefined
