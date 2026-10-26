@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References, Scope } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -441,16 +441,18 @@ describe("Client", () => {
       })
   )
 
-  it.effect("releases the connection when a queued reserve is interrupted in an open scope", () =>
+  it.effect("cleans up a queued reserve interrupted in an open scope", () =>
     Effect.gen(function*() {
       const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
       const release = yield* Deferred.make<void>()
       const holder = yield* Effect.forkChild(sql.withTransaction(Deferred.await(release)), {
         startImmediately: true
       })
-      // The test's scope stays open, so only the interruption can end the lease.
-      const reserve = yield* Effect.forkChild(sql.reserve, { startImmediately: true })
+      // The scope stays open, so only the interruption can end the lease.
+      const scope = yield* Scope.make()
+      const reserve = yield* Effect.forkChild(Scope.provide(sql.reserve, scope), { startImmediately: true })
       yield* Fiber.interrupt(reserve)
+      assert.strictEqual(scope.state._tag, "Empty")
       yield* Deferred.succeed(release, undefined)
       yield* Fiber.join(holder)
       const next = yield* Effect.forkChild(sql`SELECT 3 AS value`)
