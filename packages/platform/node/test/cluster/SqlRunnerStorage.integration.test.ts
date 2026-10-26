@@ -574,6 +574,44 @@ describe("SqlRunnerStorage", () => {
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
 
+      it.effect("owned", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* RunnerStorage.RunnerStorage
+          const shards = [1, 2, 3, 4].map((id) => ShardId.make("default", id))
+          const ownedIds = Effect.fnUntraced(function*(address: RunnerAddress.RunnerAddress) {
+            const owned = yield* storage.owned(address, shards)
+            return owned.map((_) => _.id).sort((a, b) => a - b)
+          })
+
+          yield* storage.releaseAll(runnerAddress1)
+          yield* storage.acquire(runnerAddress1, shards.slice(0, 3))
+          expect(yield* ownedIds(runnerAddress1)).toEqual([1, 2, 3])
+          expect(yield* ownedIds(runnerAddress2)).toEqual([])
+
+          if (label === "pg") {
+            // The lock session dies before this runner refreshes its locks.
+            yield* sql`SELECT pg_terminate_backend(pid) FROM pg_locks
+              WHERE locktype = 'advisory' AND objsubid = 2
+              AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`
+            expect(yield* ownedIds(runnerAddress1)).toEqual([])
+          }
+
+          if (label.endsWith("(no advisory)")) {
+            // The lease expires and another runner takes it over.
+            yield* sql.unsafe(`UPDATE cluster_locks SET acquired_at = '2000-01-01 00:00:00'`)
+            yield* Effect.gen(function*() {
+              const other = yield* SqlRunnerStorage.make({})
+              expect(yield* other.acquire(runnerAddress2, shards.slice(0, 3))).toHaveLength(3)
+            }).pipe(
+              Effect.scoped,
+              Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+            )
+            expect(yield* ownedIds(runnerAddress1)).toEqual([])
+            expect(yield* ownedIds(runnerAddress2)).toEqual([1, 2, 3])
+          }
+        }))
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {

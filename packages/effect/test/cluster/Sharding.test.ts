@@ -3784,6 +3784,151 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
     }))
 })
 
+describe("Sharding shard fencing", { concurrent: false }, () => {
+  it.effect("abandons a reply once lock storage no longer attributes the shard to this runner", () =>
+    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe }) {
+      const result = yield* client.Request().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* Queue.take(probe.entered), "Request")
+
+      fence.fenced = true
+      yield* probe.release.open
+      // Past every retry of a failed reply write.
+      yield* TestClock.adjust(1000)
+
+      assert.strictEqual(driver.replyIds.size, 0)
+      assert.strictEqual(fence.writeChecks, 1)
+      // The request is left for the owner: it is not replayed here, and the
+      // caller is not answered with this runner's result.
+      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
+      assert.isUndefined(result.pollUnsafe())
+    })))
+
+  it.effect("interrupts a stream whose next chunk is fenced", () =>
+    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe }) {
+      const received = yield* Queue.make<number>()
+      yield* client.Stream().pipe(
+        Stream.runForEach((value) => Queue.offer(received, value)),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* Queue.take(probe.entered), "Stream")
+      assert.strictEqual(yield* Queue.take(received), 1)
+      assert.strictEqual(driver.replyIds.size, 1)
+
+      fence.fenced = true
+      yield* probe.release.open
+      yield* TestClock.adjust(1000)
+
+      assert.isTrue(yield* Deferred.isDone(probe.interrupted))
+      assert.strictEqual(driver.replyIds.size, 1)
+      assert.strictEqual(fence.writeChecks, 1)
+      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
+      assert.strictEqual(Queue.sizeUnsafe(received), 0)
+    })))
+
+  it.effect("abandons a fenced transactional reply without restarting the entity", () =>
+    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe }) {
+      const result = yield* client.Transaction().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* Queue.take(probe.entered), "Transaction")
+
+      fence.fenced = true
+      yield* probe.release.open
+      yield* TestClock.adjust(1000)
+
+      assert.strictEqual(driver.replyIds.size, 0)
+      assert.strictEqual(fence.writeChecks, 1)
+      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
+      assert.isUndefined(result.pollUnsafe())
+    })))
+})
+
+const FencedEntity = Entity.make("FencedEntity", [
+  Rpc.make("Request", { success: Schema.Number }),
+  Rpc.make("Stream", { success: Schema.Number, stream: true }),
+  Rpc.make("Transaction", { success: Schema.Number }).annotate(
+    ClusterSchema.Dynamic,
+    Context.add(ClusterSchema.WithTransaction, true)
+  )
+]).annotateRpcs(ClusterSchema.Persisted, true)
+
+interface FencedProbe {
+  readonly entered: Queue.Queue<string>
+  readonly release: Latch.Latch
+  readonly interrupted: Deferred.Deferred<void>
+}
+
+// Each handler produces its result only after `release` opens.
+const FencedEntityLayer = (probe: FencedProbe) =>
+  FencedEntity.toLayer(FencedEntity.of({
+    Request: () => Effect.andThen(Queue.offer(probe.entered, "Request"), Effect.as(probe.release.await, 1)),
+    Stream: () =>
+      Stream.fromEffect(Effect.as(Queue.offer(probe.entered, "Stream"), 1)).pipe(
+        Stream.concat(Stream.fromEffect(Effect.as(probe.release.await, 2))),
+        Stream.concat(Stream.never),
+        Stream.onExit((exit) => Exit.hasInterrupts(exit) ? Deferred.succeed(probe.interrupted, void 0) : Effect.void)
+      ),
+    Transaction: () => Effect.andThen(Queue.offer(probe.entered, "Transaction"), Effect.as(probe.release.await, 1))
+  }))
+
+interface ShardFence {
+  // once set, lock storage attributes no shard to this runner, while the
+  // runner's own lock refresh is not due yet
+  fenced: boolean
+  // single-shard ownership checks made while fenced, one per reply write
+  writeChecks: number
+}
+
+const withFencedEntity = Effect.fnUntraced(function*<E>(
+  body: (options: {
+    readonly client: ReturnType<Effect.Success<typeof FencedEntity.client>>
+    readonly driver: MessageStorage.MemoryDriver["Service"]
+    readonly fence: ShardFence
+    readonly probe: FencedProbe
+  }) => Effect.Effect<void, E>
+) {
+  const restarts: Array<unknown> = []
+  const logger = Logger.make<unknown, void>(({ message }) => {
+    if (globalThis.Array.isArray(message) && message.includes("Defect in entity, restarting")) {
+      restarts.push(message)
+    }
+  })
+  const fence: ShardFence = { fenced: false, writeChecks: 0 }
+  const probe: FencedProbe = {
+    entered: yield* Queue.make<string>(),
+    release: Latch.makeUnsafe(false),
+    interrupted: yield* Deferred.make<void>()
+  }
+  const runnerStorage = Layer.effect(
+    RunnerStorage.RunnerStorage,
+    Effect.map(RunnerStorage.makeMemory, (storage) =>
+      RunnerStorage.RunnerStorage.of({
+        ...storage,
+        owned: (address, shardIds) => {
+          const shards = globalThis.Array.from(shardIds)
+          if (!fence.fenced) return storage.owned(address, shards)
+          if (shards.length === 1) fence.writeChecks++
+          return Effect.succeed([])
+        }
+      }))
+  )
+  const layer = FencedEntityLayer(probe).pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide([runnerStorage, RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(TestShardingConfig)
+  )
+
+  yield* Effect.gen(function*() {
+    const driver = yield* MessageStorage.MemoryDriver
+    const makeClient = yield* FencedEntity.client
+    yield* TestClock.adjust(1)
+    yield* body({ client: makeClient("1"), driver, fence, probe })
+    assert.deepStrictEqual(restarts, [])
+  }).pipe(Effect.provide(layer), Effect.withLogger(logger))
+})
+
 const terminationRpc = <Tag extends RpcGroup.Rpcs<typeof TestEntity.protocol>["_tag"]>(tag: Tag) =>
   TestEntity.protocol.requests.get(tag)! as Extract<RpcGroup.Rpcs<typeof TestEntity.protocol>, { readonly _tag: Tag }>
 
