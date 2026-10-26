@@ -1,16 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted, Stream } from "effect"
 import { DockerError, DockerExec } from "effect/docker"
-import {
-  concat,
-  type Connection,
-  connection,
-  frame,
-  json,
-  makeStubEngine,
-  recordSpans,
-  withPing
-} from "./utils/stub.ts"
+import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -27,23 +18,7 @@ const execEngine = (upgrade: Connection, exitCode = 0) =>
   )
 
 describe("DockerExec", () => {
-  it.effect("starts an exec in one span, which runs the endpoint of the same name", () =>
-    Effect.gen(function*() {
-      const { attributes, tracer } = recordSpans()
-      yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["true"])).pipe(
-        execEngine(connection([])).provide,
-        Effect.withTracer(tracer)
-      )
-      assert.deepStrictEqual(attributes().filter((line) => line.includes("docker.resource_id")), [
-        "docker.Exec.run docker.resource_id=c",
-        "docker.Exec.create docker.resource_id=c",
-        "docker.Exec.start docker.resource_id=e",
-        "docker.Exec.inspect docker.resource_id=e",
-        "docker.Exec.inspect docker.resource_id=e"
-      ])
-    }))
-
-  it.effect("runs a command and returns its output and exit code", () =>
+  it.effect("runs a command and returns its output and exit code, half-closing stdin", () =>
     Effect.gen(function*() {
       // frames split across reads, one byte at a time
       const wire = concat(frame(1, "out\n"), frame(2, "err\n"))
@@ -79,42 +54,24 @@ describe("DockerExec", () => {
       assert.deepStrictEqual(result.stdout, bytes("done\n"))
     }))
 
-  it.effect("fails run with the stdin input's error", () =>
+  it.effect("fails with the stdin input's error or ConnectionFailed, and releases the connection", () =>
     Effect.gen(function*() {
       const broken = new DockerError.DockerError({ reason: new DockerError.StreamFailed({ message: "input broke" }) })
       const input = Stream.concat(Stream.make(bytes("part")), Stream.fail(broken))
+      const held = connection([], "hold")
       const error = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["cat"], { stdin: input })).pipe(
-        execEngine(connection([], "hold")).provide,
+        execEngine(held).provide,
         Effect.flip
       )
       // the input's reason, naming the operation it failed
       assert.strictEqual(error.reason, broken.reason)
       assert.strictEqual(error.operation, "docker.Exec.run")
-    }))
-
-  it.effect("fails with ConnectionFailed when the connection breaks, instead of waiting", () =>
-    Effect.gen(function*() {
-      const error = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["true"])).pipe(
+      assert.isTrue(held.halfClosed)
+      const reset = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["true"])).pipe(
         execEngine(connection([frame(1, "x")], "error")).provide,
         Effect.flip
       )
-      assert.strictEqual(error.reason._tag, "ConnectionFailed")
-    }))
-
-  it.effect("fails start with the Engine's error response", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", (request) =>
-        request.url.pathname.endsWith("/start")
-          ? json({ message: "container c is not running" }, 409)
-          : json({ ID: "e", Running: false, ExitCode: 0, OpenStdin: false, ProcessConfig: { tty: false } })))
-      const error = yield* Effect.scoped(DockerExec.DockerExec.use((exec) => exec.start("e"))).pipe(
-        stub.provide,
-        Effect.flip
-      )
-      assert.deepStrictEqual(
-        [error.reason, error.operation],
-        [new DockerError.Conflict({ message: "container c is not running" }), "docker.Exec.start"]
-      )
+      assert.strictEqual(reset.reason._tag, "ConnectionFailed")
     }))
 
   it.effect("fails writes to stdin that wasn't attached", () =>

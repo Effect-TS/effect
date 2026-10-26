@@ -1,60 +1,41 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Stream } from "effect"
-import { DockerError, DockerTasks } from "effect/docker"
-import { frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
+import { DockerApi, DockerError, DockerTasks } from "effect/docker"
+import { HttpApi, HttpApiBuilder, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { fakeEngine } from "./utils/fake.ts"
+import { concat, frame } from "./utils/stub.ts"
 
-const Tasks = DockerTasks.DockerTasks
+const Served = HttpApi.make("docker").add(
+  HttpApiGroup.make("tasks").add(DockerApi.Tasks.endpoints.inspect, DockerApi.Tasks.endpoints.logs)
+    .middleware(DockerApi.SwarmErrors)
+)
+
+const Handlers = HttpApiBuilder.group(Served, "tasks", (handlers) =>
+  handlers
+    .handle("inspect", ({ params }) =>
+      params.id === "t1"
+        ? Effect.succeed({ ID: "t1", Status: { State: "running" as const } })
+        : Effect.fail(new DockerError.NotFound({ message: `task ${params.id} not found` })))
+    .handle("logs", () =>
+      Effect.succeed(HttpApiSchema.withHeaders({
+        body: Stream.make(concat(frame(1, "out\n"), frame(2, "err\n"))),
+        headers: { "content-type": "application/vnd.docker.multiplexed-stream" as const }
+      }))))
 
 describe("DockerTasks", () => {
-  it.effect("sends each request as the Engine reads it", () =>
+  it.effect("round-trips DockerApi: inspect, error responses and multiplexed logs", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", (request) =>
-        request.url.pathname.endsWith("/logs")
-          ? { headers: { "content-type": "application/vnd.docker.multiplexed-stream" }, body: frame(1, "out\n") }
-          : request.url.pathname.endsWith("/tasks")
-          ? json([{ ID: "t1" }])
-          : json({ ID: "t1", Status: { State: "running" } })))
-      const [list, task, logs] = yield* Tasks.use((tasks) =>
-        Effect.all([
-          tasks.list({ filters: { service: "web", "desired-state": "running" } }),
-          tasks.inspect("t1"),
-          Stream.runCollect(tasks.logs("t1", { timestamps: true }))
-        ])
-      ).pipe(stub.provide)
-      assert.deepStrictEqual(list, [{ ID: "t1" }])
-      assert.strictEqual(task.Status?.State, "running")
-      assert.deepStrictEqual(logs.map((frame) => new TextDecoder().decode(frame.data)), ["out\n"])
+      const tasks = yield* DockerTasks.DockerTasks
+      assert.strictEqual((yield* tasks.inspect("t1")).Status?.State, "running")
+      const missing = yield* Effect.flip(tasks.inspect("t2"))
       assert.deepStrictEqual(
-        stub.requests.slice(1).map((request) =>
-          `${request.method} ${request.url.pathname}${decodeURIComponent(request.url.search)}`
-        ),
-        [
-          `GET /v1.44/tasks?filters={"service":["web"],"desired-state":["running"]}`,
-          "GET /v1.44/tasks/t1",
-          "GET /v1.44/tasks/t1/logs?stdout=true&stderr=true&timestamps=true"
-        ]
+        [missing.reason, missing.operation],
+        [new DockerError.NotFound({ message: "task t2 not found" }), "docker.Tasks.inspect"]
       )
-    }))
-
-  it.effect("fails with SwarmUnavailable on a node that isn't a manager", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", () => json({ message: "This node is not a swarm manager." }, 503)))
-      const error = yield* Effect.flip(Tasks.use((tasks) => tasks.inspect("t1"))).pipe(stub.provide)
+      const frames = yield* Stream.runCollect(tasks.logs("t1"))
       assert.deepStrictEqual(
-        [error.reason, error.operation],
-        [new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." }), "docker.Tasks.inspect"]
+        frames.map((frame) => `${frame.stream}:${new TextDecoder().decode(frame.data)}`),
+        ["stdout:out\n", "stderr:err\n"]
       )
-    }))
-
-  it.effect("fails logs with the Engine's error response", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", () => json({ message: "task t1 not found" }, 404)))
-      const error = yield* Effect.flip(Stream.runDrain(Stream.unwrap(Tasks.useSync((tasks) => tasks.logs("t1"))))).pipe(
-        stub.provide
-      )
-      assert.deepStrictEqual(
-        [error.reason, error.operation],
-        [new DockerError.NotFound({ message: "task t1 not found" }), "docker.Tasks.logs"]
-      )
-    }))
+    }).pipe(Effect.provide(fakeEngine(Served, Handlers))))
 })

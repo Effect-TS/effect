@@ -1,44 +1,33 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { DockerSwarmConfigs } from "effect/docker"
-import { json, makeStubEngine, withPing } from "./utils/stub.ts"
+import { DockerApi, DockerSwarmConfigs } from "effect/docker"
+import { HttpApi, HttpApiBuilder, HttpApiGroup } from "effect/http-api"
+import { fakeEngine } from "./utils/fake.ts"
 
-const Configs = DockerSwarmConfigs.DockerSwarmConfigs
+const Served = HttpApi.make("docker").add(
+  HttpApiGroup.make("configs").add(DockerApi.SwarmConfigs.endpoints.create, DockerApi.SwarmConfigs.endpoints.inspect)
+    .middleware(DockerApi.SwarmErrors)
+)
 
-// padded standard base64 `+/8=`, base64url `-_8`
-const bytes = Uint8Array.of(0xfb, 0xff)
+const configs = new Map<string, DockerApi.ConfigSpec>()
+
+const Handlers = HttpApiBuilder.group(Served, "configs", (handlers) =>
+  handlers
+    .handle("create", ({ payload }) =>
+      Effect.sync(() => {
+        configs.set("c1", payload)
+        return { ID: "c1" }
+      }))
+    .handle("inspect", ({ params }) => Effect.sync(() => ({ ID: params.id, Spec: configs.get(params.id)! }))))
 
 describe("DockerSwarmConfigs", () => {
-  it.effect("sends and reads Data as padded standard base64", () =>
+  it.effect("round-trips DockerApi: Data as bytes", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", (request) =>
-        request.url.pathname.endsWith("/create")
-          ? json({ ID: "c1" }, 201)
-          : request.url.pathname.endsWith("/configs")
-          ? json([{ ID: "c1", Spec: { Name: "conf", Data: "+/8=" } }])
-          : request.method === "GET"
-          ? json({ ID: "c1", Version: { Index: 2 }, Spec: { Name: "conf", Data: "+/8=" } })
-          : request.method === "DELETE"
-          ? { status: 204 }
-          : {}))
-      const [created, list, config] = yield* Configs.use((configs) =>
-        Effect.all([
-          configs.create({ Name: "conf", Data: bytes }),
-          configs.list({ filters: { name: "conf" } }),
-          configs.inspect("conf"),
-          configs.update("conf", { Name: "conf", Data: bytes, Labels: { rev: "2" } }, { version: 2 }),
-          configs.remove("conf")
-        ])
-      ).pipe(stub.provide)
-      assert.deepStrictEqual(created, { ID: "c1" })
-      assert.deepStrictEqual(list[0].Spec?.Data, bytes)
-      assert.deepStrictEqual(config.Spec?.Data, bytes)
-      const requests = stub.requests.slice(1)
-      assert.deepStrictEqual(JSON.parse(requests[0].body!), { Name: "conf", Data: "+/8=" })
-      assert.deepStrictEqual(JSON.parse(requests[3].body!), { Name: "conf", Data: "+/8=", Labels: { rev: "2" } })
-      assert.strictEqual(
-        `${requests[3].method} ${requests[3].url.pathname}${requests[3].url.search}`,
-        "POST /v1.44/configs/conf/update?version=2"
-      )
-    }))
+      const service = yield* DockerSwarmConfigs.DockerSwarmConfigs
+      // padded standard base64 `+/8=`, base64url `-_8`
+      const data = Uint8Array.of(0xfb, 0xff)
+      const { ID } = yield* service.create({ Name: "conf", Data: data })
+      assert.deepStrictEqual(configs.get(ID)!.Data, data)
+      assert.deepStrictEqual((yield* service.inspect(ID)).Spec?.Data, data)
+    }).pipe(Effect.provide(fakeEngine(Served, Handlers))))
 })

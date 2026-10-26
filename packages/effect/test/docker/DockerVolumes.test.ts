@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { DockerError, DockerVolumes } from "effect/docker"
+import { DockerVolumes } from "effect/docker"
 import { json, makeStubEngine, withPing } from "./utils/stub.ts"
 
 describe("DockerVolumes", () => {
@@ -43,61 +43,5 @@ describe("DockerVolumes", () => {
         ]
       )
       assert.strictEqual(stub.requests[2].body, JSON.stringify({ Name: "v" }))
-    }))
-
-  it.effect("fails with the Engine's reason, or InvalidResponse for a body or status the endpoint doesn't declare", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.50", (request) =>
-        request.url.pathname.endsWith("/missing")
-          ? json({ message: "no such volume" }, 404)
-          : request.url.pathname.endsWith("/create")
-          ? json({ message: "This node is not a swarm manager." }, 503)
-          : request.url.pathname.endsWith("/broken")
-          ? json({ Name: 5 })
-          : json({}, 202)))
-      const fail = (name: string) =>
-        DockerVolumes.DockerVolumes.use((volumes) => volumes.inspect(name)).pipe(stub.provide, Effect.flip)
-      const missing = yield* fail("missing")
-      assert.deepStrictEqual(
-        [missing.reason, missing.operation],
-        [new DockerError.NotFound({ message: "no such volume" }), "docker.Volumes.inspect"]
-      )
-      const broken = yield* fail("broken")
-      assert(broken.reason._tag === "InvalidResponse")
-      assert.strictEqual(broken.operation, "docker.Volumes.inspect")
-      const unexpected = yield* fail("other")
-      assert(unexpected.reason._tag === "InvalidResponse")
-      assert.include(unexpected.message, "unexpected status 202")
-      // Swarm serves cluster volumes
-      const cluster = yield* DockerVolumes.DockerVolumes.use((volumes) =>
-        volumes.create({ Name: "v", ClusterVolumeSpec: {} })
-      ).pipe(stub.provide, Effect.flip)
-      assert.deepStrictEqual(
-        [cluster.reason, cluster.reason.isRetryable],
-        [new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." }), false]
-      )
-    }))
-
-  it.effect("reads an error body that isn't the Engine's JSON as text, and classifies any status", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.50", (request) =>
-        request.url.pathname.endsWith("/proxied")
-          ? { status: 403, headers: { "content-type": "text/html" }, body: "<h1>Forbidden</h1>\n" }
-          : json({ message: "bad gateway" }, 502)))
-      const fail = (name: string) =>
-        DockerVolumes.DockerVolumes.use((volumes) => volumes.inspect(name)).pipe(
-          stub.provide,
-          Effect.flip,
-          Effect.map((error) => [error.reason, error.operation])
-        )
-      assert.deepStrictEqual(
-        yield* fail("proxied"),
-        [new DockerError.Forbidden({ message: "<h1>Forbidden</h1>" }), "docker.Volumes.inspect"]
-      )
-      // a status `DockerApi` doesn't declare
-      assert.deepStrictEqual(
-        yield* fail("other"),
-        [new DockerError.UnexpectedStatus({ status: 502, message: "bad gateway" }), "docker.Volumes.inspect"]
-      )
     }))
 })

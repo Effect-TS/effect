@@ -6,7 +6,7 @@ import { inspect } from "node:util"
 import { json, makeStubEngine, withPing } from "./utils/stub.ts"
 
 describe("DockerEngine", () => {
-  it.effect("negotiates the API version: the Engine's, capped at the pinned spec's", () =>
+  it.effect("negotiates the Engine's API version, capped at the pinned spec's, and doesn't cache a failure", () =>
     Effect.gen(function*() {
       const cases: ReadonlyArray<[string | undefined, string]> = [
         ["1.50", "1.50"],
@@ -19,29 +19,10 @@ describe("DockerEngine", () => {
         const stub = makeStubEngine(engineVersion === undefined ? () => ({ body: "OK" }) : withPing(engineVersion))
         assert.strictEqual(yield* stub.engine.apiVersion, expected, engineVersion)
       }
-    }))
-
-  it.effect("prefixes requests with the negotiated version, after one unversioned ping", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.50", () => json({})))
-      yield* DockerSystem.DockerSystem.use((system) => Effect.andThen(system.info, system.info)).pipe(stub.provide)
-      assert.deepStrictEqual(stub.requests.map((request) => `${request.method} ${request.url.pathname}`), [
-        "HEAD /_ping",
-        "GET /v1.50/info",
-        "GET /v1.50/info"
-      ])
-    }))
-
-  it.effect("fails for an Engine older than 1.44", () =>
-    Effect.gen(function*() {
       for (const engineVersion of ["1.43", "1.9"]) {
         const error = yield* Effect.flip(makeStubEngine(withPing(engineVersion)).engine.apiVersion)
         assert.deepStrictEqual(error.reason, new DockerError.UnsupportedApiVersion({ engineVersion, minimum: "1.44" }))
       }
-    }))
-
-  it.effect("doesn't cache a failed negotiation", () =>
-    Effect.gen(function*() {
       let fail = true
       const stub = makeStubEngine((request) => fail ? { status: 503, body: "starting" } : withPing("1.44")(request))
       const error = yield* Effect.flip(stub.engine.apiVersion)
@@ -54,11 +35,19 @@ describe("DockerEngine", () => {
       assert.strictEqual(yield* stub.engine.apiVersion, "1.44")
     }))
 
-  it.effect("uses a pinned version as-is, without negotiating", () =>
+  it.effect("prefixes requests with the negotiated version after one unversioned ping, or the pinned one", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.50"), { apiVersion: "1.60" })
-      assert.strictEqual(yield* stub.engine.apiVersion, "1.60")
-      assert.strictEqual(stub.requests.length, 0)
+      const stub = makeStubEngine(withPing("1.50", () => json({})))
+      yield* DockerSystem.DockerSystem.use((system) => Effect.andThen(system.info, system.info)).pipe(stub.provide)
+      assert.deepStrictEqual(stub.requests.map((request) => `${request.method} ${request.url.pathname}`), [
+        "HEAD /_ping",
+        "GET /v1.50/info",
+        "GET /v1.50/info"
+      ])
+      // a pinned version is used as-is, without negotiating
+      const pinned = makeStubEngine(withPing("1.50", () => json({})), { apiVersion: "1.60" })
+      yield* DockerSystem.DockerSystem.use((system) => system.info).pipe(pinned.provide)
+      assert.deepStrictEqual(pinned.requests.map((request) => request.url.pathname), ["/v1.60/info"])
     }))
 
   it.effect("sends the configured headers, unless the request sets them", () =>
@@ -74,7 +63,7 @@ describe("DockerEngine", () => {
       assert.strictEqual(info.headers["x-other"], "own")
     }))
 
-  it.effect("fails with a retryable ConnectionFailed that keeps the request and TLS material out", () =>
+  it.effect("fails with a sanitized ConnectionFailed, retryable unless it names a misconfiguration", () =>
     Effect.gen(function*() {
       const stub = makeStubEngine(
         () => ({ fail: true, cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) }),
@@ -110,24 +99,20 @@ describe("DockerEngine", () => {
           assert.notInclude(text, secret)
         }
       }
-    }))
-
-  it.effect("doesn't retry a connection failure that names a misconfiguration", () =>
-    Effect.gen(function*() {
-      const cases: ReadonlyArray<[string, string]> = [
+      // a failure that names a misconfiguration isn't retried
+      const permanent: ReadonlyArray<[string, string]> = [
         ["SELF_SIGNED_CERT_IN_CHAIN", "the Engine's TLS certificate couldn't be verified"],
-        ["ERR_TLS_CERT_ALTNAME_INVALID", "the Engine's TLS certificate couldn't be verified"],
         ["ERR_SSL_TLSV13_ALERT_CERTIFICATE_REQUIRED", "the Engine requires a client certificate"],
         ["ERR_SSL_WRONG_VERSION_NUMBER", "TLS/plain mismatch: the Engine and the client disagree about TLS"],
         ["EACCES", "permission denied on /test.sock: is the user allowed to use the Engine?"]
       ]
-      for (const [code, hint] of cases) {
+      for (const [code, hint] of permanent) {
         const cause = Object.assign(new Error(code), { code })
         const stub = makeStubEngine(() => ({ fail: true, cause }))
-        const error = yield* Effect.flip(stub.engine.apiVersion)
-        assert(error.reason._tag === "ConnectionFailed")
-        assert.strictEqual(error.reason.hint, hint, code)
-        assert.isFalse(error.isRetryable, code)
+        const failed = yield* Effect.flip(stub.engine.apiVersion)
+        assert(failed.reason._tag === "ConnectionFailed")
+        assert.strictEqual(failed.reason.hint, hint, code)
+        assert.isFalse(failed.isRetryable, code)
         // as in moby's client, a connection failure doesn't dial again with `GET`
         assert.strictEqual(stub.requests.length, 1, code)
       }

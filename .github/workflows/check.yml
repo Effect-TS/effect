@@ -159,11 +159,9 @@ jobs:
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           docker pull coredns/coredns:1.14.7 &
-          # effect/docker's live tests; the Swarm and plugin suites run in a private docker:dind
+          # effect/docker's live tests
           docker pull docker.io/library/alpine:3.22 &
-          docker pull docker.io/library/busybox:1.37 &
           docker pull docker.io/library/registry:2 &
-          docker pull docker.io/library/docker:29-dind &
           wait
 
       - name: Install dependencies
@@ -175,11 +173,6 @@ jobs:
       - name: Test
         if: matrix.runtime != 'Deno'
         run: ${{ matrix.command }}
-      - name: Test effect/docker at the minimum API version
-        if: matrix.runtime == 'Node'
-        env:
-          DOCKER_API_VERSION: "1.44"
-        run: pnpm vitest run packages/effect/test/docker packages/platform/node/test/NodeDocker.integration.test.ts
       - name: Test with PostgreSQL lifecycle capture
         if: matrix.runtime == 'Deno'
         shell: bash

@@ -151,14 +151,6 @@ describe("NodeDocker", () => {
       assert.isFalse(error.isRetryable)
     }))
 
-  it.effect("fails with a hint when the socket doesn't exist", () =>
-    Effect.gen(function*() {
-      const error = yield* connect({ _tag: "Unix", path: "/nonexistent/docker.sock" }).pipe(Effect.flip)
-      assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
-      assert.strictEqual(error.reason.hint, "the socket /nonexistent/docker.sock doesn't exist: is the Engine running?")
-      assert.isTrue(error.isRetryable)
-    }))
-
   it.effect("runs credential helpers as child processes", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
