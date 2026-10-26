@@ -13,9 +13,9 @@ type FlatParams = { readonly [key: string]: unknown }
  *
  * Each object on the codec's encoded side, through unions and suspensions,
  * rebuilds only its own fields that can decode an object and that none of its
- * index signatures would reject as an object. Every other key reaches the
- * schema flat, as before, so union members keep their own interpretation and
- * flat keys an index signature accepts keep decoding.
+ * index signatures covers. Every other key reaches the schema flat, as before,
+ * so union members keep their own interpretation and flat keys an index
+ * signature accepts keep decoding.
  *
  * @internal
  */
@@ -40,18 +40,19 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
   for (const ps of ast.propertySignatures) {
     if (typeof ps.name !== "string") continue
     declared.add(ps.name)
-    if (canBeObject(ps.type) && !rejectsObject(ast, ps.name)) nestable.add(ps.name)
+    if (canBeObject(ps.type) && !isIndexed(ast, ps.name)) nestable.add(ps.name)
   }
   if (nestable.size === 0) return ast
-  // The flat input keeps the literal fields, so unions still select members by
-  // them before any rebuilding
-  const flat = new SchemaAST.Objects(
-    ast.propertySignatures.filter((ps) =>
-      !SchemaAST.isOptional(ps.type) && ps.type.encoding === undefined &&
-      (SchemaAST.isLiteral(ps.type) || SchemaAST.isUniqueSymbol(ps.type))
-    ),
-    [new SchemaAST.IndexSignature(SchemaAST.string, SchemaAST.unknown)]
-  )
+  // The flat input keeps the wire literals of the required literal fields, so
+  // unions still select members by them before any rebuilding
+  const discriminators: Array<SchemaAST.PropertySignature> = []
+  for (const ps of ast.propertySignatures) {
+    const literal = SchemaAST.isOptional(ps.type) ? undefined : getWireLiteral(ps.type)
+    if (literal !== undefined) discriminators.push(new SchemaAST.PropertySignature(ps.name, literal))
+  }
+  const flat = new SchemaAST.Objects(discriminators, [
+    new SchemaAST.IndexSignature(SchemaAST.string, SchemaAST.unknown)
+  ])
   return SchemaAST.decodeTo(
     flat,
     ast,
@@ -61,6 +62,21 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
     })
   )
 }
+
+// The literal a field decodes from, following its encodings as union member
+// selection does
+function getWireLiteral(field: SchemaAST.AST): SchemaAST.AST | undefined {
+  let ast = field
+  while (ast.encoding !== undefined) {
+    if (ast.encoding.some((link) => link.transformation._tag === "Middleware")) return undefined
+    ast = ast.encoding[ast.encoding.length - 1].to
+  }
+  return SchemaAST.isLiteral(ast) || SchemaAST.isUniqueSymbol(ast)
+    ? SchemaAST.replaceContext(ast, undefined)
+    : undefined
+}
+
+const stringTree = SchemaAST.unknownToStringTree.to as SchemaAST.Declaration
 
 // Whether the encoded side of a field can be an object
 function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean {
@@ -75,7 +91,7 @@ function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
       return true
     case "Declaration":
       // The string tree `Unknown` and `ObjectKeyword` fields encode to
-      return ast === SchemaAST.unknownToStringTree.to
+      return ast.run === stringTree.run
     case "Union":
       return ast.types.some((type) => canBeObject(type, seen))
     case "Suspend":
@@ -84,13 +100,10 @@ function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
   return false
 }
 
-// An index signature that covers the field but only accepts non-object values
-// would reject the rebuilt object, so the field's keys stay flat for it
-function rejectsObject(ast: SchemaAST.Objects, name: string): boolean {
-  return ast.indexSignatures.some((is) =>
-    Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter)))(name) &&
-    !canBeObject(is.type)
-  )
+// Flat keys of a field an index signature covers keep reaching the index
+// signature, as they did before nested objects were rebuilt
+function isIndexed(ast: SchemaAST.Objects, name: string): boolean {
+  return ast.indexSignatures.some((is) => Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter)))(name))
 }
 
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
