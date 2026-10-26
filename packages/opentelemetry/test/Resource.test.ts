@@ -62,6 +62,33 @@ describe("Resource", () => {
       )
     ))
 
+  it.effect("keeps empty attribute values and skips entries without a separator", () =>
+    Effect.gen(function*() {
+      const resource = yield* Resource.Resource
+      assert.strictEqual(resource.attributes["empty"], "")
+      assert.strictEqual(resource.attributes["a"], "1")
+      assert.isFalse("novalue" in resource.attributes)
+    }).pipe(
+      Effect.provide(Resource.layerFromEnv()),
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "empty=,novalue,a=1" } })
+      )
+    ))
+
+  it.effect("accepts structured OTEL_RESOURCE_ATTRIBUTES", () =>
+    Effect.gen(function*() {
+      const resource = yield* Resource.Resource
+      assert.strictEqual(resource.attributes["team"], "platform")
+      assert.strictEqual(resource.attributes["service.version"], "1.0.0")
+    }).pipe(
+      Effect.provide(Resource.layerFromEnv()),
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromUnknown({ OTEL_RESOURCE_ATTRIBUTES: { team: "platform", "service.version": "1.0.0" } })
+      )
+    ))
+
   it.effect("discards OTEL_RESOURCE_ATTRIBUTES with malformed percent-encoding", () =>
     Effect.gen(function*() {
       const resource = yield* Resource.Resource
