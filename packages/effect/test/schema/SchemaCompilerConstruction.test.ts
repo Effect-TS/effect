@@ -37,7 +37,11 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 10
     try {
-      const makeErrorAtCallsite = () => E.make({ message: "failure" })
+      // Not a tail call: JavaScriptCore (Bun) drops tail-calling frames.
+      const makeErrorAtCallsite = () => {
+        const error = E.make({ message: "failure" })
+        return error
+      }
       assert.include(makeErrorAtCallsite().stack, "makeErrorAtCallsite")
     } finally {
       Error.stackTraceLimit = limit
