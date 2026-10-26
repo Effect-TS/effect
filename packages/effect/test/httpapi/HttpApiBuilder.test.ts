@@ -6,6 +6,7 @@ import {
   type Exit,
   FileSystem,
   Layer,
+  Option,
   Path,
   Redacted,
   Schema,
@@ -538,6 +539,37 @@ it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
       for (const exit of exits) {
         assert.isTrue(exit._tag === "Failure" && Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause))
       }
+    }))
+
+  it.effect("aborts instead of writing an element a recovering error decoder would accept", () =>
+    Effect.gen(function*() {
+      // Decoding recovers from any code, so every record decodes as a Failed
+      const Failed = Schema.Struct({
+        code: Schema.String.pipe(Schema.catchDecoding(() => Effect.succeed(Option.some("fallback"))))
+      })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("build", "/build", {
+            success: HttpApiSchema.StreamNdjson({
+              schema: Schema.Struct({ text: Schema.String, code: Schema.Number }),
+              error: Failed
+            })
+          })
+        )
+      )
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(
+        Effect.provide(
+          HttpApiBuilder.group(
+            Api,
+            "test",
+            (handlers) => handlers.handle("build", () => Effect.succeed(Stream.make({ text: "a", code: 1 })))
+          )
+        )
+      )
+
+      // Had the element been written, the client would fail with { code: "fallback" }
+      const exit = yield* client.test.build().pipe(Effect.flatMap(Stream.runDrain), Effect.exit)
+      assert.isTrue(exit._tag === "Failure" && Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause))
     }))
 })
 
