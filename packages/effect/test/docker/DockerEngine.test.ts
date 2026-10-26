@@ -161,6 +161,16 @@ describe("DockerError", () => {
       assert.strictEqual(text.reason.message, "Not Found")
     }))
 
+  it.effect("caps an error body at 1 MiB, whether DockerApi declares its status or not", () =>
+    Effect.gen(function*() {
+      const body = JSON.stringify({ message: "x".repeat(2 * 1024 * 1024) })
+      for (const status of [502, 500]) {
+        const error = yield* classify(status, body)
+        assert(error.reason._tag === "ServerError" || error.reason._tag === "UnexpectedStatus")
+        assert.isAtMost(error.reason.message.length, 1024 * 1024, String(status))
+      }
+    }))
+
   it.effect("maps decode failures to InvalidResponse, naming the operation", () =>
     Effect.gen(function*() {
       const cases = [json({ Version: 1 }), { headers: { "content-type": "application/json" }, body: "not json" }]

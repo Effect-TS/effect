@@ -37,3 +37,35 @@ export const scopedContainer = (config: Parameters<DockerContainers.DockerContai
         DockerContainers.DockerContainers.use((containers) => containers.remove(Id, { force: true, volumes: true }))
       )
   ).pipe(Effect.map(({ Id }) => Id))
+
+/**
+ * Images this test owns: `labels` to build them with, and `reference` to
+ * record a tag or a pushed name. Each is removed with the scope, failures
+ * included, and nothing another test or run created is touched.
+ */
+export const scopedImages = Effect.gen(function*() {
+  const images = yield* DockerImages.DockerImages
+  const id = crypto.randomUUID()
+  const references: Array<string> = []
+  yield* Effect.addFinalizer(() =>
+    Effect.gen(function*() {
+      yield* Effect.forEach(references, (reference) => Effect.ignore(images.remove(reference)))
+      const built = yield* images.list({ all: true, filters: { label: `effect-docker-test-id=${id}` } })
+      yield* Effect.forEach(built, (summary) => Effect.ignore(images.remove(summary.Id, { force: true })))
+    }).pipe(Effect.ignore)
+  )
+  return {
+    labels: { ...labels, "effect-docker-test-id": id },
+    /** A tag in a repository of this test's own. */
+    tag: (tag: string) => {
+      const reference = `localhost/effect-docker-test-${id}:${tag}`
+      references.push(reference)
+      return reference
+    },
+    /** Records a reference this test creates. */
+    reference: (reference: string) => {
+      references.push(reference)
+      return reference
+    }
+  }
+})
