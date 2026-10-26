@@ -24,6 +24,7 @@ import { identity } from "effect/Function"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
+import type * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
@@ -52,9 +53,11 @@ import * as SigV4 from "./internal/sigv4.ts"
  */
 export interface Service {
   /**
-   * The underlying `HttpClient`, with the base URL and authentication applied.
+   * The underlying `HttpClient`, with the base URL and authentication
+   * applied, for Bedrock Runtime operations this service does not model.
+   * Resolving the credentials can fail with an `AiError`.
    */
-  readonly client: HttpClient.HttpClient
+  readonly client: HttpClient.HttpClient.With<HttpClientError.HttpClientError | AiError.AiError>
 
   /**
    * Calls the Converse operation and maps all errors to the unified `AiError`
@@ -124,8 +127,9 @@ export interface Credentials {
  * - `credentials`, an effect resolved before every request, signed with
  *   SigV4. This is where a credential provider such as `fromNodeProviderChain()`
  *   from `@aws-sdk/credential-providers` plugs in, wrapped in
- *   `Effect.promise`; wrap the effect in `Effect.cachedWithTTL` to avoid
- *   resolving credentials on every request.
+ *   `Effect.promise`. To avoid resolving credentials on every request, build
+ *   the layer inside `Layer.unwrap` and pass the effect that
+ *   `Effect.cachedWithTTL` returns.
  * - `accessKeyId` and `secretAccessKey`, with an optional `sessionToken`,
  *   signed with SigV4.
  *
@@ -266,15 +270,6 @@ const authenticateRequest = (region: string) =>
     }
   })
 
-const knownStreamEvents = new Set([
-  "messageStart",
-  "contentBlockStart",
-  "contentBlockDelta",
-  "contentBlockStop",
-  "messageStop",
-  "metadata"
-])
-
 const decodeStreamEvent = Schema.decodeUnknownEffect(ConverseStreamEvent)
 const decodeStreamException = Schema.decodeUnknownEffect(ConverseStreamException)
 
@@ -303,6 +298,22 @@ export const make = Effect.fnUntraced(
       ),
       HttpClient.mapRequestEffect(authenticateRequest(region)),
       Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity
+    )
+
+    // The exposed client resolves the credentials of a request itself, unless
+    // `converse` or `converseStream` already did.
+    const client = HttpClient.makeWith(
+      (requestEffect) =>
+        Effect.flatMap(
+          requestEffect,
+          (request) =>
+            Effect.flatMap(CurrentRequestCredentials, (current) =>
+              Predicate.isNotUndefined(current)
+                ? httpClient.execute(request)
+                : Effect.flatMap(resolveCredentials("execute"), (credentials) =>
+                  Effect.provideService(httpClient.execute(request), CurrentRequestCredentials, credentials)))
+        ),
+      Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
     )
 
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
@@ -335,8 +346,7 @@ export const make = Effect.fnUntraced(
       switch (messageType) {
         case "event": {
           const eventType = frame.headers[":event-type"]
-          // An event this provider does not model is skipped, not fatal.
-          if (Predicate.isUndefined(eventType) || !knownStreamEvents.has(eventType)) {
+          if (Predicate.isUndefined(eventType)) {
             return undefined
           }
           const payload = yield* EventStream.parseJsonPayload(frame)
@@ -389,7 +399,7 @@ export const make = Effect.fnUntraced(
       )
 
     return AmazonBedrockClient.of({
-      client: httpClient,
+      client,
       converse,
       converseStream
     })

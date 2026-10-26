@@ -14,7 +14,15 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Brand from "effect/Brand"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+
+/**
+ * The rest of every response struct: fields this provider does not model are
+ * decoded as they are, so a low-level consumer can read them.
+ */
+const UnknownRecord = Schema.Record(Schema.String, Schema.Unknown)
 
 // =============================================================================
 // Common
@@ -233,21 +241,25 @@ export const DocumentBlock = Schema.Struct({
 })
 
 /**
- * A content block within a Converse message.
+ * A content block within a Converse message. A block member this provider
+ * does not model, such as `citationsContent`, is kept as it was sent.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlock = Schema.Struct({
-  text: Schema.optional(Schema.String),
-  toolUse: Schema.optional(ToolUseBlock),
-  toolResult: Schema.optional(ToolResultBlock),
-  reasoningContent: Schema.optional(ReasoningContentBlock),
-  image: Schema.optional(ImageBlock),
-  document: Schema.optional(DocumentBlock),
-  cachePoint: Schema.optional(CachePointBlock)
-})
+export const ContentBlock = Schema.StructWithRest(
+  Schema.Struct({
+    text: Schema.optional(Schema.String),
+    toolUse: Schema.optional(ToolUseBlock),
+    toolResult: Schema.optional(ToolResultBlock),
+    reasoningContent: Schema.optional(ReasoningContentBlock),
+    image: Schema.optional(ImageBlock),
+    document: Schema.optional(DocumentBlock),
+    cachePoint: Schema.optional(CachePointBlock)
+  }),
+  [UnknownRecord]
+)
 
 /**
  * A message within a Converse conversation.
@@ -458,20 +470,24 @@ export const ConverseMetrics = Schema.Struct({
 })
 
 /**
- * The response from a successful Converse call. `trace` is kept as Bedrock
- * sent it.
+ * The response from a successful Converse call. `trace` and any field this
+ * provider does not model, such as `additionalModelResponseFields`, are kept
+ * as Bedrock sent them.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseResponse = Schema.Struct({
-  output: Schema.Struct({ message: Message }),
-  usage: TokenUsage,
-  stopReason: StopReason,
-  metrics: Schema.optional(ConverseMetrics),
-  trace: Schema.optional(Schema.Unknown)
-})
+export const ConverseResponse = Schema.StructWithRest(
+  Schema.Struct({
+    output: Schema.Struct({ message: Message }),
+    usage: TokenUsage,
+    stopReason: StopReason,
+    metrics: Schema.optional(ConverseMetrics),
+    trace: Schema.optional(Schema.Unknown)
+  }),
+  [UnknownRecord]
+)
 
 /**
  * The type of {@link ConverseResponse}.
@@ -507,28 +523,35 @@ export const MessageStartEvent = Schema.Struct({
  */
 export const ContentBlockStartEvent = Schema.Struct({
   contentBlockIndex: Schema.Int,
-  start: Schema.optional(Schema.Struct({
-    toolUse: Schema.optional(Schema.Struct({ toolUseId: Schema.String, name: Schema.String }))
-  }))
+  start: Schema.optional(Schema.StructWithRest(
+    Schema.Struct({
+      toolUse: Schema.optional(Schema.Struct({ toolUseId: Schema.String, name: Schema.String }))
+    }),
+    [UnknownRecord]
+  ))
 })
 
 /**
  * A delta within a streamed content block: text, a fragment of tool input
- * JSON, or reasoning text, signature or redacted content.
+ * JSON, or reasoning text, signature or redacted content. A delta member this
+ * provider does not model, such as `citation`, is kept as it was sent.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlockDelta = Schema.Struct({
-  text: Schema.optional(Schema.String),
-  toolUse: Schema.optional(Schema.Struct({ input: Schema.String })),
-  reasoningContent: Schema.optional(Schema.Struct({
+export const ContentBlockDelta = Schema.StructWithRest(
+  Schema.Struct({
     text: Schema.optional(Schema.String),
-    signature: Schema.optional(Schema.String),
-    redactedContent: Schema.optional(Schema.String)
-  }))
-})
+    toolUse: Schema.optional(Schema.Struct({ input: Schema.String })),
+    reasoningContent: Schema.optional(Schema.Struct({
+      text: Schema.optional(Schema.String),
+      signature: Schema.optional(Schema.String),
+      redactedContent: Schema.optional(Schema.String)
+    }))
+  }),
+  [UnknownRecord]
+)
 
 /**
  * A streamed delta event for a content block.
@@ -572,16 +595,66 @@ export const MessageStopEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseStreamMetadataEvent = Schema.Struct({
-  usage: TokenUsage,
-  metrics: Schema.optional(ConverseMetrics),
-  trace: Schema.optional(Schema.Unknown)
-})
+export const ConverseStreamMetadataEvent = Schema.StructWithRest(
+  Schema.Struct({
+    usage: TokenUsage,
+    metrics: Schema.optional(ConverseMetrics),
+    trace: Schema.optional(Schema.Unknown)
+  }),
+  [UnknownRecord]
+)
+
+const knownStreamEventTypes = new Set([
+  "messageStart",
+  "contentBlockStart",
+  "contentBlockDelta",
+  "contentBlockStop",
+  "messageStop",
+  "metadata"
+])
+
+/**
+ * A ConverseStream event this provider does not model, keyed by its
+ * event-stream `:event-type` like every other event: `{ [eventType]: payload }`.
+ *
+ * **Details**
+ *
+ * The type declares no index signature, so an `in` check on a
+ * {@link ConverseStreamEvent} still narrows to the known event, and the brand
+ * keeps this member apart from them. Read the payload with `Object.entries`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type UnknownConverseStreamEvent = Brand.Branded<object, "UnknownConverseStreamEvent">
+
+/**
+ * Fallback schema for a ConverseStream event this provider does not model.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UnknownConverseStreamEvent = Schema.declare<UnknownConverseStreamEvent>(
+  (value): value is UnknownConverseStreamEvent => {
+    if (!Predicate.isObject(value)) {
+      return false
+    }
+    const keys = Object.keys(value)
+    return keys.length === 1 && !knownStreamEventTypes.has(keys[0])
+  },
+  {
+    identifier: "UnknownConverseStreamEvent",
+    description: "Fallback for unknown future stream events"
+  }
+)
 
 /**
  * A ConverseStream event, keyed by its event-stream `:event-type`, as the AWS
  * SDK shapes it: `{ messageStart: ... }`, `{ contentBlockDelta: ... }` and so
- * on.
+ * on. An event type this provider does not model decodes through
+ * {@link UnknownConverseStreamEvent}; a malformed known event still fails.
  *
  * @stability unstable
  * @category schemas
@@ -593,7 +666,8 @@ export const ConverseStreamEvent = Schema.Union([
   Schema.Struct({ contentBlockDelta: ContentBlockDeltaEvent }),
   Schema.Struct({ contentBlockStop: ContentBlockStopEvent }),
   Schema.Struct({ messageStop: MessageStopEvent }),
-  Schema.Struct({ metadata: ConverseStreamMetadataEvent })
+  Schema.Struct({ metadata: ConverseStreamMetadataEvent }),
+  UnknownConverseStreamEvent
 ])
 
 /**

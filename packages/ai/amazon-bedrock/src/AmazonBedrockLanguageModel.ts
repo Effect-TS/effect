@@ -32,12 +32,14 @@ import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
 import { AmazonBedrockClient } from "./AmazonBedrockClient.ts"
+import { UnknownConverseStreamEvent } from "./AmazonBedrockSchema.ts"
 import type {
   CachePointBlock,
   ContentBlock,
@@ -1047,6 +1049,34 @@ const makeUsage = (usage: TokenUsage): Response.Usage => {
   }
 }
 
+const isUnknownStreamEvent = Schema.is(UnknownConverseStreamEvent)
+
+/**
+ * A streamed reasoning block in flight. Converse streams the signature after
+ * the text, and redacted reasoning as several base64 chunks of one byte
+ * sequence, each encoded on its own, so the chunks are decoded and joined
+ * before the block's metadata is emitted.
+ */
+interface ReasoningBlock {
+  signature: string | undefined
+  readonly redactedChunks: Array<Uint8Array>
+}
+
+const reasoningBlockInfo = (block: ReasoningBlock): ReasoningInfo => ({
+  ...(Predicate.isNotUndefined(block.signature) ? { signature: block.signature } : {}),
+  ...(block.redactedChunks.length > 0 ? { redactedContent: Base64.encode(concatBytes(block.redactedChunks)) } : {})
+})
+
+const concatBytes = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
+  const out = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.length, 0))
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.length
+  }
+  return out
+}
+
 const makeStreamResponse = (
   request: typeof ConverseRequest.Encoded,
   stream: Stream.Stream<ConverseStreamEvent, AiError.AiError>,
@@ -1055,10 +1085,9 @@ const makeStreamResponse = (
   span: Span
 ): Stream.Stream<Response.StreamPartEncoded, AiError.AiError> => {
   // Text and reasoning blocks have no `contentBlockStart` event, so they are
-  // started on their first delta. Reasoning blocks also collect the signature
-  // or redacted payload that Converse streams after the text.
+  // started on their first delta.
   const textBlocks = new Set<number>()
-  const reasoningBlocks = new Map<number, ReasoningInfo>()
+  const reasoningBlocks = new Map<number, ReasoningBlock>()
   // Tool-use blocks in flight. Bedrock streams tool arguments as partial
   // JSON, so the fragments are accumulated here and parsed once the block
   // stops.
@@ -1071,6 +1100,11 @@ const makeStreamResponse = (
   return stream.pipe(
     Stream.mapEffect(Effect.fnUntraced(function*(event) {
       const parts: Array<Response.StreamPartEncoded> = []
+
+      // Events this provider does not model are ignored.
+      if (isUnknownStreamEvent(event)) {
+        return parts
+      }
 
       if ("messageStart" in event) {
         parts.push({
@@ -1101,20 +1135,32 @@ const makeStreamResponse = (
             parts.push({ type: "tool-params-delta", id: block.id, delta: toolUse.input })
           }
         } else if (Predicate.isNotUndefined(reasoningContent)) {
-          let info = reasoningBlocks.get(index)
-          if (Predicate.isUndefined(info)) {
-            info = {}
-            reasoningBlocks.set(index, info)
+          let block = reasoningBlocks.get(index)
+          if (Predicate.isUndefined(block)) {
+            block = { signature: undefined, redactedChunks: [] }
+            reasoningBlocks.set(index, block)
             parts.push({ type: "reasoning-start", id })
           }
           if (Predicate.isNotUndefined(reasoningContent.text)) {
             parts.push({ type: "reasoning-delta", id, delta: reasoningContent.text })
           }
           if (Predicate.isNotUndefined(reasoningContent.signature)) {
-            reasoningBlocks.set(index, { ...info, signature: reasoningContent.signature })
+            block.signature = reasoningContent.signature
           }
           if (Predicate.isNotUndefined(reasoningContent.redactedContent)) {
-            reasoningBlocks.set(index, { ...info, redactedContent: reasoningContent.redactedContent })
+            const chunk = Base64.decode(reasoningContent.redactedContent)
+            if (Result.isFailure(chunk)) {
+              return yield* AiError.make({
+                module: "AmazonBedrockLanguageModel",
+                method: "makeStreamResponse",
+                reason: new AiError.InvalidResponseError({
+                  description: `Bedrock streamed redacted reasoning that is not base64: ${
+                    truncate(reasoningContent.redactedContent, 100)
+                  }`
+                })
+              })
+            }
+            block.redactedChunks.push(chunk.success)
           }
         } else if (Predicate.isNotUndefined(text)) {
           if (!textBlocks.has(index)) {
@@ -1131,10 +1177,10 @@ const makeStreamResponse = (
         if (textBlocks.delete(index)) {
           parts.push({ type: "text-end", id })
         }
-        const info = reasoningBlocks.get(index)
-        if (Predicate.isNotUndefined(info)) {
+        const reasoningBlock = reasoningBlocks.get(index)
+        if (Predicate.isNotUndefined(reasoningBlock)) {
           reasoningBlocks.delete(index)
-          parts.push({ type: "reasoning-end", id, metadata: { "amazon-bedrock": info } })
+          parts.push({ type: "reasoning-end", id, metadata: { "amazon-bedrock": reasoningBlockInfo(reasoningBlock) } })
         }
         const block = toolBlocks.get(index)
         if (Predicate.isNotUndefined(block)) {
@@ -1163,7 +1209,7 @@ const makeStreamResponse = (
         }
       } else if ("messageStop" in event) {
         stopReason = event.messageStop.stopReason
-      } else {
+      } else if ("metadata" in event) {
         annotateResponse(span, request.modelId, stopReason, event.metadata.usage)
         parts.push({
           type: "finish",
