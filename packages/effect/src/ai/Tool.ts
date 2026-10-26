@@ -174,6 +174,30 @@ export type NeedsApproval<Params extends Schema.Constraint> =
   | NeedsApprovalFunction<Params>
 
 /**
+ * A function that maps a successful tool result to content for the model.
+ *
+ * **Example** (Returning a screenshot as an image)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Prompt, Tool } from "effect/ai"
+ *
+ * const Screenshot = Tool.make("Screenshot", {
+ *   success: Schema.Struct({ png: Schema.String }),
+ *   toModelContent: ({ png }) => [Prompt.filePart({ mediaType: "image/png", data: png })]
+ * })
+ * typeof Screenshot.toModelContent // => "function"
+ * ```
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type ToModelContent<Success extends Schema.Constraint> = (
+  result: Success["Type"]
+) => ReadonlyArray<Prompt.ToolResultContentPart>
+
+/**
  * A user-defined tool that language models can call to perform actions.
  *
  * **Details**
@@ -289,6 +313,16 @@ export interface Tool<
    *   a boolean or an Effect that resolves to a boolean.
    */
   readonly needsApproval?: boolean | NeedsApprovalFunction<any> | undefined
+
+  /**
+   * Maps a successful result of this tool to content for the model, such as
+   * text and images.
+   *
+   * **Details**
+   *
+   * See the `toModelContent` option of {@link make}.
+   */
+  readonly toModelContent?: ToModelContent<any> | undefined
 
   /**
    * Set whether user approval is required before executing this tool.
@@ -1017,6 +1051,11 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly encodedResult: unknown
   /**
+   * Content for the model, made by the tool's `toModelContent` function.
+   * Present only for final successful results of tools that set it.
+   */
+  readonly content?: ReadonlyArray<Prompt.ToolResultContentPart> | undefined
+  /**
    * Whether the result of executing the tool call handler was an error or not.
    */
   readonly isFailure: boolean
@@ -1117,7 +1156,8 @@ const Proto = {
     return clone(this, { parametersSchema, jsonSchema: undefined })
   },
   setSuccess(this: Any, successSchema: Schema.Constraint) {
-    return clone(this, { successSchema })
+    // The mapping was written for the old success type
+    return clone(this, { successSchema, toModelContent: undefined })
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
@@ -1158,6 +1198,7 @@ const userDefinedProto = <
   readonly annotations: Context.Context<never>
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
+  readonly toModelContent?: ToModelContent<any> | undefined
 }): Tool<
   Name,
   {
@@ -1220,6 +1261,7 @@ const dynamicProto = <
   readonly annotations: Context.Context<never>
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<any> | undefined
+  readonly toModelContent?: ToModelContent<any> | undefined
   readonly jsonSchema: JsonSchema.JsonSchema | undefined
 }): Dynamic<
   Name,
@@ -1319,6 +1361,22 @@ export const make = <
    *   dynamically determine if approval is needed.
    */
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
+  /**
+   * Maps a successful result to content for the model, such as text and
+   * images.
+   *
+   * **Details**
+   *
+   * By default, providers send the encoded result to the model as JSON text.
+   * When this function is set, providers that support rich tool results send
+   * the returned parts instead. For example, Anthropic sends them as
+   * `tool_result` content blocks and OpenAI sends them as
+   * `function_call_output` content items. Providers that only accept text
+   * tool results keep sending the JSON text of the encoded result.
+   *
+   * The function is not called for failures or preliminary results.
+   */
+  readonly toModelContent?: ToModelContent<Success> | undefined
 }): Tool<
   Name,
   {
@@ -1339,7 +1397,8 @@ export const make = <
     failureSchema,
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
-    needsApproval: options?.needsApproval as any
+    needsApproval: options?.needsApproval as any,
+    toModelContent: options?.toModelContent
   }) as any
 }
 
@@ -1400,6 +1459,7 @@ export const dynamic: {
       readonly failure?: Schema.Constraint | undefined
       readonly failureMode?: FailureMode | undefined
       readonly needsApproval?: NeedsApproval<any> | undefined
+      readonly toModelContent?: ToModelContent<any> | undefined
     }
   >(
     name: Name,
@@ -1427,6 +1487,7 @@ export const dynamic: {
     readonly failure?: Schema.Constraint | undefined
     readonly failureMode?: FailureMode | undefined
     readonly needsApproval?: NeedsApproval<any> | undefined
+    readonly toModelContent?: ToModelContent<any> | undefined
   }
 >(name: Name, options?: Options): any => {
   const successSchema = options?.success ?? Schema.Unknown
@@ -1444,6 +1505,7 @@ export const dynamic: {
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
     needsApproval: options?.needsApproval,
+    toModelContent: options?.toModelContent,
     jsonSchema
   })
 }

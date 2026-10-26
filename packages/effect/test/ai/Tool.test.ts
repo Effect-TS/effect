@@ -14,7 +14,7 @@ import {
   SchemaGetter,
   Stream
 } from "effect"
-import { AiError, LanguageModel, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
 
@@ -1624,5 +1624,76 @@ describe("Dynamic", () => {
       })().annotate(Tool.Strict, false)
       strictEqual(Tool.getStrictMode(tool), false)
     })
+  })
+})
+
+describe("Tool.toModelContent", () => {
+  const png = new Uint8Array([137, 80, 78, 71])
+  const Screenshot = Tool.make("Screenshot", {
+    success: Schema.Struct({ title: Schema.String }),
+    failure: Schema.Struct({ reason: Schema.String }),
+    failureMode: "return",
+    toModelContent: ({ title }) => [
+      Prompt.textPart({ text: title }),
+      Prompt.filePart({ mediaType: "image/png", data: png })
+    ]
+  })
+  const toolkit = Toolkit.make(Screenshot)
+  const toolCall = { type: "tool-call", id: "call-1", name: "Screenshot", params: {} } as const
+
+  it.effect("adds the content to successful tool results", () =>
+    Effect.gen(function*() {
+      const response = yield* LanguageModel.generateText({ prompt: "Test", toolkit }).pipe(
+        TestUtils.withLanguageModel({ generateText: [toolCall] }),
+        Effect.provide(toolkit.toLayer({ Screenshot: () => Effect.succeed({ title: "Home page" }) }))
+      )
+
+      const result = response.toolResults[0]
+      deepStrictEqual(result?.encodedResult, { title: "Home page" })
+      deepStrictEqual(result?.content, [
+        Prompt.textPart({ text: "Home page" }),
+        Prompt.filePart({ mediaType: "image/png", data: png })
+      ])
+    }))
+
+  it.effect("does not add content to failed tool results", () =>
+    Effect.gen(function*() {
+      const response = yield* LanguageModel.generateText({ prompt: "Test", toolkit }).pipe(
+        TestUtils.withLanguageModel({ generateText: [toolCall] }),
+        Effect.provide(toolkit.toLayer({ Screenshot: () => Effect.fail({ reason: "No screen" }) }))
+      )
+
+      const result = response.toolResults[0]
+      strictEqual(result?.isFailure, true)
+      strictEqual(result?.content, undefined)
+    }))
+
+  it.effect("keeps the content in the prompt for the next request", () =>
+    Effect.gen(function*() {
+      const response = yield* LanguageModel.generateText({ prompt: "Test", toolkit }).pipe(
+        TestUtils.withLanguageModel({ generateText: [toolCall] }),
+        Effect.provide(toolkit.toLayer({ Screenshot: () => Effect.succeed({ title: "Home page" }) }))
+      )
+
+      const prompt = Prompt.fromResponseParts(response.content)
+      const toolMessage = prompt.content.find((message) => message.role === "tool")
+      const part = toolMessage?.content[0]
+      assertTrue(part?.type === "tool-result")
+      deepStrictEqual(part.content, [
+        Prompt.textPart({ text: "Home page" }),
+        Prompt.filePart({ mediaType: "image/png", data: png })
+      ])
+
+      // The content survives a JSON round trip of the prompt, as in Chat
+      const PromptJson = Schema.fromJsonString(Prompt.Prompt)
+      const json = yield* Schema.encodeEffect(PromptJson)(prompt)
+      const decoded = yield* Schema.decodeUnknownEffect(PromptJson)(json)
+      deepStrictEqual(decoded, prompt)
+    }))
+
+  it("drops the mapping when the success schema changes", () => {
+    const changed = Screenshot.setSuccess(Schema.Number)
+    strictEqual(changed.toModelContent, undefined)
+    assertTrue(typeof Screenshot.toModelContent === "function")
   })
 })

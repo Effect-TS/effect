@@ -921,65 +921,11 @@ const prepareMessages = Effect.fnUntraced(
           for (let index = 0; index < message.content.length; index++) {
             const part = message.content[index]
 
-            switch (part.type) {
-              case "text": {
-                content.push({
-                  type: "input_text",
-                  text: part.text,
-                  ...getPromptCacheBreakpoint(part)
-                })
-                break
-              }
-
-              case "file": {
-                const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
-                if (part.mediaType.startsWith("image/")) {
-                  const detail = getImageDetail(part)
-                  const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
-
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint })
-                  } else {
-                    const imageUrl = part.data instanceof URL
-                      ? part.data.toString()
-                      : part.data instanceof Uint8Array
-                      ? `data:${mediaType};base64,${Base64.encode(part.data)}`
-                      : /^(data:|https?:\/\/)/i.test(part.data)
-                      ? part.data
-                      : `data:${mediaType};base64,${part.data}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint })
-                  }
-                } else if (part.mediaType === "application/pdf") {
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_file", file_id: part.data, ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Base64.encode(part.data)
-                    const fileName = part.fileName ?? `part-${index}.pdf`
-                    const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({
-                      type: "input_file",
-                      filename: fileName,
-                      file_data: fileData,
-                      ...promptCacheBreakpoint
-                    })
-                  }
-                } else {
-                  return yield* AiError.make({
-                    module: "OpenAiLanguageModel",
-                    method: "prepareMessages",
-                    reason: new AiError.InvalidRequestError({
-                      description: `Detected unsupported media type for file: '${part.mediaType}'`
-                    })
-                  })
-                }
-              }
+            const items = makeInputContent(part, index, config)
+            if (Predicate.isUndefined(items)) {
+              return yield* unsupportedFileError(part)
             }
+            content.push(...items)
           }
 
           messages.push({ role: "user", content })
@@ -1367,10 +1313,26 @@ const prepareMessages = Effect.fnUntraced(
               continue
             }
 
+            // Send content from the tool's `toModelContent` as input content,
+            // so the model can see images and files
+            let output: string | Array<typeof OpenAiSchema.InputContent.Encoded>
+            if (Predicate.isNotUndefined(part.content)) {
+              output = []
+              for (let index = 0; index < part.content.length; index++) {
+                const items = makeInputContent(part.content[index], index, config)
+                if (Predicate.isUndefined(items)) {
+                  return yield* unsupportedFileError(part.content[index])
+                }
+                output.push(...items)
+              }
+            } else {
+              output = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+            }
+
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+              output,
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
@@ -3156,6 +3118,70 @@ const makeItemIdMetadata = (itemId: string | undefined) => Predicate.isNotUndefi
 
 const makeEncryptedContentMetadata = (encryptedContent: string | null | undefined) =>
   Predicate.isNotNullish(encryptedContent) ? { encryptedContent } : undefined
+
+// Converts a text or file part to OpenAI input content. Returns `undefined`
+// for a file media type that OpenAI does not support.
+const makeInputContent = (
+  part: Prompt.TextPart | Prompt.FilePart,
+  index: number,
+  config: typeof Config.Service
+): Array<typeof OpenAiSchema.InputContent.Encoded> | undefined => {
+  const content: Array<typeof OpenAiSchema.InputContent.Encoded> = []
+  if (part.type === "text") {
+    content.push({ type: "input_text", text: part.text, ...getPromptCacheBreakpoint(part) })
+    return content
+  }
+  const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
+  if (part.mediaType.startsWith("image/")) {
+    const detail = getImageDetail(part)
+    const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
+
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      content.push({ type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint })
+    } else {
+      const imageUrl = part.data instanceof URL
+        ? part.data.toString()
+        : part.data instanceof Uint8Array
+        ? `data:${mediaType};base64,${Base64.encode(part.data)}`
+        : /^(data:|https?:\/\/)/i.test(part.data)
+        ? part.data
+        : `data:${mediaType};base64,${part.data}`
+      content.push({ type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint })
+    }
+  } else if (part.mediaType === "application/pdf") {
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      content.push({ type: "input_file", file_id: part.data, ...promptCacheBreakpoint })
+    }
+
+    if (part.data instanceof URL) {
+      content.push({ type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint })
+    }
+
+    if (part.data instanceof Uint8Array) {
+      const base64 = Base64.encode(part.data)
+      const fileName = part.fileName ?? `part-${index}.pdf`
+      const fileData = `data:application/pdf;base64,${base64}`
+      content.push({
+        type: "input_file",
+        filename: fileName,
+        file_data: fileData,
+        ...promptCacheBreakpoint
+      })
+    }
+  } else {
+    return undefined
+  }
+  return content
+}
+
+const unsupportedFileError = (part: Prompt.TextPart | Prompt.FilePart): AiError.AiError =>
+  AiError.make({
+    module: "OpenAiLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidRequestError({
+      description: `Detected unsupported media type for file: '${part.type === "file" ? part.mediaType : "text"}'`
+    })
+  })
 
 const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError =>
   AiError.make({
