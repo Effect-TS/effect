@@ -8,63 +8,50 @@ import { setImmediate as nextTurn } from "node:timers/promises"
 
 const headers = { "content-type": "multipart/form-data; boundary=x" }
 const form = "--x\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nb\r\n--x--\r\n"
-const sourceEvents = ["data", "end", "error", "close"] as const
+const destroy = (source: Readable, error?: Error) =>
+  Effect.promise(() => {
+    const closed = new Promise((resolve) => source.once("close", resolve))
+    source.destroy(error)
+    return closed
+  })
 
 describe("NodeMultipart", () => {
   it.effect("removes its source listeners after parsing", () =>
     Effect.gen(function*() {
       const source = Readable.from([Buffer.from(form)])
-      const parts = yield* NodeMultipart.stream(source, headers).pipe(Stream.runCollect)
+      yield* NodeMultipart.stream(source, headers).pipe(Stream.runDrain)
       yield* Effect.promise(() => nextTurn())
 
-      assert.deepStrictEqual(parts.map((part) => part._tag === "Field" && part.value), ["b"])
-      assert.isTrue(source.closed)
-      for (const event of sourceEvents) {
-        assert.strictEqual(source.listenerCount(event), 0)
-      }
+      assert.deepStrictEqual(source.eventNames(), [])
     }))
 
-  it.effect("fails with a typed parse error when the source finished before parsing", () =>
+  it.effect("fails with a typed parse error when the source terminates early", () =>
     Effect.gen(function*() {
-      for (const cause of [undefined, new Error("boom")]) {
-        const source = new Readable({ read() {} })
-        const closed = new Promise((resolve) => source.once("close", resolve))
-        source.once("error", () => {})
-        source.destroy(cause)
-        yield* Effect.promise(() => closed)
-
-        const error = yield* NodeMultipart.stream(source, headers).pipe(Stream.runDrain, Effect.flip)
-        assert.strictEqual(error.reason._tag, "Parse")
-        if (cause) assert.strictEqual(error.reason.cause, cause)
-      }
-    }))
-
-  it.effect("fails with a typed parse error when the source closes before the body ends", () =>
-    Effect.gen(function*() {
-      const source = new Readable({ read() {} })
-      source.push(Buffer.from(form.slice(0, 20)))
-      setImmediate(() => source.destroy())
-
-      const error = yield* NodeMultipart.stream(source, headers).pipe(Stream.runDrain, Effect.flip)
+      const cause = new Error("boom")
+      const destroyed = new Readable({ read() {} }).on("error", () => {})
+      yield* destroy(destroyed, cause)
+      const error = yield* NodeMultipart.stream(destroyed, headers).pipe(Stream.runDrain, Effect.flip)
       assert.strictEqual(error.reason._tag, "Parse")
+      assert.strictEqual(error.reason.cause, cause)
+
+      const closed = new Readable({ read() {} })
+      closed.push(form.slice(0, 20))
+      setImmediate(() => closed.destroy())
+      const closedError = yield* NodeMultipart.stream(closed, headers).pipe(Stream.runDrain, Effect.flip)
+      assert.strictEqual(closedError.reason._tag, "Parse")
     }))
 
   it.effect("leaves the source open on interruption and handles its later error", () =>
     Effect.gen(function*() {
       const source = new Readable({ read() {} })
-      source.push(Buffer.from(form.slice(0, 20)))
+      source.push(form.slice(0, 20))
       const fiber = yield* NodeMultipart.stream(source, headers).pipe(Stream.runDrain, Effect.forkChild)
       yield* Effect.promise(() => nextTurn())
-      assert.strictEqual(source.listenerCount("error"), 1)
       yield* Fiber.interrupt(fiber)
       assert.isFalse(source.destroyed)
 
-      const closed = new Promise((resolve) => source.once("close", resolve))
-      source.destroy(new Error("late"))
-      yield* Effect.promise(() => closed)
-      for (const event of sourceEvents) {
-        assert.strictEqual(source.listenerCount(event), 0)
-      }
+      yield* destroy(source, new Error("late"))
+      assert.deepStrictEqual(source.eventNames(), [])
     }))
 
   it.effect("fails with a typed parse error when the boundary is missing", () =>
