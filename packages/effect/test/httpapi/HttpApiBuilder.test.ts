@@ -909,6 +909,44 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
+  it.effect("selects union members by encoded discriminators before rebuilding", () =>
+    Effect.gen(function*() {
+      const Unused = Schema.String.pipe(Schema.decode(SchemaTransformation.transformEffect<string, string>({
+        decode: () => Effect.die("Unused member decoded"),
+        encode: Effect.succeed
+      })))
+      const Query = Schema.Union([
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Unused })), kind: Schema.Literal(1) }),
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })), kind: Schema.Literal(2) })
+      ])
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Query, "kind=2&meta%5Bk%5D=v"), { meta: { k: "v" }, kind: 2 })
+    }))
+
+  it.effect("keeps flat keys an index signature accepts for an object field", () =>
+    Effect.gen(function*() {
+      const Query = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })) }),
+        [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Struct({ j: Schema.String })]))]
+      )
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { "meta[k]": "v" })
+    }))
+
+  it.effect("rebuilds optional Unknown and ObjectKeyword fields", () =>
+    Effect.gen(function*() {
+      for (
+        const meta of [
+          Schema.optional(Schema.Unknown),
+          Schema.optionalKey(Schema.Unknown),
+          Schema.optional(Schema.ObjectKeyword),
+          Schema.optionalKey(Schema.ObjectKeyword)
+        ]
+      ) {
+        assert.deepStrictEqual(yield* decodeRawQuery(Schema.Struct({ meta }), "meta%5Bk%5D=v"), { meta: { k: "v" } })
+      }
+    }))
+
   it.effect("keeps flat record keys when the top level is transformed", () =>
     Effect.gen(function*() {
       const Flat = Schema.StructWithRest(
