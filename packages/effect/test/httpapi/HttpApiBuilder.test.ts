@@ -774,30 +774,44 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
+  const rawQueryError = Effect.fnUntraced(function*(query: Schema.Top, search: string) {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", { query }))
+    )
+    const handler = yield* HttpRouter.toHttpEffect(
+      HttpApiBuilder.layer(Api).pipe(
+        Layer.provide(HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("search", () => Effect.void)))
+      )
+    )
+    const exit = yield* handler.pipe(
+      Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request(`http://localhost/search?${search}`))
+      ),
+      Effect.exit
+    )
+    if (exit._tag === "Success") throw new Error("Expected query decoding to fail")
+    const error = Cause.squash(exit.cause)
+    return HttpApiError.HttpApiSchemaError.is(error) ? error.kind : error
+  })
+  const OptionalMeta = { meta: Schema.optional(Schema.Struct({ k: Schema.NonEmptyString })) }
+
   it.effect("rejects an invalid optional nested object instead of dropping it", () =>
     Effect.gen(function*() {
-      const Api = HttpApi.make("Api").add(
-        HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", {
-          query: { meta: Schema.optional(Schema.Struct({ k: Schema.NonEmptyString })) }
-        }))
-      )
-      const handler = yield* HttpRouter.toHttpEffect(
-        HttpApiBuilder.layer(Api).pipe(
-          Layer.provide(HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("search", () => Effect.void)))
-        )
-      )
-      const exit = yield* handler.pipe(
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          HttpServerRequest.fromWeb(new Request("http://localhost/search?meta%5Bk%5D="))
-        ),
-        Effect.exit
-      )
+      assert.strictEqual(yield* rawQueryError(Schema.Struct(OptionalMeta), "meta%5Bk%5D="), "Query")
+    }))
 
-      if (exit._tag === "Success") throw new Error("Expected query decoding to fail")
-      const error = Cause.squash(exit.cause)
-      assert.ok(HttpApiError.HttpApiSchemaError.is(error))
-      assert.strictEqual(error.kind, "Query")
+  it.effect("rejects an invalid nested object when another union member has a record", () =>
+    Effect.gen(function*() {
+      const Query = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("nested"), ...OptionalMeta }),
+        Schema.StructWithRest(
+          Schema.Struct({ kind: Schema.Literal("flat") }),
+          [Schema.Record(Schema.String, Schema.String)]
+        )
+      ])
+
+      assert.strictEqual(yield* rawQueryError(Query, "kind=nested&meta%5Bk%5D="), "Query")
     }))
 
   it.effect("rebuilds __proto__ segments as own properties", () =>
