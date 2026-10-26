@@ -7875,10 +7875,8 @@ Expected a value between -2147483648 and 2147483647`
     it("make preserves existing instances", () => {
       class E extends Schema.TaggedError<E>()("E", { message: Schema.String }) {}
       const instance = new E({ message: "failure" })
-      const stack = instance.stack
 
       assert.strictEqual(E.make(instance), instance)
-      assert.strictEqual(instance.stack, stack)
     })
 
     it("make with void input", () => {

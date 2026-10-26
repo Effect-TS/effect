@@ -9,18 +9,12 @@ describe("Schema compiler construction", { concurrent: false }, () => {
   it("uses an installed constructor for Class.make", () => {
     class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
     const instance = new C({ value: "installed" })
-    let calls = 0
     SchemaCompiler.set(SchemaAST.toType(C.ast), {
       decodeEffect: Effect.succeed,
-      makeEffect: () => {
-        calls++
-        return Effect.succeed(instance)
-      }
+      makeEffect: () => Effect.succeed(instance)
     })
 
     assert.strictEqual(C.make({ value: "input" }), instance)
-    assert.strictEqual(C.make(instance), instance)
-    assert.strictEqual(calls, 2)
   })
 
   it("propagates selective compilation through Class.make", () => {

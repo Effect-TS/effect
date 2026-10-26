@@ -1,4 +1,3 @@
-import { assert } from "@effect/vitest"
 import { Exit, Option } from "effect"
 import { describe, expect, it, vi } from "vitest"
 
@@ -69,7 +68,7 @@ describe("HMR", () => {
 
     expect(b instanceof mod1.A).toBe(false)
     expect(String(schema.encodeUnknownExit(mod1.A)(b))).toBe(`Success({"a":"a"})`)
-    assert.strictEqual(mod1.A.make(b), b)
+    expect(mod1.A.make(b)).toBe(b)
 
     const nested = schema.Struct({ rows: schema.Array(mod1.A) })
     expect(nested.make({ rows: [b] }).rows[0]).toBe(b)
