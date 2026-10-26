@@ -187,6 +187,41 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.provide(Reactivity.layer)
     ))
 
+  it.effect("retries a failed migration and the ones after it on the next run", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      const ledger: Array<{ migration_id: unknown; name: unknown }> = []
+      queryImpl = (options) => {
+        const query = String(options.query)
+        if (query.startsWith(`INSERT INTO "effect_sql_migrations"`)) {
+          const params = Object.values(options.query_params as Record<string, unknown>)
+          for (let i = 0; i < params.length; i += 2) {
+            ledger.unshift({ migration_id: params[i], name: params[i + 1] })
+          }
+        }
+        const data = query.startsWith("SELECT migration_id") ? ledger : []
+        return Promise.resolve({ json: () => Promise.resolve({ data }) })
+      }
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      let attempts = 0
+      const run = ClickhouseMigrator.run({
+        loader: ClickhouseMigrator.fromRecord({
+          "1_first": client`CREATE TABLE first`,
+          "2_second": Effect.suspend(() => attempts++ === 0 ? Effect.fail("rejected") : Effect.void),
+          "3_third": client`CREATE TABLE third`
+        })
+      }).pipe(Effect.provideService(SqlClient.SqlClient, client))
+
+      const error = yield* Effect.flip(run)
+      assert.strictEqual(error.message, `Migration "2_second" failed`)
+      assert.deepStrictEqual(yield* run, [[2, "second"], [3, "third"]])
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        queryImpl = undefined
+      })),
+      Effect.provide(Reactivity.layer)
+    ))
+
   it.effect("kills a streamed query only when the stream is not read to the end", () =>
     Effect.gen(function*() {
       connectImmediately = true
