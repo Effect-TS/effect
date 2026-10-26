@@ -47,7 +47,32 @@ export const encodeFrame = (
   headers: Record<string, string>,
   payload: Uint8Array,
   overrides: FrameOverrides = {}
+): Uint8Array<ArrayBuffer> => encodeRawFrame(encodeHeaders(headers), payload, overrides)
+
+/**
+ * Encodes one event-stream frame around an already encoded headers block, so
+ * a test can send a headers block the decoder must reject.
+ */
+export const encodeRawFrame = (
+  headerBytes: Uint8Array,
+  payload: Uint8Array,
+  overrides: FrameOverrides = {}
 ): Uint8Array<ArrayBuffer> => {
+  const headersLength = headerBytes.length
+  const totalLength = 12 + headersLength + payload.length + 4
+
+  const frame = new Uint8Array(totalLength)
+  const view = new DataView(frame.buffer)
+  view.setUint32(0, overrides.totalLength ?? totalLength, false)
+  view.setUint32(4, headersLength, false)
+  view.setUint32(8, overrides.preludeCrc ?? crc32(frame.subarray(0, 8)), false)
+  frame.set(headerBytes, 12)
+  frame.set(payload, 12 + headersLength)
+  view.setUint32(totalLength - 4, overrides.messageCrc ?? crc32(frame.subarray(0, totalLength - 4)), false)
+  return frame
+}
+
+const encodeHeaders = (headers: Record<string, string>): Uint8Array => {
   const headerChunks: Array<Uint8Array> = []
   for (const [name, value] of Object.entries(headers)) {
     const nameBytes = textEncoder.encode(name)
@@ -66,22 +91,7 @@ export const encodeFrame = (
     chunk.set(valueBytes, offset)
     headerChunks.push(chunk)
   }
-  const headersLength = headerChunks.reduce((acc, chunk) => acc + chunk.length, 0)
-  const totalLength = 12 + headersLength + payload.length + 4
-
-  const frame = new Uint8Array(totalLength)
-  const view = new DataView(frame.buffer)
-  view.setUint32(0, overrides.totalLength ?? totalLength, false)
-  view.setUint32(4, headersLength, false)
-  view.setUint32(8, overrides.preludeCrc ?? crc32(frame.subarray(0, 8)), false)
-  let offset = 12
-  for (const chunk of headerChunks) {
-    frame.set(chunk, offset)
-    offset += chunk.length
-  }
-  frame.set(payload, offset)
-  view.setUint32(totalLength - 4, overrides.messageCrc ?? crc32(frame.subarray(0, totalLength - 4)), false)
-  return frame
+  return concat(headerChunks)
 }
 
 const jsonPayload = (payload: unknown): Uint8Array => textEncoder.encode(JSON.stringify(payload))

@@ -5,7 +5,7 @@ import { ConfigProvider, Effect, Layer, Redacted, Stream } from "effect"
 import { AiError } from "effect/ai"
 import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 import * as NodeCrypto from "node:crypto"
-import { concat, encodeFrame, eventFrame, exceptionFrame, textReplyFrames } from "./utils.ts"
+import { concat, encodeFrame, encodeRawFrame, eventFrame, exceptionFrame, textReplyFrames } from "./utils.ts"
 
 const modelId = "anthropic.claude-3-haiku-20240307-v1:0"
 const encodedModelId = "anthropic.claude-3-haiku-20240307-v1%3A0"
@@ -99,6 +99,26 @@ describe("AmazonBedrockClient", () => {
         assert.strictEqual(request.url, `https://bedrock.example.test/model/${encodedModelId}/converse`)
         assert.strictEqual(request.headers["authorization"], "Bearer bedrock-api-key")
         assert.notProperty(request.headers, "x-amz-date")
+      }))
+
+    it.effect("authenticates direct requests through the exposed client", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) => Effect.succeed(jsonResponse(request, 200, { ok: true })))
+
+        yield* Effect.flatMap(
+          AmazonBedrockClient.AmazonBedrockClient,
+          (service) => service.client.post(`/model/${encodedModelId}/invoke`)
+        ).pipe(Effect.provide(staticKeys), Effect.provide(http.layer))
+
+        const request = http.requests[0]
+        assertDefined(request)
+        assert.strictEqual(
+          request.url,
+          `https://bedrock-runtime.us-east-1.amazonaws.com/model/${encodedModelId}/invoke`
+        )
+        const signature = verifySigV4(request, secretAccessKey)
+        assert.strictEqual(signature.accessKeyId, accessKeyId)
+        assert.strictEqual(signature.actual, signature.expected)
       }))
 
     it.effect("resolves the credentials effect on every request", () =>
@@ -281,7 +301,60 @@ describe("AmazonBedrockClient", () => {
     }
   })
 
+  describe("converse", () => {
+    it.effect("preserves response fields and content blocks it does not model", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(request, 200, {
+            ...converseBody,
+            output: {
+              message: {
+                role: "assistant",
+                content: [{ text: "Hi" }, { citationsContent: { content: [{ text: "cited" }] } }]
+              }
+            },
+            additionalModelResponseFields: { stop_sequence: null }
+          }))
+        )
+
+        const response = yield* converse.pipe(Effect.provide(staticKeys), Effect.provide(http.layer))
+
+        assert.deepStrictEqual(response.output.message.content[1] as unknown, {
+          citationsContent: { content: [{ text: "cited" }] }
+        })
+        const raw: Record<string, unknown> = response
+        assert.deepStrictEqual(raw.additionalModelResponseFields, { stop_sequence: null })
+      }))
+  })
+
   describe("converseStream", () => {
+    it.effect("preserves an event it does not model", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) =>
+          Effect.succeed(eventStreamResponse(request, [
+            concat([
+              eventFrame("messageStart", { role: "assistant" }),
+              eventFrame("someFutureEvent", { detail: 1 }),
+              eventFrame("messageStop", { stopReason: "end_turn" })
+            ])
+          ]))
+        )
+
+        const events = yield* converseStream.pipe(
+          Stream.runCollect,
+          Effect.map((chunk) => Array.from(chunk)),
+          Effect.provide(staticKeys),
+          Effect.provide(http.layer)
+        )
+
+        assert.deepStrictEqual(events.map((event) => Object.keys(event)[0]), [
+          "messageStart",
+          "someFutureEvent",
+          "messageStop"
+        ])
+        assert.deepStrictEqual(events[1] as unknown, { someFutureEvent: { detail: 1 } })
+      }))
+
     it.effect("decodes event frames split across chunks", () =>
       Effect.gen(function*() {
         const bytes = concat(textReplyFrames("Hello"))
@@ -354,6 +427,10 @@ describe("AmazonBedrockClient", () => {
       {
         label: "a frame cut off before its declared length",
         bytes: eventFrame("messageStart", { role: "assistant" }).subarray(0, 24)
+      },
+      {
+        label: "a CRC-valid frame whose headers block is cut off",
+        bytes: encodeRawFrame(new Uint8Array([255]), new TextEncoder().encode("{}"))
       },
       {
         label: "a payload that is not JSON",
