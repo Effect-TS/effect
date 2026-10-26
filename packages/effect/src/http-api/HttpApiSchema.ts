@@ -732,10 +732,9 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  *
  * **When to use**
  *
- * Use as the only success schema of an endpoint that hands over its
- * connection as a raw byte stream after `101 Switching Protocols`. For
- * WebSocket, upgrade the request with `HttpServerRequest.upgrade` and
- * connect with `Socket.makeWebSocket` instead.
+ * Use when an endpoint hands over its connection as a raw byte stream after
+ * `101 Switching Protocols`. For WebSocket, upgrade the request with
+ * `HttpServerRequest.upgrade` and connect with `Socket.makeWebSocket` instead.
  *
  * **Details**
  *
@@ -752,9 +751,17 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  * The endpoint may declare a buffered payload, which is decoded before the
  * handler runs. Streaming payloads are rejected.
  *
+ * The endpoint may also declare buffered or no-content successes at statuses
+ * other than `101`, for a server that declines the upgrade (RFC 9110 §7.8).
+ * The handler then either calls `upgrade` and returns nothing, or returns one
+ * of those successes without calling it. An endpoint declares at most one
+ * upgrade, and streaming successes cannot be combined with it.
+ *
  * The client sends `Connection: Upgrade` and `Upgrade: protocol`, and returns
  * the response headers with the connection, decoded with `headers` when
- * declared. Other responses are decoded as the endpoint's errors.
+ * declared. Ordinary success responses are decoded as usual, and
+ * `HttpApiClient.isUpgraded` tells the two apart. Other responses are decoded
+ * as the endpoint's errors.
  *
  * **Example** (Declaring an exec start endpoint)
  *
@@ -765,15 +772,19 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  * const start = HttpApiEndpoint.post("start", "/exec/:id/start", {
  *   params: { id: Schema.String },
  *   payload: Schema.Struct({ Detach: Schema.Boolean, Tty: Schema.Boolean }),
- *   success: HttpApiSchema.Upgrade({
- *     protocol: "tcp",
- *     headers: {
- *       "content-type": Schema.Literals([
- *         "application/vnd.docker.raw-stream",
- *         "application/vnd.docker.multiplexed-stream"
- *       ])
- *     }
- *   })
+ *   success: [
+ *     HttpApiSchema.Upgrade({
+ *       protocol: "tcp",
+ *       headers: {
+ *         "content-type": Schema.Literals([
+ *           "application/vnd.docker.raw-stream",
+ *           "application/vnd.docker.multiplexed-stream"
+ *         ])
+ *       }
+ *     }),
+ *     // a detached exec answers with an empty 200 instead
+ *     HttpApiSchema.Empty(200)
+ *   ]
  * })
  * ```
  *
