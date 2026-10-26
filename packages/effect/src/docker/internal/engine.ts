@@ -380,17 +380,15 @@ export const withStreamOperation =
     )
 
 // -----------------------------------------------------------------------------
-// API version gates
+// Swarm updates
 // -----------------------------------------------------------------------------
 
 /**
  * Whether a Swarm update failed because the object changed since it was
  * read: swarmkit's `update out of sequence`, which the Engine answers with
  * 500.
- *
- * @internal
  */
-export const isOutOfSequence = (error: DockerError): boolean =>
+const isOutOfSequence = (error: DockerError): boolean =>
   error.reason._tag === "ServerError" && error.reason.message.includes("update out of sequence")
 
 /**
@@ -414,6 +412,10 @@ export const modifyWith = <S extends object, A>(
     write(f(object.Spec ?? ({} as S)), object.Version?.Index ?? 0)).pipe(
       Effect.retry({ while: isOutOfSequence, times: 4 })
     )
+
+// -----------------------------------------------------------------------------
+// API version gates
+// -----------------------------------------------------------------------------
 
 /** A request field the caller set, and the API version it arrived in. */
 interface Gate {

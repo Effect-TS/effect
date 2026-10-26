@@ -140,9 +140,10 @@ export const layer: Layer.Layer<
  * **Details**
  *
  * The Docker CLI's configuration is read once, when the layer is built. A
- * value given in `overrides` wins over it, and its source is never read: an
- * `endpoint` skips Discovery, an `apiVersion` skips `DOCKER_API_VERSION`,
- * and so on. Building the layer never contacts the Engine.
+ * value given in `overrides` wins over it, and the files it would come from
+ * are never read: an `endpoint` skips Discovery, and so on. The `DOCKER_*`
+ * variables are always read and validated. Building the layer never contacts
+ * the Engine.
  *
  * @stability unstable
  * @category layers
