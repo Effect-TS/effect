@@ -9,3 +9,4 @@ Run storage-backed transactions through `SqlClient.makeWithTransaction`, like th
 - `afterCommit` callbacks wait for the outermost transaction to commit instead of running immediately.
 - Concurrent sibling nested transactions are serialized instead of unsupported.
 - Transactions get a `sql.transaction` span.
+- A storage rejection while rolling back a transaction, or while completing a nested one, is now a defect instead of a `SqlError`, so typed recovery such as `catchTag` or `retry` no longer handles it. Rejections before the transaction starts and when the outermost transaction commits are still `SqlError`s.
