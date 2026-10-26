@@ -7044,7 +7044,7 @@ export function isUUID(version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, annotations?: An
   )
 }
 
-const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/
+const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/u
 /**
  * Validates that a string has the GUID / UUID textual shape.
  *
@@ -7079,17 +7079,21 @@ export function isGUID(annotations?: Annotations.Filter) {
         id: "effect/schema/isGUID",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: GUID_REGEXP.source }),
       toCode: () => ({ runtime: "Schema.isGUID()" }),
       ...annotations
     }
   )
 }
+
+const ULID_REGEXP = /^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$/u
 /**
  * Validates that a string is a valid ULID (Universally Unique Lexicographically
  * Sortable Identifier).
  *
  * **Details**
+ *
+ * Accepts uppercase and lowercase characters. The first character must be
+ * between `0` and `7` so the value fits in 128 bits.
  *
  * JSON Schema:
  *
@@ -7106,15 +7110,13 @@ export function isGUID(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isULID(annotations?: Annotations.Filter) {
-  const regExp = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/
   return isPattern(
-    regExp,
+    ULID_REGEXP,
     {
       representation: {
         id: "effect/schema/isULID",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
       toCode: () => ({ runtime: "Schema.isULID()" }),
       ...annotations
     }

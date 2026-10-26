@@ -1525,6 +1525,19 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
+      it("isULID", () => {
+        assertJsonSchemaDocument(
+          Schema.String.annotate({ description: "description" }).check(Schema.isULID()),
+          {
+            schema: {
+              "type": "string",
+              "description": "description",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$"
+            }
+          }
+        )
+      })
+
       it("isBase64", () => {
         assertJsonSchemaDocument(
           Schema.String.annotate({ description: "description" }).check(Schema.isBase64()),
