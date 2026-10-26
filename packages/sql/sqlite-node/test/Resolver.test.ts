@@ -1,9 +1,9 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, FileSystem, Iterable, Schema } from "effect"
+import { Cause, Context, Effect, Fiber, FileSystem, Iterable, Schema } from "effect"
 import { Reactivity } from "effect/reactivity"
-import { SqlError, SqlResolver } from "effect/sql"
+import { SqlClient, SqlError, SqlResolver } from "effect/sql"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -177,6 +177,84 @@ describe("Resolver", () => {
             three: new Cause.NoSuchElementError()
           }
         )
+      }))
+  })
+
+  describe("void", () => {
+    it.effect("keeps requests outside a transaction out of its batch", () =>
+      Effect.gen(function*() {
+        const batches: Array<Array<number>> = []
+        const sql = yield* makeClient
+        const other = yield* makeClient
+        yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
+        const insert = SqlResolver.request(SqlResolver.void({
+          Request: Schema.Number,
+          execute: (ids) => {
+            batches.push(ids)
+            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+          }
+        }))
+        yield* Effect.all([
+          Effect.exit(sql.withTransaction(
+            Effect.andThen(
+              Effect.all([insert(1), insert(3)], { concurrency: "unbounded" }),
+              Effect.fail("rollback")
+            )
+          )),
+          insert(2)
+        ], { concurrency: "unbounded" }).pipe(Effect.provideService(SqlClient.SqlClient, other))
+        assert.deepStrictEqual(batches, [[1, 3], [2]])
+        assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
+      }))
+
+    it.effect("keeps requests in another client's transaction out of its batch", () =>
+      Effect.gen(function*() {
+        const batches: Array<Array<number>> = []
+        const sql = yield* makeClient
+        const other = yield* makeClient
+        yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
+        const insert = SqlResolver.request(SqlResolver.void({
+          Request: Schema.Number,
+          execute: (ids) => {
+            batches.push(ids)
+            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+          }
+        }))
+        yield* other.withTransaction(Effect.all([
+          Effect.exit(sql.withTransaction(Effect.andThen(insert(1), Effect.fail("rollback")))).pipe(
+            Effect.provideService(SqlClient.SqlClient, other)
+          ),
+          insert(2)
+        ], { concurrency: "unbounded" }))
+        assert.deepStrictEqual(batches, [[1], [2]])
+        assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
+      }))
+
+    it.effect("keeps requests without the transaction service out of its batch", () =>
+      Effect.gen(function*() {
+        const batches: Array<Array<number>> = []
+        const sql = yield* makeClient
+        yield* sql`CREATE TABLE writes (id INTEGER PRIMARY KEY)`
+        const insert = SqlResolver.request(SqlResolver.void({
+          Request: Schema.Number,
+          execute: (ids) => {
+            batches.push(ids)
+            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+          }
+        }))
+        let outside: Fiber.Fiber<void, unknown> | undefined
+        yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+          outside = yield* Effect.forkChild(
+            insert(2).pipe(
+              Effect.updateContext((context: Context.Context<never>) => Context.omit(sql.transactionService)(context))
+            )
+          )
+          yield* insert(1)
+          return yield* Effect.fail("rollback")
+        })))
+        yield* Fiber.join(outside!)
+        assert.deepStrictEqual(batches, [[1], [2]])
+        assert.deepStrictEqual(yield* sql`SELECT * FROM writes`, [{ id: 2 }])
       }))
   })
 })
