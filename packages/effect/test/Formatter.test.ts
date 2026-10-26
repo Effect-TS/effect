@@ -446,7 +446,7 @@ describe("Formatter", () => {
       strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
     })
 
-    it("should format getters on engines without Proxy", () => {
+    it("should format and redact getters on engines without Proxy", () => {
       const descriptor = Object.getOwnPropertyDescriptor(globalThis, "Proxy")!
       // Simulate an engine without Proxy (e.g. Chrome < 49)
       delete (globalThis as { Proxy?: ProxyConstructor }).Proxy
@@ -460,6 +460,14 @@ describe("Formatter", () => {
             }
           }),
           `{"nested":{"a":1}}`
+        )
+        strictEqual(
+          formatJson({
+            get a() {
+              return data
+            }
+          }),
+          `{"a":{"secret":"[REDACTED]"}}`
         )
       } finally {
         Object.defineProperty(globalThis, "Proxy", descriptor)
