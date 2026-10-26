@@ -1143,37 +1143,35 @@ function throwConstructorDefect(error: unknown): never {
 }
 
 function makeConstructorSync<T, E>(
-  ast: SchemaAST.AST,
-  resolve: CompilerRegistry.Resolve = CompilerRegistry.resolve
+  ast: SchemaAST.AST
 ): (input: E, options?: Schema.MakeOptions) => T {
   let entry: CompilerRegistry.Entry | undefined
-  let parser: Parser | undefined
-  return (input, options) => {
-    entry ??= resolve(ast)
-    const parseOptions = options?.disableChecks
-      ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
-      : options?.parseOptions ?? SchemaAST.defaultParseOptions
-    const make = entry.make
-    if (make !== undefined && input !== InternalParser.missing) {
-      let output: unknown
-      try {
-        output = make(input, parseOptions)
-      } catch (error) {
-        throwConstructorDefect(error)
-      }
-      if (output !== CompilerRegistry.invalid && output !== InternalParser.missing) return output as T
+  return (input, options) => constructSync(entry ??= CompilerRegistry.resolve(ast), input, options)
+}
+
+function constructSync<T>(entry: CompilerRegistry.Entry, input: unknown, options: Schema.MakeOptions | undefined): T {
+  const parseOptions = options?.disableChecks
+    ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
+    : options?.parseOptions ?? SchemaAST.defaultParseOptions
+  const make = entry.make
+  if (make !== undefined && input !== InternalParser.missing) {
+    let output: unknown
+    try {
+      output = make(input, parseOptions)
+    } catch (error) {
+      throwConstructorDefect(error)
     }
-    const result = (parser ??= entry.makeEffect)(input, parseOptions)
-    return runSync(parserResult<T, never>(result, input), constructorDefectMessage)
+    if (output !== CompilerRegistry.invalid && output !== InternalParser.missing) return output as T
   }
+  return runSync(parserResult<T, never>(entry.makeEffect(input, parseOptions), input), constructorDefectMessage)
 }
 
 /**
- * Constructs a class value from its type-side declaration.
+ * Constructs a class instance from its type-side declaration.
  *
- * Without a registered compiler for the declaration, the instance is built
- * after field validation, outside the parser, so stacks captured by the class
- * constructor include the caller.
+ * When the declaration has no compiled entry, the fields are validated first
+ * and the instance is built outside the parser, so stacks captured by the
+ * class constructor keep the caller's frames.
  *
  * @internal
  */
@@ -1185,11 +1183,9 @@ export function makeClassSync<T>(
 ): T {
   const entry = CompilerRegistry.resolve(ast)
   const descriptor = SchemaAST.getConstructorDescriptor(ast)
-  if (entry.compiled !== undefined || descriptor === undefined) {
-    return makeConstructorSync<T, unknown>(ast)(input, options)
-  }
+  if (entry.compiled !== undefined || descriptor === undefined) return constructSync(entry, input, options)
   if (descriptor.isConstructed(input)) return input as T
-  const fields = makeConstructorSync<object, unknown>(descriptor.link.to, entry.resolve)(input, options)
+  const fields = constructSync<object>((entry.resolve ?? CompilerRegistry.resolve)(descriptor.link.to), input, options)
   try {
     return construct(fields)
   } catch (error) {
