@@ -756,15 +756,21 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         Schema.Struct({ kind: Schema.Literal("nested"), meta: Schema.Record(Schema.String, Schema.String) }),
         Schema.Record(Schema.String, Schema.String)
       ])
+      const Renamed = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optional(Schema.String) }),
+        [Schema.Record(Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel())), Schema.String)]
+      )
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test")
           .add(HttpApiEndpoint.get("rest", "/rest", { query: Rest, success: Rest }))
           .add(HttpApiEndpoint.get("members", "/members", { query: Members, success: Members }))
+          .add(HttpApiEndpoint.get("renamed", "/renamed", { query: Renamed, success: Renamed }))
       )
       const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
         handlers
           .handle("rest", ({ query }) => Effect.succeed(query))
-          .handle("members", ({ query }) => Effect.succeed(query)))
+          .handle("members", ({ query }) => Effect.succeed(query))
+          .handle("renamed", ({ query }) => Effect.succeed(query)))
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
 
       assert.deepStrictEqual(yield* client.test.rest({ query: { "meta[k]": "v" } }), { "meta[k]": "v" })
@@ -772,6 +778,7 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         yield* client.test.members({ query: { kind: "flat", "meta[k]": "v" } }),
         { kind: "flat", "meta[k]": "v" }
       )
+      assert.deepStrictEqual(yield* client.test.renamed({ query: { "meta[fooBar]": "v" } }), { "meta[fooBar]": "v" })
     }))
 
   const rawQueryError = Effect.fnUntraced(function*(query: Schema.Codec<unknown, unknown>, search: string) {
