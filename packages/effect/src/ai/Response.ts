@@ -172,6 +172,18 @@ const toolPartSchemas = (tool: Tool.Any) => {
 
 type AnyToolParts = ToolCallPart<string, unknown> | ToolResultPart<string, unknown, unknown>
 
+type ToolkitTools<T> = T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>
+
+type ToolkitTool<T> = ToolkitTools<T>[keyof ToolkitTools<T>]
+
+type ToolkitDecodingServices<T> =
+  | Tool.ParametersDecodingServices<ToolkitTool<T>>
+  | Tool.ResultDecodingServices<ToolkitTool<T>>
+
+type ToolkitEncodingServices<T> =
+  | Tool.ParametersEncodingServices<ToolkitTool<T>>
+  | Tool.ResultEncodingServices<ToolkitTool<T>>
+
 const toolPartSchemasFor = (
   toolkit: Toolkit.Any | Toolkit.WithHandler<any> | undefined
 ): ReadonlyArray<Schema.Top> => {
@@ -222,10 +234,10 @@ const toolPartSchemasFor = (
  */
 export const AllParts: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    AllParts<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    AllParts<ToolkitTools<T>>,
     AllPartsEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<AllParts<{}> | AnyToolParts, AllPartsEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -313,10 +325,10 @@ export type PartEncoded =
  */
 export const Part: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    Part<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    Part<ToolkitTools<T>>,
     PartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<Part<{}> | AnyToolParts, PartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -407,10 +419,10 @@ export type StreamPartEncoded =
  */
 export const StreamPart: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    StreamPart<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    StreamPart<ToolkitTools<T>>,
     StreamPartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<StreamPart<{}> | AnyToolParts, StreamPartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
