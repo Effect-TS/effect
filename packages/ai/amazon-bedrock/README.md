@@ -30,4 +30,33 @@ const program = LanguageModel.generateText({
 }).pipe(Effect.provide(Sonnet))
 ```
 
-`AmazonBedrockClient.layer` accepts explicit keys (`accessKeyId`, `secretAccessKey`, `sessionToken`), an `apiKey`, or a `credentials` effect that resolves AWS credentials on every request, which is where a credential provider such as `fromNodeProviderChain()` from `@aws-sdk/credential-providers` plugs in. `region`, `apiUrl` and `transformClient` customize HTTP access.
+## Authentication
+
+`AmazonBedrockClient.layer` accepts explicit keys (`accessKeyId`, `secretAccessKey`, `sessionToken`), an `apiKey`, or a `credentials` effect that resolves AWS credentials before every request. The `credentials` effect is where a credential provider such as `fromNodeProviderChain()` from `@aws-sdk/credential-providers` plugs in:
+
+```ts
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers"
+import { AmazonBedrockClient } from "@effect/ai-amazon-bedrock"
+import { Duration, Effect, Layer } from "effect"
+import { FetchHttpClient } from "effect/http"
+
+const provider = fromNodeProviderChain()
+
+const BedrockClient = AmazonBedrockClient.layer({
+  region: "eu-west-1",
+  credentials: Effect.promise(() => provider()).pipe(Effect.cachedWithTTL(Duration.minutes(5)))
+}).pipe(Layer.provide(FetchHttpClient.layer))
+```
+
+`region`, `apiUrl` and `transformClient` customize HTTP access.
+
+## Features
+
+- Text generation and streaming, tool calls with every `toolChoice` mode, and tool results.
+- Structured output through a forced tool by default, or through Converse's native `outputConfig.textFormat` with `structuredOutputs: true` in the model config.
+- Reasoning blocks, which round-trip into later turns with their signature through the `"amazon-bedrock"` provider options.
+- Prompt caching, opted into per message or part with `options: { "amazon-bedrock": { cachePoint: { type: "default" } } }`.
+- Image and document file parts, sent as bytes.
+- Model-specific parameters, such as extended thinking, through `additionalModelRequestFields` in the model config.
+
+The client maps Bedrock's `x-amzn-errortype` exceptions and HTTP statuses to `AiError`, validates the CRC of every event stream frame, and fails a stream on an exception frame such as `throttlingException`.
