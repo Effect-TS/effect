@@ -1851,6 +1851,31 @@ describe("OpenAiLanguageModel", () => {
           ])
         ))
 
+      it.effect("reports length and interrupts tool calls when max_output_tokens truncates the response", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: TestToolkit
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+          strictEqual(result.finishReason, "length")
+          deepStrictEqual(result.toolResults.map((part) => part.result), [{
+            type: "execution-interrupted",
+            reason: "Tool call execution was interrupted because the response finished with reason \"length\""
+          }])
+        }).pipe(
+          Effect.provide([
+            makeTestLayer({
+              body: {
+                status: "incomplete",
+                output: [makeFunctionCall("TestTool", { input: "test" })],
+                incomplete_details: { reason: "max_output_tokens" }
+              }
+            }),
+            TestToolkitLayer
+          ])
+        ))
+
       it.effect("extracts url citations as source parts", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
