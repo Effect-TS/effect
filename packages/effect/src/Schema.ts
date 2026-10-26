@@ -7115,7 +7115,7 @@ export function isULID(annotations?: Annotations.Filter) {
 }
 
 // oxlint-disable-next-line no-control-regex
-const ASCII_REGEXP = /^[\x00-\x7F]*$/
+const ASCII_REGEXP = /^[\x00-\x7F]*$/u
 /**
  * Validates that a string contains only ASCII characters.
  *
@@ -7153,7 +7153,6 @@ export function isAscii(annotations?: Annotations.Filter) {
         id: "effect/schema/isAscii",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: ASCII_REGEXP.source }),
       toCode: () => ({ runtime: "Schema.isAscii()" }),
       ...annotations
     }
