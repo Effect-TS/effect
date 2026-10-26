@@ -61,7 +61,7 @@ In v4, functionality that previously lived in separate packages ships inside `ef
 
 ## JOSE
 
-`effect/jose` provides unstable APIs for algorithm-bound JWKs, compact JWS and JWE, schema-typed JWTs, and local or remote JWKS resolution, built on `effect/crypto`. Signatures use HS256, RS256, PS256, ES256, or EdDSA (Ed25519); encryption uses `dir` with `A256GCM`.
+`effect/jose` provides unstable APIs for algorithm-bound JWKs, compact JWS and JWE, schema-typed signed and encrypted JWTs, and local or remote JWKS resolution, built on `effect/crypto`. Signatures use HS256, RS256, PS256, ES256, or EdDSA (Ed25519); encryption uses `dir` with `A256GCM`.
 
 ```ts
 import { Effect, Layer, Schema } from "effect"

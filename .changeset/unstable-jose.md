@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add unstable `effect/jose` APIs for key management, compact JWS/JWE, schema-typed signed and encrypted JWTs, effectful decryption key resolvers, and scoped JWKS resolution.
+Add unstable `effect/jose` modules for JWKs, compact JWS and JWE, schema-typed signed and encrypted JWTs (with decryption key resolvers), and local or remote JWKS resolution.

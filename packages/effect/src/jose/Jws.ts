@@ -227,8 +227,7 @@ export const sign: <K extends SigningKey>(
     signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(signFailure))
   }
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
-  // Each branch uses only the service its key type requires.
-}) as any
+}) as any // Each branch uses only the service its key type requires.
 
 /**
  * Verifies a compact JWS with a key. The token's `alg` must be the key's
@@ -256,8 +255,7 @@ export const verify: <K extends VerificationKey>(
     Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
-  // Each branch uses only the service its key type requires.
-}) as any
+}) as any // Each branch uses only the service its key type requires.
 
 /**
  * Verifies a compact JWS with a public key resolved from the `Jwks` service by

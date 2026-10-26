@@ -336,10 +336,8 @@ export const makeRemote = Effect.fnUntraced(function*(
     })
   )
 
-  // Returns `undefined` while cooling down. `stale` is a snapshot that
-  // lacked the selected key, so it does not count as fresh. The cooldown
-  // bounds unknown-key probes and retries after a failure; an expired set
-  // that was fetched successfully is refetched at once.
+  // Returns `undefined` while cooling down, which applies only to unknown-key
+  // refetches (`stale` lacked the key) and retries after a failure.
   const refresh = (now: number, stale?: Snapshot) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.suspend((): Effect.Effect<Snapshot | undefined, JoseError.JoseError> => {

@@ -298,8 +298,7 @@ const checkModulus = (key: Signature.PublicKey | Signature.PrivateKey): Effect.E
     ? invalidKey("RSA keys must have at least 2048 bits")
     : Effect.void
 
-// KeyFormat reads and writes only the key members; JOSE metadata is checked
-// and added here.
+// KeyFormat handles only key members; JOSE metadata is handled here.
 const jsonWebKey = (jwk: object): JsonWebKey => jwk
 
 const exportJwk = (
