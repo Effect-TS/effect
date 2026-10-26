@@ -25,11 +25,13 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, DockerEngine, withStreamOperation } from "./DockerEngine.ts"
+import type { LogFrame } from "./DockerContainers.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
-import { logFrames, type LogsOptions } from "./DockerServices.ts"
+import type { LogsOptions } from "./DockerServices.ts"
+import { apiClient, withStreamOperation } from "./internal/engine.ts"
+import { logFrames, logsQuery } from "./internal/stream.ts"
 
 // -----------------------------------------------------------------------------
 // service

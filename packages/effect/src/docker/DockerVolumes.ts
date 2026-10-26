@@ -26,9 +26,10 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service

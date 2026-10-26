@@ -57,6 +57,7 @@ import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as DockerError from "./DockerError.ts"
 import * as DockerSchema from "./DockerSchema.ts"
+import { BuildMessage, errorMessage, Progress } from "./internal/api.ts"
 
 // -----------------------------------------------------------------------------
 // annotations
@@ -104,20 +105,9 @@ export class ApiVersions extends Context.Service<ApiVersions, {
 // errors
 // -----------------------------------------------------------------------------
 
-const decodeErrorBody = Schema.decodeUnknownOption(Schema.fromJsonString(DockerSchema.ErrorResponse))
-
-/**
- * The message of an error response's body: the Engine's `{ message }` JSON,
- * otherwise the trimmed text, such as a proxy's.
- *
- * @internal
- */
-export const errorMessage = (body: string): string =>
-  Option.match(decodeErrorBody(body), { onNone: () => body.trim(), onSome: ({ message }) => message })
-
 /**
  * An error class on the wire: its status, and the Engine's `{ message }` JSON
- * body, decoded as {@link errorMessage} reads it.
+ * body, decoded as `errorMessage` reads it.
  */
 const errorResponse = <
   const Tag extends string,
@@ -1013,16 +1003,6 @@ const RegistryConfig = Schema.String.pipe(
   Schema.decodeTo(Schema.fromJsonString(Schema.Record(Schema.String, AuthConfig)), base64UrlPadded)
 )
 
-/**
- * A progress message; the Engine still sends the deprecated `error` beside
- * `errorDetail`.
- *
- * @internal
- */
-export const Progress = Schema.toCodecGoJson(
-  DockerSchema.ProgressMessage.mapFields((fields) => ({ ...fields, error: Schema.optionalKey(Schema.String) }))
-)
-
 /** The Engine's progress stream: one JSON message per line, as `application/json`. */
 const progress = HttpApiSchema.StreamNdjson({ schema: Progress, contentType: "application/json" })
 
@@ -1103,20 +1083,6 @@ const BuildQuery = Schema.Struct(buildFields).pipe(Schema.encodeKeys(buildKeys))
 
 /** {@link BuildQuery} with the URL of a context the Engine fetches. */
 const BuildRemoteQuery = Schema.Struct({ ...buildFields, remote: Schema.String }).pipe(Schema.encodeKeys(buildKeys))
-
-/**
- * A build's messages: progress messages whose `aux` can be any JSON
- * (BuildKit's trace is a string).
- *
- * @internal
- */
-export const BuildMessage = Schema.toCodecGoJson(
-  DockerSchema.ProgressMessage.mapFields((fields) => ({
-    ...fields,
-    error: Schema.optionalKey(Schema.String),
-    aux: Schema.optionalKey(Schema.Json)
-  }))
-)
 
 /**
  * The Engine's image endpoints, which `DockerImages` is a client of.

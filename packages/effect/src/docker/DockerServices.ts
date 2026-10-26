@@ -38,13 +38,15 @@ import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
-import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
-import { DockerError, InvalidResponse } from "./DockerError.ts"
-import { frames } from "./DockerExec.ts"
+import type { LogFrame } from "./DockerContainers.ts"
+import { DockerEngine } from "./DockerEngine.ts"
+import { type DockerError } from "./DockerError.ts"
 import * as DockerImages from "./DockerImages.ts"
-import { authConfig, DockerRegistryAuth } from "./DockerRegistryAuth.ts"
+import { DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, modifyWith, withOperation, withStreamOperation } from "./internal/engine.ts"
+import { authConfig } from "./internal/registryAuth.ts"
+import { logFrames, logsQuery } from "./internal/stream.ts"
 
 /**
  * The image options of `create` and `update`.
@@ -175,31 +177,6 @@ export const parseLogLine = (line: string, options?: { readonly timestamps?: boo
     }
   }
   return { timestamp, details, message: space === -1 ? "" : rest.slice(space + 1) }
-}
-
-// -----------------------------------------------------------------------------
-// logs
-// -----------------------------------------------------------------------------
-
-/**
- * The frames of a service's or task's logs. From API 1.42 the Engine always
- * names the framing in the `Content-Type`.
- *
- * @internal
- */
-export const logFrames = (
-  logs: {
-    readonly headers: { readonly "content-type"?: DockerApi.StreamContentType | undefined }
-    readonly body: Stream.Stream<Uint8Array, DockerError>
-  },
-  operation: string
-): Stream.Stream<LogFrame, DockerError> => {
-  const contentType = logs.headers["content-type"]
-  return contentType === undefined
-    ? Stream.fail(
-      new DockerError({ reason: new InvalidResponse({ issue: "the logs have no stream Content-Type" }), operation })
-    )
-    : frames(logs.body, contentType)
 }
 
 // -----------------------------------------------------------------------------

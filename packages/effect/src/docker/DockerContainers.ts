@@ -44,18 +44,13 @@ import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { withProxyEnv } from "./DockerConfig.ts"
-import {
-  apiClient,
-  DockerEngine,
-  filterStatus,
-  toDockerError,
-  withOperation,
-  withStreamOperation
-} from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse, StreamFailed } from "./DockerError.ts"
-import { contentTypeOf, frames, type Handle, makeHandle, releaseOnFailure } from "./DockerExec.ts"
+import type { Handle } from "./DockerExec.ts"
 import * as DockerSchema from "./DockerSchema.ts"
+import { withProxyEnv } from "./internal/config.ts"
+import { apiClient, filterStatus, toDockerError, withOperation, withStreamOperation } from "./internal/engine.ts"
+import { contentTypeOf, frames, logsQuery, makeHandle, releaseOnFailure } from "./internal/stream.ts"
 
 /**
  * A chunk of container output: opaque bytes from stdout or stderr. Lines are
@@ -69,20 +64,6 @@ export interface LogFrame {
   readonly stream: "stdout" | "stderr"
   readonly data: Uint8Array
 }
-
-/**
- * The query of logs, with an unset `stdout` or `stderr` included unless the
- * other is `true`: the Engine rejects neither.
- *
- * @internal
- */
-export const logsQuery = <
-  Options extends { readonly stdout?: boolean | undefined; readonly stderr?: boolean | undefined }
->(options: Options | undefined) => ({
-  ...options,
-  stdout: options?.stdout ?? options?.stderr !== true,
-  stderr: options?.stderr ?? options?.stdout !== true
-})
 
 const decodeWaitResponse = Schema.decodeUnknownEffect(Schema.toCodecGoJson(DockerSchema.ContainerWaitResponse))
 

@@ -34,9 +34,10 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, modifyWith, withOperation } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service

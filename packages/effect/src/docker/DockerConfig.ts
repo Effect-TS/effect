@@ -33,7 +33,6 @@
  * @stability unstable
  * @since 4.2.0
  */
-import * as Config from "../Config.ts"
 import * as Context from "../Context.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Data from "../Data.ts"
@@ -49,7 +48,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
-import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as internal from "./internal/config.ts"
 
 // -----------------------------------------------------------------------------
 // Endpoint
@@ -201,8 +200,8 @@ export class UnreadableCertificate extends Data.TaggedError("UnreadableCertifica
 
 /**
  * The configuration is invalid: an Endpoint with a bad host or port, an API
- * version pin that is malformed or below the minimum, 1.44, or one of the
- * {@link EnvironmentVariables} that doesn't parse.
+ * version pin that is malformed or below the minimum, 1.44, or a `DOCKER_*`
+ * variable that doesn't parse.
  *
  * @stability unstable
  * @category errors
@@ -358,57 +357,6 @@ export const parseHost = (host: string): Result.Result<typeof Endpoint.Type, Doc
 }
 
 /**
- * A TCP Endpoint's `host:port`, an IPv6 host in brackets.
- *
- * @internal
- */
-export const hostAndPort = (endpoint: typeof Endpoint.cases.Tcp.Type): string =>
-  `${endpoint.host.includes(":") ? `[${endpoint.host}]` : endpoint.host}:${endpoint.port}`
-
-/**
- * An Endpoint as the Docker CLI writes a host, `unix:///path` or
- * `tcp://host:port`, without TLS material: what {@link parseHost} reads.
- *
- * @internal
- */
-export const formatHost = (endpoint: typeof Endpoint.Type): string =>
-  endpoint._tag === "Unix" ? `unix://${endpoint.path}` : `tcp://${hostAndPort(endpoint)}`
-
-// -----------------------------------------------------------------------------
-// the Docker CLI's files
-// -----------------------------------------------------------------------------
-
-// `auth` is base64 `user:password`; empty means unset, as in the CLI
-const isBasicAuth = Schema.makeFilter((auth: string) => {
-  if (auth === "") return true
-  const decoded = Base64.decodeString(auth)
-  return (Result.isSuccess(decoded) && decoded.success.includes(":")) ||
-    "Expected base64 user:password"
-})
-
-/**
- * An entry of `auths` in the Docker CLI's `config.json` or
- * `DOCKER_AUTH_CONFIG`: `auth` (base64 `user:password`), a username and
- * password, or an identity token. An empty entry marks a registry whose
- * credentials a helper keeps.
- *
- * **Details**
- *
- * An `auth` that isn't base64 `user:password` fails decoding, as it fails
- * the Docker CLI's config loading.
- *
- * @stability unstable
- * @category schemas
- * @since 4.2.0
- */
-export const AuthEntry = Schema.Struct({
-  auth: Schema.optionalKey(Schema.String.check(isBasicAuth)),
-  username: Schema.optionalKey(Schema.String),
-  password: Schema.optionalKey(Schema.String),
-  identitytoken: Schema.optionalKey(Schema.String)
-})
-
-/**
  * The proxy settings the Docker CLI passes on to builds and containers, from
  * `proxies` in `config.json`: the entry for the Endpoint's host, otherwise
  * `default`.
@@ -417,91 +365,7 @@ export const AuthEntry = Schema.Struct({
  * @category schemas
  * @since 4.2.0
  */
-export const ProxyConfig = Schema.Struct({
-  httpProxy: Schema.optionalKey(Schema.String),
-  httpsProxy: Schema.optionalKey(Schema.String),
-  noProxy: Schema.optionalKey(Schema.String),
-  ftpProxy: Schema.optionalKey(Schema.String),
-  allProxy: Schema.optionalKey(Schema.String)
-})
-
-/**
- * The parts of the Docker CLI's `config.json` the client reads; the JSON of
- * `DOCKER_AUTH_CONFIG` has the same shape. Other fields (output formats,
- * aliases, plugins) only concern the CLI and are ignored.
- *
- * @stability unstable
- * @category schemas
- * @since 4.2.0
- */
-export const ConfigFile = Schema.Struct({
-  currentContext: Schema.optionalKey(Schema.String),
-  credsStore: Schema.optionalKey(Schema.String),
-  credHelpers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-  auths: Schema.optionalKey(Schema.Record(Schema.String, AuthEntry)),
-  HttpHeaders: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-  proxies: Schema.optionalKey(Schema.Record(Schema.String, ProxyConfig)),
-  detachKeys: Schema.optionalKey(Schema.String)
-})
-
-/**
- * The metadata of a Docker Context, `contexts/meta/<sha256(name)>/meta.json`
- * in the config directory: the parts the client reads.
- *
- * @stability unstable
- * @category schemas
- * @since 4.2.0
- */
-export const ContextMeta = Schema.Struct({
-  Name: Schema.optionalKey(Schema.String),
-  Endpoints: Schema.optionalKey(Schema.Record(
-    Schema.String,
-    Schema.Struct({
-      Host: Schema.optionalKey(Schema.String),
-      SkipTLSVerify: Schema.optionalKey(Schema.Boolean)
-    })
-  ))
-})
-
-// -----------------------------------------------------------------------------
-// API versions
-// -----------------------------------------------------------------------------
-
-/**
- * The oldest API version the client speaks.
- *
- * @internal
- */
-export const minimumApiVersion = "1.44"
-
-/**
- * The newest API version the client speaks: the version of the pinned spec
- * that `DockerSchema` is generated from.
- *
- * @internal
- */
-export const maximumApiVersion = "1.56"
-
-/**
- * Parses `major.minor`; `undefined` when malformed.
- *
- * @internal
- */
-export const parseApiVersion = (apiVersion: string): readonly [number, number] | undefined => {
-  const match = /^(\d+)\.(\d+)$/.exec(apiVersion.trim())
-  return match === null ? undefined : [Number(match[1]), Number(match[2])]
-}
-
-/**
- * Compares two `major.minor` versions; malformed versions sort lowest.
- *
- * @internal
- */
-export const compareApiVersions = (a: string, b: string): number => {
-  const [majorA, minorA] = parseApiVersion(a) ?? [0, 0]
-  const [majorB, minorB] = parseApiVersion(b) ?? [0, 0]
-  return majorA !== majorB ? majorA - majorB : minorA - minorB
-}
+export const ProxyConfig = internal.ProxyConfig
 
 /**
  * An API version pin: `major.minor`, at least 1.44, the oldest version the
@@ -511,60 +375,7 @@ export const compareApiVersions = (a: string, b: string): number => {
  * @category schemas
  * @since 4.2.0
  */
-export const ApiVersion = Schema.String.check(
-  Schema.makeFilter((apiVersion: string) =>
-    parseApiVersion(apiVersion) === undefined
-      ? `Expected an API version major.minor, got ${JSON.stringify(apiVersion)}`
-      : compareApiVersions(apiVersion, minimumApiVersion) >= 0 ||
-        `The API version ${apiVersion} is below the minimum, ${minimumApiVersion}`
-  )
-)
-
-/**
- * The environment variables the Docker CLI reads, each validated by its
- * Schema. An empty variable counts as unset, as in the CLI.
- *
- * **Details**
- *
- * - `DOCKER_HOST`, `DOCKER_CONTEXT`, `DOCKER_CERT_PATH`,
- *   `DOCKER_DEFAULT_PLATFORM`, `DOCKER_CONFIG` and `HOME` are strings.
- * - `DOCKER_TLS_VERIFY` and `DOCKER_TLS` turn TLS on when set to anything.
- * - `DOCKER_API_VERSION` is an {@link ApiVersion}.
- * - `DOCKER_BUILDKIT` is a boolean, as Go's `strconv.ParseBool` reads it
- *   (`1`, `t`, `true`, `0`, `f`, `false`, in any of their cases).
- * - `DOCKER_AUTH_CONFIG` is JSON in the shape of a {@link ConfigFile}.
- *
- * {@link layerFromEnv} reads them through the current `ConfigProvider`, and
- * fails with `InvalidConfig` when one doesn't parse.
- *
- * @stability unstable
- * @category configuration
- * @since 4.2.0
- */
-export const EnvironmentVariables = Config.all({
-  host: Config.option(Config.String("DOCKER_HOST")),
-  context: Config.option(Config.String("DOCKER_CONTEXT")),
-  tlsVerify: Config.option(Config.String("DOCKER_TLS_VERIFY")),
-  tls: Config.option(Config.String("DOCKER_TLS")),
-  certPath: Config.option(Config.String("DOCKER_CERT_PATH")),
-  apiVersion: Config.option(Config.schema(ApiVersion, "DOCKER_API_VERSION")),
-  defaultPlatform: Config.option(Config.String("DOCKER_DEFAULT_PLATFORM")),
-  buildKit: Config.option(Config.schema(
-    Schema.Literals(["1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE", "false", "False"]).pipe(
-      Schema.decodeTo(
-        Schema.Boolean,
-        SchemaTransformation.transform({
-          decode: (flag) => ["1", "t", "T", "TRUE", "true", "True"].includes(flag),
-          encode: (enabled) => enabled ? "1" : "0"
-        })
-      )
-    ),
-    "DOCKER_BUILDKIT"
-  )),
-  authConfig: Config.option(Config.schema(Schema.fromJsonString(ConfigFile), "DOCKER_AUTH_CONFIG")),
-  config: Config.option(Config.String("DOCKER_CONFIG")),
-  home: Config.option(Config.String("HOME"))
-})
+export const ApiVersion = internal.ApiVersion
 
 // -----------------------------------------------------------------------------
 // registry credentials
@@ -667,44 +478,6 @@ export const ResolvedConfig = Schema.Struct({
  * @since 4.2.0
  */
 export type ResolvedConfig = typeof ResolvedConfig.Type
-
-const proxyNames = [
-  ["httpProxy", "HTTP_PROXY"],
-  ["httpsProxy", "HTTPS_PROXY"],
-  ["noProxy", "NO_PROXY"],
-  ["ftpProxy", "FTP_PROXY"],
-  ["allProxy", "ALL_PROXY"]
-] as const
-
-/**
- * The variables the Docker CLI passes a configured proxy on as, to builds
- * and new containers: each setting as `HTTP_PROXY` and `http_proxy`, and so
- * on.
- *
- * @internal
- */
-export const proxyVariables = (proxy: ResolvedConfig["proxy"]): ReadonlyArray<readonly [string, string]> =>
-  proxyNames.flatMap(([key, name]) => {
-    const value = proxy[key]
-    return value === undefined || value === "" ? [] : [[name, value] as const, [name.toLowerCase(), value] as const]
-  })
-
-/**
- * A container's `Env` with the proxy variables it doesn't set itself, as
- * `docker create` adds them.
- *
- * @internal
- */
-export const withProxyEnv = (
-  env: ReadonlyArray<string | Redacted.Redacted<string>> | undefined,
-  proxy: ResolvedConfig["proxy"]
-): ReadonlyArray<string | Redacted.Redacted<string>> | undefined => {
-  const set = new Set(
-    (env ?? []).map((entry) => (Redacted.isRedacted(entry) ? Redacted.value(entry) : entry).split("=", 1)[0])
-  )
-  const added = proxyVariables(proxy).filter(([name]) => !set.has(name)).map(([name, value]) => `${name}=${value}`)
-  return added.length === 0 ? env : [...(env ?? []), ...added]
-}
 
 /**
  * Loads the {@link ResolvedConfig} a `DockerEngine` is built from. Every
@@ -809,9 +582,9 @@ export const layer = (
  * refreshed. A value given in `overrides` wins, even `undefined`, and the
  * files it would come from are never read: an `endpoint` skips Discovery
  * entirely, like `docker -H`, and overriding every setting of `config.json`
- * skips that file. The {@link EnvironmentVariables} are always read and
- * validated: one that doesn't parse fails with `InvalidConfig`, even when its
- * setting is overridden. A malformed `config.json` fails with
+ * skips that file. The variables are always read and validated: one that
+ * doesn't parse fails with `InvalidConfig`, even when its setting is
+ * overridden. `DOCKER_BUILDKIT` is read as Go's `strconv.ParseBool` does. A malformed `config.json` fails with
  * `InvalidConfigFile`.
  *
  * Environment variables are read through `Config`, so through the current
@@ -837,7 +610,7 @@ export const layerFromEnv = (
     const given = <K extends keyof ResolvedConfig>(key: K): boolean => overrides !== undefined && key in overrides
     const override = <K extends keyof ResolvedConfig>(key: K) => overrides![key] as ResolvedConfig[K]
 
-    const variables = yield* EnvironmentVariables.pipe(
+    const variables = yield* internal.EnvironmentVariables.pipe(
       Effect.catchTag("ConfigError", (error) =>
         Schema.isSchemaError(error.cause)
           ? fail(new InvalidConfig({ cause: error.cause }))
@@ -860,7 +633,7 @@ export const layerFromEnv = (
         )
         return Option.isNone(text)
           ? undefined
-          : yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ConfigFile))(text.value)
+          : yield* Schema.decodeUnknownEffect(Schema.fromJsonString(internal.ConfigFile))(text.value)
       }).pipe(
         Effect.catchTags({
           PlatformError: (cause) => fail(new InvalidConfigFile({ source: path.join(dir!, "config.json"), cause })),
@@ -925,7 +698,7 @@ export const layerFromEnv = (
       const text = yield* fs.readFileString(metaFile).pipe(
         Effect.catchTag("PlatformError", () => fail(new ContextNotFound({ context: name })))
       )
-      const meta = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ContextMeta))(text).pipe(
+      const meta = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(internal.ContextMeta))(text).pipe(
         Effect.catchTag(
           "SchemaError",
           () => fail(new InvalidContext({ context: name, message: `Malformed Docker context metadata in ${metaFile}` }))
@@ -958,7 +731,7 @@ export const layerFromEnv = (
     })
 
     // `auths` entries as credentials: `auth` (base64 `user:password`), an identity token, or `{}`
-    const fromAuths = (auths: typeof ConfigFile.Type["auths"]): Readonly<Record<string, Credential>> =>
+    const fromAuths = (auths: typeof internal.ConfigFile.Type["auths"]): Readonly<Record<string, Credential>> =>
       Object.fromEntries(
         Object.entries(auths ?? {}).map(([registry, entry]): [string, Credential] => {
           if (entry.identitytoken !== undefined && entry.identitytoken !== "") {
@@ -968,7 +741,7 @@ export const layerFromEnv = (
             }]
           }
           if (entry.auth !== undefined && entry.auth !== "") {
-            // `AuthEntry` checked that it is base64 `user:password`
+            // `ConfigFile` checked that it is base64 `user:password`
             const decoded = Result.getOrThrow(Base64.decodeString(entry.auth))
             const separator = decoded.indexOf(":")
             return [registry, {
@@ -996,7 +769,9 @@ export const layerFromEnv = (
     // `proxies` is keyed by the Docker host string; the CLI ignores empty settings
     const proxies = given("proxy") ? undefined : (yield* configFile)?.proxies
     const proxy = given("proxy") ? override("proxy") : Object.fromEntries(
-      Object.entries(proxies?.[formatHost(endpoint)] ?? proxies?.default ?? {}).filter(([, value]) => value !== "")
+      Object.entries(proxies?.[internal.formatHost(endpoint)] ?? proxies?.default ?? {}).filter(([, value]) =>
+        value !== ""
+      )
     )
 
     return yield* Schema.decodeUnknownEffect(ResolvedConfig)({
