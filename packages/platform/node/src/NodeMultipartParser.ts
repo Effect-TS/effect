@@ -6,6 +6,7 @@
  */
 // oxlint-disable typescript/no-unsafe-declaration-merging
 /// <reference types="node" />
+import { constVoid } from "effect/Function"
 import type { BaseConfig, MultipartError, Parser, PartInfo } from "effect/http/MultipartParser"
 import { make as makeParser } from "effect/http/MultipartParser"
 import type { IncomingHttpHeaders } from "node:http"
@@ -116,7 +117,7 @@ export class MultipartStream extends Duplex {
         currentError = error
         if (!initialized) return
         this.emit("error", error)
-        this._currentFile?.emit("error", error)
+        this._failCurrentFile(error)
       },
       onDone: () => {
         this.push(null)
@@ -141,9 +142,19 @@ export class MultipartStream extends Duplex {
   override _read(_size: number) {}
 
   override _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
-    // Fail a file that is still being read, otherwise its reader waits forever.
-    if (error) this._currentFile?.destroy(error)
+    if (error) this._failCurrentFile(error)
     callback(error)
+  }
+
+  // Fail an unfinished file so its reader does not wait forever. The file
+  // keeps the error for a reader that attaches later, and the listener keeps
+  // it from being thrown before then.
+  private _failCurrentFile(error: unknown) {
+    const file = this._currentFile
+    if (file === undefined) return
+    this._currentFile = undefined
+    file.on("error", constVoid)
+    file.destroy(error as any)
   }
 
   override _write(
