@@ -64,7 +64,7 @@
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json",
-    "bootstrap": "sh bootstrap/generate.sh"
+    "bootstrap": "node bootstrap/generate.ts"
   },
   "peerDependencies": {
     "@effect/platform-node": "workspace:^",

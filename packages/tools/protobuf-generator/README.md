@@ -1,8 +1,7 @@
 # @effect/protobuf-generator
 
-`protoc-gen-effect` generates an Effect Schema module for each `.proto` file,
-as a plugin for [buf](https://buf.build) and `protoc` or from a descriptor
-set. The schemas are
+`protoc-gen-effect`, a plugin for [buf](https://buf.build) and `protoc` that
+generates an Effect Schema module for each `.proto` file. The schemas are
 annotated for `effect/protobuf/Protobuf`, so `Protobuf.toCodec` reads and
 writes their binary encoding. Neither the plugin nor the generated code
 depends on other protobuf libraries.
@@ -37,31 +36,12 @@ protoc --plugin=./node_modules/.bin/protoc-gen-effect \
 
 ### From a descriptor set
 
-`protoc-gen-effect generate` reads a `FileDescriptorSet` and writes the module
-of every file in it, except the files whose types come from `effect` (the
-well-known types, `descriptor.proto`, and `plugin.proto`). It writes only the
-modules whose content changed:
+buf also generates from a descriptor set, such as one from
+`protoc --include_imports --descriptor_set_out=set.binpb`:
 
 ```sh
-buf build proto -o set.binpb
-# or: protoc --include_imports --descriptor_set_out=set.binpb -I proto proto/acme/v1/user.proto
-npx protoc-gen-effect generate set.binpb --out src/gen --import-extension ts
+npx buf generate set.binpb
 ```
-
-The parameters below are flags (`--import-extension`, `--timestamp`,
-`--duration`). With `--check`, it writes nothing, lists the modules that are
-out of date, and exits with code `1` if there are any, for CI. Invalid usage
-and a file that is not a descriptor set exit with code `2`.
-
-| Flag                        | Description                                                                                                                                            |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--file <proto>[=<output>]` | Generates only this file of the set, under another name if given. Repeatable. Selected files are generated even when their types come from `effect`.   |
-| `--header <text>`           | Text written at the top of every module, such as a module JSDoc.                                                                                       |
-| `--jsdoc <text>`            | Text appended to the JSDoc of every export, such as tags. `{category}` becomes the kind of export: `schemas`, `models`, `extensions`, or `registries`. |
-| `--import-map <from>=<to>`  | Replaces an import specifier, such as `effect/Schema=../Schema.ts`. Repeatable.                                                                        |
-
-`effect/protobuf/ProtobufDescriptor` and `effect/protobuf/ProtobufPlugin` are
-generated this way, by `pnpm bootstrap` (`bootstrap/generate.sh`).
 
 ### Parameters
 
@@ -77,7 +57,7 @@ generated this way, by `pnpm bootstrap` (`bootstrap/generate.sh`).
 Every `.proto` file becomes one module at a fixed path, so generating several
 entry points into one directory writes each shared import once. Imports of a
 file that is generated elsewhere, such as by a library that ships its
-generated modules, are mapped with `proto_map` (`--proto-map` for `generate`),
+generated modules, are mapped with `proto_map`,
 and the file is not generated:
 
 ```yaml
@@ -171,3 +151,11 @@ export const registry = Protobuf.registry(User)
   ConnectRPC support is available.
 - The text format is not supported.
 - Editions after 2024, including `UNSTABLE`, are not supported.
+
+## Bootstrap
+
+`effect/protobuf/ProtobufDescriptor` and `effect/protobuf/ProtobufPlugin`
+re-export the modules this plugin generates from `descriptor.proto` and
+`plugin.proto`, in `packages/effect/src/protobuf/internal/generated`.
+`pnpm bootstrap` regenerates them, and `pnpm bootstrap --check` checks that
+they are up to date.

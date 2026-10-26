@@ -12,7 +12,8 @@
     "./packages/**/test/**/*.ts",
     "./packages/**/test/**/*.json",
     "./packages/**/typetest/**/*.ts",
-    "./packages/**/benchmark/**/*.ts"
+    "./packages/**/benchmark/**/*.ts",
+    "./packages/tools/protobuf-generator/bootstrap/*.ts"
   ],
   "exclude": [
     "**/node_modules/**",
@@ -102,6 +103,7 @@
       "@effect/openapi-generator": ["./packages/tools/openapi-generator/src/index.ts"],
       "@effect/openapi-generator/*": ["./packages/tools/openapi-generator/src/*.ts"],
       "@effect/graphql-generator/*": ["./packages/tools/graphql-generator/src/*.ts"],
+      "@effect/protobuf-generator/*": ["./packages/tools/protobuf-generator/src/*.ts"],
       "@effect/oxc": ["./packages/tools/oxc/src/index.ts"],
       "@effect/oxc/*": ["./packages/tools/oxc/src/*.ts"],
       "@effect/tools-utils": ["./packages/tools/utils/src/index.ts"],
