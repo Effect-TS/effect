@@ -785,23 +785,38 @@ function makeUrlParamsDecoder(
   schema: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
-  const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
+  const codec = Schema.toCodecArrayFromSingle(schema)
+  const decode = Schema.decodeUnknownEffect(codec, options)
   const { hasIndexSignature, names } = UrlParamsTree.getTopLevelKeys(schema.ast)
   if (names.size === 0) return decode
+  // Only an index signature can accept a rebuilt key as a flat key. Without
+  // one, a flat decode could only succeed by dropping the nested object.
+  if (!hasIndexSignature) {
+    return (input) => {
+      const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
+      return decode(rebuilt === undefined ? input : rebuilt.tree)
+    }
+  }
+  // Record keys can be renamed when decoding, so the flat value must encode
+  // back to every rebuilt key, or the flat decode dropped one
+  const encode = Schema.encodeUnknownEffect(codec, options)
+  const keepsKeys = (value: unknown, keys: ReadonlyArray<string>) =>
+    Effect.map(Effect.exit(encode(value)), (exit) => {
+      if (exit._tag === "Failure") return false
+      const encoded = exit.value
+      return isObject(encoded) && keys.every((key) => Object.hasOwn(encoded, key))
+    })
   return (input) => {
     const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
     if (rebuilt === undefined) return decode(input)
-    // Only an index signature can accept a rebuilt key as a flat key. Without
-    // one, a flat decode could only succeed by dropping the nested object.
-    if (!hasIndexSignature) return decode(rebuilt.tree)
     return Effect.catch(decode(rebuilt.tree), (error) =>
       Effect.flatMap(
         Effect.mapError(decode(input), () => error),
-        // The flat decode must keep every rebuilt key, or it dropped one
         (value) =>
-          isObject(value) && rebuilt.rebuiltKeys.every((key) => Object.hasOwn(value, key))
-            ? Effect.succeed(value)
-            : Effect.fail(error)
+          Effect.flatMap(
+            keepsKeys(value, rebuilt.rebuiltKeys),
+            (kept) => kept ? Effect.succeed(value) : Effect.fail(error)
+          )
       ))
   }
 }
