@@ -50,7 +50,14 @@ import type { Handle } from "./DockerExec.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 import { withProxyEnv } from "./internal/config.ts"
 import { apiClient, filterStatus, toDockerError, withOperation, withStreamOperation } from "./internal/engine.ts"
-import { contentTypeOf, frames, logsQuery, makeHandle, releaseOnFailure } from "./internal/stream.ts"
+import {
+  contentTypeOf,
+  frames,
+  logsQuery,
+  makeHandle,
+  releaseOnFailure,
+  upgradeContentType
+} from "./internal/stream.ts"
 
 /**
  * A chunk of container output: opaque bytes from stdout or stderr. Lines are
@@ -566,14 +573,15 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
   const inspect: DockerContainers["Service"]["inspect"] = (id, options) =>
     api.inspect({ params: { id }, query: options ?? {} })
   const resize: DockerContainers["Service"]["resize"] = (id, size) => api.resize({ params: { id }, query: size })
+  /** The content type of a stream without one, from whether the container has a TTY. */
+  const ttyContentType = (id: string): Effect.Effect<DockerApi.StreamContentType, DockerError> =>
+    Effect.map(inspect(id), (info) => contentTypeOf(info.Config?.Tty === true))
   /** A stream's content type, as the Engine sends it, otherwise from whether the container has a TTY. */
   const contentTypeFor = (
     id: string,
     contentType: DockerApi.StreamContentType | undefined
   ): Effect.Effect<DockerApi.StreamContentType, DockerError> =>
-    contentType !== undefined
-      ? Effect.succeed(contentType)
-      : Effect.map(inspect(id), (info) => contentTypeOf(info.Config?.Tty === true))
+    contentType !== undefined ? Effect.succeed(contentType) : ttyContentType(id)
 
   const getArchive: DockerContainers["Service"]["getArchive"] = (id, containerPath) =>
     Effect.map(
@@ -653,7 +661,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
         return yield* makeHandle({
           engine,
           socket,
-          contentType: contentTypeFor(id, headers["content-type"]),
+          contentType: upgradeContentType(headers["content-type"], ttyContentType(id), "docker.Containers.attach"),
           stdin: options?.stdin === true,
           exitCode: () => Fiber.join(exitCode),
           resize: (size) => resize(id, size)

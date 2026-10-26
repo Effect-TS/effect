@@ -243,8 +243,14 @@ export const StreamContentType = Schema.Literals([
  */
 export type StreamContentType = typeof StreamContentType.Type
 
-/** The headers of an output stream's response, or of its `101`: the `Content-Type` says how it is framed. */
+/** The headers of an output stream's response: the `Content-Type` says how it is framed. */
 const streamHeaders = { "content-type": Schema.optional(StreamContentType) }
+
+/**
+ * The headers of an output stream's `101`. They decode before the connection
+ * is owned, so the `Content-Type` is checked afterwards: a failure then closes it.
+ */
+const upgradeHeaders = { "content-type": Schema.optional(Schema.String) }
 
 /**
  * Filters of a list or prune: values by key, one value as a string, as the Engine's JSON `map[string][]string` query parameter.
@@ -757,7 +763,7 @@ export const Containers = HttpApiGroup.make("containers").add(
       logs: Schema.optional(Schema.Boolean),
       detachKeys: Schema.optional(Schema.String)
     },
-    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders })
+    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: upgradeHeaders })
   }),
   HttpApiEndpoint.head("statPath", "/containers/:id/archive", {
     params: id,
@@ -854,7 +860,7 @@ export const Exec = HttpApiGroup.make("exec").add(
   HttpApiEndpoint.post("start", "/exec/:id/start", {
     params: id,
     payload: ExecStartConfig,
-    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders })
+    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: upgradeHeaders })
   }),
   HttpApiEndpoint.post("resize", "/exec/:id/resize", {
     params: id,

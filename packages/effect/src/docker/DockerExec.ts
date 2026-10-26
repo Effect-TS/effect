@@ -38,7 +38,7 @@ import { DockerEngine } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 import { apiClient, withOperation } from "./internal/engine.ts"
-import { contentTypeOf, makeHandle, releaseOnFailure } from "./internal/stream.ts"
+import { contentTypeOf, makeHandle, releaseOnFailure, upgradeContentType } from "./internal/stream.ts"
 
 /**
  * A running exec or attach, shaped like `effect/process`'s
@@ -309,7 +309,11 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         return yield* makeHandle({
           engine,
           socket,
-          contentType: Effect.succeed(headers["content-type"] ?? contentTypeOf(tty)),
+          contentType: upgradeContentType(
+            headers["content-type"],
+            Effect.succeed(contentTypeOf(tty)),
+            "docker.Exec.start"
+          ),
           stdin: info.OpenStdin === true,
           exitCode: (outputDone) => Effect.andThen(outputDone, exitCodeWith(inspect, id)),
           resize: (size) => resize(id, size)

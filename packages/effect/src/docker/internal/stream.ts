@@ -78,6 +78,28 @@ export const contentTypeOf = (tty: boolean): DockerApi.StreamContentType =>
   tty ? "application/vnd.docker.raw-stream" : "application/vnd.docker.multiplexed-stream"
 
 /**
+ * The content type of an upgraded stream: the `Content-Type` the Engine sent,
+ * `orElse` without one, and `InvalidResponse` for any other media type.
+ *
+ * @internal
+ */
+export const upgradeContentType = (
+  contentType: string | undefined,
+  orElse: Effect.Effect<DockerApi.StreamContentType, DockerError>,
+  operation: string
+): Effect.Effect<DockerApi.StreamContentType, DockerError> =>
+  contentType === undefined
+    ? orElse
+    : contentType === "application/vnd.docker.raw-stream" || contentType === "application/vnd.docker.multiplexed-stream"
+    ? Effect.succeed(contentType)
+    : Effect.fail(
+      new DockerError({
+        reason: new InvalidResponse({ issue: `the stream has an unknown Content-Type: ${contentType}` }),
+        operation
+      })
+    )
+
+/**
  * The result of feeding bytes to a demultiplexer. `SystemError` ends the
  * stream: a systemerr frame, or a header of an unknown stream type.
  */
