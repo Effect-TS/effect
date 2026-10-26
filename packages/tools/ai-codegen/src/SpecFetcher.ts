@@ -77,11 +77,19 @@ export const layer: Layer.Layer<
   const fs = yield* FileSystem.FileSystem
   const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
 
+  // Gzipped specs (e.g. `openapi.json.gz`) are served as raw bytes, without a `Content-Encoding` header
+  const isGzip = (source: string) => source.endsWith(".gz")
+
+  const gunzip = (bytes: ArrayBuffer | Uint8Array) =>
+    Effect.tryPromise(() =>
+      new Response(new Blob([new Uint8Array(bytes)]).stream().pipeThrough(new DecompressionStream("gzip"))).text()
+    )
+
   const fetchFromFile = Effect.fn("fetchFromFile")(function*(
     path: string,
     provider: string
   ) {
-    return yield* fs.readFileString(path).pipe(
+    return yield* (isGzip(path) ? Effect.flatMap(fs.readFile(path), gunzip) : fs.readFileString(path)).pipe(
       Effect.mapError((cause) => new SpecFetchError({ provider, source: path, cause }))
     )
   })
@@ -91,13 +99,14 @@ export const layer: Layer.Layer<
     provider: string
   ) {
     return yield* httpClient.get(url).pipe(
-      Effect.flatMap((response) => response.text),
+      Effect.flatMap((response) => isGzip(url) ? Effect.flatMap(response.arrayBuffer, gunzip) : response.text),
       Effect.mapError((cause) => new SpecFetchError({ provider, source: url, cause }))
     )
   })
 
   const parseSpec = (content: string, sourceUrl: string, provider: string) => {
-    const isYaml = sourceUrl.endsWith(".yaml") || sourceUrl.endsWith(".yml")
+    const format = isGzip(sourceUrl) ? sourceUrl.slice(0, -".gz".length) : sourceUrl
+    const isYaml = format.endsWith(".yaml") || format.endsWith(".yml")
     return Effect.try({
       try: () => isYaml ? Yaml.parse(content) : JSON.parse(content),
       catch: (cause) => new SpecFetchError({ provider, source: sourceUrl, cause })
