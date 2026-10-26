@@ -445,6 +445,26 @@ describe("Formatter", () => {
       Object.defineProperty(array, "0", { get: () => data })
       strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
     })
+
+    it("should format getters on engines without Proxy", () => {
+      const descriptor = Object.getOwnPropertyDescriptor(globalThis, "Proxy")!
+      // Simulate an engine without Proxy (e.g. Chrome < 49)
+      delete (globalThis as { Proxy?: ProxyConstructor }).Proxy
+      try {
+        strictEqual(
+          formatJson({
+            nested: {
+              get a() {
+                return 1
+              }
+            }
+          }),
+          `{"nested":{"a":1}}`
+        )
+      } finally {
+        Object.defineProperty(globalThis, "Proxy", descriptor)
+      }
+    })
   })
 
   describe("Inspectable.toJson", () => {

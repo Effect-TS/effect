@@ -336,7 +336,9 @@ export function formatJson(input: unknown, options?: {
         ancestors.push(current)
       }
       // Leave boxed primitives intact so JSON.stringify can unbox them natively.
-      if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
+      // Engines without Proxy (e.g. Chrome < 49) let JSON.stringify read
+      // getters directly, as before getter redaction was added.
+      if (typeof Proxy !== "function" || !hasGetter(current) || isJsonPrimitiveWrapper(current)) {
         return current
       }
       // JSON.stringify reads a getter once, then calls toJSON on the result
