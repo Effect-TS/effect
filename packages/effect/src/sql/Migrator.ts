@@ -241,6 +241,12 @@ ORDER BY migration_id`,
 
     // === run
 
+    // BEGIN is still experimental on clickhouse
+    const transactional = sql.onDialectOrElse({
+      clickhouse: () => false,
+      orElse: () => true
+    })
+
     const run = Effect.gen(function*() {
       yield* sql.onDialectOrElse({
         pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
@@ -280,14 +286,8 @@ ORDER BY migration_id`,
         ])
       }
 
-      // without a transaction nothing would undo rows recorded up front, so
-      // record each migration only once it has succeeded
-      const recordAfterRun = sql.onDialectOrElse({
-        clickhouse: () => true,
-        orElse: () => false
-      })
-
-      if (!recordAfterRun && required.length > 0) {
+      // without a transaction, record each migration only after it succeeds
+      if (transactional && required.length > 0) {
         yield* pipe(
           insertMigrations(required.map(([id, name]) => [id, name])),
           Effect.mapError((error): MigrationError | SqlError =>
@@ -306,7 +306,7 @@ ORDER BY migration_id`,
         ([id, name, effect]) =>
           Effect.logDebug(`Running migration`).pipe(
             Effect.flatMap(() => runMigration(id, name, effect)),
-            Effect.andThen(recordAfterRun ? insertMigrations([[id, name]]) : Effect.void),
+            Effect.andThen(transactional ? Effect.void : insertMigrations([[id, name]])),
             Effect.annotateLogs("migration_id", String(id)),
             Effect.annotateLogs("migration_name", name),
             Effect.withSpan(`Migrator ${id}_${name}`)
@@ -334,11 +334,7 @@ ORDER BY migration_id`,
     yield* ensureMigrationsTable
 
     const completed = yield* pipe(
-      sql.onDialectOrElse({
-        // BEGIN is still experimental on clickhouse
-        clickhouse: () => run,
-        orElse: () => sql.withTransaction(run)
-      }),
+      transactional ? sql.withTransaction(run) : run,
       Effect.catchTag("MigrationError", (_) =>
         _.kind === "Locked"
           ? Effect.as(Effect.logDebug(_.message), [])
