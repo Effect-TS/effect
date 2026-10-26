@@ -98,7 +98,8 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 /**
  * Creates a migrator that ensures the migrations table exists, runs pending
  * migrations in a transaction, and optionally dumps the schema after successful
- * migrations.
+ * migrations. ClickHouse runs without a transaction and records each migration
+ * only after it succeeds.
  *
  * @stability unstable
  * @category constructors
@@ -279,7 +280,14 @@ ORDER BY migration_id`,
         ])
       }
 
-      if (required.length > 0) {
+      // without a transaction nothing would undo rows recorded up front, so
+      // record each migration only once it has succeeded
+      const recordAfterRun = sql.onDialectOrElse({
+        clickhouse: () => true,
+        orElse: () => false
+      })
+
+      if (!recordAfterRun && required.length > 0) {
         yield* pipe(
           insertMigrations(required.map(([id, name]) => [id, name])),
           Effect.mapError((error): MigrationError | SqlError =>
@@ -298,6 +306,7 @@ ORDER BY migration_id`,
         ([id, name, effect]) =>
           Effect.logDebug(`Running migration`).pipe(
             Effect.flatMap(() => runMigration(id, name, effect)),
+            Effect.andThen(recordAfterRun ? insertMigrations([[id, name]]) : Effect.void),
             Effect.annotateLogs("migration_id", String(id)),
             Effect.annotateLogs("migration_name", name),
             Effect.withSpan(`Migrator ${id}_${name}`)

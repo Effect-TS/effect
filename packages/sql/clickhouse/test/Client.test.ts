@@ -187,6 +187,36 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.provide(Reactivity.layer)
     ))
 
+  it.effect("records a migration only after it succeeds", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      const queries: Array<[string, unknown]> = []
+      queryImpl = (options) => {
+        queries.push([String(options.query), options.query_params])
+        return Promise.resolve({ json: () => Promise.resolve({ data: [] }) })
+      }
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      const error = yield* ClickhouseMigrator.run({
+        loader: ClickhouseMigrator.fromRecord({
+          "1_first": client`CREATE TABLE first`,
+          "2_rejected": Effect.fail("rejected"),
+          "3_third": client`CREATE TABLE third`
+        })
+      }).pipe(Effect.provideService(SqlClient.SqlClient, client), Effect.flip)
+
+      assert.strictEqual(error.message, `Migration "2_rejected" failed`)
+      const [migration, record, ...rest] = queries.slice(2)
+      assert.strictEqual(migration[0], "CREATE TABLE first")
+      assert.match(record[0], /^INSERT INTO "effect_sql_migrations"/)
+      assert.deepStrictEqual(record[1], { p1: 1, p2: "first" })
+      assert.deepStrictEqual(rest, [])
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        queryImpl = undefined
+      })),
+      Effect.provide(Reactivity.layer)
+    ))
+
   it.effect("kills a streamed query only when the stream is not read to the end", () =>
     Effect.gen(function*() {
       connectImmediately = true
