@@ -2534,7 +2534,7 @@ const GroupLayer = HttpApiBuilder.group(
 )
 ```
 
-The derived client sends `Connection: Upgrade` and `Upgrade: tcp`, and resolves to the `101` response headers and the connection. Any other response is decoded as one of the endpoint's errors.
+The derived client sends `Connection: Upgrade` and `Upgrade: tcp`, and resolves to the `101` response headers and the connection. Any other response is decoded as one of the endpoint's errors, or as one of its ordinary successes when it declares any (see below).
 
 ```ts
 const { headers, socket } = yield * client.containers.attach({ params: { id: "abc" } })
@@ -2578,12 +2578,38 @@ const { headers, socket } = yield * client.exec.start({ params: { id }, payload:
 headers["content-type"] // "application/vnd.docker.raw-stream" | "application/vnd.docker.multiplexed-stream"
 ```
 
+A server may decline an upgrade and answer with an ordinary response instead (RFC 9110 §7.8). Declare the ordinary successes alongside the upgrade, at statuses other than `101`. The handler either calls `upgrade` or returns one of the ordinary successes; once it has called `upgrade`, it must return nothing. The client returns either the upgraded connection or the decoded ordinary success, and `HttpApiClient.isUpgraded` tells them apart.
+
+**Example** (Starting a Detached Exec)
+
+```ts
+const start = HttpApiEndpoint.post("start", "/exec/:id/start", {
+  params: { id: Schema.String },
+  payload: Schema.Struct({ Detach: Schema.Boolean }),
+  success: [HttpApiSchema.Upgrade({ protocol: "tcp" }), HttpApiSchema.Empty(200)]
+})
+
+// server
+handlers.handle("start", ({ payload, upgrade }) =>
+  Effect.gen(function*() {
+    if (payload.Detach) return // answers with an empty 200
+    const socket = yield* upgrade()
+    // ...
+  }))
+
+// client
+const result = yield * client.exec.start({ params: { id }, payload: { Detach: false } })
+if (HttpApiClient.isUpgraded(result)) {
+  const reader = yield * result.socket.reader
+}
+```
+
 Things to know:
 
 - The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` (Node, Bun 1.4+, Deno) or `NodeHttpClient.layerUndici` (Node, Deno). Fetch and `XMLHttpRequest` cannot send upgrade requests, so the call fails with a `TransportError` before anything is sent.
 - Serve upgrade endpoints with `NodeHttpServer`, which also works on Bun 1.4+ and Deno. `Bun.serve` and `Deno.serve` only upgrade to WebSocket, so `BunHttpServer` and `DenoHttpServer` fail these upgrades.
 - Requests that do not ask for the declared protocol get `426 Upgrade Required`, before the payload is decoded.
-- An upgrade endpoint cannot declare a streaming payload or other success schemas, and upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
+- An endpoint can declare one upgrade, and it cannot be combined with a streaming payload, a streaming success, or another success at status `101`. Upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
 - `Connection`, `Upgrade`, `Content-Length` and `Transfer-Encoding` cannot be set on the `101`. Headers that fail to encode end the handler with a defect.
 - The `101` waits for the request body to end. Node 25 and older do not parse upgrade request bodies, so `NodeHttpServer` reads them with `Content-Length` there and answers chunked ones with `411 Length Required`.
 - Releasing the writer's scope half-closes the connection, and releasing the reader's scope closes it.

@@ -107,6 +107,24 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
   : never
 
 /**
+ * Runtime brand key used to mark `Upgraded` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.1.0
+ */
+export const UpgradedTypeId = "~effect/http-api/HttpApiClient/Upgraded"
+
+/**
+ * Type-level brand identifier used by `Upgraded` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.1.0
+ */
+export type UpgradedTypeId = typeof UpgradedTypeId
+
+/**
  * The value a client method returns for an endpoint declared with
  * `HttpApiSchema.Upgrade`: the headers of the `101 Switching Protocols`
  * response and the upgraded connection.
@@ -117,14 +135,62 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
  * one. See `HttpClientResponse.upgrade` for how the connection behaves and
  * when it closes.
  *
+ * When the endpoint also declares ordinary success responses, the method
+ * returns either an `Upgraded` value or the decoded ordinary success. Use
+ * {@link isUpgraded} to tell them apart.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
 export interface Upgraded<Headers = Headers.Headers> {
+  readonly [UpgradedTypeId]: UpgradedTypeId
   readonly headers: Headers
   readonly socket: Socket.Socket
 }
+
+/**
+ * Returns `true` when a client method result is an upgraded connection.
+ *
+ * **Details**
+ *
+ * An endpoint may declare `HttpApiSchema.Upgrade` alongside ordinary success
+ * responses, because a server can decline an upgrade (RFC 9110 §7.8). The
+ * client method then returns either an `Upgraded` value or the decoded
+ * ordinary success, depending on the response status. This predicate narrows
+ * that union.
+ *
+ * **Example** (Handling a declined upgrade)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+ *
+ * const Api = HttpApi.make("docker").add(
+ *   HttpApiGroup.make("exec").add(
+ *     HttpApiEndpoint.post("start", "/exec/:id/start", {
+ *       params: { id: Schema.String },
+ *       payload: Schema.Struct({ Detach: Schema.Boolean }),
+ *       success: [HttpApiSchema.Upgrade({ protocol: "tcp" }), HttpApiSchema.Empty(200)]
+ *     })
+ *   )
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* HttpApiClient.make(Api)
+ *   const result = yield* client.exec.start({ params: { id: "abc" }, payload: { Detach: false } })
+ *   if (HttpApiClient.isUpgraded(result)) {
+ *     const writer = yield* result.socket.writer
+ *     yield* writer.write("ls\n")
+ *   }
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.1.0
+ */
+export const isUpgraded = (u: unknown): u is Upgraded<unknown> => Predicate.hasProperty(u, UpgradedTypeId)
 
 type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Events,
@@ -1040,7 +1106,7 @@ const makeEndpointDecoder = (options: {
       Effect.zipWith(
         decodeHeaders(response.headers),
         response.upgrade,
-        (headers, socket): Upgraded<unknown> => ({ headers, socket })
+        (headers, socket): Upgraded<unknown> => ({ [UpgradedTypeId]: UpgradedTypeId, headers, socket })
       )
   }
 
