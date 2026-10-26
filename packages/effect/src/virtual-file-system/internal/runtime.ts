@@ -178,7 +178,7 @@ export const configureResult = (options: M.LimitOptions | undefined) =>
       output.synchronous = options.synchronous
     }
     for (const key of Object.keys(options)) {
-      if (!(key in defaults)) {
+      if (!Object.hasOwn(defaults, key)) {
         return yield* Result.fail(new M.InvalidInput({ operation: "make", field: key, reason: "excessField" }))
       }
     }

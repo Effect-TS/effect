@@ -91,9 +91,33 @@ const Count = Schema.Natural
 
 const PositiveCount = Count.check(Schema.isGreaterThan(0))
 
-const Uint32 = Schema.Number.check(Schema.isUint32())
+/** @internal */
+export const Uint32 = Schema.Number.check(Schema.isUint32())
 
-const Mode = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o3777 }))
+/** @internal */
+export const isUint32 = Schema.is(Uint32)
+
+/** @internal */
+export const PermissionMode = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o3777 }))
+
+/** @internal */
+export const isPermissionMode = Schema.is(PermissionMode)
+
+// Public option types reference these literal schemas, so their declarations must survive stripInternal.
+export const OpenAccess = Schema.Literals(["read", "write", "readwrite"])
+
+/** @internal */
+export const isOpenAccess = Schema.is(OpenAccess)
+
+export const WriteAccess = OpenAccess.pick(["write", "readwrite"])
+
+/** @internal */
+export const isWriteAccess = Schema.is(WriteAccess)
+
+export const Creation = Schema.Literals(["existing", "ifmissing", "exclusive"])
+
+/** @internal */
+export const isCreation = Schema.is(Creation)
 
 const PositiveByteSize = Schema.ByteSize.check(Schema.makeFilter((size) => size > bigint0))
 
@@ -209,7 +233,7 @@ export const Metadata = Schema.Struct({
   objectNumber: PositiveBigInt,
   uid: Uint32,
   gid: Uint32,
-  mode: Mode,
+  mode: PermissionMode,
   atime: Schema.UnixNano,
   mtime: Schema.UnixNano,
   ctime: Schema.UnixNano,
@@ -255,6 +279,7 @@ const SymlinkObservation = Schema.Struct({
   .check(Schema.makeFilter(coherentObservation))
 
 export const ObjectObservation = Schema.Union([FileObservation, DirectoryObservation, SymlinkObservation])
+  .pipe(Schema.toTaggedUnion("kind"))
 
 export type ObjectObservation = typeof ObjectObservation["Type"]
 
@@ -276,11 +301,12 @@ const PresentEntrySchema = Schema.Struct({
   object: ObjectObservation
 }).check(Schema.makeFilter((entry) =>
   sameObject(entry.parent, entry.parentNamespaceRevision) &&
-  tokenInfo(entry.parent)?.instance === tokenInfo(entry.binding)?.instance &&
+  sameObject(entry.parent, entry.binding) &&
   tokenInfo(entry.parent)?.instance === tokenInfo(entry.object.reference)?.instance
 ))
 
 export const EntryObservation = Schema.Union([AbsentEntry, PresentEntrySchema])
+  .pipe(Schema.toTaggedUnion("state"))
 
 export type EntryObservation = typeof EntryObservation["Type"]
 
@@ -304,7 +330,13 @@ export type ListedEntry = typeof ListedEntry["Type"]
 export const EntryListing = Schema.Struct({
   directory: DirectoryObservationSchema,
   entries: Schema.Array(ListedEntry)
-}).check(Schema.makeFilter((listing) => sortedNames(listing.entries.map((entry) => entry.name))))
+}).check(Schema.makeFilter((listing) =>
+  sortedNames(listing.entries.map((entry) => entry.name)) &&
+  listing.entries.every((entry) =>
+    sameObject(listing.directory.reference, entry.binding) &&
+    tokenInfo(listing.directory.reference)?.instance === tokenInfo(entry.object.reference)?.instance
+  )
+))
 
 export type EntryListing = typeof EntryListing["Type"]
 
@@ -321,7 +353,12 @@ export const WalkRecord = Schema.Union([
     object: ObjectObservation,
     root: Schema.Literal(false),
     entry: PresentEntrySchema
-  })
+  }).check(
+    Schema.makeFilter((record) =>
+      equalsObjectReference(record.object.reference, record.entry.object.reference) &&
+      equalsObjectRevision(record.object.revision, record.entry.object.revision)
+    )
+  )
 ])
 
 export type WalkRecord = typeof WalkRecord["Type"]
@@ -384,8 +421,8 @@ export interface AttributeOptions extends RevisionCondition {
 }
 
 export interface OpenOptions extends RevisionCondition {
-  readonly access?: "read" | "write" | "readwrite" | undefined
-  readonly create?: "existing" | "ifmissing" | "exclusive" | undefined
+  readonly access?: typeof OpenAccess["Type"] | undefined
+  readonly create?: typeof Creation["Type"] | undefined
   readonly append?: boolean | undefined
   readonly truncate?: boolean | undefined
   /** Selects append cursor bookkeeping, default advance; irrelevant to nonappend writes and never changes zero-write behavior. */
@@ -399,8 +436,8 @@ export interface OpenOptions extends RevisionCondition {
 
 export interface WriteFileOptions extends RevisionCondition {
   readonly placement?: "replace" | "start" | "append" | undefined
-  readonly access?: "write" | "readwrite" | undefined
-  readonly create?: "existing" | "ifmissing" | "exclusive" | undefined
+  readonly access?: typeof WriteAccess["Type"] | undefined
+  readonly create?: typeof Creation["Type"] | undefined
   readonly mode?: number | undefined
   readonly conditions?: DestinationConditions | undefined
 }
@@ -678,7 +715,7 @@ export const SemanticMetadata = Schema.Struct({
   objectNumber: PositiveBigInt,
   uid: Uint32,
   gid: Uint32,
-  mode: Mode,
+  mode: PermissionMode,
   atime: Schema.UnixNano,
   mtime: Schema.UnixNano,
   ctime: Schema.UnixNano,
@@ -732,6 +769,7 @@ export const AliasRecord = Schema.TaggedStruct("alias", {
 export type AliasRecord = typeof AliasRecord["Type"]
 
 export const CaptureRecord = Schema.Union([RootRecord, DirectoryRecord, FileRecord, SymlinkRecord, AliasRecord])
+  .pipe(Schema.toTaggedUnion("_tag"))
 
 export type CaptureRecord = typeof CaptureRecord["Type"]
 
@@ -770,11 +808,11 @@ type Scoped<A> = Effect.Effect<A, OperationError, Scope.Scope>
 type SyncResult<A> = Result.Result<A, OperationError>
 
 export type ReferenceOpenOptions = Omit<OpenOptions, "create" | "mode" | "conditions"> & {
-  readonly create?: "existing" | undefined
+  readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
 }
 
 export type ReferenceWriteFileOptions = Omit<WriteFileOptions, "create" | "mode" | "conditions"> & {
-  readonly create?: "existing" | undefined
+  readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
 }
 
 export interface AccessOptions {

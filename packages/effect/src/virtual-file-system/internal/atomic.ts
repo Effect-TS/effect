@@ -20,8 +20,6 @@ const isBoolean = Schema.is(Schema.Boolean)
 const isUnixNano = Schema.is(Schema.UnixNano)
 const isRecord: (input: unknown) => boolean = Schema.is(Schema.Record(Schema.String, Schema.Unknown))
 const isPlacement = Schema.is(Schema.Literals(["replace", "start", "append"]))
-const isAccess = Schema.is(Schema.Literals(["write", "readwrite"]))
-const isCreation = Schema.is(Schema.Literals(["existing", "ifmissing", "exclusive"]))
 const isExpectation = Schema.is(Schema.Literals(["absent", "present", "binding"]))
 
 /** @internal */
@@ -155,11 +153,11 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
           return yield* Result.fail(new M.InvalidInput({ operation, field: "placement", reason: "malformed" }))
         }
         const access = object?.access
-        if (access !== undefined && !isAccess(access)) {
+        if (access !== undefined && !M.isWriteAccess(access)) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "access", reason: "malformed" }))
         }
         const create = object?.create
-        if (create !== undefined && !isCreation(create)) {
+        if (create !== undefined && !M.isCreation(create)) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "create", reason: "malformed" }))
         }
         if (object?.mode !== undefined) yield* E.modeResult(object.mode, "file", operation)

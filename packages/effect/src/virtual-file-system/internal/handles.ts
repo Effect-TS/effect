@@ -457,10 +457,10 @@ const validateOpen = (
     const create = options?.create ?? "existing"
     const appendCursor = options?.appendCursor ?? "advance"
     const truncateCursor = options?.truncateCursor ?? "preserve"
-    if (access !== "read" && access !== "write" && access !== "readwrite") {
+    if (!M.isOpenAccess(access)) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "access", reason: "malformed" }))
     }
-    if (create !== "existing" && create !== "ifmissing" && create !== "exclusive") {
+    if (!M.isCreation(create)) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "create", reason: "malformed" }))
     }
     if (appendCursor !== "advance" && appendCursor !== "preserve") {
