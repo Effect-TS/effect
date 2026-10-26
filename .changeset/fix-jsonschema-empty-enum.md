@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `JsonSchema.toDocumentDraft07` to convert empty enums into valid schemas that reject every instance while preserving sibling constraints and references.
+Fix `JsonSchema.toDocumentDraft07` emitting `enum: []`, which the Draft-07 metaschema rejects. An empty enum now becomes an `allOf` entry that rejects every value.
