@@ -951,10 +951,28 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         [Schema.Record(Schema.TemplateLiteral(["meta[a", Schema.String, "]"]), Schema.String)]
       )
 
+      const EnumValues = Schema.StructWithRest(
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })) }),
+        [Schema.Record(Schema.TemplateLiteral(["meta[", Schema.String, "]"]), Schema.Enum({ V: "v" }))]
+      )
+
       assert.deepStrictEqual(yield* decodeRawQuery(Query, "meta%5Bk%5D=v"), { "meta[k]": "v" })
       assert.deepStrictEqual(yield* decodeRawQuery(BracketKeys, "meta%5Bk%5D="), { "meta[k]": "" })
       for (const search of ["meta%5Bk%5D=v&meta%5Babc%5D=w", "meta%5Babc%5D=w&meta%5Bk%5D=v"]) {
         assert.deepStrictEqual(yield* decodeRawQuery(SomeBracketKeys, search), { "meta[abc]": "w" })
+      }
+      assert.deepStrictEqual(yield* decodeRawQuery(EnumValues, "meta%5Bk%5D=v"), { "meta[k]": "v" })
+    }))
+
+  it.effect("keeps an optional base flat when the schema declares one of its bracket keys", () =>
+    Effect.gen(function*() {
+      const Query = Schema.Struct({
+        meta: Schema.optional(Schema.Struct({ k: Schema.String, abc: Schema.String })),
+        "meta[abc]": Schema.String
+      })
+
+      for (const search of ["meta%5Bk%5D=v&meta%5Babc%5D=w", "meta%5Babc%5D=w&meta%5Bk%5D=v"]) {
+        assert.deepStrictEqual(yield* decodeRawQuery(Query, search), { "meta[abc]": "w" })
       }
     }))
 
