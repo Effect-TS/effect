@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add `skipInitialRun` to `AtomHttpApi` queries so hydrated results can be retained until refresh or dependency changes.
+Add a `skipInitialRun` option to `AtomHttpApi` queries, which keeps a hydrated result until the query is refreshed or its dependencies change.

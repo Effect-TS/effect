@@ -118,7 +118,11 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
-        /** Keep a hydrated result until the query is refreshed or its dependencies change. */
+        /**
+         * Keep a hydrated result until the query is refreshed or its
+         * dependencies change. Requires a `serializationKey` and the
+         * `"decoded-only"` response mode.
+         */
         readonly skipInitialRun?: boolean | undefined
       }
       : never
