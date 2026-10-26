@@ -45,14 +45,15 @@ const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
  * Only keys whose base is one of `names` are rebuilt, and keys listed in
  * `names` are kept as is, so literal bracket keys keep decoding. A key that
  * conflicts with a shorter one, such as `a[b]` next to `a`, stays flat.
- * Returns `undefined` when no key was rebuilt.
+ * Returns the rebuilt record with the flat keys it consumed, or `undefined`
+ * when no key was rebuilt.
  *
  * @internal
  */
 export function fromFlatParams(
   params: FlatParams,
   names: ReadonlySet<string>
-): Record<string, unknown> | undefined {
+): { readonly tree: Record<string, unknown>; readonly rebuiltKeys: ReadonlyArray<string> } | undefined {
   const out: Record<string, unknown> = {}
   const nested: Array<{ readonly key: string; readonly path: ReadonlyArray<string> }> = []
   for (const key of Object.keys(params)) {
@@ -65,15 +66,15 @@ export function fromFlatParams(
   }
   // Shorter paths win, whatever order the keys arrived in
   nested.sort((a, b) => a.path.length - b.path.length)
-  let rebuilt = false
+  const rebuiltKeys: Array<string> = []
   for (const { key, path } of nested) {
     if (setPath(out, path, params[key])) {
-      rebuilt = true
+      rebuiltKeys.push(key)
     } else {
       assignProperty(out, key, params[key])
     }
   }
-  return rebuilt ? out : undefined
+  return rebuiltKeys.length > 0 ? { tree: out, rebuiltKeys } : undefined
 }
 
 function setPath(out: Record<string, unknown>, path: ReadonlyArray<string>, value: unknown): boolean {

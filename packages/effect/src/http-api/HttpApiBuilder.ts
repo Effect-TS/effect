@@ -37,7 +37,7 @@ import { stringOrRedacted } from "../internal/redacted.ts"
 import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasProperty, isObject } from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
@@ -789,13 +789,20 @@ function makeUrlParamsDecoder(
   const { hasIndexSignature, names } = UrlParamsTree.getTopLevelKeys(schema.ast)
   if (names.size === 0) return decode
   return (input) => {
-    const tree = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
-    if (tree === undefined) return decode(input)
+    const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
+    if (rebuilt === undefined) return decode(input)
     // Only an index signature can accept a rebuilt key as a flat key. Without
     // one, a flat decode could only succeed by dropping the nested object.
-    return hasIndexSignature
-      ? Effect.catch(decode(tree), (error) => Effect.mapError(decode(input), () => error))
-      : decode(tree)
+    if (!hasIndexSignature) return decode(rebuilt.tree)
+    return Effect.catch(decode(rebuilt.tree), (error) =>
+      Effect.flatMap(
+        Effect.mapError(decode(input), () => error),
+        // The flat decode must keep every rebuilt key, or it dropped one
+        (value) =>
+          isObject(value) && rebuilt.rebuiltKeys.every((key) => Object.hasOwn(value, key))
+            ? Effect.succeed(value)
+            : Effect.fail(error)
+      ))
   }
 }
 
