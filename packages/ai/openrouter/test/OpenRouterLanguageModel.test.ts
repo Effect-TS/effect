@@ -286,6 +286,57 @@ describe("OpenRouterLanguageModel", () => {
           strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
         }).pipe(Effect.provide(makeTestLayer())))
 
+      const modelOutputCases = [
+        {
+          label: "as text with file placeholders",
+          modelOutput: [
+            Prompt.textPart({ text: "Screenshot" }),
+            Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+          ],
+          content: "Screenshot\n[image/png screenshot.png omitted]"
+        },
+        { label: "as an empty string when it is empty", modelOutput: [], content: "" }
+      ]
+
+      for (const { content, label, modelOutput } of modelOutputCases) {
+        it.effect(`sends tool result model output ${label}`, () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    params: {},
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    result: { output: "APPLICATION_ONLY" },
+                    modelOutput,
+                    isFailure: false,
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+
+            assert.isDefined(toolResult)
+            strictEqual(toolResult.content, content)
+          }).pipe(Effect.provide(makeTestLayer())))
+      }
+
       describe("cache control", () => {
         const ephemeral = { type: "ephemeral" } as const
         const oneHour = { type: "ephemeral", ttl: "1h" } as const

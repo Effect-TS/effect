@@ -16,7 +16,7 @@ import * as IdGenerator from "effect/ai/IdGenerator"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
 import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import { addGenAIAnnotations } from "effect/ai/Telemetry"
 import * as Tool from "effect/ai/Tool"
@@ -946,7 +946,11 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
-            const text = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+            const text = Predicate.isNotUndefined(part.modelOutput)
+              ? Prompt.toolModelOutputToText(part.modelOutput)
+              : typeof part.result === "string"
+              ? part.result
+              : JSON.stringify(part.result)
             const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
 
             messages.push({

@@ -18,6 +18,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as AiError from "./AiError.ts"
+import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
@@ -1590,6 +1591,10 @@ export interface BaseToolResult<Name extends string> extends BasePart<"tool-resu
    */
   readonly encodedResult: unknown
   /**
+   * Content sent to the model in place of the encoded result.
+   */
+  readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted: boolean
@@ -1713,6 +1718,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
+   * Content sent to the model in place of the result.
+   */
+  readonly modelOutput?: ReadonlyArray<Prompt.TextPartEncoded | Prompt.FilePartEncoded> | undefined
+  /**
    * Whether or not the result of executing the tool call handler was an error.
    */
   readonly isFailure: boolean
@@ -1765,6 +1774,8 @@ export const ToolResultPart = <
     identifier: `ToolResultPart(${name})`
   }) as any
 
+const ModelOutput = Schema.Array(Prompt.ToolModelOutputPart)
+
 const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failure: Schema.Constraint) => {
   const makeSchema = (result: Schema.Constraint, isFailure: boolean) => {
     const encodedResult = Schema.toEncoded(result)
@@ -1781,11 +1792,13 @@ const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failur
       providerExecuted: Schema.Boolean,
       metadata: ProviderMetadata,
       encodedResult,
+      modelOutput: Schema.optional(ModelOutput),
       preliminary: Schema.Boolean
     })
     const Encoded = Schema.Struct({
       ...Common,
       result: encodedResult,
+      modelOutput: Schema.optional(Schema.toEncoded(ModelOutput)),
       providerExecuted: Schema.optional(Schema.Boolean),
       metadata: Schema.optional(ProviderMetadata),
       preliminary: Schema.optional(Schema.Boolean)
