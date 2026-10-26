@@ -7,6 +7,7 @@ import {
   type Exit,
   FileSystem,
   Layer,
+  Option,
   Path,
   Redacted,
   Schema,
@@ -926,12 +927,20 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         }),
         Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })), kind: Schema.Literal("b") })
       ])
+      const DecodedOptional = Schema.Union([
+        Schema.Struct({
+          meta: Schema.optional(Schema.Struct({ k: Unused })),
+          kind: Schema.Literal("a").pipe(
+            Schema.decodeTo(Schema.optionalKey(Schema.Literal("a")), SchemaTransformation.passthrough())
+          )
+        }),
+        Schema.Struct({ meta: Schema.optional(Schema.Struct({ k: Schema.String })), kind: Schema.Literal("b") })
+      ])
 
       assert.deepStrictEqual(yield* decodeRawQuery(Numeric, "kind=2&meta%5Bk%5D=v"), { meta: { k: "v" }, kind: 2 })
-      assert.deepStrictEqual(
-        yield* decodeRawQuery(EncodingMiddleware, "kind=b&meta%5Bk%5D=v"),
-        { meta: { k: "v" }, kind: "b" }
-      )
+      for (const Query of [EncodingMiddleware, DecodedOptional]) {
+        assert.deepStrictEqual(yield* decodeRawQuery(Query, "kind=b&meta%5Bk%5D=v"), { meta: { k: "v" }, kind: "b" })
+      }
     }))
 
   it.effect("keeps flat keys an index signature accepts for an object field", () =>
@@ -977,6 +986,23 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       assert.deepStrictEqual(
         yield* decodeRawQuery(DefaultedMeta, "meta%5Bk%5D="),
         { meta: { k: "default" }, "meta[k]": "" }
+      )
+      const OpaqueString = Schema.declare((u): u is string => typeof u === "string", {
+        toCodecStringTree: () => undefined
+      })
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(
+          Schema.Record(Schema.String, Schema.Union([Schema.Struct({ k: Schema.String }), OpaqueString])),
+          "meta%5Bk%5D=v"
+        ),
+        { "meta[k]": "v" }
+      )
+      const Recovering = Schema.Struct({ k: Schema.String }).pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some({ k: "fallback" })))
+      )
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(Schema.Record(Schema.String, Recovering), "meta%5Bk%5D=v"),
+        { "meta[k]": { k: "fallback" } }
       )
     }))
 
