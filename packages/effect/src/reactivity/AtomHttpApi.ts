@@ -118,6 +118,8 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
+        /** Keep a hydrated result until the query is refreshed or its dependencies change. */
+        readonly skipInitialRun?: boolean | undefined
       }
       : never
   ) => [Endpoint] extends [
@@ -273,6 +275,7 @@ export const Service =
         const endpoint = groups[opts.group].endpoints[opts.endpoint]
         atom = Atom.serializable(atom, {
           key: `AtomHttpApi:${opts.group}:${opts.endpoint}:${opts.serializationKey}`,
+          skipInitialRun: opts.skipInitialRun,
           schema: AsyncResult.Schema({
             success: Schema.Union(HttpApiEndpoint.getSuccessSchemas(endpoint)),
             error: Schema.Union(HttpApiEndpoint.getErrorSchemas(endpoint))
@@ -300,6 +303,7 @@ export const Service =
         readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
+        readonly skipInitialRun?: boolean | undefined
       }
     ) => {
       const key: QueryKey = {
@@ -315,7 +319,8 @@ export const Service =
         timeToLive: request.timeToLive !== undefined
           ? Duration.fromInputUnsafe(request.timeToLive)
           : undefined,
-        serializationKey: request.serializationKey
+        serializationKey: request.serializationKey,
+        skipInitialRun: request.skipInitialRun
       }
       return queryFamily(key)
     }) as any
@@ -341,6 +346,7 @@ interface QueryKey {
   sseOptions: Sse.DecodeOptions | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
+  skipInitialRun: boolean | undefined
 }
 
 type ResponseByMode<
