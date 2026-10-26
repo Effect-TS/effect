@@ -58,6 +58,7 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   header: Schema.optional(Schema.String),
   patches: Schema.optional(Schema.Array(Schema.String)),
   includePaths: Schema.optional(Schema.Array(Schema.String)),
+  errorStatusRanges: Schema.optional(Schema.Array(Schema.Literals(["4XX", "5XX"]))),
   replacements: Schema.optional(Schema.Array(Replacement)),
   excludeAnnotations: Schema.optional(Schema.Array(Schema.String)),
   disableAdditionalProperties: Schema.optional(Schema.Boolean)
@@ -96,6 +97,16 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
    */
   get includePathList(): ReadonlyArray<string> | undefined {
     return this.includePaths
+  }
+
+  /**
+   * Get the error status classes to fold into `4XX`/`5XX` responses, or `undefined` to keep error
+   * responses unchanged.
+   *
+   * @since 4.0.0
+   */
+  get errorStatusRangeList(): ReadonlyArray<"4XX" | "5XX"> | undefined {
+    return this.errorStatusRanges
   }
 
   /**

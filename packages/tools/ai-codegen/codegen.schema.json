@@ -63,6 +63,13 @@
         "type": "string"
       }
     },
+    "errorStatusRanges": {
+      "type": "array",
+      "description": "Error status classes the generated client decodes. Explicit statuses in a listed class fold into one `4XX`/`5XX` response (their content must match); explicit statuses in other classes are dropped. Error responses are unchanged when omitted.",
+      "items": {
+        "enum": ["4XX", "5XX"]
+      }
+    },
     "replacements": {
       "type": "array",
       "description": "Text replacements to apply to generated code.",

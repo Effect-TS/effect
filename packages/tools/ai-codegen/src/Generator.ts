@@ -514,6 +514,77 @@ const closeObject = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   }
 }
 
+// Error statuses (`4xx`/`5xx`) of the configured classes fold into one `NXX` response, and the
+// error statuses of other classes are dropped so they reach the client's `orElse` branch.
+const foldErrorResponses = (
+  provider: DiscoveredProvider,
+  spec: Schema.Json,
+  ranges: ReadonlyArray<string> | undefined
+): Effect.Effect<Schema.Json, GenerationError> => {
+  const { paths, ...rest } = spec as Schema.JsonObject
+  if (ranges === undefined || !Predicate.isObject(paths)) {
+    return Effect.succeed(spec)
+  }
+  const folded: Record<string, Schema.Json> = {}
+  for (const [path, item] of Object.entries(paths as Schema.JsonObject)) {
+    if (!Predicate.isObject(item)) {
+      folded[path] = item
+      continue
+    }
+    const operations: Record<string, Schema.Json> = {}
+    for (const [method, operation] of Object.entries(item as Schema.JsonObject)) {
+      const responses = Predicate.isObject(operation) ? (operation as Schema.JsonObject).responses : undefined
+      if (!Predicate.isObject(responses)) {
+        operations[method] = operation
+        continue
+      }
+      const result = foldResponses(responses as Schema.JsonObject, ranges)
+      if (typeof result === "string") {
+        return Effect.fail(
+          new GenerationError({
+            provider: provider.name,
+            cause: new Error(
+              `${method.toUpperCase()} ${path}: cannot fold error responses ${result}, their content differs`
+            )
+          })
+        )
+      }
+      operations[method] = { ...(operation as Schema.JsonObject), responses: result }
+    }
+    folded[path] = operations
+  }
+  return Effect.succeed({ ...rest, paths: folded })
+}
+
+// Returns the folded responses, or a description of the statuses that could not be folded
+const foldResponses = (
+  responses: Schema.JsonObject,
+  ranges: ReadonlyArray<string>
+): Schema.JsonObject | string => {
+  const out: Record<string, Schema.Json> = {}
+  const groups = new Map<string, Array<[status: string, response: Schema.Json]>>()
+  for (const [status, response] of Object.entries(responses)) {
+    const range = /^[45](?:\d\d|XX)$/.test(status) ? `${status[0]}XX` : undefined
+    if (range === undefined) {
+      out[status] = response
+    } else if (ranges.includes(range)) {
+      const group = groups.get(range) ?? []
+      group.push([status, response])
+      groups.set(range, group)
+    }
+  }
+  for (const [range, group] of groups) {
+    const withoutDescription = ([, response]: [string, Schema.Json]) =>
+      JSON.stringify({ ...(response as Schema.JsonObject), description: undefined })
+    if (new Set(group.map(withoutDescription)).size > 1) {
+      return `${group.map(([status]) => status).join(", ")} into ${range}`
+    }
+    // Explicit statuses sort before the range key, so the lowest status supplies the response
+    out[range] = group.sort(([a], [b]) => a < b ? -1 : 1)[0][1]
+  }
+  return out
+}
+
 /**
  * Layer providing the CodeGenerator service.
  *
@@ -570,10 +641,11 @@ export const layer: Layer.Layer<
     provider: DiscoveredProvider,
     spec: unknown
   ) {
-    // Apply patches if any are configured, then keep only the configured paths
-    const patchedSpec = selectPaths(
-      yield* applyPatches(provider, spec as Schema.Json),
-      provider.config.includePathList
+    // Apply patches if any are configured, keep only the configured paths, then fold error responses
+    const patchedSpec = yield* foldErrorResponses(
+      provider,
+      selectPaths(yield* applyPatches(provider, spec as Schema.Json), provider.config.includePathList),
+      provider.config.errorStatusRangeList
     )
 
     const excludeAnnotations = provider.config.excludeAnnotationsList
