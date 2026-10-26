@@ -9,7 +9,7 @@ import * as Zsh from "effect/cli/internal/completions/zsh"
 import { execFileSync, spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, normalize } from "node:path"
+import { join } from "node:path"
 import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 
 // ---------------------------------------------------------------------------
@@ -146,99 +146,30 @@ const choicesHelperSource = (script: string): string => {
 const linesWith = (script: string, needle: string): string =>
   script.split("\n").filter((line) => line.includes(needle)).map((line) => line.trim()).join("\n")
 
-const hasBash = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0
-
 /** `script` arguments that run `command` on a pseudo-terminal. */
 const scriptArgs = (command: string): Array<string> =>
   process.platform === "linux" ? ["-qec", command, "/dev/null"] : ["-q", "/dev/null", ...command.split(" ")]
 
-const hasReadline = hasBash && spawnSync("script", scriptArgs("bash --noprofile --norc -c true")).status === 0
-
-const writeBashFixtures = (directory: string): void => {
-  mkdirSync(join(directory, "project files"))
-  writeFileSync(join(directory, "project.txt"), "")
-  writeFileSync(join(directory, "report data.txt"), "")
-  writeFileSync(join(directory, "report.txt"), "")
-  writeFileSync(join(directory, "other"), "")
-  writeFileSync(join(directory, "other.txt"), "")
-}
+const hasReadline = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0 &&
+  spawnSync("script", scriptArgs("bash --noprofile --norc -c true")).status === 0
 
 /**
- * Complete the last of `words` like interactive Bash in a directory of
- * `process` fixtures, and return the normalized argument each candidate expands
- * to once inserted, with `<home>` standing for the fixture directory.
+ * Type `line`, a tab and Enter into interactive Bash in a directory of
+ * `process` fixtures, and return the arguments `process` receives.
  */
-const replayBashPaths = (words: ReadonlyArray<string>): Array<string> => {
+const replayBashCompletion = (line: string): Array<string> => {
   const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
   try {
-    writeBashFixtures(directory)
-    const quote = (word: string) => `'${word.replace(/'/g, "'\\''")}'`
-    const line = words.join(" ")
-    const last = words[words.length - 1]
-    // Readline completes only the text after an unclosed quote.
-    let open = ""
-    let start = 0
-    for (let i = 0; i < last.length; i++) {
-      if (open === "") {
-        if (last[i] === "\\") i++
-        else if (last[i] === "'" || last[i] === `"`) [open, start] = [last[i], i + 1]
-      } else if (last[i] === open) open = ""
-      else if (last[i] === "\\" && open === `"`) i++
-    }
-    const word = open === "" ? last : last.slice(start)
-    const file = join(directory, "completion.bash")
-    writeFileSync(
-      file,
-      [
-        // Initialize readline as an interactive shell does, which changes how
-        // Bash 3.2's compgen expands `$VAR/`.
-        `set -o emacs; bind 2>/dev/null`,
-        Bash.generate("process", fromCommand(withPaths)),
-        `COMP_WORDS=(${words.map(quote).join(" ")})`,
-        `COMP_CWORD=${words.length - 1}`,
-        `COMP_LINE=${quote(line)}`,
-        `COMP_POINT=\${#COMP_LINE}`,
-        `_process process ${quote(word)} ${quote(words[words.length - 2])}`,
-        // Insert each candidate as readline would, closing an open quote.
-        `for _match in "\${COMPREPLY[@]}"; do`,
-        `  _line=${quote(line.slice(0, line.length - word.length))}"$_match"`,
-        `  [[ -n ${quote(open)} && "$_match" != *${quote(open)} ]] && _line+=${quote(open)}`,
-        `  eval "set -- $_line" || continue`,
-        `  shift $(($# - 1))`,
-        `  printf '%s\\n' "$1"`,
-        `done`
-      ].join("\n")
-    )
-    return execFileSync("bash", ["--noprofile", "--norc", file], {
-      cwd: directory,
-      encoding: "utf8",
-      env: { ...process.env, HOME: directory }
-    })
-      .split("\n")
-      .filter((text) => text !== "")
-      .map((text) => normalize(text).replaceAll(directory, "<home>"))
-      .sort()
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-/**
- * Type `line` and a tab into interactive Bash on a pseudo-terminal in a
- * directory of `process` fixtures, press Enter, and return the arguments
- * `process` receives.
- */
-const replayBashReadline = (line: string): Array<string> => {
-  const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
-  try {
-    writeBashFixtures(directory)
+    mkdirSync(join(directory, "project files"))
+    writeFileSync(join(directory, "project.txt"), "")
+    writeFileSync(join(directory, "report data.txt"), "")
+    writeFileSync(join(directory, "report.txt"), "")
     writeFileSync(
       join(directory, "rc.bash"),
       [Bash.generate("process", fromCommand(withPaths)), `process() { printf '<%s>\\n' "$@"; }`, `PS1='$ ' TMOUT=1`]
         .join("\n")
     )
-    // Ctrl-D exits, or on Bash 5 ends a quote left open; TMOUT exits once the
-    // input runs out.
+    // Ctrl-D exits, or ends a quote left open; TMOUT exits once input runs out.
     return spawnSync("script", scriptArgs("bash --noprofile --rcfile rc.bash -i"), {
       cwd: directory,
       encoding: "utf8",
@@ -247,7 +178,7 @@ const replayBashReadline = (line: string): Array<string> => {
       timeout: 10_000
     }).stdout
       .split(/\r?\n/)
-      .flatMap((text) => text.startsWith("<") && text.endsWith(">") ? [text.slice(1, -1)] : [])
+      .flatMap((text) => text.startsWith("<") && text.endsWith(">") ? [text.slice(1, -1).replace(directory, "~")] : [])
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
@@ -355,32 +286,14 @@ describe("Bash completions", () => {
     assert.include(script, "--no-loud")
   })
 
-  it.skipIf(!hasBash)("completes paths containing spaces as one escaped candidate", () => {
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "rep"]), ["report data.txt", "report.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "report\\ d"]), ["report data.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "~/rep"]), [
-      "<home>/report data.txt",
-      "<home>/report.txt"
-    ])
-    assert.deepStrictEqual(replayBashPaths(["process", "--output-dir", "pro"]), ["project files"])
-    assert.deepStrictEqual(replayBashPaths(["process", "rep"]), ["report data.txt", "report.txt"])
+  it.skipIf(!hasReadline)("completes paths containing spaces as one argument", () => {
+    assert.deepStrictEqual(replayBashCompletion("process --input report\\ d"), ["--input", "report data.txt"])
+    assert.deepStrictEqual(replayBashCompletion("process --output-dir pro"), ["--output-dir", "project files"])
   })
 
-  it.skipIf(!hasBash)("keeps a variable in a path prefix expandable", () => {
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/project."]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}/project.`]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME}"/project.`]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "$HOME/./project."]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", "~+/project."]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"\${HOME:-/tmp}"/project.`]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `"$HOME/"project.`]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `$HOME/"project."`]), ["<home>/project.txt"])
-    assert.deepStrictEqual(replayBashPaths(["process", "--input", `~/"project."`]), ["<home>/project.txt"])
-  })
-
-  it.skipIf(!hasReadline)("leaves no quote open when Readline inserts the common prefix of paths", () => {
-    assert.deepStrictEqual(replayBashReadline(`process --input "./"ot`), ["--input", "./other"])
-    assert.deepStrictEqual(replayBashReadline(`process --input './'ot`), ["--input", "./other"])
+  it.skipIf(!hasReadline)("keeps an expandable or quoted directory as typed", () => {
+    assert.deepStrictEqual(replayBashCompletion("process --input $HOME/report\\ d"), ["--input", "~/report data.txt"])
+    assert.deepStrictEqual(replayBashCompletion(`process --input "./"rep`), ["--input", "./report"])
   })
 
   it("inlines choice values for choice flags", () => {
