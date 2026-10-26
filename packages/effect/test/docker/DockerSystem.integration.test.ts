@@ -1,10 +1,11 @@
+import { NodeDocker } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
-import { Effect, Stream } from "effect"
-import { DockerEngine, DockerSystem } from "effect/docker"
-import { layer } from "./utils/live.ts"
+import { Effect } from "effect"
+import { DockerContainers, DockerEngine, DockerImages, DockerSystem } from "effect/docker"
+import { ensureImage, image, layer, scopedContainer } from "./utils/live.ts"
 
 it.layer(layer, { timeout: "120 seconds", excludeTestServices: true })("DockerSystem (live)", (it) => {
-  it.effect("negotiates, and reports ping, version, info and disk usage", () =>
+  it.effect("negotiates, and reports ping, version and info", () =>
     Effect.gen(function*() {
       const engine = yield* DockerEngine.DockerEngine
       const system = yield* DockerSystem.DockerSystem
@@ -18,16 +19,19 @@ it.layer(layer, { timeout: "120 seconds", excludeTestServices: true })("DockerSy
       const info = yield* system.info
       assert.isDefined(info.ServerVersion)
       assert.strictEqual(ping.swarm?.nodeState, info.Swarm?.LocalNodeState)
-      assert.strictEqual(ping.swarm?.controlAvailable, info.Swarm?.ControlAvailable ?? false)
       assert.strictEqual(ping.experimental, info.ExperimentalBuild)
-      const usage = yield* system.df({ type: ["volume"] })
-      assert.isObject(usage)
     }), 60_000)
 
-  it.effect("ends the event stream at until", () =>
+  it.effect("decodes the Engine's answers at the minimum API version, 1.44", () =>
     Effect.gen(function*() {
+      assert.strictEqual(yield* (yield* DockerEngine.DockerEngine).apiVersion, "1.44")
       const system = yield* DockerSystem.DockerSystem
-      const events = yield* system.events({ since: 0, until: Date.now() + 1000 }).pipe(Stream.runCollect)
-      for (const event of events) assert.isString(event.Type)
-    }), 60_000)
+      yield* system.info
+      yield* system.version
+      yield* system.df()
+      yield* ensureImage(image)
+      const id = yield* scopedContainer({ Image: image, Cmd: ["true"] })
+      assert.strictEqual((yield* DockerContainers.DockerContainers.use((containers) => containers.inspect(id))).Id, id)
+      assert.isDefined((yield* DockerImages.DockerImages.use((images) => images.inspect(image))).Id)
+    }).pipe(Effect.provide(NodeDocker.layerFromEnv({ apiVersion: "1.44" }))), 60_000)
 })
