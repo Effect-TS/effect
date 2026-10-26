@@ -3178,10 +3178,17 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer: toCodecOpenAI }),
-    catch: (error) => unsupportedSchemaError(error, method)
+    catch: (error) => toolParametersError(tool, error, method)
   })
 
 const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {

@@ -1375,6 +1375,13 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
 
@@ -1459,7 +1466,10 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
       } else {
-        const prepared = yield* tryCodecTransform(tool.parametersSchema, "prepareTools")
+        const prepared = yield* Effect.try({
+          try: () => toCodecOpenAI(tool.parametersSchema),
+          catch: (error) => toolParametersError(tool, error, "prepareTools")
+        })
         parameters = prepared.jsonSchema
         // Reused to normalize this tool's calls in the response.
         toolCodecs.set(tool, prepared.codec)

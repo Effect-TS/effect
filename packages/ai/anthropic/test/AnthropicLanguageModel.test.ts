@@ -1173,13 +1173,9 @@ describe("AnthropicLanguageModel", () => {
         )
 
         const inputSchema = {
-          type: "object",
           properties: {
-            query: { type: "string" },
-            limit: { type: "number" }
-          },
-          required: ["query"],
-          additionalProperties: false
+            query: { type: "string" }
+          }
         } as const
 
         const DynamicTool = Tool.dynamic("DynamicTool", {
@@ -1211,6 +1207,24 @@ describe("AnthropicLanguageModel", () => {
 
         assert.strictEqual(dynamicTool.description, "A dynamic tool")
         assert.deepStrictEqual(dynamicTool.input_schema, inputSchema)
+      }))
+
+    it.effect("names the tool when its parameters are not an object schema", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: "Use the tool",
+          toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))),
+          Effect.flip
+        )
+
+        assert.strictEqual(error.reason._tag, "UnsupportedSchemaError")
+        assert.include(error.message, `"NoParams"`)
+        assert.include(error.message, "Tool.EmptyParams")
       }))
 
     it.effect("serializes provider-executed web_search parts from the assistant message", () =>
