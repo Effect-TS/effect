@@ -8879,7 +8879,12 @@ const groupByImpl = <A, E, R, K, V, E2, R2>(
         body: constant(Effect.flatMap(pull, (arr) => f(arr, queues, queueMap))),
         step: constVoid
       }).pipe(
-        Effect.catchCause((cause) => Queue.failCause(out, cause)),
+        Effect.catchCause((cause) => {
+          for (const [, queue] of queueMap) {
+            Queue.endUnsafe(queue)
+          }
+          return Queue.failCause(out, cause)
+        }),
         Effect.forkIn(scope)
       )
 
