@@ -137,6 +137,20 @@ describe("Rational", () => {
     )
   })
 
+  it("toNumberUnsafe rounds subnormal results once, to nearest with ties to even", () => {
+    const minValue = Rational.makeUnsafe(1n, 1n << 1074n)
+    // Just above half of Number.MIN_VALUE rounds up to it rather than to zero.
+    strictEqual(Rational.toNumberUnsafe(Rational.makeUnsafe(1n, (1n << 1075n) - 1n)), Number.MIN_VALUE)
+    strictEqual(Rational.toNumberUnsafe(Rational.makeUnsafe(-1n, (1n << 1075n) - 1n)), -Number.MIN_VALUE)
+    // Exactly half of Number.MIN_VALUE is a tie, and zero is the even neighbour.
+    strictEqual(Rational.toNumberUnsafe(Rational.makeUnsafe(1n, 1n << 1075n)), 0)
+    // 1.5 * Number.MIN_VALUE is a tie between one and two units; two is even.
+    strictEqual(Rational.toNumberUnsafe(Rational.makeUnsafe(3n, 1n << 1075n)), 2 * Number.MIN_VALUE)
+    // Just below 1.5 * Number.MIN_VALUE rounds down to one unit.
+    strictEqual(Rational.toNumberUnsafe(Rational.makeUnsafe(3n * (1n << 60n) - 1n, 1n << 1135n)), Number.MIN_VALUE)
+    strictEqual(Rational.toNumberUnsafe(minValue), Number.MIN_VALUE)
+  })
+
   it("toBigDecimal rounds at the supplied scale", () => {
     const decimal = BigDecimal.fromStringUnsafe
     assertEquals(Rational.toBigDecimal(third, { scale: 3 }), decimal("0.333"))
