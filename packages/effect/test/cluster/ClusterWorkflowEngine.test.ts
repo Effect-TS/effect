@@ -1457,6 +1457,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // The run parks on the second gate after reading the first completion
       // directly or replaying once while the completion is committed.
       assert([1, 2].includes(flags.get("two-step-branch-runs") as number))
+      // A completion stored before the await is read directly, so let the run
+      // park on the second gate first.
+      yield* TestClock.adjust("1 second")
 
       const tokenB = DurableDeferred.tokenFromExecutionId(TwoStepGateB, {
         workflow: TwoStepWorkflow,

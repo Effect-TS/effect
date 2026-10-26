@@ -815,25 +815,30 @@ export const make = Effect.gen(function*() {
           if (exit) {
             return Option.some(exit)
           }
-          return yield* requestReply({
-            workflow: instance.workflow,
-            entityType: `Workflow/${instance.workflow._tag}`,
-            executionId: instance.executionId,
+          const request = yield* storage.requestForPrimaryKey({
+            address: entityAddressFor({
+              workflow: instance.workflow,
+              entityType: `Workflow/${instance.workflow._tag}`,
+              executionId: instance.executionId
+            }),
             tag: "deferred",
             id: deferred.name
-          }).pipe(
-            Effect.map((reply) => {
-              if (Option.isNone(reply)) {
-                return Option.none<Exit.Exit<unknown, unknown>>()
-              }
-              const decoded = decodeDeferredWithExit(reply.value as any)
-              return Option.some(
-                decoded.exit._tag === "Success"
-                  ? decoded.exit.value
-                  : decoded.exit
-              )
-            })
-          )
+          })
+          if (Option.isNone(request)) {
+            return Option.none<Exit.Exit<unknown, unknown>>()
+          }
+          const reply = yield* replyForRequestId(Snowflake.Snowflake(request.value.requestId))
+          if (Option.isSome(reply)) {
+            const decoded = decodeDeferredWithExit(reply.value as any)
+            return Option.some(
+              decoded.exit._tag === "Success"
+                ? decoded.exit.value
+                : decoded.exit
+            )
+          }
+          // The first completion saved under the deferred name wins, so a
+          // request the owner has not processed yet already holds the result.
+          return Option.some(decodeDeferredPayload(request.value.payload).exit)
         })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
@@ -981,6 +986,7 @@ const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>)
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended" && reply.exit.value.failed === true
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
+const decodeDeferredPayload = Schema.decodeUnknownSync(Schema.toCodecJson(DeferredRpc.payloadSchema))
 
 const ResumeRpc = Rpc.make("resume", {
   // Older persisted resume envelopes have an empty payload and use the empty key.

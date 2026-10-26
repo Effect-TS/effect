@@ -118,6 +118,18 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
 
   /**
+   * Retrieves the encoded request for the specified primary key, whether or
+   * not it has been processed.
+   */
+  readonly requestForPrimaryKey: (
+    options: {
+      readonly address: EntityAddress
+      readonly tag: string
+      readonly id: string
+    }
+  ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>
+
+  /**
    * For locally sent messages, register a handler to process the replies.
    *
    * **Details**
@@ -393,6 +405,14 @@ export type Encoded = {
   readonly requestIdForPrimaryKey: (
     primaryKey: string
   ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
+
+  /**
+   * Retrieves the request for the specified primary key, whether or not it
+   * has been processed.
+   */
+  readonly requestForPrimaryKey: (
+    primaryKey: string
+  ) => Effect.Effect<Option.Option<Envelope.PartialRequestEncoded>, PersistenceError>
 
   /**
    * Retrieves the replies for the specified requests.
@@ -779,6 +799,9 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
+    requestForPrimaryKey(options) {
+      return encoded.requestForPrimaryKey(Envelope.primaryKeyByAddress(options))
+    },
     unprocessedMessages(shardIds, options) {
       const storage = this as unknown as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
@@ -928,6 +951,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   repliesFor: () => Effect.succeed([]),
   repliesForUnfiltered: () => Effect.succeed([]),
   requestIdForPrimaryKey: () => Effect.succeedNone,
+  requestForPrimaryKey: () => Effect.succeedNone,
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
   resetAddress: () => Effect.void,
@@ -1138,6 +1162,11 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         Effect.sync(() => {
           const entry = requestsByPrimaryKey.get(primaryKey)
           return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
+        }),
+      requestForPrimaryKey: (primaryKey) =>
+        Effect.sync(() => {
+          const envelope = requestsByPrimaryKey.get(primaryKey)?.envelope
+          return envelope?._tag === "Request" ? Option.some(envelope) : Option.none()
         }),
       repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
       repliesForUnfiltered: (requestIds) =>

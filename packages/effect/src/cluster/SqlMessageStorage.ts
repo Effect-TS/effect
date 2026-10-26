@@ -645,6 +645,29 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         withTracerDisabled
       ),
 
+    requestForPrimaryKey: (primaryKey) => {
+      const select = (messageId: string) =>
+        sql<MessageRow & ReplyJoinRow>`
+          SELECT ${messageJoinColumns}
+          FROM ${messagesTableSql} m
+          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+          WHERE m.message_id = ${messageId}
+        `
+      return messageIdForPrimaryKey(primaryKey).pipe(
+        Effect.flatMap(select),
+        Effect.flatMap((rows) =>
+          rows.length === 0 && mayHaveLegacyRow(primaryKey) ? select(primaryKey) : Effect.succeed(rows)
+        ),
+        Effect.map((rows) => {
+          const envelope = rows.length > 0 ? messageFromRow(rows[0]).envelope : undefined
+          return envelope?._tag === "Request" ? Option.some(envelope) : Option.none()
+        }),
+        Effect.provideService(SqlClient.SafeIntegers, true),
+        PersistenceError.refail,
+        withTracerDisabled
+      )
+    },
+
     repliesFor: (requestIds) =>
       // replies where:
       // - the request is in the list
