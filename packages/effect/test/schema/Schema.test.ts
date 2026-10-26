@@ -10660,6 +10660,25 @@ describe("Check", () => {
     )
   })
 
+  it("isAscii", async () => {
+    const schema = Schema.String.check(Schema.isAscii())
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+      id: "effect/schema/isAscii",
+      payload: null
+    })
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("")
+    await decoding.succeed("\x00a\x7f")
+    await decoding.fail("a\x80", `Expected an ASCII string`)
+  })
+
   it("isBase64", async () => {
     const schema = Schema.String.check(Schema.isBase64())
     const asserts = new TestSchema.Asserts(schema)
