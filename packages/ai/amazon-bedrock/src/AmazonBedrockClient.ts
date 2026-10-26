@@ -301,7 +301,8 @@ export const make = Effect.fnUntraced(
     )
 
     // The exposed client resolves the credentials of a request itself, unless
-    // `converse` or `converseStream` already did.
+    // `converse` or `converseStream` already did, and redacts the session
+    // token in header tracing as they do.
     const client = HttpClient.makeWith(
       (requestEffect) =>
         Effect.flatMap(
@@ -312,7 +313,7 @@ export const make = Effect.fnUntraced(
                 ? httpClient.execute(request)
                 : Effect.flatMap(resolveCredentials("execute"), (credentials) =>
                   Effect.provideService(httpClient.execute(request), CurrentRequestCredentials, credentials)))
-        ),
+        ).pipe(withRedactedHeaders),
       Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
     )
 

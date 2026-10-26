@@ -6,10 +6,11 @@
  * **Details**
  *
  * The Smithy model of the Converse API expresses most content as unions. A
- * union is modelled here as a struct whose members are all optional, so a
- * member this provider does not model decodes with every key undefined instead
- * of failing the whole response. Blobs travel as base64 strings, as in the
- * JSON protocol.
+ * union is modelled here as a struct whose members are all optional. Every
+ * struct that Bedrock sends back keeps the fields this provider does not
+ * model, so a new union member or field reaches a low-level consumer instead
+ * of failing the whole response or being dropped. Blobs travel as base64
+ * strings, as in the JSON protocol.
  *
  * @stability unstable
  * @since 4.0.0
@@ -23,6 +24,12 @@ import * as Schema from "effect/Schema"
  * decoded as they are, so a low-level consumer can read them.
  */
 const UnknownRecord = Schema.Record(Schema.String, Schema.Unknown)
+
+/**
+ * A struct that Bedrock can send back, with {@link UnknownRecord} as its rest.
+ */
+const ResponseStruct = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
+  Schema.StructWithRest(Schema.Struct(fields), [UnknownRecord])
 
 // =============================================================================
 // Common
@@ -82,7 +89,7 @@ export type StopReason = typeof StopReason.Type
  * @category schemas
  * @since 4.0.0
  */
-export const TokenUsage = Schema.Struct({
+export const TokenUsage = ResponseStruct({
   inputTokens: Schema.Int,
   outputTokens: Schema.Int,
   totalTokens: Schema.Int,
@@ -110,7 +117,7 @@ export type TokenUsage = typeof TokenUsage.Type
  * @category schemas
  * @since 4.0.0
  */
-export const ToolUseBlock = Schema.Struct({
+export const ToolUseBlock = ResponseStruct({
   toolUseId: Schema.String,
   name: Schema.String,
   input: Schema.Unknown
@@ -123,7 +130,7 @@ export const ToolUseBlock = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ToolResultContentBlock = Schema.Struct({
+export const ToolResultContentBlock = ResponseStruct({
   text: Schema.optional(Schema.String),
   json: Schema.optional(Schema.Unknown)
 })
@@ -136,7 +143,7 @@ export const ToolResultContentBlock = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ToolResultBlock = Schema.Struct({
+export const ToolResultBlock = ResponseStruct({
   toolUseId: Schema.String,
   content: Schema.Array(ToolResultContentBlock),
   status: Schema.optional(Schema.Literals(["success", "error"]))
@@ -151,7 +158,7 @@ export const ToolResultBlock = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ReasoningTextBlock = Schema.Struct({
+export const ReasoningTextBlock = ResponseStruct({
   text: Schema.String,
   signature: Schema.optional(Schema.String)
 })
@@ -164,7 +171,7 @@ export const ReasoningTextBlock = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ReasoningContentBlock = Schema.Struct({
+export const ReasoningContentBlock = ResponseStruct({
   reasoningText: Schema.optional(ReasoningTextBlock),
   redactedContent: Schema.optional(Schema.String)
 })
@@ -177,6 +184,8 @@ export const ReasoningContentBlock = Schema.Struct({
  * Converse caches everything preceding the block, so a cache point is its own
  * content block appended after the content it should cover. `ttl` opts into
  * extended caching; when omitted Bedrock uses the default lifetime.
+ * Bedrock does not send cache points back, so unlike the response structs
+ * this one keeps no unmodelled fields and stays exact as a request option.
  *
  * @stability unstable
  * @category schemas
@@ -212,9 +221,9 @@ export const ImageFormat = Schema.Literals(["png", "jpeg", "gif", "webp"])
  * @category schemas
  * @since 4.0.0
  */
-export const ImageBlock = Schema.Struct({
+export const ImageBlock = ResponseStruct({
   format: ImageFormat,
-  source: Schema.Struct({ bytes: Schema.String })
+  source: ResponseStruct({ bytes: Schema.String })
 })
 
 /**
@@ -234,10 +243,10 @@ export const DocumentFormat = Schema.Literals(["pdf", "csv", "doc", "docx", "xls
  * @category schemas
  * @since 4.0.0
  */
-export const DocumentBlock = Schema.Struct({
+export const DocumentBlock = ResponseStruct({
   format: DocumentFormat,
   name: Schema.String,
-  source: Schema.Struct({ bytes: Schema.String })
+  source: ResponseStruct({ bytes: Schema.String })
 })
 
 /**
@@ -248,18 +257,15 @@ export const DocumentBlock = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlock = Schema.StructWithRest(
-  Schema.Struct({
-    text: Schema.optional(Schema.String),
-    toolUse: Schema.optional(ToolUseBlock),
-    toolResult: Schema.optional(ToolResultBlock),
-    reasoningContent: Schema.optional(ReasoningContentBlock),
-    image: Schema.optional(ImageBlock),
-    document: Schema.optional(DocumentBlock),
-    cachePoint: Schema.optional(CachePointBlock)
-  }),
-  [UnknownRecord]
-)
+export const ContentBlock = ResponseStruct({
+  text: Schema.optional(Schema.String),
+  toolUse: Schema.optional(ToolUseBlock),
+  toolResult: Schema.optional(ToolResultBlock),
+  reasoningContent: Schema.optional(ReasoningContentBlock),
+  image: Schema.optional(ImageBlock),
+  document: Schema.optional(DocumentBlock),
+  cachePoint: Schema.optional(CachePointBlock)
+})
 
 /**
  * A message within a Converse conversation.
@@ -268,7 +274,7 @@ export const ContentBlock = Schema.StructWithRest(
  * @category schemas
  * @since 4.0.0
  */
-export const Message = Schema.Struct({
+export const Message = ResponseStruct({
   role: Schema.Literals(["user", "assistant"]),
   content: Schema.Array(ContentBlock)
 })
@@ -465,7 +471,7 @@ export type ConverseRequest = typeof ConverseRequest.Type
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseMetrics = Schema.Struct({
+export const ConverseMetrics = ResponseStruct({
   latencyMs: Schema.Number
 })
 
@@ -478,16 +484,13 @@ export const ConverseMetrics = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseResponse = Schema.StructWithRest(
-  Schema.Struct({
-    output: Schema.Struct({ message: Message }),
-    usage: TokenUsage,
-    stopReason: StopReason,
-    metrics: Schema.optional(ConverseMetrics),
-    trace: Schema.optional(Schema.Unknown)
-  }),
-  [UnknownRecord]
-)
+export const ConverseResponse = ResponseStruct({
+  output: ResponseStruct({ message: Message }),
+  usage: TokenUsage,
+  stopReason: StopReason,
+  metrics: Schema.optional(ConverseMetrics),
+  trace: Schema.optional(Schema.Unknown)
+})
 
 /**
  * The type of {@link ConverseResponse}.
@@ -509,7 +512,7 @@ export type ConverseResponse = typeof ConverseResponse.Type
  * @category schemas
  * @since 4.0.0
  */
-export const MessageStartEvent = Schema.Struct({
+export const MessageStartEvent = ResponseStruct({
   role: Schema.Literals(["user", "assistant"])
 })
 
@@ -521,14 +524,11 @@ export const MessageStartEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlockStartEvent = Schema.Struct({
+export const ContentBlockStartEvent = ResponseStruct({
   contentBlockIndex: Schema.Int,
-  start: Schema.optional(Schema.StructWithRest(
-    Schema.Struct({
-      toolUse: Schema.optional(Schema.Struct({ toolUseId: Schema.String, name: Schema.String }))
-    }),
-    [UnknownRecord]
-  ))
+  start: Schema.optional(ResponseStruct({
+    toolUse: Schema.optional(ResponseStruct({ toolUseId: Schema.String, name: Schema.String }))
+  }))
 })
 
 /**
@@ -540,18 +540,15 @@ export const ContentBlockStartEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlockDelta = Schema.StructWithRest(
-  Schema.Struct({
+export const ContentBlockDelta = ResponseStruct({
+  text: Schema.optional(Schema.String),
+  toolUse: Schema.optional(ResponseStruct({ input: Schema.String })),
+  reasoningContent: Schema.optional(ResponseStruct({
     text: Schema.optional(Schema.String),
-    toolUse: Schema.optional(Schema.Struct({ input: Schema.String })),
-    reasoningContent: Schema.optional(Schema.Struct({
-      text: Schema.optional(Schema.String),
-      signature: Schema.optional(Schema.String),
-      redactedContent: Schema.optional(Schema.String)
-    }))
-  }),
-  [UnknownRecord]
-)
+    signature: Schema.optional(Schema.String),
+    redactedContent: Schema.optional(Schema.String)
+  }))
+})
 
 /**
  * A streamed delta event for a content block.
@@ -560,7 +557,7 @@ export const ContentBlockDelta = Schema.StructWithRest(
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlockDeltaEvent = Schema.Struct({
+export const ContentBlockDeltaEvent = ResponseStruct({
   contentBlockIndex: Schema.Int,
   delta: ContentBlockDelta
 })
@@ -572,7 +569,7 @@ export const ContentBlockDeltaEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ContentBlockStopEvent = Schema.Struct({
+export const ContentBlockStopEvent = ResponseStruct({
   contentBlockIndex: Schema.Int
 })
 
@@ -583,7 +580,7 @@ export const ContentBlockStopEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const MessageStopEvent = Schema.Struct({
+export const MessageStopEvent = ResponseStruct({
   stopReason: StopReason
 })
 
@@ -595,14 +592,11 @@ export const MessageStopEvent = Schema.Struct({
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseStreamMetadataEvent = Schema.StructWithRest(
-  Schema.Struct({
-    usage: TokenUsage,
-    metrics: Schema.optional(ConverseMetrics),
-    trace: Schema.optional(Schema.Unknown)
-  }),
-  [UnknownRecord]
-)
+export const ConverseStreamMetadataEvent = ResponseStruct({
+  usage: TokenUsage,
+  metrics: Schema.optional(ConverseMetrics),
+  trace: Schema.optional(Schema.Unknown)
+})
 
 const knownStreamEventTypes = new Set([
   "messageStart",

@@ -2,6 +2,8 @@ import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import type * as HttpBody from "effect/http/HttpBody"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as Url from "effect/http/Url"
+import * as Result from "effect/Result"
 
 /**
  * The credentials a request is signed with.
@@ -87,9 +89,10 @@ const bodyBytes = (body: HttpBody.HttpBody): Effect.Effect<Uint8Array> => {
  * **Details**
  *
  * The signed headers are `host`, `x-amz-date`, `content-type` when present
- * and `x-amz-security-token` when present. Path segments are encoded a second
- * time in the canonical URI, as the service does for every API but S3. The
- * timestamp comes from the Effect `Clock`.
+ * and `x-amz-security-token` when present. The canonical URI and query come
+ * from the URL the transport sends, `url` with `urlParams` appended. Path
+ * segments are encoded a second time in the canonical URI, as the service does
+ * for every API but S3. The timestamp comes from the Effect `Clock`.
  *
  * @internal
  */
@@ -105,7 +108,12 @@ export const sign = (
     const { accessKeyId, secretAccessKey, sessionToken } = options.credentials
     const amzDate = formatAmzDate(new Date(yield* Clock.currentTimeMillis))
     const date = amzDate.slice(0, 8)
-    const url = new URL(request.url)
+    const urlResult = Url.make(request.url, request.urlParams, undefined)
+    if (Result.isFailure(urlResult)) {
+      // The transport fails the request with an `InvalidUrlError` before sending it.
+      return request
+    }
+    const url = urlResult.success
 
     const headers: Record<string, string> = {
       host: url.host,
