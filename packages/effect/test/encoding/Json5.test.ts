@@ -1,6 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Json5 from "effect/encoding/Json5"
 
+const lineEndings = [
+  ["LF", "\n"],
+  ["CR", "\r"],
+  ["CRLF", "\r\n"],
+  ["line separator", "\u2028"],
+  ["paragraph separator", "\u2029"]
+] as const
+
 describe("Json5", () => {
   it("parses JSON5, which includes JSONC and JSON", () => {
     const text = `// comment
@@ -55,60 +63,55 @@ b', \\u0061b: 1, café: true, nil: null, /* block */ }`
     assert.strictEqual(Json5.parse(String.raw`"\'\a\/\\\""`), "'a/\\\"")
   })
 
-  it("accepts line continuations with every JSON5 line terminator", () => {
-    for (const ending of ["\n", "\r", "\r\n", "\u2028", "\u2029"]) {
-      assert.strictEqual(Json5.parse("'a\\" + ending + "b'"), "ab")
-      assert.deepStrictEqual(Json5.parse("// comment" + ending + "{}"), {})
-    }
+  it.each(lineEndings)("accepts line continuations and comments terminated by %s", (_, ending) => {
+    assert.strictEqual(Json5.parse("'a\\" + ending + "b'"), "ab")
+    assert.deepStrictEqual(Json5.parse("// comment" + ending + "{}"), {})
   })
 
-  it("rejects malformed documents without quoting the input", () => {
-    for (
-      const input of [
-        "",
-        "/* comment */",
-        "[1,,]",
-        "[,1]",
-        "{,}",
-        "{a:}",
-        "{a 1}",
-        "{a:1 b:2}",
-        "[1 2]",
-        "[1",
-        "{",
-        "null true",
-        "undefined",
-        "01",
-        "-01",
-        "0x",
-        "0xg",
-        ".",
-        ".e1",
-        "1e+",
-        "--1",
-        "'unterminated",
-        "'line\nbreak'",
-        "'line\rbreak'",
-        String.raw`'\01'`,
-        String.raw`'\1'`,
-        String.raw`'\uZZZZ'`,
-        String.raw`'\xZ0'`,
-        String.raw`{\u0030a: 1}`,
-        String.raw`{a\x62: 1}`,
-        "{a: hidden}",
-        "{} /* unterminated",
-        "{} /",
-        "{} garbage"
-      ]
-    ) {
-      assert.throws(() => Json5.parse(input), SyntaxError, /Invalid JSON5 at line \d+, column \d+/)
-    }
+  it.each([
+    "",
+    "/* comment */",
+    "[1,,]",
+    "[,1]",
+    "{,}",
+    "{a:}",
+    "{a 1}",
+    "{a:1 b:2}",
+    "[1 2]",
+    "[1",
+    "{",
+    "null true",
+    "undefined",
+    "01",
+    "-01",
+    "0x",
+    "0xg",
+    ".",
+    ".e1",
+    "1e+",
+    "--1",
+    "'unterminated",
+    "'line\nbreak'",
+    "'line\rbreak'",
+    String.raw`'\01'`,
+    String.raw`'\1'`,
+    String.raw`'\uZZZZ'`,
+    String.raw`'\xZ0'`,
+    String.raw`{\u0030a: 1}`,
+    String.raw`{a\x62: 1}`,
+    "{a: hidden}",
+    "{} /* unterminated",
+    "{} /",
+    "{} garbage"
+  ])("rejects malformed JSON5 %j", (input) => {
+    assert.throws(() => Json5.parse(input), SyntaxError, /Invalid JSON5 at line \d+, column \d+/)
+  })
+
+  it("does not include input text in syntax errors", () => {
     assert.throws(() => Json5.parse("{a: hidden}"), /^Invalid JSON5 at line 1, column 5$/)
   })
 
-  it("reports positions across line terminators", () => {
-    for (const ending of ["\n", "\r", "\r\n", "\u2028", "\u2029"]) {
-      assert.throws(() => Json5.parse("{" + ending + "  a: hidden}"), /line 2, column 6$/)
-    }
+  it.each(lineEndings)("reports positions across %s line endings", (_, ending) => {
+    assert.throws(() => Json5.parse("{" + ending + "  a: hidden}"), /line 2, column 6$/)
   })
 })

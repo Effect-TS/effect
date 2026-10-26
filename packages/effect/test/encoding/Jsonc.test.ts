@@ -13,12 +13,21 @@ describe("Jsonc", () => {
     )
     assert.strictEqual(Jsonc.parse("1 // comment at EOF"), 1)
     assert.deepStrictEqual(Jsonc.parse("/* first\r\nsecond */ [/* third\nfourth */ 1]"), [1])
-    for (const separator of ["\u2028", "\u2029"]) {
-      assert.strictEqual(Jsonc.parse("// comment" + separator + "still comment\ntrue"), true)
-    }
-    for (const ending of ["\n", "\r", "\r\n"]) {
-      assert.strictEqual(Jsonc.parse("// comment" + ending + "true"), true)
-    }
+  })
+
+  it.each([
+    ["line separator", "\u2028"],
+    ["paragraph separator", "\u2029"]
+  ])("keeps %s inside a line comment", (_, separator) => {
+    assert.strictEqual(Jsonc.parse("// comment" + separator + "still comment\ntrue"), true)
+  })
+
+  it.each([
+    ["LF", "\n"],
+    ["CR", "\r"],
+    ["CRLF", "\r\n"]
+  ])("ends a line comment at %s", (_, ending) => {
+    assert.strictEqual(Jsonc.parse("// comment" + ending + "true"), true)
   })
 
   it.each([
