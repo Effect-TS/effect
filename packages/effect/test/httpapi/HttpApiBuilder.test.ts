@@ -966,6 +966,28 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         yield* decodeRawQuery(Schema.Record(Schema.String, Schema.Struct({})), "meta%5Bk%5D=v"),
         { "meta[k]": "v" }
       )
+      const DefaultedMeta = Schema.StructWithRest(
+        Schema.Struct({
+          meta: Schema.Struct({ k: Schema.NonEmptyString }).pipe(
+            Schema.withDecodingDefaultKey(Effect.succeed({ k: "default" }))
+          )
+        }),
+        [Schema.Record(Schema.TemplateLiteral(["meta[", Schema.String, "]"]), Schema.String)]
+      )
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(DefaultedMeta, "meta%5Bk%5D="),
+        { meta: { k: "default" }, "meta[k]": "" }
+      )
+    }))
+
+  it.effect("keeps defaulted literal fields optional on the wire", () =>
+    Effect.gen(function*() {
+      const Query = Schema.Struct({
+        _tag: Schema.tagDefaultOmit("Search"),
+        meta: Schema.optional(Schema.Struct({ k: Schema.String }))
+      })
+
+      assert.deepStrictEqual(yield* decodeRawQuery(Query, ""), { _tag: "Search" })
     }))
 
   it.effect("keeps an optional base flat when the schema declares one of its bracket keys", () =>
