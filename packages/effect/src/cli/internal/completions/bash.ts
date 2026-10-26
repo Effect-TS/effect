@@ -120,11 +120,9 @@ interface Helpers {
 }
 
 /**
- * Complete paths through the choice helper, reading `compgen` line by line so
- * a name containing whitespace or glob characters stays one quoted candidate.
- * The typed directory is kept as written, so expansions in it still apply, and
- * only the completed name is quoted. When `compgen` returns expanded paths
- * instead (Bash 3.2), the quoted path replaces the whole word.
+ * Complete paths through the choice helper, one `compgen` line per candidate.
+ * The typed directory is kept as written so expansions in it still apply; only
+ * the completed name is quoted.
  */
 const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`${helpers.paths}()`)
@@ -135,7 +133,7 @@ const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`  ${removeQuotes("_prefix")}`)
   lines.push(`  ${removeQuotes("_committed")}`)
   lines.push(``)
-  // Split off the typed directory, noting a quote it leaves open.
+  // Track a quote the typed directory leaves open.
   lines.push(`  local _typed="" _dir="$_committed" _open="" _i`)
   lines.push(`  if [[ "$_word" == */* ]]; then`)
   lines.push(`    _typed="\${_word%/*}/"`)
@@ -156,13 +154,12 @@ const pathsHelper = (helpers: Helpers, lines: Array<string>): void => {
   lines.push(`    if [[ "$_path" == "$_dir"* ]]; then`)
   lines.push(`      _names+=("$_committed\${_path#"$_dir"}")`)
   lines.push(`    elif [[ -z "$_committed" ]]; then`)
-  // Bash 3.2 expands the typed directory: the quoted path replaces the word.
+  // Bash 3.2 returns expanded paths, which replace the whole word.
   lines.push(`      _names+=("$_path")`)
   lines.push(`      _typed="" _rest="" _open=""`)
   lines.push(`    fi`)
   lines.push(`  done < <(compgen "$_kind" -- "$_prefix")`)
-  // Close the quote before the name, so a common prefix of several matches
-  // stays balanced.
+  // Close the quote before the name so a common prefix stays balanced.
   lines.push(`  if [[ -n "$_open" ]]; then`)
   lines.push(`    _typed+="$_open"`)
   lines.push(`    _rest="\${_prefix##*/}"`)
