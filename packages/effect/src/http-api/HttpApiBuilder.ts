@@ -17,7 +17,6 @@ import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
-import * as Equal from "../Equal.ts"
 import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
 import * as Function from "../Function.ts"
@@ -786,36 +785,7 @@ function makeUrlParamsDecoder(
   schema: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
-  const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
-  const names = UrlParamsTree.getPropertyNames(schema.ast)
-  if (names.size === 0) return decode
-  // A flat decode dropped a rebuilt key when decoding without the key gives an
-  // equal value. The comparison uses a separate decode, so the value handed to
-  // the handler is never hashed. Each check is a full decode, so this only runs
-  // once the rebuilt input has failed and the flat input has decoded.
-  const dropsKey = Effect.fnUntraced(function*(params: UrlParamsTree.FlatParams, keys: ReadonlyArray<string>) {
-    const flat = yield* Effect.result(decode(params))
-    if (Result.isFailure(flat)) return false
-    for (const key of keys) {
-      const without = yield* Effect.result(decode(UrlParamsTree.omitKey(params, key)))
-      if (Result.isSuccess(without) && Equal.equals(without.success, flat.success)) return true
-    }
-    return false
-  })
-  return (input) => {
-    const params = input as UrlParamsTree.FlatParams
-    const rebuilt = UrlParamsTree.fromFlatParams(params, names)
-    if (rebuilt === undefined) return decode(input)
-    return Effect.catch(decode(rebuilt.tree), (error) =>
-      Effect.flatMap(
-        Effect.mapError(decode(input), () => error),
-        (value) =>
-          Effect.flatMap(
-            dropsKey(params, rebuilt.rebuiltKeys),
-            (dropped) => dropped ? Effect.fail(error) : Effect.succeed(value)
-          )
-      ))
-  }
+  return Schema.decodeUnknownEffect(UrlParamsTree.toCodecUrlParams(Schema.toCodecArrayFromSingle(schema)), options)
 }
 
 function decodePayload(
