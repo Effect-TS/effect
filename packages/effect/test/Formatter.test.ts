@@ -464,6 +464,19 @@ describe("Formatter", () => {
       )
     })
 
+    it("should redact data properties replaced by an earlier getter", () => {
+      strictEqual(
+        formatJson({
+          get first() {
+            this.secret = data
+            return 1
+          },
+          secret: "my-secret-key" as unknown
+        }),
+        `{"first":1,"secret":{"secret":"[REDACTED]"}}`
+      )
+    })
+
     it("should keep a __proto__ getter as an own key", () => {
       strictEqual(
         formatJson({
