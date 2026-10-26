@@ -19,6 +19,7 @@
  */
 import * as Data from "../Data.ts"
 import * as Result from "../Result.ts"
+import { utf8Slice } from "./internal/utf8Slice.ts"
 
 /**
  * Default `maxMessageSize` for `makeParser`: 16 MiB.
@@ -619,14 +620,6 @@ class Reader {
 
 /** Below this length a per-character loop beats `TextDecoder.decode`. */
 const asciiDecodeLimit = 10
-
-/**
- * Node's own UTF-8 decoder; see the note on its `PgTypes` counterpart. A
- * result containing a replacement character goes to the strict decoder, so
- * invalid bytes still fail exactly as they did.
- */
-const utf8Slice: ((this: Uint8Array, start: number, end: number) => string) | undefined = (globalThis as any).Buffer
-  ?.prototype?.utf8Slice
 
 const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => {
   if (size <= asciiDecodeLimit) {
