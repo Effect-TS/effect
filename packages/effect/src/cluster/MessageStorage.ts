@@ -121,6 +121,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * Retrieves the encoded request for the specified primary key, whether or
    * not it has been processed.
    *
+   * **Details**
+   *
    * Optional for existing storage implementations. Without it, a workflow
    * replay cannot read a durable deferred completion that is persisted but
    * not yet processed.
@@ -415,6 +417,8 @@ export type Encoded = {
   /**
    * Retrieves the request for the specified primary key, whether or not it
    * has been processed.
+   *
+   * **Details**
    *
    * Optional for existing drivers. Without it, a workflow replay cannot read a
    * durable deferred completion that is persisted but not yet processed.
