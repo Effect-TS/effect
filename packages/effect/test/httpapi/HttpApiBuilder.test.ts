@@ -962,6 +962,10 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         assert.deepStrictEqual(yield* decodeRawQuery(SomeBracketKeys, search), { "meta[abc]": "w" })
       }
       assert.deepStrictEqual(yield* decodeRawQuery(EnumValues, "meta%5Bk%5D=v"), { "meta[k]": "v" })
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(Schema.Record(Schema.String, Schema.Struct({})), "meta%5Bk%5D=v"),
+        { "meta[k]": "v" }
+      )
     }))
 
   it.effect("keeps an optional base flat when the schema declares one of its bracket keys", () =>
