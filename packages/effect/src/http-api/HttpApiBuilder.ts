@@ -786,14 +786,16 @@ function makeUrlParamsDecoder(
   options: SchemaAST.ParseOptions | undefined
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
   const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
-  const names = UrlParamsTree.getPropertyNames(schema.ast)
+  const { hasIndexSignature, names } = UrlParamsTree.getTopLevelKeys(schema.ast)
   if (names.size === 0) return decode
   return (input) => {
     const tree = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
     if (tree === undefined) return decode(input)
-    // Flat bracket keys that decoded before, such as ones a record accepts,
-    // keep decoding when the rebuilt objects do not
-    return Effect.catch(decode(tree), (error) => Effect.mapError(decode(input), () => error))
+    // Only an index signature can accept a rebuilt key as a flat key. Without
+    // one, a flat decode could only succeed by dropping the nested object.
+    return hasIndexSignature
+      ? Effect.catch(decode(tree), (error) => Effect.mapError(decode(input), () => error))
+      : decode(tree)
   }
 }
 

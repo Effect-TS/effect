@@ -5,13 +5,17 @@ import * as SchemaAST from "../../SchemaAST.ts"
 export type FlatParams = { readonly [key: string]: string | ReadonlyArray<string> }
 
 /**
- * Collects the top-level property names of a schema's encoded side, through
- * unions and suspensions.
+ * Collects the top-level property names of a schema's encoded side, and
+ * whether it has an index signature, through unions and suspensions.
  *
  * @internal
  */
-export function getPropertyNames(ast: SchemaAST.AST): ReadonlySet<string> {
+export function getTopLevelKeys(ast: SchemaAST.AST): {
+  readonly names: ReadonlySet<string>
+  readonly hasIndexSignature: boolean
+} {
   const names = new Set<string>()
+  let hasIndexSignature = false
   const seen = new Set<SchemaAST.AST>()
   const go = (ast: SchemaAST.AST): void => {
     if (seen.has(ast)) return
@@ -21,6 +25,7 @@ export function getPropertyNames(ast: SchemaAST.AST): ReadonlySet<string> {
         for (const ps of ast.propertySignatures) {
           if (typeof ps.name === "string") names.add(ps.name)
         }
+        if (ast.indexSignatures.length > 0) hasIndexSignature = true
         return
       case "Union":
         return ast.types.forEach(go)
@@ -29,7 +34,7 @@ export function getPropertyNames(ast: SchemaAST.AST): ReadonlySet<string> {
     }
   }
   go(SchemaAST.toEncoded(ast))
-  return names
+  return { names, hasIndexSignature }
 }
 
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
