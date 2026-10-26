@@ -344,8 +344,12 @@ export const tracer: <E, R>(
         if (Option.isSome(url)) {
           tracing.addUrlAttributes(span, url.value, fiber.getRef(UrlParams.CurrentRedactedNames))
         }
+        // Recorded regardless of `TracerHeaderFilter`, as a standard attribute, but still redacted.
         if (request.headers["user-agent"] !== undefined) {
-          span.attribute("user_agent.original", request.headers["user-agent"])
+          span.attribute(
+            "user_agent.original",
+            Headers.isRedactedName("user-agent", redactedHeaderNames) ? "<redacted>" : request.headers["user-agent"]
+          )
         }
         tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
         if (Option.isSome(request.remoteAddress)) {
