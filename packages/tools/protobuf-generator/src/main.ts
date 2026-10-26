@@ -17,7 +17,7 @@ import * as Schema from "effect/Schema"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as Generator from "./Generator.ts"
-import { SUPPORTED } from "./internal/features.ts"
+import { errorResponse } from "./internal/features.ts"
 
 const decodeRequest = Schema.decodeUnknownEffect(Protobuf.toCodec(CodeGeneratorRequest))
 const encodeResponse = Schema.encodeSync(Protobuf.toCodec(CodeGeneratorResponse))
@@ -28,12 +28,10 @@ const plugin = Effect.gen(function*() {
   // A request that cannot be decoded is answered with an error as well.
   const response = yield* decodeRequest(input).pipe(
     Effect.map(Generator.generate),
-    Effect.catchTag("SchemaError", (error) =>
-      Effect.succeed<CodeGeneratorResponse>({
-        ...SUPPORTED,
-        error: `invalid CodeGeneratorRequest: ${error.message}`,
-        file: []
-      }))
+    Effect.catchTag(
+      "SchemaError",
+      (error) => Effect.succeed(errorResponse(`invalid CodeGeneratorRequest: ${error.message}`))
+    )
   )
   yield* Stream.run(Stream.succeed(encodeResponse(response)), stdio.stdout())
 })

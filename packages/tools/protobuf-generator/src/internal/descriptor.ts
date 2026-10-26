@@ -34,11 +34,11 @@ export const fieldType = (field: FieldDescriptorProto): FieldType | undefined =>
 export const label = (field: FieldDescriptorProto): "optional" | "repeated" | "required" =>
   (suffix(field.label, "LABEL_") as "optional" | "repeated" | "required" | undefined) ?? "optional"
 
-export const jsType = (field: FieldDescriptorProto | undefined): "normal" | "string" | "number" =>
-  field?.options?.jstype === "JS_STRING" ? "string" : field?.options?.jstype === "JS_NUMBER" ? "number" : "normal"
+export const jsType = (field: FieldDescriptorProto): "normal" | "string" | "number" =>
+  field.options?.jstype === "JS_STRING" ? "string" : field.options?.jstype === "JS_NUMBER" ? "number" : "normal"
 
 /** The numbers of the editions, which are ordered, and their display names. */
-const editions: Record<Exclude<Edition, number>, readonly [number: number, display: string]> = {
+const editions: Record<Edition, readonly [number: number, display: string]> = {
   EDITION_UNKNOWN: [0, "unknown"],
   EDITION_LEGACY: [900, "legacy"],
   EDITION_PROTO2: [998, "proto2"],
@@ -70,13 +70,7 @@ export const fileEdition = (file: FileDescriptorProto): number => {
     case "proto3":
       return EDITION_PROTO3
     case "editions":
-      return file.edition === undefined
-        ? 0
-        : typeof file.edition === "number"
-        ? file.edition
-        : Object.hasOwn(editions, file.edition)
-        ? editions[file.edition][0]
-        : 0
+      return file.edition === undefined ? 0 : editions[file.edition][0]
     default:
       return 0
   }

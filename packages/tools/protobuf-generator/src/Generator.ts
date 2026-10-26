@@ -31,8 +31,8 @@
  * @since 4.0.7
  */
 import type { CodeGeneratorRequest, CodeGeneratorResponse } from "effect/protobuf/ProtobufPlugin"
-import { SUPPORTED } from "./internal/features.ts"
-import { generateFiles, GeneratorError, isMapped } from "./internal/generate.ts"
+import { errorResponse, SUPPORTED } from "./internal/features.ts"
+import { generateFiles, GeneratorError } from "./internal/generate.ts"
 import { parseParameters } from "./internal/parameters.ts"
 
 /**
@@ -52,12 +52,9 @@ import { parseParameters } from "./internal/parameters.ts"
 export const generate = (request: CodeGeneratorRequest): CodeGeneratorResponse => {
   try {
     const options = parseParameters(request.parameter ?? "")
-    // Files mapped to other modules with `proto_map` are not generated.
-    const names = request.fileToGenerate.filter((name) => !isMapped(name, options))
-    const files = generateFiles(request.protoFile, names, options)
-    return { ...SUPPORTED, file: files.map((file) => ({ name: file.name, content: file.content })) }
+    return { ...SUPPORTED, file: generateFiles(request.protoFile, request.fileToGenerate, options) }
   } catch (e) {
-    if (e instanceof GeneratorError) return { ...SUPPORTED, error: e.message, file: [] }
+    if (e instanceof GeneratorError) return errorResponse(e.message)
     throw e
   }
 }

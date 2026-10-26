@@ -23,13 +23,6 @@ export const protoCamelCase = (name: string): string => {
   return out
 }
 
-/**
- * The name `Protobuf.field` assumes for a field without a `name` option: the
- * property key with each upper-case letter replaced by `_` and the letter in
- * lower case. It undoes `protoCamelCase` for lower_snake_case names.
- */
-export const snakeCase = (key: string): string => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
-
 /** Names that generated declarations must not shadow. */
 const reserved = new Set([
   // namespaces imported by generated code

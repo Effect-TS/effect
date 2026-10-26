@@ -9,6 +9,7 @@
  * features it stands for.
  */
 import type { FeatureSet, FieldDescriptorProto } from "effect/protobuf/ProtobufDescriptor"
+import type { CodeGeneratorResponse } from "effect/protobuf/ProtobufPlugin"
 import {
   EDITION_2024,
   EDITION_PROTO2,
@@ -45,6 +46,9 @@ export const SUPPORTED = {
   minimumEdition: MINIMUM_EDITION,
   maximumEdition: MAXIMUM_EDITION
 } as const
+
+/** A response that reports an error instead of files, which protoc and buf print. */
+export const errorResponse = (error: string): CodeGeneratorResponse => ({ ...SUPPORTED, error, file: [] })
 
 /** The defaults of an edition, from the `edition_defaults` in descriptor.proto. */
 export const editionDefaults = (edition: number): Features =>

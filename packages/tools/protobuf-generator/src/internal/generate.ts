@@ -9,7 +9,8 @@ import type {
   ServiceDescriptorProto,
   SourceCodeInfo_Location
 } from "effect/protobuf/ProtobufDescriptor"
-import { editionName, fieldType, fileEdition, jsType, label } from "./descriptor.ts"
+import * as String from "effect/String"
+import { editionName, type FieldType, fieldType, fileEdition, jsType, label } from "./descriptor.ts"
 import {
   editionDefaults,
   type Features,
@@ -24,8 +25,7 @@ import {
   propertyKey,
   protoCamelCase,
   relativeImport,
-  safeIdentifier,
-  snakeCase
+  safeIdentifier
 } from "./naming.ts"
 
 /** Invalid or unsupported input, reported in the `error` of the plugin response. */
@@ -53,8 +53,9 @@ export interface GeneratedFile {
 }
 
 /**
- * Generates a module for each file in `filesToGenerate`; `files` holds them
- * and all of their dependencies.
+ * Generates a module for each file in `filesToGenerate`, except those that
+ * `protoMap` maps to modules generated elsewhere; `files` holds them and all
+ * of their dependencies.
  */
 export const generateFiles = (
   files: ReadonlyArray<FileDescriptorProto>,
@@ -63,11 +64,14 @@ export const generateFiles = (
 ): Array<GeneratedFile> => {
   const registry = buildRegistry(files)
   const byName = new Map(files.map((file) => [file.name ?? "", file]))
-  return filesToGenerate.map((name) => {
+  const out: Array<GeneratedFile> = []
+  for (const name of filesToGenerate) {
+    if (protoMapModule(options, name) !== undefined) continue
     const file = byName.get(name)
     if (file === undefined) throw new GeneratorError(`${name}: missing from the request`)
-    return generateFile(file, registry, options)
-  })
+    out.push(generateFile(file, registry, options))
+  }
+  return out
 }
 
 // -----------------------------------------------------------------------------
@@ -109,8 +113,17 @@ interface Extension {
 
 type NamedType = MessageType | EnumType
 
-/** Keyed by fully qualified name with the leading dot, as in `type_name`. */
-interface Registry extends ReadonlyMap<string, NamedType> {}
+/** The resolved features of a file and the types it declares, in declaration order. */
+interface FileTypes {
+  readonly features: Features
+  readonly types: Array<NamedType>
+}
+
+interface Registry {
+  /** Keyed by fully qualified name with the leading dot, as in `type_name`. */
+  readonly types: ReadonlyMap<string, NamedType>
+  readonly files: ReadonlyMap<FileDescriptorProto, FileTypes>
+}
 
 // field numbers in descriptor.proto, for SourceCodeInfo paths
 const FILE_MESSAGE_TYPE = 4
@@ -124,9 +137,15 @@ const MESSAGE_ONEOF_DECL = 8
 const ENUM_VALUE = 2
 
 const buildRegistry = (files: ReadonlyArray<FileDescriptorProto>): Registry => {
-  const registry = new Map<string, NamedType>()
+  const types = new Map<string, NamedType>()
+  const byFile = new Map<FileDescriptorProto, FileTypes>()
   for (const file of files) {
     const fileFeatures = mergeFeatures(editionDefaults(fileEdition(file)), file.options?.features)
+    const declared: Array<NamedType> = []
+    const add = (t: NamedType) => {
+      types.set(`.${t.fullName}`, t)
+      declared.push(t)
+    }
     const addEnum = (
       desc: EnumDescriptorProto,
       scope: string,
@@ -136,7 +155,7 @@ const buildRegistry = (files: ReadonlyArray<FileDescriptorProto>): Registry => {
     ) => {
       const name = desc.name ?? ""
       const fullName = `${scope}.${name}`
-      registry.set(fullName, {
+      add({
         _tag: "enum",
         fullName: fullName.slice(1),
         tsName: safeIdentifier(tsScope === "" ? name : `${tsScope}_${name}`),
@@ -157,7 +176,7 @@ const buildRegistry = (files: ReadonlyArray<FileDescriptorProto>): Registry => {
       const fullName = `${scope}.${name}`
       const tsName = tsScope === "" ? name : `${tsScope}_${name}`
       const features = mergeFeatures(parent, desc.options?.features)
-      registry.set(fullName, {
+      add({
         _tag: "message",
         fullName: fullName.slice(1),
         tsName: safeIdentifier(tsName),
@@ -173,15 +192,15 @@ const buildRegistry = (files: ReadonlyArray<FileDescriptorProto>): Registry => {
     const scope = file.package ? `.${file.package}` : ""
     file.messageType.forEach((d, i) => addMessage(d, scope, "", [FILE_MESSAGE_TYPE, i], fileFeatures))
     file.enumType.forEach((d, i) => addEnum(d, scope, "", [FILE_ENUM_TYPE, i], fileFeatures))
+    byFile.set(file, { features: fileFeatures, types: declared })
   }
-  return registry
+  return { types, files: byFile }
 }
 
 /** The extensions declared in a file, at its top level and in its messages. */
-const fileExtensions = (file: FileDescriptorProto, registry: Registry): Array<Extension> => {
+const fileExtensions = (file: FileDescriptorProto, { features, types }: FileTypes): Array<Extension> => {
   const out: Array<Extension> = []
   const scope = file.package ? `${file.package}.` : ""
-  const fileFeatures = mergeFeatures(editionDefaults(fileEdition(file)), file.options?.features)
   file.extension.forEach((desc, i) => {
     const name = desc.name ?? ""
     out.push({
@@ -189,11 +208,11 @@ const fileExtensions = (file: FileDescriptorProto, registry: Registry): Array<Ex
       tsName: safeIdentifier(protoCamelCase(name)),
       desc,
       path: [FILE_EXTENSION, i],
-      features: fileFeatures
+      features
     })
   })
-  for (const t of registry.values()) {
-    if (t.file !== file || t._tag !== "message") continue
+  for (const t of types) {
+    if (t._tag !== "message") continue
     t.desc.extension.forEach((desc, i) => {
       const name = desc.name ?? ""
       out.push({
@@ -212,32 +231,11 @@ const fileExtensions = (file: FileDescriptorProto, registry: Registry): Array<Ex
 // types defined by effect
 // -----------------------------------------------------------------------------
 
-/** Well-known types with a schema in `effect/protobuf/Protobuf`. */
-const wellKnownTypes: Record<string, string> = {
-  ".google.protobuf.Timestamp": "Timestamp",
-  ".google.protobuf.Duration": "Duration",
-  ".google.protobuf.Empty": "Empty",
-  ".google.protobuf.Value": "Value",
-  ".google.protobuf.Struct": "Struct",
-  ".google.protobuf.ListValue": "ListValue",
-  ".google.protobuf.Any": "Any",
-  ".google.protobuf.FieldMask": "FieldMask",
-  ".google.protobuf.StringValue": "StringValue",
-  ".google.protobuf.BoolValue": "BoolValue",
-  ".google.protobuf.BytesValue": "BytesValue",
-  ".google.protobuf.DoubleValue": "DoubleValue",
-  ".google.protobuf.FloatValue": "FloatValue",
-  ".google.protobuf.Int32Value": "Int32Value",
-  ".google.protobuf.UInt32Value": "UInt32Value",
-  ".google.protobuf.Int64Value": "Int64Value",
-  ".google.protobuf.UInt64Value": "UInt64Value"
-}
-
-const wellKnownEnums: Record<string, string> = {
-  ".google.protobuf.NullValue": "NullValue"
-}
-
-/** The `.proto` files of the well-known types, which have no generated module, and their messages. */
+/**
+ * The `.proto` files of the well-known types, which have no generated module,
+ * and their messages, whose schemas in `effect/protobuf/Protobuf` have the
+ * same names.
+ */
 const wellKnownFiles: Record<string, ReadonlyArray<string>> = {
   "google/protobuf/any.proto": [".google.protobuf.Any"],
   "google/protobuf/duration.proto": [".google.protobuf.Duration"],
@@ -258,7 +256,13 @@ const wellKnownFiles: Record<string, ReadonlyArray<string>> = {
   ]
 }
 
-/** `.proto` files whose types are modules of `effect`, the defaults of `protoMap`. */
+const wellKnownMessages = new Set(Object.values(wellKnownFiles).flat())
+const wellKnownEnums = new Set([".google.protobuf.NullValue"])
+
+/** The schema of a well-known type in `effect/protobuf/Protobuf`, which has its unqualified name. */
+const wellKnownName = (typeName: string): string => typeName.slice(typeName.lastIndexOf(".") + 1)
+
+/** `.proto` files whose types are modules of `effect`, which `protoMap` can map elsewhere. */
 const effectModules: Record<string, { readonly alias: string; readonly specifier: string }> = {
   "google/protobuf/descriptor.proto": {
     alias: "ProtobufDescriptor",
@@ -288,9 +292,6 @@ const mappedModule = (
   return specifier === undefined ? effectModules[name] : { alias: importAlias(name), specifier }
 }
 
-/** Whether `protoMap` maps a `.proto` file to a module generated elsewhere, so it is not generated. */
-export const isMapped = (name: string, options: Options): boolean => protoMapModule(options, name) !== undefined
-
 // -----------------------------------------------------------------------------
 // files
 // -----------------------------------------------------------------------------
@@ -316,10 +317,9 @@ const generateFile = (file: FileDescriptorProto, registry: Registry, options: Op
   if (edition < MINIMUM_EDITION || edition > MAXIMUM_EDITION) {
     throw new GeneratorError(`${fileName}: edition ${editionName(edition)} is not supported`)
   }
-  const local: Array<NamedType> = []
-  for (const t of registry.values()) {
-    if (t.file === file && !(t._tag === "message" && t.mapEntry)) local.push(t)
-  }
+  const fileTypes = registry.files.get(file)!
+  // Map entries are rendered as `Protobuf.Map`s of their fields.
+  const local = fileTypes.types.filter((t) => !(t._tag === "message" && t.mapEntry))
   const order = sortDeclarations(local, registry)
   const cycles = new Map<string, number>()
   order.forEach((component, i) => {
@@ -342,17 +342,11 @@ const generateFile = (file: FileDescriptorProto, registry: Registry, options: Op
 
   const names: Array<readonly [string, string]> = []
   const blocks: Array<string> = []
-  for (const component of order) {
-    for (const t of component) {
-      names.push([t.tsName, `${t._tag} ${t.fullName}`])
-      if (t._tag === "enum") {
-        blocks.push(renderEnum(ctx, t))
-        continue
-      }
-      blocks.push(renderMessage(ctx, t))
-    }
+  for (const t of order.flat()) {
+    names.push([t.tsName, `${t._tag} ${t.fullName}`])
+    blocks.push(t._tag === "enum" ? renderEnum(ctx, t) : renderMessage(ctx, t))
   }
-  const extensions = fileExtensions(file, registry)
+  const extensions = fileExtensions(file, fileTypes)
   for (const extension of extensions) {
     names.push([extension.tsName, `extension ${extension.fullName}`])
     blocks.push(renderExtension(ctx, extension))
@@ -442,7 +436,7 @@ const dependencies = (t: NamedType, registry: Registry): Array<NamedType> => {
   const visit = (desc: DescriptorProto) => {
     for (const field of desc.field) {
       if (field.typeName === undefined) continue
-      const dependency = registry.get(field.typeName)
+      const dependency = registry.types.get(field.typeName)
       if (dependency === undefined || dependency.file !== t.file) continue
       if (dependency._tag === "message" && dependency.mapEntry) visit(dependency.desc)
       else out.push(dependency)
@@ -548,7 +542,7 @@ const deprecatedTag = (ctx: Context, deprecated: boolean | undefined) =>
 // -----------------------------------------------------------------------------
 
 const lookup = (ctx: Context, typeName: string, where: string): NamedType => {
-  const t = ctx.registry.get(typeName)
+  const t = ctx.registry.types.get(typeName)
   if (t === undefined) throw new GeneratorError(`${where}: unknown type ${typeName}`)
   return t
 }
@@ -560,8 +554,8 @@ const lookupMessage = (ctx: Context, typeName: string, where: string): MessageTy
 }
 
 const renderMessageRef = (ctx: Context, typeName: string, from: MessageType | undefined, where: string): string => {
-  const wkt = wellKnownTypes[typeName]
-  if (wkt !== undefined) {
+  if (wellKnownMessages.has(typeName)) {
+    const wkt = wellKnownName(typeName)
     const parts = (wkt === "Timestamp" && ctx.options.timestamp === "parts") ||
       (wkt === "Duration" && ctx.options.duration === "parts")
     return `${useProtobuf(ctx)}.${parts ? `${wkt}Parts` : wkt}`
@@ -579,8 +573,7 @@ const renderMessageRef = (ctx: Context, typeName: string, from: MessageType | un
 }
 
 const renderEnumRef = (ctx: Context, typeName: string, where: string): string => {
-  const wkt = wellKnownEnums[typeName]
-  if (wkt !== undefined) return `${useProtobuf(ctx)}.${wkt}`
+  if (wellKnownEnums.has(typeName)) return `${useProtobuf(ctx)}.${wellKnownName(typeName)}`
   const t = lookupEnum(ctx, typeName, where)
   const module = moduleOf(ctx, t)
   return module === undefined ? t.tsName : `${module}.${t.tsName}`
@@ -596,17 +589,29 @@ const protobufScalar = (ctx: Context, name: string): string => `${useProtobuf(ct
 
 const schemaScalar = (ctx: Context, name: string): string => `${useSchema(ctx)}.${name}`
 
-// A 64-bit integer as a `bigint`, or as `[jstype]` asks.
-const int64Scalar = (ctx: Context, field: FieldDescriptorProto, name: string): string => {
-  switch (jsType(field)) {
-    case "number":
-      return protobufScalar(ctx, `${name}Number`)
-    case "string":
-      return protobufScalar(ctx, `${name}String`)
-    default:
-      return protobufScalar(ctx, name)
-  }
-}
+/** The schemas of `effect/protobuf/Protobuf` for the numeric scalars. */
+const numericScalars = {
+  double: "Double",
+  float: "Float",
+  int32: "Int32",
+  uint32: "UInt32",
+  sint32: "SInt32",
+  fixed32: "Fixed32",
+  sfixed32: "SFixed32",
+  int64: "Int64",
+  uint64: "UInt64",
+  sint64: "SInt64",
+  fixed64: "Fixed64",
+  sfixed64: "SFixed64"
+} as const
+
+type NumericType = keyof typeof numericScalars
+
+const isNumeric = (type: FieldType | undefined): type is NumericType =>
+  type !== undefined && Object.hasOwn(numericScalars, type)
+
+/** 64-bit integers are `bigint`s, or `number`s or `string`s as `[jstype]` asks. */
+const int64Suffix = { normal: "", number: "Number", string: "String" } as const
 
 // `from` is the message of the field, which may refer to the messages of its
 // reference cycle only through `Schema.suspend`.
@@ -616,31 +621,8 @@ const renderValue = (
   from: MessageType | undefined,
   where: string
 ): string => {
-  switch (fieldType(field)) {
-    case "double":
-      return protobufScalar(ctx, "Double")
-    case "float":
-      return protobufScalar(ctx, "Float")
-    case "int32":
-      return protobufScalar(ctx, "Int32")
-    case "uint32":
-      return protobufScalar(ctx, "UInt32")
-    case "sint32":
-      return protobufScalar(ctx, "SInt32")
-    case "fixed32":
-      return protobufScalar(ctx, "Fixed32")
-    case "sfixed32":
-      return protobufScalar(ctx, "SFixed32")
-    case "int64":
-      return int64Scalar(ctx, field, "Int64")
-    case "uint64":
-      return int64Scalar(ctx, field, "UInt64")
-    case "sint64":
-      return int64Scalar(ctx, field, "SInt64")
-    case "fixed64":
-      return int64Scalar(ctx, field, "Fixed64")
-    case "sfixed64":
-      return int64Scalar(ctx, field, "SFixed64")
+  const type = fieldType(field)
+  switch (type) {
     case "bool":
       return schemaScalar(ctx, "Boolean")
     case "string":
@@ -653,40 +635,20 @@ const renderValue = (
     case "group":
       return renderMessageRef(ctx, field.typeName ?? "", from, where)
     default:
-      throw new GeneratorError(`${where}: unknown field type ${field.type}`)
+      if (!isNumeric(type)) throw new GeneratorError(`${where}: unknown field type ${field.type}`)
+      return protobufScalar(ctx, numericScalars[type] + (type.endsWith("64") ? int64Suffix[jsType(field)] : ""))
   }
 }
 
-/** The key schema of a map, as `Protobuf.Map` takes it. */
+/** The key schema of a map, as `Protobuf.Map` takes it: 64-bit integer keys are `string`s. */
 const renderMapKey = (ctx: Context, field: FieldDescriptorProto, where: string): string => {
-  switch (fieldType(field)) {
-    case "string":
-      return schemaScalar(ctx, "String")
-    case "int32":
-      return protobufScalar(ctx, "Int32")
-    case "uint32":
-      return protobufScalar(ctx, "UInt32")
-    case "sint32":
-      return protobufScalar(ctx, "SInt32")
-    case "fixed32":
-      return protobufScalar(ctx, "Fixed32")
-    case "sfixed32":
-      return protobufScalar(ctx, "SFixed32")
-    case "int64":
-      return protobufScalar(ctx, "Int64String")
-    case "uint64":
-      return protobufScalar(ctx, "UInt64String")
-    case "sint64":
-      return protobufScalar(ctx, "SInt64String")
-    case "fixed64":
-      return protobufScalar(ctx, "Fixed64String")
-    case "sfixed64":
-      return protobufScalar(ctx, "SFixed64String")
-    case "bool":
-      return protobufScalar(ctx, "BoolKey")
-    default:
-      throw new GeneratorError(`${where}: invalid map key type ${field.type}`)
+  const type = fieldType(field)
+  if (type === "bool") return protobufScalar(ctx, "BoolKey")
+  if (type === "string") return schemaScalar(ctx, "String")
+  if (isNumeric(type) && type !== "double" && type !== "float") {
+    return protobufScalar(ctx, numericScalars[type] + (type.endsWith("64") ? "String" : ""))
   }
+  throw new GeneratorError(`${where}: invalid map key type ${field.type}`)
 }
 
 const isMessage = (field: FieldDescriptorProto) => {
@@ -702,7 +664,7 @@ const isPackable = (field: FieldDescriptorProto) => {
 /** The map entry message of a repeated field, if it is a map. */
 const mapEntry = (ctx: Context, field: FieldDescriptorProto): MessageType | undefined => {
   if (label(field) !== "repeated" || !isMessage(field)) return undefined
-  const entry = ctx.registry.get(field.typeName ?? "")
+  const entry = ctx.registry.types.get(field.typeName ?? "")
   return entry !== undefined && entry._tag === "message" && entry.mapEntry ? entry : undefined
 }
 
@@ -743,7 +705,7 @@ const fieldCall = (ctx: Context, number: number, options: FieldCallOptions): str
  * key, which is the default `json_name` of the field.
  */
 const nameOptions = (field: FieldDescriptorProto, key: string): FieldCallOptions => ({
-  name: field.name === undefined || field.name === snakeCase(key) ? undefined : field.name,
+  name: field.name === undefined || field.name === String.camelToSnake(key) ? undefined : field.name,
   jsonName: field.jsonName === undefined || field.jsonName === key ? undefined : field.jsonName
 })
 
@@ -769,19 +731,17 @@ interface Member {
   readonly key: string
   /** What the property is generated from, for errors. */
   readonly source: string
-  /** The key in the object literal. */
-  readonly property: string
   readonly schema: string
   readonly doc: Array<string>
 }
 
-/** The schema of a field, without its presence and `Protobuf.field`. */
+/** The schema of a field, without its presence and `Protobuf.field`: a map, an array, or a value. */
 const renderFieldValue = (
   ctx: Context,
   message: MessageType | undefined,
   field: FieldDescriptorProto,
   where: string
-): { readonly schema: string; readonly collection: boolean } => {
+): string => {
   const entry = mapEntry(ctx, field)
   if (entry !== undefined) {
     const keyField = entry.desc.field.find((f) => f.number === 1)
@@ -791,11 +751,10 @@ const renderFieldValue = (
     }
     const k = renderMapKey(ctx, keyField, where)
     const v = renderValue(ctx, valueField, message, where)
-    return { schema: `${useProtobuf(ctx)}.Map(${k}, ${v})`, collection: true }
+    return `${useProtobuf(ctx)}.Map(${k}, ${v})`
   }
   const v = renderValue(ctx, field, message, where)
-  if (label(field) === "repeated") return { schema: `${useSchema(ctx)}.Array(${v})`, collection: true }
-  return { schema: v, collection: false }
+  return label(field) === "repeated" ? `${useSchema(ctx)}.Array(${v})` : v
 }
 
 const renderField = (
@@ -815,8 +774,9 @@ const renderField = (
     deprecatedTag(ctx, field.options?.deprecated)
   ], "  ")
   const v = renderFieldValue(ctx, message, field, where)
-  const required = !v.collection && features.fieldPresence === "legacyRequired"
-  const optional = !v.collection && !required && (isMessage(field) || features.fieldPresence === "explicit")
+  const repeated = label(field) === "repeated"
+  const required = !repeated && features.fieldPresence === "legacyRequired"
+  const optional = !repeated && !required && (isMessage(field) || features.fieldPresence === "explicit")
   const options = fieldCall(ctx, number, {
     ...nameOptions(field, key),
     ...featureOptions(ctx, field, features),
@@ -826,29 +786,26 @@ const renderField = (
   return {
     key,
     source: `field ${name}`,
-    property: propertyKey(key),
-    schema: `${optional ? `${useSchema(ctx)}.optionalKey(${v.schema})` : v.schema}.pipe(${options})`,
+    schema: `${optional ? `${useSchema(ctx)}.optionalKey(${v})` : v}.pipe(${options})`,
     doc
   }
 }
 
-const renderOneof = (
-  ctx: Context,
-  message: MessageType,
-  index: number,
-  fields: ReadonlyArray<readonly [FieldDescriptorProto, number]>
-): Member => {
+/** The member of the oneof at `index` of `message`, whose cases are its fields. */
+const renderOneof = (ctx: Context, message: MessageType, index: number): Member => {
   const decl = message.desc.oneofDecl[index]
   const key = protoCamelCase(decl?.name ?? "")
+  const fields = message.desc.field.flatMap((field, i) =>
+    isRealOneof(field) && field.oneofIndex === index ? [[field, i, protoCamelCase(field.name ?? "")] as const] : []
+  )
   checkUnique(
     message.fullName,
-    fields.map(([field]) => [protoCamelCase(field.name ?? ""), `field ${field.name}`] as const),
+    fields.map(([field, _, tag]) => [tag, `field ${field.name}`] as const),
     `a case of oneof ${decl?.name}`
   )
   const features = mergeFeatures(message.features, decl?.options?.features)
-  const cases = fields.map(([field, i]) => {
+  const cases = fields.map(([field, i, tag]) => {
     const where = `${message.fullName}.${field.name}`
-    const tag = protoCamelCase(field.name ?? "")
     const v = renderValue(ctx, field, message, where)
     const options = {
       ...nameOptions(field, tag),
@@ -864,7 +821,6 @@ const renderOneof = (
   return {
     key,
     source: `oneof ${decl?.name}`,
-    property: propertyKey(key),
     schema: [
       `${useProtobuf(ctx)}.Oneof({`,
       ...cases.flatMap((c, i) => [...c.doc, `    ${c.schema}${i < cases.length - 1 ? "," : ""}`]),
@@ -913,22 +869,24 @@ const defaultValue = (ctx: Context, field: FieldDescriptorProto, where: string):
   }
 }
 
+/** The single-character C escapes: `\n` is 10. */
+const simpleEscapes: Record<string, number> = {
+  n: 10,
+  r: 13,
+  t: 9,
+  a: 7,
+  b: 8,
+  f: 12,
+  v: 11,
+  "\\": 92,
+  "'": 39,
+  "\"": 34,
+  "?": 63
+}
+
 /** protoc C-escapes the defaults of bytes fields. */
 const unescapeBytes = (escaped: string, where: string): Array<number> => {
   const out: Array<number> = []
-  const simple: Record<string, number> = {
-    n: 10,
-    r: 13,
-    t: 9,
-    a: 7,
-    b: 8,
-    f: 12,
-    v: 11,
-    "\\": 92,
-    "'": 39,
-    "\"": 34,
-    "?": 63
-  }
   for (let i = 0; i < escaped.length; i++) {
     const c = escaped[i]
     if (c !== "\\") {
@@ -936,8 +894,8 @@ const unescapeBytes = (escaped: string, where: string): Array<number> => {
       continue
     }
     const next = escaped[++i]
-    if (next !== undefined && Object.hasOwn(simple, next)) {
-      out.push(simple[next])
+    if (next !== undefined && Object.hasOwn(simpleEscapes, next)) {
+      out.push(simpleEscapes[next])
     } else if (next !== undefined && /[0-7]/.test(next)) {
       let digits = next
       while (digits.length < 3 && /[0-7]/.test(escaped[i + 1] ?? "")) digits += escaped[++i]
@@ -964,21 +922,16 @@ const renderMessage = (ctx: Context, message: MessageType): string => {
   if (desc.options?.messageSetWireFormat === true && desc.field.length > 0) {
     throw new GeneratorError(`${message.fullName}: a MessageSet has no fields of its own`)
   }
-  const oneofs = new Map<number, Array<readonly [FieldDescriptorProto, number]>>()
-  desc.field.forEach((field, i) => {
-    if (!isRealOneof(field)) return
-    const group = oneofs.get(field.oneofIndex!)
-    if (group === undefined) oneofs.set(field.oneofIndex!, [[field, i]])
-    else group.push([field, i])
-  })
+  // A oneof is a member where its first field is.
   const members: Array<Member> = []
+  const oneofs = new Set<number>()
   desc.field.forEach((field, i) => {
-    if (isRealOneof(field)) {
-      const group = oneofs.get(field.oneofIndex!)!
-      if (group[0][0] === field) members.push(renderOneof(ctx, message, field.oneofIndex!, group))
-      return
+    if (!isRealOneof(field)) {
+      members.push(renderField(ctx, message, field, [...message.path, MESSAGE_FIELD, i]))
+    } else if (!oneofs.has(field.oneofIndex!)) {
+      oneofs.add(field.oneofIndex!)
+      members.push(renderOneof(ctx, message, field.oneofIndex!))
     }
-    members.push(renderField(ctx, message, field, [...message.path, MESSAGE_FIELD, i]))
   })
   checkUnique(message.fullName, members.map((m) => [m.key, m.source] as const), "property")
   const schema = useSchema(ctx)
@@ -990,7 +943,10 @@ const renderMessage = (ctx: Context, message: MessageType): string => {
     ? "{}"
     : [
       "{",
-      ...members.flatMap((m, i) => [...m.doc, `  ${m.property}: ${m.schema}${i < members.length - 1 ? "," : ""}`]),
+      ...members.flatMap((m, i) => [
+        ...m.doc,
+        `  ${propertyKey(m.key)}: ${m.schema}${i < members.length - 1 ? "," : ""}`
+      ]),
       "}"
     ].join("\n")
   const call = desc.options?.messageSetWireFormat === true
@@ -1052,7 +1008,7 @@ const renderExtension = (ctx: Context, extension: Extension): string => {
     ...doc,
     `export const ${extension.tsName} = ${useProtobuf(ctx)}.extension(${
       renderMessageRef(ctx, field.extendee ?? "", undefined, where)
-    }, ${field.number ?? 0}, ${v.schema}${options === undefined ? "" : `, ${options}`})`
+    }, ${field.number ?? 0}, ${v}${options === undefined ? "" : `, ${options}`})`
   ].join("\n")
 }
 
