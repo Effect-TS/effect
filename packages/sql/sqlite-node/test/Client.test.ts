@@ -378,6 +378,41 @@ describe("Client", () => {
       }
     }))
 
+  it.effect.each(["withTransaction", "reserve"] as const)(
+    "releases the connection when a queued %s is interrupted",
+    (mode) =>
+      Effect.gen(function*() {
+        // Sweep scheduler budgets and offsets to hit the permit handoff window.
+        for (let budget = 3; budget <= 64; budget++) {
+          for (let lead = 0; lead <= 3; lead++) {
+            yield* Effect.scoped(Effect.gen(function*() {
+              const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+              const holder = yield* Effect.forkChild(sql`SELECT 1`)
+              const queued = yield* (mode === "withTransaction"
+                ? sql.withTransaction(sql`SELECT 2`)
+                : Effect.scoped(sql.reserve)).pipe(
+                  Effect.provideService(References.MaxOpsBeforeYield, budget),
+                  Effect.forkChild
+                )
+              for (let i = 0; i < lead; i++) yield* Effect.yieldNow
+              yield* Fiber.interrupt(queued)
+              yield* Fiber.join(holder)
+              const next = yield* sql`SELECT 3 AS value`.pipe(
+                Effect.timeoutOption("1 second"),
+                Effect.forkChild({ startImmediately: true })
+              )
+              yield* TestClock.adjust("1 second")
+              assert.deepStrictEqual(
+                yield* Fiber.join(next),
+                Option.some([{ value: 3 }]),
+                `connection leaked at budget=${budget} lead=${lead}`
+              )
+            }))
+          }
+        }
+      })
+  )
+
   it.effect("uses a 5 second busy timeout", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
