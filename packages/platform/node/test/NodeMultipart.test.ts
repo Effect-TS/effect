@@ -39,7 +39,10 @@ describe("NodeMultipart", () => {
       const closedError = yield* NodeMultipart.stream(closed, headers).pipe(
         Stream.runForEach((part) => {
           closed.destroy()
-          return part._tag === "File" ? Stream.runDrain(part.content) : Effect.void
+          return Effect.andThen(
+            Effect.promise(() => nextTurn()),
+            part._tag === "File" ? Stream.runDrain(part.content) : Effect.void
+          )
         }),
         Effect.flip
       )
