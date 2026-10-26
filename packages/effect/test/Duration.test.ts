@@ -651,6 +651,22 @@ describe("Duration", () => {
     assertFalse(Equal.equals(Duration.weeks(1), Duration.days(1)))
   })
 
+  it("toMicros", () => {
+    strictEqual(Duration.zero.pipe(Duration.toMicros), 0)
+    strictEqual(Duration.millis(1).pipe(Duration.toMicros), 1000)
+    strictEqual(Duration.millis(1.0005).pipe(Duration.toMicros), 1000.5)
+    strictEqual(Duration.nanos(1n).pipe(Duration.toMicros), 0.001)
+    strictEqual(Duration.nanos(123n).pipe(Duration.toMicros), 0.123)
+    strictEqual(Duration.nanos(-123n).pipe(Duration.toMicros), -0.123)
+    strictEqual(Duration.toMicros("1.5 micros"), 1.5)
+    strictEqual(Duration.toMicros(2), 2000)
+    strictEqual(Duration.toMicros(1500n), 1.5)
+    strictEqual(Duration.infinity.pipe(Duration.toMicros), Infinity)
+    strictEqual(Duration.negativeInfinity.pipe(Duration.toMicros), -Infinity)
+    strictEqual(Duration.nanos(10n ** 310n).pipe(Duration.toMicros), 1e307)
+    strictEqual(Duration.nanos(-(10n ** 310n)).pipe(Duration.toMicros), -1e307)
+  })
+
   it("toMillis", () => {
     strictEqual(Duration.millis(1).pipe(Duration.toMillis), 1)
     strictEqual(Duration.nanos(1n).pipe(Duration.toMillis), 0.000001)
