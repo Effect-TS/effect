@@ -27,6 +27,46 @@ interface AtomStore<A> {
 
 const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry, WeakMap<Atom.Atom<any>, AtomStore<any>>>()
 
+// React reads snapshots while rendering. A first read builds the atom, and its
+// effect can set other atoms, whose readers React must not hear of during the
+// render. Those notifications wait for the reading component's effects, or a
+// microtask when the render does not commit.
+let snapshotDepth = 0
+const deferred = new Set<() => void>()
+let flushScheduled = false
+
+function readSnapshot<A>(read: () => A): A {
+  snapshotDepth++
+  try {
+    return read()
+  } finally {
+    snapshotDepth--
+  }
+}
+
+function defer(listener: () => void): void {
+  deferred.add(listener)
+  if (!flushScheduled) {
+    flushScheduled = true
+    queueMicrotask(flushDeferred)
+  }
+}
+
+function flushDeferred(): void {
+  flushScheduled = false
+  // a listener removed by an earlier one is skipped, one added is run
+  for (const listener of deferred) {
+    deferred.delete(listener)
+    listener()
+  }
+}
+
+function useFlushDeferred(): void {
+  React.useEffect(() => {
+    if (deferred.size > 0) flushDeferred()
+  })
+}
+
 function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): AtomStore<A> {
   let stores = storeRegistry.get(registry)
   if (stores === undefined) {
@@ -44,18 +84,26 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   const newStore: AtomStore<A> = {
     subscribe(f) {
       subscribers++
-      const unsubscribe = registry.subscribe(atom, f)
+      const listener = () => {
+        if (snapshotDepth > 0) {
+          defer(listener)
+        } else {
+          f()
+        }
+      }
+      const unsubscribe = registry.subscribe(atom, listener)
       return () => {
         subscribers--
+        deferred.delete(listener)
         unsubscribe()
       }
     },
     snapshot() {
-      return registry.get(atom)
+      return readSnapshot(() => registry.get(atom))
     },
     getServerSnapshot() {
       if (subscribers === 0 || serverSnapshot === undefined) {
-        serverSnapshot = { value: Atom.getServerValue(atom, registry) }
+        serverSnapshot = { value: readSnapshot(() => Atom.getServerValue(atom, registry)) }
       }
       return serverSnapshot.value
     }
@@ -66,7 +114,7 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
 
 function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A {
   const store = makeStore(registry, atom)
-
+  useFlushDeferred()
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
@@ -82,7 +130,7 @@ function useSelectedStore<A, B>(registry: AtomRegistry.AtomRegistry, atom: Atom.
       return last.value
     }
   }, [f])
-
+  useFlushDeferred()
   return React.useSyncExternalStore(
     store.subscribe,
     () => select(store.snapshot()),
