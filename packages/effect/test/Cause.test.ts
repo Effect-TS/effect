@@ -710,7 +710,9 @@ describe("Cause", () => {
       assertCleanStack(Effect.suspend(userCode))
     })
 
-    it("does not render internal sync and suspend thunk frames", () => {
+    // JavaScriptCore does not name anonymous thunk frames after their property,
+    // so internal thunk frames cannot be told apart there
+    it.skipIf(process.versions.bun !== undefined)("does not render internal sync and suspend thunk frames", () => {
       const exit = Effect.runSyncExit(Effect.firstSuccessOf([]))
       assert.ok(Exit.isFailure(exit))
       assert.doesNotMatch(Cause.pretty(exit.cause), /\/src\/internal\/|~effect\/Effect\/args/)
