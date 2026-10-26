@@ -911,10 +911,10 @@ export const fibonacci = (one: Duration.Input): Schedule<Duration.Duration> => {
     let a = 0
     let b = oneMillis
     return constant(effect.sync(() => {
+      const duration = Duration.millis(b)
       const next = a + b
       a = b
       b = next
-      const duration = Duration.millis(next)
       return [duration, duration]
     }))
   }))
