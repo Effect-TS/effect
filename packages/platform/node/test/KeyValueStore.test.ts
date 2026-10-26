@@ -75,4 +75,16 @@ describe("KeyValueStore / layerFileSystem", () => {
     }).pipe(
       Effect.provide(NodeFileSystem.layer)
     ))
+
+  it.effect("remove succeeds for a missing key", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+
+      yield* KeyValueStore.KeyValueStore.use((store) => store.remove("missing")).pipe(
+        Effect.provide(KeyValueStore.layerFileSystem(directory).pipe(Layer.provide(platformLayer)))
+      )
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
 })
