@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import * as HttpRouter from "effect/http/HttpRouter"
@@ -508,9 +509,9 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     // SEP-2549 cache hints are server-advertised freshness; omitted families and resource reads keep the stale default.
     it.effect("should advertise configured cache hints and keep defaults for other results", () =>
       Effect.gen(function*() {
-        const hint = (ttlMs: number) => ({ ttlMs, cacheScope: "private" }) as const
+        const hint = (ttl: Duration.Input) => ({ ttl, cacheScope: "private" }) as const
         // Structurally compatible hints can carry extra properties that must not reach the wire result.
-        const toolsHint = { ...hint(60_000), internalOnly: true }
+        const toolsHint = { ...hint("1 minute"), internalOnly: true }
         const registrations = Layer.mergeAll(
           McpServer.resource({ uri: "file:///cached", name: "Cached", content: Effect.succeed("cached") }),
           McpServer.prompt({ name: "Cached", content: () => Effect.succeed("cached") })
@@ -520,10 +521,11 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           [
             {
               discover: hint(1),
-              tools: hint(2),
-              resources: hint(3),
+              tools: hint("2 millis"),
+              resources: hint(Duration.millis(3)),
               resourceTemplates: hint(4),
-              prompts: hint(5)
+              // Sub-millisecond remainders round down so the wire ttlMs stays an integer.
+              prompts: hint("5999 micros")
             },
             {
               "server/discover": 1,
@@ -556,7 +558,9 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
               const message = Schema.decodeUnknownSync(Schema.Struct({
                 result: Schema.Struct({ ttlMs: Schema.Int, cacheScope: Schema.String })
               }))(body)
-              assert.notProperty((body as { readonly result: object }).result, "internalOnly", `${mode} ${method}`)
+              for (const property of ["ttl", "internalOnly"]) {
+                assert.notProperty((body as { readonly result: object }).result, property, `${mode} ${method}`)
+              }
               assert.deepStrictEqual(
                 message.result,
                 { ttlMs: ttls[method] ?? 0, cacheScope: "private" },
@@ -567,12 +571,14 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }
       }))
 
-    it.effect("should fail layer construction when a cache hint is outside the wire schema", () =>
+    it.effect("should fail layer construction when a cache hint cannot be advertised", () =>
       Effect.gen(function*() {
         const invalid = [
-          { ttlMs: -1, cacheScope: "private" },
-          { ttlMs: 1.5, cacheScope: "private" },
-          { ttlMs: 1, cacheScope: "public" }
+          { ttl: "-1 seconds", cacheScope: "private" },
+          { ttl: "Infinity", cacheScope: "private" },
+          { ttl: 2 ** 53, cacheScope: "private" },
+          { ttl: "soon", cacheScope: "private" },
+          { ttl: 1, cacheScope: "public" }
         ]
         for (const mode of ["server", "request"] as const) {
           for (const tools of invalid) {
@@ -580,7 +586,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
               name: "InvalidCacheHintServer",
               protocols: [protocol],
               mode,
-              cacheHints: { tools: tools as McpServer.CacheHint }
+              cacheHints: { tools: tools as unknown as McpServer.CacheHint }
             }).pipe(Layer.provide(HttpRouter.layer), Layer.build, Effect.scoped, Effect.flip)
 
             assert.strictEqual(error._tag, "IllegalArgumentError", `${mode} ${JSON.stringify(tools)}`)
