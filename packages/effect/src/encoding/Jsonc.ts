@@ -14,7 +14,10 @@
 import * as internal from "../internal/jsonParser.ts"
 
 const fail = (input: string): never => {
-  // Native error wording and positions differ across engines and may quote secrets.
+  // Native error wording and positions differ across engines and may quote secrets,
+  // so the strict parser locates the error instead. Its grammar accepts exactly what
+  // JSON.parse accepts once comments are removed, so it throws first; the end-of-input
+  // error only guards against an engine that disagrees.
   internal.parse(input, "JSONC")
   throw internal.syntaxError(input, input.length, "JSONC")
 }

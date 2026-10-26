@@ -29,4 +29,4 @@ import * as internal from "../internal/jsonParser.ts"
  * @category decoding
  * @since 4.0.7
  */
-export const parse = (text: string): unknown => internal.parse(text, "JSON5")
+export const parse = (input: string): unknown => internal.parse(input, "JSON5")
