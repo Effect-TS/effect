@@ -12,6 +12,13 @@ const MyTool = Tool.make("MyTool", {
 
 const MyToolkit = Toolkit.make(MyTool)
 
+// Executed by the application, which answers in a later request
+const ClientTool = Tool.make("ClientTool", {
+  parameters: Schema.Struct({ question: Schema.String }),
+  success: Schema.Boolean,
+  execution: "client"
+})
+
 const MyToolkitLayer = MyToolkit.toLayer({
   MyTool: () =>
     Effect.succeed({ testSuccess: "test-success" }).pipe(
@@ -100,6 +107,37 @@ describe("LanguageModel", () => {
         generateText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }],
         streamText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }]
       })))
+
+    it.effect(`${method} leaves client-executed tool calls unresolved`, () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(MyTool, ClientTool)
+        // A complete finish runs the server tool, an incomplete one gives it a
+        // synthesized failure, and neither may answer the client tool
+        for (const reason of ["tool-calls", "length"] as const) {
+          const toolCalls: Array<Response.ToolCallPartEncoded | Response.FinishPartEncoded> = [
+            { type: "tool-call", id: "server-call", name: "MyTool", params: { testParam: "test-param" } },
+            { type: "tool-call", id: "client-call", name: "ClientTool", params: { question: "Proceed?" } },
+            { ...finishPart, reason }
+          ]
+          const provide = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+            effect.pipe(
+              TestUtils.withLanguageModel({ generateText: toolCalls, streamText: toolCalls }),
+              Effect.provide(toolkit.toLayer({ MyTool: () => Effect.succeed({ testSuccess: "test-success" }) }))
+            )
+          const parts: ReadonlyArray<Response.AnyPart> = yield* (method === "generateText"
+            ? provide(
+              LanguageModel.generateText({ prompt: "hi", toolkit }).pipe(Effect.map((response) => response.content))
+            )
+            : provide(LanguageModel.streamText({ prompt: "hi", toolkit }).pipe(Stream.runCollect)))
+
+          assertTrue(parts.some((part) => part.type === "tool-call" && part.id === "client-call"), reason)
+          deepStrictEqual(
+            parts.flatMap((part) => part.type === "tool-result" ? [part.id] : []),
+            ["server-call"],
+            reason
+          )
+        }
+      }))
   }
 
   describe("generateText", () => {

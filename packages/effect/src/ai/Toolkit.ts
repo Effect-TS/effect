@@ -412,6 +412,12 @@ const Proto = {
           })
         }
 
+        if (Tool.isClientExecuted(tool)) {
+          return yield* Effect.die(
+            new Error(`Tool "${name}" is executed by the client and has no handler`)
+          )
+        }
+
         const schemas = getSchemas(tool)
 
         const encodeResult = (result: any, isFailure: boolean) =>
