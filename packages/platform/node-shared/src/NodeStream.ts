@@ -235,8 +235,9 @@ export const toReadableNever = <E>(stream: Stream.Stream<string | Uint8Array, E,
  * Consumes a Node readable stream into a string using the selected encoding,
  * failing through `onError` on stream errors or when `maxBytes` is exceeded
  * and destroying the stream on interruption or failure.
- * `maxBytes` counts the bytes read from the stream; string chunks count by
- * their byte length in `encoding`.
+ * `maxBytes` counts the bytes read from the stream. Streams that already emit
+ * strings are counted by encoded string length, which can differ from the
+ * bytes originally read.
  * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
  * destroying the stream when the byte limit is exceeded.
  *
@@ -260,7 +261,9 @@ export const toString = <E = Cause.UnknownError>(
     const stream = readable() as Readable
     // Decoding here keeps `maxBytes` on raw bytes. A stream that already
     // decodes only emits strings, so switch it to `encoding` instead.
-    if (stream.readableEncoding !== null) stream.setEncoding(encoding)
+    // Object-mode strings are not encoded bytes and count as UTF-8.
+    const decodes = stream.readableEncoding !== null
+    if (decodes) stream.setEncoding(encoding)
     const decoder = new StringDecoder(encoding)
 
     let string = ""
@@ -278,7 +281,7 @@ export const toString = <E = Cause.UnknownError>(
     function onData(chunk: string | Uint8Array) {
       if (typeof chunk === "string") {
         string += chunk
-        bytes += Buffer.byteLength(chunk, encoding)
+        bytes += Buffer.byteLength(chunk, decodes ? encoding : "utf8")
       } else {
         string += decoder.write(chunk)
         bytes += chunk.byteLength
