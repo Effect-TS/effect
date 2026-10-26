@@ -58,10 +58,12 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
   const isObjectEntry = (base: string) => indexes.some((i) => i.object && !i.string && i.matches(base))
   // A required object has no flat interpretation, so its keys are always
   // rebuilt. Otherwise a base is rebuilt only when none of its keys may be a
-  // flat entry, and all of its keys stay flat, as before, when one may.
-  const isNestable = (base: string, keys: ReadonlyArray<string>) =>
+  // flat entry or is declared, and all of its keys stay flat, as before, when
+  // one is.
+  const isNestable = (base: string, keys: ReadonlyArray<string>, hasDeclaredKey: boolean) =>
     required.has(base) ||
-    ((optional.has(base) || (!declared.has(base) && isObjectEntry(base))) && !keys.some(isFlatKey))
+    ((optional.has(base) || (!declared.has(base) && isObjectEntry(base))) && !hasDeclaredKey &&
+      !keys.some(isFlatKey))
   // The flat input keeps the wire literals of the required literal fields, so
   // unions still select members by them before any rebuilding
   const discriminators: Array<SchemaAST.PropertySignature> = []
@@ -134,6 +136,8 @@ function canBeString(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
       return true
     case "Literal":
       return typeof ast.literal === "string"
+    case "Enum":
+      return ast.enums.some(([, value]) => typeof value === "string")
     case "Declaration":
       return ast.run === stringTree.run
     case "Union":
@@ -148,22 +152,25 @@ const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
 
 /**
  * Rebuilds the `a[b][c]` keys of each base `isNestable` accepts, given all of
- * that base's keys. Keys listed in `declared` are kept as is, so literal
- * bracket keys keep decoding. A key that conflicts with a shorter one, such as
+ * that base's keys and whether one of its keys is declared. Keys listed in
+ * `declared` are kept as is, so literal bracket keys keep decoding. A key that conflicts with a shorter one, such as
  * `a[b]` next to `a`, stays flat.
  */
 function fromFlatParams(
   params: FlatParams,
   declared: ReadonlySet<string>,
-  isNestable: (base: string, keys: ReadonlyArray<string>) => boolean
+  isNestable: (base: string, keys: ReadonlyArray<string>, hasDeclaredKey: boolean) => boolean
 ): Record<string, unknown> {
   type Entry = { readonly key: string; readonly path: ReadonlyArray<string> }
   const out: Record<string, unknown> = {}
   const byBase = new Map<string, Array<Entry>>()
+  // Bases with a declared bracket key in the input, which stays flat
+  const flatBases = new Set<string>()
   for (const key of Object.keys(params)) {
-    const match = declared.has(key) ? null : bracketKey.exec(key)
-    if (match === null) {
+    const match = bracketKey.exec(key)
+    if (match === null || declared.has(key)) {
       assignProperty(out, key, params[key])
+      if (match !== null) flatBases.add(match[1])
       continue
     }
     const entries = byBase.get(match[1])
@@ -173,7 +180,7 @@ function fromFlatParams(
   }
   const nested: Array<Entry> = []
   for (const [base, entries] of byBase) {
-    if (isNestable(base, entries.map((entry) => entry.key))) {
+    if (isNestable(base, entries.map((entry) => entry.key), flatBases.has(base))) {
       nested.push(...entries)
     } else {
       for (const { key } of entries) assignProperty(out, key, params[key])
