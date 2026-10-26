@@ -367,18 +367,19 @@ const ServerLayer = McpServer.layerHttp({
   path: "/mcp",
   protocols: [McpProtocol.v2026_07_28],
   cacheHints: {
-    tools: { ttlMs: 60_000, cacheScope: "private" }
+    tools: { ttl: "1 minute", cacheScope: "private" }
   }
 })
 ```
 
 - The entries are `discover`, `tools`, `resources`, `resourceTemplates` and `prompts`. Omitted
   entries and `resources/read` keep the default. Earlier protocol revisions ignore the option.
-- `ttlMs` must be a nonnegative integer and only `"private"` scope is supported. Otherwise building
-  the layer fails with `IllegalArgumentError`.
+- `ttl` accepts any `Duration.Input` and is sent as whole milliseconds, rounded down. It must be
+  finite and nonnegative, and only `"private"` scope is supported. Otherwise building the layer
+  fails with `IllegalArgumentError`.
 - The hints only tell clients what they may cache. The server still lists registrations, applies
   visibility and checks each call on every request.
-- With a positive `ttlMs`, a client can keep showing a list after registrations or visibility
+- With a positive `ttl`, a client can keep showing a list after registrations or visibility
   change, until the hint expires. Private scope does not separate users, so a client shared between
   users can show one user's list to another.
 

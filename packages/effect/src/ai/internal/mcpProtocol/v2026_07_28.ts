@@ -22,7 +22,6 @@ import * as Scope from "../../../Scope.ts"
 import type * as Types from "../../../Types.ts"
 import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
-import type * as PublicMcpServer from "../../McpServer.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
@@ -329,7 +328,7 @@ export const makeHandlers = (
     (value): value is Readonly<Record<string, unknown>> => Predicate.isReadonlyObject(value)
   )
   // Project only the wire fields; structurally compatible hints can carry extra properties.
-  const cacheHint = (family: keyof PublicMcpServer.CacheHints) => {
+  const cacheHint = (family: keyof McpProtocol.CacheHints) => {
     const hint = context.serverInfo.cacheHints?.[family]
     return hint === undefined ? privateStaleCache : { ttlMs: hint.ttlMs, cacheScope: hint.cacheScope }
   }
