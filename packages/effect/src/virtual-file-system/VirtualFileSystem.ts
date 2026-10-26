@@ -1201,7 +1201,7 @@ export const make: (
 export const restore = <Error = never, Services = never>(
   source: M.Capture | Stream.Stream<M.CaptureRecord, Error, Services>,
   options?: M.RestoreOptions
-): Effect.Effect<M.Owner, M.VirtualFileSystemError | Error, Services | Clock.Clock> =>
+): Effect.Effect<M.Owner, M.VirtualFileSystemError | Error, Services> =>
   Effect.flatMap(C.restoreEngine(source, options), (engine) => Effect.fromResult(ownerFor(engine)))
 
 /**
@@ -1286,7 +1286,7 @@ const simple = <Target extends M.Target, Value>(
   operation: string,
   target: Target,
   body: (tx: E.Transaction, target: E.TargetSnapshot<Target>) => Result.Result<Value, M.OperationError>
-): Effect.Effect<Value, M.OperationError> =>
+) =>
   E.runAtomicResult(
     caller,
     operation,
@@ -1305,7 +1305,7 @@ const withOptions = <Target extends M.Target, Operation extends A.Operation, Val
     target: E.TargetSnapshot<Target>,
     options: A.OptionsByOperation[Operation]
   ) => Result.Result<Value, M.OperationError>
-): Effect.Effect<Value, M.OperationError> =>
+) =>
   E.runAtomicResult(caller, operation, [target], () => A.validate(operation, options), () =>
     Result.gen(function*() {
       const copy = yield* E.snapshotTargetResult(target)
@@ -1325,7 +1325,7 @@ const write = <Target extends M.Target, Operation extends "writeFile" | "publish
     input: Uint8Array,
     options: A.OptionsByOperation[Operation]
   ) => Result.Result<Value, M.OperationError>
-): Effect.Effect<Value, M.OperationError> =>
+) =>
   E.runAtomicResult(caller, operation, [target], () =>
     Result.gen(function*() {
       yield* A.validate(operation, options)
@@ -1338,20 +1338,16 @@ const write = <Target extends M.Target, Operation extends "writeFile" | "publish
       return (tx: E.Transaction) => body(tx, targetCopy, bytes, fixed)
     }))
 
-const U32 = Schema.Number.check(Schema.isUint32())
-
 const Umask = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o777 }))
 
 const isBoolean = Schema.is(Schema.Boolean)
-
-const isGroups = Schema.is(Schema.Array(U32))
-
+const isGroups = Schema.is(Schema.Array(M.Uint32))
 const isUmask = Schema.is(Umask)
 
 const credentials = (
   options: M.CallerOptions,
   operation: string
-): Result.Result<Omit<E.Policy, "root" | "cwd" | "boundaries">, M.OperationError> =>
+) =>
   Result.gen(function*() {
     yield* E.checkOptionsResult(options, ["credentials", "umask", "root", "cwd"], operation)
     const input = options?.credentials
@@ -1372,7 +1368,7 @@ const credentials = (
     return { uid, gid, groups, privileged: input.privileged ?? false, umask }
   })
 
-const makeCaller = (caller: E.Caller): M.VirtualFileSystem => {
+const makeCaller = (caller: E.Caller) => {
   const value: M.VirtualFileSystem = {
     [M.CallerTypeId]: M.CallerTypeId,
     instanceNumber: caller.runtime.instanceNumber,
@@ -1518,7 +1514,7 @@ const derive = Effect.fnUntraced(
     source: E.Caller,
     directory: M.DirectorySelector,
     narrow: boolean
-  ): Effect.fn.Return<M.VirtualFileSystem, M.OperationError, Scope.Scope> {
+  ) {
     const scope = yield* Scope.Scope
 
     return yield* source.runtime.runResult(
@@ -1570,7 +1566,7 @@ const derive = Effect.fnUntraced(
   }
 )
 
-const ownerFor = (engine: E.Engine): Result.Result<M.Owner, M.OperationError> =>
+const ownerFor = (engine: E.Engine) =>
   Result.gen(function*() {
     const ownerResource = yield* engine.runtime.resourceResult("lease", "owner")
     const authorityContext = {
