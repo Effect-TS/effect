@@ -169,6 +169,7 @@ describe("CommandLine", () => {
         ["echo a{1..3}", "UnsupportedSyntax"],
         ["=ls", "UnsupportedSyntax"],
         ["FOO=bar cmd", "UnsupportedSyntax"],
+        ["FOO+=bar cmd", "UnsupportedSyntax"],
         ["'open", "UnterminatedQuote"],
         ["a \"b", "UnterminatedQuote"],
         ["a\\", "InvalidEscape"]
