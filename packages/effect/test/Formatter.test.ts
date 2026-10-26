@@ -446,6 +446,13 @@ describe("Formatter", () => {
       strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
     })
 
+    it("should ignore an own keys property on arrays with getters", () => {
+      const array: Array<unknown> = []
+      Object.defineProperty(array, "0", { get: () => 1 })
+      Object.defineProperty(array, "keys", { value: null })
+      strictEqual(formatJson(array), `[1]`)
+    })
+
     it("should read getters after earlier siblings are serialized", () => {
       let state = 0
       strictEqual(
