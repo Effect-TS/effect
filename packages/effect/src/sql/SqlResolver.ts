@@ -10,7 +10,7 @@
  *
  * The active transaction is found through the `SqlClient` in each request's
  * context, and otherwise through the innermost transaction started with
- * `SqlClient.makeWithTransaction` or marked with `SqlClient.addTransaction`.
+ * `SqlClient.makeWithTransaction`.
  *
  * Only the transaction connection separates batches. Other differences in
  * caller services do not: `execute` and result decoding are provided with the
@@ -422,7 +422,7 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
 
 function transactionKey<A>(entry: Request.Entry<A>): object | undefined {
   // The transaction of the request's `SqlClient`, and the innermost transaction
-  // marked with `SqlClient.addTransaction` by any client.
+  // started with `SqlClient.makeWithTransaction` by any client.
   const client = Context.getOrUndefined(entry.context, SqlClient.SqlClient)
   const clientTransaction = client && Context.getOrUndefined(entry.context, client.transactionService)
   const currentService = Context.get(entry.context, CurrentTransactionService)

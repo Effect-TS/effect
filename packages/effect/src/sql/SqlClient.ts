@@ -14,7 +14,7 @@ import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import { dual, identity } from "../Function.ts"
+import { identity } from "../Function.ts"
 import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -88,8 +88,7 @@ export interface SqlClient extends Constructor {
    * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
-   * that don't go through `makeWithTransaction`, such as those of
-   * `@effect/sql-sqlite-do`, invalidate immediately.
+   * that don't go through `makeWithTransaction` invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -137,8 +136,8 @@ export interface SqlClient extends Constructor {
    * long-running work.
    * Registering after the transaction has ended is a defect.
    *
-   * Transactions that don't go through `makeWithTransaction`, such as those
-   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   * Transactions that don't go through `makeWithTransaction` run callbacks
+   * immediately.
    */
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
@@ -521,47 +520,6 @@ const makeAfterCommit =
     })
 
 /**
- * Adds a transaction level to a context, so `SqlResolver` keeps the requests
- * inside it in their own batch even when the caller's context has no
- * `SqlClient` for the driver.
- *
- * **When to use**
- *
- * Use when a driver implements `withTransaction` itself instead of using
- * `makeWithTransaction`, which already does this. Provide the returned context
- * to the transaction body in place of `Context.add(service, level)`.
- *
- * **Details**
- *
- * `level` identifies the transaction by reference, so each nested level needs
- * its own value. Removing `service` from the context, as `afterCommit` does for
- * its callbacks, also hides the level from `SqlResolver`.
- *
- * @stability unstable
- * @category transactions
- * @since 4.0.0
- */
-export const addTransaction: {
-  <I, S extends object>(
-    service: Context.Key<I, S>,
-    level: NoInfer<S>
-  ): <Services>(self: Context.Context<Services>) => Context.Context<Services | I>
-  <Services, I, S extends object>(
-    self: Context.Context<Services>,
-    service: Context.Key<I, S>,
-    level: NoInfer<S>
-  ): Context.Context<Services | I>
-} = dual(3, <Services, I, S extends object>(
-  self: Context.Context<Services>,
-  service: Context.Key<I, S>,
-  level: NoInfer<S>
-): Context.Context<Services | I> =>
-  self.pipe(
-    Context.add(service, level),
-    Context.add(CurrentTransactionService, service)
-  ))
-
-/**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
@@ -659,7 +617,8 @@ export const makeWithTransaction = <I, S>(options: {
                       Effect.provideContext(
                         restore(effect),
                         services.pipe(
-                          addTransaction(options.transactionService, level),
+                          Context.add(options.transactionService, level),
+                          Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
