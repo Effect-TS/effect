@@ -774,6 +774,32 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
+  it.effect("rejects an invalid optional nested object instead of dropping it", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", {
+          query: { meta: Schema.optional(Schema.Struct({ k: Schema.NonEmptyString })) }
+        }))
+      )
+      const handler = yield* HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(Api).pipe(
+          Layer.provide(HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("search", () => Effect.void)))
+        )
+      )
+      const exit = yield* handler.pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(new Request("http://localhost/search?meta%5Bk%5D="))
+        ),
+        Effect.exit
+      )
+
+      if (exit._tag === "Success") throw new Error("Expected query decoding to fail")
+      const error = Cause.squash(exit.cause)
+      assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+      assert.strictEqual(error.kind, "Query")
+    }))
+
   it.effect("rebuilds __proto__ segments as own properties", () =>
     Effect.gen(function*() {
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
