@@ -1,7 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Json5, Jsonc } from "effect/encoding"
+import { jsonFixtures } from "./fixtures/json.ts"
 
 describe("Jsonc", () => {
+  it.each(jsonFixtures)("reference compatibility: $name", ({ input, jsonc: expected }) => {
+    if (expected.valid) {
+      assert.deepStrictEqual(Jsonc.parse(input), expected.value)
+    } else {
+      assert.throws(() => Jsonc.parse(input), SyntaxError, /^Invalid JSONC at line \d+, column \d+$/)
+    }
+  })
+
   it("accepts comments wherever JSON accepts whitespace", () => {
     assert.deepStrictEqual(
       Jsonc.parse(`/* before */ {
@@ -11,8 +20,6 @@ describe("Jsonc", () => {
     } // after`),
       { a: [1, true, null], nested: { value: "ok" } }
     )
-    assert.strictEqual(Jsonc.parse("1 // comment at EOF"), 1)
-    assert.deepStrictEqual(Jsonc.parse("/* first\r\nsecond */ [/* third\nfourth */ 1]"), [1])
   })
 
   it.each([
@@ -36,10 +43,7 @@ describe("Jsonc", () => {
     "false",
     "[]",
     "{}",
-    "-0",
-    "1e400",
     "1E-3",
-    "[0,-12.25,1e+2,\"text\",null,false]",
     String
       .raw`{"url":"https://example.com/a/*b*/", "quote":"\"//still a string", "slashes":"\\\\", "escapes":"\b\f\n\r\t\/\u0041"}`,
     "\"\u2028\u2029\"",
@@ -48,32 +52,14 @@ describe("Jsonc", () => {
     assert.deepStrictEqual(Jsonc.parse(input), JSON.parse(input))
   })
 
-  it("does not confuse escaped backslashes with escaped quotes", () => {
-    assert.deepStrictEqual(Jsonc.parse(String.raw`["\\",/* comment */"\"/* text */"]`), ["\\", "\"/* text */"])
-  })
-
   it.each([
-    "{unquoted: 1}",
-    "{'single': 1}",
-    "{\"a\":1,}",
-    "[1,]",
     "[1,/* end */]",
-    "+1",
-    ".5",
-    "5.",
-    "0x1f",
     "-0Xf",
-    "NaN",
-    "Infinity",
     "-Infinity",
-    String.raw`"\x41"`,
     String.raw`"\v"`,
     String.raw`"\0"`,
     String.raw`"\a"`,
-    "\"line\\\nbreak\"",
     "\u00a0{}",
-    "\uFEFF{}",
-    "\v{}",
     "\f{}",
     "\u2028{}"
   ])("rejects JSON5-only syntax %j", (input) => {
@@ -85,7 +71,6 @@ describe("Jsonc", () => {
     "",
     "// only a comment",
     "/* only a comment */",
-    "{} /* unterminated",
     "{} /",
     "{} */",
     "/* nested /* */ */ {}",
@@ -96,7 +81,6 @@ describe("Jsonc", () => {
     "{\"a\" 1}",
     "{\"a\":1 \"b\":2}",
     "[1 2]",
-    "01",
     "-01",
     "1e+",
     "--1",
@@ -104,8 +88,6 @@ describe("Jsonc", () => {
     "\"raw\nnewline\"",
     "\"raw\ttab\"",
     "\"\u0000\"",
-    String.raw`"\uZZZZ"`,
-    "1/* gap */2",
     "tr/* gap */ue",
     "-/* gap */1",
     "1/* gap */.5",
