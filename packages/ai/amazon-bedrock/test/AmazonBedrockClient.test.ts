@@ -1,9 +1,16 @@
 import { AmazonBedrockClient } from "@effect/ai-amazon-bedrock"
 import { assert, describe, it } from "@effect/vitest"
 import { assertDefined } from "@effect/vitest/utils"
-import { ConfigProvider, Effect, Layer, Redacted, Stream } from "effect"
+import { ConfigProvider, Effect, Layer, Redacted, Stream, Tracer } from "effect"
 import { AiError } from "effect/ai"
-import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
+import {
+  Headers,
+  HttpClient,
+  type HttpClientError,
+  type HttpClientRequest,
+  HttpClientResponse,
+  UrlParams
+} from "effect/http"
 import * as NodeCrypto from "node:crypto"
 import { concat, encodeFrame, encodeRawFrame, eventFrame, exceptionFrame, textReplyFrames } from "./utils.ts"
 
@@ -119,6 +126,55 @@ describe("AmazonBedrockClient", () => {
         const signature = verifySigV4(request, secretAccessKey)
         assert.strictEqual(signature.accessKeyId, accessKeyId)
         assert.strictEqual(signature.actual, signature.expected)
+      }))
+
+    it.effect("signs the query of a direct request built from urlParams", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) => Effect.succeed(jsonResponse(request, 200, { ok: true })))
+
+        yield* Effect.flatMap(
+          AmazonBedrockClient.AmazonBedrockClient,
+          (service) => service.client.get("/async-invoke", { urlParams: { maxResults: 1 } })
+        ).pipe(Effect.provide(staticKeys), Effect.provide(http.layer))
+
+        const request = http.requests[0]
+        assertDefined(request)
+        assert.strictEqual(UrlParams.toString(request.urlParams), "maxResults=1")
+        const signature = verifySigV4(request, secretAccessKey)
+        assert.strictEqual(signature.actual, signature.expected)
+      }))
+
+    it.effect("redacts the session token in the header tracing of a direct request", () =>
+      Effect.gen(function*() {
+        const spans: Array<Tracer.NativeSpan> = []
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            spans.push(span)
+            return span
+          }
+        })
+        // `HttpClient.make` adds the client span that records the headers.
+        const client = HttpClient.make((request) => Effect.succeed(jsonResponse(request, 200, { ok: true })))
+        const layer = AmazonBedrockClient.layer({
+          region: "us-east-1",
+          accessKeyId,
+          secretAccessKey: Redacted.make(secretAccessKey),
+          sessionToken: Redacted.make("session-token")
+        }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
+
+        yield* Effect.flatMap(
+          AmazonBedrockClient.AmazonBedrockClient,
+          (service) => service.client.get("/async-invoke")
+        ).pipe(
+          Effect.provide(layer),
+          Effect.provideService(HttpClient.TracerHeaderFilter, () => true),
+          Effect.withTracer(tracer)
+        )
+
+        const span = spans.find((span) => span.attributes.get("http.request.method") === "GET")
+        assertDefined(span)
+        assert.strictEqual(span.attributes.get("http.request.header.x-amz-security-token"), "<redacted>")
       }))
 
     it.effect("resolves the credentials effect on every request", () =>
@@ -328,6 +384,40 @@ describe("AmazonBedrockClient", () => {
   })
 
   describe("converseStream", () => {
+    it.effect("preserves fields of known events and nested structs it does not model", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) =>
+          Effect.succeed(eventStreamResponse(request, [
+            concat([
+              eventFrame("messageStart", { role: "assistant" }),
+              eventFrame("messageStop", {
+                stopReason: "stop_sequence",
+                additionalModelResponseFields: { stop_sequence: "END" }
+              }),
+              eventFrame("metadata", {
+                usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2, cacheDetails: { tier: "default" } },
+                metrics: { latencyMs: 1 }
+              })
+            ])
+          ]))
+        )
+
+        const events = yield* converseStream.pipe(
+          Stream.runCollect,
+          Effect.map((chunk) => Array.from(chunk)),
+          Effect.provide(staticKeys),
+          Effect.provide(http.layer)
+        )
+
+        assert.deepStrictEqual(events[1] as unknown, {
+          messageStop: { stopReason: "stop_sequence", additionalModelResponseFields: { stop_sequence: "END" } }
+        })
+        const metadata = events[2]
+        assertDefined(metadata)
+        const usage: Record<string, unknown> = "metadata" in metadata ? metadata.metadata.usage : {}
+        assert.deepStrictEqual(usage.cacheDetails, { tier: "default" })
+      }))
+
     it.effect("preserves an event it does not model", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) =>
@@ -537,7 +627,15 @@ const verifySigV4 = (request: HttpClientRequest.HttpClientRequest, secret: strin
   }
   const [, accessKeyId, date, region, service, signedHeaderList, actual] = match
   const signedHeaders = signedHeaderList.split(";")
+  // The transport appends `urlParams` to `url` when it sends the request.
   const url = new URL(request.url)
+  for (const [key, value] of request.urlParams) {
+    url.searchParams.append(key, Redacted.isRedacted(value) ? Redacted.value(value) : value)
+  }
+  const canonicalQuery = Array.from(url.searchParams.entries())
+    .map(([key, value]) => `${encodeRfc3986(key)}=${encodeRfc3986(value)}`)
+    .sort()
+    .join("&")
   const body = request.body._tag === "Uint8Array" ? request.body.body : new Uint8Array(0)
   const canonicalHeaders = signedHeaders
     .map((name) => `${name}:${name === "host" ? url.host : (request.headers[name] ?? "").trim()}\n`)
@@ -545,7 +643,7 @@ const verifySigV4 = (request: HttpClientRequest.HttpClientRequest, secret: strin
   const canonicalRequest = [
     request.method,
     url.pathname.split("/").map(encodeRfc3986).join("/"),
-    url.searchParams.toString(),
+    canonicalQuery,
     canonicalHeaders,
     signedHeaderList,
     sha256Hex(body)
