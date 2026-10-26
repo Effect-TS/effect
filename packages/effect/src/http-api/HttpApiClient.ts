@@ -648,9 +648,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
         const info: Client.Info = { group: group.identifier, endpoint: endpoint.identifier }
-        const mapError = options.mapError === undefined
-          ? undefined
-          : (error: unknown) => options.mapError!(error, info)
+        const mapError = UndefinedOr.map(options.mapError, (f) => (error: unknown) => f(error, info))
 
         const execute = Effect.fnUntraced(function*(
           request: {
@@ -759,8 +757,14 @@ type MapperFn<Error, Info> = (error: Error, info: Info) => unknown
 // explicit type arguments that leave the mapper undefined is rejected
 type ContextualMapper<Error, Info> = (error: Error, info: Info) => never
 
-type MapErrorOption<Mapper, Error, Info> = {
+// The options every constructor accepts. `Mapper` is the constructor's mapper
+// type parameter; the contextual mapper types the callback while it is inferred
+type SharedOptions<Mapper, Error, Info> = {
   readonly mapError?: Mapper | NoInfer<ContextualMapper<Error, Info>>
+  readonly transformResponse?:
+    | ((effect: Effect.Effect<unknown, unknown, unknown>, info: Info) => Effect.Effect<unknown, unknown, unknown>)
+    | undefined
+  readonly baseUrl?: URL | string | undefined
 }
 
 // Inferred from the options argument, keeping optional modifiers, without
@@ -777,31 +781,17 @@ type MappingOf<Options, Mapper> = Mapper extends (...args: ReadonlyArray<any>) =
   Options extends { readonly mapError: unknown } ? Client.Mapped<E> : Client.Unmapped | Client.Mapped<E>
   : Client.Unmapped
 
-type MakeOptions<Groups extends HttpApiGroup.Constraint, MapError> =
-  & TransformResponseOptions<GroupsInfo<Groups>>
-  & {
-    readonly mapError?: MapError | undefined
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-  }
-
 // The options argument of `make` is optional, so its mapping is read from the
-// whole argument list: no argument, or one that may be `undefined`, keeps the
-// original errors
-type MakeMapping<Args> = Args extends readonly [] ? Client.Unmapped
-  : Args extends readonly [infer Options] ? undefined extends Options ? Client.Unmapped | OptionsMapping<Options>
-    : OptionsMapping<Options>
-  : Args extends readonly [(infer Options)?] ? Client.Unmapped | OptionsMapping<Options>
-  : Client.Unmapped
-
+// argument type. The conditional distributes: no argument, or one that may be
+// `undefined`, keeps the original errors
 type OptionsMapping<Options> = Options extends { readonly mapError?: infer Mapper } ? MappingOf<Options, Mapper>
   : Client.Unmapped
 
-type TransformResponseOptions<Info> = {
-  readonly transformResponse?:
-    | ((effect: Effect.Effect<unknown, unknown, unknown>, info: Info) => Effect.Effect<unknown, unknown, unknown>)
-    | undefined
-  readonly baseUrl?: URL | string | undefined
-}
+// Without `MapError`, only the contextual mapper is accepted, so explicit type
+// arguments that leave `Args` at its default reject a mapper that returns a value
+type MakeOptions<Groups extends HttpApiGroup.Constraint, MapError = never> =
+  & SharedOptions<MapError | undefined, Client.Error<Groups>, GroupsInfo<Groups>>
+  & { readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined }
 
 /**
  * Constructs a type-safe client for an HTTP API using the `HttpClient` service,
@@ -830,20 +820,18 @@ export const make = <
   Groups extends HttpApiGroup.Constraint,
   Args extends readonly [
     options?: MakeOptions<Groups, MapperFn<Client.Error<Groups>, GroupsInfo<Groups>>> | undefined
-  ] = readonly [
-    options?: MakeOptions<Groups, NoInfer<ContextualMapper<Client.Error<Groups>, GroupsInfo<Groups>>>> | undefined
-  ]
+  ] = readonly [options?: MakeOptions<Groups> | undefined]
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
   ...options: Args
 ): Effect.Effect<
-  Client<Groups, never, never, MakeMapping<Args>>,
+  Client<Groups, never, never, OptionsMapping<Args[0]>>,
   never,
   HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>
 > =>
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
     makeWith(api, {
-      ...options[0] as Omit<MakeClientOptions<never, never>, "httpClient">,
+      ...options[0] as MakeClientOptions<never, never>,
       httpClient: options[0]?.transformClient ? options[0].transformClient(httpClient) : httpClient
     })) as any
 
@@ -871,8 +859,7 @@ export const makeWith = <
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
   options:
-    & TransformResponseOptions<GroupsInfo<Groups>>
-    & MapErrorOption<Mapper, Client.Error<Groups, NoInfer<E>>, GroupsInfo<Groups>>
+    & SharedOptions<Mapper, Client.Error<Groups, NoInfer<E>>, GroupsInfo<Groups>>
     & { readonly httpClient: HttpClient.HttpClient.With<E, R> }
     & InferredOptions<Options>
 ): Effect.Effect<
@@ -925,8 +912,7 @@ export const group = <
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
   options:
-    & TransformResponseOptions<GroupsInfo<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>>
-    & MapErrorOption<
+    & SharedOptions<
       Mapper,
       Client.Error<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, NoInfer<E>>,
       GroupsInfo<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>
@@ -997,8 +983,7 @@ export const endpoint = <
 >(
   api: HttpApi.HttpApi<ApiId, Groups>,
   options:
-    & TransformResponseOptions<Client.Info<GroupIdentifier, EndpointIdentifier>>
-    & MapErrorOption<
+    & SharedOptions<
       Mapper,
       Client.MethodError<EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>, NoInfer<E>>,
       Client.Info<GroupIdentifier, EndpointIdentifier>
