@@ -57,6 +57,7 @@ import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
+import * as UrlParamsTree from "./internal/urlParamsTree.ts"
 import * as OpenApi from "./OpenApi.ts"
 
 /**
@@ -764,10 +765,9 @@ function buildPayloadDecoders(
       return
     }
     const schema = Schema.Union(schemas)
-    const decode = Schema.decodeUnknownEffect(
-      encoding._tag === "FormUrlEncoded" ? Schema.toCodecArrayFromSingle(schema) : schema,
-      options
-    )
+    const decode = encoding._tag === "FormUrlEncoded"
+      ? makeUrlParamsDecoder(schema, options)
+      : Schema.decodeUnknownEffect(schema, options)
     if (encoding._tag === "Multipart") {
       result.set(contentType, { _tag: "Multipart", mode: encoding.mode, limits: encoding.limits, decode })
     } else {
@@ -779,6 +779,17 @@ function buildPayloadDecoders(
     }
   })
   return result
+}
+
+function makeUrlParamsDecoder(
+  schema: Schema.Top,
+  options: SchemaAST.ParseOptions | undefined
+): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
+  const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
+  const names = UrlParamsTree.getPropertyNames(schema.ast)
+  return names.size === 0
+    ? decode
+    : (input) => decode(UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names))
 }
 
 function decodePayload(
@@ -932,10 +943,7 @@ function handlerToHttpEffect(
     endpoint.headers,
     (schema) => Schema.decodeUnknownEffect(schema, options.headers)
   )
-  const decodeQuery = UndefinedOr.map(
-    endpoint.query,
-    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options.query)
-  )
+  const decodeQuery = UndefinedOr.map(endpoint.query, (schema) => makeUrlParamsDecoder(schema, options.query))
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
   const upgrade = getUpgradeSuccessSchema(endpoint)

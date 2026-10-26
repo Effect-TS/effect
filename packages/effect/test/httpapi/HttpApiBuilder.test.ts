@@ -729,6 +729,33 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
 
       assert.deepStrictEqual(yield* client.test.search({ query: value }), value)
     }))
+
+  it.effect("keeps bracket keys the schema declares", () =>
+    Effect.gen(function*() {
+      const Query = Schema.Struct({ "page[size]": Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", { query: Query.fields, success: Query }))
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("search", ({ query }) => Effect.succeed(query))
+      )
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.search({ query: { "page[size]": "10" } }), { "page[size]": "10" })
+    }))
+
+  it.effect("rebuilds __proto__ segments as own properties", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const meta = JSON.parse(`{"__proto__":"v"}`)
+
+      const result = yield* client.test.search({ query: { ...value, meta } })
+
+      assert.strictEqual(Object.getPrototypeOf(result.meta), Object.prototype)
+      assert.deepStrictEqual(Object.entries(result.meta), [["__proto__", "v"]])
+    }))
 })
 
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
