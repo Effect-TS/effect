@@ -48,7 +48,7 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
     if (typeof ps.name !== "string") continue
     declared.add(ps.name)
     if (!canBeObject(ps.type)) continue
-    if (!SchemaAST.isOptional(ps.type)) required.add(ps.name)
+    if (!isWireOptional(ps.type)) required.add(ps.name)
     else optional.add(ps.name)
   }
   if (required.size === 0 && optional.size === 0 && !indexes.some((i) => i.object && !i.string)) return ast
@@ -68,7 +68,7 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
   // unions still select members by them before any rebuilding
   const discriminators: Array<SchemaAST.PropertySignature> = []
   for (const ps of ast.propertySignatures) {
-    const literal = SchemaAST.isOptional(ps.type) ? undefined : getWireLiteral(ps.type)
+    const literal = isWireOptional(ps.type) ? undefined : getWireLiteral(ps.type)
     if (literal !== undefined) discriminators.push(new SchemaAST.PropertySignature(ps.name, literal))
   }
   const flat = new SchemaAST.Objects(discriminators, [
@@ -82,6 +82,12 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
       encode: identity
     })
   )
+}
+
+// Whether a field may be absent from the input, as a defaulted field may be
+// although it is required once decoded
+function isWireOptional(field: SchemaAST.AST): boolean {
+  return SchemaAST.isOptional(field) || SchemaAST.isOptional(SchemaAST.toEncoded(field))
 }
 
 // The literal a field decodes from, following its encodings as union member
