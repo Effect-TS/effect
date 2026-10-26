@@ -688,6 +688,49 @@ it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
+  const Nested = Schema.Struct({
+    meta: Schema.Record(Schema.String, Schema.String),
+    filter: Schema.Struct({ range: Schema.Struct({ min: Schema.String }) })
+  })
+  const value = { meta: { k: "v" }, filter: { range: { min: "1" } } }
+  const Api = HttpApi.make("Api").add(
+    HttpApiGroup.make("test")
+      .add(HttpApiEndpoint.post("create", "/create", {
+        payload: Nested.pipe(HttpApiSchema.asFormUrlEncoded()),
+        success: Nested
+      }))
+      .add(HttpApiEndpoint.get("list", "/list", { payload: Nested.fields, success: Nested }))
+      .add(HttpApiEndpoint.get("search", "/search", { query: Nested.fields, success: Nested }))
+  )
+  const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+    handlers
+      .handle("create", ({ payload }) => Effect.succeed(payload))
+      .handle("list", ({ payload }) => Effect.succeed(payload))
+      .handle("search", ({ query }) => Effect.succeed(query)))
+
+  it.effect("round trips nested objects in form-urlencoded payloads", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.create({ payload: value }), value)
+    }))
+
+  it.effect("round trips nested objects in GET payloads", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.list({ payload: value }), value)
+    }))
+
+  it.effect("round trips nested objects in query parameters", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.search({ query: value }), value)
+    }))
+})
+
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
   it.effect("encodes WithHeaders using the schema for the response status", () =>
     Effect.gen(function*() {
