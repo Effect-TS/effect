@@ -64,13 +64,14 @@
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json",
-    "bootstrap": "node bootstrap/generate.ts"
+    "bootstrap": "buf generate bootstrap/descriptor-set.binpb --template bootstrap/buf.gen.yaml"
   },
   "peerDependencies": {
     "@effect/platform-node": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
+    "@bufbuild/buf": "1.75.0",
     "effect": "workspace:^"
   }
 }

@@ -157,5 +157,5 @@ export const registry = Protobuf.registry(User)
 `effect/protobuf/ProtobufDescriptor` and `effect/protobuf/ProtobufPlugin`
 re-export the modules this plugin generates from `descriptor.proto` and
 `plugin.proto`, in `packages/effect/src/protobuf/internal/generated`.
-`pnpm bootstrap` regenerates them, and `pnpm bootstrap --check` checks that
-they are up to date.
+`pnpm bootstrap` regenerates them with `buf generate`, from
+`bootstrap/descriptor-set.binpb` and `bootstrap/buf.gen.yaml`.
