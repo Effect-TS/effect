@@ -6,7 +6,7 @@ describe("Json5", () => {
     const input = `// comment
 { unquoted: 1, 'single': 'it\\'s', "double": "a\\/b", trailing: [1, 2,], hex: -0x1F,
   frac: .5, point: 5., plus: +1, exp: 1e3, esc: '\\x41\\u00e9\\0\\v', continued: 'a\\
-b', \\u0061b: 1, café: true, 𐐀: 2, $_: null, /* block */ }`
+b', \\u0061b: 1, a\\u0062c: 2, café: true, 𐐀: 2, $_: null, /* block */ }`
     assert.deepStrictEqual(Json5.parse(input), {
       unquoted: 1,
       single: "it's",
@@ -20,6 +20,7 @@ b', \\u0061b: 1, café: true, 𐐀: 2, $_: null, /* block */ }`
       esc: "Aé\0\v",
       continued: "ab",
       ab: 1,
+      abc: 2,
       café: true,
       𐐀: 2,
       $_: null

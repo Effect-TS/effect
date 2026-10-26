@@ -22,6 +22,16 @@ describe("Jsonc", () => {
     assert.throws(() => Jsonc.parse("﻿﻿{}"), SyntaxError, "Invalid JSONC at line 1, column 2")
   })
 
+  it.each(Array.from({ length: 8 }, (_, length) => length))(
+    "keeps quoted comment text after %i backslashes",
+    (length) => {
+      const value = "plain text ".repeat(100) + "\\".repeat(length) + "\"/* inside the string */"
+      const input = `{ "value": ${JSON.stringify(value)} /* outside the string */ }`
+      assert.deepStrictEqual(Jsonc.parse(input), { value })
+      assert.deepStrictEqual(Json5.parse(input), { value })
+    }
+  )
+
   it.each([
     "1E-3",
     String.raw`{"url":"https://example.com/a/*b*/", "quote":"\"//still a string", "escapes":"\\\b\f\n\r\t\/A"}`,

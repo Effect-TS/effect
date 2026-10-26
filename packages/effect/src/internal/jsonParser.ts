@@ -3,6 +3,7 @@
 const json5Space = /(?:[\t\n\v\f\r \u00A0\u2028\u2029\uFEFF\p{Zs}]|\/\/[^\n\r\u2028\u2029]*|\/\*[^]*?\*\/)*/uy
 const idStart = /[$_\p{ID_Start}]/u
 const idPart = /[$\u200C\u200D\p{ID_Continue}]/u
+const idName = /[$_\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*/uy
 const digits = /\d*/y
 const hexDigits = /[\da-fA-F]*/y
 const isDigit = (c: string) => c >= "0" && c <= "9"
@@ -10,6 +11,13 @@ const isHexDigit = (c: string) => /^[\da-fA-F]$/.test(c)
 
 const jsoncSpace = /(?:[ \t\r\n]|\/\/[^\r\n]*|\/\*[^]*?\*\/)*/uy
 const jsonNumber = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y
+
+// Runs of string content that need no further inspection.
+const json5Double = /[^"\\\n\r]*/y
+const json5Single = /[^'\\\n\r]*/y
+// JSON forbids unescaped U+0000 through U+001F.
+// oxlint-disable-next-line no-control-regex
+const jsonDouble = /[^"\\\x00-\x1f]*/y
 
 type Format = "JSON5" | "JSONC"
 
@@ -20,6 +28,10 @@ export const syntaxError = (text: string, at: number, format: Format): SyntaxErr
     `Invalid ${json5 ? "JSON5" : "JSONC"} at line ${lines.length}, column ${lines[lines.length - 1].length + 1}`
   )
 }
+
+type Frame =
+  | { readonly object: true; readonly entries: Array<[string, unknown]>; first: boolean }
+  | { readonly object: false; readonly items: Array<unknown>; first: boolean }
 
 // JSONC uses the strict mode only to locate errors after the native parser fails.
 export const parse = (text: string, format: Format): unknown => {
@@ -33,10 +45,15 @@ export const parse = (text: string, format: Format): unknown => {
 
   /** Skips whitespace and comments, rejecting a `/` that starts neither. */
   const skip = () => {
+    let code = text.charCodeAt(i)
+    // Plain ASCII whitespace dominates formatted documents; comments and JSON5's
+    // Unicode whitespace fall through to the full pattern.
+    while (code === 0x20 || code === 0x0a || code === 0x0d || code === 0x09) code = text.charCodeAt(++i)
+    if (code > 0x20 && code !== 0x2f && code < 0xa0) return
     space.lastIndex = i
     space.test(text)
     i = space.lastIndex
-    if (text.charAt(i) === "/") {
+    if (text.charCodeAt(i) === 0x2f) {
       fail(text.charAt(i + 1) === "*" ? text.length : i + 1)
     }
   }
@@ -47,6 +64,10 @@ export const parse = (text: string, format: Format): unknown => {
   }
 
   const word = <A>(literal: string, result: A): A => {
+    if (text.startsWith(literal, i)) {
+      i += literal.length
+      return result
+    }
     for (const c of literal) {
       if (text.charAt(i) !== c) fail(i)
       i++
@@ -76,7 +97,7 @@ export const parse = (text: string, format: Format): unknown => {
     const c = text.charAt(i)
     if (c === "I") return word("Infinity", sign * Infinity)
     if (c === "N") return word("NaN", NaN)
-    if (c === "0" && /[xX]/.test(text.charAt(i + 1))) {
+    if (c === "0" && (text.charAt(i + 1) === "x" || text.charAt(i + 1) === "X")) {
       i += 2
       if (run(hexDigits) === 0) fail(i)
       i = hexDigits.lastIndex
@@ -90,9 +111,9 @@ export const parse = (text: string, format: Format): unknown => {
         if (run(digits) === 0 && i === start + 1) fail(i)
         i = digits.lastIndex
       }
-      if (/[eE]/.test(text.charAt(i))) {
+      if (text.charAt(i) === "e" || text.charAt(i) === "E") {
         i++
-        if (/[+-]/.test(text.charAt(i))) i++
+        if (text.charAt(i) === "+" || text.charAt(i) === "-") i++
         if (run(digits) === 0) fail(i)
         i = digits.lastIndex
       }
@@ -101,16 +122,19 @@ export const parse = (text: string, format: Format): unknown => {
   }
 
   const string = (quote: string) => {
+    const plain = quote === "'" ? json5Single : json5 ? json5Double : jsonDouble
     let result = ""
     for (i++;;) {
+      plain.lastIndex = i
+      plain.test(text)
+      if (plain.lastIndex > i) {
+        result += text.slice(i, plain.lastIndex)
+        i = plain.lastIndex
+      }
       const c = text.charAt(i++)
       if (c === quote) return result
-      if (c === "" || c === "\n" || c === "\r") fail(i - 1)
-      if (!json5 && c.charCodeAt(0) < 0x20) fail(i - 1)
-      if (c !== "\\") {
-        result += c
-        continue
-      }
+      // Anything else that stops a plain run is an escape or a forbidden character.
+      if (c !== "\\") fail(i - 1)
       const e = text.charAt(i++)
       if (!json5 && !"\"\\/bfnrtu".includes(e)) fail(i - 1)
       const simple = "bfnrtv".indexOf(e)
@@ -129,6 +153,13 @@ export const parse = (text: string, format: Format): unknown => {
 
   const identifier = () => {
     let name = ""
+    idName.lastIndex = i
+    if (idName.test(text)) {
+      name = text.slice(i, idName.lastIndex)
+      i = idName.lastIndex
+      if (text.charAt(i) !== "\\") return name
+    }
+    // Escapes are validated one code unit at a time.
     for (;;) {
       const at = i
       const valid = name === "" ? idStart : idPart
@@ -145,13 +176,10 @@ export const parse = (text: string, format: Format): unknown => {
     }
   }
 
-  const stack: Array<
-    | { readonly object: true; readonly entries: Array<[string, unknown]>; first: boolean }
-    | { readonly object: false; readonly items: Array<unknown>; first: boolean }
-  > = []
+  const stack: Array<Frame> = []
 
+  /** Reads a value at `i`, which must already be past any whitespace. */
   const value = (): unknown => {
-    skip()
     const c = text.charAt(i)
     if (c === "{" || c === "[") {
       stack.push(c === "[" ? { object: false, items: [], first: true } : { object: true, entries: [], first: true })
@@ -176,6 +204,7 @@ export const parse = (text: string, format: Format): unknown => {
     if (!json5 && text.charAt(i) === close) fail(i)
   }
 
+  skip()
   let result = value()
   // An explicit stack also lets the JSONC diagnostic path locate errors in deeply nested documents.
   while (stack.length > 0) {
@@ -202,6 +231,7 @@ export const parse = (text: string, format: Format): unknown => {
       const key = quote === "\"" || quote === "'" ? string(quote) : identifier()
       skip()
       if (text.charAt(i++) !== ":") fail(i - 1)
+      skip()
       // Object.fromEntries keeps __proto__ as data and preserves duplicate-key ordering.
       frame.entries.push([key, value()])
     }

@@ -19,6 +19,8 @@ const fail = (input: string): never => {
   throw internal.syntaxError(input, input.length, "JSONC")
 }
 
+const lineEnd = /[\r\n]/g
+
 /**
  * Parses a JSONC document into a JavaScript value.
  *
@@ -42,39 +44,53 @@ const fail = (input: string): never => {
 export const parse = (input: string): unknown => {
   // Ignore one leading BOM without shifting original-input error positions.
   if (input.charCodeAt(0) === 0xfeff) input = " " + input.slice(1)
-  const parts: Array<string> = []
-  let start = 0
-  let index = 0
-  while (index < input.length) {
-    const character = input[index]
-    if (character === "\"") {
-      // Leave strings intact for JSON.parse to validate, skipping escaped quotes.
-      for (index++; index < input.length; index++) {
-        if (input[index] === "\\") index++
-        else if (input[index] === "\"") {
-          index++
-          break
+  let slash = input.indexOf("/")
+  let json = input
+  if (slash !== -1) {
+    let stripped = ""
+    let start = 0
+    let quote = input.indexOf("\"")
+    while (slash !== -1) {
+      if (quote !== -1 && quote < slash) {
+        // Leave strings intact for JSON.parse to validate; a quote preceded by an
+        // odd run of backslashes is escaped.
+        let end = quote
+        for (;;) {
+          end = input.indexOf("\"", end + 1)
+          if (end === -1) break
+          let backslash = end - 1
+          while (input.charCodeAt(backslash) === 92) backslash--
+          if ((end - backslash) % 2 === 1) break
         }
+        if (end === -1) break
+        quote = input.indexOf("\"", end + 1)
+        if (slash < end) slash = input.indexOf("/", end + 1)
+        continue
       }
-    } else if (character === "/" && (input[index + 1] === "/" || input[index + 1] === "*")) {
-      parts.push(input.slice(start, index), " ")
-      if (input[index + 1] === "/") {
-        index += 2
-        while (index < input.length && input[index] !== "\r" && input[index] !== "\n") index++
-      } else {
-        const end = input.indexOf("*/", index + 2)
+      const next = input.charCodeAt(slash + 1)
+      let index: number
+      if (next === 47) {
+        lineEnd.lastIndex = slash + 2
+        index = lineEnd.test(input) ? lineEnd.lastIndex - 1 : input.length
+      } else if (next === 42) {
+        const end = input.indexOf("*/", slash + 2)
         if (end === -1) fail(input)
         index = end + 2
+      } else {
+        // Not a comment; JSON.parse rejects it below.
+        slash = input.indexOf("/", slash + 1)
+        continue
       }
       // A space prevents comments inside invalid tokens from joining those tokens.
+      stripped += input.slice(start, slash) + " "
       start = index
-    } else {
-      index++
+      slash = input.indexOf("/", index)
+      if (quote !== -1 && quote < index) quote = input.indexOf("\"", index)
     }
+    json = stripped + input.slice(start)
   }
-  parts.push(input.slice(start))
   try {
-    return JSON.parse(parts.join(""))
+    return JSON.parse(json)
   } catch {
     return fail(input)
   }
