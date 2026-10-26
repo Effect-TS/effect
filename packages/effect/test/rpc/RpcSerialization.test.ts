@@ -392,6 +392,22 @@ describe("RpcSerialization", () => {
     ])
   })
 
+  it("jsonRpc emits stream chunks of a batched request immediately", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    parser.decode(
+      "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+    )
+
+    const chunk = parser.encode({ _tag: "Chunk", requestId: 1, values: ["a"] })
+    assert.deepStrictEqual(JSON.parse(chunk as string), { jsonrpc: "2.0", chunk: true, id: 1, result: ["a"] })
+    assert.strictEqual(parser.encode(responseExitSuccess(1, null)), undefined)
+    const exits = parser.encode(responseExitSuccess(2, "two"))
+    assert.deepStrictEqual(JSON.parse(exits as string), [
+      { jsonrpc: "2.0", id: 1, result: null },
+      { jsonrpc: "2.0", id: 2, result: "two" }
+    ])
+  })
+
   it("jsonRpc preserves id 0 across decode and encode", () => {
     const parser = RpcSerialization.jsonRpc().makeUnsafe()
     const decoded = parser.decode("{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"users.get\"}")
