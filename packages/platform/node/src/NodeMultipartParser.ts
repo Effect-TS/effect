@@ -83,11 +83,11 @@ export class MultipartStream extends Duplex {
   private _parser: Parser
   _canWrite = true
   private _writeCallback: (() => void) | undefined
+  private _currentFile: FileStream | undefined
 
   constructor(config: NodeConfig) {
     super({ readableObjectMode: true })
     let currentError: MultipartError | undefined
-    let currentFile: FileStream | undefined
     let initialized = false
     this._parser = makeParser({
       ...(config as any),
@@ -100,14 +100,14 @@ export class MultipartStream extends Duplex {
       onFile: (info) => {
         if (currentError !== undefined) return (_) => {}
         const file = new FileStream(info, this)
-        currentFile = file
+        this._currentFile = file
         this.push(file)
         this.emit("file", file)
         return (chunk) => {
           if (currentError !== undefined) return
           this._canWrite = file.push(chunk)
           if (chunk === null && !this._canWrite) {
-            currentFile = undefined
+            this._currentFile = undefined
             this._resume()
           }
         }
@@ -116,7 +116,7 @@ export class MultipartStream extends Duplex {
         currentError = error
         if (!initialized) return
         this.emit("error", error)
-        currentFile?.emit("error", error)
+        this._currentFile?.emit("error", error)
       },
       onDone: () => {
         this.push(null)
@@ -139,6 +139,12 @@ export class MultipartStream extends Duplex {
   }
 
   override _read(_size: number) {}
+
+  override _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
+    // Fail a file that is still being read, otherwise its reader waits forever.
+    if (error) this._currentFile?.destroy(error)
+    callback(error)
+  }
 
   override _write(
     chunk: any,
