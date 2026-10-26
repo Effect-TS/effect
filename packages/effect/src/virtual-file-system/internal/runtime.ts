@@ -543,7 +543,7 @@ export class Runtime {
   private payloadBytes = BigInt("0")
   inTurn = false
   private active: TurnRequest | undefined
-  private readonly queue: Array<TurnRequest> = []
+  private readonly queue = new Set<TurnRequest>()
   onRelease: () => void = () => {}
 
   constructor(limits: M.Limits, clock: Clock.Clock) {
@@ -589,8 +589,7 @@ export class Runtime {
   cancel(work: Work) {
     const request = work.turn
     if (request === undefined || (request.state !== "queued" && request.state !== "preparing")) return
-    const index = this.queue.indexOf(request)
-    if (index !== -1) this.queue.splice(index, 1)
+    this.queue.delete(request)
     request.state = "cancelled"
     Deferred.doneUnsafe(request.ready, Effect.fail(closed(work.operation, "closing")))
   }
@@ -698,7 +697,7 @@ export class Runtime {
           // Queue before Scope enrollment so immediate finalization can cancel admitted work.
           if (request.state !== "cancelled") {
             request.state = "queued"
-            this.queue.push(request)
+            this.queue.add(request)
             this.next()
           }
           return { work: admitted, request, action, enroll }
@@ -879,8 +878,9 @@ export class Runtime {
 
   private next() {
     if (this.active !== undefined) return
-    const first = this.queue.shift()
+    const first = this.queue.values().next().value
     if (first === undefined) return
+    this.queue.delete(first)
     first.state = "selected"
     this.active = first
     Deferred.doneUnsafe(first.ready, Effect.void)
@@ -890,8 +890,7 @@ export class Runtime {
     if (work.isFinished) return
     const request = work.turn
     if (request !== undefined) {
-      const index = this.queue.indexOf(request)
-      if (index !== -1) this.queue.splice(index, 1)
+      this.queue.delete(request)
       if (this.active === request) this.active = undefined
       request.state = "released"
     }
