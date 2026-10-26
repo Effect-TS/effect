@@ -6744,9 +6744,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ password: "123456", confirmPassword: "1234567" })
- * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Pointer") {
- *   result.failure.issue.issue.path // => ["password"]
- * }
+ * const message = Result.isFailure(result) ? result.failure.message : ""
+ * message // => "password and confirmPassword must match\n  at [\"password\"]"
  * ```
  *
  * **Example** (Reporting multiple failures at once)
@@ -6766,9 +6765,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ a: 1, b: 0, c: 0 })
- * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Composite") {
- *   result.failure.issue.issue.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []) // => [["b"], ["c"]]
- * }
+ * const message = Result.isFailure(result) ? result.failure.message : ""
+ * message // => "b must be greater than 0\n  at [\"b\"]\nc must be greater than 0\n  at [\"c\"]"
  * ```
  *
  * @stability stable
