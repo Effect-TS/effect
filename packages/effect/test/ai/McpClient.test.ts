@@ -7,6 +7,7 @@ import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as Spawner from "effect/process/ChildProcessSpawner"
+import * as Stdio from "effect/Stdio"
 import * as TestClock from "effect/testing/TestClock"
 import { makeHttpHarness, MCP_ENDPOINT } from "./McpServer/TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./McpServer/TestUtils/McpServerLayer.ts"
@@ -494,6 +495,31 @@ describe("McpClient", () => {
         yield* TestClock.adjust("5 seconds")
         assert.strictEqual((yield* Fiber.join(call)).reason._tag, "TransportError")
       }))
+
+    // Server rejections are JSON-RPC errors and must not break later requests on the same transport.
+    it.effect("should return McpServer request errors and keep the transport usable", () =>
+      Effect.gen(function*() {
+        const transport = yield* connectStdioServer(McpProtocol.v2025_11_25)
+        yield* McpClient.make(clientInfo).pipe(Effect.provideService(McpClient.Transport, transport))
+
+        const missing = yield* transport.request({ jsonrpc: "2.0", id: "missing", method: "missing/method" })
+        assert("error" in missing)
+        assert.strictEqual(missing.error.code, -32601)
+
+        const invalid = yield* transport.request({
+          jsonrpc: "2.0",
+          id: "invalid",
+          method: "resources/read",
+          params: { uri: 1 }
+        })
+        assert("error" in invalid)
+        assert.strictEqual(invalid.error.code, -32602)
+
+        assert.deepStrictEqual(
+          yield* transport.request({ jsonrpc: "2.0", id: "ping", method: "ping" }),
+          { jsonrpc: "2.0", id: "ping", result: {} }
+        )
+      }))
   })
 })
 
@@ -620,4 +646,45 @@ const connectStdio = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolA
   if (legacy) assert.deepStrictEqual(yield* receive, { jsonrpc: "2.0", method: "notifications/initialized" })
 
   return { client, receive, send, exit }
+})
+
+// Connects `McpClient.stdio` to an in-memory `McpServer.layerStdio`.
+const connectStdioServer = Effect.fnUntraced(function*(
+  protocol: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion>
+) {
+  const toServer = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+  const toClient = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+  const encoder = new TextEncoder()
+  const exit = yield* Deferred.make<Spawner.ExitCode>()
+  yield* Layer.launch(
+    McpServer.layerStdio({ ...serverInfo, protocols: [protocol] }).pipe(
+      Layer.provide(Stdio.layerTest({
+        stdin: Stream.fromQueue(toServer),
+        stdout: () =>
+          Sink.forEach((chunk: string | Uint8Array) =>
+            Queue.offer(toClient, typeof chunk === "string" ? encoder.encode(chunk) : chunk)
+          )
+      }))
+    )
+  ).pipe(Effect.forkScoped)
+  const spawner = Spawner.make(() =>
+    Effect.succeed(Spawner.makeHandle({
+      pid: Spawner.ProcessId(1),
+      stdin: Sink.forEach((bytes: Uint8Array) => Queue.offer(toServer, bytes)).pipe(
+        Sink.ensuring(Deferred.succeed(exit, Spawner.ExitCode(0)))
+      ),
+      stdout: Stream.fromQueue(toClient),
+      stderr: Stream.empty,
+      all: Stream.empty,
+      exitCode: Deferred.await(exit),
+      isRunning: Effect.succeed(true),
+      kill: () => Deferred.succeed(exit, Spawner.ExitCode(0)).pipe(Effect.asVoid),
+      unref: Effect.succeed(Effect.void),
+      getInputFd: () => Sink.drain,
+      getOutputFd: () => Stream.empty
+    }))
+  )
+  return yield* McpClient.stdio({ command: ChildProcess.make("test-mcp-server"), protocol }).pipe(
+    Effect.provideService(Spawner.ChildProcessSpawner, spawner)
+  )
 })
