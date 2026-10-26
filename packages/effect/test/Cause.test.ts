@@ -9,6 +9,7 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { inspect } from "node:util"
 import { describe, it } from "vitest"
 
@@ -708,6 +709,20 @@ describe("Cause", () => {
     it("keeps the throw location of defects from sync and suspend", () => {
       assertCleanStack(Effect.sync(userCode))
       assertCleanStack(Effect.suspend(userCode))
+    })
+
+    // Vitest evaluates its own transformed modules, so only a native process
+    // exercises Bun's transpiler, which can turn the evaluator into a tail call
+    it.skipIf(process.versions.bun === undefined)("keeps the throw location of suspend defects in native Bun", () => {
+      const script = `
+        const { Cause, Effect } = await import(${JSON.stringify(new URL("../src/index.ts", import.meta.url).href)})
+        const exit = Effect.runSyncExit(Effect.suspend(function userCode() { throw new Error("boom") }))
+        console.log(Cause.pretty(exit.cause))
+      `
+      const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf8" })
+      assert.strictEqual(result.status, 0, result.stderr)
+      assert.match(result.stdout, /\buserCode\b/)
+      assert.doesNotMatch(result.stdout, /\/src\/internal\//)
     })
 
     // JavaScriptCore does not name anonymous thunk frames after their property,
