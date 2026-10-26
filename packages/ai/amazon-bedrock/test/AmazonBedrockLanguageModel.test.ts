@@ -526,6 +526,76 @@ describe("AmazonBedrockLanguageModel", () => {
         assert.strictEqual(finish.usage.outputTokens.total, 5)
       }))
 
+    it.effect("joins redacted reasoning streamed as several base64 chunks", () =>
+      Effect.gen(function*() {
+        // The bytes 01 02 03 04, streamed as two chunks that are not a
+        // multiple of 3 bytes, so each chunk's base64 carries its own padding.
+        const http = makeHttpClient((request) =>
+          Effect.succeed(eventStreamResponse(request, [
+            eventFrame("messageStart", { role: "assistant" }),
+            eventFrame("contentBlockDelta", {
+              contentBlockIndex: 0,
+              delta: { reasoningContent: { redactedContent: "AQI=" } }
+            }),
+            eventFrame("contentBlockDelta", {
+              contentBlockIndex: 0,
+              delta: { reasoningContent: { redactedContent: "AwQ=" } }
+            }),
+            eventFrame("contentBlockStop", { contentBlockIndex: 0 }),
+            eventFrame("messageStop", { stopReason: "end_turn" }),
+            eventFrame("metadata", {
+              usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+              metrics: { latencyMs: 1 }
+            })
+          ]))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.map((chunk) => Array.from(chunk)),
+          Effect.provide(AmazonBedrockLanguageModel.model(model)),
+          Effect.provide(http.layer)
+        )
+
+        const reasoningMetadata = parts.flatMap((part) =>
+          part.type === "reasoning-start" || part.type === "reasoning-delta" || part.type === "reasoning-end"
+            ? [part.metadata["amazon-bedrock"]]
+            : []
+        )
+        assert.deepInclude(reasoningMetadata, { redactedContent: "AQIDBA==" })
+      }))
+
+    it.effect("ignores stream events it does not model", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) =>
+          Effect.succeed(eventStreamResponse(request, [
+            eventFrame("messageStart", { role: "assistant" }),
+            eventFrame("someFutureEvent", { detail: 1 }),
+            eventFrame("contentBlockDelta", { contentBlockIndex: 0, delta: { text: "Hi" } }),
+            eventFrame("contentBlockStop", { contentBlockIndex: 0 }),
+            eventFrame("messageStop", { stopReason: "end_turn" }),
+            eventFrame("metadata", {
+              usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+              metrics: { latencyMs: 1 }
+            })
+          ]))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.map((chunk) => Array.from(chunk)),
+          Effect.provide(AmazonBedrockLanguageModel.model(model)),
+          Effect.provide(http.layer)
+        )
+
+        const text = parts.flatMap((part) => part.type === "text-delta" ? [part.delta] : []).join("")
+        assert.strictEqual(text, "Hi")
+        const finish = parts.find((part) => part.type === "finish")
+        assertDefined(finish)
+        if (finish.type !== "finish") return
+        assert.strictEqual(finish.reason, "stop")
+      }))
+
     it.effect("streams reasoning deltas with their signature", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) =>
