@@ -686,7 +686,7 @@ const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  * **Details**
  *
  * A string expression is parsed with `Cron.parse`, using the optional time zone
- * and `repeatedTimes` policy. A pre-parsed `Cron` value keeps its own policy.
+ * and `onDstOverlap` policy. A pre-parsed `Cron` value keeps its own policy.
  *
  * **Example** (Scheduling work with cron expressions)
  *
@@ -704,10 +704,10 @@ const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
 export const cron: {
   (expression: Cron.Cron): Schedule<Duration.Duration, unknown, Cron.CronParseError>
   (expression: string, tz?: string | DateTime.TimeZone, options?: {
-    readonly repeatedTimes?: Cron.RepeatedTimesPolicy | undefined
+    readonly onDstOverlap?: Cron.DstOverlapPolicy | undefined
   }): Schedule<Duration.Duration, unknown, Cron.CronParseError>
 } = (expression: string | Cron.Cron, tz?: string | DateTime.TimeZone, options?: {
-  readonly repeatedTimes?: Cron.RepeatedTimesPolicy | undefined
+  readonly onDstOverlap?: Cron.DstOverlapPolicy | undefined
 }) => {
   const parsed = Cron.isCron(expression) ? Result.succeed(expression) : Cron.parse(expression, tz, options)
   return fromStep(effect.map(effect.fromResult(parsed), (cron) => (now, _) => {

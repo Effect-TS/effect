@@ -351,7 +351,7 @@ describe("Schedule", () => {
         ])
       }))
 
-    it.effect("honors repeatedTimes across a DST fold", () =>
+    it.effect("honors onDstOverlap across a DST fold", () =>
       Effect.gen(function*() {
         // Europe/Berlin repeats local 02:00-02:59 at 01:00Z-01:59Z on 2026-10-25.
         const recurrences = Effect.fnUntraced(
@@ -376,7 +376,7 @@ describe("Schedule", () => {
         ])
         expect(
           yield* recurrences(
-            Schedule.cron("*/5 * * * *", "Europe/Berlin", { repeatedTimes: "both" }),
+            Schedule.cron("*/5 * * * *", "Europe/Berlin", { onDstOverlap: "both" }),
             "2026-10-25T00:55:00Z"
           )
         ).toEqual([
@@ -387,7 +387,7 @@ describe("Schedule", () => {
         ])
         expect(
           yield* recurrences(
-            Schedule.cron(Cron.parseUnsafe("*/5 * * * *", "Europe/Berlin", { repeatedTimes: "both" })),
+            Schedule.cron(Cron.parseUnsafe("*/5 * * * *", "Europe/Berlin", { onDstOverlap: "both" })),
             "2026-10-25T01:07:00Z"
           )
         ).toEqual([

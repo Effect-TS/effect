@@ -39,6 +39,11 @@ const TypeId = "~effect/Cron"
  *
  * **Details**
  *
+ * Despite the name, the policy applies to every repeated local time, not only
+ * those caused by daylight saving time. For example, Antarctica/Casey repeated
+ * 00:00-02:59 on 2023-03-09 when its standard offset changed from +11:00 to
+ * +08:00.
+ *
  * - `"earlier"` (default) includes only the first occurrence, before the
  *   offset change.
  * - `"later"` includes only the second occurrence, after the offset change.
@@ -62,7 +67,7 @@ const TypeId = "~effect/Cron"
  * // Europe/Berlin repeats 02:00-02:59 on 2026-10-25, first at +02:00
  * // (00:30Z) and again at +01:00 (01:30Z)
  * const earlier = Cron.parseUnsafe("30 2 * * *", "Europe/Berlin")
- * const both = Cron.parseUnsafe("30 2 * * *", "Europe/Berlin", { repeatedTimes: "both" })
+ * const both = Cron.parseUnsafe("30 2 * * *", "Europe/Berlin", { onDstOverlap: "both" })
  *
  * Cron.next(earlier, "2026-10-25T00:30:00Z").toISOString() // => "2026-10-26T01:30:00.000Z"
  * Cron.next(both, "2026-10-25T00:30:00Z").toISOString() // => "2026-10-25T01:30:00.000Z"
@@ -75,7 +80,7 @@ const TypeId = "~effect/Cron"
  * @category models
  * @since 4.1.0
  */
-export type RepeatedTimesPolicy = "earlier" | "later" | "both"
+export type DstOverlapPolicy = "earlier" | "later" | "both"
 
 /**
  * Represents a cron schedule with time constraints and timezone information.
@@ -128,7 +133,7 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly days: ReadonlySet<number>
   readonly months: ReadonlySet<number>
   readonly weekdays: ReadonlySet<number>
-  readonly repeatedTimes: RepeatedTimesPolicy
+  readonly onDstOverlap: DstOverlapPolicy
   /** @internal */
   readonly and: boolean
   /** @internal */
@@ -179,7 +184,7 @@ function toPojo(cron: Cron): Record<string, unknown> {
     days: Arr.fromIterable(cron.days),
     months: Arr.fromIterable(cron.months),
     weekdays: Arr.fromIterable(cron.weekdays),
-    repeatedTimes: cron.repeatedTimes
+    onDstOverlap: cron.onDstOverlap
   }
   return out
 }
@@ -199,7 +204,7 @@ const CronProto = {
       Hash.combine(Hash.array(Arr.fromIterable(this.days))),
       Hash.combine(Hash.array(Arr.fromIterable(this.months))),
       Hash.combine(Hash.array(Arr.fromIterable(this.weekdays))),
-      Hash.combine(Hash.hash(this.repeatedTimes))
+      Hash.combine(Hash.hash(this.onDstOverlap))
     )
   },
   toObject(this: Cron) {
@@ -275,7 +280,7 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * time unit unrestricted. If only days or weekdays are restricted, that field
  * must match. When both are restricted, the default matches either field; set
  * `and: true` to require both fields to match. Weekdays range from `0` (Sunday)
- * to `7` (also Sunday). `repeatedTimes` chooses which occurrences of repeated
+ * to `7` (also Sunday). `onDstOverlap` chooses which occurrences of repeated
  * local times are included and defaults to `"earlier"`. The constructor throws a
  * `RangeError` when a field contains a non-integer or out-of-range value.
  *
@@ -357,7 +362,7 @@ export const make = (values: {
   readonly weekdays: Iterable<number>
   readonly and?: boolean | undefined
   readonly tz?: DateTime.TimeZone | undefined
-  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
+  readonly onDstOverlap?: DstOverlapPolicy | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
   o.seconds = restrictions.seconds(values.seconds ?? [0])
@@ -368,7 +373,7 @@ export const make = (values: {
   o.weekdays = restrictions.weekdays(values.weekdays)
   o.and = values.and === true
   o.tz = Option.fromUndefinedOr(values.tz)
-  o.repeatedTimes = values.repeatedTimes ?? "earlier"
+  o.onDstOverlap = values.onDstOverlap ?? "earlier"
 
   const seconds = Array.from(o.seconds)
   const minutes = Array.from(o.minutes)
@@ -584,7 +589,7 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * `CronParseError`. When both the day-of-month and weekday fields are
  * restricted, a date matches if either field matches. When either field starts
  * with `*`, both fields must match; an unrestricted field always matches.
- * `options.repeatedTimes` chooses which occurrences of repeated local times are
+ * `options.onDstOverlap` chooses which occurrences of repeated local times are
  * included and defaults to `"earlier"`.
  *
  * **Example** (Parsing cron expressions)
@@ -607,7 +612,7 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * @since 2.0.0
  */
 export const parse = (cron: string, tz?: DateTime.TimeZone | string, options?: {
-  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
+  readonly onDstOverlap?: DstOverlapPolicy | undefined
 }): Result.Result<Cron, CronParseError> => {
   const segments = cron.trim().split(/\s+/).filter(String.isNonEmpty)
   if (segments.length !== 5 && segments.length !== 6) {
@@ -644,7 +649,7 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string, options?: {
       months: months.values,
       weekdays: weekdays.values,
       and: (days.wildcard || weekdays.wildcard) && days.values.size !== 0 && weekdays.values.size !== 0,
-      repeatedTimes: options?.repeatedTimes
+      onDstOverlap: options?.onDstOverlap
     })
   ))
 }
@@ -679,7 +684,7 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string, options?: {
  * @since 4.0.0
  */
 export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string, options?: {
-  readonly repeatedTimes?: RepeatedTimesPolicy | undefined
+  readonly onDstOverlap?: DstOverlapPolicy | undefined
 }): Cron => Result.getOrThrow(parse(cron, tz, options))
 
 /**
@@ -692,7 +697,7 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string, optio
  *
  * **Gotchas**
  *
- * Formatting drops the timezone information, the `repeatedTimes` policy, and
+ * Formatting drops the timezone information, the `onDstOverlap` policy, and
  * the `and` restriction between days and weekdays. Parsing the result is therefore not guaranteed to produce
  * an equivalent schedule.
  *
@@ -841,7 +846,7 @@ const daysInMonth = (date: Date): number =>
  * starting after the specified date/time or after the current time when no
  * date is provided. The result is always strictly after the starting point.
  * Repeated local times are included according to the schedule's
- * `repeatedTimes` policy.
+ * `onDstOverlap` policy.
  *
  * **Example** (Finding the next occurrence)
  *
@@ -877,7 +882,7 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  *
  * When no date/time is provided, the search starts from the current time.
  * Repeated local times are included according to the schedule's
- * `repeatedTimes` policy.
+ * `onDstOverlap` policy.
  *
  * **Gotchas**
  *
@@ -896,8 +901,8 @@ export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
 
 const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const start = now ?? new Date()
-  if (cron.repeatedTimes !== "both") {
-    return searchCron(cron, start, direction, cron.repeatedTimes)
+  if (cron.onDstOverlap !== "both") {
+    return searchCron(cron, start, direction, cron.onDstOverlap)
   }
   // Both occurrences are eligible, so the result is the nearest of the two
   // single-occurrence searches in the search direction.
@@ -913,7 +918,7 @@ const searchCron = (
   cron: Cron,
   now: DateTime.DateTime.Input,
   direction: "next" | "prev",
-  repeatedTimes: "earlier" | "later"
+  onDstOverlap: "earlier" | "later"
 ): Date => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.makeZonedUnsafe(now, {
@@ -947,7 +952,7 @@ const searchCron = (
 
   // Repeated wall times resolve to the occurrence chosen by the policy. Gaps
   // resolve to the instant after the gap under either disambiguation.
-  const disambiguation = repeatedTimes === "later" ? "later" : "compatible"
+  const disambiguation = onDstOverlap === "later" ? "later" : "compatible"
   const resolve = (wallMillis: number) =>
     dateTime.makeZonedUnsafe(wallMillis, {
       timeZone: zoned.zone,
@@ -1223,7 +1228,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  * **Details**
  *
  * This comparison checks the optional timezone, the `and` day-matching mode,
- * the `repeatedTimes` policy, seconds, minutes, hours, days, months, and
+ * the `onDstOverlap` policy, seconds, minutes, hours, days, months, and
  * weekdays.
  *
  * **Example** (Comparing schedules with equivalence)
@@ -1259,7 +1264,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
 export const Equivalence: Equ.Equivalence<Cron> = Equ.make((self, that) =>
   Equal.equals(self.tz, that.tz) &&
   self.and === that.and &&
-  self.repeatedTimes === that.repeatedTimes &&
+  self.onDstOverlap === that.onDstOverlap &&
   restrictionsEquals(self.seconds, that.seconds) &&
   restrictionsEquals(self.minutes, that.minutes) &&
   restrictionsEquals(self.hours, that.hours) &&
@@ -1284,7 +1289,7 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
  * **Details**
  *
  * The comparison checks the optional timezone, the `and` day-matching mode,
- * the `repeatedTimes` policy, seconds, minutes, hours, days, months, and
+ * the `onDstOverlap` policy, seconds, minutes, hours, days, months, and
  * weekdays.
  *
  * **Example** (Checking schedule equality)

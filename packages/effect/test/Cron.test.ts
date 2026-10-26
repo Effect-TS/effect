@@ -786,7 +786,7 @@ describe("Cron", () => {
     )
   })
 
-  describe("repeatedTimes", () => {
+  describe("onDstOverlap", () => {
     // Europe/Berlin falls back on 2026-10-25: local 02:00-02:59 runs first at
     // 00:00Z-00:59Z (+02:00) and again at 01:00Z-01:59Z (+01:00).
     const every5 = "*/5 * * * *"
@@ -794,13 +794,13 @@ describe("Cron", () => {
 
     it("defaults to earlier", () => {
       const fields = { minutes: [0], hours: [2], days: [], months: [], weekdays: [] }
-      strictEqual(Cron.parseUnsafe(every5, "Europe/Berlin").repeatedTimes, "earlier")
-      assertTrue(Cron.equals(Cron.make(fields), Cron.make({ ...fields, repeatedTimes: "earlier" })))
-      assertFalse(Cron.equals(Cron.make(fields), Cron.make({ ...fields, repeatedTimes: "both" })))
+      strictEqual(Cron.parseUnsafe(every5, "Europe/Berlin").onDstOverlap, "earlier")
+      assertTrue(Cron.equals(Cron.make(fields), Cron.make({ ...fields, onDstOverlap: "earlier" })))
+      assertFalse(Cron.equals(Cron.make(fields), Cron.make({ ...fields, onDstOverlap: "both" })))
     })
 
     it("next", () => {
-      const cases: Array<[string, string, Cron.RepeatedTimesPolicy, string, string]> = [
+      const cases: Array<[string, string, Cron.DstOverlapPolicy, string, string]> = [
         [every5, "Europe/Berlin", "earlier", "2026-10-25T00:55:00Z", "2026-10-25T02:00:00Z"],
         [every5, "Europe/Berlin", "later", "2026-10-25T00:55:00Z", "2026-10-25T01:00:00Z"],
         [every5, "Europe/Berlin", "both", "2026-10-25T00:55:00Z", "2026-10-25T01:00:00Z"],
@@ -829,16 +829,16 @@ describe("Cron", () => {
         [every5, "UTC", "both", "2026-10-25T00:55:00Z", "2026-10-25T01:00:00Z"]
       ]
 
-      for (const [expr, tz, repeatedTimes, from, expected] of cases) {
-        const cron = Cron.parseUnsafe(expr, tz, { repeatedTimes })
-        deepStrictEqual(next(cron, new Date(from)), new Date(expected), `${expr} ${tz} ${repeatedTimes} from ${from}`)
+      for (const [expr, tz, onDstOverlap, from, expected] of cases) {
+        const cron = Cron.parseUnsafe(expr, tz, { onDstOverlap })
+        deepStrictEqual(next(cron, new Date(from)), new Date(expected), `${expr} ${tz} ${onDstOverlap} from ${from}`)
       }
 
-      throws(() => next(Cron.parseUnsafe("0 0 30 2 *", "Europe/Berlin", { repeatedTimes: "both" })))
+      throws(() => next(Cron.parseUnsafe("0 0 30 2 *", "Europe/Berlin", { onDstOverlap: "both" })))
     })
 
     it("prev", () => {
-      const cases: Array<[Cron.RepeatedTimesPolicy, string, string]> = [
+      const cases: Array<[Cron.DstOverlapPolicy, string, string]> = [
         ["earlier", "2026-10-25T02:00:00Z", "2026-10-25T00:55:00Z"],
         ["later", "2026-10-25T02:00:00Z", "2026-10-25T01:55:00Z"],
         ["both", "2026-10-25T02:00:00Z", "2026-10-25T01:55:00Z"],
@@ -856,9 +856,9 @@ describe("Cron", () => {
         ["both", "2026-10-25T00:07:00Z", "2026-10-25T00:05:00Z"]
       ]
 
-      for (const [repeatedTimes, from, expected] of cases) {
-        const cron = Cron.parseUnsafe(every5, "Europe/Berlin", { repeatedTimes })
-        deepStrictEqual(prev(cron, new Date(from)), new Date(expected), `${repeatedTimes} from ${from}`)
+      for (const [onDstOverlap, from, expected] of cases) {
+        const cron = Cron.parseUnsafe(every5, "Europe/Berlin", { onDstOverlap })
+        deepStrictEqual(prev(cron, new Date(from)), new Date(expected), `${onDstOverlap} from ${from}`)
       }
     })
 
@@ -870,16 +870,16 @@ describe("Cron", () => {
         ["30 * * * *", "2026-03-29T01:20:00Z", "2026-03-29T00:30:00Z"]
       ]
 
-      for (const repeatedTimes of ["earlier", "later", "both"] as const) {
+      for (const onDstOverlap of ["earlier", "later", "both"] as const) {
         for (const [expr, from, expected] of cases) {
-          const cron = Cron.parseUnsafe(expr, "Europe/Berlin", { repeatedTimes })
-          deepStrictEqual(prev(cron, new Date(from)), new Date(expected), `${expr} ${repeatedTimes} from ${from}`)
+          const cron = Cron.parseUnsafe(expr, "Europe/Berlin", { onDstOverlap })
+          deepStrictEqual(prev(cron, new Date(from)), new Date(expected), `${expr} ${onDstOverlap} from ${from}`)
         }
       }
     })
 
     it("sequence with both visits every instant of the fold in order", () => {
-      const cron = Cron.parseUnsafe(every5, "Europe/Berlin", { repeatedTimes: "both" })
+      const cron = Cron.parseUnsafe(every5, "Europe/Berlin", { onDstOverlap: "both" })
       const sequence = Cron.sequence(cron, new Date("2026-10-25T00:55:00Z"))
       const expected = Array.from({ length: 13 }, (_, i) => new Date(Date.UTC(2026, 9, 25, 1, i * 5)))
       deepStrictEqual(Array.from({ length: 13 }, () => sequence.next().value), expected)
