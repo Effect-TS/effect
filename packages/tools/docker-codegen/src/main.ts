@@ -19,7 +19,7 @@
  * node packages/tools/docker-codegen/src/bin.ts
  * ```
  *
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
 import * as Console from "effect/Console"
@@ -95,7 +95,7 @@ const writeFormatted = Effect.fnUntraced(function*(output: string, source: strin
  * Runs the codegen pipeline.
  *
  * @category entry points
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const run = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

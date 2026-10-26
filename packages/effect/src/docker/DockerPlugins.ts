@@ -34,7 +34,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -43,11 +43,14 @@ import type * as Redacted from "../Redacted.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, DockerEngine, withOperation, withStreamOperation } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import * as DockerImages from "./DockerImages.ts"
-import { DockerRegistryAuth, registryAuthHeader } from "./DockerRegistryAuth.ts"
+import { DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, withOperation, withStreamOperation } from "./internal/engine.ts"
+import { failOnError, pushResultOf } from "./internal/progress.ts"
+import { registryAuthHeader } from "./internal/registryAuth.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -58,7 +61,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerPlugins extends Context.Service<DockerPlugins, {
   /**
@@ -301,7 +304,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
   function*() {
@@ -333,7 +336,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
           }),
           ({ body, headers }) => ({
             name: headers["docker-plugin-name"] ?? options.name ?? remote,
-            progress: DockerImages.failOnError(body)
+            progress: failOnError(body)
           })
         ))
 
@@ -345,7 +348,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
     const pushStream: DockerPlugins["Service"]["pushStream"] = (name, options) =>
       Stream.unwrap(Effect.map(
         registryAuthOf(name, options?.auth),
-        (auth) => DockerImages.failOnError(api.push({ params: { name }, headers: { "x-registry-auth": auth } }))
+        (auth) => failOnError(api.push({ params: { name }, headers: { "x-registry-auth": auth } }))
       )).pipe(withStreamOperation(engine, "docker.Plugins.pushStream", name))
 
     return DockerPlugins.of({
@@ -380,7 +383,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
               headers: { "x-registry-auth": auth },
               payload: options.privileges
             }),
-            ({ body }) => DockerImages.failOnError(body)
+            ({ body }) => failOnError(body)
           ))).pipe(withStreamOperation(engine, "docker.Plugins.upgrade", name)),
       enable,
       disable: (name, options) => api.disable({ params: { name }, query: options ?? {} }),
@@ -388,7 +391,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
       create: (name, context) => api.create({ query: { name }, payload: context }),
       pushStream,
       push: (name, options) =>
-        DockerImages.pushResultOf(pushStream(name, options), "docker.Plugins.push").pipe(
+        pushResultOf(pushStream(name, options), "docker.Plugins.push").pipe(
           withOperation(engine, "docker.Plugins.push", name)
         ),
       remove
@@ -402,7 +405,7 @@ export const make: Effect.Effect<DockerPlugins["Service"], never, DockerEngine |
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerPlugins, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
   DockerPlugins,

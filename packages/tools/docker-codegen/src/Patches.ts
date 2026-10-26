@@ -7,7 +7,7 @@
  * in `codegen.yaml` and are applied before these, so the families also cover
  * what they add.
  *
- * @since 4.0.6
+ * @since 4.0.7
  */
 import type * as JsonPatch from "effect/JsonPatch"
 import * as JsonPointer from "effect/JsonPointer"
@@ -17,7 +17,7 @@ import * as Predicate from "effect/Predicate"
  * A JSON value as it appears in the OpenAPI document.
  *
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Node = { readonly [key: string]: unknown }
 
@@ -25,7 +25,7 @@ export type Node = { readonly [key: string]: unknown }
  * The name of the synthetic definition referenced by every lenient enum.
  *
  * @category constants
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const lenientStringName = "LenientString"
 
@@ -66,7 +66,7 @@ const componentSchemas = (document: Node): Node => {
  * empty objects.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const emptyObjectEnums = (document: Node): JsonPatch.JsonPatch => {
   const ops: Array<JsonPatch.JsonPatchOperation> = []
@@ -104,7 +104,7 @@ const isSliceOrMap = (node: Node): boolean =>
  * `map[string]uint64` and so can never be `null`.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const goNil = (document: Node): JsonPatch.JsonPatch => {
   const schemas = componentSchemas(document)
@@ -138,7 +138,7 @@ export const goNil = (document: Node): JsonPatch.JsonPatch => {
  * `LenientString` definition, which the generator renders as `string & {}`.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const lenientEnums = (document: Node): JsonPatch.JsonPatch => {
   const ops: Array<JsonPatch.JsonPatchOperation> = [{
@@ -205,7 +205,7 @@ const refName = (ref: unknown): string | undefined =>
  * so an intersection of closed members would forbid each other's fields.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const flattenAllOf = (document: Node): JsonPatch.JsonPatch => {
   const schemas = componentSchemas(document)
@@ -247,7 +247,7 @@ export const flattenAllOf = (document: Node): JsonPatch.JsonPatch => {
  * (BuildKit's gRPC session).
  *
  * @category constants
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const inScopeTags: ReadonlySet<string> = new Set([
   "Container",
@@ -278,7 +278,7 @@ const isInScope = (operation: Node): boolean =>
  * item schema instead.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const hoistOperationSchemas = (document: Node): JsonPatch.JsonPatch => {
   const schemas = componentSchemas(document)
@@ -320,7 +320,7 @@ export const hoistOperationSchemas = (document: Node): JsonPatch.JsonPatch => {
  * previous families left it.
  *
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Family {
   readonly name: string
@@ -331,7 +331,7 @@ export interface Family {
  * All computed patch families, in the order they apply.
  *
  * @category patches
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const standing: ReadonlyArray<Family> = [
   { name: "hoist-operation-schemas", make: hoistOperationSchemas },

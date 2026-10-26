@@ -18,15 +18,16 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -37,7 +38,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerNetworks extends Context.Service<DockerNetworks, {
   /**
@@ -134,7 +135,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerNetworks["Service"], never, DockerEngine> = Effect.gen(function*() {
   const api = yield* apiClient(yield* DockerEngine, DockerApi.Networks, "docker.Networks")
@@ -155,6 +156,6 @@ export const make: Effect.Effect<DockerNetworks["Service"], never, DockerEngine>
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerNetworks, never, DockerEngine> = Layer.effect(DockerNetworks, make)

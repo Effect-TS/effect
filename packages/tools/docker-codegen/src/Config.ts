@@ -3,7 +3,7 @@
  * generated file goes, and the hand-written patches applied before the
  * standing patch families.
  *
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
@@ -22,7 +22,7 @@ import * as Schema from "effect/Schema"
  *   computed patch families.
  *
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CodegenConfig = Schema.Struct({
   spec: Schema.String,
@@ -37,6 +37,6 @@ export const CodegenConfig = Schema.Struct({
 
 /**
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type CodegenConfig = typeof CodegenConfig.Type

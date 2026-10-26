@@ -11,7 +11,7 @@ output: ../../effect/src/docker/DockerSchema.ts
 # the operations, which test/docker/DockerApi.test.ts checks DockerApi against
 manifest: ../../effect/test/docker/fixtures/engine-api.json
 # the `@since` of the generated definitions
-since: "4.0.6"
+since: "4.0.7"
 header: |
   /**
    * Schemas for the Docker Engine API, generated from moby's API document
@@ -36,7 +36,7 @@ header: |
    * `Mount` is `typeof Mount.Type`.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
 excludeAnnotations:
   - examples

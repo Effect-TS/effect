@@ -21,7 +21,7 @@
  * `Mount` is `typeof Mount.Type`.
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 
 import * as Schema from "../Schema.ts"
@@ -35,7 +35,7 @@ const LenientString: Schema.Codec<string & {}> = Schema.String
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageHistoryResponseItem = Schema.Struct({
   "Id": Schema.String,
@@ -51,7 +51,7 @@ export const ImageHistoryResponseItem = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageHistoryResponseItem = typeof ImageHistoryResponseItem.Type
 
@@ -60,7 +60,7 @@ export type ImageHistoryResponseItem = typeof ImageHistoryResponseItem.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DeviceMapping = Schema.Struct({
   "PathOnHost": Schema.optionalKey(Schema.String),
@@ -73,7 +73,7 @@ export const DeviceMapping = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DeviceMapping = typeof DeviceMapping.Type
 
@@ -82,7 +82,7 @@ export type DeviceMapping = typeof DeviceMapping.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DeviceRequest = Schema.Struct({
   "Driver": Schema.optionalKey(Schema.String),
@@ -97,7 +97,7 @@ export const DeviceRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DeviceRequest = typeof DeviceRequest.Type
 
@@ -106,7 +106,7 @@ export type DeviceRequest = typeof DeviceRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ThrottleDevice = Schema.Struct({
   "Path": Schema.optionalKey(Schema.String),
@@ -118,7 +118,7 @@ export const ThrottleDevice = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ThrottleDevice = typeof ThrottleDevice.Type
 
@@ -127,7 +127,7 @@ export type ThrottleDevice = typeof ThrottleDevice.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Limit = Schema.Struct({
   "NanoCPUs": Schema.optionalKey(Schema.Finite),
@@ -140,7 +140,7 @@ export const Limit = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Limit = typeof Limit.Type
 
@@ -149,7 +149,7 @@ export type Limit = typeof Limit.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const GenericResources = Schema.Array(Schema.Struct({
   "NamedResourceSpec": Schema.optionalKey(
@@ -165,7 +165,7 @@ export const GenericResources = Schema.Array(Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type GenericResources = typeof GenericResources.Type
 
@@ -174,7 +174,7 @@ export type GenericResources = typeof GenericResources.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const HealthConfig = Schema.Struct({
   "Test": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -190,7 +190,7 @@ export const HealthConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type HealthConfig = typeof HealthConfig.Type
 
@@ -199,7 +199,7 @@ export type HealthConfig = typeof HealthConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const HealthcheckResult = Schema.Struct({
   "Start": Schema.optionalKey(Schema.String),
@@ -213,7 +213,7 @@ export const HealthcheckResult = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type HealthcheckResult = typeof HealthcheckResult.Type
 
@@ -222,7 +222,7 @@ export type HealthcheckResult = typeof HealthcheckResult.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PortBinding = Schema.Struct({
   "HostIp": Schema.optionalKey(Schema.String),
@@ -234,7 +234,7 @@ export const PortBinding = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PortBinding = typeof PortBinding.Type
 
@@ -243,7 +243,7 @@ export type PortBinding = typeof PortBinding.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EndpointIPAMConfig = Schema.Struct({
   "IPv4Address": Schema.optionalKey(Schema.String),
@@ -256,7 +256,7 @@ export const EndpointIPAMConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EndpointIPAMConfig = typeof EndpointIPAMConfig.Type
 
@@ -265,7 +265,7 @@ export type EndpointIPAMConfig = typeof EndpointIPAMConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Address = Schema.Struct({
   "Addr": Schema.optionalKey(Schema.String),
@@ -277,7 +277,7 @@ export const Address = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Address = typeof Address.Type
 
@@ -286,7 +286,7 @@ export type Address = typeof Address.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DriverData = Schema.Struct({ "Name": Schema.String, "Data": Schema.Record(Schema.String, Schema.String) })
   .annotate({ "identifier": "DriverData" })
@@ -296,7 +296,7 @@ export const DriverData = Schema.Struct({ "Name": Schema.String, "Data": Schema.
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DriverData = typeof DriverData.Type
 
@@ -305,7 +305,7 @@ export type DriverData = typeof DriverData.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const RootFSStorageSnapshot = Schema.Struct({ "Name": Schema.optionalKey(Schema.String) }).annotate({
   "identifier": "RootFSStorageSnapshot"
@@ -316,7 +316,7 @@ export const RootFSStorageSnapshot = Schema.Struct({ "Name": Schema.optionalKey(
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type RootFSStorageSnapshot = typeof RootFSStorageSnapshot.Type
 
@@ -325,7 +325,7 @@ export type RootFSStorageSnapshot = typeof RootFSStorageSnapshot.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ChangeType = Schema.Literals([0, 1, 2]).annotate({ "identifier": "ChangeType" })
 
@@ -334,7 +334,7 @@ export const ChangeType = Schema.Literals([0, 1, 2]).annotate({ "identifier": "C
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ChangeType = typeof ChangeType.Type
 
@@ -343,7 +343,7 @@ export type ChangeType = typeof ChangeType.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const OCIPlatform = Schema.Struct({
   "architecture": Schema.optionalKey(Schema.String),
@@ -358,7 +358,7 @@ export const OCIPlatform = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type OCIPlatform = typeof OCIPlatform.Type
 
@@ -367,7 +367,7 @@ export type OCIPlatform = typeof OCIPlatform.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SignerIdentity = Schema.Struct({
   "CertificateIssuer": Schema.optionalKey(Schema.String),
@@ -394,7 +394,7 @@ export const SignerIdentity = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SignerIdentity = typeof SignerIdentity.Type
 
@@ -403,7 +403,7 @@ export type SignerIdentity = typeof SignerIdentity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PullIdentity = Schema.Struct({ "Repository": Schema.optionalKey(Schema.String) }).annotate({
   "identifier": "PullIdentity"
@@ -414,7 +414,7 @@ export const PullIdentity = Schema.Struct({ "Repository": Schema.optionalKey(Sch
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PullIdentity = typeof PullIdentity.Type
 
@@ -423,7 +423,7 @@ export type PullIdentity = typeof PullIdentity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BuildIdentity = Schema.Struct({
   "Ref": Schema.optionalKey(Schema.String),
@@ -435,7 +435,7 @@ export const BuildIdentity = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildIdentity = typeof BuildIdentity.Type
 
@@ -444,7 +444,7 @@ export type BuildIdentity = typeof BuildIdentity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImagesDiskUsage = Schema.Struct({
   "ActiveCount": Schema.optionalKey(Schema.Finite),
@@ -459,7 +459,7 @@ export const ImagesDiskUsage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImagesDiskUsage = typeof ImagesDiskUsage.Type
 
@@ -468,7 +468,7 @@ export type ImagesDiskUsage = typeof ImagesDiskUsage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const AuthConfig = Schema.Struct({
   "username": Schema.optionalKey(Schema.String),
@@ -481,7 +481,7 @@ export const AuthConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type AuthConfig = typeof AuthConfig.Type
 
@@ -490,7 +490,7 @@ export type AuthConfig = typeof AuthConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const AuthResponse = Schema.Struct({
   "Status": Schema.String,
@@ -502,7 +502,7 @@ export const AuthResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type AuthResponse = typeof AuthResponse.Type
 
@@ -511,7 +511,7 @@ export type AuthResponse = typeof AuthResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ProcessConfig = Schema.Struct({
   "privileged": Schema.optionalKey(Schema.Boolean),
@@ -526,7 +526,7 @@ export const ProcessConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ProcessConfig = typeof ProcessConfig.Type
 
@@ -535,7 +535,7 @@ export type ProcessConfig = typeof ProcessConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ObjectVersion = Schema.Struct({ "Index": Schema.optionalKey(Schema.Finite) }).annotate({
   "identifier": "ObjectVersion"
@@ -546,7 +546,7 @@ export const ObjectVersion = Schema.Struct({ "Index": Schema.optionalKey(Schema.
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ObjectVersion = typeof ObjectVersion.Type
 
@@ -555,7 +555,7 @@ export type ObjectVersion = typeof ObjectVersion.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Topology = Schema.Struct({ "Segments": Schema.optionalKey(Schema.Record(Schema.String, Schema.String)) })
   .annotate({ "identifier": "Topology" })
@@ -565,7 +565,7 @@ export const Topology = Schema.Struct({ "Segments": Schema.optionalKey(Schema.Re
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Topology = typeof Topology.Type
 
@@ -574,7 +574,7 @@ export type Topology = typeof Topology.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const VolumesDiskUsage = Schema.Struct({
   "ActiveCount": Schema.optionalKey(Schema.Finite),
@@ -589,7 +589,7 @@ export const VolumesDiskUsage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type VolumesDiskUsage = typeof VolumesDiskUsage.Type
 
@@ -598,7 +598,7 @@ export type VolumesDiskUsage = typeof VolumesDiskUsage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const IPAMConfig = Schema.Struct({
   "Subnet": Schema.optionalKey(Schema.String),
@@ -612,7 +612,7 @@ export const IPAMConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type IPAMConfig = typeof IPAMConfig.Type
 
@@ -621,7 +621,7 @@ export type IPAMConfig = typeof IPAMConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ConfigReference = Schema.Struct({ "Network": Schema.optionalKey(Schema.String) }).annotate({
   "identifier": "ConfigReference"
@@ -632,7 +632,7 @@ export const ConfigReference = Schema.Struct({ "Network": Schema.optionalKey(Sch
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ConfigReference = typeof ConfigReference.Type
 
@@ -641,7 +641,7 @@ export type ConfigReference = typeof ConfigReference.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PeerInfo = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -653,7 +653,7 @@ export const PeerInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PeerInfo = typeof PeerInfo.Type
 
@@ -662,7 +662,7 @@ export type PeerInfo = typeof PeerInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EndpointResource = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -677,7 +677,7 @@ export const EndpointResource = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EndpointResource = typeof EndpointResource.Type
 
@@ -686,7 +686,7 @@ export type EndpointResource = typeof EndpointResource.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SubnetStatus = Schema.Struct({
   "IPsInUse": Schema.optionalKey(Schema.Finite),
@@ -698,7 +698,7 @@ export const SubnetStatus = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SubnetStatus = typeof SubnetStatus.Type
 
@@ -707,7 +707,7 @@ export type SubnetStatus = typeof SubnetStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkTaskInfo = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -721,7 +721,7 @@ export const NetworkTaskInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkTaskInfo = typeof NetworkTaskInfo.Type
 
@@ -730,7 +730,7 @@ export type NetworkTaskInfo = typeof NetworkTaskInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkCreateResponse = Schema.Struct({ "Id": Schema.String, "Warning": Schema.String }).annotate({
   "title": "NetworkCreateResponse",
@@ -742,7 +742,7 @@ export const NetworkCreateResponse = Schema.Struct({ "Id": Schema.String, "Warni
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkCreateResponse = typeof NetworkCreateResponse.Type
 
@@ -751,7 +751,7 @@ export type NetworkCreateResponse = typeof NetworkCreateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ErrorDetail = Schema.Struct({
   "code": Schema.optionalKey(Schema.Finite),
@@ -763,7 +763,7 @@ export const ErrorDetail = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ErrorDetail = typeof ErrorDetail.Type
 
@@ -772,7 +772,7 @@ export type ErrorDetail = typeof ErrorDetail.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ProgressDetail = Schema.Struct({
   "current": Schema.optionalKey(Schema.Finite),
@@ -784,7 +784,7 @@ export const ProgressDetail = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ProgressDetail = typeof ProgressDetail.Type
 
@@ -793,7 +793,7 @@ export type ProgressDetail = typeof ProgressDetail.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageID = Schema.Struct({ "ID": Schema.optionalKey(Schema.String) }).annotate({ "identifier": "ImageID" })
 
@@ -802,7 +802,7 @@ export const ImageID = Schema.Struct({ "ID": Schema.optionalKey(Schema.String) }
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageID = typeof ImageID.Type
 
@@ -811,7 +811,7 @@ export type ImageID = typeof ImageID.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BuildCacheDiskUsage = Schema.Struct({
   "ActiveCount": Schema.optionalKey(Schema.Finite),
@@ -826,7 +826,7 @@ export const BuildCacheDiskUsage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildCacheDiskUsage = typeof BuildCacheDiskUsage.Type
 
@@ -835,7 +835,7 @@ export type BuildCacheDiskUsage = typeof BuildCacheDiskUsage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DeviceInfo = Schema.Struct({
   "Source": Schema.optionalKey(Schema.String),
@@ -847,7 +847,7 @@ export const DeviceInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DeviceInfo = typeof DeviceInfo.Type
 
@@ -856,7 +856,7 @@ export type DeviceInfo = typeof DeviceInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NRIInfo = Schema.Struct({ "Info": Schema.optionalKey(Schema.Array(Schema.Array(Schema.String))) })
   .annotate({ "identifier": "NRIInfo" })
@@ -866,7 +866,7 @@ export const NRIInfo = Schema.Struct({ "Info": Schema.optionalKey(Schema.Array(S
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NRIInfo = typeof NRIInfo.Type
 
@@ -875,7 +875,7 @@ export type NRIInfo = typeof NRIInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ErrorResponse = Schema.Struct({ "message": Schema.String }).annotate({ "identifier": "ErrorResponse" })
 
@@ -884,7 +884,7 @@ export const ErrorResponse = Schema.Struct({ "message": Schema.String }).annotat
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ErrorResponse = typeof ErrorResponse.Type
 
@@ -893,7 +893,7 @@ export type ErrorResponse = typeof ErrorResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const IDResponse = Schema.Struct({ "Id": Schema.String }).annotate({ "identifier": "IDResponse" })
 
@@ -902,7 +902,7 @@ export const IDResponse = Schema.Struct({ "Id": Schema.String }).annotate({ "ide
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type IDResponse = typeof IDResponse.Type
 
@@ -911,7 +911,7 @@ export type IDResponse = typeof IDResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkDisconnectRequest = Schema.Struct({
   "Container": Schema.String,
@@ -923,7 +923,7 @@ export const NetworkDisconnectRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkDisconnectRequest = typeof NetworkDisconnectRequest.Type
 
@@ -932,7 +932,7 @@ export type NetworkDisconnectRequest = typeof NetworkDisconnectRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PluginMount = Schema.Struct({
   "Name": Schema.String,
@@ -949,7 +949,7 @@ export const PluginMount = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PluginMount = typeof PluginMount.Type
 
@@ -958,7 +958,7 @@ export type PluginMount = typeof PluginMount.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PluginDevice = Schema.Struct({
   "Name": Schema.String,
@@ -972,7 +972,7 @@ export const PluginDevice = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PluginDevice = typeof PluginDevice.Type
 
@@ -981,7 +981,7 @@ export type PluginDevice = typeof PluginDevice.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PluginEnv = Schema.Struct({
   "Name": Schema.String,
@@ -995,7 +995,7 @@ export const PluginEnv = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PluginEnv = typeof PluginEnv.Type
 
@@ -1004,7 +1004,7 @@ export type PluginEnv = typeof PluginEnv.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PluginPrivilege = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -1017,7 +1017,7 @@ export const PluginPrivilege = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PluginPrivilege = typeof PluginPrivilege.Type
 
@@ -1026,7 +1026,7 @@ export type PluginPrivilege = typeof PluginPrivilege.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Platform = Schema.Struct({
   "Architecture": Schema.optionalKey(Schema.String),
@@ -1038,7 +1038,7 @@ export const Platform = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Platform = typeof Platform.Type
 
@@ -1047,7 +1047,7 @@ export type Platform = typeof Platform.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EngineDescription = Schema.Struct({
   "EngineVersion": Schema.optionalKey(Schema.String),
@@ -1064,7 +1064,7 @@ export const EngineDescription = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EngineDescription = typeof EngineDescription.Type
 
@@ -1073,7 +1073,7 @@ export type EngineDescription = typeof EngineDescription.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TLSInfo = Schema.Struct({
   "TrustRoot": Schema.optionalKey(Schema.String),
@@ -1086,7 +1086,7 @@ export const TLSInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TLSInfo = typeof TLSInfo.Type
 
@@ -1095,7 +1095,7 @@ export type TLSInfo = typeof TLSInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const JoinTokens = Schema.Struct({
   "Worker": Schema.optionalKey(Schema.String),
@@ -1107,7 +1107,7 @@ export const JoinTokens = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type JoinTokens = typeof JoinTokens.Type
 
@@ -1116,7 +1116,7 @@ export type JoinTokens = typeof JoinTokens.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkAttachmentConfig = Schema.Struct({
   "Target": Schema.optionalKey(Schema.String),
@@ -1129,7 +1129,7 @@ export const NetworkAttachmentConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkAttachmentConfig = typeof NetworkAttachmentConfig.Type
 
@@ -1138,7 +1138,7 @@ export type NetworkAttachmentConfig = typeof NetworkAttachmentConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerStatus = Schema.Struct({
   "ContainerID": Schema.optionalKey(Schema.String),
@@ -1151,7 +1151,7 @@ export const ContainerStatus = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerStatus = typeof ContainerStatus.Type
 
@@ -1160,7 +1160,7 @@ export type ContainerStatus = typeof ContainerStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageDeleteResponseItem = Schema.Struct({
   "Untagged": Schema.optionalKey(Schema.String),
@@ -1172,7 +1172,7 @@ export const ImageDeleteResponseItem = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageDeleteResponseItem = typeof ImageDeleteResponseItem.Type
 
@@ -1181,7 +1181,7 @@ export type ImageDeleteResponseItem = typeof ImageDeleteResponseItem.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceCreateResponse = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -1193,7 +1193,7 @@ export const ServiceCreateResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceCreateResponse = typeof ServiceCreateResponse.Type
 
@@ -1202,7 +1202,7 @@ export type ServiceCreateResponse = typeof ServiceCreateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceUpdateResponse = Schema.Struct({ "Warnings": Schema.optionalKey(Schema.Array(Schema.String)) })
   .annotate({ "identifier": "ServiceUpdateResponse" })
@@ -1212,7 +1212,7 @@ export const ServiceUpdateResponse = Schema.Struct({ "Warnings": Schema.optional
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceUpdateResponse = typeof ServiceUpdateResponse.Type
 
@@ -1221,7 +1221,7 @@ export type ServiceUpdateResponse = typeof ServiceUpdateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainersDiskUsage = Schema.Struct({
   "ActiveCount": Schema.optionalKey(Schema.Finite),
@@ -1236,7 +1236,7 @@ export const ContainersDiskUsage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainersDiskUsage = typeof ContainersDiskUsage.Type
 
@@ -1245,7 +1245,7 @@ export type ContainersDiskUsage = typeof ContainersDiskUsage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Driver = Schema.Struct({
   "Name": Schema.String,
@@ -1257,7 +1257,7 @@ export const Driver = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Driver = typeof Driver.Type
 
@@ -1266,7 +1266,7 @@ export type Driver = typeof Driver.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerCreateResponse = Schema.Struct({ "Id": Schema.String, "Warnings": Schema.Array(Schema.String) })
   .annotate({ "title": "ContainerCreateResponse", "identifier": "ContainerCreateResponse" })
@@ -1276,7 +1276,7 @@ export const ContainerCreateResponse = Schema.Struct({ "Id": Schema.String, "War
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerCreateResponse = typeof ContainerCreateResponse.Type
 
@@ -1285,7 +1285,7 @@ export type ContainerCreateResponse = typeof ContainerCreateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerUpdateResponse = Schema.Struct({ "Warnings": Schema.optionalKey(Schema.Array(Schema.String)) })
   .annotate({ "title": "ContainerUpdateResponse", "identifier": "ContainerUpdateResponse" })
@@ -1295,7 +1295,7 @@ export const ContainerUpdateResponse = Schema.Struct({ "Warnings": Schema.option
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerUpdateResponse = typeof ContainerUpdateResponse.Type
 
@@ -1304,7 +1304,7 @@ export type ContainerUpdateResponse = typeof ContainerUpdateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerCPUUsage = Schema.Struct({
   "total_usage": Schema.optionalKey(Schema.Finite),
@@ -1318,7 +1318,7 @@ export const ContainerCPUUsage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerCPUUsage = typeof ContainerCPUUsage.Type
 
@@ -1327,7 +1327,7 @@ export type ContainerCPUUsage = typeof ContainerCPUUsage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerThrottlingData = Schema.Struct({
   "periods": Schema.optionalKey(Schema.Finite),
@@ -1340,7 +1340,7 @@ export const ContainerThrottlingData = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerThrottlingData = typeof ContainerThrottlingData.Type
 
@@ -1349,7 +1349,7 @@ export type ContainerThrottlingData = typeof ContainerThrottlingData.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerMemoryStats = Schema.Struct({
   "usage": Schema.optionalKey(Schema.Finite),
@@ -1367,7 +1367,7 @@ export const ContainerMemoryStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerMemoryStats = typeof ContainerMemoryStats.Type
 
@@ -1376,7 +1376,7 @@ export type ContainerMemoryStats = typeof ContainerMemoryStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerNetworkStats = Schema.Struct({
   "rx_bytes": Schema.optionalKey(Schema.Finite),
@@ -1396,7 +1396,7 @@ export const ContainerNetworkStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerNetworkStats = typeof ContainerNetworkStats.Type
 
@@ -1405,7 +1405,7 @@ export type ContainerNetworkStats = typeof ContainerNetworkStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerPidsStats = Schema.Struct({
   "current": Schema.optionalKey(Schema.Finite),
@@ -1417,7 +1417,7 @@ export const ContainerPidsStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerPidsStats = typeof ContainerPidsStats.Type
 
@@ -1426,7 +1426,7 @@ export type ContainerPidsStats = typeof ContainerPidsStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerBlkioStatEntry = Schema.Struct({
   "major": Schema.optionalKey(Schema.Finite),
@@ -1440,7 +1440,7 @@ export const ContainerBlkioStatEntry = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerBlkioStatEntry = typeof ContainerBlkioStatEntry.Type
 
@@ -1449,7 +1449,7 @@ export type ContainerBlkioStatEntry = typeof ContainerBlkioStatEntry.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerStorageStats = Schema.Struct({
   "read_count_normalized": Schema.optionalKey(Schema.Finite),
@@ -1463,7 +1463,7 @@ export const ContainerStorageStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerStorageStats = typeof ContainerStorageStats.Type
 
@@ -1472,7 +1472,7 @@ export type ContainerStorageStats = typeof ContainerStorageStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerTopResponse = Schema.Struct({
   "Titles": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -1484,7 +1484,7 @@ export const ContainerTopResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerTopResponse = typeof ContainerTopResponse.Type
 
@@ -1493,7 +1493,7 @@ export type ContainerTopResponse = typeof ContainerTopResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerWaitExitError = Schema.Struct({ "Message": Schema.optionalKey(Schema.String) }).annotate({
   "identifier": "ContainerWaitExitError"
@@ -1504,7 +1504,7 @@ export const ContainerWaitExitError = Schema.Struct({ "Message": Schema.optional
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerWaitExitError = typeof ContainerWaitExitError.Type
 
@@ -1513,7 +1513,7 @@ export type ContainerWaitExitError = typeof ContainerWaitExitError.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SystemVersion = Schema.Struct({
   "Platform": Schema.optionalKey(Schema.Struct({ "Name": Schema.String })),
@@ -1543,7 +1543,7 @@ export const SystemVersion = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SystemVersion = typeof SystemVersion.Type
 
@@ -1552,7 +1552,7 @@ export type SystemVersion = typeof SystemVersion.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PluginsInfo = Schema.Struct({
   "Volume": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -1566,7 +1566,7 @@ export const PluginsInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PluginsInfo = typeof PluginsInfo.Type
 
@@ -1575,7 +1575,7 @@ export type PluginsInfo = typeof PluginsInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const IndexInfo = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -1589,7 +1589,7 @@ export const IndexInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type IndexInfo = typeof IndexInfo.Type
 
@@ -1598,7 +1598,7 @@ export type IndexInfo = typeof IndexInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Runtime = Schema.Struct({
   "path": Schema.optionalKey(Schema.String),
@@ -1611,7 +1611,7 @@ export const Runtime = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Runtime = typeof Runtime.Type
 
@@ -1620,7 +1620,7 @@ export type Runtime = typeof Runtime.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PeerNode = Schema.Struct({
   "NodeID": Schema.optionalKey(Schema.String),
@@ -1632,7 +1632,7 @@ export const PeerNode = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PeerNode = typeof PeerNode.Type
 
@@ -1641,7 +1641,7 @@ export type PeerNode = typeof PeerNode.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Commit = Schema.Struct({ "ID": Schema.optionalKey(Schema.String) }).annotate({ "identifier": "Commit" })
 
@@ -1650,7 +1650,7 @@ export const Commit = Schema.Struct({ "ID": Schema.optionalKey(Schema.String) })
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Commit = typeof Commit.Type
 
@@ -1659,7 +1659,7 @@ export type Commit = typeof Commit.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FirewallInfo = Schema.Struct({
   "Driver": Schema.optionalKey(Schema.String),
@@ -1671,7 +1671,7 @@ export const FirewallInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FirewallInfo = typeof FirewallInfo.Type
 
@@ -1680,7 +1680,7 @@ export type FirewallInfo = typeof FirewallInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerdInfo = Schema.Struct({
   "Address": Schema.optionalKey(Schema.String),
@@ -1694,7 +1694,7 @@ export const ContainerdInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerdInfo = typeof ContainerdInfo.Type
 
@@ -1703,7 +1703,7 @@ export type ContainerdInfo = typeof ContainerdInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EventActor = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -1715,7 +1715,7 @@ export const EventActor = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EventActor = typeof EventActor.Type
 
@@ -1724,7 +1724,7 @@ export type EventActor = typeof EventActor.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerPruneResponse = Schema.Struct({
   "ContainersDeleted": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -1736,7 +1736,7 @@ export const ContainerPruneResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerPruneResponse = typeof ContainerPruneResponse.Type
 
@@ -1745,7 +1745,7 @@ export type ContainerPruneResponse = typeof ContainerPruneResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BuildPruneResponse = Schema.Struct({
   "CachesDeleted": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -1757,7 +1757,7 @@ export const BuildPruneResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildPruneResponse = typeof BuildPruneResponse.Type
 
@@ -1766,7 +1766,7 @@ export type BuildPruneResponse = typeof BuildPruneResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageSearchResponseItem = Schema.Struct({
   "description": Schema.optionalKey(Schema.String),
@@ -1781,7 +1781,7 @@ export const ImageSearchResponseItem = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageSearchResponseItem = typeof ImageSearchResponseItem.Type
 
@@ -1790,7 +1790,7 @@ export type ImageSearchResponseItem = typeof ImageSearchResponseItem.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExecConfig = Schema.Struct({
   "AttachStdin": Schema.optionalKey(Schema.Boolean),
@@ -1811,7 +1811,7 @@ export const ExecConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExecConfig = typeof ExecConfig.Type
 
@@ -1820,7 +1820,7 @@ export type ExecConfig = typeof ExecConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExecStartConfig = Schema.Struct({
   "Detach": Schema.optionalKey(Schema.Boolean),
@@ -1833,7 +1833,7 @@ export const ExecStartConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExecStartConfig = typeof ExecStartConfig.Type
 
@@ -1842,7 +1842,7 @@ export type ExecStartConfig = typeof ExecStartConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const VolumePruneResponse = Schema.Struct({
   "VolumesDeleted": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -1854,7 +1854,7 @@ export const VolumePruneResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type VolumePruneResponse = typeof VolumePruneResponse.Type
 
@@ -1863,7 +1863,7 @@ export type VolumePruneResponse = typeof VolumePruneResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkPruneResponse = Schema.Struct({
   "NetworksDeleted": Schema.optionalKey(Schema.Array(Schema.String))
@@ -1874,7 +1874,7 @@ export const NetworkPruneResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkPruneResponse = typeof NetworkPruneResponse.Type
 
@@ -1883,7 +1883,7 @@ export type NetworkPruneResponse = typeof NetworkPruneResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmJoinRequest = Schema.Struct({
   "ListenAddr": Schema.String,
@@ -1898,7 +1898,7 @@ export const SwarmJoinRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmJoinRequest = typeof SwarmJoinRequest.Type
 
@@ -1907,7 +1907,7 @@ export type SwarmJoinRequest = typeof SwarmJoinRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const UnlockKeyResponse = Schema.Struct({ "UnlockKey": Schema.optionalKey(Schema.String) }).annotate({
   "title": "UnlockKeyResponse",
@@ -1919,7 +1919,7 @@ export const UnlockKeyResponse = Schema.Struct({ "UnlockKey": Schema.optionalKey
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type UnlockKeyResponse = typeof UnlockKeyResponse.Type
 
@@ -1928,7 +1928,7 @@ export type UnlockKeyResponse = typeof UnlockKeyResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmUnlockRequest = Schema.Struct({ "UnlockKey": Schema.optionalKey(Schema.String) }).annotate({
   "title": "SwarmUnlockRequest",
@@ -1940,7 +1940,7 @@ export const SwarmUnlockRequest = Schema.Struct({ "UnlockKey": Schema.optionalKe
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmUnlockRequest = typeof SwarmUnlockRequest.Type
 
@@ -1949,7 +1949,7 @@ export type SwarmUnlockRequest = typeof SwarmUnlockRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SecretCreateResponse = Schema.Struct({ "ID": Schema.String }).annotate({
   "title": "SecretCreateResponse",
@@ -1961,7 +1961,7 @@ export const SecretCreateResponse = Schema.Struct({ "ID": Schema.String }).annot
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SecretCreateResponse = typeof SecretCreateResponse.Type
 
@@ -1970,7 +1970,7 @@ export type SecretCreateResponse = typeof SecretCreateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ConfigCreateResponse = Schema.Struct({ "ID": Schema.String }).annotate({
   "title": "ConfigCreateResponse",
@@ -1982,7 +1982,7 @@ export const ConfigCreateResponse = Schema.Struct({ "ID": Schema.String }).annot
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ConfigCreateResponse = typeof ConfigCreateResponse.Type
 
@@ -1991,7 +1991,7 @@ export type ConfigCreateResponse = typeof ConfigCreateResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PortSummary = Schema.Struct({
   "IP": Schema.optionalKey(Schema.String),
@@ -2005,7 +2005,7 @@ export const PortSummary = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PortSummary = typeof PortSummary.Type
 
@@ -2014,7 +2014,7 @@ export type PortSummary = typeof PortSummary.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MountType = Schema.Union([
   Schema.Literals(["bind", "cluster", "image", "npipe", "tmpfs", "volume"]),
@@ -2026,7 +2026,7 @@ export const MountType = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type MountType = typeof MountType.Type
 
@@ -2035,7 +2035,7 @@ export type MountType = typeof MountType.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const RestartPolicy = Schema.Struct({
   "Name": Schema.optionalKey(
@@ -2049,7 +2049,7 @@ export const RestartPolicy = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type RestartPolicy = typeof RestartPolicy.Type
 
@@ -2058,7 +2058,7 @@ export type RestartPolicy = typeof RestartPolicy.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SignatureTimestampType = Schema.Union([Schema.Literals(["Tlog", "TimestampAuthority"]), LenientString])
   .annotate({ "identifier": "SignatureTimestampType" })
@@ -2068,7 +2068,7 @@ export const SignatureTimestampType = Schema.Union([Schema.Literals(["Tlog", "Ti
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SignatureTimestampType = typeof SignatureTimestampType.Type
 
@@ -2077,7 +2077,7 @@ export type SignatureTimestampType = typeof SignatureTimestampType.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const KnownSignerIdentity = Schema.Union([Schema.Literal("DHI"), LenientString]).annotate({
   "identifier": "KnownSignerIdentity"
@@ -2088,7 +2088,7 @@ export const KnownSignerIdentity = Schema.Union([Schema.Literal("DHI"), LenientS
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type KnownSignerIdentity = typeof KnownSignerIdentity.Type
 
@@ -2097,7 +2097,7 @@ export type KnownSignerIdentity = typeof KnownSignerIdentity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SignatureType = Schema.Union([Schema.Literals(["bundle-v0.3", "simplesigning-v1"]), LenientString])
   .annotate({ "identifier": "SignatureType" })
@@ -2107,7 +2107,7 @@ export const SignatureType = Schema.Union([Schema.Literals(["bundle-v0.3", "simp
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SignatureType = typeof SignatureType.Type
 
@@ -2116,7 +2116,7 @@ export type SignatureType = typeof SignatureType.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BuildCache = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -2141,7 +2141,7 @@ export const BuildCache = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildCache = typeof BuildCache.Type
 
@@ -2150,7 +2150,7 @@ export type BuildCache = typeof BuildCache.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NodeSpec = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -2164,7 +2164,7 @@ export const NodeSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NodeSpec = typeof NodeSpec.Type
 
@@ -2173,7 +2173,7 @@ export type NodeSpec = typeof NodeSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NodeState = Schema.Union([Schema.Literals(["unknown", "down", "ready", "disconnected"]), LenientString])
   .annotate({ "identifier": "NodeState" })
@@ -2183,7 +2183,7 @@ export const NodeState = Schema.Union([Schema.Literals(["unknown", "down", "read
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NodeState = typeof NodeState.Type
 
@@ -2192,7 +2192,7 @@ export type NodeState = typeof NodeState.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Reachability = Schema.Union([Schema.Literals(["unknown", "unreachable", "reachable"]), LenientString])
   .annotate({ "identifier": "Reachability" })
@@ -2202,7 +2202,7 @@ export const Reachability = Schema.Union([Schema.Literals(["unknown", "unreachab
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Reachability = typeof Reachability.Type
 
@@ -2211,7 +2211,7 @@ export type Reachability = typeof Reachability.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmSpec = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -2257,7 +2257,7 @@ export const SwarmSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmSpec = typeof SwarmSpec.Type
 
@@ -2266,7 +2266,7 @@ export type SwarmSpec = typeof SwarmSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TaskState = Schema.Union([
   Schema.Literals([
@@ -2294,7 +2294,7 @@ export const TaskState = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TaskState = typeof TaskState.Type
 
@@ -2303,7 +2303,7 @@ export type TaskState = typeof TaskState.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EndpointPortConfig = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -2318,7 +2318,7 @@ export const EndpointPortConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EndpointPortConfig = typeof EndpointPortConfig.Type
 
@@ -2327,7 +2327,7 @@ export type EndpointPortConfig = typeof EndpointPortConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const LocalNodeState = Schema.Union([
   Schema.Literals(["", "inactive", "pending", "active", "error", "locked"]),
@@ -2339,7 +2339,7 @@ export const LocalNodeState = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type LocalNodeState = typeof LocalNodeState.Type
 
@@ -2348,7 +2348,7 @@ export type LocalNodeState = typeof LocalNodeState.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Resources = Schema.Struct({
   "CpuShares": Schema.optionalKey(Schema.Finite),
@@ -2400,7 +2400,7 @@ export const Resources = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Resources = typeof Resources.Type
 
@@ -2409,7 +2409,7 @@ export type Resources = typeof Resources.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ResourceObject = Schema.Struct({
   "NanoCPUs": Schema.optionalKey(Schema.Finite),
@@ -2422,7 +2422,7 @@ export const ResourceObject = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ResourceObject = typeof ResourceObject.Type
 
@@ -2431,7 +2431,7 @@ export type ResourceObject = typeof ResourceObject.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerConfig = Schema.Struct({
   "Hostname": Schema.optionalKey(Schema.String),
@@ -2465,7 +2465,7 @@ export const ContainerConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerConfig = typeof ContainerConfig.Type
 
@@ -2474,7 +2474,7 @@ export type ContainerConfig = typeof ContainerConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageConfig = Schema.Struct({
   "User": Schema.optionalKey(Schema.String),
@@ -2497,7 +2497,7 @@ export const ImageConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageConfig = typeof ImageConfig.Type
 
@@ -2506,7 +2506,7 @@ export type ImageConfig = typeof ImageConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Health = Schema.Struct({
   "Status": Schema.optionalKey(
@@ -2521,7 +2521,7 @@ export const Health = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Health = typeof Health.Type
 
@@ -2530,7 +2530,7 @@ export type Health = typeof Health.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PortMap = Schema.Record(Schema.String, Schema.Array(PortBinding)).annotate({ "identifier": "PortMap" })
 
@@ -2539,7 +2539,7 @@ export const PortMap = Schema.Record(Schema.String, Schema.Array(PortBinding)).a
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PortMap = typeof PortMap.Type
 
@@ -2548,7 +2548,7 @@ export type PortMap = typeof PortMap.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EndpointSettings = Schema.Struct({
   "IPAMConfig": Schema.optionalKey(EndpointIPAMConfig),
@@ -2573,7 +2573,7 @@ export const EndpointSettings = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EndpointSettings = typeof EndpointSettings.Type
 
@@ -2582,7 +2582,7 @@ export type EndpointSettings = typeof EndpointSettings.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const RootFSStorage = Schema.Struct({ "Snapshot": Schema.optionalKey(RootFSStorageSnapshot) }).annotate({
   "identifier": "RootFSStorage"
@@ -2593,7 +2593,7 @@ export const RootFSStorage = Schema.Struct({ "Snapshot": Schema.optionalKey(Root
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type RootFSStorage = typeof RootFSStorage.Type
 
@@ -2602,7 +2602,7 @@ export type RootFSStorage = typeof RootFSStorage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const FilesystemChange = Schema.Struct({ "Path": Schema.String, "Kind": ChangeType }).annotate({
   "identifier": "FilesystemChange"
@@ -2613,7 +2613,7 @@ export const FilesystemChange = Schema.Struct({ "Path": Schema.String, "Kind": C
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type FilesystemChange = typeof FilesystemChange.Type
 
@@ -2622,7 +2622,7 @@ export type FilesystemChange = typeof FilesystemChange.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const OCIDescriptor = Schema.Struct({
   "mediaType": Schema.optionalKey(Schema.String),
@@ -2640,7 +2640,7 @@ export const OCIDescriptor = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type OCIDescriptor = typeof OCIDescriptor.Type
 
@@ -2649,7 +2649,7 @@ export type OCIDescriptor = typeof OCIDescriptor.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExecInspectResponse = Schema.Struct({
   "CanRemove": Schema.optionalKey(Schema.Boolean),
@@ -2670,7 +2670,7 @@ export const ExecInspectResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExecInspectResponse = typeof ExecInspectResponse.Type
 
@@ -2679,7 +2679,7 @@ export type ExecInspectResponse = typeof ExecInspectResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ClusterVolumeSpec = Schema.Struct({
   "Group": Schema.optionalKey(Schema.String),
@@ -2715,7 +2715,7 @@ export const ClusterVolumeSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ClusterVolumeSpec = typeof ClusterVolumeSpec.Type
 
@@ -2724,7 +2724,7 @@ export type ClusterVolumeSpec = typeof ClusterVolumeSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const IPAM = Schema.Struct({
   "Driver": Schema.optionalKey(Schema.String),
@@ -2737,7 +2737,7 @@ export const IPAM = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type IPAM = typeof IPAM.Type
 
@@ -2746,7 +2746,7 @@ export type IPAM = typeof IPAM.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const IPAMStatus = Schema.Struct({ "Subnets": Schema.optionalKey(Schema.Record(Schema.String, SubnetStatus)) })
   .annotate({ "identifier": "IPAMStatus" })
@@ -2756,7 +2756,7 @@ export const IPAMStatus = Schema.Struct({ "Subnets": Schema.optionalKey(Schema.R
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type IPAMStatus = typeof IPAMStatus.Type
 
@@ -2765,7 +2765,7 @@ export type IPAMStatus = typeof IPAMStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceInfo = Schema.Struct({
   "VIP": Schema.optionalKey(Schema.String),
@@ -2779,7 +2779,7 @@ export const ServiceInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceInfo = typeof ServiceInfo.Type
 
@@ -2788,7 +2788,7 @@ export type ServiceInfo = typeof ServiceInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CreateImageInfo = Schema.Struct({
   "id": Schema.optionalKey(Schema.String),
@@ -2802,7 +2802,7 @@ export const CreateImageInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type CreateImageInfo = typeof CreateImageInfo.Type
 
@@ -2811,7 +2811,7 @@ export type CreateImageInfo = typeof CreateImageInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PushImageInfo = Schema.Struct({
   "errorDetail": Schema.optionalKey(ErrorDetail),
@@ -2825,7 +2825,7 @@ export const PushImageInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PushImageInfo = typeof PushImageInfo.Type
 
@@ -2834,7 +2834,7 @@ export type PushImageInfo = typeof PushImageInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ProgressMessage = Schema.Struct({
   "id": Schema.optionalKey(Schema.String),
@@ -2850,7 +2850,7 @@ export const ProgressMessage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ProgressMessage = typeof ProgressMessage.Type
 
@@ -2859,7 +2859,7 @@ export type ProgressMessage = typeof ProgressMessage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const BuildInfo = Schema.Struct({
   "id": Schema.optionalKey(Schema.String),
@@ -2875,7 +2875,7 @@ export const BuildInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildInfo = typeof BuildInfo.Type
 
@@ -2884,7 +2884,7 @@ export type BuildInfo = typeof BuildInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Plugin = Schema.Struct({
   "Id": Schema.optionalKey(Schema.String),
@@ -2941,7 +2941,7 @@ export const Plugin = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Plugin = typeof Plugin.Type
 
@@ -2950,7 +2950,7 @@ export type Plugin = typeof Plugin.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImagePruneResponse = Schema.Struct({
   "ImagesDeleted": Schema.optionalKey(Schema.Array(ImageDeleteResponseItem)),
@@ -2962,7 +2962,7 @@ export const ImagePruneResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImagePruneResponse = typeof ImagePruneResponse.Type
 
@@ -2971,7 +2971,7 @@ export type ImagePruneResponse = typeof ImagePruneResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SecretSpec = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -2986,7 +2986,7 @@ export const SecretSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SecretSpec = typeof SecretSpec.Type
 
@@ -2995,7 +2995,7 @@ export type SecretSpec = typeof SecretSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ConfigSpec = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3009,7 +3009,7 @@ export const ConfigSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ConfigSpec = typeof ConfigSpec.Type
 
@@ -3018,7 +3018,7 @@ export type ConfigSpec = typeof ConfigSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SecretCreateRequest = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3033,7 +3033,7 @@ export const SecretCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SecretCreateRequest = typeof SecretCreateRequest.Type
 
@@ -3042,7 +3042,7 @@ export type SecretCreateRequest = typeof SecretCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ConfigCreateRequest = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3056,7 +3056,7 @@ export const ConfigCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ConfigCreateRequest = typeof ConfigCreateRequest.Type
 
@@ -3065,7 +3065,7 @@ export type ConfigCreateRequest = typeof ConfigCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerCPUStats = Schema.Struct({
   "cpu_usage": Schema.optionalKey(ContainerCPUUsage),
@@ -3079,7 +3079,7 @@ export const ContainerCPUStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerCPUStats = typeof ContainerCPUStats.Type
 
@@ -3088,7 +3088,7 @@ export type ContainerCPUStats = typeof ContainerCPUStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerBlkioStats = Schema.Struct({
   "io_service_bytes_recursive": Schema.optionalKey(Schema.Array(ContainerBlkioStatEntry)),
@@ -3106,7 +3106,7 @@ export const ContainerBlkioStats = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerBlkioStats = typeof ContainerBlkioStats.Type
 
@@ -3115,7 +3115,7 @@ export type ContainerBlkioStats = typeof ContainerBlkioStats.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerWaitResponse = Schema.Struct({
   "StatusCode": Schema.Finite,
@@ -3127,7 +3127,7 @@ export const ContainerWaitResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerWaitResponse = typeof ContainerWaitResponse.Type
 
@@ -3136,7 +3136,7 @@ export type ContainerWaitResponse = typeof ContainerWaitResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const RegistryServiceConfig = Schema.Struct({
   "InsecureRegistryCIDRs": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -3149,7 +3149,7 @@ export const RegistryServiceConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type RegistryServiceConfig = typeof RegistryServiceConfig.Type
 
@@ -3158,7 +3158,7 @@ export type RegistryServiceConfig = typeof RegistryServiceConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EventMessage = Schema.Struct({
   "Type": Schema.optionalKey(
@@ -3191,7 +3191,7 @@ export const EventMessage = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EventMessage = typeof EventMessage.Type
 
@@ -3200,7 +3200,7 @@ export type EventMessage = typeof EventMessage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const MountPoint = Schema.Struct({
   "Type": Schema.optionalKey(MountType),
@@ -3218,7 +3218,7 @@ export const MountPoint = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type MountPoint = typeof MountPoint.Type
 
@@ -3227,7 +3227,7 @@ export type MountPoint = typeof MountPoint.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Mount = Schema.Struct({
   "Target": Schema.optionalKey(Schema.String),
@@ -3270,7 +3270,7 @@ export const Mount = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Mount = typeof Mount.Type
 
@@ -3279,7 +3279,7 @@ export type Mount = typeof Mount.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerUpdateRequest = Schema.Struct({
   "CpuShares": Schema.optionalKey(Schema.Finite),
@@ -3332,7 +3332,7 @@ export const ContainerUpdateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerUpdateRequest = typeof ContainerUpdateRequest.Type
 
@@ -3341,7 +3341,7 @@ export type ContainerUpdateRequest = typeof ContainerUpdateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SignatureTimestamp = Schema.Struct({
   "Type": Schema.optionalKey(SignatureTimestampType),
@@ -3354,7 +3354,7 @@ export const SignatureTimestamp = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SignatureTimestamp = typeof SignatureTimestamp.Type
 
@@ -3363,7 +3363,7 @@ export type SignatureTimestamp = typeof SignatureTimestamp.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NodeStatus = Schema.Struct({
   "State": Schema.optionalKey(NodeState),
@@ -3376,7 +3376,7 @@ export const NodeStatus = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NodeStatus = typeof NodeStatus.Type
 
@@ -3385,7 +3385,7 @@ export type NodeStatus = typeof NodeStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ManagerStatus = Schema.Struct({
   "Leader": Schema.optionalKey(Schema.Boolean),
@@ -3398,7 +3398,7 @@ export const ManagerStatus = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ManagerStatus = typeof ManagerStatus.Type
 
@@ -3407,7 +3407,7 @@ export type ManagerStatus = typeof ManagerStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ClusterInfo = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -3427,7 +3427,7 @@ export const ClusterInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ClusterInfo = typeof ClusterInfo.Type
 
@@ -3436,7 +3436,7 @@ export type ClusterInfo = typeof ClusterInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Swarm = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -3457,7 +3457,7 @@ export const Swarm = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Swarm = typeof Swarm.Type
 
@@ -3466,7 +3466,7 @@ export type Swarm = typeof Swarm.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmInitRequest = Schema.Struct({
   "ListenAddr": Schema.optionalKey(Schema.String),
@@ -3484,7 +3484,7 @@ export const SwarmInitRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmInitRequest = typeof SwarmInitRequest.Type
 
@@ -3493,7 +3493,7 @@ export type SwarmInitRequest = typeof SwarmInitRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PortStatus = Schema.Struct({ "Ports": Schema.optionalKey(Schema.Array(EndpointPortConfig)) }).annotate({
   "identifier": "PortStatus"
@@ -3504,7 +3504,7 @@ export const PortStatus = Schema.Struct({ "Ports": Schema.optionalKey(Schema.Arr
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PortStatus = typeof PortStatus.Type
 
@@ -3513,7 +3513,7 @@ export type PortStatus = typeof PortStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const EndpointSpec = Schema.Struct({
   "Mode": Schema.optionalKey(Schema.Union([Schema.Literals(["vip", "dnsrr"]), LenientString])),
@@ -3525,7 +3525,7 @@ export const EndpointSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type EndpointSpec = typeof EndpointSpec.Type
 
@@ -3534,7 +3534,7 @@ export type EndpointSpec = typeof EndpointSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NodeDescription = Schema.Struct({
   "Hostname": Schema.optionalKey(Schema.String),
@@ -3549,7 +3549,7 @@ export const NodeDescription = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NodeDescription = typeof NodeDescription.Type
 
@@ -3558,7 +3558,7 @@ export type NodeDescription = typeof NodeDescription.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerState = Schema.Struct({
   "Status": Schema.optionalKey(
@@ -3585,7 +3585,7 @@ export const ContainerState = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerState = typeof ContainerState.Type
 
@@ -3594,7 +3594,7 @@ export type ContainerState = typeof ContainerState.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkingConfig = Schema.Struct({
   "EndpointsConfig": Schema.optionalKey(Schema.Record(Schema.String, EndpointSettings))
@@ -3605,7 +3605,7 @@ export const NetworkingConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkingConfig = typeof NetworkingConfig.Type
 
@@ -3614,7 +3614,7 @@ export type NetworkingConfig = typeof NetworkingConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkSettings = Schema.Struct({
   "SandboxID": Schema.optionalKey(Schema.String),
@@ -3628,7 +3628,7 @@ export const NetworkSettings = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkSettings = typeof NetworkSettings.Type
 
@@ -3637,7 +3637,7 @@ export type NetworkSettings = typeof NetworkSettings.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkConnectRequest = Schema.Struct({
   "Container": Schema.String,
@@ -3649,7 +3649,7 @@ export const NetworkConnectRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkConnectRequest = typeof NetworkConnectRequest.Type
 
@@ -3658,7 +3658,7 @@ export type NetworkConnectRequest = typeof NetworkConnectRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Storage = Schema.Struct({ "RootFS": Schema.optionalKey(RootFSStorage) }).annotate({
   "identifier": "Storage"
@@ -3669,7 +3669,7 @@ export const Storage = Schema.Struct({ "RootFS": Schema.optionalKey(RootFSStorag
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Storage = typeof Storage.Type
 
@@ -3678,7 +3678,7 @@ export type Storage = typeof Storage.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DistributionInspect = Schema.Struct({
   "Descriptor": OCIDescriptor,
@@ -3690,7 +3690,7 @@ export const DistributionInspect = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DistributionInspect = typeof DistributionInspect.Type
 
@@ -3699,7 +3699,7 @@ export type DistributionInspect = typeof DistributionInspect.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const AttestationStatement = Schema.Struct({
   "Descriptor": OCIDescriptor,
@@ -3712,7 +3712,7 @@ export const AttestationStatement = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type AttestationStatement = typeof AttestationStatement.Type
 
@@ -3721,7 +3721,7 @@ export type AttestationStatement = typeof AttestationStatement.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ClusterVolume = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -3754,7 +3754,7 @@ export const ClusterVolume = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ClusterVolume = typeof ClusterVolume.Type
 
@@ -3763,7 +3763,7 @@ export type ClusterVolume = typeof ClusterVolume.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const VolumeCreateRequest = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3778,7 +3778,7 @@ export const VolumeCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type VolumeCreateRequest = typeof VolumeCreateRequest.Type
 
@@ -3787,7 +3787,7 @@ export type VolumeCreateRequest = typeof VolumeCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const VolumeUpdateRequest = Schema.Struct({ "Spec": Schema.optionalKey(ClusterVolumeSpec) }).annotate({
   "identifier": "VolumeUpdateRequest"
@@ -3798,7 +3798,7 @@ export const VolumeUpdateRequest = Schema.Struct({ "Spec": Schema.optionalKey(Cl
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type VolumeUpdateRequest = typeof VolumeUpdateRequest.Type
 
@@ -3807,7 +3807,7 @@ export type VolumeUpdateRequest = typeof VolumeUpdateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Network = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3833,7 +3833,7 @@ export const Network = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Network = typeof Network.Type
 
@@ -3842,7 +3842,7 @@ export type Network = typeof Network.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkSummary = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -3868,7 +3868,7 @@ export const NetworkSummary = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkSummary = typeof NetworkSummary.Type
 
@@ -3877,7 +3877,7 @@ export type NetworkSummary = typeof NetworkSummary.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkCreateRequest = Schema.Struct({
   "Name": Schema.String,
@@ -3900,7 +3900,7 @@ export const NetworkCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkCreateRequest = typeof NetworkCreateRequest.Type
 
@@ -3909,7 +3909,7 @@ export type NetworkCreateRequest = typeof NetworkCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkStatus = Schema.Struct({ "IPAM": Schema.optionalKey(IPAMStatus) }).annotate({
   "identifier": "NetworkStatus"
@@ -3920,7 +3920,7 @@ export const NetworkStatus = Schema.Struct({ "IPAM": Schema.optionalKey(IPAMStat
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkStatus = typeof NetworkStatus.Type
 
@@ -3929,7 +3929,7 @@ export type NetworkStatus = typeof NetworkStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Secret = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -3944,7 +3944,7 @@ export const Secret = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Secret = typeof Secret.Type
 
@@ -3953,7 +3953,7 @@ export type Secret = typeof Secret.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Config = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -3968,7 +3968,7 @@ export const Config = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Config = typeof Config.Type
 
@@ -3977,7 +3977,7 @@ export type Config = typeof Config.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerStatsResponse = Schema.Struct({
   "id": Schema.optionalKey(Schema.String),
@@ -4009,7 +4009,7 @@ export const ContainerStatsResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerStatsResponse = typeof ContainerStatsResponse.Type
 
@@ -4018,7 +4018,7 @@ export type ContainerStatsResponse = typeof ContainerStatsResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerSummary = Schema.Struct({
   "Id": Schema.optionalKey(Schema.String),
@@ -4064,7 +4064,7 @@ export const ContainerSummary = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerSummary = typeof ContainerSummary.Type
 
@@ -4073,7 +4073,7 @@ export type ContainerSummary = typeof ContainerSummary.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const HostConfig = Schema.Struct({
   "CpuShares": Schema.optionalKey(Schema.Finite),
@@ -4184,7 +4184,7 @@ export const HostConfig = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type HostConfig = typeof HostConfig.Type
 
@@ -4193,7 +4193,7 @@ export type HostConfig = typeof HostConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TaskSpec = Schema.Struct({
   "PluginSpec": Schema.optionalKey(
@@ -4347,7 +4347,7 @@ export const TaskSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TaskSpec = typeof TaskSpec.Type
 
@@ -4356,7 +4356,7 @@ export type TaskSpec = typeof TaskSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SignatureIdentity = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -4374,7 +4374,7 @@ export const SignatureIdentity = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SignatureIdentity = typeof SignatureIdentity.Type
 
@@ -4383,7 +4383,7 @@ export type SignatureIdentity = typeof SignatureIdentity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmInfo = Schema.Struct({
   "NodeID": Schema.optionalKey(Schema.String),
@@ -4402,7 +4402,7 @@ export const SwarmInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmInfo = typeof SwarmInfo.Type
 
@@ -4411,7 +4411,7 @@ export type SwarmInfo = typeof SwarmInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TaskStatus = Schema.Struct({
   "Timestamp": Schema.optionalKey(Schema.String),
@@ -4427,7 +4427,7 @@ export const TaskStatus = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TaskStatus = typeof TaskStatus.Type
 
@@ -4436,7 +4436,7 @@ export type TaskStatus = typeof TaskStatus.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Node = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -4454,7 +4454,7 @@ export const Node = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Node = typeof Node.Type
 
@@ -4463,7 +4463,7 @@ export type Node = typeof Node.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Volume = Schema.Struct({
   "Name": Schema.String,
@@ -4485,7 +4485,7 @@ export const Volume = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Volume = typeof Volume.Type
 
@@ -4494,7 +4494,7 @@ export type Volume = typeof Volume.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkAttachment = Schema.Struct({
   "Network": Schema.optionalKey(Network),
@@ -4506,7 +4506,7 @@ export const NetworkAttachment = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkAttachment = typeof NetworkAttachment.Type
 
@@ -4515,7 +4515,7 @@ export type NetworkAttachment = typeof NetworkAttachment.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const NetworkInspect = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -4544,7 +4544,7 @@ export const NetworkInspect = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type NetworkInspect = typeof NetworkInspect.Type
 
@@ -4553,7 +4553,7 @@ export type NetworkInspect = typeof NetworkInspect.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerInspectResponse = Schema.Struct({
   "Id": Schema.optionalKey(Schema.String),
@@ -4590,7 +4590,7 @@ export const ContainerInspectResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerInspectResponse = typeof ContainerInspectResponse.Type
 
@@ -4599,7 +4599,7 @@ export type ContainerInspectResponse = typeof ContainerInspectResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerCreateRequest = Schema.Struct({
   "Hostname": Schema.optionalKey(Schema.String),
@@ -4635,7 +4635,7 @@ export const ContainerCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerCreateRequest = typeof ContainerCreateRequest.Type
 
@@ -4644,7 +4644,7 @@ export type ContainerCreateRequest = typeof ContainerCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceSpec = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -4688,7 +4688,7 @@ export const ServiceSpec = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceSpec = typeof ServiceSpec.Type
 
@@ -4697,7 +4697,7 @@ export type ServiceSpec = typeof ServiceSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceCreateRequest = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -4741,7 +4741,7 @@ export const ServiceCreateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceCreateRequest = typeof ServiceCreateRequest.Type
 
@@ -4750,7 +4750,7 @@ export type ServiceCreateRequest = typeof ServiceCreateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceUpdateRequest = Schema.Struct({
   "Name": Schema.optionalKey(Schema.String),
@@ -4794,7 +4794,7 @@ export const ServiceUpdateRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceUpdateRequest = typeof ServiceUpdateRequest.Type
 
@@ -4803,7 +4803,7 @@ export type ServiceUpdateRequest = typeof ServiceUpdateRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Identity = Schema.Struct({
   "Signature": Schema.optionalKey(Schema.Array(SignatureIdentity)),
@@ -4816,7 +4816,7 @@ export const Identity = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Identity = typeof Identity.Type
 
@@ -4825,7 +4825,7 @@ export type Identity = typeof Identity.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SystemInfo = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -4901,7 +4901,7 @@ export const SystemInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SystemInfo = typeof SystemInfo.Type
 
@@ -4910,7 +4910,7 @@ export type SystemInfo = typeof SystemInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const VolumeListResponse = Schema.Struct({
   "Volumes": Schema.optionalKey(Schema.Array(Volume)),
@@ -4922,7 +4922,7 @@ export const VolumeListResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type VolumeListResponse = typeof VolumeListResponse.Type
 
@@ -4931,7 +4931,7 @@ export type VolumeListResponse = typeof VolumeListResponse.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Task = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -4956,7 +4956,7 @@ export const Task = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Task = typeof Task.Type
 
@@ -4965,7 +4965,7 @@ export type Task = typeof Task.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Service = Schema.Struct({
   "ID": Schema.optionalKey(Schema.String),
@@ -5008,7 +5008,7 @@ export const Service = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Service = typeof Service.Type
 
@@ -5017,7 +5017,7 @@ export type Service = typeof Service.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageManifestSummary = Schema.Struct({
   "ID": Schema.String,
@@ -5041,7 +5041,7 @@ export const ImageManifestSummary = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageManifestSummary = typeof ImageManifestSummary.Type
 
@@ -5050,7 +5050,7 @@ export type ImageManifestSummary = typeof ImageManifestSummary.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageInspect = Schema.Struct({
   "Id": Schema.optionalKey(Schema.String),
@@ -5080,7 +5080,7 @@ export const ImageInspect = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageInspect = typeof ImageInspect.Type
 
@@ -5089,7 +5089,7 @@ export type ImageInspect = typeof ImageInspect.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageSummary = Schema.Struct({
   "Id": Schema.String,
@@ -5110,7 +5110,7 @@ export const ImageSummary = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ImageSummary = typeof ImageSummary.Type
 
@@ -5119,7 +5119,7 @@ export type ImageSummary = typeof ImageSummary.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SystemDataUsageResponse = Schema.Struct({
   "ImageUsage": Schema.optionalKey(ImagesDiskUsage),
@@ -5138,6 +5138,6 @@ export const SystemDataUsageResponse = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SystemDataUsageResponse = typeof SystemDataUsageResponse.Type

@@ -24,7 +24,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Docker from "effect/docker/Docker"
 import * as DockerConfig from "effect/docker/DockerConfig"
@@ -79,7 +79,7 @@ const spawnerLayer = NodeChildProcessSpawner.layer.pipe(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<
   DockerEngine.DockerEngine["Service"],
@@ -119,7 +119,7 @@ export const make: Effect.Effect<
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<
   DockerEngine.DockerEngine | DockerRegistryAuth.DockerRegistryAuth | Docker.Docker,
@@ -146,7 +146,7 @@ export const layer: Layer.Layer<
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layerFromEnv = (
   overrides?: Partial<DockerConfig.ResolvedConfig> | undefined

@@ -41,7 +41,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
@@ -57,6 +57,7 @@ import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as DockerError from "./DockerError.ts"
 import * as DockerSchema from "./DockerSchema.ts"
+import { BuildMessage, errorMessage, Progress } from "./internal/api.ts"
 
 // -----------------------------------------------------------------------------
 // annotations
@@ -91,7 +92,7 @@ import * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category annotations
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class ApiVersions extends Context.Service<ApiVersions, {
   /** The version the endpoint itself arrived in. */
@@ -104,20 +105,9 @@ export class ApiVersions extends Context.Service<ApiVersions, {
 // errors
 // -----------------------------------------------------------------------------
 
-const decodeErrorBody = Schema.decodeUnknownOption(Schema.fromJsonString(DockerSchema.ErrorResponse))
-
-/**
- * The message of an error response's body: the Engine's `{ message }` JSON,
- * otherwise the trimmed text, such as a proxy's.
- *
- * @internal
- */
-export const errorMessage = (body: string): string =>
-  Option.match(decodeErrorBody(body), { onNone: () => body.trim(), onSome: ({ message }) => message })
-
 /**
  * An error class on the wire: its status, and the Engine's `{ message }` JSON
- * body, decoded as {@link errorMessage} reads it.
+ * body, decoded as `errorMessage` reads it.
  */
 const errorResponse = <
   const Tag extends string,
@@ -157,7 +147,7 @@ const NotImplementedResponse = errorResponse(DockerError.NotImplemented, "NotImp
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ErrorResponses = [
   BadRequestResponse,
@@ -177,7 +167,7 @@ export const ErrorResponses = [
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ErrorResponse = typeof ErrorResponses[number]["Type"]
 
@@ -188,7 +178,7 @@ export type ErrorResponse = typeof ErrorResponses[number]["Type"]
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmErrorResponses = [
   BadRequestResponse,
@@ -208,7 +198,7 @@ export const SwarmErrorResponses = [
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmErrorResponse = typeof SwarmErrorResponses[number]["Type"]
 
@@ -218,7 +208,7 @@ export type SwarmErrorResponse = typeof SwarmErrorResponses[number]["Type"]
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class EngineErrors extends HttpApiMiddleware.Service<EngineErrors>()("effect/docker/DockerApi/EngineErrors", {
   error: ErrorResponses
@@ -230,7 +220,7 @@ export class EngineErrors extends HttpApiMiddleware.Service<EngineErrors>()("eff
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class SwarmErrors extends HttpApiMiddleware.Service<SwarmErrors>()("effect/docker/DockerApi/SwarmErrors", {
   error: SwarmErrorResponses
@@ -250,7 +240,7 @@ const name = { name: Schema.String }
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const StreamContentType = Schema.Literals([
   "application/vnd.docker.raw-stream",
@@ -262,7 +252,7 @@ export const StreamContentType = Schema.Literals([
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type StreamContentType = typeof StreamContentType.Type
 
@@ -274,7 +264,7 @@ const streamHeaders = { "content-type": Schema.optional(StreamContentType) }
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Filters = Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Array(Schema.String)])).pipe(
   Schema.encodeTo(
@@ -297,7 +287,7 @@ export const Filters = Schema.Record(Schema.String, Schema.Union([Schema.String,
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Filters = typeof Filters.Type
 
@@ -360,7 +350,7 @@ const tar = HttpApiSchema.StreamUint8Array({ contentType: "application/x-tar" })
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PingInfo = Schema.Struct({
   apiVersion: Schema.UndefinedOr(Schema.String),
@@ -375,7 +365,7 @@ export const PingInfo = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PingInfo = typeof PingInfo.Type
 
@@ -427,7 +417,7 @@ const Ping = PingInfo.pipe(HttpApiSchema.encodeToWithHeaders({
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const AuthConfig = DockerSchema.AuthConfig.mapFields(({ serveraddress, ...fields }) => ({
   ...fields,
@@ -441,7 +431,7 @@ export const AuthConfig = DockerSchema.AuthConfig.mapFields(({ serveraddress, ..
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type AuthConfig = typeof AuthConfig.Type
 
@@ -450,7 +440,7 @@ export type AuthConfig = typeof AuthConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const AuthResponse = DockerSchema.AuthResponse.mapFields((fields) => ({
   ...fields,
@@ -462,7 +452,7 @@ export const AuthResponse = DockerSchema.AuthResponse.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type AuthResponse = typeof AuthResponse.Type
 
@@ -485,7 +475,7 @@ const NoBody = Schema.Void.pipe(
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const System = HttpApiGroup.make("system").add(
   HttpApiEndpoint.get("ping", "/_ping", { success: Ping }),
@@ -551,7 +541,7 @@ export const System = HttpApiGroup.make("system").add(
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const PathStat = Schema.Struct({
   name: Schema.String,
@@ -566,7 +556,7 @@ export const PathStat = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PathStat = typeof PathStat.Type
 
@@ -577,7 +567,7 @@ const signal = Schema.optional(Schema.String)
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerCreateRequest = DockerSchema.ContainerCreateRequest.mapFields((fields) => ({
   ...fields,
@@ -589,7 +579,7 @@ export const ContainerCreateRequest = DockerSchema.ContainerCreateRequest.mapFie
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerCreateRequest = typeof ContainerCreateRequest.Type
 
@@ -603,7 +593,7 @@ const StopQuery = Schema.Struct({ signal, timeout: Schema.optional(DurationSecon
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TtySize = Schema.Struct({ rows: Schema.Number, columns: Schema.Number }).pipe(
   Schema.encodeKeys({ rows: "h", columns: "w" })
@@ -614,7 +604,7 @@ export const TtySize = Schema.Struct({ rows: Schema.Number, columns: Schema.Numb
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TtySize = typeof TtySize.Type
 
@@ -633,7 +623,7 @@ const pathStatHeader = "x-docker-container-path-stat"
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Containers = HttpApiGroup.make("containers").add(
   HttpApiEndpoint.get("list", "/containers/json", {
@@ -819,7 +809,7 @@ export const Containers = HttpApiGroup.make("containers").add(
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fields, Env: Schema.optionalKey(Env) }))
 
@@ -828,7 +818,7 @@ export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fi
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExecConfig = typeof ExecConfig.Type
 
@@ -839,7 +829,7 @@ export type ExecConfig = typeof ExecConfig.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ExecStartConfig = DockerSchema.ExecStartConfig.mapFields((fields) => ({
   ...fields,
@@ -851,7 +841,7 @@ export const ExecStartConfig = DockerSchema.ExecStartConfig.mapFields((fields) =
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ExecStartConfig = typeof ExecStartConfig.Type
 
@@ -862,7 +852,7 @@ export type ExecStartConfig = typeof ExecStartConfig.Type
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Exec = HttpApiGroup.make("exec").add(
   HttpApiEndpoint.post("create", "/containers/:id/exec", {
@@ -895,7 +885,7 @@ export const Exec = HttpApiGroup.make("exec").add(
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Networks = HttpApiGroup.make("networks").add(
   HttpApiEndpoint.get("list", "/networks", {
@@ -943,7 +933,7 @@ export const Networks = HttpApiGroup.make("networks").add(
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Volumes = HttpApiGroup.make("volumes").add(
   HttpApiEndpoint.get("list", "/volumes", {
@@ -1011,16 +1001,6 @@ const optionalRegistryAuth = { "x-registry-auth": Schema.optional(RegistryAuth) 
  */
 const RegistryConfig = Schema.String.pipe(
   Schema.decodeTo(Schema.fromJsonString(Schema.Record(Schema.String, AuthConfig)), base64UrlPadded)
-)
-
-/**
- * A progress message; the Engine still sends the deprecated `error` beside
- * `errorDetail`.
- *
- * @internal
- */
-export const Progress = Schema.toCodecGoJson(
-  DockerSchema.ProgressMessage.mapFields((fields) => ({ ...fields, error: Schema.optionalKey(Schema.String) }))
 )
 
 /** The Engine's progress stream: one JSON message per line, as `application/json`. */
@@ -1105,25 +1085,11 @@ const BuildQuery = Schema.Struct(buildFields).pipe(Schema.encodeKeys(buildKeys))
 const BuildRemoteQuery = Schema.Struct({ ...buildFields, remote: Schema.String }).pipe(Schema.encodeKeys(buildKeys))
 
 /**
- * A build's messages: progress messages whose `aux` can be any JSON
- * (BuildKit's trace is a string).
- *
- * @internal
- */
-export const BuildMessage = Schema.toCodecGoJson(
-  DockerSchema.ProgressMessage.mapFields((fields) => ({
-    ...fields,
-    error: Schema.optionalKey(Schema.String),
-    aux: Schema.optionalKey(Schema.Json)
-  }))
-)
-
-/**
  * The Engine's image endpoints, which `DockerImages` is a client of.
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Images = HttpApiGroup.make("images").add(
   HttpApiEndpoint.get("list", "/images/json", {
@@ -1258,7 +1224,7 @@ const SwarmSecret = Schema.RedactedFromValue(Schema.String)
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmInfo = DockerSchema.Swarm.mapFields((fields) => ({
   ...fields,
@@ -1274,7 +1240,7 @@ export const SwarmInfo = DockerSchema.Swarm.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SwarmInfo = typeof SwarmInfo.Type
 
@@ -1283,7 +1249,7 @@ export type SwarmInfo = typeof SwarmInfo.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const JoinRequest = DockerSchema.SwarmJoinRequest.mapFields((fields) => ({ ...fields, JoinToken: SwarmSecret }))
 
@@ -1292,7 +1258,7 @@ export const JoinRequest = DockerSchema.SwarmJoinRequest.mapFields((fields) => (
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type JoinRequest = typeof JoinRequest.Type
 
@@ -1304,7 +1270,7 @@ const UnlockKey = Schema.RedactedFromValue(Schema.String, { label: "docker-swarm
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Swarm = HttpApiGroup.make("swarm").add(
   HttpApiEndpoint.get("inspect", "/swarm", { success: Schema.toCodecGoJson(SwarmInfo) }),
@@ -1351,7 +1317,7 @@ export const Swarm = HttpApiGroup.make("swarm").add(
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Nodes = HttpApiGroup.make("nodes").add(
   HttpApiEndpoint.get("list", "/nodes", {
@@ -1405,7 +1371,7 @@ const serviceSpecVersions = {
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ContainerSpec = DockerSchema.TaskSpec.fields.ContainerSpec.schema.mapFields((fields) => ({
   ...fields,
@@ -1417,7 +1383,7 @@ export const ContainerSpec = DockerSchema.TaskSpec.fields.ContainerSpec.schema.m
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ContainerSpec = typeof ContainerSpec.Type
 
@@ -1426,7 +1392,7 @@ export type ContainerSpec = typeof ContainerSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TaskSpec = DockerSchema.TaskSpec.mapFields((fields) => ({
   ...fields,
@@ -1438,7 +1404,7 @@ export const TaskSpec = DockerSchema.TaskSpec.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TaskSpec = typeof TaskSpec.Type
 
@@ -1447,7 +1413,7 @@ export type TaskSpec = typeof TaskSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ServiceSpec = DockerSchema.ServiceSpec.mapFields((fields) => ({
   ...fields,
@@ -1459,7 +1425,7 @@ export const ServiceSpec = DockerSchema.ServiceSpec.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ServiceSpec = typeof ServiceSpec.Type
 
@@ -1468,7 +1434,7 @@ export type ServiceSpec = typeof ServiceSpec.Type
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Services = HttpApiGroup.make("services").add(
   HttpApiEndpoint.get("list", "/services", {
@@ -1514,7 +1480,7 @@ export const Services = HttpApiGroup.make("services").add(
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Tasks = HttpApiGroup.make("tasks").add(
   HttpApiEndpoint.get("list", "/tasks", {
@@ -1542,7 +1508,7 @@ export const Tasks = HttpApiGroup.make("tasks").add(
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SecretSpec = DockerSchema.SecretSpec.mapFields((fields) => ({
   ...fields,
@@ -1555,7 +1521,7 @@ export const SecretSpec = DockerSchema.SecretSpec.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type SecretSpec = typeof SecretSpec.Type
 
@@ -1564,7 +1530,7 @@ export type SecretSpec = typeof SecretSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Secret = DockerSchema.Secret.mapFields((fields) => ({ ...fields, Spec: Schema.optionalKey(SecretSpec) }))
 
@@ -1573,7 +1539,7 @@ export const Secret = DockerSchema.Secret.mapFields((fields) => ({ ...fields, Sp
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Secret = typeof Secret.Type
 
@@ -1582,7 +1548,7 @@ export type Secret = typeof Secret.Type
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Secrets = HttpApiGroup.make("secrets").add(
   HttpApiEndpoint.get("list", "/secrets", {
@@ -1615,7 +1581,7 @@ export const Secrets = HttpApiGroup.make("secrets").add(
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ConfigSpec = DockerSchema.ConfigSpec.mapFields((fields) => ({
   ...fields,
@@ -1628,7 +1594,7 @@ export const ConfigSpec = DockerSchema.ConfigSpec.mapFields((fields) => ({
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ConfigSpec = typeof ConfigSpec.Type
 
@@ -1637,7 +1603,7 @@ export type ConfigSpec = typeof ConfigSpec.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Config = DockerSchema.Config.mapFields((fields) => ({ ...fields, Spec: Schema.optionalKey(ConfigSpec) }))
 
@@ -1646,7 +1612,7 @@ export const Config = DockerSchema.Config.mapFields((fields) => ({ ...fields, Sp
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Config = typeof Config.Type
 
@@ -1656,7 +1622,7 @@ export type Config = typeof Config.Type
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const SwarmConfigs = HttpApiGroup.make("configs").add(
   HttpApiEndpoint.get("list", "/configs", {
@@ -1689,7 +1655,7 @@ export const SwarmConfigs = HttpApiGroup.make("configs").add(
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Privileges = Schema.Array(DockerSchema.PluginPrivilege)
 
@@ -1698,7 +1664,7 @@ export const Privileges = Schema.Array(DockerSchema.PluginPrivilege)
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Privileges = typeof Privileges.Type
 
@@ -1712,7 +1678,7 @@ const installProgress = HttpApiSchema.WithHeaders(progress, {
  *
  * @stability unstable
  * @category groups
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Plugins = HttpApiGroup.make("plugins").add(
   HttpApiEndpoint.get("list", "/plugins", {
@@ -1784,7 +1750,7 @@ export const Plugins = HttpApiGroup.make("plugins").add(
  *
  * @stability unstable
  * @category api
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const DockerApi = HttpApi.make("docker").add(
   System,

@@ -9,7 +9,7 @@
  * its media types, the statuses it answers with, and the fields of its request
  * and response bodies.
  *
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -32,7 +32,7 @@ import type * as Patches from "./Patches.ts"
  *   and of the success responses' bodies, see {@link fields}.
  *
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Operation = Schema.Struct({
   operationId: Schema.String,
@@ -53,7 +53,7 @@ export const Operation = Schema.Struct({
 
 /**
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Operation = typeof Operation.Type
 
@@ -61,7 +61,7 @@ export type Operation = typeof Operation.Type
  * The manifest: the API version it was read from, and every operation.
  *
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const Manifest = Schema.Struct({
   apiVersion: Schema.String,
@@ -71,7 +71,7 @@ export const Manifest = Schema.Struct({
 
 /**
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Manifest = typeof Manifest.Type
 
@@ -97,7 +97,7 @@ const sorted = (values: Iterable<string>): Array<string> => Array.from(new Set(v
  * compared.
  *
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const fields = (document: Patches.Node, nodesWithContent: ReadonlyArray<unknown>): Array<string> => {
   const components = isNode(document.components) && isNode(document.components.schemas)
@@ -147,7 +147,7 @@ export const fields = (document: Patches.Node, nodesWithContent: ReadonlyArray<u
  * and method.
  *
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make = (
   document: Patches.Node,

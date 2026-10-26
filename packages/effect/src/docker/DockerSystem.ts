@@ -17,7 +17,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import type * as DateTime from "../DateTime.ts"
@@ -25,10 +25,11 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import type * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
-import * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { compareApiVersions } from "./internal/config.ts"
+import { apiClient } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -39,7 +40,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerSystem extends Context.Service<DockerSystem, {
   /**
@@ -148,7 +149,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerSystem["Service"], never, DockerEngine> = Effect.gen(function*() {
   const engine = yield* DockerEngine
@@ -162,7 +163,7 @@ export const make: Effect.Effect<DockerSystem["Service"], never, DockerEngine> =
     auth: (credentials) => api.auth({ payload: credentials }),
     pruneBuildCache: (options) =>
       Effect.flatMap(engine.apiVersion, (negotiated) => {
-        if (options?.reservedSpace === undefined || DockerConfig.compareApiVersions(negotiated, "1.48") >= 0) {
+        if (options?.reservedSpace === undefined || compareApiVersions(negotiated, "1.48") >= 0) {
           return api.pruneBuildCache({ query: options ?? {} })
         }
         const { reservedSpace, ...query } = options
@@ -177,6 +178,6 @@ export const make: Effect.Effect<DockerSystem["Service"], never, DockerEngine> =
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerSystem, never, DockerEngine> = Layer.effect(DockerSystem, make)

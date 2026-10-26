@@ -28,7 +28,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
@@ -39,7 +39,6 @@ import * as ChildProcessSpawner from "../process/ChildProcessSpawner.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
-import type { AuthConfig } from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
 import { CredentialsUnavailable, DockerError } from "./DockerError.ts"
 
@@ -48,7 +47,7 @@ import { CredentialsUnavailable, DockerError } from "./DockerError.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerRegistryAuth extends Context.Service<DockerRegistryAuth, {
   /**
@@ -137,33 +136,6 @@ const makeCredential = (
 }
 
 /**
- * A credential as the Engine's `AuthConfig` for a registry, addressed by the
- * registry normalized as the Engine looks it up.
- *
- * @internal
- */
-export const authConfig = (registry: string, credential: DockerConfig.Credential): AuthConfig => ({
-  ...credential,
-  serverAddress: DockerConfig.normalizeRegistry(registry)
-})
-
-/**
- * `X-Registry-Auth` for a registry: the call's `auth`, otherwise the
- * credential `registryAuth` resolves; anonymous as `{}`.
- *
- * @internal
- */
-export const registryAuthHeader = (
-  registryAuth: DockerRegistryAuth["Service"],
-  registry: string,
-  auth: DockerConfig.Credential | undefined
-): Effect.Effect<AuthConfig, DockerError> =>
-  Effect.map(
-    auth !== undefined ? Effect.succeed(auth) : registryAuth.credential(registry),
-    (credential) => credential === undefined ? {} : authConfig(registry, credential)
-  )
-
-/**
  * Builds a {@link DockerRegistryAuth} that resolves credentials as the Docker
  * CLI does, from the `DockerConfig` in context.
  *
@@ -180,7 +152,7 @@ export const registryAuthHeader = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<
   DockerRegistryAuth["Service"],
@@ -198,7 +170,7 @@ export const make: Effect.Effect<
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<
   DockerRegistryAuth,

@@ -29,7 +29,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import type * as DateTime from "../DateTime.ts"
@@ -38,13 +38,15 @@ import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
-import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
-import { DockerError, InvalidResponse } from "./DockerError.ts"
-import { frames } from "./DockerExec.ts"
+import type { LogFrame } from "./DockerContainers.ts"
+import { DockerEngine } from "./DockerEngine.ts"
+import { type DockerError } from "./DockerError.ts"
 import * as DockerImages from "./DockerImages.ts"
-import { authConfig, DockerRegistryAuth } from "./DockerRegistryAuth.ts"
+import { DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, modifyWith, withOperation, withStreamOperation } from "./internal/engine.ts"
+import { authConfig } from "./internal/registryAuth.ts"
+import { logFrames, logsQuery } from "./internal/stream.ts"
 
 /**
  * The image options of `create` and `update`.
@@ -69,7 +71,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface ImageOptions {
   readonly registryAuth?: boolean | undefined
@@ -91,7 +93,7 @@ export interface ImageOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface LogsOptions {
   readonly follow?: boolean | undefined
@@ -108,7 +110,7 @@ export interface LogsOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface LogLine {
   /** The line's RFC 3339 timestamp, with `timestamps`. */
@@ -154,7 +156,7 @@ const queryUnescape = (text: string): string => {
  *
  * @stability unstable
  * @category parsing
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const parseLogLine = (line: string, options?: { readonly timestamps?: boolean | undefined }): LogLine => {
   let rest = line
@@ -178,31 +180,6 @@ export const parseLogLine = (line: string, options?: { readonly timestamps?: boo
 }
 
 // -----------------------------------------------------------------------------
-// logs
-// -----------------------------------------------------------------------------
-
-/**
- * The frames of a service's or task's logs. From API 1.42 the Engine always
- * names the framing in the `Content-Type`.
- *
- * @internal
- */
-export const logFrames = (
-  logs: {
-    readonly headers: { readonly "content-type"?: DockerApi.StreamContentType | undefined }
-    readonly body: Stream.Stream<Uint8Array, DockerError>
-  },
-  operation: string
-): Stream.Stream<LogFrame, DockerError> => {
-  const contentType = logs.headers["content-type"]
-  return contentType === undefined
-    ? Stream.fail(
-      new DockerError({ reason: new InvalidResponse({ issue: "the logs have no stream Content-Type" }), operation })
-    )
-    : frames(logs.body, contentType)
-}
-
-// -----------------------------------------------------------------------------
 // service
 // -----------------------------------------------------------------------------
 
@@ -211,7 +188,7 @@ export const logFrames = (
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerServices extends Context.Service<DockerServices, {
   /**
@@ -384,7 +361,7 @@ const placementPlatforms = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
   function*() {
@@ -500,7 +477,7 @@ export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine 
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerServices, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
   DockerServices,

@@ -17,15 +17,16 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, modifyWith, withOperation } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -36,7 +37,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
   /**
@@ -128,7 +129,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerSwarmConfigs["Service"], never, DockerEngine> = Effect.gen(function*() {
   const engine = yield* DockerEngine
@@ -157,6 +158,6 @@ export const make: Effect.Effect<DockerSwarmConfigs["Service"], never, DockerEng
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerSwarmConfigs, never, DockerEngine> = Layer.effect(DockerSwarmConfigs, make)

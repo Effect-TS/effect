@@ -6,7 +6,7 @@
  * registering one synthetic root that references all of them with
  * `JsonSchemaGenerator.generate` and dropping that root from the output.
  *
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as JsonSchemaGenerator from "@effect/openapi-generator/JsonSchemaGenerator"
 import type * as JsonSchema from "effect/JsonSchema"
@@ -108,7 +108,7 @@ const typeAlias = (name: string, since: string): Array<string> => [
  * document.
  *
  * @category generation
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const generate = (document: Patches.Node, config: CodegenConfig): string => {
   const components = (document.components as Patches.Node).schemas as Record<string, JsonSchema.JsonSchema>

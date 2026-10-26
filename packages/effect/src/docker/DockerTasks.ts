@@ -18,18 +18,20 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, DockerEngine, withStreamOperation } from "./DockerEngine.ts"
+import type { LogFrame } from "./DockerContainers.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
-import { logFrames, type LogsOptions } from "./DockerServices.ts"
+import type { LogsOptions } from "./DockerServices.ts"
+import { apiClient, withStreamOperation } from "./internal/engine.ts"
+import { logFrames, logsQuery } from "./internal/stream.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -40,7 +42,7 @@ import { logFrames, type LogsOptions } from "./DockerServices.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerTasks extends Context.Service<DockerTasks, {
   /**
@@ -87,7 +89,7 @@ export class DockerTasks extends Context.Service<DockerTasks, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerTasks["Service"], never, DockerEngine> = Effect.gen(function*() {
   const engine = yield* DockerEngine
@@ -111,6 +113,6 @@ export const make: Effect.Effect<DockerTasks["Service"], never, DockerEngine> = 
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerTasks, never, DockerEngine> = Layer.effect(DockerTasks, make)

@@ -34,7 +34,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -48,10 +48,15 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, DockerEngine, withOperation, withStreamOperation } from "./DockerEngine.ts"
-import { DockerError, InvalidReference, InvalidResponse, StreamFailed } from "./DockerError.ts"
-import { authConfig, DockerRegistryAuth, registryAuthHeader } from "./DockerRegistryAuth.ts"
+import { DockerEngine } from "./DockerEngine.ts"
+import { DockerError, InvalidReference, InvalidResponse } from "./DockerError.ts"
+import { DockerRegistryAuth } from "./DockerRegistryAuth.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import type { BuildMessage } from "./internal/api.ts"
+import { proxyVariables } from "./internal/config.ts"
+import { apiClient, withOperation, withStreamOperation } from "./internal/engine.ts"
+import { failOnError, inBandError, PushResult as PushResultSchema, pushResultOf } from "./internal/progress.ts"
+import { authConfig, registryAuthHeader } from "./internal/registryAuth.ts"
 
 // -----------------------------------------------------------------------------
 // references
@@ -91,7 +96,7 @@ const repositoryPattern = new RegExp(`^${pathComponent}(?:/${pathComponent})*$`)
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class ImageReference extends Schema.Class<ImageReference>("effect/docker/DockerImages/ImageReference")(
   Schema.Struct({
@@ -130,7 +135,7 @@ const formatFields = (self: ReferenceFields): string =>
  *
  * @stability unstable
  * @category formatting
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const formatReference: (self: ImageReference) => string = formatFields
 
@@ -187,7 +192,7 @@ const decodeFields = (input: string, options: SchemaAST.ParseOptions) => {
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ImageReferenceFromString = Schema.String.pipe(
   Schema.decodeTo(
@@ -234,7 +239,7 @@ const decodeReference = Schema.decodeUnknownResult(ImageReferenceFromString)
  *
  * @stability unstable
  * @category parsing
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const parseReference = (input: string): Result.Result<ImageReference, DockerError> =>
   Result.mapError(
@@ -256,48 +261,18 @@ const resourceOf = (input: string | ImageReference): string =>
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.6
+ * @since 4.0.7
  */
-export const PushResult = Schema.Struct({
-  Tag: Schema.optionalKey(Schema.String),
-  Digest: Schema.optionalKey(Schema.String),
-  Size: Schema.optionalKey(Schema.Number)
-})
+export const PushResult = PushResultSchema
 
 /**
  * What a push reports about the pushed manifest.
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type PushResult = typeof PushResult.Type
-
-const decodePushResult = Schema.decodeUnknownEffect(Schema.toCodecGoJson(PushResult))
-
-/**
- * The pushed manifest, from the `aux` of a push's progress. Docker's
- * containerd store sends other `aux` data too.
- *
- * @internal
- */
-export const pushResultOf = <E, R>(
-  messages: Stream.Stream<DockerSchema.ProgressMessage, E, R>,
-  operation: string
-): Effect.Effect<PushResult, E | DockerError, R> =>
-  messages.pipe(
-    Stream.runFold(
-      () => ({}) as Readonly<Record<string, Schema.Json>>,
-      (result, message) =>
-        message.aux !== undefined && (message.aux.Digest !== undefined || result.Digest === undefined)
-          ? message.aux
-          : result
-    ),
-    Effect.flatMap((aux) =>
-      Effect.mapError(decodePushResult(aux), (cause) =>
-        new DockerError({ reason: new InvalidResponse({ issue: cause.message, cause }), operation }))
-    )
-  )
 
 // -----------------------------------------------------------------------------
 // builds
@@ -317,7 +292,7 @@ export const pushResultOf = <E, R>(
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type BuildProgress =
   | { readonly _tag: "Log"; readonly data: string }
@@ -353,7 +328,7 @@ export type BuildProgress =
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface BuildOptions {
   readonly dockerfile?: string | undefined
@@ -400,34 +375,6 @@ const searchRegistry = (term: string): string => {
   return slash !== -1 && (first.includes(".") || first.includes(":") || first === "localhost") ? first : "docker.io"
 }
 
-/**
- * The failure a progress or build message reports in band: its `errorDetail`,
- * or the deprecated `error` beside it.
- */
-const inBandError = (
-  errorDetail: { readonly message?: string | undefined } | undefined,
-  error: string | undefined
-): DockerError | undefined => {
-  const text = errorDetail?.message ?? error
-  return text === undefined && errorDetail === undefined
-    ? undefined
-    : new DockerError({ reason: new StreamFailed({ message: text ?? "" }) })
-}
-
-/**
- * The messages of a progress stream, failing with `StreamFailed` on the first
- * in-band error.
- *
- * @internal
- */
-export const failOnError = <E>(
-  messages: Stream.Stream<typeof DockerApi.Progress.Type, E>
-): Stream.Stream<DockerSchema.ProgressMessage, E | DockerError> =>
-  Stream.mapEffect(messages, ({ error, ...message }) => {
-    const failure = inBandError(message.errorDetail, error)
-    return failure === undefined ? Effect.succeed(message) : Effect.fail(failure)
-  })
-
 /** The ID a quiet build writes as its only output: `sha256:<hex>`. */
 const quietId = /^(sha256:[0-9a-f]{64})\s*$/
 
@@ -444,7 +391,7 @@ const auxId = (aux: Schema.Json | undefined): string | undefined => {
  */
 const buildProgress = (
   state: { id: string | undefined },
-  { error, ...message }: typeof DockerApi.BuildMessage.Type,
+  { error, ...message }: typeof BuildMessage.Type,
   quiet: boolean
 ): Effect.Effect<ReadonlyArray<BuildProgress>, DockerError> => {
   const failure = inBandError(message.errorDetail, error)
@@ -482,7 +429,7 @@ const buildProgress = (
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerImages extends Context.Service<DockerImages, {
   /**
@@ -869,7 +816,7 @@ export class DockerImages extends Context.Service<DockerImages, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | DockerRegistryAuth> = Effect.gen(
   function*() {
@@ -928,7 +875,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | 
     ): Stream.Stream<BuildProgress, DockerError> => {
       const { auth, buildArgs, registries, ...query } = options ?? {}
       // the configured proxy, unless the build sets the same args, as `docker build` adds it
-      const proxyArgs = Object.fromEntries(DockerConfig.proxyVariables(config.proxy))
+      const proxyArgs = Object.fromEntries(proxyVariables(config.proxy))
       const credentials = Effect.map(
         Effect.forEach(
           registries ?? [],
@@ -1044,7 +991,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | 
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerImages, never, DockerEngine | DockerRegistryAuth> = Layer.effect(
   DockerImages,

@@ -19,15 +19,16 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
+import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
+import { apiClient, modifyWith, withOperation } from "./internal/engine.ts"
 
 // -----------------------------------------------------------------------------
 // service
@@ -38,7 +39,7 @@ import type * as DockerSchema from "./DockerSchema.ts"
  *
  * @stability unstable
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerNodes extends Context.Service<DockerNodes, {
   /**
@@ -120,7 +121,7 @@ export class DockerNodes extends Context.Service<DockerNodes, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: Effect.Effect<DockerNodes["Service"], never, DockerEngine> = Effect.gen(function*() {
   const engine = yield* DockerEngine
@@ -148,6 +149,6 @@ export const make: Effect.Effect<DockerNodes["Service"], never, DockerEngine> = 
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<DockerNodes, never, DockerEngine> = Layer.effect(DockerNodes, make)

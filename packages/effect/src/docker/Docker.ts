@@ -21,7 +21,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Layer from "../Layer.ts"
 import * as DockerContainers from "./DockerContainers.ts"
@@ -45,7 +45,7 @@ import * as DockerVolumes from "./DockerVolumes.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Docker =
   | DockerContainers.DockerContainers
@@ -68,7 +68,7 @@ export type Docker =
  *
  * @stability unstable
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer: Layer.Layer<Docker, never, DockerEngine | DockerRegistryAuth> = Layer.mergeAll(
   DockerContainers.layer,

@@ -25,7 +25,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Data from "../Data.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -39,7 +39,7 @@ const TypeId = "~effect/docker/DockerError"
  *
  * @stability unstable
  * @category guards
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, TypeId)
 
@@ -59,7 +59,7 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class DockerError extends Data.TaggedError("DockerError")<{
   readonly reason: DockerErrorReason
@@ -81,7 +81,7 @@ export class DockerError extends Data.TaggedError("DockerError")<{
    * Marks this value as a `DockerError` for runtime guards.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   readonly [TypeId] = TypeId
 
@@ -89,7 +89,7 @@ export class DockerError extends Data.TaggedError("DockerError")<{
    * Whether retrying the operation may succeed.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return this.reason.isRetryable
@@ -118,14 +118,14 @@ export class DockerError extends Data.TaggedError("DockerError")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 400.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 400 {
     return 400
@@ -135,7 +135,7 @@ export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", {
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -147,14 +147,14 @@ export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", {
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 401.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 401 {
     return 401
@@ -164,7 +164,7 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthoriz
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -176,14 +176,14 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthoriz
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 403.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 403 {
     return 403
@@ -193,7 +193,7 @@ export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", { me
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -206,14 +206,14 @@ export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", { me
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 404.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 404 {
     return 404
@@ -223,7 +223,7 @@ export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { messa
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -236,14 +236,14 @@ export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { messa
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 409.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 409 {
     return 409
@@ -253,7 +253,7 @@ export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { messa
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -265,7 +265,7 @@ export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { messa
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class PreconditionFailed
   extends Schema.TaggedError<PreconditionFailed>()("PreconditionFailed", { message: Schema.String })
@@ -274,7 +274,7 @@ export class PreconditionFailed
    * The status the Engine answers with: 412.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 412 {
     return 412
@@ -284,7 +284,7 @@ export class PreconditionFailed
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -296,7 +296,7 @@ export class PreconditionFailed
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class TooManyRequests
   extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", { message: Schema.String })
@@ -305,7 +305,7 @@ export class TooManyRequests
    * The status the Engine answers with: 429.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 429 {
     return 429
@@ -315,7 +315,7 @@ export class TooManyRequests
    * Whether retrying may succeed: always for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return true
@@ -332,14 +332,14 @@ export class TooManyRequests
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class ServerError extends Schema.TaggedError<ServerError>()("ServerError", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 500.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 500 {
     return 500
@@ -349,7 +349,7 @@ export class ServerError extends Schema.TaggedError<ServerError>()("ServerError"
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -361,14 +361,14 @@ export class ServerError extends Schema.TaggedError<ServerError>()("ServerError"
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class NotImplemented extends Schema.TaggedError<NotImplemented>()("NotImplemented", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 501.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 501 {
     return 501
@@ -378,7 +378,7 @@ export class NotImplemented extends Schema.TaggedError<NotImplemented>()("NotImp
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -391,14 +391,14 @@ export class NotImplemented extends Schema.TaggedError<NotImplemented>()("NotImp
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class Unavailable extends Schema.TaggedError<Unavailable>()("Unavailable", { message: Schema.String }) {
   /**
    * The status the Engine answers with: 503.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 503 {
     return 503
@@ -408,7 +408,7 @@ export class Unavailable extends Schema.TaggedError<Unavailable>()("Unavailable"
    * Whether retrying may succeed: always for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return true
@@ -430,7 +430,7 @@ export class Unavailable extends Schema.TaggedError<Unavailable>()("Unavailable"
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class SwarmUnavailable
   extends Schema.TaggedError<SwarmUnavailable>()("SwarmUnavailable", { message: Schema.String })
@@ -439,7 +439,7 @@ export class SwarmUnavailable
    * The status the Engine answers with: 503.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get status(): 503 {
     return 503
@@ -449,7 +449,7 @@ export class SwarmUnavailable
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -462,7 +462,7 @@ export class SwarmUnavailable
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class UnexpectedStatus extends Data.TaggedError("UnexpectedStatus")<{
   readonly status: number
@@ -472,7 +472,7 @@ export class UnexpectedStatus extends Data.TaggedError("UnexpectedStatus")<{
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -496,7 +496,7 @@ export class UnexpectedStatus extends Data.TaggedError("UnexpectedStatus")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class ConnectionFailed extends Data.TaggedError("ConnectionFailed")<{
   readonly cause: unknown
@@ -510,7 +510,7 @@ export class ConnectionFailed extends Data.TaggedError("ConnectionFailed")<{
    * (permission denied, or TLS).
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return this.permanent !== true
@@ -543,7 +543,7 @@ const causeMessages = (u: unknown): string => {
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
   readonly issue: SchemaIssue.Issue | string
@@ -553,7 +553,7 @@ export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -574,7 +574,7 @@ export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersion")<{
   readonly engineVersion: string
@@ -584,7 +584,7 @@ export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersi
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -600,7 +600,7 @@ export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersi
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
   readonly option: string
@@ -611,7 +611,7 @@ export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -628,7 +628,7 @@ export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class InvalidReference extends Data.TaggedError("InvalidReference")<{
   readonly reference: string
@@ -638,7 +638,7 @@ export class InvalidReference extends Data.TaggedError("InvalidReference")<{
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -656,7 +656,7 @@ export class InvalidReference extends Data.TaggedError("InvalidReference")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class StreamFailed extends Data.TaggedError("StreamFailed")<{
   readonly message: string
@@ -666,7 +666,7 @@ export class StreamFailed extends Data.TaggedError("StreamFailed")<{
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -679,14 +679,14 @@ export class StreamFailed extends Data.TaggedError("StreamFailed")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class StdinNotAttached extends Data.TaggedError("StdinNotAttached")<{}> {
   /**
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -703,7 +703,7 @@ export class StdinNotAttached extends Data.TaggedError("StdinNotAttached")<{}> {
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CredentialsUnavailable extends Data.TaggedError("CredentialsUnavailable")<{
   readonly registry: string
@@ -715,7 +715,7 @@ export class CredentialsUnavailable extends Data.TaggedError("CredentialsUnavail
    * Whether retrying may succeed: never for this reason.
    *
    * @stability unstable
-   * @since 4.0.6
+   * @since 4.0.7
    */
   get isRetryable(): boolean {
     return false
@@ -727,7 +727,7 @@ export class CredentialsUnavailable extends Data.TaggedError("CredentialsUnavail
  *
  * @stability unstable
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type DockerErrorReason =
   | BadRequest
