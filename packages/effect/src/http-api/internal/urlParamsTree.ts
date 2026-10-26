@@ -84,22 +84,27 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
   )
 }
 
-// Whether a field may be absent from the input, as a defaulted field may be
-// although it is required once decoded
+// Whether a field may be absent from the input, judged by its encoded side
 function isWireOptional(field: SchemaAST.AST): boolean {
-  return SchemaAST.isOptional(field) || SchemaAST.isOptional(SchemaAST.toEncoded(field))
+  return SchemaAST.isOptional(SchemaAST.toEncoded(field))
 }
 
-// The literal a field decodes from, following its encodings as union member
-// selection does
-function getWireLiteral(field: SchemaAST.AST): SchemaAST.AST | undefined {
+// The AST a field decodes from, following its encodings as union member
+// selection does. A decoding middleware may accept any input.
+function getWire(field: SchemaAST.AST): SchemaAST.AST {
   let ast = field
   while (ast.encoding !== undefined) {
     if (
       ast.encoding.some((link) => link.transformation._tag === "Middleware" && link.transformation.decode !== identity)
-    ) return undefined
+    ) return SchemaAST.unknown
     ast = ast.encoding[ast.encoding.length - 1].to
   }
+  return ast
+}
+
+// The literal a field decodes from
+function getWireLiteral(field: SchemaAST.AST): SchemaAST.AST | undefined {
+  const ast = getWire(field)
   return SchemaAST.isLiteral(ast) || SchemaAST.isUniqueSymbol(ast)
     ? SchemaAST.replaceContext(ast, undefined)
     : undefined
@@ -109,7 +114,7 @@ const stringTree = SchemaAST.unknownToStringTree.to as SchemaAST.Declaration
 
 // Whether the encoded side of a field can be an object
 function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean {
-  const ast = SchemaAST.getLastEncoding(field)
+  const ast = getWire(field)
   if (seen.has(ast)) return false
   seen.add(ast)
   switch (ast._tag) {
@@ -131,7 +136,7 @@ function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
 
 // Whether the encoded side of a field can be a string
 function canBeString(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean {
-  const ast = SchemaAST.getLastEncoding(field)
+  const ast = getWire(field)
   if (seen.has(ast)) return false
   seen.add(ast)
   switch (ast._tag) {
@@ -149,7 +154,8 @@ function canBeString(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
     case "Enum":
       return ast.enums.some(([, value]) => typeof value === "string")
     case "Declaration":
-      return ast.run === stringTree.run
+      // An opaque declaration may accept strings
+      return true
     case "Union":
       return ast.types.some((type) => canBeString(type, seen))
     case "Suspend":
@@ -163,8 +169,8 @@ const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
 /**
  * Rebuilds the `a[b][c]` keys of each base `isNestable` accepts, given all of
  * that base's keys and whether one of its keys is declared. Keys listed in
- * `declared` are kept as is, so literal bracket keys keep decoding. A key that conflicts with a shorter one, such as
- * `a[b]` next to `a`, stays flat.
+ * `declared` are kept as is, so literal bracket keys keep decoding. A key that
+ * conflicts with a shorter one, such as `a[b]` next to `a`, stays flat.
  */
 function fromFlatParams(
   params: FlatParams,
