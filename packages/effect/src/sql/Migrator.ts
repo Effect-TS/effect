@@ -286,7 +286,7 @@ ORDER BY migration_id`,
         ])
       }
 
-      // without a transaction, record each migration only after it succeeds
+      // rows recorded up front are only rolled back inside a transaction
       if (transactional && required.length > 0) {
         yield* pipe(
           insertMigrations(required.map(([id, name]) => [id, name])),
