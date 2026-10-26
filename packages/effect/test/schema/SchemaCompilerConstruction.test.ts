@@ -26,6 +26,25 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     assert.isDefined(Registry.resolve(ast.typeParameters[0]).compiled)
   })
 
+  it("keeps the caller when a registered class entry is not compiled", () => {
+    class E extends Schema.TaggedError<E>()("E", { message: Schema.String }) {}
+    const ast = SchemaAST.toType(E.ast) as SchemaAST.Declaration
+    const resolved: Array<SchemaAST.AST> = []
+    Registry.set(ast, undefined, (child) => {
+      resolved.push(child)
+      return Registry.resolve(child)
+    })
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 10
+    try {
+      const makeErrorAtCallsite = () => E.make({ message: "failure" })
+      assert.include(makeErrorAtCallsite().stack, "makeErrorAtCallsite")
+    } finally {
+      Error.stackTraceLimit = limit
+    }
+    assert.deepStrictEqual(resolved, [ast.typeParameters[0]])
+  })
+
   it.effect("initializes and caches makers on first access", () =>
     Effect.gen(function*() {
       const schema = Schema.Struct({ value: Schema.NumberFromString })
