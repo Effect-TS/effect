@@ -690,7 +690,7 @@ describe("Cause", () => {
       const exit = Effect.runSyncExit(effect)
       assert.ok(Exit.isFailure(exit))
       const rendered = Cause.pretty(exit.cause)
-      assert.match(rendered, /\buserCode \(/)
+      assert.match(rendered, /\buserCode\b/)
       assert.doesNotMatch(rendered, /\/src\/internal\/|~effect\/Utils\/internal/)
     }
 
@@ -703,6 +703,11 @@ describe("Cause", () => {
 
     it("does not render internal frames from map", () => {
       assertCleanStack(Effect.map(Effect.succeed(1), userCode))
+    })
+
+    it("keeps the throw location of defects from sync and suspend", () => {
+      assertCleanStack(Effect.sync(userCode))
+      assertCleanStack(Effect.suspend(userCode))
     })
   })
 
