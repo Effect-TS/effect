@@ -330,6 +330,65 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
     }))
 
+  it.effect("replays a raced activity that starts during shutdown on the next owner", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("ShutdownRacedActivity", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const gate = DurableDeferred.make("ShutdownRacedActivity/Gate")
+      let executions = 0
+      const step = Activity.make({
+        name: "step",
+        success: Schema.String,
+        execute: Effect.sync(() => {
+          executions++
+          return "done"
+        })
+      })
+      const storage = yield* makeSharedStorage
+      const held = yield* Latch.make()
+      const layer = (holdUntilShutdown: boolean) =>
+        workflow.toLayer(() =>
+          Effect.gen(function*() {
+            if (holdUntilShutdown) {
+              // Start the activity only once the runner is shutting down.
+              const sharding = yield* Sharding.Sharding
+              yield* held.open
+              while (!(yield* sharding.isShutdown)) yield* Effect.yieldNow
+            }
+            return yield* DurableDeferred.raceAll({
+              name: "steer",
+              success: Schema.String,
+              error: Schema.Never,
+              effects: [step, Effect.as(DurableDeferred.await(gate), "steered")]
+            })
+          })
+        ).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({
+            storageLayer: Layer.succeed(MessageStorage.MessageStorage, storage),
+            config: { entityTerminationTimeout: Duration.seconds(2) }
+          }))
+        )
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(layer(true), scope)
+      const executionId = yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* advanceUntil(() => held.isOpen(), "run must start")
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* advanceUntil(() => shutdown.pollUnsafe() !== undefined, "shutdown must finish", 10)
+      yield* Fiber.join(shutdown)
+
+      yield* Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+        assert.strictEqual(executions, 1)
+      }).pipe(Effect.provide(layer(false)))
+    }))
+
   it.effect("retries an early activity registered while its Suspended reply is still being persisted", () =>
     Effect.gen(function*() {
       const workflow = Workflow.make("EarlyActivity", {
