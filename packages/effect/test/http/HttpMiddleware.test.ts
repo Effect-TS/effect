@@ -359,6 +359,30 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), undefined)
       }))
 
+    it.effect("redacts user_agent.original when user-agent is a redacted header name", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost/", { headers: { "user-agent": "secret-agent" } })
+        )
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Headers.CurrentRedactedNames, ["user-agent"]),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "<redacted>")
+      }))
+
     it.effect("redacts sensitive query params in url attributes", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined
