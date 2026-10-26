@@ -359,15 +359,13 @@ function hasGetter(object: object): boolean {
 }
 
 // JSON.stringify reads a getter once, then calls toJSON on the result before
-// the replacer sees it. Return a view without relying on Proxy: each property
-// reads the source when JSON.stringify visits it, with the source as receiver,
-// and redacts getter results.
+// the replacer sees it, so getter results are redacted at the read. A Proxy
+// would do, but not every engine has one, so each key becomes a getter that
+// reads the source lazily, with the source as receiver.
 function redactingView(object: object): object {
-  // JSON.stringify reads every array index, regardless of enumerability
-  const keys = Array.isArray(object)
-    ? Array.from({ length: object.length }, (_, i) => String(i))
-    : Object.keys(object)
   const view = Array.isArray(object) ? [] : {}
+  // JSON.stringify reads every array index, regardless of enumerability
+  const keys = Array.isArray(object) ? Array.from(object.keys(), String) : Object.keys(object)
   for (const key of keys) {
     Object.defineProperty(view, key, {
       enumerable: true,
