@@ -134,6 +134,10 @@ function canBeString(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
     case "Unknown":
     case "Any":
       return true
+    case "Objects":
+      // An object schema with no properties or index signatures accepts any
+      // non-nullish value
+      return ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0
     case "Literal":
       return typeof ast.literal === "string"
     case "Enum":
