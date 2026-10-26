@@ -2036,6 +2036,100 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
+  describe("provider tool names", () => {
+    const toolkit = Toolkit.make(
+      AnthropicTool.Memory_20250818({}),
+      AnthropicTool.ComputerUse_20241022({ displayWidthPx: 800, displayHeightPx: 600 })
+    )
+
+    const generate = Effect.fnUntraced(function*(
+      options: Omit<LanguageModel.GenerateTextOptions<typeof toolkit.tools>, "toolkit">,
+      content: ReadonlyArray<unknown> = [{ type: "text", text: "Done" }]
+    ) {
+      let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) => {
+            capturedRequest = request
+            return Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model: "claude-sonnet-4-20250514",
+              content,
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 1,
+                output_tokens: 1,
+                service_tier: null
+              }
+            }))
+          })
+        ))
+      )
+
+      const response = yield* LanguageModel.generateText({
+        ...options,
+        toolkit,
+        disableToolCallResolution: true
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+        Effect.provide(layer)
+      )
+
+      assertDefined(capturedRequest)
+      return { body: yield* getRequestBody(capturedRequest), response }
+    })
+
+    it.effect("sends provider names for an explicit tool choice and replayed tool calls", () =>
+      Effect.gen(function*() {
+        const { body } = yield* generate({
+          prompt: Prompt.make([
+            { role: "user", content: "what do you remember?" },
+            {
+              role: "assistant",
+              content: [{
+                type: "tool-call",
+                id: "toolu_mem_1",
+                name: "AnthropicMemory",
+                params: { command: "view", path: "/memories" },
+                providerExecuted: false
+              }]
+            }
+          ]),
+          toolChoice: { tool: "AnthropicMemory" }
+        })
+
+        assert.deepStrictEqual(body.tool_choice, { type: "tool", name: "memory" })
+        assert.strictEqual(body.messages[1].content[0].name, "memory")
+      }))
+
+    it.effect("keeps provider tools selected by a oneOf tool choice", () =>
+      Effect.gen(function*() {
+        const { body } = yield* generate({
+          prompt: "remember this",
+          toolChoice: { oneOf: ["AnthropicMemory"] }
+        })
+
+        assert.deepStrictEqual(body.tools.map((tool: any) => tool.name), ["memory"])
+      }))
+
+    it.effect("decodes ComputerUse_20241022 calls named computer", () =>
+      Effect.gen(function*() {
+        const { response } = yield* generate({ prompt: "take a screenshot" }, [
+          { type: "tool_use", id: "toolu_cu_1", name: "computer", input: { action: "screenshot" } }
+        ])
+
+        assert.strictEqual(response.toolCalls[0]?.name, "AnthropicComputerUse")
+      }))
+  })
+
   // Client-executed (`requiresHandler`) provider tools have their `parameters`
   // decoded via `toCodecAnthropic` when the model calls them. Optional
   // parameters must use `Schema.optionalKey` (not `Schema.optional`), otherwise

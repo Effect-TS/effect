@@ -752,7 +752,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const capabilities = getConfigCapabilities(config)
       const { messages, system } = yield* prepareMessages({ betas, capabilities, options, toolNameMapper })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
-      const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
+      const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options, toolNameMapper })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
       if (betas.size > 0) {
         params["anthropic-beta"] = Array.from(betas).join(",")
@@ -1197,7 +1197,7 @@ const prepareMessages = Effect.fnUntraced(
                     content.push({
                       type: "tool_use",
                       id: part.id,
-                      name: part.name,
+                      name: toolNameMapper.getProviderName(part.name),
                       input: part.params as any,
                       ...(Predicate.isNotUndefined(caller) ? { caller } : undefined)
                     })
@@ -1364,11 +1364,12 @@ export type AnthropicProviderDefinedTool =
   | typeof Generated.BetaWebSearchTool_20250305.Encoded
 
 const prepareTools = Effect.fnUntraced(
-  function*({ betas, capabilities, config, options }: {
+  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, capabilities, config, options, toolNameMapper }: {
     readonly betas: Set<string>
     readonly capabilities: ModelCapabilities
     readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
+    readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<{
     readonly tools: ReadonlyArray<AnthropicUserDefinedTool | AnthropicProviderDefinedTool> | undefined
     readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
@@ -1575,7 +1576,7 @@ const prepareTools = Effect.fnUntraced(
       }
     }
 
-    let tools = [...userTools, ...providerTools]
+    const tools = [...userTools, ...providerTools]
     let toolChoice: Mutable<typeof Generated.BetaToolChoice.Encoded> | undefined = undefined
 
     if (options.toolChoice === "auto") {
@@ -1583,10 +1584,8 @@ const prepareTools = Effect.fnUntraced(
     } else if (options.toolChoice === "required") {
       toolChoice = { type: "any" }
     } else if ("tool" in options.toolChoice) {
-      toolChoice = { type: "tool", name: options.toolChoice.tool }
+      toolChoice = { type: "tool", name: toolNameMapper.getProviderName(options.toolChoice.tool) }
     } else {
-      const allowedTools = new Set(options.toolChoice.oneOf)
-      tools = tools.filter((tool) => allowedTools.has(tool.name))
       toolChoice = { type: options.toolChoice.mode === "required" ? "any" : "auto" }
     }
 
