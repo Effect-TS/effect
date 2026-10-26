@@ -12018,17 +12018,16 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
 
-const netStringTransformation = <A, E extends { readonly message: string }>(
+const stringTransformation = <A, E extends { readonly message: string }>(
   parse: (input: string) => Result_.Result<A, E>,
   format: (value: A) => string
 ): SchemaTransformation.Transformation<A, string> =>
   SchemaTransformation.transformEffect({
-    decode: (input, options) => {
-      const result = parse(input)
-      return Result_.isSuccess(result)
-        ? Effect.succeed(result.success)
-        : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
-    },
+    decode: (input, options) =>
+      Effect.mapErrorEager(
+        Effect.fromResult(parse(input)),
+        (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options)
+      ),
     encode: (value) => Effect.succeed(format(value))
   })
 
@@ -12086,10 +12085,10 @@ const netMacArbitrary = (firstOctet: (octet: number) => number) => () =>
     )
   )
 
-const macAddressFromString = netStringTransformation(NetAddress_.macAddressFromString, NetAddress_.formatMacAddress)
-const ipv4AddressFromString = netStringTransformation(NetAddress_.ipv4FromString, NetAddress_.formatIp)
-const ipv6AddressFromString = netStringTransformation(NetAddress_.ipv6FromString, NetAddress_.formatIp)
-const ipAddressFromString = netStringTransformation(NetAddress_.ipFromString, NetAddress_.formatIp)
+const macAddressFromString = stringTransformation(NetAddress_.macAddressFromString, NetAddress_.formatMacAddress)
+const ipv4AddressFromString = stringTransformation(NetAddress_.ipv4FromString, NetAddress_.formatIp)
+const ipv6AddressFromString = stringTransformation(NetAddress_.ipv6FromString, NetAddress_.formatIp)
+const ipAddressFromString = stringTransformation(NetAddress_.ipFromString, NetAddress_.formatIp)
 
 /**
  * Type-level representation of {@link MacAddress}.
@@ -13122,9 +13121,9 @@ export interface Ipv4Interface extends declare<IpInterface_.Ipv4Interface> {
   readonly "Rebuild": Ipv4Interface
 }
 
-const ipv4InterfaceFromString = netStringTransformation(IpInterface_.ipv4FromString, IpInterface_.format)
-const ipv6InterfaceFromString = netStringTransformation(IpInterface_.ipv6FromString, IpInterface_.format)
-const ipInterfaceFromString = netStringTransformation(IpInterface_.fromString, IpInterface_.format)
+const ipv4InterfaceFromString = stringTransformation(IpInterface_.ipv4FromString, IpInterface_.format)
+const ipv6InterfaceFromString = stringTransformation(IpInterface_.ipv6FromString, IpInterface_.format)
+const ipInterfaceFromString = stringTransformation(IpInterface_.fromString, IpInterface_.format)
 
 /**
  * Schema for already-constructed IPv4 interface address values.
@@ -13327,9 +13326,9 @@ export interface Ipv4Network extends declare<IpNetwork_.Ipv4Network> {
   readonly "Rebuild": Ipv4Network
 }
 
-const ipv4NetworkFromString = netStringTransformation(IpNetwork_.ipv4FromString, IpNetwork_.format)
-const ipv6NetworkFromString = netStringTransformation(IpNetwork_.ipv6FromString, IpNetwork_.format)
-const ipNetworkFromString = netStringTransformation(IpNetwork_.fromString, IpNetwork_.format)
+const ipv4NetworkFromString = stringTransformation(IpNetwork_.ipv4FromString, IpNetwork_.format)
+const ipv6NetworkFromString = stringTransformation(IpNetwork_.ipv6FromString, IpNetwork_.format)
+const ipNetworkFromString = stringTransformation(IpNetwork_.fromString, IpNetwork_.format)
 
 /**
  * Schema for already-constructed canonical IPv4 network prefixes.
@@ -13532,12 +13531,12 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
   readonly "Rebuild": InetAddressV4
 }
 
-const inetAddressFromString = netStringTransformation(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
+const inetAddressFromString = stringTransformation(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
 const inetAddressFamilyFromString = <A extends NetAddress_.InetAddress>(
   guard: (address: NetAddress_.InetAddress) => address is A,
   message: string
 ) =>
-  netStringTransformation<A, NetAddress_.NetAddressError>(
+  stringTransformation<A, NetAddress_.NetAddressError>(
     (input) =>
       Result_.flatMap(
         NetAddress_.inetAddressFromString(input),
@@ -13782,7 +13781,7 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
 
 const unixSocketAddressPrefix = "unix://"
 
-const socketAddressFromString = netStringTransformation<NetAddress_.SocketAddress, NetAddress_.NetAddressError>(
+const socketAddressFromString = stringTransformation<NetAddress_.SocketAddress, NetAddress_.NetAddressError>(
   (input) =>
     input.startsWith(unixSocketAddressPrefix)
       ? Result_.succeed(NetAddress_.unixPathAddress(input.slice(unixSocketAddressPrefix.length)))
@@ -13889,7 +13888,7 @@ export interface DomainNameFromString extends decodeTo<DomainName, String> {
  */
 export const DomainNameFromString: DomainNameFromString = netAddressFromString(
   DomainName,
-  netStringTransformation<string, NetAddress_.NetAddressError>(Host_.domainNameFromString, (name) => name),
+  stringTransformation<string, NetAddress_.NetAddressError>(Host_.domainNameFromString, (name) => name),
   "DomainNameFromString"
 )
 
@@ -13945,7 +13944,7 @@ export interface ScopedIpv6LiteralFromString extends decodeTo<ScopedIpv6Literal,
  */
 export const ScopedIpv6LiteralFromString: ScopedIpv6LiteralFromString = netAddressFromString(
   ScopedIpv6Literal,
-  netStringTransformation<string, NetAddress_.NetAddressError>(
+  stringTransformation<string, NetAddress_.NetAddressError>(
     NetAddress_.scopedIpv6LiteralFromString,
     (literal) => literal
   ),
@@ -14010,7 +14009,7 @@ export interface HostPort extends declare<Host_.HostPort> {
   readonly "Rebuild": HostPort
 }
 
-const hostPortFromString = netStringTransformation(Host_.hostPortFromString, Host_.formatHostPort)
+const hostPortFromString = stringTransformation(Host_.hostPortFromString, Host_.formatHostPort)
 
 /**
  * Schema for already-constructed unresolved host and port values.
@@ -16250,18 +16249,6 @@ export function Result<A extends Constraint, E extends Constraint>(
 // SemVer schemas
 // -----------------------------------------------------------------------------
 
-const semVerStringTransformation = <A>(
-  parse: (input: string) => Result_.Result<A, SemVer_.SemVerError>,
-  format: (value: A) => string
-): SchemaTransformation.Transformation<A, string> =>
-  SchemaTransformation.transformEffect({
-    decode: (input, options) =>
-      Effect.mapErrorEager(
-        Effect.fromResult(parse(input)),
-        (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options)
-      ),
-    encode: (value) => Effect.succeed(format(value))
-  })
 // Alphanumeric identifiers contain at least one non-digit.
 const SemVerCoreArbitrary = Struct({
   major: Natural,
@@ -16269,7 +16256,7 @@ const SemVerCoreArbitrary = Struct({
   patch: Natural,
   prerelease: ArraySchema(Union([Natural, String.check(isPattern(/^[0-9]*[A-Za-z-][0-9A-Za-z-]*$/))]))
 })
-const semVerFromString = semVerStringTransformation(SemVer_.parse, SemVer_.format)
+const semVerFromString = stringTransformation(SemVer_.parse, SemVer_.format)
 const SemVerString = String.annotate({ expected: "a string that will be decoded as a SemVer" })
 /**
  * Type-level representation of {@link SemVer}.
@@ -16350,7 +16337,7 @@ export interface SemVerFromString extends decodeTo<SemVer, String> {
 export const SemVerFromString: SemVerFromString = SemVerString.pipe(
   decodeTo(SemVer, semVerFromString)
 )
-const semVerRangeFromString = semVerStringTransformation(SemVerRange_.parse, SemVerRange_.format)
+const semVerRangeFromString = stringTransformation(SemVerRange_.parse, SemVerRange_.format)
 const SemVerRangeString = String.annotate({ expected: "a string that will be decoded as a SemVer range" })
 /**
  * Type-level representation of {@link SemVerRange}.
