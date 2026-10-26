@@ -309,10 +309,11 @@ export function formatJson(input: unknown, options?: {
   readonly space?: number | string | undefined
 }): string {
   const ancestors: Array<object> = []
+  const sources = new WeakMap<object, object>()
   return JSON.stringify(
     input,
     function(this: object, key: string, value: unknown) {
-      const original = Object.getOwnPropertyDescriptor(this, key)?.value
+      const original = Object.getOwnPropertyDescriptor(sources.get(this) ?? this, key)?.value
       const redacted = Predicate.hasProperty(original, symbolRedactable)
         ? redact(original)
         : redact(value)
@@ -339,9 +340,10 @@ export function formatJson(input: unknown, options?: {
       if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
         return current
       }
-      const snapshot = snapshotGetters(current)
-      ancestors.push(snapshot)
-      return snapshot
+      const view = redactingView(current)
+      sources.set(view, current)
+      ancestors.push(view)
+      return view
     },
     options?.space
   ) ?? "null"
@@ -357,28 +359,25 @@ function hasGetter(object: object): boolean {
 }
 
 // JSON.stringify reads a getter once, then calls toJSON on the result before
-// the replacer sees it. Copy the object without relying on Proxy, replacing
-// each getter with one that reads the original once, when JSON.stringify
-// visits it, and redacts the result. Data properties are copied eagerly so the
-// replacer can still read the original value through the property descriptor.
-function snapshotGetters(object: object): object {
+// the replacer sees it. Return a view without relying on Proxy: each property
+// reads the source when JSON.stringify visits it, with the source as receiver,
+// and redacts getter results.
+function redactingView(object: object): object {
   // JSON.stringify reads every array index, regardless of enumerability
   const keys = Array.isArray(object)
     ? Array.from({ length: object.length }, (_, i) => String(i))
     : Object.keys(object)
-  // A null prototype keeps an own "__proto__" key from replacing the prototype
-  const snapshot: Record<string, unknown> = Array.isArray(object) ? [] : Object.create(null)
+  const view = Array.isArray(object) ? [] : {}
   for (const key of keys) {
-    if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
-      Object.defineProperty(snapshot, key, {
-        enumerable: true,
-        get: () => redact(Reflect.get(object, key))
-      })
-    } else {
-      snapshot[key] = (object as Record<string, unknown>)[key]
-    }
+    Object.defineProperty(view, key, {
+      enumerable: true,
+      get: () => {
+        const value = Reflect.get(object, key)
+        return Object.getOwnPropertyDescriptor(object, key)?.get !== undefined ? redact(value) : value
+      }
+    })
   }
-  return snapshot
+  return view
 }
 
 function isJsonPrimitiveWrapper(object: object): boolean {
