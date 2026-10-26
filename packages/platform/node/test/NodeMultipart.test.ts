@@ -35,10 +35,15 @@ describe("NodeMultipart", () => {
       assert.strictEqual(error.reason.cause, cause)
 
       const closed = new Readable({ read() {} })
-      closed.push(form.slice(0, 20))
-      setImmediate(() => closed.destroy())
-      const closedError = yield* NodeMultipart.stream(closed, headers).pipe(Stream.runDrain, Effect.flip)
-      assert.strictEqual(closedError.reason._tag, "Parse")
+      closed.push("--x\r\nContent-Disposition: form-data; name=\"a\"; filename=\"a.txt\"\r\n\r\nb")
+      const closedError = yield* NodeMultipart.stream(closed, headers).pipe(
+        Stream.runForEach((part) => {
+          closed.destroy()
+          return part._tag === "File" ? Stream.runDrain(part.content) : Effect.void
+        }),
+        Effect.flip
+      )
+      assert.strictEqual(closedError._tag, "MultipartError")
     }))
 
   it.effect("leaves the source open on interruption and handles its later error", () =>
