@@ -1,6 +1,11 @@
 /**
  * Parses JSON with JavaScript-style comments without external dependencies.
  *
+ * The syntax target is the [JSONC draft specification](https://jsonc.org/)
+ * with `jsonc-parser` 3.3.1's default profile: JSON plus line and block comments,
+ * with trailing commas disabled. Decoded values follow `JSON.parse` semantics;
+ * invalid documents throw instead of returning a partial result.
+ *
  * @stability unstable
  * @since 4.0.7
  */

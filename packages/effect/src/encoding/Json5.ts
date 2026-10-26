@@ -1,6 +1,10 @@
 /**
  * Parses JSON5 configuration files without external dependencies.
  *
+ * The compatibility target is [JSON5 1.0.0](https://spec.json5.org/) and the
+ * value-parsing behavior of `json5` 2.2.3, without its optional reviver.
+ * Identifier names use the runtime's Unicode property tables.
+ *
  * @stability unstable
  * @since 4.0.7
  */
