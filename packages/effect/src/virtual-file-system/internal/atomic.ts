@@ -232,26 +232,6 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
 // Transaction helpers
 // -----------------------------------------------------------------------------
 
-const authorizeCreate = (
-  tx: E.Transaction,
-  parent: E.DirectoryNode,
-  requested: number | undefined,
-  kind: E.Node["kind"]
-) =>
-  Result.gen(function*() {
-    yield* tx.requireResult(parent, E.WRITE_PERMISSION | E.EXECUTE_PERMISSION)
-    if (requested !== undefined) yield* E.modeResult(requested, kind, tx.operation)
-    if (
-      kind === "directory" && requested !== undefined && (requested & E.SET_GID_BIT) !== 0 &&
-      !tx.caller.policy.privileged
-    ) {
-      const gid = (parent.mode & E.SET_GID_BIT) !== 0 ? parent.gid : tx.caller.policy.gid
-      if (gid !== tx.caller.policy.gid && !tx.caller.policy.groups.includes(gid)) {
-        return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
-      }
-    }
-  })
-
 const reserveFile = (tx: E.Transaction, amount: bigint): Result.Result<void, M.OperationError> =>
   Result.gen(function*() {
     if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
@@ -516,7 +496,7 @@ const writable = (
     let selected = initial
     const create = options.create ?? "ifmissing"
     if (create === "exclusive") {
-      yield* authorizeCreate(tx, initial.parent, options.mode, "file")
+      yield* tx.authorizeCreateResult(initial.parent, options.mode, "file")
       yield* tx.conditionsResult(initial.parent, initial.binding, options.conditions)
       if (initial.binding !== undefined) {
         return yield* Result.fail(new M.AlreadyExists({ operation: tx.operation, reason: "occupiedEntry" }))
@@ -540,7 +520,7 @@ const writable = (
         yield* tx.conditionsResult(initial.parent, initial.binding, options.conditions)
         return yield* Result.fail(new M.NotFound({ operation: tx.operation, reason: "missingEntry" }))
       }
-      yield* authorizeCreate(tx, selected.parent, options.mode, "file")
+      yield* tx.authorizeCreateResult(selected.parent, options.mode, "file")
       yield* tx.conditionsResult(initial.parent, initial.binding, options.conditions)
     }
     if (options.expectedRevision !== undefined) {
@@ -712,7 +692,7 @@ export const createFile = (
   Result.gen(function*() {
     yield* validate("createFile", options)
     const slot = yield* tx.slotResult(target)
-    yield* authorizeCreate(tx, slot.parent, options?.mode, "file")
+    yield* tx.authorizeCreateResult(slot.parent, options?.mode, "file")
     yield* tx.conditionsResult(slot.parent, slot.binding, options?.conditions)
     if (slot.binding !== undefined) {
       return yield* Result.fail(new M.AlreadyExists({ operation: tx.operation, reason: "occupiedEntry" }))
@@ -736,7 +716,7 @@ const mkdirOne = (
       if (node.kind === "directory") return node
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
-    yield* authorizeCreate(tx, slot.parent, options.mode, "directory")
+    yield* tx.authorizeCreateResult(slot.parent, options.mode, "directory")
     if (final) yield* tx.conditionsResult(slot.parent, slot.binding, options.conditions)
     if (slot.binding !== undefined) {
       return yield* Result.fail(new M.AlreadyExists({ operation: tx.operation, reason: "occupiedEntry" }))
@@ -769,8 +749,42 @@ export const makeDirectory = (
         let first = end - 1
         while (first >= 0 && bytes[first] !== CHAR_FORWARD_SLASH) first--
         yield* E.nameValueResult(Result.getOrThrow(BytePath.fromBytes(bytes.subarray(first + 1, end))), tx.operation)
+        const length = BigInt(end)
+        const runtime = tx.engine.runtime
+        const limits = runtime.limits
         node = yield* tx.directoryResult(tx.caller.policy.cwd)
-        for (let index = 0; index <= end; index++) {
+        let prefixEnd = 0
+        if (
+          length <= limits.pathBytes && length <= limits.expandedPathBytes &&
+          length * BigInt("2") <= limits.transientBytes - runtime.payload
+        ) {
+          const supplied = Result.getOrThrow(BytePath.fromBytes(bytes.subarray(0, end)))
+          const route = yield* tx.resolveResult(supplied, false, undefined, 0, [], undefined, options)
+          node = route.object
+          if (node.kind === "directory") {
+            const result = tx.observation(node)
+            if (result.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+            }
+            return result
+          }
+          if (node.kind !== "symlink" || route.parent === undefined || route.mkdirPrefixEnd === undefined) {
+            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+          }
+          const state: E.ResolutionState = { follows: 0 }
+          yield* tx.consumeLinkResult(state)
+          const followed = tx.resolveResult(node.target, true, route.parent.id, state.follows, [], state)
+          if (Result.isFailure(followed) && followed.failure instanceof M.NotFound) {
+            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+          }
+          node = (yield* followed).object
+          if (node.kind !== "directory") {
+            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+          }
+          prefixEnd = route.mkdirPrefixEnd
+        }
+        // Prefix resolution preserves error order under constrained budgets and through symlinks.
+        for (let index = prefixEnd + 1; index <= end; index++) {
           if (index < end && bytes[index] !== CHAR_FORWARD_SLASH) continue
           if (index === 0 || bytes[index - 1] === CHAR_FORWARD_SLASH) continue
           const prefix = Result.getOrThrow(BytePath.fromBytes(bytes.subarray(0, index)))
@@ -837,7 +851,7 @@ export const makeSymlink = (
       return yield* Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "path", stage: "resolution" }))
     }
     const slot = yield* tx.slotResult(target)
-    yield* authorizeCreate(tx, slot.parent, undefined, "symlink")
+    yield* tx.authorizeCreateResult(slot.parent, undefined, "symlink")
     yield* tx.conditionsResult(slot.parent, slot.binding, options)
     if (slot.binding !== undefined) {
       return yield* Result.fail(
@@ -890,7 +904,7 @@ export const makeHardLink = (
       )
     }
     const slot = yield* tx.slotResult(destination)
-    yield* authorizeCreate(tx, slot.parent, undefined, node.kind)
+    yield* tx.authorizeCreateResult(slot.parent, undefined, node.kind)
     yield* tx.conditionsResult(slot.parent, slot.binding, options)
     if (slot.binding !== undefined) {
       return yield* Result.fail(
@@ -1014,7 +1028,7 @@ export const publishCopiedFile = (
     yield* validate("publishCopiedFile", options)
     const slot = yield* tx.slotResult(destination)
     const existing = slot.binding === undefined ? undefined : yield* tx.getResult(slot.binding.object)
-    if (existing === undefined) yield* authorizeCreate(tx, slot.parent, options?.mode, "file")
+    if (existing === undefined) yield* tx.authorizeCreateResult(slot.parent, options?.mode, "file")
     else yield* tx.requireResult(existing, E.WRITE_PERMISSION)
     if (existing !== undefined && options?.preserveTimes !== undefined) yield* tx.ownsResult(existing)
     yield* tx.conditionsResult(slot.parent, slot.binding, options?.destination)

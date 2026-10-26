@@ -27,6 +27,65 @@ export interface Binding {
   readonly version: bigint
 }
 
+interface DirectoryEntries {
+  readonly size: number
+  get(name: string): Binding | undefined
+  set(name: string, binding: Binding): void
+  delete(name: string): boolean
+  entries(): IterableIterator<[string, Binding]>
+  values(): IterableIterator<Binding>
+}
+
+class DirectoryDraft implements DirectoryEntries {
+  private readonly changes = new Map<string, Binding | undefined>()
+  private readonly appended = new Map<string, Binding>()
+  size: number
+  private readonly base: DirectoryEntries
+  constructor(base: DirectoryEntries) {
+    this.base = base
+    this.size = base.size
+  }
+  get(name: string): Binding | undefined {
+    return this.appended.get(name) ?? (this.changes.has(name) ? this.changes.get(name) : this.base.get(name))
+  }
+  set(name: string, binding: Binding): void {
+    if (this.get(name) === undefined) {
+      this.size++
+      this.changes.set(name, undefined)
+      this.appended.set(name, binding)
+    } else if (this.appended.has(name)) this.appended.set(name, binding)
+    else this.changes.set(name, binding)
+  }
+  delete(name: string): boolean {
+    if (this.get(name) === undefined) return false
+    this.size--
+    this.appended.delete(name)
+    this.changes.set(name, undefined)
+    return true
+  }
+  *entries(): IterableIterator<[string, Binding]> {
+    for (const [name, binding] of this.base.entries()) {
+      if (!this.changes.has(name)) yield [name, binding]
+      else {
+        const replacement = this.changes.get(name)
+        if (replacement !== undefined) yield [name, replacement]
+      }
+    }
+    yield* this.appended.entries()
+  }
+  *values(): IterableIterator<Binding> {
+    for (const [, binding] of this.entries()) yield binding
+  }
+  publish(): DirectoryEntries {
+    for (const [name, binding] of this.changes) {
+      if (binding === undefined) this.base.delete(name)
+      else this.base.set(name, binding)
+    }
+    for (const [name, binding] of this.appended) this.base.set(name, binding)
+    return this.base
+  }
+}
+
 interface Base {
   readonly id: bigint
   uid: number
@@ -47,7 +106,7 @@ export interface FileNode extends Base {
 
 export interface DirectoryNode extends Base {
   readonly kind: "directory"
-  entries: Map<string, Binding>
+  entries: DirectoryEntries
   parent: bigint | undefined
   namespace: bigint
 }
@@ -117,6 +176,7 @@ export interface SavedRoute {
 }
 
 export interface Route {
+  readonly mkdirPrefixEnd?: number
   readonly object: Node
   readonly parent?: DirectoryNode
   readonly binding?: Binding
@@ -288,6 +348,9 @@ export class Engine {
   readonly root: bigint
   readonly nodes = new Map<bigint, Node>()
   readonly pins = new Map<bigint, number>()
+  private readonly releaseCandidates = new Set<bigint>()
+  entryCount = 0
+  contentBytes = BigInt("0")
   nextObject = BigInt("2")
   nextBinding = BigInt("1")
 
@@ -328,17 +391,45 @@ export class Engine {
     this.pins.set(id, (this.pins.get(id) ?? 0) + 1)
   }
 
-  unpin(id: bigint) {
+  unpin(id: bigint): void {
     const n = this.pins.get(id)
     if (n === undefined) return
-    if (n === 1) this.pins.delete(id)
-    else this.pins.set(id, n - 1)
+    if (n === 1) {
+      this.pins.delete(id)
+      this.releaseCandidates.add(id)
+    } else this.pins.set(id, n - 1)
   }
-
-  sweep() {
-    for (const [id, node] of this.nodes) if (node.nlink === BigInt("0") && !this.pins.has(id)) this.nodes.delete(id)
+  *releasedObjects(): IterableIterator<Node> {
+    for (const id of this.releaseCandidates) {
+      const node = this.nodes.get(id)
+      if (node !== undefined && node.nlink === BigInt("0") && !this.pins.has(id)) yield node
+    }
   }
-
+  reclaim(id: bigint): void {
+    const node = this.nodes.get(id)
+    if (node !== undefined && node.nlink === BigInt("0") && !this.pins.has(id)) {
+      this.nodes.delete(id)
+      if (node.kind === "directory") this.entryCount -= node.entries.size
+      else {this.contentBytes -= node.kind === "file"
+          ? BigInt(node.data.length)
+          : BigInt(BytePath.byteLength(node.target))}
+    }
+    this.releaseCandidates.delete(id)
+  }
+  sweep(): void {
+    for (const id of this.releaseCandidates) this.reclaim(id)
+  }
+  publishNode(node: Node): void {
+    // Entry maps change only during publication. Snapshots must copy entries rather than retain this map.
+    if (node.kind === "directory" && node.entries instanceof DirectoryDraft) node.entries = node.entries.publish()
+    this.nodes.set(node.id, node)
+    if (node.nlink === BigInt("0")) this.releaseCandidates.add(node.id)
+  }
+  initializeCapacity(): void {
+    const usage = this.usage()
+    this.entryCount = usage.entries
+    this.contentBytes = usage.contentBytes
+  }
   retainResult(policy: Policy, resource: R.Resource) {
     return this.retainObjectsResult(resource, [policy.root, policy.cwd, ...policy.boundaries])
   }
@@ -488,7 +579,7 @@ export class Transaction {
     const node = this.changes.get(id)
     if (node !== undefined) return Result.succeed(node)
     return Result.map(this.getResult(id), (before) => {
-      const edited = before.kind === "directory" ? { ...before, entries: new Map(before.entries) } : { ...before }
+      const edited = { ...before }
       this.changes.set(id, edited)
       return edited
     })
@@ -502,10 +593,15 @@ export class Transaction {
   }
 
   private editDirectoryResult(id: bigint) {
-    return Result.flatMap(this.editResult(id), (node) =>
-      node.kind === "directory"
-        ? Result.succeed(node)
-        : Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" })))
+    return Result.flatMap(this.editResult(id), (node) => {
+      if (node.kind !== "directory") {
+        return Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+      }
+      if (this.engine.nodes.has(id) && !(node.entries instanceof DirectoryDraft)) {
+        node.entries = new DirectoryDraft(node.entries)
+      }
+      return Result.succeed(node)
+    })
   }
 
   visitResult(amount = 1) {
@@ -603,6 +699,23 @@ export class Transaction {
     return this.permission(node, requested)
       ? Result.succeed(undefined)
       : Result.fail(new M.AccessDenied({ operation: this.operation, reason: "permission" }))
+  }
+
+  authorizeCreateResult(parent: DirectoryNode, requested: number | undefined, kind: Node["kind"]) {
+    return Result.gen(this, function*() {
+      yield* this.requireResult(parent, WRITE_PERMISSION | EXECUTE_PERMISSION)
+      if (requested !== undefined) yield* modeResult(requested, kind, this.operation)
+      if (
+        kind === "directory" && requested !== undefined && (requested & SET_GID_BIT) !== 0 &&
+        !this.caller.policy.privileged
+      ) {
+        const policy = this.caller.policy
+        const gid = (parent.mode & SET_GID_BIT) !== 0 ? parent.gid : policy.gid
+        if (gid !== policy.gid && !policy.groups.includes(gid)) {
+          return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "ownership" }))
+        }
+      }
+    })
   }
 
   ownsResult(node: Node) {
@@ -730,7 +843,8 @@ export class Transaction {
     start?: bigint,
     follows = 0,
     inherited: ReadonlyArray<RouteEdge> = [],
-    state: ResolutionState = { follows }
+    state: ResolutionState = { follows },
+    mkdir?: M.MkdirOptions
   ) {
     if (state.follows > this.engine.runtime.limits.symlinkFollows) {
       return Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" }))
@@ -787,14 +901,34 @@ export class Transaction {
               BytePath.fromBytes(component),
               () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
             )
-            const binding = directory.entries.get(key(name))
+            let binding = directory.entries.get(key(name))
             if (binding === undefined) {
-              return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+              if (mkdir === undefined) {
+                return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+              }
+              yield* nameValueResult(name, this.operation)
+              if (BigInt(BytePath.byteLength(name)) > this.engine.runtime.limits.nameBytes) {
+                return yield* Result.fail(
+                  new M.LimitExceeded({ operation: this.operation, domain: "name", stage: "resolution" })
+                )
+              }
+              yield* this.authorizeCreateResult(directory, mkdir.mode, "directory")
+              if (index === components.length - 1) yield* this.conditionsResult(directory, undefined, mkdir.conditions)
+              const created = yield* this.createResult("directory", directory, mkdir.mode)
+              binding = yield* this.insertResult(directory.id, name, created.id)
+            } else if (mkdir !== undefined && index === components.length - 1) {
+              if ((yield* this.getResult(binding.object)).kind !== "directory") {
+                return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+              }
+              yield* this.conditionsResult(directory, binding, mkdir.conditions)
             }
             const node = yield* this.getResult(binding.object)
             support.push({ parent: directory.id, name: binding.name, version: binding.version, object: node.id })
             route = { object: node, parent: directory, binding, support }
             const terminal = index === components.length - 1
+            if (mkdir !== undefined && node.kind === "symlink" && !terminal) {
+              return { ...route, mkdirPrefixEnd: component.byteOffset - bytes.byteOffset + component.length }
+            }
             if (node.kind === "symlink" && (!terminal || followFinal)) {
               yield* this.consumeLinkResult(state)
               let length = BytePath.byteLength(node.target)
@@ -1318,32 +1452,55 @@ export class Transaction {
       }
       // Completed releases sweep unlinked, unpinned nodes. Unchanged per-node
       // contributions therefore preserve the live map's membership and capacity.
-      let all: Map<bigint, Node> | undefined
+      let removed: Set<bigint> | undefined
+      let released: Set<bigint> | undefined
+      let releasedEntries = 0
+      let releasedContent = BigInt("0")
+      let objectDelta = 0
+      let entryDelta = 0
+      let contentDelta = BigInt("0")
       if (!capacityUnchanged) {
-        let objects = engine.nodes.size
-        let entries = 0
-        let content = BigInt("0")
-        all = new Map(engine.nodes)
-        for (const [id, node] of this.changes) all.set(id, node)
-        for (const [id, node] of all) if (node.nlink === BigInt("0") && !engine.pins.has(id)) all.delete(id)
-        objects = all.size
-        for (const node of all.values()) {
-          if (node.kind === "directory") entries += node.entries.size
-          else if (node.kind === "file") content += BigInt(node.data.length)
-          else content += BigInt(BytePath.byteLength(node.target))
+        for (const [id, node] of this.changes) {
+          const before = engine.nodes.get(id)
+          const keep = node.nlink !== BigInt("0") || engine.pins.has(id)
+          objectDelta += Number(keep) - Number(before !== undefined)
+          if (before !== undefined) {
+            if (before.kind === "directory") entryDelta -= before.entries.size
+            else {contentDelta -= before.kind === "file"
+                ? BigInt(before.data.length)
+                : BigInt(BytePath.byteLength(before.target))}
+          }
+          if (keep) {
+            if (node.kind === "directory") entryDelta += node.entries.size
+            else {contentDelta += node.kind === "file"
+                ? BigInt(node.data.length)
+                : BigInt(BytePath.byteLength(node.target))}
+          } else {
+            removed ??= new Set()
+            removed.add(id)
+          }
+        }
+        for (const node of engine.releasedObjects()) {
+          if (this.changes.has(node.id)) continue
+          released ??= new Set()
+          released.add(node.id)
+          if (node.kind === "directory") releasedEntries += node.entries.size
+          else {releasedContent += node.kind === "file"
+              ? BigInt(node.data.length)
+              : BigInt(BytePath.byteLength(node.target))}
         }
         const limits = engine.runtime.limits
-        if (objects > limits.objects) {
+        if (engine.nodes.size + objectDelta - (released?.size ?? 0) > limits.objects) {
           return yield* Result.fail(
             new M.LimitExceeded({ operation: this.operation, domain: "objects", stage: "publication" })
           )
         }
-        if (entries > limits.entries) {
+        if (engine.entryCount + entryDelta - releasedEntries > limits.entries) {
           return yield* Result.fail(
             new M.LimitExceeded({ operation: this.operation, domain: "entries", stage: "publication" })
           )
         }
-        if (content > limits.contentBytes) {
+        if (engine.contentBytes + contentDelta - releasedContent > limits.contentBytes) {
           return yield* Result.fail(
             new M.LimitExceeded({ operation: this.operation, domain: "content", stage: "publication" })
           )
@@ -1389,10 +1546,12 @@ export class Transaction {
               }
             }
             if (caller !== undefined) yield* engine.retainResult(caller.policy, caller.resource)
-            if (all !== undefined) {
-              for (const id of engine.nodes.keys()) if (!all.has(id)) engine.nodes.delete(id)
-            }
-            for (const [id, node] of this.changes) if (all === undefined || all.has(id)) engine.nodes.set(id, node)
+            // A Clock callback may already have reclaimed a staged release candidate.
+            if (released !== undefined) { for (const id of released) engine.reclaim(id) }
+            if (removed !== undefined) { for (const id of removed) engine.nodes.delete(id) }
+            for (const [id, node] of this.changes) if (!removed?.has(id)) engine.publishNode(node)
+            engine.entryCount += entryDelta
+            engine.contentBytes += contentDelta
             if (read !== undefined) Uint8Array.prototype.set.call(read.destination.view, read.bytes)
             if (position !== undefined) position.state.position = position.next
           })

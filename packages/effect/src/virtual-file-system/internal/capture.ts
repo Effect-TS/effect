@@ -508,6 +508,7 @@ class Candidate extends R.ChargedBytes {
         if (node.kind === "directory") parent.nlink++
         else node.nlink++
       }
+      engine.initializeCapacity()
       engine.nextObject = maxObject + one
       return engine
     })
