@@ -5,6 +5,9 @@
  * The protected header is authenticated as additional data, so changing it
  * fails decryption. Headers with `crit` or `zip` are rejected.
  *
+ * Bound untrusted token length before decryption; this module does not impose
+ * a token-size limit.
+ *
  * @stability unstable
  * @since 4.1.0
  */
@@ -27,19 +30,23 @@ import * as JoseError from "./JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
 /**
- * Schema for a JWE protected header. Other parameters are dropped.
+ * Schema for a JWE protected header, including additional JSON-valued
+ * parameters.
  *
  * @stability unstable
  * @category schemas
  * @since 4.1.0
  */
-export const ProtectedHeader = Schema.Struct({
-  alg: Schema.Literal("dir"),
-  enc: Schema.Literal("A256GCM"),
-  kid: Schema.optionalKey(Schema.String),
-  typ: Schema.optionalKey(Schema.String),
-  cty: Schema.optionalKey(Schema.String)
-})
+export const ProtectedHeader = Schema.StructWithRest(
+  Schema.Struct({
+    alg: Schema.Literal("dir"),
+    enc: Schema.Literal("A256GCM"),
+    kid: Schema.optionalKey(Schema.String),
+    typ: Schema.optionalKey(Schema.String),
+    cty: Schema.optionalKey(Schema.String)
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
+)
 
 /**
  * A JWE protected header. It is authenticated only after decryption succeeds.
@@ -51,14 +58,19 @@ export const ProtectedHeader = Schema.Struct({
 export type ProtectedHeader = typeof ProtectedHeader.Type
 
 /**
- * Header parameters to protect. `alg` and `enc` are fixed and `kid` defaults
- * to the key's.
+ * Standard header parameters to protect. Encryption also accepts additional
+ * JSON-valued parameters. `alg` and `enc` are fixed and `kid` defaults to the
+ * key's.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
 export interface Header {
+  readonly alg?: never
+  readonly enc?: never
+  readonly crit?: never
+  readonly zip?: never
   readonly kid?: string | undefined
   readonly typ?: string | undefined
   readonly cty?: string | undefined
@@ -81,7 +93,7 @@ export type KeyResolver<E = never, R = never> = (
 ) => Effect.Effect<SecretKey<"dir">, E, R>
 
 /**
- * The protected header and plaintext of a decrypted JWE.
+ * The protected header, plaintext, and key used to decrypt a JWE.
  *
  * @stability unstable
  * @category models
@@ -90,6 +102,7 @@ export type KeyResolver<E = never, R = never> = (
 export interface Decrypted {
   readonly protectedHeader: ProtectedHeader
   readonly plaintext: Uint8Array
+  readonly key: SecretKey<"dir">
 }
 
 const tagLength = 16
@@ -125,12 +138,14 @@ const tagLength = 16
  * @category cryptography
  * @since 4.1.0
  */
-export const encrypt = Effect.fnUntraced(function*(
+export const encrypt = Effect.fnUntraced(function*<
+  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header
+>(
   plaintext: Uint8Array,
   key: SecretKey<"dir">,
-  header?: Header
+  header?: Header & H
 ): Effect.fn.Return<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom> {
-  const protectedHeader = encodeHeader({ alg: "dir", enc: "A256GCM" }, key.kid, header)
+  const protectedHeader = yield* encodeHeader({ alg: "dir", enc: "A256GCM" }, key.kid, header, ["crit", "zip"])
   const random = yield* SecureRandom.SecureRandom
   const nonce = yield* random.randomBytes(Aead.aes256Gcm.nonceLength)
   const aead = yield* Aead.Aead
@@ -192,5 +207,5 @@ export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
         : cryptoFailure("Could not decrypt with the key")(error)
     )
   )
-  return { protectedHeader, plaintext }
+  return { protectedHeader, plaintext, key: resolvedKey }
 })

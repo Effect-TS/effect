@@ -70,16 +70,27 @@ export const reveal = (token: string | Redacted.Redacted<string>): string =>
   Redacted.isRedacted(token) ? Redacted.value(token) : token
 
 /**
- * Decodes unpadded base64url. Re-encoding must give the same text, which
- * rejects padding, whitespace, and non-zero trailing bits, so every value has
- * one serialization.
+ * Checks unpadded base64url, including the unused bits in the final character.
+ *
+ * @internal
+ */
+export const isCanonicalSegment = (segment: string): boolean => {
+  if (/[^A-Za-z0-9_-]/.test(segment)) return false
+  const remainder = segment.length % 4
+  const last = segment.charAt(segment.length - 1)
+  return remainder === 0 ||
+    (remainder === 2 ? "AQgw".includes(last) : remainder === 3 && "AEIMQUYcgkosw048".includes(last))
+}
+
+/**
+ * Decodes canonical unpadded base64url.
  *
  * @internal
  */
 export const decodeSegment = (segment: string): Uint8Array | undefined => {
-  if (!/^[A-Za-z0-9_-]*$/.test(segment)) return undefined
+  if (!isCanonicalSegment(segment)) return undefined
   const decoded = Base64Url.decode(segment)
-  return Result.isSuccess(decoded) && Base64Url.encode(decoded.success) === segment ? decoded.success : undefined
+  return Result.isSuccess(decoded) ? decoded.success : undefined
 }
 
 /** @internal */
@@ -133,24 +144,29 @@ export const decodeHeader = <S extends Schema.ConstraintDecoder<unknown>>(
 }
 
 /**
- * Base64url-encodes a protected header. The fixed parameters come first, so
- * `{ alg }` serializes as `{"alg":...}`.
+ * Base64url-encodes a protected header. Fixed parameters come first and
+ * cannot be overridden by additional parameters.
  *
  * @internal
  */
 export const encodeHeader = (
   fixed: Readonly<Record<string, string>>,
   kid: string | undefined,
-  header:
-    | { readonly kid?: string | undefined; readonly typ?: string | undefined; readonly cty?: string | undefined }
-    | undefined
-): string => {
-  const value: Record<string, string> = { ...fixed }
-  const keyId = header?.kid ?? kid
-  if (keyId !== undefined) value.kid = keyId
-  if (header?.typ !== undefined) value.typ = header.typ
-  if (header?.cty !== undefined) value.cty = header.cty
-  return Base64Url.encode(JSON.stringify(value))
+  header: { readonly kid?: string | undefined } | undefined,
+  unsupported: ReadonlyArray<string>
+): Effect.Effect<string, JoseError.JoseError> => {
+  for (const name of unsupported) {
+    if (header !== undefined && Object.hasOwn(header, name)) {
+      return invalidArgument(`The ${name} header parameter is not supported`)
+    }
+  }
+  const value = { ...fixed, kid: header?.kid ?? kid, ...header, ...fixed }
+  value.kid = header?.kid ?? kid
+  try {
+    return Effect.succeed(Base64Url.encode(JSON.stringify(value)))
+  } catch {
+    return invalidArgument("The protected header is not JSON serializable")
+  }
 }
 
 /**

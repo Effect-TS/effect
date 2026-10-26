@@ -87,6 +87,7 @@ it.effect("encrypts schema-encoded claims and decrypts encrypted JWTs interopera
     }, { subject: "user_2", typ: "JWT" })
     assert.deepStrictEqual(decrypted.claims, { sub: "user_2", role: "admin", quota: 4 })
     assert.deepStrictEqual(decrypted.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", typ: "JWT" })
+    assert.strictEqual(decrypted.key, key)
   }).pipe(Effect.provide(layer)))
 
 const now = 1604416038

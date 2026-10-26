@@ -7,6 +7,9 @@
  * application claims. `exp` and `nbf` are checked whenever they are present;
  * require them with `requiredClaims`.
  *
+ * Bound untrusted token length before verification, decryption, or unverified
+ * decoding; this module does not impose a token-size limit.
+ *
  * @stability unstable
  * @since 4.1.0
  */
@@ -112,13 +115,15 @@ export interface Verified<A, H = Jws.ProtectedHeader> {
 }
 
 /**
- * A decrypted and validated JWT, with the JWE protected header.
+ * A decrypted and validated JWT, with its protected header and decryption key.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export type Decrypted<A> = Verified<A, Jwe.ProtectedHeader>
+export interface Decrypted<A> extends Verified<A, Jwe.ProtectedHeader> {
+  readonly key: SecretKey<"dir">
+}
 
 /**
  * The protected header and claims of a signed JWT that has not been verified.
@@ -272,11 +277,15 @@ const encodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * @category cryptography
  * @since 4.1.0
  */
-export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint, K extends SigningKey>(
+export const sign = Effect.fnUntraced(function*<
+  S extends Schema.Constraint,
+  K extends SigningKey,
+  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Jws.Header
+>(
   schema: S,
   claims: S["Type"],
   key: K,
-  header?: Jws.Header
+  header?: Jws.Header & H
 ): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.KeyRequirements<K>> {
   return yield* Jws.sign(yield* encodeClaims(schema, claims), key, header)
 })
@@ -395,11 +404,14 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
  * @category cryptography
  * @since 4.1.0
  */
-export const encrypt = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+export const encrypt = Effect.fnUntraced(function*<
+  S extends Schema.Constraint,
+  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Jwe.Header
+>(
   schema: S,
   claims: S["Type"],
   key: SecretKey<"dir">,
-  header?: Jwe.Header
+  header?: Jwe.Header & H
 ): Effect.fn.Return<
   Redacted.Redacted<string>,
   JwtError,
@@ -439,7 +451,10 @@ export const decrypt = Effect.fnUntraced(function*<S extends Schema.Constraint, 
 ): Effect.fn.Return<Decrypted<S["Type"]>, JwtError | E, S["DecodingServices"] | Aead.Aead | R> {
   const policy = yield* readPolicy(options)
   const decrypted = yield* Jwe.decrypt(token, key)
-  return yield* decodeClaims(schema, decrypted.plaintext, decrypted.protectedHeader, policy)
+  return {
+    ...(yield* decodeClaims(schema, decrypted.plaintext, decrypted.protectedHeader, policy)),
+    key: decrypted.key
+  }
 })
 
 /**

@@ -9,22 +9,28 @@ it.effect("encrypts and decrypts compact dir/A256GCM tokens interoperably", () =
   Effect.gen(function*() {
     const key = yield* Jwk.importSecret(Redacted.make({ ...secretJwk, kid: "enc-1" }), "dir")
 
-    const ours = yield* Jwe.encrypt(utf8("private message"), key, { cty: "text/plain" })
+    const header = { cty: "text/plain", tenant: { id: "one", roles: ["reader"] } }
+    const ours = yield* Jwe.encrypt(utf8("private message"), key, {
+      ...header,
+      alg: "RSA-OAEP",
+      enc: "A128GCM"
+    } as unknown as Jwe.Header)
     const theirs = yield* Effect.promise(() => jose.compactDecrypt(Redacted.value(ours), secret))
     assert.strictEqual(text(theirs.plaintext), "private message")
-    assert.deepStrictEqual(theirs.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", cty: "text/plain" })
+    assert.deepStrictEqual(theirs.protectedHeader, { alg: "dir", enc: "A256GCM", kid: "enc-1", ...header })
 
     const again = yield* Jwe.encrypt(utf8("private message"), key)
     assert.notStrictEqual(Redacted.value(again), Redacted.value(ours))
 
     const token = yield* Effect.promise(() =>
       new jose.CompactEncrypt(utf8("from jose"))
-        .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
+        .setProtectedHeader({ alg: "dir", enc: "A256GCM", ...header })
         .encrypt(secret)
     )
     const decrypted = yield* Jwe.decrypt(token, key)
     assert.strictEqual(text(decrypted.plaintext), "from jose")
-    assert.deepStrictEqual(decrypted.protectedHeader, { alg: "dir", enc: "A256GCM" })
+    assert.deepStrictEqual(decrypted.protectedHeader, { alg: "dir", enc: "A256GCM", ...header })
+    assert.strictEqual(decrypted.key, key)
   }).pipe(Effect.provide(layer)))
 
 it.effect("rejects tampered ciphertext, other content encryption, and foreign keys", () =>
@@ -72,18 +78,20 @@ it.effect("resolves current and previous keys by kid and preserves lookup failur
     )
     const missing = { _tag: "UnknownKey" } as const
     const resolve: Jwe.KeyResolver<typeof missing> = (header) => {
+      assert.deepStrictEqual(header.tenant, { id: "one" })
       const key = [previous, current].find((key) => key.kid === header.kid)
       return key === undefined ? Effect.fail(missing) : Effect.succeed(key)
     }
 
     for (const key of [previous, current]) {
-      const token = yield* Jwe.encrypt(utf8("private message"), key)
+      const token = yield* Jwe.encrypt(utf8("private message"), key, { tenant: { id: "one" } })
       const decrypted = yield* Jwe.decrypt(token, resolve)
       assert.strictEqual(text(decrypted.plaintext), "private message")
       assert.strictEqual(decrypted.protectedHeader.kid, key.kid)
+      assert.strictEqual(decrypted.key, key)
     }
 
-    const unknown = yield* Jwe.encrypt(utf8("private message"), current, { kid: "unknown" })
+    const unknown = yield* Jwe.encrypt(utf8("private message"), current, { kid: "unknown", tenant: { id: "one" } })
     assert.strictEqual(yield* Jwe.decrypt(unknown, resolve).pipe(Effect.flip), missing)
   }).pipe(Effect.provide(layer)))
 
@@ -96,12 +104,21 @@ it.effect("rejects malformed tokens before resolving a key", () =>
       resolutions++
       return Effect.succeed(key)
     }
-    const zip = jose.base64url.encode(utf8(JSON.stringify({ alg: "dir", enc: "A256GCM", zip: "DEF" })))
+    for (const extension of [{ zip: "DEF" }, { crit: ["tenant"], tenant: "one" }]) {
+      const unsupported = jose.base64url.encode(JSON.stringify({ alg: "dir", enc: "A256GCM", ...extension }))
+      assertReason(
+        yield* Jwe.decrypt(`${unsupported}..${iv}.${ciphertext}.${tag}`, resolve).pipe(Effect.flip),
+        "InvalidToken"
+      )
+      assertReason(
+        yield* Jwe.encrypt(utf8("payload"), key, extension as unknown as Jwe.Header).pipe(Effect.flip),
+        "InvalidArgument"
+      )
+    }
 
     for (
       const invalid of [
         `${header}.AAAA.${iv}.${ciphertext}.${tag}`,
-        `${zip}..${iv}.${ciphertext}.${tag}`,
         `${header}..${iv}.${ciphertext}.AA`
       ]
     ) {

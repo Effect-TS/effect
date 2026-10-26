@@ -13,6 +13,18 @@ declare const verificationKey: Jwk.VerificationKey
 declare const token: Redacted.Redacted<string>
 declare const payload: Uint8Array
 
+interface AppHeader {
+  readonly kid?: string | undefined
+  readonly typ?: string | undefined
+}
+
+interface ProofHeader extends Jws.Header {
+  readonly jwk: Jwk.PublicJwk
+}
+
+declare const appHeader: AppHeader
+declare const proofHeader: ProofHeader
+
 class Decode extends Context.Service<Decode, { readonly prefix: string }>()("test/Decode") {}
 class Encode extends Context.Service<Encode, { readonly prefix: string }>()("test/Encode") {}
 class KeyStore extends Context.Service<KeyStore, { readonly key: Jwk.SecretKey<"dir"> }>()("test/KeyStore") {}
@@ -63,14 +75,34 @@ describe("Jwk", () => {
 })
 
 describe("Jws and Jwe", () => {
+  it("accepts named header interfaces and JSON-valued extensions", () => {
+    expect<AppHeader>().type.toBeAssignableTo<Jws.Header>()
+    expect<AppHeader>().type.toBeAssignableTo<Jwe.Header>()
+    expect(Jws.sign).type.toBeCallableWith(payload, privateKey, appHeader)
+    expect(Jws.sign).type.toBeCallableWith(payload, privateKey, proofHeader)
+    expect(Jwe.encrypt).type.toBeCallableWith(payload, dir, appHeader)
+    expect(Jwt.sign).type.toBeCallableWith(Claims, { sub: "user:42", quota: 3 }, privateKey, appHeader)
+    expect(Jwt.encrypt).type.toBeCallableWith(Claims, { sub: "user:42", quota: 3 }, dir, appHeader)
+    expect(Jws.sign).type.not.toBeCallableWith(payload, privateKey, { custom: () => "value" })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, dir, { custom: 1n })
+  })
+
   it("derives the algorithm from the key and makes the header optional", () => {
     expect(Jws.sign(payload, hmac)).type.toBe<
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Mac.Mac>
     >()
     expect(Jws.sign).type.toBeCallableWith(payload, privateKey, { kid: "k", typ: "JWT" })
+    expect(Jws.sign).type.toBeCallableWith(payload, privateKey, { jwk: publicKey.jwk, custom: [true, null] })
     expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { alg: "HS256" })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { crit: ["custom"] })
+    expect(Jws.sign).type.not.toBeCallableWith(payload, hmac, { b64: false })
     expect(Jws.sign).type.not.toBeCallableWith(payload, dir)
     expect(Jwe.encrypt).type.not.toBeCallableWith(payload, hmac)
+    expect(Jwe.encrypt).type.toBeCallableWith(payload, dir, { custom: { enabled: true } })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, dir, { alg: "dir" })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, dir, { enc: "A128GCM" })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, dir, { crit: ["custom"] })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, dir, { zip: "DEF" })
     expect(Jwe.encrypt(payload, dir)).type.toBe<
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom>
     >()

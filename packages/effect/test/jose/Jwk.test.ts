@@ -5,7 +5,7 @@ import { Jwk, Jwks } from "effect/jose"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as NodeCrypto from "node:crypto"
-import { assertReason, es256PublicJwk, layer, rfc7515, secretJwk } from "./utils.ts"
+import { assertReason, es256PublicJwk, layer, rfc7515, rs256PublicJwk, secretJwk } from "./utils.ts"
 
 it.effect("generates algorithm-bound key pairs that import for signing and verification", () =>
   Effect.gen(function*() {
@@ -26,6 +26,68 @@ it.effect("generates algorithm-bound key pairs that import for signing and verif
       assert.deepStrictEqual(publicKey.jwk, pair.publicKey)
     }
   }).pipe(Effect.provide(layer)))
+
+it.effect("rejects padded base64url in every public JWK key member", () =>
+  Effect.gen(function*() {
+    const pair = yield* Jwk.generateKeyPair({ algorithm: "EdDSA" })
+    for (
+      const { algorithm, jwk, members } of [
+        { algorithm: "RS256", jwk: rs256PublicJwk, members: ["n", "e"] },
+        { algorithm: "ES256", jwk: es256PublicJwk, members: ["x", "y"] },
+        { algorithm: "EdDSA", jwk: pair.publicKey, members: ["x"] }
+      ] as const
+    ) {
+      for (const member of members) {
+        const invalid = { ...jwk, [member]: `${Reflect.get(jwk, member)}=` }
+        assert.isFalse(Schema.is(Jwk.PublicJwk)(invalid))
+        const error = yield* Jwk.importPublic(invalid, algorithm).pipe(Effect.flip)
+        assertReason(error, "InvalidKey")
+        assert.include(error.reason.description, "base64url")
+        assert.isUndefined(error.reason.cause)
+      }
+    }
+  }).pipe(Effect.provide(layer)))
+
+it.effect("rejects padded base64url in every private JWK key member without exposing it", () =>
+  Effect.gen(function*() {
+    const pair = yield* Jwk.generateKeyPair({ algorithm: "EdDSA" })
+    for (
+      const { algorithm, jwk, members } of [
+        { algorithm: "RS256", jwk: rfc7515.rs256.jwk, members: ["n", "e", "d", "p", "q", "dp", "dq", "qi"] },
+        { algorithm: "ES256", jwk: rfc7515.es256.jwk, members: ["x", "y", "d"] },
+        { algorithm: "EdDSA", jwk: Redacted.value(pair.privateKey), members: ["x", "d"] }
+      ] as const
+    ) {
+      for (const member of members) {
+        const value = `${Reflect.get(jwk, member)}=`
+        const invalid = { ...jwk, [member]: value }
+        assert.isFalse(Schema.is(Jwk.PrivateJwk)(invalid))
+        const error = yield* Jwk.importPrivate(Redacted.make(invalid), algorithm).pipe(Effect.flip)
+        assertReason(error, "InvalidKey")
+        assert.include(error.reason.description, "base64url")
+        assert.isUndefined(error.reason.cause)
+        assert.notInclude(JSON.stringify(error), value)
+      }
+    }
+  }).pipe(Effect.provide(layer)))
+
+it.effect("rejects whitespace, invalid alphabets, invalid lengths, and nonzero trailing bits in JWK members", () =>
+  Effect.gen(function*() {
+    const { d: _d, ...publicJwk } = rfc7515.es256.jwk
+    for (const value of [`${rfc7515.es256.jwk.x} `, "***", "/w", "A", "AB"]) {
+      const publicError = yield* Jwk.importPublic({ ...publicJwk, x: value }, "ES256").pipe(Effect.flip)
+      assertReason(publicError, "InvalidKey")
+      assert.include(publicError.reason.description, "base64url")
+
+      const privateError = yield* Jwk.importPrivate(
+        Redacted.make({ ...rfc7515.es256.jwk, d: value }),
+        "ES256"
+      ).pipe(Effect.flip)
+      assertReason(privateError, "InvalidKey")
+      assert.include(privateError.reason.description, "base64url")
+      assert.isUndefined(privateError.reason.cause)
+    }
+  }))
 
 it.effect("binds imported keys to the selected algorithm and honours JWK metadata", () =>
   Effect.gen(function*() {

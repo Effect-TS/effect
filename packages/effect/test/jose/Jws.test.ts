@@ -1,9 +1,10 @@
 import { assert, it } from "@effect/vitest"
-import { CryptoError, Mac } from "effect/crypto"
+import { CryptoError, Mac, Signature } from "effect/crypto"
 import * as Effect from "effect/Effect"
 import { JoseError, Jwk, Jwks, Jws } from "effect/jose"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import * as jose from "jose"
 import * as NodeUtil from "node:util"
 import { assertReason, base64url, es256PublicJwk, layer, rfc7515, rs256PublicJwk, text, utf8 } from "./utils.ts"
@@ -34,6 +35,55 @@ it.effect("reproduces the RFC 7515 A.2 RS256 signature", () =>
     const key = yield* Jwk.importPrivate(Redacted.make(rfc7515.rs256.jwk), "RS256")
     const token = yield* Jws.sign(base64url(rfc7515.payload), key)
     assert.strictEqual(Redacted.value(token), rfc7515.rs256.token)
+  }).pipe(Effect.provide(layer)))
+
+it.effect("reproduces the RFC 7520 Section 4.4 HS256 signature with the key's kid", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(
+      Redacted.make({
+        kty: "oct",
+        kid: "018c0ae5-4d9b-471b-bfd6-eef314bc7037",
+        use: "sig",
+        alg: "HS256",
+        k: "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG-Onbc6mxCcYg"
+      }),
+      "HS256"
+    )
+    const payload =
+      "SXTigJlzIGEgZGFuZ2Vyb3VzIGJ1c2luZXNzLCBGcm9kbywgZ29pbmcgb3V0IHlvdXIgZG9vci4gWW91IHN0ZXAgb250byB0aGUgcm9hZCwgYW5kIGlmIHlvdSBkb24ndCBrZWVwIHlvdXIgZmVldCwgdGhlcmXigJlzIG5vIGtub3dpbmcgd2hlcmUgeW91IG1pZ2h0IGJlIHN3ZXB0IG9mZiB0by4"
+    const token = yield* Jws.sign(base64url(payload), key)
+    assert.strictEqual(
+      Redacted.value(token),
+      "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAxOGMwYWU1LTRkOWItNDcxYi1iZmQ2LWVlZjMxNGJjNzAzNyJ9" +
+        `.${payload}.s0h6KThzkfBBBkLspW1h84VsJZFTsPPqMDA7g1Md7p0`
+    )
+  }).pipe(Effect.provide(layer)))
+
+it.effect("preserves extension headers when signing, verifying, and resolving a key", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importPrivate(Redacted.make(rfc7515.es256.jwk), "ES256")
+    const { d: _d, ...jwk } = rfc7515.es256.jwk
+    const header = { typ: "dpop+jwt", jwk, jku: "https://issuer.example/keys" }
+    const token = yield* Jws.sign(utf8("{}"), key, { ...header, alg: "none" } as unknown as Jws.Header)
+    const expected = { alg: "ES256" as const, ...header }
+    const theirKey = yield* Effect.promise(() => jose.importJWK(jwk, "ES256"))
+    const theirs = yield* Effect.promise(() => jose.compactVerify(Redacted.value(token), theirKey))
+    assert.deepStrictEqual(theirs.protectedHeader, expected)
+
+    const keySet = Layer.succeed(
+      Jwks.Jwks,
+      Jwks.Jwks.of({
+        resolve: (selection) => {
+          assert.deepStrictEqual(selection.protectedHeader, expected)
+          return Jwk.importPublic(
+            Schema.decodeUnknownSync(Jwk.PublicJwk)(selection.protectedHeader?.jwk),
+            selection.algorithm
+          )
+        }
+      })
+    )
+    const verified = yield* Jws.verifyWithKeySet(token, { algorithms: ["ES256"] }).pipe(Effect.provide(keySet))
+    assert.deepStrictEqual(verified.protectedHeader, expected)
   }).pipe(Effect.provide(layer)))
 
 it.effect("interoperates with jose for every supported algorithm and carries the key id", () =>
@@ -83,14 +133,37 @@ it.effect("rejects forged, malformed, and algorithm-confused tokens", () =>
     const unsecured = `${jose.base64url.encode(utf8("{\"alg\":\"none\"}"))}.${payload}.`
     assertReason(yield* Jws.verify(unsecured, hmac).pipe(Effect.flip), "InvalidToken")
 
-    const crit = `${
-      jose.base64url.encode(utf8("{\"alg\":\"HS256\",\"crit\":[\"exp\"],\"exp\":1}"))
-    }.${payload}.${signature}`
-    assertReason(yield* Jws.verify(crit, hmac).pipe(Effect.flip), "InvalidToken")
+    for (const extension of [{ crit: ["exp"], exp: 1 }, { b64: true }]) {
+      const unsupported = `${
+        jose.base64url.encode(JSON.stringify({ alg: "HS256", ...extension }))
+      }.${payload}.${signature}`
+      assertReason(yield* Jws.verify(unsupported, hmac).pipe(Effect.flip), "InvalidToken")
+      assertReason(
+        yield* Jws.sign(utf8("payload"), hmac, extension as unknown as Jws.Header).pipe(Effect.flip),
+        "InvalidArgument"
+      )
+    }
 
     assertReason(yield* Jws.verify(`${header}.${payload}`, hmac).pipe(Effect.flip), "InvalidToken")
-    assertReason(yield* Jws.verify(`${header}.${payload}.${signature}=`, hmac).pipe(Effect.flip), "InvalidToken")
+    for (const invalid of [`${signature}=`, `${signature}\n`, `${signature.slice(0, -1)}l`]) {
+      assertReason(yield* Jws.verify(`${header}.${payload}.${invalid}`, hmac).pipe(Effect.flip), "InvalidToken")
+    }
     assertReason(yield* Jws.verify("", hmac).pipe(Effect.flip), "InvalidToken")
+  }).pipe(Effect.provide(layer)))
+
+it.effect("rejects a resolved key whose algorithm differs from the token's", () =>
+  Effect.gen(function*() {
+    const privateKey = yield* Jwk.importPrivate(Redacted.make(rfc7515.rs256.jwk), "RS256")
+    const publicKey = yield* Jwk.importPublic(rs256PublicJwk, "RS256")
+    const signingInput = `${jose.base64url.encode("{\"alg\":\"PS256\"}")}.${jose.base64url.encode("{}")}`
+    const signature = yield* Signature.Signature.use((signer) => signer.sign(privateKey.key, utf8(signingInput)))
+    const token = `${signingInput}.${jose.base64url.encode(signature)}`
+    const keySet = Layer.succeed(Jwks.Jwks, Jwks.Jwks.of({ resolve: () => Effect.succeed(publicKey) }))
+
+    assertReason(
+      yield* Jws.verifyWithKeySet(token, { algorithms: ["PS256"] }).pipe(Effect.provide(keySet), Effect.flip),
+      "AlgorithmNotAllowed"
+    )
   }).pipe(Effect.provide(layer)))
 
 it.effect("resolves the verification key from the Jwks service by algorithm and kid", () =>

@@ -28,6 +28,7 @@ import * as Stream from "../Stream.ts"
 import { fail, invalidArgument, millis, noPrivateMembers, parseJsonObject } from "./internal/compact.ts"
 import * as JoseError from "./JoseError.ts"
 import { type AsymmetricAlgorithm, importPublic, PublicJwk, type PublicKey } from "./Jwk.ts"
+import type * as Jws from "./Jws.ts"
 
 // Any other key family or curve, with any other members. Private and
 // symmetric members, including RSA factors, are still rejected.
@@ -79,6 +80,11 @@ export type KeySet = typeof KeySet.Type
 export interface Selection {
   readonly algorithm: AsymmetricAlgorithm
   readonly kid?: string | undefined
+  /**
+   * The unauthenticated header when resolving a token's key. Use it only for
+   * key selection; it is authenticated only after verification succeeds.
+   */
+  readonly protectedHeader?: Jws.ProtectedHeader | undefined
 }
 
 /**

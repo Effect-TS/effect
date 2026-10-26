@@ -27,6 +27,7 @@ import {
   hasPrivateMembers,
   invalidArgument,
   invalidKey,
+  isCanonicalSegment,
   noPrivateMembers,
   publicKeyFailure
 } from "./internal/compact.ts"
@@ -86,9 +87,13 @@ const metadata = {
   key_ops: Schema.optionalKey(Schema.Array(Schema.String))
 }
 
-const rsa = { ...metadata, kty: Schema.Literal("RSA"), n: Schema.String, e: Schema.String }
-const ec = { ...metadata, kty: Schema.Literal("EC"), crv: Schema.Literal("P-256"), x: Schema.String, y: Schema.String }
-const okp = { ...metadata, kty: Schema.Literal("OKP"), crv: Schema.Literal("Ed25519"), x: Schema.String }
+const base64url = Schema.String.check(Schema.makeFilter(isCanonicalSegment, {
+  expected: "a canonical base64url encoded string"
+}))
+
+const rsa = { ...metadata, kty: Schema.Literal("RSA"), n: base64url, e: base64url }
+const ec = { ...metadata, kty: Schema.Literal("EC"), crv: Schema.Literal("P-256"), x: base64url, y: base64url }
+const okp = { ...metadata, kty: Schema.Literal("OKP"), crv: Schema.Literal("Ed25519"), x: base64url }
 
 /**
  * Schema for an RSA, P-256, or Ed25519 public JWK. Private and symmetric
@@ -124,16 +129,16 @@ export type PublicJwk = typeof PublicJwk.Type
 export const PrivateJwk = Schema.Union([
   Schema.Struct({
     ...rsa,
-    d: Schema.String,
-    p: Schema.String,
-    q: Schema.String,
-    dp: Schema.String,
-    dq: Schema.String,
-    qi: Schema.String,
+    d: base64url,
+    p: base64url,
+    q: base64url,
+    dp: base64url,
+    dq: base64url,
+    qi: base64url,
     oth: Schema.optionalKey(Schema.Never)
   }),
-  Schema.Struct({ ...ec, d: Schema.String }),
-  Schema.Struct({ ...okp, d: Schema.String })
+  Schema.Struct({ ...ec, d: base64url }),
+  Schema.Struct({ ...okp, d: base64url })
 ])
 
 /**
@@ -301,6 +306,9 @@ const checkModulus = (key: Signature.PublicKey | Signature.PrivateKey): Effect.E
 // KeyFormat handles only key members; JOSE metadata is handled here.
 const jsonWebKey = (jwk: object): JsonWebKey => jwk
 
+const isPublicJwk = Schema.is(PublicJwk)
+const isPrivateJwk = Schema.is(PrivateJwk)
+
 const exportJwk = (
   key: Signature.PrivateKey | Signature.PublicKey,
   algorithm: AsymmetricAlgorithm,
@@ -360,6 +368,7 @@ export const importPublic = Effect.fnUntraced(function*(
 ): Effect.fn.Return<PublicKey, JoseError> {
   if (hasPrivateMembers(jwk)) return yield* invalidKey("A public JWK cannot contain private members")
   yield* checkMetadata(jwk, algorithm, "sig", ["verify"])
+  if (!isPublicJwk(jwk)) return yield* invalidKey("Expected a public JWK with base64url key members")
   const key = yield* KeyFormat.decodePublic(KeyFormat.jwk, signatureAlgorithm(algorithm), jsonWebKey(jwk)).pipe(
     Effect.mapError(publicKeyFailure)
   )
@@ -383,6 +392,7 @@ export const importPrivate = Effect.fnUntraced(function*(
 ): Effect.fn.Return<PrivateKey, JoseError> {
   const jwk = Redacted.value(input)
   yield* checkMetadata(jwk, algorithm, "sig", ["sign"])
+  if (!isPrivateJwk(jwk)) return yield* invalidKey("Expected a private JWK with base64url key members")
   const key = yield* KeyFormat.decodePrivate(KeyFormat.jwk, signatureAlgorithm(algorithm), jsonWebKey(jwk)).pipe(
     Effect.mapError(cryptoFailure(`Could not import the private JWK for ${algorithm}`))
   )

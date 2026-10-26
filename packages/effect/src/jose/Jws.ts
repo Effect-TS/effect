@@ -7,6 +7,9 @@
  * requires an allowlist of asymmetric algorithms. Headers with `crit` or `b64`
  * are rejected.
  *
+ * Bound untrusted token length before verification; this module does not
+ * impose a token-size limit.
+ *
  * @stability unstable
  * @since 4.1.0
  */
@@ -39,19 +42,22 @@ import {
 import { Jwks } from "./Jwks.ts"
 
 /**
- * Schema for an authenticated JWS protected header. Other parameters are
- * dropped.
+ * Schema for an authenticated JWS protected header, including additional
+ * JSON-valued parameters.
  *
  * @stability unstable
  * @category schemas
  * @since 4.1.0
  */
-export const ProtectedHeader = Schema.Struct({
-  alg: Algorithm,
-  kid: Schema.optionalKey(Schema.String),
-  typ: Schema.optionalKey(Schema.String),
-  cty: Schema.optionalKey(Schema.String)
-})
+export const ProtectedHeader = Schema.StructWithRest(
+  Schema.Struct({
+    alg: Algorithm,
+    kid: Schema.optionalKey(Schema.String),
+    typ: Schema.optionalKey(Schema.String),
+    cty: Schema.optionalKey(Schema.String)
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
+)
 
 /**
  * An authenticated JWS protected header.
@@ -63,14 +69,18 @@ export const ProtectedHeader = Schema.Struct({
 export type ProtectedHeader = typeof ProtectedHeader.Type
 
 /**
- * Header parameters to sign. `alg` comes from the key and `kid` defaults to
- * the key's.
+ * Standard header parameters to sign. Signing also accepts additional
+ * JSON-valued parameters. `alg` comes from the key and `kid` defaults to the
+ * key's.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
 export interface Header {
+  readonly alg?: never
+  readonly crit?: never
+  readonly b64?: never
   readonly kid?: string | undefined
   readonly typ?: string | undefined
   readonly cty?: string | undefined
@@ -207,16 +217,20 @@ const verifySignature = Effect.fnUntraced(function*(
  * @category cryptography
  * @since 4.1.0
  */
-export const sign: <K extends SigningKey>(
+export const sign: <
+  K extends SigningKey,
+  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header
+>(
   payload: Uint8Array,
   key: K,
-  header?: Header
+  header?: Header & H
 ) => Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>> = Effect.fnUntraced(function*(
   payload: Uint8Array,
   key: SigningKey,
   header?: Header
 ): Effect.fn.Return<Redacted.Redacted<string>, JoseError.JoseError, Requirements> {
-  const signingInput = `${encodeHeader({ alg: key.algorithm }, key.kid, header)}.${Base64Url.encode(payload)}`
+  const protectedHeader = yield* encodeHeader({ alg: key.algorithm }, key.kid, header, ["crit", "b64"])
+  const signingInput = `${protectedHeader}.${Base64Url.encode(payload)}`
   const data = utf8(signingInput)
   let signature: Uint8Array
   if (key._tag === "SecretKey") {
@@ -264,7 +278,8 @@ export const verify: <K extends VerificationKey>(
  * **Details**
  *
  * The token's `alg` must be in `algorithms`, which is checked before any key
- * lookup. HS256 tokens are always rejected.
+ * lookup. The resolved key's algorithm must match the token's. HS256 tokens
+ * are always rejected.
  *
  * @see {@link verify} for verifying with a known key
  *
@@ -281,6 +296,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*(
   const { alg, kid } = parsed.protectedHeader
   if (alg === "HS256" || !options.algorithms.includes(alg)) return yield* algorithmNotAllowed
   const jwks = yield* Jwks
-  const key = yield* jwks.resolve({ algorithm: alg, kid })
+  const key = yield* jwks.resolve({ algorithm: alg, kid, protectedHeader: parsed.protectedHeader })
+  if (key.algorithm !== alg) return yield* algorithmNotAllowed
   return { ...(yield* verifySignature(parsed, key)), key }
 })
