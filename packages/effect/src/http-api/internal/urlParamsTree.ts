@@ -5,17 +5,13 @@ import * as SchemaAST from "../../SchemaAST.ts"
 export type FlatParams = { readonly [key: string]: string | ReadonlyArray<string> }
 
 /**
- * Collects the top-level property names of a schema's encoded side, and
- * whether it has an index signature, through unions and suspensions.
+ * Collects the top-level property names of a schema's encoded side, through
+ * unions and suspensions.
  *
  * @internal
  */
-export function getTopLevelKeys(ast: SchemaAST.AST): {
-  readonly names: ReadonlySet<string>
-  readonly hasIndexSignature: boolean
-} {
+export function getPropertyNames(ast: SchemaAST.AST): ReadonlySet<string> {
   const names = new Set<string>()
-  let hasIndexSignature = false
   const seen = new Set<SchemaAST.AST>()
   const go = (ast: SchemaAST.AST): void => {
     if (seen.has(ast)) return
@@ -25,7 +21,6 @@ export function getTopLevelKeys(ast: SchemaAST.AST): {
         for (const ps of ast.propertySignatures) {
           if (typeof ps.name === "string") names.add(ps.name)
         }
-        if (ast.indexSignatures.length > 0) hasIndexSignature = true
         return
       case "Union":
         return ast.types.forEach(go)
@@ -34,35 +29,7 @@ export function getTopLevelKeys(ast: SchemaAST.AST): {
     }
   }
   go(SchemaAST.toEncoded(ast))
-  return { names, hasIndexSignature }
-}
-
-/**
- * Collects the key schemas of a schema's top-level index signatures on its
- * decoded side, through unions and suspensions. Returns `undefined` when a
- * transformation hides which decoded keys came from which encoded ones.
- *
- * @internal
- */
-export function getIndexSignatureKeys(ast: SchemaAST.AST): ReadonlyArray<SchemaAST.AST> | undefined {
-  const keys: Array<SchemaAST.AST> = []
-  const seen = new Set<SchemaAST.AST>()
-  const go = (ast: SchemaAST.AST): boolean => {
-    if (seen.has(ast)) return true
-    seen.add(ast)
-    if (ast.encoding !== undefined) return false
-    switch (ast._tag) {
-      case "Objects":
-        for (const is of ast.indexSignatures) keys.push(is.parameter)
-        return true
-      case "Union":
-        return ast.types.every(go)
-      case "Suspend":
-        return go(ast.thunk())
-    }
-    return true
-  }
-  return go(ast) ? keys : undefined
+  return names
 }
 
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
@@ -124,4 +91,13 @@ function setPath(out: Record<string, unknown>, path: ReadonlyArray<string>, valu
   if (Object.hasOwn(node, leaf)) return false
   assignProperty(node, leaf, value)
   return true
+}
+
+/** @internal */
+export function omitKey(params: FlatParams, key: string): FlatParams {
+  const out: Record<string, string | ReadonlyArray<string>> = {}
+  for (const k of Object.keys(params)) {
+    if (k !== key) assignProperty(out, k, params[k])
+  }
+  return out
 }

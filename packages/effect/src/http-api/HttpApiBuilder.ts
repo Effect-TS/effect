@@ -17,6 +17,7 @@ import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Equal from "../Equal.ts"
 import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
 import * as Function from "../Function.ts"
@@ -37,7 +38,7 @@ import { stringOrRedacted } from "../internal/redacted.ts"
 import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
-import { hasProperty, isObject } from "../Predicate.ts"
+import { hasProperty } from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
@@ -786,56 +787,35 @@ function makeUrlParamsDecoder(
   options: SchemaAST.ParseOptions | undefined
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
   const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
-  const { hasIndexSignature, names } = UrlParamsTree.getTopLevelKeys(schema.ast)
+  const names = UrlParamsTree.getPropertyNames(schema.ast)
   if (names.size === 0) return decode
-  // Only an index signature can accept a rebuilt key as a flat key. Without
-  // one, a flat decode could only succeed by dropping the nested object.
-  if (!hasIndexSignature) {
-    return (input) => {
-      const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
-      return decode(rebuilt === undefined ? input : rebuilt.tree)
+  // A flat decode dropped a rebuilt key when decoding without the key gives an
+  // equal value. The comparison uses a separate decode, so the value handed to
+  // the handler is never hashed. Each check is a full decode, so this only runs
+  // once the rebuilt input has failed and the flat input has decoded.
+  const dropsKey = Effect.fnUntraced(function*(params: UrlParamsTree.FlatParams, keys: ReadonlyArray<string>) {
+    const flat = yield* Effect.result(decode(params))
+    if (Result.isFailure(flat)) return false
+    for (const key of keys) {
+      const without = yield* Effect.result(decode(UrlParamsTree.omitKey(params, key)))
+      if (Result.isSuccess(without) && Equal.equals(without.success, flat.success)) return true
     }
-  }
-  const keepsKeys = makeKeepsKeys(schema.ast, options)
+    return false
+  })
   return (input) => {
-    const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
+    const params = input as UrlParamsTree.FlatParams
+    const rebuilt = UrlParamsTree.fromFlatParams(params, names)
     if (rebuilt === undefined) return decode(input)
     return Effect.catch(decode(rebuilt.tree), (error) =>
       Effect.flatMap(
         Effect.mapError(decode(input), () => error),
         (value) =>
           Effect.flatMap(
-            keepsKeys(value, rebuilt.rebuiltKeys),
-            (kept) => kept ? Effect.succeed(value) : Effect.fail(error)
+            dropsKey(params, rebuilt.rebuiltKeys),
+            (dropped) => dropped ? Effect.fail(error) : Effect.succeed(value)
           )
       ))
   }
-}
-
-// A flat decode keeps a rebuilt key when an index signature decodes the key to
-// one the value has. Otherwise the flat decode dropped it.
-function makeKeepsKeys(
-  ast: SchemaAST.AST,
-  options: SchemaAST.ParseOptions | undefined
-): (value: unknown, keys: ReadonlyArray<string>) => Effect.Effect<boolean, never, unknown> {
-  const indexKeys = UrlParamsTree.getIndexSignatureKeys(ast)
-  // A transformation hides the decoded keys, so keep the flat decode, as
-  // before nested objects were rebuilt
-  if (indexKeys === undefined) return () => Effect.succeed(true)
-  const decodeKeys = indexKeys.map((key) => Schema.decodeUnknownEffect(Schema.make(key), options))
-  const keepsKey = (value: object, key: string) =>
-    Effect.map(
-      Effect.forEach(decodeKeys, (decodeKey) =>
-        Effect.match(decodeKey(key), {
-          onFailure: () => false,
-          onSuccess: (decoded) => Object.hasOwn(value, decoded as PropertyKey)
-        })),
-      (results) => results.includes(true)
-    )
-  return (value, keys) =>
-    isObject(value)
-      ? Effect.map(Effect.forEach(keys, (key) => keepsKey(value, key)), (results) => !results.includes(false))
-      : Effect.succeed(false)
 }
 
 function decodePayload(
