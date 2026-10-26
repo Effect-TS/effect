@@ -67,6 +67,33 @@ describe("CodeGenerator patch inputs", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
+describe("CodeGenerator path selection", () => {
+  it.effect("generates only the configured paths", () =>
+    Effect.gen(function*() {
+      const generator = yield* Generator.CodeGenerator
+      const output = yield* generator.generate({
+        ...provider("[]"),
+        config: new Config.CodegenConfig({
+          spec: "spec.json",
+          output: "Generated.ts",
+          includePaths: ["/v1/messages", "/v1/messages?beta=true"]
+        })
+      }, {
+        openapi: "3.1.0",
+        info: { title: "Test", version: "1.0.0" },
+        paths: {
+          "/v1/messages": { post: { operationId: "messages_post" } },
+          "/v1/messages?beta=true": { post: { operationId: "beta_messages_post" } },
+          "/v1/organizations/users": { get: { operationId: "users_list" } }
+        }
+      })
+      assert.deepStrictEqual(JSON.parse(output).paths, {
+        "/v1/messages": { post: { operationId: "messages_post" } },
+        "/v1/messages?beta=true": { post: { operationId: "beta_messages_post" } }
+      })
+    }).pipe(Effect.provide(TestLayer)))
+})
+
 describe("CodeGenerator warnings", () => {
   it.effect("reports OpenAPI generator warnings to stderr without changing the generated code", () =>
     Effect.gen(function*() {
