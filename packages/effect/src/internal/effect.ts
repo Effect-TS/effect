@@ -412,6 +412,12 @@ const cleanErrorStack = (
   const lines = (stack.startsWith(message) ? stack.slice(message.length) : stack).split("\n")
   const out: Array<string> = [message]
   for (let i = 1; i < lines.length; i++) {
+    // V8 names a thunk called via `this[args]()` after the args key, so keep
+    // it when it is the throw site
+    if (i === 1 && /~effect\/Effect\/args\b/.test(lines[i])) {
+      out.push(lines[i])
+      continue
+    }
     if (/Generator\.next|~effect\/(?:Effect|Utils)/.test(lines[i])) {
       break
     }
