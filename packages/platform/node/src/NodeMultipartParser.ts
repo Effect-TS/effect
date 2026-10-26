@@ -146,13 +146,12 @@ export class MultipartStream extends Duplex {
     callback(error)
   }
 
-  // Fail an unfinished file so its reader does not wait forever. The file
-  // keeps the error for a reader that attaches later, and the listener keeps
-  // it from being thrown before then.
   private _failCurrentFile(error: unknown) {
     const file = this._currentFile
     if (file === undefined) return
     this._currentFile = undefined
+    // The file keeps the error for a late reader; the listener stops it from
+    // being thrown while nobody is reading yet.
     file.on("error", constVoid)
     file.destroy(error as any)
   }

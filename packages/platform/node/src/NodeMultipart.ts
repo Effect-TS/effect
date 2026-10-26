@@ -44,8 +44,7 @@ export const stream = (
       NodeStream.fromReadable<MP.Part, Multipart.MultipartError>({
         evaluate() {
           const parser = MP.make(config)
-          // `pipe` misses errors and premature closes, including ones before
-          // parsing. Listen until the source finishes so later errors stay handled.
+          // `pipe` does not forward source errors or a premature close.
           const cleanup = finished(source, { readable: true, writable: false }, (error) => {
             cleanup()
             if (error) parser.destroy(error)

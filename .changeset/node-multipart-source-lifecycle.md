@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Fix `NodeMultipart.stream` hanging on a request body that closed early or before parsing, and keeping a listener on the body after parsing finished.
+Fix `NodeMultipart.stream` hanging when the source closes early or is already destroyed, including any file part still being read, and remove its source listeners once parsing finishes.
