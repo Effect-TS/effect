@@ -709,6 +709,12 @@ describe("Cause", () => {
       assertCleanStack(Effect.sync(userCode))
       assertCleanStack(Effect.suspend(userCode))
     })
+
+    it("does not render internal sync and suspend thunk frames", () => {
+      const exit = Effect.runSyncExit(Effect.firstSuccessOf([]))
+      assert.ok(Exit.isFailure(exit))
+      assert.doesNotMatch(Cause.pretty(exit.cause), /\/src\/internal\/|~effect\/Effect\/args/)
+    })
   })
 
   describe("annotate", () => {
