@@ -125,3 +125,60 @@ describe("CodeGenerator warnings", () => {
       )
     )))
 })
+
+describe("CodeGenerator error status ranges", () => {
+  const errorResponse = (description: string, schema = "ErrorResponse") => ({
+    description,
+    content: { "application/json": { schema: { $ref: `#/components/schemas/${schema}` } } }
+  })
+  const ok = { description: "Message object." }
+
+  const generateResponses = Effect.fnUntraced(function*(
+    responses: Record<string, unknown>,
+    errorStatusRanges?: ReadonlyArray<"4XX" | "5XX">
+  ) {
+    const generator = yield* Generator.CodeGenerator
+    const output = yield* generator.generate({
+      ...provider("[]"),
+      config: new Config.CodegenConfig({ spec: "spec.json", output: "Generated.ts", errorStatusRanges })
+    }, {
+      openapi: "3.1.0",
+      info: { title: "Test", version: "1.0.0" },
+      paths: { "/v1/messages": { post: { operationId: "messages_post", responses } } }
+    })
+    return JSON.parse(output).paths["/v1/messages"].post.responses
+  })
+
+  const responses = {
+    "200": ok,
+    "400": errorResponse("Invalid argument"),
+    "429": errorResponse("Resource exhausted"),
+    "500": errorResponse("Internal"),
+    "529": errorResponse("Overloaded")
+  }
+
+  it.effect("folds listed ranges and drops other error statuses", () =>
+    Effect.gen(function*() {
+      assert.deepStrictEqual(yield* generateResponses(responses, ["4XX"]), {
+        "200": ok,
+        "4XX": errorResponse("Invalid argument")
+      })
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("refuses to fold distinct error schemas", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(generateResponses({
+        "200": ok,
+        "400": errorResponse("Invalid argument"),
+        "404": errorResponse("Not found", "NotFoundResponse")
+      }, ["4XX"]))
+      assert.strictEqual(error._tag, "GenerationError")
+      assert.include(String(error.cause), "/v1/messages")
+      assert.include(String(error.cause), "4XX")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("leaves error statuses unchanged when no ranges are configured", () =>
+    Effect.gen(function*() {
+      assert.deepStrictEqual(yield* generateResponses(responses), responses)
+    }).pipe(Effect.provide(TestLayer)))
+})
