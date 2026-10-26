@@ -12,6 +12,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
+import { gzipSync } from "node:zlib"
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` })
 const object = (properties: Record<string, unknown>, required: ReadonlyArray<string> = []) => ({
@@ -339,6 +340,8 @@ describe("OpenAI generation", () => {
     ))
 })
 
+const gzippedSpec = { openapi: "3.1.0", info: { title: "Gzipped", version: "1.0.0" }, paths: {} }
+
 describe("SpecFetcher", () => {
   it.effect("fails when a spec URL responds with an error status", () =>
     Effect.gen(function*() {
@@ -356,4 +359,35 @@ describe("SpecFetcher", () => {
       )),
       Layer.provide(NodeServices.layer)
     ))))
+
+  it.effect("decompresses gzipped spec URLs and files", () =>
+    Effect.gen(function*() {
+      const fetcher = yield* SpecFetcher.SpecFetcher
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const file = path.join(yield* fs.makeTempDirectoryScoped(), "openapi.json.gz")
+      yield* fs.writeFile(file, gzipSync(JSON.stringify(gzippedSpec)))
+
+      assert.deepStrictEqual(
+        yield* fetcher.fetch(Config.SpecSource.Url("https://example.com/openapi.json.gz"), "anthropic"),
+        gzippedSpec
+      )
+      assert.deepStrictEqual(yield* fetcher.fetch(Config.SpecSource.File(file), "anthropic"), gzippedSpec)
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(SpecFetcher.layer.pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response(gzipSync(JSON.stringify(gzippedSpec)), {
+                headers: { "content-type": "application/octet-stream" }
+              })
+            ))
+          )
+        )),
+        Layer.provideMerge(NodeServices.layer)
+      ))
+    ))
 })
