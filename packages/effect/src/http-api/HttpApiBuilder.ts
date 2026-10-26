@@ -785,8 +785,7 @@ function makeUrlParamsDecoder(
   schema: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
 ): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown> {
-  const codec = Schema.toCodecArrayFromSingle(schema)
-  const decode = Schema.decodeUnknownEffect(codec, options)
+  const decode = Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options)
   const { hasIndexSignature, names } = UrlParamsTree.getTopLevelKeys(schema.ast)
   if (names.size === 0) return decode
   // Only an index signature can accept a rebuilt key as a flat key. Without
@@ -797,15 +796,7 @@ function makeUrlParamsDecoder(
       return decode(rebuilt === undefined ? input : rebuilt.tree)
     }
   }
-  // Record keys can be renamed when decoding, so the flat value must encode
-  // back to every rebuilt key, or the flat decode dropped one
-  const encode = Schema.encodeUnknownEffect(codec, options)
-  const keepsKeys = (value: unknown, keys: ReadonlyArray<string>) =>
-    Effect.map(Effect.exit(encode(value)), (exit) => {
-      if (exit._tag === "Failure") return false
-      const encoded = exit.value
-      return isObject(encoded) && keys.every((key) => Object.hasOwn(encoded, key))
-    })
+  const keepsKeys = makeKeepsKeys(schema.ast, options)
   return (input) => {
     const rebuilt = UrlParamsTree.fromFlatParams(input as UrlParamsTree.FlatParams, names)
     if (rebuilt === undefined) return decode(input)
@@ -819,6 +810,32 @@ function makeUrlParamsDecoder(
           )
       ))
   }
+}
+
+// A flat decode keeps a rebuilt key when an index signature decodes the key to
+// one the value has. Otherwise the flat decode dropped it.
+function makeKeepsKeys(
+  ast: SchemaAST.AST,
+  options: SchemaAST.ParseOptions | undefined
+): (value: unknown, keys: ReadonlyArray<string>) => Effect.Effect<boolean, never, unknown> {
+  const indexKeys = UrlParamsTree.getIndexSignatureKeys(ast)
+  // A transformation hides the decoded keys, so keep the flat decode, as
+  // before nested objects were rebuilt
+  if (indexKeys === undefined) return () => Effect.succeed(true)
+  const decodeKeys = indexKeys.map((key) => Schema.decodeUnknownEffect(Schema.make(key), options))
+  const keepsKey = (value: object, key: string) =>
+    Effect.map(
+      Effect.forEach(decodeKeys, (decodeKey) =>
+        Effect.match(decodeKey(key), {
+          onFailure: () => false,
+          onSuccess: (decoded) => Object.hasOwn(value, decoded as PropertyKey)
+        })),
+      (results) => results.includes(true)
+    )
+  return (value, keys) =>
+    isObject(value)
+      ? Effect.map(Effect.forEach(keys, (key) => keepsKey(value, key)), (results) => !results.includes(false))
+      : Effect.succeed(false)
 }
 
 function decodePayload(

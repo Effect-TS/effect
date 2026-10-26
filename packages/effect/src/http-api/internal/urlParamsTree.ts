@@ -37,6 +37,34 @@ export function getTopLevelKeys(ast: SchemaAST.AST): {
   return { names, hasIndexSignature }
 }
 
+/**
+ * Collects the key schemas of a schema's top-level index signatures on its
+ * decoded side, through unions and suspensions. Returns `undefined` when a
+ * transformation hides which decoded keys came from which encoded ones.
+ *
+ * @internal
+ */
+export function getIndexSignatureKeys(ast: SchemaAST.AST): ReadonlyArray<SchemaAST.AST> | undefined {
+  const keys: Array<SchemaAST.AST> = []
+  const seen = new Set<SchemaAST.AST>()
+  const go = (ast: SchemaAST.AST): boolean => {
+    if (seen.has(ast)) return true
+    seen.add(ast)
+    if (ast.encoding !== undefined) return false
+    switch (ast._tag) {
+      case "Objects":
+        for (const is of ast.indexSignatures) keys.push(is.parameter)
+        return true
+      case "Union":
+        return ast.types.every(go)
+      case "Suspend":
+        return go(ast.thunk())
+    }
+    return true
+  }
+  return go(ast) ? keys : undefined
+}
+
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
 
 /**
