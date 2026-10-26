@@ -1,9 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Layer, Path, Stream } from "effect"
-import type { AgUiSchema } from "effect/ai"
-import { AgUiServer } from "effect/ai"
+import { Effect, FileSystem, Layer, Path, Schema, Stream } from "effect"
+import {
+  type AgUiSchema,
+  AgUiServer,
+  LanguageModel,
+  type Prompt,
+  type Response as AiResponse,
+  Tool,
+  Toolkit
+} from "effect/ai"
 import { Etag, HttpPlatform, HttpRouter } from "effect/http"
-import { HttpApi, HttpApiGroup, OpenApi } from "effect/http-api"
+import { HttpApi, HttpApiBuilder, HttpApiGroup, OpenApi } from "effect/http-api"
 
 const TestServices = Layer.mergeAll(
   Path.layer,
@@ -22,6 +29,16 @@ const withHandler = <A, E, R>(
         { disableLogger: true }
       )
     ),
+    ({ handler }) => use(handler),
+    ({ dispose }) => Effect.promise(dispose)
+  )
+
+const withLayer = <A, E, R>(
+  layer: Layer.Layer<never, never, HttpRouter.HttpRouter>,
+  use: (handler: (request: Request) => Promise<Response>) => Effect.Effect<A, E, R>
+) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => HttpRouter.toWebHandler(layer, { disableLogger: true })),
     ({ handler }) => use(handler),
     ({ dispose }) => Effect.promise(dispose)
   )
@@ -57,6 +74,70 @@ const input = {
   messages: [{ id: "1", role: "user", content: "Hi" }]
 }
 
+// A server tool that reads the run it serves
+const Lookup = Tool.make("Lookup", {
+  parameters: Schema.Struct({ key: Schema.String }),
+  success: Schema.String,
+  dependencies: [AgUiServer.RunInput]
+})
+
+const AgentToolkit = Toolkit.make(Lookup)
+
+const AgentToolkitLayer = AgentToolkit.toLayer({
+  Lookup: Effect.fnUntraced(function*() {
+    const input = yield* AgUiServer.RunInput
+    return input.threadId
+  })
+})
+
+const finish = (reason: AiResponse.FinishReason): AiResponse.StreamPartEncoded => ({
+  type: "finish",
+  reason,
+  usage: { inputTokens: { total: 3 }, outputTokens: { total: 2 } }
+})
+
+// A model that answers each request with the next round and records the
+// prompt and tool names it was given
+const fakeModel = (rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEncoded>>) => {
+  const requests: Array<{ readonly prompt: Prompt.Prompt; readonly tools: ReadonlyArray<string> }> = []
+  const model = Layer.effect(
+    LanguageModel.LanguageModel,
+    LanguageModel.make({
+      generateText: () => Effect.succeed([]),
+      streamText: (options) => {
+        requests.push({ prompt: options.prompt, tools: options.tools.map((tool) => tool.name).sort() })
+        return Stream.fromIterable(rounds[requests.length - 1] ?? [finish("stop")])
+      }
+    })
+  )
+  return { requests, model }
+}
+
+const serveAgent = (
+  rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEncoded>>,
+  agent: AgUiServer.Agent<
+    LanguageModel.LanguageModel | Tool.HandlersFor<Toolkit.Tools<typeof AgentToolkit>>
+  > = AgUiServer.agent({ toolkit: AgentToolkit, system: "Be brief", maxSteps: 5 })
+) => {
+  const { model, requests } = fakeModel(rounds)
+  const layer = AgUiServer.layerHttp({ path: "/agent", agent }).pipe(
+    Layer.provide([TestServices, model, AgentToolkitLayer])
+  )
+  return { requests, layer }
+}
+
+// A client-executed tool configured on the server rather than sent by the
+// application
+const Confirm = Tool.make("Confirm", {
+  parameters: Schema.Struct({ question: Schema.String }),
+  success: Schema.Boolean,
+  execution: "client"
+})
+
+// Generated message ids differ per run
+const stableIds = (events: ReadonlyArray<any>) =>
+  events.map((event) => event.type === "TOOL_CALL_RESULT" ? { ...event, messageId: "<id>" } : event)
+
 describe("AgUiServer", () => {
   it.effect("streams a run hook's events as AG-UI server-sent events", () =>
     withHandler(
@@ -81,6 +162,29 @@ describe("AgUiServer", () => {
           ])
         })
     ))
+
+  it.effect("serves the run overload when an undefined agent property is present", () => {
+    // A variable passed to the run overload may carry extra properties, so an
+    // undefined agent must not be selected over the run function
+    const options = {
+      path: "/agent" as const,
+      agent: undefined,
+      run: (): Stream.Stream<AgUiSchema.Event> => Stream.empty
+    }
+    return withLayer(
+      AgUiServer.layerHttp(options).pipe(Layer.provide(TestServices)),
+      (handler) =>
+        Effect.gen(function*() {
+          const response = yield* post(handler, input)
+
+          assert.strictEqual(response.status, 200)
+          assert.deepStrictEqual(yield* readEvents(response), [
+            { type: "RUN_STARTED", threadId: "thread-1", runId: "run-1", protocolVersion: "1.0" },
+            { type: "RUN_FINISHED", threadId: "thread-1", runId: "run-1" }
+          ])
+        })
+    )
+  })
 
   it.effect("rejects an invalid RunAgentInput before opening the stream", () =>
     withHandler(
@@ -152,6 +256,144 @@ describe("AgUiServer", () => {
           }
         })
     )
+  })
+
+  describe("agent", () => {
+    it.effect("runs the model with server tools until it answers", () => {
+      const { requests, layer } = serveAgent([
+        [{ type: "tool-call", id: "call-1", name: "Lookup", params: { key: "a" } }, finish("tool-calls")],
+        [
+          { type: "text-start", id: "m1" },
+          { type: "text-delta", id: "m1", delta: "Done" },
+          { type: "text-end", id: "m1" },
+          finish("stop")
+        ]
+      ])
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+
+          // The server's system prompt comes first, ahead of the client's
+          // conversation
+          assert.strictEqual(requests.length, 2)
+          assert.deepStrictEqual(requests[0].prompt.content.map((message) => message.role), ["system", "user"])
+          assert.deepStrictEqual(requests[0].prompt.content[0].content, "Be brief")
+          assert.deepStrictEqual(stableIds(events), [
+            { type: "RUN_STARTED", threadId: "thread-1", runId: "run-1", protocolVersion: "1.0" },
+            { type: "STEP_STARTED", stepName: "step-1" },
+            { type: "TOOL_CALL_START", toolCallId: "call-1", toolCallName: "Lookup" },
+            { type: "TOOL_CALL_ARGS", toolCallId: "call-1", delta: `{"key":"a"}` },
+            { type: "TOOL_CALL_END", toolCallId: "call-1" },
+            { type: "TOOL_CALL_RESULT", messageId: "<id>", toolCallId: "call-1", content: "thread-1" },
+            { type: "STEP_FINISHED", stepName: "step-1" },
+            { type: "STEP_STARTED", stepName: "step-2" },
+            { type: "TEXT_MESSAGE_START", messageId: "m1", role: "assistant" },
+            { type: "TEXT_MESSAGE_CONTENT", messageId: "m1", delta: "Done" },
+            { type: "TEXT_MESSAGE_END", messageId: "m1" },
+            { type: "STEP_FINISHED", stepName: "step-2" },
+            {
+              type: "RUN_FINISHED",
+              threadId: "thread-1",
+              runId: "run-1",
+              usage: [{ inputTokens: 6, outputTokens: 4, totalTokens: 10 }]
+            }
+          ])
+        }))
+    })
+
+    it.effect("finishes with the frontend tool calls left for the application", () => {
+      const { requests, layer } = serveAgent([[
+        { type: "tool-call", id: "call-1", name: "confirm", params: { question: "Proceed?" } },
+        finish("tool-calls")
+      ]])
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, {
+            ...input,
+            tools: [{
+              name: "confirm",
+              description: "Asks the user to confirm",
+              parameters: { type: "object", properties: { question: { type: "string" } }, required: ["question"] }
+            }]
+          }).pipe(Effect.flatMap(readEvents))
+
+          assert.strictEqual(requests.length, 1)
+          assert.deepStrictEqual(requests[0].tools, ["Lookup", "confirm"])
+          assert.isFalse(events.some((event) => event.type === "TOOL_CALL_RESULT"))
+          assert.deepStrictEqual(events[events.length - 1], {
+            type: "RUN_FINISHED",
+            threadId: "thread-1",
+            runId: "run-1",
+            outcome: { type: "success", pendingToolCallIds: ["call-1"] },
+            usage: [{ inputTokens: 3, outputTokens: 2, totalTokens: 5 }]
+          })
+        }))
+    })
+
+    it.effect("lists calls to client-executed toolkit tools as pending", () => {
+      const { layer } = serveAgent(
+        [[
+          { type: "tool-call", id: "call-1", name: "Confirm", params: { question: "Proceed?" } },
+          finish("tool-calls")
+        ]],
+        AgUiServer.agent({ toolkit: Toolkit.make(Lookup, Confirm), maxSteps: 5 })
+      )
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+
+          assert.deepStrictEqual(events[events.length - 1].outcome, { type: "success", pendingToolCallIds: ["call-1"] })
+        }))
+    })
+
+    it.effect("serves an agent from an endpoint in an existing HttpApi", () => {
+      const { model, requests } = fakeModel([[
+        { type: "text-start", id: "m1" },
+        { type: "text-delta", id: "m1", delta: "Hi there" },
+        { type: "text-end", id: "m1" },
+        finish("stop")
+      ]])
+      const api = HttpApi.make("App").add(HttpApiGroup.make("ai").add(AgUiServer.endpoint("run", "/agent")))
+      const AiLive = HttpApiBuilder.group(api, "ai", (handlers) =>
+        Effect.map(
+          AgUiServer.agentHandler(AgUiServer.agent({ toolkit: AgentToolkit, maxSteps: 5 })),
+          (run) => handlers.handle("run", run)
+        ))
+      const layer = HttpApiBuilder.layer(api).pipe(
+        Layer.provide(AiLive),
+        Layer.provide([TestServices, model, AgentToolkitLayer])
+      )
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+          assert.strictEqual(events[0].type, "RUN_STARTED")
+          assert.deepStrictEqual(events[events.length - 1], {
+            type: "RUN_FINISHED",
+            threadId: "thread-1",
+            runId: "run-1",
+            usage: [{ inputTokens: 3, outputTokens: 2, totalTokens: 5 }]
+          })
+
+          // Validation still answers before the stream opens
+          const rejected = yield* post(handler, { ...input, tools: [{ name: "Lookup", description: "Shadows" }] })
+          assert.strictEqual(rejected.status, 400)
+          assert.strictEqual(requests.length, 1)
+        }))
+    })
+
+    it.effect("rejects a frontend tool that shadows a server tool before the stream opens", () => {
+      const { requests, layer } = serveAgent([])
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const response = yield* post(handler, {
+            ...input,
+            tools: [{ name: "Lookup", description: "Shadows the server tool" }]
+          })
+
+          assert.strictEqual(response.status, 400)
+          assert.strictEqual(requests.length, 0)
+        }))
+    })
   })
 
   it("documents the item schemas of the run input in OpenAPI", () => {
