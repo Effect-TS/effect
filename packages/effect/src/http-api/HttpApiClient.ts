@@ -867,8 +867,12 @@ const makeWithRedactedNames = (endpoint: HttpApiEndpoint.Top) => {
 
 const redactAll: ReadonlyArray<RegExp> = [/^/]
 
-// Matches the parameter and its nested names, such as `nested[token]`.
-const toQueryPattern = (name: string): RegExp => new RegExp(`^${RegExp_.escape(name)}(?:\\[|$)`)
+// Matches the parameter and its nested names, such as `nested[token]`. Names are
+// normalized as on the wire, where `URLSearchParams` replaces lone surrogates.
+const toQueryPattern = (name: string): RegExp => {
+  const [normalized] = new URLSearchParams([[name, ""]]).keys()
+  return new RegExp(`^${RegExp_.escape(normalized)}(?:\\[|$)`)
+}
 
 // Only the schema's structure is inspected, so no encoder is executed.
 // Struct-level encodings can rename keys arbitrarily, so names are only exact
