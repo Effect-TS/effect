@@ -1310,10 +1310,6 @@ export type AnthropicProviderDefinedTool =
   | typeof Generated.BetaWebFetchTool_20250910.Encoded
   | typeof Generated.BetaWebSearchTool_20250305.Encoded
 
-/**
- * Converts the model output of a tool result into tool result content blocks.
- * An empty model output sends nothing from the result.
- */
 const prepareToolResultContent = Effect.fnUntraced(function*(
   modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
   betas: Set<string>
@@ -1345,9 +1341,6 @@ const prepareToolResultContent = Effect.fnUntraced(function*(
   return content
 })
 
-/**
- * Returns the base64 payload of file data, stripping any data URL prefix.
- */
 const getBase64Data = (data: string | Uint8Array): string =>
   typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
 

@@ -684,13 +684,8 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
 // =============================================================================
 
 /**
- * A content part that a tool can send to the model as its result.
- *
- * **Details**
- *
- * Tools produce these parts through the `toModelOutput` option of
- * `Tool.make`. Providers that support rich tool results send them in place of
- * the serialized tool result.
+ * A part returned by a tool's `toModelOutput` mapping and sent to the model in
+ * place of the serialized tool result.
  *
  * @stability unstable
  * @category models
@@ -711,14 +706,13 @@ export const ToolModelOutputPart: Schema.Union<readonly [typeof TextPart, typeof
 ])
 
 /**
- * Converts tool model output parts to text for providers that only accept
- * text tool results.
+ * Converts tool model output to text for providers that only accept text tool
+ * results.
  *
  * **Details**
  *
- * Text parts are joined with newlines. Each file part is replaced with a
- * placeholder naming its media type and, when present, its file name. An empty
- * array produces an empty string.
+ * Joins text parts with newlines and replaces each file part with a placeholder
+ * naming its media type and file name.
  *
  * **Example** (Converting tool model output to text)
  *
@@ -787,8 +781,7 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    */
   readonly result: unknown
   /**
-   * Optional content to send to the model in place of the serialized
-   * `result`, for providers that support rich tool results.
+   * Content sent to the model in place of the serialized `result`.
    */
   readonly modelOutput?: ReadonlyArray<ToolModelOutputPart> | undefined
   /**
@@ -822,8 +815,7 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
-   * Optional content to send to the model in place of the serialized
-   * `result`, for providers that support rich tool results.
+   * Content sent to the model in place of the serialized `result`.
    */
   readonly modelOutput?: ReadonlyArray<TextPartEncoded | FilePartEncoded> | undefined
   /**

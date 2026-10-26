@@ -1579,8 +1579,7 @@ export interface BaseToolResult<Name extends string> extends BasePart<"tool-resu
    */
   readonly encodedResult: unknown
   /**
-   * Optional content to send to the model in place of the encoded result,
-   * produced by the tool's `toModelOutput` option.
+   * Content sent to the model in place of the encoded result.
    */
   readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
   /**
@@ -1707,7 +1706,7 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
-   * Optional content to send to the model in place of the result.
+   * Content sent to the model in place of the result.
    */
   readonly modelOutput?: ReadonlyArray<Prompt.TextPartEncoded | Prompt.FilePartEncoded> | undefined
   /**

@@ -2350,8 +2350,7 @@ const makeInterruptedToolResult = (
   })
 }
 
-// Only sets `modelOutput` on a tool result part when the tool produced one, so
-// parts without a mapping keep their existing shape.
+// Omits the key entirely so unmapped tool result parts keep their shape.
 const modelOutputField = (modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined) =>
   modelOutput === undefined ? undefined : { modelOutput }
 

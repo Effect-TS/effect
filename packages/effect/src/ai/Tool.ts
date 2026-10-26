@@ -291,14 +291,8 @@ export interface Tool<
   readonly needsApproval?: boolean | NeedsApprovalFunction<any> | undefined
 
   /**
-   * Maps a successful tool result to the content sent to the model.
-   *
-   * **Details**
-   *
-   * When defined, providers that support rich tool results send the returned
-   * parts instead of the encoded result. The application still receives the
-   * typed result. Changing the success schema with `setSuccess` removes the
-   * mapping.
+   * Maps a successful tool result to the content sent to the model in place
+   * of the encoded result. `setSuccess` removes the mapping.
    */
   readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
 
@@ -1029,8 +1023,7 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly encodedResult: unknown
   /**
-   * The content to send to the model in place of the encoded result, produced
-   * by the tool's `toModelOutput` mapping for successful results.
+   * The output of the tool's `toModelOutput` mapping for a successful result.
    */
   readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
   /**
@@ -1339,14 +1332,9 @@ export const make = <
    */
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
   /**
-   * Maps a successful tool result to the content sent to the model.
-   *
-   * **Details**
-   *
-   * Use this to send images or files to the model as part of a tool result.
-   * Providers that support rich tool results send the returned parts instead
-   * of the encoded result, and other providers send the encoded result. The
-   * application still receives the typed result.
+   * Maps a successful tool result to the content sent to the model in place
+   * of the encoded result, such as images or files. The application still
+   * receives the typed result.
    */
   readonly toModelOutput?: ((result: Success["Type"]) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
 }): Tool<

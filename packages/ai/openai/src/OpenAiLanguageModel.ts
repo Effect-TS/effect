@@ -3077,10 +3077,6 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   return { tools, toolChoice }
 })
 
-/**
- * Converts the model output of a tool result into function call output items.
- * An empty model output sends nothing from the result.
- */
 const prepareToolResultOutput = Effect.fnUntraced(function*(
   modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
   config: typeof Config.Service
