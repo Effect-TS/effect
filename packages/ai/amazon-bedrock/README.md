@@ -32,7 +32,7 @@ const program = LanguageModel.generateText({
 
 ## Authentication
 
-`AmazonBedrockClient.layer` accepts explicit keys (`accessKeyId`, `secretAccessKey`, `sessionToken`), an `apiKey`, or a `credentials` effect that resolves AWS credentials before every request. The `credentials` effect is where a credential provider such as `fromNodeProviderChain()` from `@aws-sdk/credential-providers` plugs in:
+`AmazonBedrockClient.layer` accepts explicit keys (`accessKeyId`, `secretAccessKey`, `sessionToken`), an `apiKey`, or a `credentials` effect that resolves AWS credentials before every request. The `credentials` effect is where a credential provider such as `fromNodeProviderChain()` from `@aws-sdk/credential-providers` plugs in. `Effect.cachedWithTTL` returns the cached effect, so allocate the cache once while building the layer and pass what it returns:
 
 ```ts
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers"
@@ -42,11 +42,13 @@ import { FetchHttpClient } from "effect/http"
 
 const provider = fromNodeProviderChain()
 
-const BedrockClient = AmazonBedrockClient.layer({
-  region: "eu-west-1",
-  credentials: Effect.promise(() => provider()).pipe(Effect.cachedWithTTL(Duration.minutes(5)))
-}).pipe(Layer.provide(FetchHttpClient.layer))
+const BedrockClient = Layer.unwrap(Effect.gen(function*() {
+  const credentials = yield* Effect.cachedWithTTL(Effect.promise(() => provider()), Duration.minutes(5))
+  return AmazonBedrockClient.layer({ region: "eu-west-1", credentials })
+})).pipe(Layer.provide(FetchHttpClient.layer))
 ```
+
+`service.client` exposes the same authenticated `HttpClient` for Bedrock Runtime operations the service does not model.
 
 `region`, `apiUrl` and `transformClient` customize HTTP access.
 

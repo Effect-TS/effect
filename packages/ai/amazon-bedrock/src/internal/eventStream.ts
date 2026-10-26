@@ -86,25 +86,31 @@ const decodeHeaders = (bytes: Uint8Array): Record<string, string> => {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const headers: Record<string, string> = {}
   let offset = 0
+  // Claims the next `length` bytes and returns where they start.
+  const take = (length: number): number => {
+    if (offset + length > bytes.length) {
+      throw malformed("An event stream header runs past the end of the headers block")
+    }
+    const start = offset
+    offset += length
+    return start
+  }
   while (offset < bytes.length) {
-    const nameLength = view.getUint8(offset)
-    offset += 1
-    const name = textDecoder.decode(bytes.subarray(offset, offset + nameLength))
-    offset += nameLength
-    const valueType = view.getUint8(offset)
-    offset += 1
+    const nameLength = view.getUint8(take(1))
+    const nameStart = take(nameLength)
+    const name = textDecoder.decode(bytes.subarray(nameStart, nameStart + nameLength))
+    const valueType = view.getUint8(take(1))
     switch (valueType) {
       // byte array
       case 6: {
-        offset += 2 + view.getUint16(offset, false)
+        take(view.getUint16(take(2), false))
         break
       }
       // string
       case 7: {
-        const valueLength = view.getUint16(offset, false)
-        offset += 2
-        headers[name] = textDecoder.decode(bytes.subarray(offset, offset + valueLength))
-        offset += valueLength
+        const valueLength = view.getUint16(take(2), false)
+        const valueStart = take(valueLength)
+        headers[name] = textDecoder.decode(bytes.subarray(valueStart, valueStart + valueLength))
         break
       }
       default: {
@@ -112,11 +118,8 @@ const decodeHeaders = (bytes: Uint8Array): Record<string, string> => {
         if (length === undefined) {
           throw malformed(`An event stream header has the unknown value type ${valueType}`)
         }
-        offset += length
+        take(length)
       }
-    }
-    if (offset > bytes.length) {
-      throw malformed("An event stream header runs past the end of the headers block")
     }
   }
   return headers
@@ -184,7 +187,12 @@ export const decode = <E>(bytes: Stream.Stream<Uint8Array, E>): Stream.Stream<Fr
             buffer = rest
             return frames
           },
-          catch: (error) => error as EventStreamError
+          catch: (error) =>
+            error instanceof EventStreamError
+              ? error
+              : malformed(
+                `An event stream frame could not be decoded: ${error instanceof Error ? error.message : String(error)}`
+              )
         })
       ),
       Stream.flattenIterable
