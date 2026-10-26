@@ -1136,13 +1136,20 @@ function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string
   throw new Error("Schema validation failed", { cause: issue })
 }
 
+const constructorDefectMessage = "Constructor adapter can only throw schema issues"
+
+function throwConstructorDefect(error: unknown): never {
+  throw new Error(constructorDefectMessage, { cause: Cause.die(error) })
+}
+
 function makeConstructorSync<T, E>(
-  ast: SchemaAST.AST
+  ast: SchemaAST.AST,
+  resolve: CompilerRegistry.Resolve = CompilerRegistry.resolve
 ): (input: E, options?: Schema.MakeOptions) => T {
   let entry: CompilerRegistry.Entry | undefined
   let parser: Parser | undefined
   return (input, options) => {
-    entry ??= CompilerRegistry.resolve(ast)
+    entry ??= resolve(ast)
     const parseOptions = options?.disableChecks
       ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
       : options?.parseOptions ?? SchemaAST.defaultParseOptions
@@ -1152,13 +1159,41 @@ function makeConstructorSync<T, E>(
       try {
         output = make(input, parseOptions)
       } catch (error) {
-        InternalSchemaCause.getSchemaIssueOrThrow(Cause.die(error), "Constructor adapter can only throw schema issues")
-        throw error
+        throwConstructorDefect(error)
       }
       if (output !== CompilerRegistry.invalid && output !== InternalParser.missing) return output as T
     }
     const result = (parser ??= entry.makeEffect)(input, parseOptions)
-    return runSync(parserResult<T, never>(result, input), "Constructor adapter can only throw schema issues")
+    return runSync(parserResult<T, never>(result, input), constructorDefectMessage)
+  }
+}
+
+/**
+ * Constructs a class value from its type-side declaration.
+ *
+ * Without a registered compiler for the declaration, the instance is built
+ * after field validation, outside the parser, so stacks captured by the class
+ * constructor include the caller.
+ *
+ * @internal
+ */
+export function makeClassSync<T>(
+  ast: SchemaAST.AST,
+  input: unknown,
+  options: Schema.MakeOptions | undefined,
+  construct: (fields: object) => T
+): T {
+  const entry = CompilerRegistry.resolve(ast)
+  const descriptor = SchemaAST.getConstructorDescriptor(ast)
+  if (entry.compiled !== undefined || descriptor === undefined) {
+    return makeConstructorSync<T, unknown>(ast)(input, options)
+  }
+  if (descriptor.isConstructed(input)) return input as T
+  const fields = makeConstructorSync<object, unknown>(descriptor.link.to, entry.resolve)(input, options)
+  try {
+    return construct(fields)
+  } catch (error) {
+    throwConstructorDefect(error)
   }
 }
 
