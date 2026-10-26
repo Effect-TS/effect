@@ -888,6 +888,27 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       )
     }))
 
+  it.effect("keeps protocol-shaped and colliding flat record keys", () =>
+    Effect.gen(function*() {
+      const Meta = Schema.Struct({ meta: Schema.optional(Schema.String) })
+      const LowerCase = Schema.String.pipe(Schema.decode(SchemaTransformation.toLowerCase()))
+
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(
+          Schema.StructWithRest(Meta, [Schema.Record(Schema.String, Schema.String)]),
+          "meta%5Bk%5D=v&~effect%2FHash=hello"
+        ),
+        { "meta[k]": "v", "~effect/Hash": "hello" }
+      )
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(
+          Schema.StructWithRest(Meta, [Schema.Record(LowerCase, Schema.String)]),
+          "meta%5BK%5D=v&meta%5Bk%5D=v"
+        ),
+        { "meta[k]": "v" }
+      )
+    }))
+
   it.effect("keeps flat record keys when the top level is transformed", () =>
     Effect.gen(function*() {
       const Flat = Schema.StructWithRest(
