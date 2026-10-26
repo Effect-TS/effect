@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
+  Context,
   DateTime,
   Effect,
   type Exit,
@@ -10,7 +11,8 @@ import {
   Redacted,
   Schema,
   SchemaTransformation,
-  Stream
+  Stream,
+  Tracer
 } from "effect"
 import {
   Etag,
@@ -18,6 +20,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   HttpEffect,
+  HttpMiddleware,
   HttpPlatform,
   HttpRouter,
   HttpServerRequest,
@@ -2051,6 +2054,90 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
 
       assert.deepStrictEqual(error, { retryAfter: 30n })
     }))
+})
+
+describe("HttpApiBuilder RedactedNames", () => {
+  it("redacts declared query and header names in server spans", async () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("images").add(
+        HttpApiEndpoint.post("build", "/build", {
+          query: { remote: Schema.String, t: Schema.String },
+          headers: { "x-registry-config": Schema.String },
+          success: Schema.String
+        }).annotate(HttpApi.RedactedNames, {
+          query: ["remote"],
+          headers: ["x-registry-config", "user-agent"]
+        }),
+        HttpApiEndpoint.get("failure", "/failure", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] })
+      )
+    )
+    let received: unknown
+    const GroupLayer = HttpApiBuilder.group(
+      Api,
+      "images",
+      (handlers) =>
+        handlers
+          .handle("build", ({ headers, query }) =>
+            Effect.sync(() => {
+              received = { remote: query.remote, t: query.t, config: headers["x-registry-config"] }
+              return "ok"
+            }))
+          .handle("failure", () => Effect.succeed(HttpServerResponse.empty({ status: 500 })))
+    )
+    const spans: Array<Tracer.NativeSpan> = []
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
+      { disableLogger: true }
+    )
+    const context = Context.make(Tracer.Tracer, tracer).pipe(Context.add(HttpMiddleware.TracerHeaderFilter, () => true))
+    const statuses: Array<number> = []
+    try {
+      for (
+        const url of [
+          "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
+          // Fails query decoding, as `t` is missing: names apply before decoding.
+          "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git",
+          "/failure?token=s3cret"
+        ]
+      ) {
+        const response = await handler(
+          new Request(`http://localhost${url}`, {
+            method: url.startsWith("/build") ? "POST" : "GET",
+            headers: { "user-agent": "agent-s3cret", "x-registry-config": "cfg-s3cret" }
+          }),
+          context
+        )
+        statuses.push(response.status)
+      }
+    } finally {
+      await dispose()
+    }
+
+    assert.deepStrictEqual(statuses, [200, 400, 500])
+    const [success, invalid, failure] = spans
+    assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
+    assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
+    assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
+    assert.strictEqual(success.attributes.get("http.request.header.user-agent"), "<redacted>")
+    assert.strictEqual(success.attributes.get("user_agent.original"), "<redacted>")
+    // The handler sees the values unchanged.
+    assert.deepStrictEqual(received, { remote: "https://user:pass@host/repo.git", t: "app", config: "cfg-s3cret" })
+    assert.strictEqual(invalid.attributes.get("url.full"), "http://localhost/build?remote=REDACTED")
+    assert.strictEqual(failure.attributes.get("url.full"), "http://localhost/failure?token=REDACTED")
+    // Exporters render the span failure after the request has completed.
+    assert(failure.status._tag === "Ended" && failure.status.exit._tag === "Failure")
+    const error = Cause.squash(failure.status.exit.cause) as Error
+    assert.include(error.message, "GET /failure?token=REDACTED")
+    assert.notInclude(error.message, "s3cret")
+  })
 })
 
 describe("HttpApiBuilder streaming payloads", () => {
