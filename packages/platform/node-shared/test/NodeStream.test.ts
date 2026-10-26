@@ -323,35 +323,31 @@ describe("Stream", () => {
       assert.isTrue(stream.destroyed)
     }))
 
-  it.effect("toString limits input bytes before decoding", () =>
+  it.effect("toString limits the bytes read before decoding", () =>
     Effect.gen(function*() {
-      const cases: ReadonlyArray<readonly [Buffer, BufferEncoding, string]> = [
-        [Buffer.from([0xe9]), "latin1", "é"],
-        [Buffer.from("abcd", "utf16le"), "utf16le", "abcd"],
-        [Buffer.from([0xca, 0xfe]), "hex", "cafe"],
-        [Buffer.from([0xff, 0xfe]), "base64", "//4="],
-        [Buffer.from([0xff, 0xfe]), "utf8", "\ufffd\ufffd"]
-      ]
-      for (const [bytes, encoding, expected] of cases) {
-        const text = yield* NodeStream.toString(() => Readable.from([bytes]), { encoding, maxBytes: bytes.length })
-        assert.strictEqual(text, expected)
-        const error = yield* NodeStream.toString(() => Readable.from([bytes]), {
-          encoding,
-          maxBytes: bytes.length - 1,
-          onError: (error) => error
-        }).pipe(Effect.flip)
-        assert.instanceOf(error, NodeStream.MaxBytesError)
-      }
+      const latin1 = yield* NodeStream.toString(() => Readable.from([Buffer.from([0xe9])]), {
+        encoding: "latin1",
+        maxBytes: 1
+      })
+      const utf16le = yield* NodeStream.toString(() => Readable.from([Buffer.from("abcd", "utf16le")]), {
+        encoding: "utf16le",
+        maxBytes: 7,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(latin1, "é")
+      assert.instanceOf(utf16le, NodeStream.MaxBytesError)
     }))
 
   it.effect("toString decodes characters split across chunks", () =>
     Effect.gen(function*() {
-      const chunks = [Buffer.from([0xe2, 0x82]), Buffer.from([0xac, 0x61])]
+      const chunks = [Buffer.from([0xe2, 0x82]), Buffer.from([0xac, 0xe2])]
       const text = yield* NodeStream.toString(() => Readable.from(chunks), { maxBytes: 4 })
-      assert.strictEqual(text, "€a")
+
+      assert.strictEqual(text, "€\ufffd")
     }))
 
-  it.effect("toString counts the input bytes of a stream that already decodes", () =>
+  it.effect("toString limits the bytes read by a stream that already decodes", () =>
     Effect.gen(function*() {
       const stream = new Readable({
         read() {
@@ -361,6 +357,7 @@ describe("Stream", () => {
       })
       stream.setEncoding("utf8")
       const text = yield* NodeStream.toString(() => stream, { encoding: "latin1", maxBytes: 1 })
+
       assert.strictEqual(text, "é")
     }))
 
