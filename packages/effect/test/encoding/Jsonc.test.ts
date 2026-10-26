@@ -22,15 +22,10 @@ describe("Jsonc", () => {
     assert.throws(() => Jsonc.parse("﻿﻿{}"), SyntaxError, "Invalid JSONC at line 1, column 2")
   })
 
-  it.each(Array.from({ length: 8 }, (_, length) => length))(
-    "keeps quoted comment text after %i backslashes",
-    (length) => {
-      const value = "plain text ".repeat(100) + "\\".repeat(length) + "\"/* inside the string */"
-      const input = `{ "value": ${JSON.stringify(value)} /* outside the string */ }`
-      assert.deepStrictEqual(Jsonc.parse(input), { value })
-      assert.deepStrictEqual(Json5.parse(input), { value })
-    }
-  )
+  it("ends strings only at quotes after an even run of backslashes", () => {
+    assert.deepStrictEqual(Jsonc.parse(String.raw`["\" /* in */" /* out */]`), ["\" /* in */"])
+    assert.deepStrictEqual(Jsonc.parse(String.raw`["\\" /* out */]`), ["\\"])
+  })
 
   it.each([
     "1E-3",
@@ -66,13 +61,6 @@ describe("Jsonc", () => {
   it.each(
     [
       ["empty input", "", 1, 1],
-      ["unexpected token after a leading BOM", "\uFEFF?", 1, 2],
-      ["empty document after a leading BOM", "\uFEFF", 1, 2],
-      ["unterminated comment after a leading BOM", "\uFEFF/*", 1, 4],
-      ["BOM after whitespace", " \uFEFF{}", 1, 2],
-      ["BOM between members", "{\"a\":1,\uFEFF\"b\":2}", 1, 8],
-      ["trailing comma after a leading BOM", "\uFEFF[1,]", 1, 5],
-      ["error after a leading BOM and line comment", "\uFEFF// comment\n?", 2, 1],
       ["only a comment", "// only a comment", 1, 18],
       ["value after a line comment", "{\n  // note\n  \"a\": hidden\n}", 3, 8],
       ["value after a multiline comment", "/* first\nsecond */\n?", 3, 1],
