@@ -1608,6 +1608,65 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     20_000
   )
 
+  it.effect("DurableDeferred.raceAll replays a persisted result its owner has not processed yet", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("UnprocessedRaceResult", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const idle = DurableDeferred.make("UnprocessedRaceResult/Idle", { success: Schema.String })
+      const text = DurableDeferred.make("UnprocessedRaceResult/Text", { success: Schema.String })
+      const result = DurableDeferred.make("raceAll/pick", { success: Schema.String })
+      const storage = yield* makeSharedStorage
+      // The race result is durable, but no runner has read it back yet.
+      const isResult = (message: Message.Incoming<any>) =>
+        message.envelope._tag === "Request" && message.envelope.tag === "deferred" &&
+        (message.envelope.payload as { name: string }).name === result.name
+      const layer = workflow.toLayer(() =>
+        DurableDeferred.raceAll({
+          name: "pick",
+          success: Schema.String,
+          error: Schema.Never,
+          effects: [DurableDeferred.await(idle), DurableDeferred.await(text)]
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+        storageLayer: Layer.succeed(MessageStorage.MessageStorage, {
+          ...storage,
+          unprocessedMessages: (shardIds, options) =>
+            Effect.map(
+              storage.unprocessedMessages(shardIds, options),
+              (messages) => messages.filter((m) => !isResult(m))
+            ),
+          unprocessedMessagesById: (ids) =>
+            Effect.map(storage.unprocessedMessagesById(ids), (messages) => messages.filter((m) => !isResult(m)))
+        })
+      })))
+      const executionId = yield* workflow.executionId({})
+
+      // The previous owner records `idle` as the winner, then stops.
+      yield* Effect.gen(function*() {
+        yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* DurableDeferred.succeed(result, {
+          token: DurableDeferred.tokenFromExecutionId(result, { workflow, executionId }),
+          value: "idle"
+        })
+      }).pipe(Effect.provide(layer))
+
+      // A later completion wakes the new owner, whose replay must keep `idle`.
+      yield* Effect.gen(function*() {
+        yield* DurableDeferred.succeed(text, {
+          token: DurableDeferred.tokenFromExecutionId(text, { workflow, executionId }),
+          value: "text"
+        })
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("idle") })
+        )
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
