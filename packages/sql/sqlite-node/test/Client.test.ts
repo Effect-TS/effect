@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -411,6 +411,33 @@ describe("Client", () => {
             }))
           }
         }
+      })
+  )
+
+  it.effect.each(["withTransaction", "reserve"] as const)(
+    "hands the connection to every queued %s",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        const release = yield* Deferred.make<void>()
+        const holder = yield* Effect.forkChild(sql.withTransaction(Deferred.await(release)), {
+          startImmediately: true
+        })
+        const acquire: Effect.Effect<unknown, SqlError> = mode === "withTransaction"
+          ? sql.withTransaction(sql`SELECT 2`)
+          : Effect.scoped(sql.reserve)
+        const queued = yield* Effect.all(
+          Array.from({ length: 3 }, () =>
+            acquire.pipe(
+              Effect.provideService(References.MaxOpsBeforeYield, 3),
+              Effect.forkChild
+            ))
+        )
+        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(holder)
+        for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
+        assert.isTrue(queued.every((fiber) => fiber.pollUnsafe() !== undefined))
       })
   )
 
