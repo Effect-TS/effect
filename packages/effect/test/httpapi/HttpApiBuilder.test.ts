@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
+  Context,
   DateTime,
   Effect,
   type Exit,
@@ -781,13 +782,23 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       assert.deepStrictEqual(yield* client.test.renamed({ query: { "meta[fooBar]": "v" } }), { "meta[fooBar]": "v" })
     }))
 
-  const rawQueryError = Effect.fnUntraced(function*(query: Schema.Codec<unknown, unknown>, search: string) {
+  const decodeRawQuery = Effect.fnUntraced(function*(
+    query: Schema.Codec<unknown, unknown, never, unknown>,
+    search: string
+  ) {
+    let decoded: unknown
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(HttpApiEndpoint.get("search", "/search", { query }))
     )
     const handler = yield* HttpRouter.toHttpEffect(
       HttpApiBuilder.layer(Api).pipe(
-        Layer.provide(HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("search", () => Effect.void)))
+        Layer.provide(
+          HttpApiBuilder.group(Api, "test", (handlers) =>
+            handlers.handle("search", ({ query }) =>
+              Effect.sync(() => {
+                decoded = query
+              })))
+        )
       )
     )
     const exit = yield* handler.pipe(
@@ -797,15 +808,15 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
       ),
       Effect.exit
     )
-    if (exit._tag === "Success") throw new Error("Expected query decoding to fail")
+    if (exit._tag === "Success") return decoded
     const error = Cause.squash(exit.cause)
-    return HttpApiError.HttpApiSchemaError.is(error) ? error.kind : error
+    return yield* HttpApiError.HttpApiSchemaError.is(error) ? Effect.fail(error.kind) : Effect.die(error)
   })
   const OptionalMeta = { meta: Schema.optional(Schema.Struct({ k: Schema.NonEmptyString })) }
 
   it.effect("rejects an invalid optional nested object instead of dropping it", () =>
     Effect.gen(function*() {
-      assert.strictEqual(yield* rawQueryError(Schema.Struct(OptionalMeta), "meta%5Bk%5D="), "Query")
+      assert.strictEqual(yield* Effect.flip(decodeRawQuery(Schema.Struct(OptionalMeta), "meta%5Bk%5D=")), "Query")
     }))
 
   it.effect("rejects an invalid nested object when another union member has a record", () =>
@@ -818,7 +829,36 @@ it.layer(TestServices)("HttpApiBuilder nested object payloads", (it) => {
         )
       ])
 
-      assert.strictEqual(yield* rawQueryError(Query, "kind=nested&meta%5Bk%5D="), "Query")
+      assert.strictEqual(yield* Effect.flip(decodeRawQuery(Query, "kind=nested&meta%5Bk%5D=")), "Query")
+    }))
+
+  it.effect("keeps flat record keys without re-encoding them", () =>
+    Effect.gen(function*() {
+      const Encoder = Context.Service<{ readonly encode: (value: string) => string }>("Encoder")
+      const ClientEncoded = Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: Effect.succeed,
+          encode: (value) => Effect.map(Encoder, (encoder) => encoder.encode(value))
+        })
+      ))
+      const LowerCase = Schema.String.pipe(Schema.decode(SchemaTransformation.toLowerCase()))
+      const Meta = Schema.Struct({ meta: Schema.optional(Schema.String) })
+
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(
+          Schema.StructWithRest(Meta, [Schema.Record(Schema.String, ClientEncoded)]),
+          "meta%5Bk%5D=v"
+        ),
+        { "meta[k]": "v" }
+      )
+      assert.deepStrictEqual(
+        yield* decodeRawQuery(
+          Schema.StructWithRest(Meta, [Schema.Record(LowerCase, Schema.String)]),
+          "meta%5BK%5D=v"
+        ),
+        { "meta[k]": "v" }
+      )
     }))
 
   it.effect("rebuilds __proto__ segments as own properties", () =>
