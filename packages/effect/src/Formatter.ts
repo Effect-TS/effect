@@ -365,7 +365,9 @@ function hasGetter(object: object): boolean {
 function redactingView(object: object): object {
   const view = Array.isArray(object) ? [] : {}
   // JSON.stringify reads every array index, regardless of enumerability
-  const keys = Array.isArray(object) ? Array.from(object.keys(), String) : Object.keys(object)
+  const keys = Array.isArray(object)
+    ? Array.from({ length: object.length }, (_, i) => String(i))
+    : Object.keys(object)
   for (const key of keys) {
     Object.defineProperty(view, key, {
       enumerable: true,
