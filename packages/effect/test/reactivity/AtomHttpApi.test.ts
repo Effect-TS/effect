@@ -280,7 +280,12 @@ describe("AtomHttpApi", () => {
         )
       })
       const atom = Client.query("group", "count", { serializationKey: "count", skipInitialRun: true })
-      assert.notStrictEqual(atom, Client.query("group", "count", { serializationKey: "count" }))
+      const defaultAtom = Client.query("group", "count", { serializationKey: "count" })
+      assert.notStrictEqual(atom, defaultAtom)
+      assert.strictEqual(
+        defaultAtom,
+        Client.query("group", "count", { serializationKey: "count", skipInitialRun: false })
+      )
 
       const server = AtomRegistry.make()
       const client = AtomRegistry.make()
