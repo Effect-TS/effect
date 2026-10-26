@@ -1,8 +1,8 @@
 import * as Context from "../Context.ts"
 
 /**
- * The transaction service of the innermost transaction started with
- * `SqlClient.makeWithTransaction`. `SqlResolver` reads it to find that
+ * The transaction service of the innermost transaction marked with
+ * `SqlClient.addTransaction`. `SqlResolver` reads it to find that
  * transaction when the request's context has no `SqlClient` for it. Removing
  * the service from a context also hides the transaction from this lookup.
  *

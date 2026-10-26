@@ -143,7 +143,7 @@ const makeStorageBackedWithTransaction = (
 
     const effectWithTxn = Effect.provideContext(
       effect,
-      Context.add(services, SqliteTransaction, [connection, depth] as const)
+      Client.addTransaction(services, SqliteTransaction, [connection, depth] as const)
     )
 
     const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
