@@ -988,6 +988,38 @@ describe("HttpApiClient", () => {
       >()
     })
 
+    it("returns either an upgrade or an ordinary success for mixed Upgrade successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.post("a", "/a", {
+                success: [
+                  HttpApiSchema.Upgrade({ protocol: "tcp", headers: { "x-id": Schema.String } }),
+                  Schema.String
+                ]
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<
+          HttpApiClient.Upgraded<{ readonly "x-id": string }> | string,
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+
+      const result = hole<HttpApiClient.Upgraded<{ readonly "x-id": string }> | string>()
+      if (HttpApiClient.isUpgraded(result)) {
+        expect(result).type.toBe<HttpApiClient.Upgraded<{ readonly "x-id": string }>>()
+      } else {
+        expect(result).type.toBe<string>()
+      }
+    })
+
     it("returns decoded streams for StreamUint8Array successes", () => {
       const Api = HttpApi.make("Api")
         .add(

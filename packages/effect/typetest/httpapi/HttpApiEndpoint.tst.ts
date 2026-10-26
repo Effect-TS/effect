@@ -592,6 +592,17 @@ describe("HttpApiEndpoint", () => {
       expect<"upgrade" extends keyof HttpApiEndpoint.Request<typeof plain> ? true : false>().type.toBe<false>()
     })
 
+    it("passes an upgrade function to handlers that may return an ordinary success", () => {
+      const endpoint = HttpApiEndpoint.post("a", "/a", {
+        success: [HttpApiSchema.Upgrade({ protocol: "tcp" }), Schema.String]
+      })
+
+      expect<HttpApiEndpoint.Request<typeof endpoint>["upgrade"]>().type.toBe<() => Effect.Effect<Socket.Socket>>()
+      expect<ReturnType<HttpApiEndpoint.Handler<typeof endpoint, never, never>>>().type.toBe<
+        Effect.Effect<void | string | HttpServerResponse, never>
+      >()
+    })
+
     it("includes StreamSse event and error schema services", () => {
       type Event = { readonly event: "user.created"; readonly data: string }
       type StreamError = { readonly reason: string }
