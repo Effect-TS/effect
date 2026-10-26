@@ -105,6 +105,26 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it("parses Unicode escapes at the scalar value boundaries", () => {
+    assert.deepStrictEqual(
+      Toml.parse(String.raw`
+before = "\uD7FF"
+after = "\uE000"
+max = "\U0010FFFF"
+`),
+      { before: "\uD7FF", after: "\uE000", max: "\u{10FFFF}" }
+    )
+  })
+
+  it.each([
+    String.raw`value = "\uD800"`,
+    String.raw`value = "\uDFFF"`,
+    String.raw`value = "\uD83D\uDE00"`,
+    String.raw`value = "\U00110000"`
+  ])("rejects Unicode escapes that are not scalar values: %s", (input) => {
+    assert.throws(() => Toml.parse(input), SyntaxError, "Invalid unicode escape at line 1, column 12")
+  })
+
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))
