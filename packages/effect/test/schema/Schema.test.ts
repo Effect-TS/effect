@@ -5847,6 +5847,27 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(Duration.negativeInfinity, "-Infinity")
   })
 
+  it("DurationFromIsoString", async () => {
+    const schema = Schema.DurationFromIsoString
+    const asserts = new TestSchema.Asserts(schema)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("P1W2D", Duration.days(9))
+    await decoding.succeed("PT1H30M", Duration.minutes(90))
+    await decoding.succeed("-PT1.5S", Duration.millis(-1500))
+    await decoding.succeed("PT0.000000001S", Duration.nanos(1n))
+    await decoding.fail("P1Y", "Expected an ISO 8601 duration without years or months")
+    await decoding.fail("P1M", "Expected an ISO 8601 duration without years or months")
+    await decoding.fail("1 second", "Expected an ISO 8601 duration without years or months")
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(Duration.zero, "PT0S")
+    await encoding.succeed(Duration.weeks(1), "P7D")
+    await encoding.succeed(Duration.nanos(-1n), "-PT0.000000001S")
+    await encoding.fail(Duration.infinity, "Expected a finite Duration")
+    await encoding.fail(Duration.negativeInfinity, "Expected a finite Duration")
+  })
+
   it("DurationFromNanos", async () => {
     const schema = Schema.DurationFromNanos
     const asserts = new TestSchema.Asserts(schema)
