@@ -15,6 +15,7 @@
   "fixed": [
     [
       "effect",
+      "@effect/ai-amazon-bedrock",
       "@effect/ai-anthropic",
       "@effect/ai-cloudflare",
       "@effect/ai-openai",
