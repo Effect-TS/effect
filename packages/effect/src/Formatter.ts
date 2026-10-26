@@ -357,17 +357,26 @@ function hasGetter(object: object): boolean {
 }
 
 // JSON.stringify reads a getter once, then calls toJSON on the result before
-// the replacer sees it. Copy the object instead, reading each getter once with
-// the original receiver and redacting the result, without relying on Proxy.
+// the replacer sees it. Copy the object without relying on Proxy, replacing
+// each getter with one that reads the original once, when JSON.stringify
+// visits it, and redacts the result. Data properties are copied eagerly so the
+// replacer can still read the original value through the property descriptor.
 function snapshotGetters(object: object): object {
   // JSON.stringify reads every array index, regardless of enumerability
   const keys = Array.isArray(object)
     ? Array.from({ length: object.length }, (_, i) => String(i))
     : Object.keys(object)
-  const snapshot = (Array.isArray(object) ? [] : {}) as Record<string, unknown>
+  // A null prototype keeps an own "__proto__" key from replacing the prototype
+  const snapshot: Record<string, unknown> = Array.isArray(object) ? [] : Object.create(null)
   for (const key of keys) {
-    const value = (object as Record<string, unknown>)[key]
-    snapshot[key] = Object.getOwnPropertyDescriptor(object, key)?.get !== undefined ? redact(value) : value
+    if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
+      Object.defineProperty(snapshot, key, {
+        enumerable: true,
+        get: () => redact(Reflect.get(object, key))
+      })
+    } else {
+      snapshot[key] = (object as Record<string, unknown>)[key]
+    }
   }
   return snapshot
 }
