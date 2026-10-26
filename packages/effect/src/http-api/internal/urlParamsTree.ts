@@ -12,11 +12,11 @@ type FlatParams = { readonly [key: string]: unknown }
  * inside a URL parameters codec.
  *
  * Each object on the codec's encoded side, through unions and suspensions,
- * rebuilds only its own fields that can decode an object. Keys of an optional
- * field that an index signature accepts, by field name or wire key, reach the
- * schema flat, as before, as does every other key. So union members keep
- * their own interpretation and flat keys an index signature accepts keep
- * decoding.
+ * rebuilds the keys of its required object fields, and those of its optional
+ * object fields and object-valued index entries when no index signature could
+ * take any of their keys as a string. Every other key reaches the schema flat,
+ * as before, so union members keep their own interpretation and flat keys an
+ * index signature may accept keep decoding.
  *
  * @internal
  */
@@ -36,7 +36,11 @@ const rebuildAST: (ast: SchemaAST.AST) => SchemaAST.AST = SchemaAST.applyToSelfO
 })
 
 function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
-  const isIndexKey = makeIsIndexKey(ast)
+  const indexes = ast.indexSignatures.map((is) => ({
+    matches: Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter))),
+    object: canBeObject(is.type),
+    string: canBeString(is.type)
+  }))
   const declared = new Set<string>()
   const required = new Set<string>()
   const optional = new Set<string>()
@@ -45,13 +49,19 @@ function rebuildObjects(ast: SchemaAST.Objects): SchemaAST.AST {
     declared.add(ps.name)
     if (!canBeObject(ps.type)) continue
     if (!SchemaAST.isOptional(ps.type)) required.add(ps.name)
-    else if (!isIndexKey(ps.name)) optional.add(ps.name)
+    else optional.add(ps.name)
   }
-  if (required.size === 0 && optional.size === 0) return ast
+  if (required.size === 0 && optional.size === 0 && !indexes.some((i) => i.object && !i.string)) return ast
+  // A key an index signature could take as a string may be a flat entry
+  const isFlatKey = (key: string) => indexes.some((i) => i.string && i.matches(key))
+  // An undeclared base only an object can satisfy is an object-valued entry
+  const isObjectEntry = (base: string) => indexes.some((i) => i.object && !i.string && i.matches(base))
   // A required object has no flat interpretation, so its keys are always
-  // rebuilt. An optional one leaves any key an index signature accepts flat,
-  // as it was before nested objects were rebuilt.
-  const isNestable = (base: string, key: string) => required.has(base) || (optional.has(base) && !isIndexKey(key))
+  // rebuilt. Otherwise a base is rebuilt only when none of its keys may be a
+  // flat entry, and all of its keys stay flat, as before, when one may.
+  const isNestable = (base: string, keys: ReadonlyArray<string>) =>
+    required.has(base) ||
+    ((optional.has(base) || (!declared.has(base) && isObjectEntry(base))) && !keys.some(isFlatKey))
   // The flat input keeps the wire literals of the required literal fields, so
   // unions still select members by them before any rebuilding
   const discriminators: Array<SchemaAST.PropertySignature> = []
@@ -111,31 +121,62 @@ function canBeObject(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boo
   return false
 }
 
-function makeIsIndexKey(ast: SchemaAST.Objects): (key: string) => boolean {
-  const matchers = ast.indexSignatures.map((is) => Schema.is(Schema.make(SchemaAST.toEncoded(is.parameter))))
-  return (key) => matchers.some((matches) => matches(key))
+// Whether the encoded side of a field can be a string
+function canBeString(field: SchemaAST.AST, seen = new Set<SchemaAST.AST>()): boolean {
+  const ast = SchemaAST.getLastEncoding(field)
+  if (seen.has(ast)) return false
+  seen.add(ast)
+  switch (ast._tag) {
+    case "String":
+    case "TemplateLiteral":
+    case "Unknown":
+    case "Any":
+      return true
+    case "Literal":
+      return typeof ast.literal === "string"
+    case "Declaration":
+      return ast.run === stringTree.run
+    case "Union":
+      return ast.types.some((type) => canBeString(type, seen))
+    case "Suspend":
+      return canBeString(ast.thunk(), seen)
+  }
+  return false
 }
 
 const bracketKey = /^([^[\]]+)((?:\[[^[\]]+\])+)$/
 
 /**
- * Rebuilds the `a[b][c]` keys `isNestable` accepts for their base. Keys listed in
- * `declared` are kept as is, so literal bracket keys keep decoding. A key that
- * conflicts with a shorter one, such as `a[b]` next to `a`, stays flat.
+ * Rebuilds the `a[b][c]` keys of each base `isNestable` accepts, given all of
+ * that base's keys. Keys listed in `declared` are kept as is, so literal
+ * bracket keys keep decoding. A key that conflicts with a shorter one, such as
+ * `a[b]` next to `a`, stays flat.
  */
 function fromFlatParams(
   params: FlatParams,
   declared: ReadonlySet<string>,
-  isNestable: (base: string, key: string) => boolean
+  isNestable: (base: string, keys: ReadonlyArray<string>) => boolean
 ): Record<string, unknown> {
+  type Entry = { readonly key: string; readonly path: ReadonlyArray<string> }
   const out: Record<string, unknown> = {}
-  const nested: Array<{ readonly key: string; readonly path: ReadonlyArray<string> }> = []
+  const byBase = new Map<string, Array<Entry>>()
   for (const key of Object.keys(params)) {
     const match = declared.has(key) ? null : bracketKey.exec(key)
-    if (match !== null && isNestable(match[1], key)) {
-      nested.push({ key, path: [match[1], ...match[2].slice(1, -1).split("][")] })
-    } else {
+    if (match === null) {
       assignProperty(out, key, params[key])
+      continue
+    }
+    const entries = byBase.get(match[1])
+    const entry = { key, path: [match[1], ...match[2].slice(1, -1).split("][")] }
+    if (entries === undefined) byBase.set(match[1], [entry])
+    else entries.push(entry)
+  }
+  const nested: Array<Entry> = []
+  for (const [base, entries] of byBase) {
+    if (isNestable(base, entries.map((entry) => entry.key))) {
+      nested.push(...entries)
+    } else {
+      for (const { key } of entries) assignProperty(out, key, params[key])
     }
   }
   // Shorter paths win, whatever order the keys arrived in
