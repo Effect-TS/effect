@@ -153,6 +153,11 @@ export interface OpenApiGenerateOptions {
    * Callback to receive non-fatal generation warnings.
    */
   readonly onWarning?: ((warning: OpenApiGeneratorWarning) => void) | undefined
+  /**
+   * Names of `components.schemas` entries to generate even when no operation references them.
+   * Their dependencies are generated too.
+   */
+  readonly includeSchemas?: ReadonlyArray<string> | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -209,7 +214,11 @@ export const make = Effect.gen(function*() {
       // TODO: make a CLI option ?
       const importName = "Schema"
       const source = getDialect(spec)
-      const schemaOptions = { onEnter: options.onEnter, multipartSchemaRefs: multipart.refs }
+      const schemaOptions = {
+        onEnter: options.onEnter,
+        multipartSchemaRefs: multipart.refs,
+        includeComponents: options.includeSchemas
+      }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
         : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)

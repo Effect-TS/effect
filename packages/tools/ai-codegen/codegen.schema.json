@@ -63,6 +63,13 @@
         "type": "string"
       }
     },
+    "includeSchemas": {
+      "type": "array",
+      "description": "Names of components.schemas entries to generate even when no included operation references them. Their dependencies are generated too.",
+      "items": {
+        "type": "string"
+      }
+    },
     "errorStatusRanges": {
       "type": "array",
       "description": "Error status classes the generated client decodes. Explicit statuses in a listed class fold into one `4XX`/`5XX` response (their content must match); explicit statuses in other classes are dropped. Error responses are unchanged when omitted.",

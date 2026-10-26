@@ -667,6 +667,7 @@ export const layer: Layer.Layer<
         name: provider.config.clientName,
         format: provider.config.isTypeOnly ? "httpclient-type-only" : "httpclient",
         onEnter,
+        includeSchemas: provider.config.includeSchemaList,
         onWarning: (warning) => {
           warnings.push(warning)
         }

@@ -19,6 +19,7 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as JsonPointer from "effect/JsonPointer"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -28,6 +29,7 @@ type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
+  readonly includeComponents?: ReadonlyArray<string> | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -199,6 +201,10 @@ function makeWithRepresentation() {
       nameMap.push(name)
       schemas.push(fromSchemaOpenApi(source, js).schema)
     }
+    // Included components are extra roots: they are emitted as definitions, but have no schema code of their own
+    for (const name of options?.includeComponents ?? []) {
+      schemas.push(fromSchemaOpenApi(source, { $ref: `#/components/schemas/${JsonPointer.escapeToken(name)}` }).schema)
+    }
 
     if (!Arr.isArrayNonEmpty(schemas)) {
       return
@@ -254,7 +260,7 @@ function makeWithRepresentation() {
 
     return {
       nameMap,
-      codeDocument
+      codeDocument: { ...codeDocument, codes: codeDocument.codes.slice(0, nameMap.length) }
     }
   }
 

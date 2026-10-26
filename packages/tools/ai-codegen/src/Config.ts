@@ -58,6 +58,7 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   header: Schema.optional(Schema.String),
   patches: Schema.optional(Schema.Array(Schema.String)),
   includePaths: Schema.optional(Schema.Array(Schema.String)),
+  includeSchemas: Schema.optional(Schema.Array(Schema.String)),
   errorStatusRanges: Schema.optional(Schema.Array(Schema.Literals(["4XX", "5XX"]))),
   replacements: Schema.optional(Schema.Array(Replacement)),
   excludeAnnotations: Schema.optional(Schema.Array(Schema.String)),
@@ -97,6 +98,15 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
    */
   get includePathList(): ReadonlyArray<string> | undefined {
     return this.includePaths
+  }
+
+  /**
+   * Get the component schema names to generate even when no included operation references them.
+   *
+   * @since 4.0.0
+   */
+  get includeSchemaList(): ReadonlyArray<string> | undefined {
+    return this.includeSchemas
   }
 
   /**
