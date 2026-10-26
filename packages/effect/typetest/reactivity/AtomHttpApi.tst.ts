@@ -36,6 +36,15 @@ const Api = HttpApi.make("Api").add(
     HttpApiEndpoint.get("bytes", "/bytes", {
       success: HttpApiSchema.StreamUint8Array()
     }),
+    HttpApiEndpoint.get("ndjson", "/ndjson", {
+      success: HttpApiSchema.StreamNdjson({ schema: Schema.String })
+    }),
+    HttpApiEndpoint.get("upgrade", "/upgrade", {
+      success: HttpApiSchema.Upgrade({ protocol: "example" })
+    }),
+    HttpApiEndpoint.get("finiteHeaders", "/finite-headers", {
+      success: HttpApiSchema.WithHeaders(Schema.String, { "x-count": Schema.Int })
+    }),
     HttpApiEndpoint.get("headers", "/headers", {
       success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamSse({ data: Schema.String }), {
         "x-count": Schema.Int
@@ -53,6 +62,36 @@ type InnerError = HttpClientError.HttpClientError | Schema.SchemaError | Sse.Ret
 type SseStream = Stream.Stream<string, InnerError>
 
 describe("AtomHttpApi", () => {
+  it("preserves result inference when finite queries opt into freshness", () => {
+    const query = Client.query("group", "get", { staleTime: "30 seconds", revalidateOnFocus: true })
+    const headers = Client.query("group", "finiteHeaders", { staleTime: 0 })
+
+    expect<Atom.Success<typeof query>>().type.toBe<string>()
+    expect<Atom.Failure<typeof query>>().type.toBe<EndpointError | MiddlewareError | MiddlewareClientError>()
+    expect<Atom.Success<typeof headers>>().type.toBe<
+      HttpApiSchema.withHeaders<string, { readonly "x-count": number }>
+    >()
+    expect(Client.query).type.not.toBeCallableWith("group", "get", { revalidateOnFocus: true })
+  })
+
+  it("rejects freshness for streams, upgrades, and response modes that expose the transport", () => {
+    expect(Client.query).type.not.toBeCallableWith("group", "sse", { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "bytes", { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "ndjson", { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "headers", { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "upgrade", { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "get", { responseMode: "response-only", staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "get", {
+      responseMode: "decoded-and-response",
+      staleTime: 0
+    })
+    expect(Client.query).type.not.toBeCallableWith("group", hole<"get" | "sse">(), { staleTime: 0 })
+    expect(Client.query).type.not.toBeCallableWith("group", "get", {
+      responseMode: hole<"decoded-only" | "response-only">(),
+      staleTime: 0
+    })
+  })
+
   it("infers query successes from literal response modes", () => {
     const defaults = Client.query("group", "get", {})
     const decoded = Client.query("group", "get", { responseMode: "decoded-only" })

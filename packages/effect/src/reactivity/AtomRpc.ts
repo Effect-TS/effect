@@ -75,6 +75,10 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     >
     : never
 
+  /**
+   * Creates an RPC query. Supply `staleTime` to enable shared freshness and
+   * hydration for finite results. Streaming RPCs retain their pull behavior.
+   */
   readonly query: <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
@@ -83,7 +87,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
-    }
+    } & QueryFreshness<Rpc.ExtractTag<Rpcs, NoInfer<Tag>>>
   ) => Rpcs extends Rpc.Rpc<
     infer _Tag extends Tag,
     infer _Payload,
@@ -215,6 +219,10 @@ export const Service = <Self>() =>
       const { headers, payload, reactivityKeys, tag, timeToLive } = key
       const rpc = options.group.requests.get(tag)! as any as Rpc.AnyWithProps
       const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
+      const freshness = key.staleTime !== undefined
+      if (freshness && isStream) {
+        throw new TypeError("AtomRpc.query freshness requires a non-streaming RPC")
+      }
       let atom = isStream
         ? self.runtime.pull(
           Stream.unwrap(
@@ -225,10 +233,15 @@ export const Service = <Self>() =>
             )
           )
         )
-        : self.runtime.atom(
+        : freshness ?
+        self.runtime.query(
+          self.use((client) => client(tag, payload, { headers } as any)) as Effect.Effect<unknown, unknown, Self>,
+          key
+        ) :
+        self.runtime.atom(
           self.use((client) => client(tag, payload, { headers } as any)) as any
         )
-      if (reactivityKeys) {
+      if (!freshness && reactivityKeys) {
         atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
       }
       if (!isStream && key.serializationKey) {
@@ -240,7 +253,7 @@ export const Service = <Self>() =>
           }) as any
         })
       }
-      if (timeToLive) {
+      if (!freshness && timeToLive) {
         atom = Duration.isFinite(timeToLive)
           ? Atom.setIdleTTL(atom, timeToLive)
           : Atom.keepAlive(atom)
@@ -257,6 +270,9 @@ export const Service = <Self>() =>
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
+      readonly staleTime?: Duration.Input | undefined
+      readonly revalidateOnFocus?: boolean | "always" | undefined
+      readonly focusSignal?: Atom.Atom<any> | undefined
     }
   ) => {
     const key: QueryKey = {
@@ -269,7 +285,12 @@ export const Service = <Self>() =>
       timeToLive: options?.timeToLive !== undefined
         ? Duration.fromInputUnsafe(options.timeToLive)
         : undefined,
-      serializationKey: options?.serializationKey
+      serializationKey: options?.serializationKey,
+      staleTime: options?.staleTime !== undefined
+        ? Duration.fromInputUnsafe(options.staleTime)
+        : undefined,
+      revalidateOnFocus: options?.revalidateOnFocus,
+      focusSignal: options?.focusSignal
     }
     return queryFamily(key) as any
   }
@@ -284,7 +305,23 @@ interface QueryKey {
   reactivityKeys: Reactivity.KeysInput | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
+  staleTime: Duration.Duration | undefined
+  revalidateOnFocus: boolean | "always" | undefined
+  focusSignal: Atom.Atom<any> | undefined
 }
+
+type QueryFreshness<Rpcs> =
+  | {
+    readonly staleTime?: undefined
+    readonly revalidateOnFocus?: undefined
+    readonly focusSignal?: undefined
+  }
+  | ([Extract<Rpc.Success<Rpcs>, Stream.Stream<any, any, any>>] extends [never] ? {
+      readonly staleTime: Duration.Input
+      readonly revalidateOnFocus?: boolean | "always" | undefined
+      readonly focusSignal?: Atom.Atom<any> | undefined
+    }
+    : never)
 
 const makeErrorSchema = (rpc: Rpc.AnyWithProps): Schema.Top =>
   Schema.Union([

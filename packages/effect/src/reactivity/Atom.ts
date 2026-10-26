@@ -22,6 +22,7 @@ import * as Fiber from "../Fiber.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constTrue, constVoid, dual, pipe } from "../Function.ts"
 import type * as Inspectable from "../Inspectable.ts"
+import * as Query from "../internal/atomQuery.ts"
 import { PipeInspectableProto } from "../internal/core.ts"
 import { getStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
@@ -258,6 +259,8 @@ const AtomProto = {
   }
 } as const
 
+const queryReactivity = new WeakMap<RuntimeFactory, Atom<AsyncResult.AsyncResult<Reactivity.Reactivity>>>()
+
 const RuntimeProto = {
   ...AtomProto,
   atom(this: AtomRuntime<any, any>, arg: any, options?: {
@@ -273,6 +276,10 @@ const RuntimeProto = {
       }
       return read(get, runtimeResult.value)
     })
+  },
+
+  query(this: AtomRuntime<any, any>, arg: any, options?: QueryOptions) {
+    return makeQuery(arg, options, this)
   },
 
   fn(this: AtomRuntime<any, any>, arg: any, options?: {
@@ -460,6 +467,131 @@ export const make: {
   return readable(readOrAtom)
 }
 
+/**
+ * Freshness and retention policy shared by finite Effect queries.
+ *
+ * **Details**
+ *
+ * `staleTime` defaults to zero and measures age from the last successful result.
+ * Set a positive duration to reuse completed results across later activations.
+ * `timeToLive` controls retention after the query becomes unused; omission uses
+ * the registry's default. Focus revalidation is disabled by default. With a
+ * `focusSignal`, `true` refreshes stale data and `"always"` forces a refresh.
+ * Reactivity keys and explicit refreshes invalidate regardless of freshness.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface QueryOptions {
+  readonly staleTime?: Duration.Input | undefined
+  readonly timeToLive?: Duration.Input | undefined
+  readonly reactivityKeys?: Reactivity.KeysInput | undefined
+  readonly revalidateOnFocus?: boolean | "always" | undefined
+  readonly focusSignal?: Atom<any> | undefined
+}
+
+type QueryEffect<A, E, R> =
+  & Effect.Effect<A, E, R>
+  & ([Extract<NoInfer<A>, Stream.Stream<any, any, any>>] extends [never] ? unknown : never)
+
+/**
+ * Creates a finite Effect query that reuses fresh cached results and returns
+ * stale results before revalidating them in the background.
+ *
+ * **Details**
+ *
+ * Registry initial values and hydration share the same freshness policy. The
+ * synchronous factory still runs to establish dependencies when a seed is
+ * reused; dependencies read inside the skipped Effect are only discovered on
+ * its first execution. Streams and Effects returning streams are not queries.
+ * Use `make` for live resources. Serialization is attached separately with
+ * `serializable`.
+ *
+ * @see {@link QueryOptions}
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const query: {
+  <A, E>(
+    create: (get: AtomContext) => QueryEffect<A, E, Scope.Scope | AtomRegistry>,
+    options?: QueryOptions
+  ): Atom<AsyncResult.AsyncResult<A, E>>
+  <A, E>(
+    effect: QueryEffect<A, E, Scope.Scope | AtomRegistry>,
+    options?: QueryOptions
+  ): Atom<AsyncResult.AsyncResult<A, E>>
+} = (arg: any, options?: QueryOptions) => makeQuery(arg, options)
+
+const makeQuery = (
+  arg: any,
+  options?: QueryOptions,
+  queryRuntime?: AtomRuntime<any, any>
+): Atom<AsyncResult.AsyncResult<any, any>> => {
+  const isFactory = typeof arg === "function" && !Effect.isEffect(arg)
+  if (!isFactory && !Effect.isEffect(arg)) {
+    throw new TypeError("Atom.query requires a finite Effect")
+  }
+  const reactivity = options?.reactivityKeys === undefined
+    ? undefined
+    : queryReactivity.get(queryRuntime?.factory ?? runtime)!
+  let atom = readable((get) => {
+    let services: Context.Context<any> | undefined
+    if (queryRuntime !== undefined) {
+      const result = get(queryRuntime)
+      if (result._tag !== "Success") {
+        return AsyncResult.replacePrevious(result, get.self<AsyncResult.AsyncResult<any, any>>())
+      }
+      services = result.value
+    }
+    const effect = isFactory ? arg(get) : arg
+    if (!Effect.isEffect(effect)) {
+      throw new TypeError("Atom.query requires a finite Effect")
+    }
+    const previous = get.self<AsyncResult.AsyncResult<any, any>>()
+    if (Option.isSome(previous) && Registry.consumeSkipInitialRun(get)) {
+      Registry.revalidateQuery(get)
+      return previous.value
+    }
+    const done = Registry.startQuery(get)
+    get.addFinalizer(done)
+    return makeEffect(
+      get,
+      Effect.flatMap(effect as Effect.Effect<any, any, Scope.Scope | AtomRegistry>, (value) =>
+        Stream.isStream(value)
+          ? Effect.die(new TypeError("Atom.query cannot return a Stream"))
+          : Effect.succeed(value)),
+      AsyncResult.initial(),
+      services,
+      false,
+      done
+    )
+  })
+  Object.assign(atom, { [Query.TypeId]: { staleTime: Duration.toMillis(options?.staleTime ?? 0) } })
+  if (reactivity !== undefined || (options?.revalidateOnFocus && options.focusSignal)) {
+    const source = removeTtl(atom)
+    atom = readable((get) => {
+      if (reactivity !== undefined) {
+        const service = AsyncResult.getOrThrow(get(reactivity))
+        get.addFinalizer(service.registerUnsafe(options!.reactivityKeys!, () => get.refresh(source)))
+      }
+      if (options?.revalidateOnFocus && options.focusSignal) {
+        get.once(options.focusSignal)
+        get.subscribe(options.focusSignal, () => {
+          Registry.revalidateQuery(get, options.revalidateOnFocus === "always")
+        })
+      }
+      const value = get.once(source)
+      get.subscribe(source, (value) => get.setSelf(value))
+      return value
+    }, (refresh) => refresh(source))
+    ;(atom as Mutable<typeof atom>).initialValueTarget = source
+  }
+  if (options?.timeToLive !== undefined) atom = setIdleTTL(atom, options.timeToLive)
+  return atom
+}
+
 // -----------------------------------------------------------------------------
 // constructors - effect
 // -----------------------------------------------------------------------------
@@ -558,7 +690,8 @@ function makeEffect<A, E>(
   effect: Effect.Effect<A, E, Scope.Scope | AtomRegistry>,
   initialValue: AsyncResult.AsyncResult<A, E>,
   services: Context.Context<never> | LazyArg<Context.Context<never>> = Context.empty(),
-  uninterruptible = false
+  uninterruptible = false,
+  onExit?: () => void
 ): AsyncResult.AsyncResult<A, E> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
   if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
@@ -579,6 +712,7 @@ function makeEffect<A, E>(
     ),
     effect,
     function(exit) {
+      onExit?.()
       if (isAsync) {
         // Read the live value rather than `previous`: while the effect was
         // running, the atom may have exposed `initialValue` or a `setSelf`
@@ -645,7 +779,7 @@ function runCallbackSync<R, A, E, ER = never>(
 // -----------------------------------------------------------------------------
 
 /**
- * Atom that builds a `Context` from a `Layer` and exposes constructors for atoms, functions, pulls, and subscription refs that run with that context.
+ * Atom that builds a `Context` from a `Layer` and exposes constructors for atoms, queries, functions, pulls, and subscription refs that run with that context.
  *
  * @stability unstable
  * @category models
@@ -674,6 +808,21 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
     <A, E>(stream: Stream.Stream<A, E, AtomRegistry | Reactivity.Reactivity | R>, options?: {
       readonly initialValue?: A
     }): Atom<AsyncResult.AsyncResult<A, E | ER | Cause.NoSuchElementError>>
+  }
+
+  /**
+   * Creates a finite query with this runtime's services and the shared
+   * freshness policy. Runtime construction errors are included in its result.
+   */
+  readonly query: {
+    <A, E>(
+      create: (get: AtomContext) => QueryEffect<A, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>,
+      options?: QueryOptions
+    ): Atom<AsyncResult.AsyncResult<A, E | ER>>
+    <A, E>(
+      effect: QueryEffect<A, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>,
+      options?: QueryOptions
+    ): Atom<AsyncResult.AsyncResult<A, E | ER>>
   }
 
   readonly fn: {
@@ -853,6 +1002,7 @@ export function context(options?: {
       )
     )
   )
+  queryReactivity.set(factory, reactivityAtom)
   factory.withReactivity = (keys: Reactivity.KeysInput) => <A extends Atom<any>>(atom: A): A =>
     transform(atom, (get) => {
       const reactivity = AsyncResult.getOrThrow(get(reactivityAtom))
@@ -1690,7 +1840,8 @@ export const withLabel: {
  * still build, so `get(...)` calls in the factory and `withReactivity` keys are
  * tracked; only the first effect or stream run is skipped. Dependencies read
  * inside the effect are tracked from its first real run. An `Initial` seed
- * never skips the effect.
+ * never skips the effect. Finite queries created with {@link query} use their
+ * freshness policy instead of this flag.
  *
  * @stability unstable
  * @category models

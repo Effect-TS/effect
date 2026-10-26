@@ -4,6 +4,20 @@ import { Rpc, RpcGroup, RpcMiddleware } from "effect/rpc"
 import { describe, expect, it } from "tstyche"
 
 describe("AtomRpc", () => {
+  it("offers freshness only for finite RPCs while preserving inference", () => {
+    const Get = Rpc.make("get", { success: Schema.Number })
+    const Watch = Rpc.make("watch", { success: Schema.Number, stream: true })
+    const client = hole<AtomRpc.AtomRpcClient<unknown, "Client", typeof Get | typeof Watch>>()
+    const legacy = client.query("get", undefined)
+    const fresh = client.query("get", undefined, { staleTime: "30 seconds", revalidateOnFocus: "always" })
+
+    expect(fresh).type.toBe<typeof legacy>()
+    expect(client.query).type.toBeCallableWith("watch", undefined)
+    expect(client.query).type.not.toBeCallableWith("watch", undefined, { staleTime: 0 })
+    expect(client.query).type.not.toBeCallableWith(hole<"get" | "watch">(), undefined, { staleTime: 0 })
+    expect(client.query).type.not.toBeCallableWith("get", undefined, { revalidateOnFocus: true })
+  })
+
   class ServerDependency extends Context.Service<
     ServerDependency,
     {}

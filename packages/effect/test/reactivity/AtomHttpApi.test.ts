@@ -1,10 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Layer, type Redacted, Ref, Schema, Stream } from "effect"
+import { Context, Duration, Effect, Exit, Layer, type Redacted, Ref, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 import type * as HttpClientError from "effect/http/HttpClientError"
-import { Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/reactivity"
+import { AsyncResult, Atom, AtomHttpApi, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 
 const Api = HttpApi.make("api").add(
   HttpApiGroup.make("group").add(
@@ -33,6 +33,131 @@ const StreamApi = HttpApi.make("StreamApi").add(
 )
 
 describe("AtomHttpApi", () => {
+  it.effect("reuses fresh hydration and preserves reactivity, retention, and policy identity", () =>
+    Effect.gen(function*() {
+      let requests = 0
+      const Client = AtomHttpApi.Service()("FreshClient", {
+        baseUrl: "https://example.test",
+        api: HttpApi.make("FreshApi").add(
+          HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/value", { success: Schema.Number }))
+        ),
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
+          )
+        )
+      })
+      const options = {
+        serializationKey: "value",
+        staleTime: "1 minute",
+        timeToLive: "5 minutes",
+        reactivityKeys: ["value"]
+      } as const
+      const atom = Client.query("group", "get", options)
+      assert.strictEqual(atom, Client.query("group", "get", { ...options, staleTime: 60_000 }))
+      assert.notStrictEqual(atom, Client.query("group", "get", { ...options, staleTime: undefined }))
+      assert.notStrictEqual(atom, Client.query("group", "get", { ...options, staleTime: 0 }))
+      assert.notStrictEqual(atom, Client.query("group", "get", { ...options, revalidateOnFocus: true }))
+      const focus = Atom.make(0)
+      const focused = Client.query("group", "get", { ...options, revalidateOnFocus: true, focusSignal: focus })
+      assert.strictEqual(
+        focused,
+        Client.query("group", "get", { ...options, revalidateOnFocus: true, focusSignal: focus })
+      )
+      assert.notStrictEqual(
+        focused,
+        Client.query("group", "get", { ...options, revalidateOnFocus: true, focusSignal: Atom.make(0) })
+      )
+      assert.strictEqual(atom.idleTTL, 300_000)
+      assert(Atom.isSerializable(atom))
+
+      const server = AtomRegistry.make()
+      const client = AtomRegistry.make()
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          server.dispose()
+          client.dispose()
+        })
+      )
+      yield* AtomRegistry.mount(server, atom)
+      assert.strictEqual(yield* AtomRegistry.getResult(server, atom, { suspendOnWaiting: true }), 1)
+      const seed = server.get(atom)
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      yield* AtomRegistry.mount(client, atom)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(client.get(atom), seed)
+      assert.strictEqual(requests, 1)
+
+      const services = yield* AtomRegistry.getResult(client, Client.runtime)
+      Context.get(services, Reactivity.Reactivity).invalidateUnsafe(["value"])
+      assert.strictEqual(yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true }), 2)
+      assert.strictEqual(requests, 2)
+    }))
+
+  it.effect.each([
+    { mode: "legacy", staleTime: undefined, initialRequests: 1 },
+    { mode: "freshness", staleTime: 0, initialRequests: 0 }
+  ])(
+    "$mode query handles a seed with an explicit zero freshness policy",
+    ({ initialRequests, staleTime }) =>
+      Effect.gen(function*() {
+        let requests = 0
+        const Client = AtomHttpApi.Service()("ZeroClient", {
+          baseUrl: "https://example.test",
+          api: HttpApi.make("ZeroApi").add(
+            HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/value", { success: Schema.Number }))
+          ),
+          httpClient: Layer.succeed(
+            HttpClient.HttpClient,
+            HttpClient.make((request) =>
+              Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
+            )
+          )
+        })
+        const atom = Client.query("group", "get", {
+          serializationKey: "zero",
+          ...(staleTime === undefined ? {} : { staleTime })
+        })
+        const registry = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+        yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+        yield* AtomRegistry.mount(registry, atom)
+        assert.strictEqual(requests, initialRequests)
+        const initial = registry.get(atom)
+        assert(AsyncResult.isSuccess(initial))
+        assert.strictEqual(initial.value, 10)
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        assert.strictEqual(yield* AtomRegistry.getResult(registry, atom, { suspendOnWaiting: true }), 1)
+        assert.strictEqual(requests, 1)
+      })
+  )
+
+  it("rejects freshness for live responses even when called without static types", () => {
+    const Client = AtomHttpApi.Service()("NonFiniteClient", {
+      api: HttpApi.make("NonFiniteApi").add(
+        HttpApiGroup.make("group").add(
+          HttpApiEndpoint.get("get", "/get", { success: Schema.String }),
+          HttpApiEndpoint.get("sse", "/sse", { success: HttpApiSchema.StreamSse({ data: Schema.String }) }),
+          HttpApiEndpoint.get("bytes", "/bytes", { success: HttpApiSchema.StreamUint8Array() }),
+          HttpApiEndpoint.get("ndjson", "/ndjson", { success: HttpApiSchema.StreamNdjson({ schema: Schema.String }) }),
+          HttpApiEndpoint.get("headers", "/headers", {
+            success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamSse({ data: Schema.String }), { count: Schema.Int })
+          }),
+          HttpApiEndpoint.get("upgrade", "/upgrade", { success: HttpApiSchema.Upgrade({ protocol: "example" }) })
+        )
+      ),
+      httpClient: Layer.succeed(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unused")))
+    })
+    const query = Client.query as (...args: Array<any>) => unknown
+    for (const endpoint of ["sse", "bytes", "ndjson", "headers", "upgrade"]) {
+      assert.throws(() => query("group", endpoint, { staleTime: 0 }), /finite decoded-only response/)
+    }
+    for (const responseMode of ["response-only", "decoded-and-response"]) {
+      assert.throws(() => query("group", "get", { responseMode, staleTime: 0 }), /finite decoded-only response/)
+    }
+  })
+
   it.effect.each([
     { idA: "ApiA", groupA: "users", idB: "ApiB", groupB: "users" },
     { idA: "Api:users", groupA: "users", idB: "Api", groupB: "users:users" }

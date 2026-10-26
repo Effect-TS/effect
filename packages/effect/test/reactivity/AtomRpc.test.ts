@@ -1,6 +1,6 @@
 import { assert, describe, expectTypeOf, it } from "@effect/vitest"
-import { type Cause, Deferred, Effect, Layer, Schema } from "effect"
-import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/reactivity"
+import { type Cause, Context, Deferred, Effect, Layer, Schema } from "effect"
+import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration, Reactivity } from "effect/reactivity"
 import {
   Rpc,
   RpcClient,
@@ -62,6 +62,114 @@ const makeClientMiddlewareProtocol = (
   )
 
 describe("AtomRpc", () => {
+  it.effect("reuses fresh hydration and preserves reactivity, retention, and policy identity", () =>
+    Effect.gen(function*() {
+      let requests = 0
+      const Client = AtomRpc.Service()("FreshClient", {
+        group: Group,
+        protocol: Layer.empty,
+        makeEffect: Effect.succeed(
+          ((_tag: string, payload: { readonly id: number }) =>
+            Effect.sync(() => ({ id: payload.id, name: `user-${++requests}` }))) as any
+        )
+      })
+      const options = {
+        serializationKey: "1",
+        staleTime: "1 minute",
+        timeToLive: "5 minutes",
+        reactivityKeys: ["users"]
+      } as const
+      const atom = Client.query("getUser", { id: 1 }, options)
+      assert.strictEqual(atom, Client.query("getUser", { id: 1 }, { ...options, staleTime: 60_000 }))
+      assert.notStrictEqual(atom, Client.query("getUser", { id: 1 }, { ...options, staleTime: undefined }))
+      assert.notStrictEqual(atom, Client.query("getUser", { id: 1 }, { ...options, staleTime: 0 }))
+      assert.notStrictEqual(atom, Client.query("getUser", { id: 1 }, { ...options, revalidateOnFocus: true }))
+      const focus = Atom.make(0)
+      const focused = Client.query("getUser", { id: 1 }, { ...options, revalidateOnFocus: true, focusSignal: focus })
+      assert.strictEqual(
+        focused,
+        Client.query("getUser", { id: 1 }, { ...options, revalidateOnFocus: true, focusSignal: focus })
+      )
+      assert.notStrictEqual(
+        focused,
+        Client.query("getUser", { id: 1 }, { ...options, revalidateOnFocus: true, focusSignal: Atom.make(0) })
+      )
+      assert.strictEqual(atom.idleTTL, 300_000)
+      assert(Atom.isSerializable(atom))
+
+      const server = AtomRegistry.make()
+      const client = AtomRegistry.make()
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          server.dispose()
+          client.dispose()
+        })
+      )
+      yield* AtomRegistry.mount(server, atom)
+      const expected = { id: 1, name: "user-1" }
+      assert.deepStrictEqual(yield* AtomRegistry.getResult(server, atom), expected)
+      const seed = server.get(atom)
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      yield* AtomRegistry.mount(client, atom)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(client.get(atom), seed)
+      assert.strictEqual(requests, 1)
+
+      const services = yield* AtomRegistry.getResult(client, Client.runtime)
+      Context.get(services, Reactivity.Reactivity).invalidateUnsafe(["users"])
+      assert.deepStrictEqual(yield* AtomRegistry.getResult(client, atom), { id: 1, name: "user-2" })
+      assert.strictEqual(requests, 2)
+    }))
+
+  it.effect.each([
+    { mode: "legacy", staleTime: undefined, initialRequests: 1 },
+    { mode: "freshness", staleTime: 0, initialRequests: 0 }
+  ])(
+    "$mode query handles a seed with an explicit zero freshness policy",
+    ({ initialRequests, staleTime }) =>
+      Effect.gen(function*() {
+        let requests = 0
+        const response = yield* Deferred.make<void>()
+        const Client = AtomRpc.Service()("ZeroClient", {
+          group: Group,
+          protocol: Layer.empty,
+          makeEffect: Effect.succeed(
+            ((_tag: string, payload: { readonly id: number }) =>
+              Effect.gen(function*() {
+                const count = ++requests
+                yield* Deferred.await(response)
+                return { id: payload.id, name: `user-${count}` }
+              })) as any
+          )
+        })
+        const atom = Client.query("getUser", { id: 1 }, {
+          serializationKey: "zero",
+          ...(staleTime === undefined ? {} : { staleTime })
+        })
+        const seed = AsyncResult.success({ id: 1, name: "seed" })
+        const registry = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, seed)] })
+        yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+        yield* AtomRegistry.mount(registry, atom)
+        assert.strictEqual(requests, initialRequests)
+        assert.strictEqual(registry.get(atom), seed)
+        yield* Deferred.succeed(response, undefined)
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(yield* AtomRegistry.getResult(registry, atom), { id: 1, name: "user-1" })
+        assert.strictEqual(requests, 1)
+      })
+  )
+
+  it("rejects freshness for streaming RPCs even when called without static types", () => {
+    const Client = AtomRpc.Service()("NonFiniteClient", {
+      group: ClientMiddlewareGroup,
+      protocol: Layer.empty,
+      makeEffect: Effect.die("unused")
+    })
+    const query = Client.query as (...args: Array<any>) => unknown
+    assert.throws(() => query("stream", undefined, { staleTime: 0 }), /non-streaming RPC/)
+  })
+
   it.effect.each([
     { idA: "RpcA", tagA: "create", idB: "RpcB", tagB: "create" },
     { idA: "Tenant:User", tagA: "create", idB: "Tenant", tagB: "User:create" }

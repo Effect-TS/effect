@@ -16,7 +16,7 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
-import type * as AtomRegistry from "./AtomRegistry.ts"
+import * as AtomRegistry from "./AtomRegistry.ts"
 
 /**
  * Marker interface for entries in a dehydrated atom registry state.
@@ -188,7 +188,10 @@ export const hydrate = (
         }
         const decoded = decodeOrSkip(node.atom as any, resolvedValue)
         if (decoded !== Skipped) {
-          if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
+          if (
+            !AtomRegistry.hydrateQuery(node, decoded) &&
+            shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)
+          ) {
             ;(node as any).setValue(decoded)
           }
           return

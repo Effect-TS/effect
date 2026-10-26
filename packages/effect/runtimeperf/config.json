@@ -12,6 +12,43 @@
   },
   "suites": [
     {
+      "name": "atom-query",
+      "fixtures": [
+        {
+          "file": "suites/atom-query/fixtures/cases.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "reactivity",
+            "implementation": "effect",
+            "astTags": [],
+            "path": "cached",
+            "size": 1
+          },
+          "cases": [
+            {
+              "name": "retained-read",
+              "export": "retainedRead",
+              "scenario": "atom-retained-read",
+              "operation": "read"
+            },
+            {
+              "name": "retained-mount",
+              "export": "retainedMount",
+              "scenario": "atom-retained-mount",
+              "operation": "subscribe"
+            },
+            {
+              "name": "fresh-hydrated-activation",
+              "export": "freshHydratedActivation",
+              "scenario": "atom-fresh-hydrated-activation",
+              "operation": "hydrate-mount-dispose",
+              "size": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "schema-checked-sources",
       "fixtures": [
         {
