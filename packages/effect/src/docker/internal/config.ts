@@ -99,10 +99,8 @@ const isBasicAuth = Schema.makeFilter((auth: string) => {
  * An empty entry marks a registry whose credentials a helper keeps. An `auth`
  * that isn't base64 `user:password` fails decoding, as it fails the CLI's
  * config loading.
- *
- * @internal
  */
-export const AuthEntry = Schema.Struct({
+const AuthEntry = Schema.Struct({
   auth: Schema.optionalKey(Schema.String.check(isBasicAuth)),
   username: Schema.optionalKey(Schema.String),
   password: Schema.optionalKey(Schema.String),
