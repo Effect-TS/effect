@@ -54,35 +54,36 @@ const keyedEntry = (msecs: number, event: number, primaryKey: number) =>
  * Replays a batch whose conflict lookups span several chunks of events and of
  * keys, and checks each entry gets exactly its own conflict in one callback.
  */
-export const conflictsAcrossChunks = <E, R>(
+export const conflictsAcrossChunks = Effect.fnUntraced(function*<E, R>(
   makeJournal: Effect.Effect<EventJournal.EventJournal["Service"], E, R>
-) =>
-  Effect.gen(function*() {
-    const journal = yield* makeJournal
-    const indexes = Arr.makeBy(crossChunkCount, (i) => i)
-    const incoming = indexes.map((i) => keyedEntry(1_000_000 + i, i, i))
-    const newer = indexes.map((i) => keyedEntry(2_000_000 + i, i, i))
-    // Shares an event and a key with the batch, but not as a pair, so it is
-    // not a conflict.
-    const crossed = indexes.map((i) => keyedEntry(3_000_000 + i, i, (i + 1) % crossChunkCount))
-    yield* journal.writeFromRemote({
-      remoteId: EventJournal.makeRemoteIdUnsafe(),
-      entries: remoteEntries([...newer, ...crossed]),
-      effect: () => Effect.void
-    })
+) {
+  const journal = yield* makeJournal
+  const indexes = Arr.makeBy(crossChunkCount, (i) => i)
+  const incoming = indexes.map((i) => keyedEntry(1_000_000 + i, i, i))
+  const newer = indexes.map((i) => keyedEntry(2_000_000 + i, i, i))
+  // Shares an event and a key with the batch, but not as a pair, so it is
+  // not a conflict.
+  const crossed = indexes.map((i) => keyedEntry(3_000_000 + i, i, (i + 1) % crossChunkCount))
+  yield* journal.writeFromRemote({
+    remoteId: EventJournal.makeRemoteIdUnsafe(),
+    entries: remoteEntries([...newer, ...crossed]),
+    effect: () => Effect.void
+  })
 
-    const batches: Array<ReadonlyArray<readonly [string, ReadonlyArray<string>]>> = []
-    yield* journal.writeFromRemote({
-      remoteId: EventJournal.makeRemoteIdUnsafe(),
-      entries: remoteEntries(incoming),
-      effect: (batch) =>
-        Effect.sync(() => {
-          batches.push(batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((entry) => entry.idString)]))
-        })
-    })
+  const batches: Array<ReadonlyArray<readonly [string, ReadonlyArray<string>]>> = []
+  yield* journal.writeFromRemote({
+    remoteId: EventJournal.makeRemoteIdUnsafe(),
+    entries: remoteEntries(incoming),
+    effect: (batch) =>
+      Effect.sync(() => {
+        batches.push(
+          batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((entry) => entry.idString)] as const)
+        )
+      })
+  })
 
-    assert.deepStrictEqual(batches, [incoming.map((entry, i) => [entry.idString, [newer[i].idString]])])
-  }).pipe(limitParameters)
+  assert.deepStrictEqual(batches, [incoming.map((entry, i) => [entry.idString, [newer[i].idString]] as const)])
+}, limitParameters)
 
 export const suite = (
   makeJournal: Effect.Effect<EventJournal.EventJournal["Service"], unknown, Scope.Scope>
