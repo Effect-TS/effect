@@ -226,12 +226,12 @@ function parseSetCookie(header: string): Cookie | undefined {
   if (firstEqual === -1) {
     return undefined
   }
-  const name = parts[0].slice(0, firstEqual)
+  const name = parts[0].slice(0, firstEqual).replace(/^[\t ]+|[\t ]+$/g, "")
   if (!cookieNameRegExp.test(name)) {
     return undefined
   }
 
-  const valueEncoded = parts[0].slice(firstEqual + 1)
+  const valueEncoded = parts[0].slice(firstEqual + 1).replace(/^[\t ]+|[\t ]+$/g, "")
   const value = tryDecodeURIComponent(valueEncoded)
 
   if (parts.length === 1) {
