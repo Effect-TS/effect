@@ -20,6 +20,7 @@ import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
 import type * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
+import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import { AuthenticationError, ConnectionError, SqlError, type SqlErrorReason, UnknownError } from "effect/sql/SqlError"
@@ -1942,30 +1943,36 @@ const listenChannel = (
  * pinned session does not count against it. Nothing is sent once the session
  * is dead or its pin released, as the session may already have a new owner.
  * A pin released while `UNLISTEN` holds the wire waits for it to finish, so
- * its count is decremented only after the permit is back.
+ * the count moves together with the permit: the fiber cannot yield between
+ * taking the wire and counting, or between uncounting and returning it.
  */
 const unlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection, identifier: string): Effect.Effect<void> =>
-  Effect.suspend(() => {
-    let counted = false
-    return Effect.ensuring(
-      conn.wire.withPermit(Effect.suspend(() => {
-        if (conn.deadWith !== undefined || pinned.released) return Effect.void
-        counted = true
-        pinned.unlistening++
-        const timeout = setTimeout(
-          () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
-          unlistenTimeoutMillis
-        )
-        return Effect.ensuring(
-          Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
-          Effect.sync(() => clearTimeout(timeout))
-        )
-      })),
+  Effect.uninterruptible(Effect.flatMap(
+    withoutYield(Effect.flatMap(conn.wire.take(1), () =>
       Effect.sync(() => {
-        if (counted) pinned.unlistening--
-      })
-    )
-  })
+        pinned.unlistening++
+      }))),
+    () => {
+      if (conn.deadWith !== undefined || pinned.released) return releaseUnlisten(conn, pinned)
+      const timeout = setTimeout(
+        () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
+        unlistenTimeoutMillis
+      )
+      return Effect.ensuring(
+        Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+        Effect.andThen(Effect.sync(() => clearTimeout(timeout)), releaseUnlisten(conn, pinned))
+      )
+    }
+  ))
+
+const releaseUnlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection): Effect.Effect<void> =>
+  withoutYield(Effect.suspend(() => {
+    pinned.unlistening--
+    return Effect.asVoid(conn.wire.release(1))
+  }))
+
+const withoutYield = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.provideService(effect, Scheduler.PreventSchedulerYield, true)
 
 const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Effect<void> =>
   Effect.callback<void>((resume) => {
