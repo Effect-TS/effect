@@ -30,23 +30,17 @@ export interface Reply {
 export interface Connection {
   /** The reads the Engine's side yields, in order. */
   readonly output: ReadonlyArray<Uint8Array>
-  /** After the output: the Engine closes its side, keeps it open, or the connection breaks. */
-  readonly after: "end" | "hold" | "error"
   /** What the client wrote. */
   readonly written: Array<Uint8Array>
   /** Whether the client half-closed the connection. */
   halfClosed: boolean
-  /** How many of `output`'s reads the client has made. */
-  read: number
 }
 
 /** A {@link Connection} for a reply's `upgrade`. */
-export const connection = (output: ReadonlyArray<Uint8Array>, after: Connection["after"] = "end"): Connection => ({
+export const connection = (output: ReadonlyArray<Uint8Array>): Connection => ({
   output,
-  after,
   written: [],
-  halfClosed: false,
-  read: 0
+  halfClosed: false
 })
 
 const toSocket = (connection: Connection): Socket.Socket =>
@@ -57,16 +51,11 @@ const toSocket = (connection: Connection): Socket.Socket =>
         pull: Effect.suspend(() =>
           next < connection.output.length
             ? Effect.sync(() => {
-              connection.read = ++next
-              return [connection.output[next - 1]] as const
+              return [connection.output[next++]] as const
             })
-            : connection.after === "hold"
-            ? Effect.never
             : Effect.fail(
               new Socket.SocketError({
-                reason: connection.after === "end"
-                  ? new Socket.SocketCloseError({ code: 1000 })
-                  : new Socket.SocketReadError({ cause: new Error("connection reset") })
+                reason: new Socket.SocketCloseError({ code: 1000 })
               })
             )
         ),
@@ -195,9 +184,7 @@ export const recordSpans = () => {
   })
   const attributes = () =>
     spans.flatMap((span) => Array.from(span.attributes, ([key, value]) => `${span.name} ${key}=${String(value)}`))
-  /** Whether the span `name` has started and not yet ended. */
-  const isOpen = (name: string) => spans.some((span) => span.name === name && span.status._tag === "Started")
-  return { tracer, attributes, isOpen }
+  return { tracer, attributes }
 }
 
 export const json = (value: unknown, status = 200): Reply => ({
@@ -224,8 +211,6 @@ export interface Helper {
   readonly stdout?: string
   readonly stderr?: string
   readonly exitCode?: number
-  /** Never exit. */
-  readonly hang?: boolean
 }
 
 /**
@@ -253,9 +238,7 @@ export const helpers = (programs: Readonly<Record<string, (stdin: string) => Hel
       const text = (value: string | undefined) => Stream.make(new TextEncoder().encode(value ?? ""))
       return ChildProcessSpawner.makeHandle({
         pid: ChildProcessSpawner.ProcessId(1),
-        exitCode: helper.hang === true
-          ? Effect.never
-          : Effect.succeed(ChildProcessSpawner.ExitCode(helper.exitCode ?? 0)),
+        exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(helper.exitCode ?? 0)),
         isRunning: Effect.succeed(false),
         kill: () => Effect.void,
         stdin: Sink.drain,

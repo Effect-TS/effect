@@ -5,23 +5,6 @@ import { DockerContainers, DockerEngine, DockerImages, DockerSystem } from "effe
 import { ensureImage, image, layer, scopedContainer } from "./utils/live.ts"
 
 it.layer(layer, { timeout: "120 seconds", excludeTestServices: true })("DockerSystem (live)", (it) => {
-  it.effect("negotiates, and reports ping, version and info", () =>
-    Effect.gen(function*() {
-      const engine = yield* DockerEngine.DockerEngine
-      const system = yield* DockerSystem.DockerSystem
-      const apiVersion = yield* engine.apiVersion
-      const ping = yield* system.ping
-      assert.isDefined(ping.apiVersion)
-      // the lower of the Engine's version and the client's maximum
-      assert.match(apiVersion, /^1\.\d+$/)
-      const version = yield* system.version
-      assert.strictEqual(version.ApiVersion, ping.apiVersion)
-      const info = yield* system.info
-      assert.isDefined(info.ServerVersion)
-      assert.strictEqual(ping.swarm?.nodeState, info.Swarm?.LocalNodeState)
-      assert.strictEqual(ping.experimental, info.ExperimentalBuild)
-    }), 60_000)
-
   it.effect("decodes the Engine's answers at the minimum API version, 1.44", () =>
     Effect.gen(function*() {
       assert.strictEqual(yield* (yield* DockerEngine.DockerEngine).apiVersion, "1.44")

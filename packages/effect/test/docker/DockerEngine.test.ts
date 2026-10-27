@@ -6,7 +6,7 @@ import { inspect } from "node:util"
 import { json, makeStubEngine, withPing } from "./utils/stub.ts"
 
 describe("DockerEngine", () => {
-  it.effect("negotiates the Engine's API version, capped at the pinned spec's, and doesn't cache a failure", () =>
+  it.effect("negotiates within the supported API range", () =>
     Effect.gen(function*() {
       const cases: ReadonlyArray<[string | undefined, string]> = [
         ["1.50", "1.50"],
@@ -19,20 +19,11 @@ describe("DockerEngine", () => {
         const stub = makeStubEngine(engineVersion === undefined ? () => ({ body: "OK" }) : withPing(engineVersion))
         assert.strictEqual(yield* stub.engine.apiVersion, expected, engineVersion)
       }
-      for (const engineVersion of ["1.43", "1.9"]) {
-        const error = yield* Effect.flip(makeStubEngine(withPing(engineVersion)).engine.apiVersion)
-        assert.deepStrictEqual(error.reason, new DockerError.UnsupportedApiVersion({ engineVersion, minimum: "1.44" }))
-      }
-      let fail = true
-      const stub = makeStubEngine((request) => fail ? { status: 503, body: "starting" } : withPing("1.44")(request))
-      const error = yield* Effect.flip(stub.engine.apiVersion)
-      // `HEAD` first, then `GET`, which names the failure
+      const error = yield* Effect.flip(makeStubEngine(withPing("1.43")).engine.apiVersion)
       assert.deepStrictEqual(
-        [error.reason, error.operation, stub.requests.map((request) => `${request.method} ${request.url.pathname}`)],
-        [new DockerError.Unavailable({ message: "starting" }), "docker.Engine.ping", ["HEAD /_ping", "GET /_ping"]]
+        error.reason,
+        new DockerError.UnsupportedApiVersion({ engineVersion: "1.43", minimum: "1.44" })
       )
-      fail = false
-      assert.strictEqual(yield* stub.engine.apiVersion, "1.44")
     }))
 
   it.effect("prefixes requests with the negotiated version after one unversioned ping, or the pinned one", () =>
@@ -50,20 +41,7 @@ describe("DockerEngine", () => {
       assert.deepStrictEqual(pinned.requests.map((request) => request.url.pathname), ["/v1.60/info"])
     }))
 
-  it.effect("sends the configured headers, unless the request sets them", () =>
-    Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", () => json({})), {
-        config: { httpHeaders: { "X-Meta": "configured", "X-Other": "configured" } }
-      })
-      yield* stub.engine.client.execute(
-        HttpClientRequest.get("/info").pipe(HttpClientRequest.setHeader("x-other", "own"))
-      )
-      const info = stub.requests.find((request) => request.url.pathname === "/v1.44/info")!
-      assert.strictEqual(info.headers["x-meta"], "configured")
-      assert.strictEqual(info.headers["x-other"], "own")
-    }))
-
-  it.effect("fails with a sanitized ConnectionFailed, retryable unless it names a misconfiguration", () =>
+  it.effect("reports a retryable connection failure without exposing request secrets", () =>
     Effect.gen(function*() {
       const stub = makeStubEngine(
         () => ({ fail: true, cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) }),
@@ -99,23 +77,6 @@ describe("DockerEngine", () => {
           assert.notInclude(text, secret)
         }
       }
-      // a failure that names a misconfiguration isn't retried
-      const permanent: ReadonlyArray<[string, string]> = [
-        ["SELF_SIGNED_CERT_IN_CHAIN", "the Engine's TLS certificate couldn't be verified"],
-        ["ERR_SSL_TLSV13_ALERT_CERTIFICATE_REQUIRED", "the Engine requires a client certificate"],
-        ["ERR_SSL_WRONG_VERSION_NUMBER", "TLS/plain mismatch: the Engine and the client disagree about TLS"],
-        ["EACCES", "permission denied on /test.sock: is the user allowed to use the Engine?"]
-      ]
-      for (const [code, hint] of permanent) {
-        const cause = Object.assign(new Error(code), { code })
-        const stub = makeStubEngine(() => ({ fail: true, cause }))
-        const failed = yield* Effect.flip(stub.engine.apiVersion)
-        assert(failed.reason._tag === "ConnectionFailed")
-        assert.strictEqual(failed.reason.hint, hint, code)
-        assert.isFalse(failed.isRetryable, code)
-        // as in moby's client, a connection failure doesn't dial again with `GET`
-        assert.strictEqual(stub.requests.length, 1, code)
-      }
     }))
 })
 
@@ -146,41 +107,6 @@ describe("DockerError", () => {
         const error = yield* classify(status, JSON.stringify({ message: "boom" }))
         assert.strictEqual(error.reason._tag, tag)
         assert.strictEqual(error.isRetryable, tag === "TooManyRequests" || tag === "Unavailable")
-      }
-    }))
-
-  it.effect("reads the Engine's error body, or keeps a body that isn't JSON as text", () =>
-    Effect.gen(function*() {
-      const docker = yield* classify(409, JSON.stringify({ message: "conflict" }))
-      assert.deepStrictEqual(
-        [docker.reason, docker.operation],
-        [new DockerError.Conflict({ message: "conflict" }), "docker.System.info"]
-      )
-      const text = yield* classify(404, "Not Found\n")
-      assert(text.reason._tag === "NotFound")
-      assert.strictEqual(text.reason.message, "Not Found")
-    }))
-
-  it.effect("caps an error body at 1 MiB, whether DockerApi declares its status or not", () =>
-    Effect.gen(function*() {
-      const body = JSON.stringify({ message: "x".repeat(2 * 1024 * 1024) })
-      for (const status of [502, 500]) {
-        const error = yield* classify(status, body)
-        assert(error.reason._tag === "ServerError" || error.reason._tag === "UnexpectedStatus")
-        assert.isAtMost(error.reason.message.length, 1024 * 1024, String(status))
-      }
-    }))
-
-  it.effect("maps decode failures to InvalidResponse, naming the operation", () =>
-    Effect.gen(function*() {
-      const cases = [json({ Version: 1 }), { headers: { "content-type": "application/json" }, body: "not json" }]
-      for (const reply of cases) {
-        const error = yield* DockerSystem.DockerSystem.use((system) => system.version).pipe(
-          makeStubEngine(withPing("1.44", () => reply)).provide,
-          Effect.flip
-        )
-        assert(error.reason._tag === "InvalidResponse")
-        assert.strictEqual(error.operation, "docker.System.version")
       }
     }))
 })

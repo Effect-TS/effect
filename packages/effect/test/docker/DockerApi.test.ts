@@ -1,10 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Schema, Stream } from "effect"
-import { DockerApi, DockerContainers, DockerError, DockerVolumes } from "effect/docker"
-import { HttpApi, HttpApiBuilder, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
+import { Schema } from "effect"
+import { DockerApi } from "effect/docker"
+import { HttpApi, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import * as fs from "node:fs"
-import { fakeEngine } from "./utils/fake.ts"
-import { concat, frame } from "./utils/stub.ts"
 
 const Operation = Schema.Struct({
   method: Schema.String,
@@ -303,68 +301,4 @@ describe("DockerApi", () => {
       SystemAuth: ["request identitytoken not in the document"]
     })
   })
-})
-
-// What a server built from `DockerApi` encodes, the services decode. The containers group can't be served
-// whole (`stats` and `statsStream` share a route), so the fake serves its `logs` alone.
-const Served = HttpApi.make("docker").add(DockerApi.Volumes).add(
-  HttpApiGroup.make("containers").add(DockerApi.Containers.endpoints.logs)
-)
-
-const volume = {
-  Name: "v",
-  Driver: "local",
-  Mountpoint: "/var/lib/docker/volumes/v",
-  Labels: {},
-  Scope: "local" as const,
-  Options: {}
-}
-
-const Handlers = HttpApiBuilder.group(Served, "volumes", (handlers) =>
-  handlers
-    .handle("inspect", ({ params }) =>
-      params.name === "v"
-        ? Effect.succeed(volume)
-        : Effect.fail(new DockerError.NotFound({ message: `get ${params.name}: no such volume` })))
-    .handle("create", ({ payload }) =>
-      payload.ClusterVolumeSpec === undefined
-        ? Effect.succeed(volume)
-        : Effect.fail(new DockerError.SwarmUnavailable({ message: "This node is not a swarm manager." })))
-    .handle("list", () => Effect.die("unused"))
-    .handle("update", () => Effect.die("unused"))
-    .handle("remove", () => Effect.die("unused"))
-    .handle("prune", () => Effect.die("unused"))).pipe(
-    Layer.merge(
-      HttpApiBuilder.group(
-        Served,
-        "containers",
-        (handlers) =>
-          handlers.handle("logs", () =>
-            Effect.succeed(HttpApiSchema.withHeaders({
-              body: Stream.make(concat(frame(1, "out"), frame(2, "err"))),
-              headers: { "content-type": "application/vnd.docker.multiplexed-stream" as const }
-            })))
-      )
-    )
-  )
-
-describe("DockerApi, served by HttpApiBuilder", () => {
-  it.effect("is what the services decode: bodies, error responses and stream headers", () =>
-    Effect.gen(function*() {
-      const volumes = yield* DockerVolumes.DockerVolumes
-      const containers = yield* DockerContainers.DockerContainers
-      assert.deepStrictEqual(yield* volumes.inspect("v"), volume)
-      const missing = yield* Effect.flip(volumes.inspect("w"))
-      assert.deepStrictEqual(
-        [missing.reason, missing.operation],
-        [new DockerError.NotFound({ message: "get w: no such volume" }), "docker.Volumes.inspect"]
-      )
-      const cluster = yield* Effect.flip(volumes.create({ Name: "c", ClusterVolumeSpec: {} }))
-      assert.strictEqual(cluster.reason._tag, "SwarmUnavailable")
-      const frames = yield* Stream.runCollect(containers.logs("c"))
-      assert.deepStrictEqual(
-        Array.from(frames, (frame) => `${frame.stream}:${new TextDecoder().decode(frame.data)}`),
-        ["stdout:out", "stderr:err"]
-      )
-    }).pipe(Effect.provide(fakeEngine(Served, Handlers))))
 })

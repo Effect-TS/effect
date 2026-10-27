@@ -56,12 +56,6 @@ export const scopedImages = Effect.gen(function*() {
   )
   return {
     labels: { ...labels, "effect-docker-test-id": id },
-    /** A tag in a repository of this test's own. */
-    tag: (tag: string) => {
-      const reference = `localhost/effect-docker-test-${id}:${tag}`
-      references.push(reference)
-      return reference
-    },
     /** Records a reference this test creates. */
     reference: (reference: string) => {
       references.push(reference)
