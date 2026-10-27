@@ -2071,7 +2071,6 @@ class PrivateFieldWrapper extends Error {
   constructor(cause: unknown) {
     super(undefined, { cause })
   }
-  // @ts-expect-error `Error` declares `message` as a property
   override get message() {
     return this.#detail
   }
