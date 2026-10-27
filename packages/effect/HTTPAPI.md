@@ -2342,6 +2342,87 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 `StreamNdjson` has no `error` schema. If the handler's stream fails after the response has started, the connection is aborted, so the client sees a body read error and never a clean end. Typed failures mid-stream need `StreamSse` (see [Typed Stream Failures](#typed-stream-failures)).
 
+Some NDJSON APIs report a failure as an ordinary line in their own JSON format, usually the last line of a successful response. Docker's image build, for example, ends with `{"error":"...","errorDetail":{...}}` when a step fails. Declare such a body as a union of the line shapes, so the error line is an element, and decide on the client where it ends the stream.
+
+**Example** (Handling an Error Line in an NDJSON Response)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const BuildMessage = Schema.Struct({
+  stream: Schema.String
+})
+
+const BuildErrorLine = Schema.Struct({
+  error: Schema.String,
+  errorDetail: Schema.optional(Schema.Struct({
+    code: Schema.optional(Schema.Number),
+    message: Schema.String
+  }))
+})
+
+// Members are tried in order, so a line with an `error` field
+// is an error line even if it also has a `stream` field
+const BuildLine = Schema.Union([BuildErrorLine, BuildMessage])
+
+class BuildFailed extends Schema.TaggedError<BuildFailed>()("BuildFailed", {
+  message: Schema.String
+}) {}
+
+const Api = HttpApi.make("docker").add(
+  HttpApiGroup.make("images").add(
+    HttpApiEndpoint.post("build", "/build", {
+      success: HttpApiSchema.StreamNdjson({ schema: BuildLine, contentType: "application/json" })
+    })
+  )
+)
+
+const runBuild = Stream.make({ stream: "Step 1/2 : FROM alpine" }, { stream: "Step 2/2 : RUN exit 3" }).pipe(
+  Stream.concat(Stream.fail(new BuildFailed({ message: "The command returned a non-zero code: 3" })))
+)
+
+// Server: write the failure as the last line, then end the body cleanly
+const ImagesLayer = HttpApiBuilder.group(
+  Api,
+  "images",
+  (handlers) =>
+    handlers.handle("build", () =>
+      Effect.succeed(
+        runBuild.pipe(
+          Stream.catchTag("BuildFailed", (error) => Stream.succeed({ error: error.message }))
+        )
+      ))
+)
+
+const program = Effect.gen(function*() {
+  const client = yield* HttpApiClient.make(Api, {
+    baseUrl: "http://localhost:3000"
+  })
+
+  // Client: stop after the error line, keeping it as the last element
+  const lines = (yield* client.images.build()).pipe(
+    Stream.takeUntil((line) => "error" in line)
+  )
+
+  // Client: or fail with BuildFailed at the error line
+  const messages = (yield* client.images.build()).pipe(
+    Stream.mapEffect((line) =>
+      "error" in line
+        ? Effect.fail(new BuildFailed({ message: line.error }))
+        : Effect.succeed(line)
+    )
+  )
+  // messages: Stream<{ readonly stream: string }, BuildFailed | HttpClientError | SchemaError>
+})
+```
+
+Things to know:
+
+- `Schema.Union` returns the first member that decodes. Put the error shape first when one line can match both, as Docker's format allows. The order is yours to choose.
+- When `Stream.mapEffect` fails, the stream stops reading and releases the response body. Lines after the error line are not read.
+- On the server the error line is a normal element. A stream failure that the handler doesn't turn into a line still aborts the connection.
+
 ### Consuming Streams with the Derived Client
 
 For all three constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
