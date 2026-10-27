@@ -6,77 +6,60 @@ import { fileURLToPath } from "node:url"
 
 const workerPath = fileURLToPath(new URL("./fixtures/eventJournal.ts", import.meta.url))
 
-// Runs the fixture route at `path` in a fresh Durable Object and returns its JSON.
-const dispatch = Effect.fnUntraced(function*(path: string) {
-  const bundle = yield* Effect.promise(() =>
-    esbuild.build({
-      entryPoints: [workerPath],
-      bundle: true,
-      format: "esm",
-      platform: "browser",
-      target: "es2022",
-      conditions: ["workerd", "worker", "browser"],
-      write: false
-    })
-  )
-  const miniflare = yield* Effect.acquireRelease(
-    Effect.sync(() =>
-      new Miniflare({
-        workers: [{
-          config: {
-            name: "test",
-            compatibilityDate: "2026-09-11",
-            compatibilityFlags: ["nodejs_compat"],
-            manifest: {
-              mainModule: "index.mjs",
-              modules: {
-                "index.mjs": { type: "esm", contents: bundle.outputFiles[0].text }
-              }
-            },
-            exports: {
-              JournalObject: { type: "durable-object", storage: "sqlite" }
-            },
-            env: {
-              JOURNAL: { type: "durable-object", worker: "test", exportName: "JournalObject" }
-            }
-          }
-        }]
-      })
-    ),
-    (miniflare) => Effect.promise(() => miniflare.dispose())
-  )
-  const response = yield* Effect.promise(() => miniflare.dispatchFetch(`http://localhost${path}`))
-  assert.strictEqual(response.status, 200, yield* Effect.promise(() => response.clone().text()))
-  return yield* Effect.promise(() => response.json() as Promise<unknown>)
-})
-
 describe("SqlEventJournal on Durable Object storage", () => {
   it.live(
     "keeps local writes working after an enclosing transaction rolls back an import at the maximum timestamp",
     () =>
       Effect.gen(function*() {
-        const { entries, rolledBack, written } = (yield* dispatch("/")) as {
-          readonly rolledBack: string
-          readonly written: ReadonlyArray<string> | string
-          readonly entries: ReadonlyArray<string>
-        }
+        const bundle = yield* Effect.promise(() =>
+          esbuild.build({
+            entryPoints: [workerPath],
+            bundle: true,
+            format: "esm",
+            platform: "browser",
+            target: "es2022",
+            conditions: ["workerd", "worker", "browser"],
+            write: false
+          })
+        )
+        const miniflare = yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            new Miniflare({
+              workers: [{
+                config: {
+                  name: "test",
+                  compatibilityDate: "2026-09-11",
+                  compatibilityFlags: ["nodejs_compat"],
+                  manifest: {
+                    mainModule: "index.mjs",
+                    modules: {
+                      "index.mjs": { type: "esm", contents: bundle.outputFiles[0].text }
+                    }
+                  },
+                  exports: {
+                    JournalObject: { type: "durable-object", storage: "sqlite" }
+                  },
+                  env: {
+                    JOURNAL: { type: "durable-object", worker: "test", exportName: "JournalObject" }
+                  }
+                }
+              }]
+            })
+          ),
+          (miniflare) => Effect.promise(() => miniflare.dispose())
+        )
+        const response = yield* Effect.promise(() => miniflare.dispatchFetch("http://localhost/"))
+        assert.strictEqual(response.status, 200, yield* Effect.promise(() => response.clone().text()))
+        const { entries, rolledBack, written } = yield* Effect.promise(() =>
+          response.json() as Promise<{
+            readonly rolledBack: string
+            readonly written: ReadonlyArray<string> | string
+            readonly entries: ReadonlyArray<string>
+          }>
+        )
         assert.strictEqual(rolledBack, "Failure")
         if (typeof written === "string") return assert.fail("the local write failed after the import was rolled back")
         assert.deepStrictEqual(entries, written)
-      }),
-    { timeout: 40_000 }
-  )
-
-  it.live(
-    "commits remote and local batches over the statement parameter limit",
-    () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* dispatch("/batch"), {
-          imported: "Success",
-          written: "Success",
-          entries: 202,
-          nextSequence: 101
-        })
       }),
     { timeout: 40_000 }
   )

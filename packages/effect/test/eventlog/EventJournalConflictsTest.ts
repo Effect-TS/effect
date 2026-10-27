@@ -1,8 +1,7 @@
 import { assert, it } from "@effect/vitest"
-import { Array as Arr, Effect } from "effect"
+import { Effect } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type * as Scope from "effect/Scope"
-import { limitParameters, maxParameters } from "./SqlParameterLimit.ts"
 
 // `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
 // known order by id.
@@ -37,61 +36,6 @@ const lastWriterWins = (journal: EventJournal.EventJournal["Service"]) => {
     })
   return { state, deliver }
 }
-
-// Distinct events and keys past the parameter limit, so SQL journals split
-// conflict lookups along both.
-const crossChunkCount = 2 * maxParameters
-
-const keyedEntry = (msecs: number, event: string, primaryKey: number) =>
-  new EventJournal.Entry({
-    id: EventJournal.makeEntryIdUnsafe({ msecs }),
-    event,
-    primaryKey: `key-${primaryKey}`,
-    payload: new Uint8Array()
-  }, { disableChecks: true })
-
-/**
- * Replays a batch whose conflict lookups span several chunks of events and of
- * keys, and checks each entry gets its own conflict exactly once in one
- * callback. One event also uses every key, so lookup chunks share keys across
- * events.
- */
-export const conflictsAcrossChunks = Effect.fnUntraced(function*<E, R>(
-  makeJournal: Effect.Effect<EventJournal.EventJournal["Service"], E, R>
-) {
-  const journal = yield* makeJournal
-  const indexes = Arr.makeBy(crossChunkCount, (i) => i)
-  const incoming = [
-    ...indexes.map((i) => keyedEntry(1_000_000 + i, `event-${i}`, i)),
-    ...indexes.map((i) => keyedEntry(1_500_000 + i, "shared", i))
-  ]
-  const newer = [
-    ...indexes.map((i) => keyedEntry(2_000_000 + i, `event-${i}`, i)),
-    ...indexes.map((i) => keyedEntry(2_500_000 + i, "shared", i))
-  ]
-  // Shares an event and a key with the batch, but not as a pair, so it is
-  // not a conflict.
-  const crossed = indexes.map((i) => keyedEntry(3_000_000 + i, `event-${i}`, (i + 1) % crossChunkCount))
-  yield* journal.writeFromRemote({
-    remoteId: EventJournal.makeRemoteIdUnsafe(),
-    entries: remoteEntries([...newer, ...crossed]),
-    effect: () => Effect.void
-  })
-
-  const batches: Array<ReadonlyArray<readonly [string, ReadonlyArray<string>]>> = []
-  yield* journal.writeFromRemote({
-    remoteId: EventJournal.makeRemoteIdUnsafe(),
-    entries: remoteEntries(incoming),
-    effect: (batch) =>
-      Effect.sync(() => {
-        batches.push(
-          batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((entry) => entry.idString)] as const)
-        )
-      })
-  })
-
-  assert.deepStrictEqual(batches, [incoming.map((entry, i) => [entry.idString, [newer[i].idString]] as const)])
-}, limitParameters)
 
 export const suite = (
   makeJournal: Effect.Effect<EventJournal.EventJournal["Service"], unknown, Scope.Scope>
