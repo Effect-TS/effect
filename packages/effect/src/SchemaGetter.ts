@@ -1405,10 +1405,8 @@ export function splitKeyValue<E extends string>(options?: {
       let key: string
       let value: string
       if (keyValueSeparator === "") {
-        const chars = pair.split("")
-        if (chars.length < 2) return acc
-        key = chars[0]
-        value = chars[1]
+        key = pair.slice(0, 1)
+        value = pair.slice(1, 2)
       } else {
         const index = pair.indexOf(keyValueSeparator)
         if (index === -1) return acc
