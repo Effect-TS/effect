@@ -106,6 +106,7 @@ local = 2026-08-05 01:02:03
   })
 
   it("rejects bare carriage returns", () => {
+    assert.deepStrictEqual(Toml.parse("a = 1 # comment\r\nb = 2"), { a: 1, b: 2 })
     assert.throws(() => Toml.parse("a = 1 # comment\rb = 2"), SyntaxError, "Bare carriage return")
   })
 
