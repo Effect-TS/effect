@@ -1,6 +1,16 @@
 import { describe, it } from "@effect/vitest"
 import { assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
+import * as v8 from "node:v8"
+import * as vm from "node:vm"
+
+v8.setFlagsFromString("--expose-gc")
+const gc: () => void = vm.runInNewContext("gc")
+
+const publishTracked = (pubsub: PubSub.PubSub<object>) => {
+  const value = {}
+  return Effect.as(PubSub.publish(pubsub, value), new WeakRef(value))
+}
 
 describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
@@ -726,43 +736,26 @@ describe("PubSub", () => {
         deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
       }))
 
-    // An exhausted replay window must not keep a node of the replay buffer's list, or every message
-    // published later stays reachable for as long as the subscription lives.
-    const replayHead = (dequeue: Queue.Dequeue<number>) => (dequeue as any).replayWindow.head
-
-    it.scoped("releases the replay buffer when subscribed before anything is published", () =>
+    it.scoped("exhausted replay windows do not retain later messages", () =>
       Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>({ replay: 1 })
-        const sub = yield* PubSub.subscribe(pubsub)
-        strictEqual(replayHead(sub), undefined)
-        yield* PubSub.publishAll(pubsub, [1, 2, 3])
-        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [1, 2, 3])
-        strictEqual(replayHead(sub), undefined)
-      }))
+        const pubsub = yield* PubSub.unbounded<object>({ replay: 1 })
+        const subs = [yield* PubSub.subscribe(pubsub)]
+        yield* PubSub.publish(pubsub, {})
+        subs.push(yield* PubSub.subscribe(pubsub))
+        yield* Queue.take(subs[1])
+        subs.push(yield* PubSub.subscribe(pubsub))
+        yield* Queue.takeAll(subs[2])
+        yield* Queue.takeAll(subs[0])
 
-    it.scoped("releases the replay buffer once take drains the window", () =>
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>({ replay: 2 })
-        yield* PubSub.publishAll(pubsub, [1, 2, 3])
-        const sub = yield* PubSub.subscribe(pubsub)
-        strictEqual(yield* Queue.take(sub), 2)
-        strictEqual(replayHead(sub) === undefined, false)
-        strictEqual(yield* Queue.take(sub), 3)
-        strictEqual(replayHead(sub), undefined)
-        yield* PubSub.publishAll(pubsub, [4, 5])
-        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [4, 5])
-      }))
+        const ref = yield* publishTracked(pubsub)
+        yield* PubSub.publish(pubsub, {})
+        for (const sub of subs) {
+          strictEqual((yield* Queue.takeAll(sub)).length, 2)
+        }
 
-    it.scoped("releases the replay buffer once takeUpTo drains the window", () =>
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
-        yield* PubSub.publishAll(pubsub, [1, 2, 3, 4])
-        const sub = yield* PubSub.subscribe(pubsub)
-        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, 2)), [2, 3])
-        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, 5)), [4])
-        strictEqual(replayHead(sub), undefined)
-        yield* PubSub.publish(pubsub, 5)
-        strictEqual(yield* Queue.take(sub), 5)
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        gc()
+        strictEqual(ref.deref(), undefined)
       }))
   })
 })
