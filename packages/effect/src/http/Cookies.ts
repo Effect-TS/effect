@@ -226,12 +226,12 @@ function parseSetCookie(header: string): Cookie | undefined {
   if (firstEqual === -1) {
     return undefined
   }
-  const name = parts[0].slice(0, firstEqual).trim()
+  const name = parts[0].slice(0, firstEqual).replace(cookieWhitespaceRegExp, "")
   if (!cookieNameRegExp.test(name)) {
     return undefined
   }
 
-  const valueEncoded = parts[0].slice(firstEqual + 1).trim()
+  const valueEncoded = parts[0].slice(firstEqual + 1).replace(cookieWhitespaceRegExp, "")
   const value = tryDecodeURIComponent(valueEncoded)
 
   if (parts.length === 1) {
@@ -365,6 +365,7 @@ export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.coo
 // oxlint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 const cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+const cookieWhitespaceRegExp = /^[\t ]+|[\t ]+$/g
 // RFC 6265 section 5.2.2
 const maxAgeRegExp = /^-?[0-9]+$/
 // oxlint-disable-next-line no-control-regex
