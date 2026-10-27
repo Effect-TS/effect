@@ -651,6 +651,12 @@ describe("Duration", () => {
     assertFalse(Equal.equals(Duration.weeks(1), Duration.days(1)))
   })
 
+  it("toMicros", () => {
+    strictEqual(Duration.millis(1).pipe(Duration.toMicros), 1000)
+    strictEqual(Duration.nanos(1n).pipe(Duration.toMicros), 0.001)
+    strictEqual(Duration.infinity.pipe(Duration.toMicros), Infinity)
+  })
+
   it("toMillis", () => {
     strictEqual(Duration.millis(1).pipe(Duration.toMillis), 1)
     strictEqual(Duration.nanos(1n).pipe(Duration.toMillis), 0.000001)
