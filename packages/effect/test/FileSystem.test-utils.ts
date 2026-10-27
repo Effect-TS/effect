@@ -58,6 +58,17 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       assert(error.reason._tag === "NotFound")
     })))
 
+  it("makeTempDirectoryScoped tolerates an already removed directory", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const result = yield* Effect.scoped(Effect.gen(function*() {
+        const dir = yield* fs.makeTempDirectoryScoped()
+        yield* fs.remove(dir, { recursive: true })
+        return "body succeeded"
+      }))
+      expect(result).toEqual("body succeeded")
+    })))
+
   it("lstat does not follow symbolic links", () =>
     runPromise(Effect.scoped(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -103,6 +114,19 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
           assert(directoryError.reason._tag === "NotFound")
         }
       }))
+    })))
+
+  it("makeTempFileScoped tolerates an already removed directory", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const result = yield* Effect.scoped(Effect.gen(function*() {
+        const root = yield* fs.makeTempDirectoryScoped()
+        const file = yield* fs.makeTempFileScoped({ directory: root })
+        const separator = Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\"))
+        yield* fs.remove(file.slice(0, separator), { recursive: true })
+        return "body succeeded"
+      }))
+      expect(result).toEqual("body succeeded")
     })))
 
   it("truncate", () =>
