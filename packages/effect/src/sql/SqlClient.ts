@@ -12,10 +12,8 @@
 import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
-import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
@@ -431,26 +429,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
-  // Take a free permit while masked. Otherwise a separate fiber waits for and
-  // holds the permit with `withPermit`, so an interruption at any point leaves
-  // the permit with that fiber, and interrupting it when the lease fails or its
-  // scope closes always releases it.
-  const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) =>
-      Effect.flatMap(semaphore.takeIfAvailable(1), (taken) => {
-        if (taken) {
-          return Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1)), available)
-        }
-        const acquired = Deferred.makeUnsafe<void>()
-        const hold = semaphore.withPermit(Effect.andThen(Deferred.succeed(acquired, undefined), Effect.never))
-        return Effect.flatMap(Effect.forkIn(hold, scope), (fiber) =>
-          restore(Deferred.await(acquired)).pipe(
-            Effect.andThen(available),
-            // The caller's scope can outlive a failed lease, as with `reserve`.
-            Effect.onError(() => Fiber.interrupt(fiber))
-          ))
-      }))
-  )
+  const lease = Effect.uninterruptibleMask((restore) => Effect.andThen(restore(semaphore.takeScoped(1)), available))
 
   return {
     acquirer: lease,
