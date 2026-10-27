@@ -2057,6 +2057,26 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
     }))
 })
 
+// Caches the message, and the raw URL in it, when constructed.
+class CachedMessageServerError extends HttpServerError.HttpServerError {
+  constructor(props: ConstructorParameters<typeof HttpServerError.HttpServerError>[0]) {
+    super(props)
+    Object.defineProperty(this, "message", { value: this.message, writable: true, configurable: true })
+  }
+}
+
+// Renders its message from a private field, which copies of it do not have.
+class PrivateFieldWrapper extends Error {
+  readonly #detail = "private wrapper"
+  constructor(cause: unknown) {
+    super(undefined, { cause })
+  }
+  // @ts-expect-error `Error` declares `message` as a property
+  override get message() {
+    return this.#detail
+  }
+}
+
 describe("HttpApiBuilder RedactedNames", () => {
   it("redacts declared query and header names in server spans", async () => {
     const Api = HttpApi.make("Api").add(
@@ -2080,6 +2100,10 @@ describe("HttpApiBuilder RedactedNames", () => {
         HttpApiEndpoint.get("readonly", "/readonly", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] }),
         HttpApiEndpoint.get("frozen", "/frozen", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("cached", "/cached", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("private", "/private", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] })
       )
     )
@@ -2127,6 +2151,14 @@ describe("HttpApiBuilder RedactedNames", () => {
                 })
               )
             ))
+          .handle("cached", ({ request }) =>
+            Effect.die(new CachedMessageServerError({ reason: new HttpServerError.InternalError({ request }) })))
+          .handle("private", ({ request }) =>
+            Effect.die(
+              new PrivateFieldWrapper(
+                new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request }) })
+              )
+            ))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2157,7 +2189,10 @@ describe("HttpApiBuilder RedactedNames", () => {
           "/bare?token=s3cret",
           // Wrap the request in errors whose `cause` cannot be reassigned on a copy.
           "/readonly?token=s3cret",
-          "/frozen?token=s3cret"
+          "/frozen?token=s3cret",
+          // Fail with errors whose message cannot be redacted by replacing their fields.
+          "/cached?token=s3cret",
+          "/private?token=s3cret"
         ]
       ) {
         const response = await handler(
@@ -2173,8 +2208,8 @@ describe("HttpApiBuilder RedactedNames", () => {
       await dispose()
     }
 
-    assert.deepStrictEqual(statuses, [200, 400, 500, 500, 500, 500, 500, 500])
-    const [success, invalid, failure, defect, nested, bare, readonly, frozen] = spans
+    assert.deepStrictEqual(statuses, [200, 400, 500, 500, 500, 500, 500, 500, 500, 500])
+    const [success, invalid, failure, defect, nested, bare, readonly, frozen, cached, privateField] = spans
     assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
@@ -2220,6 +2255,14 @@ describe("HttpApiBuilder RedactedNames", () => {
     assert.include(frozenExported, "frozen wrapper")
     assert.include(frozenExported, "GET /frozen?token=REDACTED")
     assert.notInclude(frozenExported, "s3cret")
+    const cachedExported = exported(cached)
+    assert.include(cachedExported, "GET /cached?token=REDACTED")
+    assert.notInclude(cachedExported, "s3cret")
+    // Rendering the span failure must not throw either.
+    const privateExported = exported(privateField)
+    assert.include(privateExported, "private wrapper")
+    assert.include(privateExported, "GET /private?token=REDACTED")
+    assert.notInclude(privateExported, "s3cret")
   })
 })
 
