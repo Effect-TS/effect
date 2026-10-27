@@ -20,7 +20,7 @@ import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
-import type * as Exit from "../Exit.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
@@ -1912,48 +1912,46 @@ const make = Effect.gen(function*() {
 
   // This runner's view of its shards lags lock storage by up to one refresh,
   // or longer while the process is paused. So the final reply of a persisted
-  // request is stored only once a lock refresh confirms the shard. Concurrent
-  // writers share a refresh that covers their shard. Entities draining from a
+  // request is stored only once a refresh of its shard's lock confirms it.
+  // Concurrent writers on a shard share one refresh. Entities draining from a
   // released shard still hold its lock.
-  let pendingLockCheck: {
-    readonly shards: ReadonlyArray<ShardId>
-    readonly result: Deferred.Deferred<ReadonlyArray<ShardId>, PersistenceError>
-  } | undefined
+  const pendingLockChecks = new Map<ShardId, Deferred.Deferred<boolean, PersistenceError>>()
   const confirmShardLock = (runnerAddress: RunnerAddress, shardId: ShardId): Effect.Effect<boolean, PersistenceError> =>
     Effect.suspend(() => {
       if (!MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)) {
         return Effect.succeed(false)
       }
-      let check = pendingLockCheck
-      let start: Effect.Effect<unknown> = Effect.void
-      if (check === undefined || !check.shards.includes(shardId)) {
-        const pending = {
-          shards: [...acquiredShards, ...releasingShards],
-          result: Deferred.makeUnsafe<ReadonlyArray<ShardId>, PersistenceError>()
-        }
-        check = pendingLockCheck = pending
-        start = runnerStorage.refresh(runnerAddress, pending.shards).pipe(
-          Effect.timeoutOrElse({
-            duration: shardLockInterval,
-            orElse: () => Effect.fail(new PersistenceError({ cause: new Error("Shard lock refresh timed out") }))
-          }),
-          Effect.tap((acquired) =>
-            Effect.sync(() => {
-              releaseLostShards(pending.shards, acquired)
-              updateShardGauges()
-              if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
-            })
-          ),
-          Effect.exit,
-          Effect.flatMap((exit) => {
-            if (pendingLockCheck === pending) pendingLockCheck = undefined
-            return Deferred.done(pending.result, exit)
-          }),
-          Effect.forkIn(shardingScope, { startImmediately: true })
-        )
-      }
-      const result = check.result
-      return Effect.andThen(start, Effect.map(Deferred.await(result), (acquired) => acquired.includes(shardId)))
+      const pending = pendingLockChecks.get(shardId)
+      if (pending) return Deferred.await(pending)
+      const result = Deferred.makeUnsafe<boolean, PersistenceError>()
+      pendingLockChecks.set(shardId, result)
+      return runnerStorage.refresh(runnerAddress, [shardId]).pipe(
+        Effect.timeoutOrElse({
+          duration: shardLockInterval,
+          orElse: () => Effect.fail(new PersistenceError({ cause: new Error("Shard lock refresh timed out") }))
+        }),
+        Effect.map((acquired) => {
+          releaseLostShards([shardId], acquired)
+          updateShardGauges()
+          if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
+          return acquired.includes(shardId)
+        }),
+        // The refresh outlives an interrupted writer, so others can share it.
+        Effect.forkIn(shardingScope, { startImmediately: true }),
+        Effect.flatMap((fiber) => {
+          // Settles every writer, also when the refresh is interrupted or never
+          // starts because shutdown closed the scope: the reply is then left
+          // for the shard's next owner.
+          fiber.addObserver((exit) => {
+            if (pendingLockChecks.get(shardId) === result) pendingLockChecks.delete(shardId)
+            Deferred.doneUnsafe(
+              result,
+              Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? Exit.succeed(false) : exit
+            )
+          })
+          return Deferred.await(result)
+        })
+      )
     })
 
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
