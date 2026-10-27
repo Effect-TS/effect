@@ -584,40 +584,12 @@ export const redactUrl = (
   url: string,
   redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
 ): string => {
-  if (url.includes("@")) url = redactUserinfo(url)
-  const queryStart = url.indexOf("?")
-  if (queryStart === -1 || redactedNames.length === 0) return url
-  const hashStart = url.indexOf("#")
-  if (hashStart !== -1 && hashStart < queryStart) return url
-  const queryEnd = hashStart === -1 ? url.length : hashStart
-  return url.slice(0, queryStart + 1) + redactQuery(url.slice(queryStart + 1, queryEnd), redactedNames) +
-    url.slice(queryEnd)
-}
-
-const authorityStart = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]{2,})/i
-const specialAuthorityEnd = /[/\\?#]/
-const authorityEnd = /[/?#]/
-
-// Normalize only to locate userinfo; offsets preserve the original URL spelling.
-const redactUserinfo = (url: string): string => {
-  let normalized = ""
-  const offsets: Array<number> = []
-  for (let i = 0; i < url.length; i++) {
-    const code = url.charCodeAt(i)
-    if (code === 9 || code === 10 || code === 13 || (normalized === "" && code <= 32)) continue
-    normalized += url[i]
-    offsets.push(i)
-  }
-  const authority = authorityStart.exec(normalized)
-  if (authority === null) return url
-  const start = authority[0].length
-  const special = authority[1] !== undefined || !authority[0].includes(":")
-  const rest = normalized.slice(start)
-  const end = rest.search(special ? specialAuthorityEnd : authorityEnd)
-  const userinfoEnd = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
-  return userinfoEnd === -1
+  const userinfo = internal.userinfoRange(url)
+  if (userinfo !== undefined) url = url.slice(0, userinfo[0]) + "REDACTED:REDACTED" + url.slice(userinfo[1])
+  const query = redactedNames.length === 0 ? undefined : internal.queryRange(url)
+  return query === undefined
     ? url
-    : url.slice(0, offsets[start]) + "REDACTED:REDACTED" + url.slice(offsets[start + userinfoEnd])
+    : url.slice(0, query[0]) + redactQuery(url.slice(query[0], query[1]), redactedNames) + url.slice(query[1])
 }
 
 const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string =>

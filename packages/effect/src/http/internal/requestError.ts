@@ -4,6 +4,7 @@ import * as Redacted from "../../Redacted.ts"
 import type * as HttpClientError from "../HttpClientError.ts"
 import type * as HttpClientRequest from "../HttpClientRequest.ts"
 import * as UrlParams from "../UrlParams.ts"
+import * as InternalUrlParams from "./urlParams.ts"
 
 // Node, Deno and Bun wordings for a rejected header value
 const invalidHeaderValue = /invalid header value|has invalid value/i
@@ -27,20 +28,24 @@ const decode = (value: string, plusAsSpace: boolean): string => {
 const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
   Context.get((globalThis as any)[currentFiberTypeId]?.context ?? Context.empty(), UrlParams.CurrentRedactedNames)
 
-// secrets written into the URL string itself, following `UrlParams.redactUrl`
+// secrets written into the URL string itself, within the same bounds as `UrlParams.redactUrl`
 const urlSecrets = (url: string): Array<string> => {
   const secrets: Array<string> = []
-  try {
-    const { password, username } = new URL(url)
-    for (const part of [username, password]) secrets.push(part, decode(part, false))
-  } catch {
-    // a malformed URL can still carry a query
+  const userinfo = InternalUrlParams.userinfoRange(url)
+  if (userinfo !== undefined) {
+    const text = url.slice(userinfo[0], userinfo[1])
+    // the URL parser drops tabs and newlines before printing
+    for (const form of [text, text.replace(/[\t\n\r]/g, "")]) {
+      const colon = form.indexOf(":")
+      for (const part of colon === -1 ? [form] : [form.slice(0, colon), form.slice(colon + 1)]) {
+        secrets.push(part, decode(part, false))
+      }
+    }
   }
-  const queryStart = url.indexOf("?")
-  if (queryStart === -1) return secrets
-  const hashStart = url.indexOf("#", queryStart)
+  const query = InternalUrlParams.queryRange(url)
+  if (query === undefined) return secrets
   const names = currentRedactedNames()
-  for (const part of url.slice(queryStart + 1, hashStart === -1 ? undefined : hashStart).split("&")) {
+  for (const part of url.slice(query[0], query[1]).split("&")) {
     const index = part.indexOf("=")
     if (index === -1 || !UrlParams.isRedactedName(decode(part.slice(0, index), true), names)) continue
     const value = part.slice(index + 1)
