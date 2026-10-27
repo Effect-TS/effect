@@ -1,5 +1,4 @@
 import * as AiError from "effect/ai/AiError"
-import type * as Response from "effect/ai/Response"
 import * as Clock from "effect/Clock"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -7,7 +6,6 @@ import type * as Sse from "effect/encoding/Sse"
 import { dual } from "effect/Function"
 import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
@@ -69,37 +67,13 @@ export const mapHttpClientError = dual<
 >(2, (error, method) => {
   const reason = error.reason
   switch (reason._tag) {
-    case "TransportError": {
-      return Effect.fail(AiError.make({
-        module: "OpenAiClient",
-        method,
-        reason: new AiError.NetworkError({
-          reason: "TransportError",
-          description: reason.description,
-          request: buildHttpRequestDetails(reason.request)
-        })
-      }))
-    }
-    case "EncodeError": {
-      return Effect.fail(AiError.make({
-        module: "OpenAiClient",
-        method,
-        reason: new AiError.NetworkError({
-          reason: "EncodeError",
-          description: reason.description,
-          request: buildHttpRequestDetails(reason.request)
-        })
-      }))
-    }
+    case "TransportError":
+    case "EncodeError":
     case "InvalidUrlError": {
       return Effect.fail(AiError.make({
         module: "OpenAiClient",
         method,
-        reason: new AiError.NetworkError({
-          reason: "InvalidUrlError",
-          description: reason.description,
-          request: buildHttpRequestDetails(reason.request)
-        })
+        reason: AiError.NetworkError.fromRequestError(reason)
       }))
     }
     case "StatusCodeError": {
@@ -171,9 +145,11 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   const reason = mapStatusCodeToReason({
     now,
     status,
+    method: request.method,
+    url: request.url,
     headers,
     message,
-    http: buildHttpContext({ request, response, body }),
+    http: buildHttpContext({ response, body }),
     metadata: {
       errorCode,
       errorType: Option.isSome(decoded) ? decoded.value.error.type ?? null : null,
@@ -216,23 +192,10 @@ export const parseRateLimitHeaders = (headers: Record<string, string>, now: numb
 // =============================================================================
 
 /** @internal */
-export const buildHttpRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest
-): typeof Response.HttpRequestDetails.Type => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
-})
-
-/** @internal */
 export const buildHttpContext = (params: {
-  readonly request: HttpClientRequest.HttpClientRequest
   readonly response?: HttpClientResponse.HttpClientResponse
   readonly body?: string | undefined
 }): typeof AiError.HttpContext.Type => ({
-  request: buildHttpRequestDetails(params.request),
   response: Predicate.isNotUndefined(params.response)
     ? {
       status: params.response.status,
@@ -247,10 +210,12 @@ export const buildHttpContext = (params: {
 // =============================================================================
 
 /** @internal */
-export const mapStatusCodeToReason = ({ status, headers, message, metadata, http, now }: {
+export const mapStatusCodeToReason = ({ status, method, url, headers, message, metadata, http, now }: {
   readonly status: number
   /** Current time in epoch milliseconds, used to measure a Retry-After date. */
   readonly now: number
+  readonly method: string
+  readonly url: string
   readonly headers: Record<string, string>
   readonly message: string | undefined
   readonly metadata: OpenAiErrorMetadata
@@ -259,8 +224,8 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
   const errorDescription = AiError.buildErrorDescription({
     status,
     message,
-    method: http.request.method,
-    url: http.request.url,
+    method,
+    url,
     errorCode: metadata.errorCode,
     errorType: metadata.errorType,
     requestId: metadata.requestId,

@@ -254,8 +254,7 @@ describe("Response", () => {
       const part = Response.makePart("response-metadata", {
         id: undefined,
         modelId: undefined,
-        timestamp: undefined,
-        request: undefined
+        timestamp: undefined
       })
 
       const encoded = yield* Schema.encodeEffect(Response.ResponseMetadataPart)(part)

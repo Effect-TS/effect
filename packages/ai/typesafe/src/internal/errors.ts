@@ -4,20 +4,11 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
-
-const requestDetails = (request: HttpClientRequest.HttpClientRequest) => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
-})
 
 const ErrorBody = Schema.Struct({
   message: Schema.optional(Schema.String),
@@ -59,11 +50,7 @@ export const mapHttpClientError = Effect.fnUntraced(
       case "TransportError":
       case "EncodeError":
       case "InvalidUrlError":
-        reason = new AiError.NetworkError({
-          reason: source._tag,
-          description: source.description,
-          request: requestDetails(source.request)
-        })
+        reason = AiError.NetworkError.fromRequestError(source)
         break
       case "DecodeError":
       case "EmptyBodyError":
@@ -77,7 +64,6 @@ export const mapHttpClientError = Effect.fnUntraced(
         const parsed = yield* Effect.try(() => JSON.parse(body ?? "")).pipe(Effect.orElseSucceed(() => undefined))
         const details = Option.getOrUndefined(decodeErrorBody(parsed))
         const http = {
-          request: requestDetails(request),
           response: { status: response.status, headers: Redactable.redact(response.headers) as Record<string, string> },
           body
         }

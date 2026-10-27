@@ -2259,15 +2259,6 @@ export const UrlSourcePart: Schema.Struct<{
 // =============================================================================
 
 /**
- * Alias of {@link AiError.HttpRequestDetails}.
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.0
- */
-export const HttpRequestDetails = AiError.HttpRequestDetails
-
-/**
  * Alias of {@link AiError.HttpResponseDetails}.
  *
  * @stability unstable
@@ -2294,8 +2285,8 @@ export const HttpResponseDetails = AiError.HttpResponseDetails
  *   {
  *     id: "resp_123",
  *     modelId: "gpt-4",
- *     timestamp: DateTime.makeUnsafe("2024-01-01T00:00:00Z"),
- *     request: undefined
+
+ *     timestamp: DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  *   }
  * )
  * const result = [metadataPart.id, metadataPart.modelId] // => ["resp_123", "gpt-4"]
@@ -2318,10 +2309,6 @@ export interface ResponseMetadataPart extends BasePart<"response-metadata", Resp
    * Optional timestamp when the response was generated.
    */
   readonly timestamp?: DateTime.Utc | undefined
-  /**
-   * Optional HTTP request details for the request made to the AI provider.
-   */
-  readonly request?: typeof HttpRequestDetails.Type | undefined
 }
 
 /**
@@ -2346,10 +2333,6 @@ export interface ResponseMetadataPartEncoded
    * Optional timestamp when the response was generated.
    */
   readonly timestamp?: string | undefined
-  /**
-   * Optional HTTP request details for the request made to the AI provider.
-   */
-  readonly request?: typeof HttpRequestDetails.Encoded | undefined
 }
 
 /**
@@ -2374,7 +2357,6 @@ export const ResponseMetadataPart: Schema.Struct<{
   readonly id: Schema.optional<Schema.String>
   readonly modelId: Schema.optional<Schema.String>
   readonly timestamp: Schema.optional<Schema.DateTimeUtcFromString>
-  readonly request: Schema.optional<typeof HttpRequestDetails>
   readonly "~effect/ai/Response/Part": Schema.withDecodingDefaultKey<Schema.tag<"~effect/ai/Response/Part">>
   readonly metadata: Schema.withDecodingDefault<
     Schema.$Record<Schema.String, Schema.Codec<Schema.Json>>
@@ -2384,8 +2366,7 @@ export const ResponseMetadataPart: Schema.Struct<{
   type: Schema.tag("response-metadata"),
   id: Schema.optional(Schema.String),
   modelId: Schema.optional(Schema.String),
-  timestamp: Schema.optional(Schema.DateTimeUtcFromString),
-  request: Schema.optional(HttpRequestDetails)
+  timestamp: Schema.optional(Schema.DateTimeUtcFromString)
 }).annotate({ identifier: "ResponseMetadataPart" }) satisfies Schema.Codec<
   ResponseMetadataPart,
   ResponseMetadataPartEncoded
