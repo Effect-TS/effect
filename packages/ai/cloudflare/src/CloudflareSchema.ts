@@ -1,5 +1,5 @@
 /**
- * Codecs for text and JSON decisions from Cloudflare Clef models.
+ * Codecs for Cloudflare Clef decisions and Clairic extractions.
  *
  * @stability unstable
  * @since 4.0.0
@@ -156,5 +156,126 @@ export const DecisionsResponse = Schema.Struct({
   usage: Schema.Struct({
     input_tokens: Schema.Int,
     output_tokens: Schema.Int
+  })
+})
+
+/**
+ * A Clairic field spec. `min` and `max` are required for estimates and
+ * forecasts, `items` for lists, and `horizon` for forecasts.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExtractionField = Schema.Struct({
+  type: Schema.Literals(["text", "number", "date", "time", "datetime", "duration", "list", "estimate", "forecast"]),
+  instructions: Schema.optional(Schema.String),
+  unit: Schema.optional(Schema.String),
+  integer: Schema.optional(Schema.Boolean),
+  decimals: Schema.optional(Schema.Int),
+  items: Schema.optional(Schema.Literals(["text", "number", "date"])),
+  min: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
+  max: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
+  step: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
+  scale: Schema.optional(Schema.Literals(["linear", "log"])),
+  null_threshold: Schema.optional(Schema.Number),
+  horizon: Schema.optional(Schema.Int),
+  interval: Schema.optional(Schema.String)
+})
+
+/**
+ * A batch of typed fields to answer from text, with optional images shown to
+ * the model before the text.
+ *
+ * **Details**
+ *
+ * Clairic accepts up to 4 images of at most 4 MiB each, 8 MiB of decoded
+ * images in total, and 16 MiB per request body. Field names must match
+ * `^[A-Za-z_][A-Za-z0-9_.-]{0,63}$`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExtractionsRequest = Schema.Struct({
+  model: Schema.Union([Schema.Literal("clairic"), Schema.StringForLiteralAutocomplete]),
+  state: Schema.String,
+  fields: Schema.Record(Schema.String, ExtractionField),
+  images: Schema.optional(Schema.Array(Image)),
+  reference_date: Schema.optional(Schema.String),
+  options: Schema.optional(Schema.Struct({
+    include_quantiles: Schema.optional(Schema.Boolean),
+    return_state_text: Schema.optional(Schema.Boolean)
+  }))
+})
+
+const CharSpan = Schema.Tuple([Schema.Int, Schema.Int])
+
+/**
+ * One step of a Clairic forecast.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ForecastStep = Schema.Struct({
+  value: Schema.Unknown,
+  mean: Schema.Unknown,
+  median: Schema.Unknown,
+  p10: Schema.Unknown,
+  p90: Schema.Unknown,
+  p_below: Schema.optional(Schema.Number),
+  p_above: Schema.optional(Schema.Number),
+  quantiles: Schema.optional(Schema.Array(Schema.Unknown))
+})
+
+/**
+ * A Clairic answer. `value` is `null` when the input does not determine it,
+ * and `guess` is what the model would have answered. Lists report per-item
+ * `spans` for text items and `confidences` otherwise.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExtractionAnswer = Schema.Struct({
+  type: Schema.String,
+  value: Schema.Unknown,
+  guess: Schema.optional(Schema.Unknown),
+  p_null: Schema.optional(Schema.Number),
+  confidence: Schema.optional(Schema.Number),
+  confidences: Schema.optional(Schema.Array(Schema.Number)),
+  span: Schema.optional(CharSpan),
+  spans: Schema.optional(Schema.Array(CharSpan)),
+  mean: Schema.optional(Schema.Unknown),
+  median: Schema.optional(Schema.Unknown),
+  p10: Schema.optional(Schema.Unknown),
+  p90: Schema.optional(Schema.Unknown),
+  p_below: Schema.optional(Schema.Number),
+  p_above: Schema.optional(Schema.Number),
+  quantiles: Schema.optional(Schema.Array(Schema.Unknown)),
+  steps: Schema.optional(Schema.Array(ForecastStep))
+})
+
+/**
+ * Answers, truncation, and token usage for a batch. `passes` counts the
+ * parallel passes the fields were split across.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExtractionsResponse = Schema.Struct({
+  model: Schema.String,
+  answers: Schema.Record(Schema.String, ExtractionAnswer),
+  truncated: Schema.Boolean,
+  state_text: Schema.optional(Schema.String),
+  usage: Schema.Struct({
+    input_tokens: Schema.Int,
+    output_tokens: Schema.Int,
+    state_tokens: Schema.optional(Schema.Int),
+    image_tokens: Schema.optional(Schema.Int),
+    schema_tokens: Schema.optional(Schema.Int),
+    passes: Schema.optional(Schema.Int)
   })
 })
