@@ -187,6 +187,21 @@ describe("NodeDocker", () => {
       assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("connects to a named pipe through its path, for requests and upgrades alike", () =>
+    Effect.gen(function*() {
+      // Node reaches a named pipe as it does a unix socket, through `socketPath`: a socket stands in for it here
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const socketPath = path.join(yield* fs.makeTempDirectoryScoped(), "docker_engine")
+      const { connections } = yield* makeEngine(
+        () => Http.createServer(),
+        (server, ready) => server.listen(socketPath, ready),
+        () => ({ servername: false, clientCertificate: false })
+      )
+      assert.strictEqual(yield* connect({ _tag: "Npipe", path: socketPath }), "hello")
+      assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("fails with a permanent ConnectionFailed when the Engine's certificate can't be verified", () =>
     Effect.gen(function*() {
       const { server } = yield* makeTlsEngine
