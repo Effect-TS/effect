@@ -142,7 +142,7 @@ export class NetworkError extends Schema.Error<NetworkError>(
    */
   static fromRequestError(error: HttpClientError.RequestError): NetworkError {
     return new NetworkError({
-      description: error.description ?? InternalNetworkError.describe(error),
+      description: error.description ?? InternalNetworkError.describe(error.cause),
       reason: error._tag,
       method: error.request.method,
       url: error.request.url
