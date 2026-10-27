@@ -574,6 +574,24 @@ describe("SqlRunnerStorage", () => {
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
 
+      it.effect("releases a shard reacquired after releasing all shards", () =>
+        Effect.gen(function*() {
+          const storage = yield* SqlRunnerStorage.make({})
+          const shards = [ShardId.make("default", 12)]
+
+          yield* storage.releaseAll(runnerAddress1)
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          // Refreshing must not take the lock a second time.
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
+          yield* storage.release(runnerAddress1, shards[0])
+
+          const other = yield* SqlRunnerStorage.make({})
+          expect(yield* other.acquire(runnerAddress2, shards)).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
