@@ -41,14 +41,16 @@ describe("Cookies", () => {
   })
 
   describe("fromSetCookie", () => {
-    it("ignores invalid cookie names", () => {
+    it("trims cookie pairs and ignores invalid cookie names", () => {
       const cookies = Cookies.fromSetCookie([
         "bad name=value",
-        "session=abc"
+        "session\t=\tabc",
+        "encoded = %20abc%20"
       ])
 
       assertNone(Cookies.get(cookies, "bad name"))
       assertSome(Cookies.getValue(cookies, "session"), "abc")
+      assertSome(Cookies.getValue(cookies, "encoded"), " abc ")
     })
 
     it("ignores invalid Max-Age attributes", () => {
