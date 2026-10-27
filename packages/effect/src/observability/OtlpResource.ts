@@ -79,6 +79,11 @@ export const make = (options: {
  * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. Missing
  * required configuration is converted to a defect.
  *
+ * Keys and values in `OTEL_RESOURCE_ATTRIBUTES` are trimmed, then
+ * percent-decoded. Entries with an empty value are kept as `""`; entries
+ * without `=` or with an empty key are skipped. Invalid percent-encoding is a
+ * `ConfigError` and is converted to a defect.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -97,7 +102,8 @@ export const fromConfig: (
   const env = yield* Config.Record(
     Schema.StringFromUriComponent,
     Schema.StringFromUriComponent,
-    "OTEL_RESOURCE_ATTRIBUTES"
+    "OTEL_RESOURCE_ATTRIBUTES",
+    { trim: true, keepEmptyValues: true }
   ).pipe(Config.withDefault(undefined))
 
   const serviceName = options?.serviceName
