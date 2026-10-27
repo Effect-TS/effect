@@ -256,6 +256,40 @@ describe("SqlRunnerStorage", () => {
       )
     }, 60_000)
 
+    for (const operation of ["release", "releaseAll"] as const) {
+      it.effect(`does not restore a lease after ${operation} while a refresh result is pending`, () => {
+        const refreshes = { results: Latch.makeUnsafe(true), pending: 0 }
+        const layer = StorageLayer.pipe(
+          Layer.provideMerge(holdLeaseRefreshResults(refreshes)),
+          Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+        )
+
+        return Effect.gen(function*() {
+          const storage = yield* RunnerStorage.RunnerStorage
+          const shards = [ShardId.make("default", 1)]
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+
+          // The refresh runs first, and its result arrives after the release.
+          refreshes.results.closeUnsafe()
+          const refresh = yield* storage.refresh(runnerAddress1, shards).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* waitUntil(() => refreshes.pending === 1)
+          yield* operation === "release"
+            ? storage.release(runnerAddress1, shards[0])
+            : storage.releaseAll(runnerAddress1)
+          yield* refreshes.results.open
+          expect(yield* Fiber.join(refresh)).toEqual(shards)
+
+          expect(yield* storage.owned(runnerAddress1, shards)).toEqual([])
+        }).pipe(
+          Effect.ensuring(refreshes.results.open),
+          Effect.provide(layer),
+          TestClock.withLive
+        )
+      }, 60_000)
+    }
+
     it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
       const partitioned = makePartitionState()
       const layer = StorageLayer.pipe(
@@ -909,6 +943,46 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
                 return wrapConnection(connection)
               })
             )
+          }
+          if (property === "withoutTransforms") {
+            return () => client
+          }
+          return Reflect.get(target, property, receiver)
+        }
+      })
+      return client
+    })
+  ).pipe(Layer.provide(PgContainer.layerClientDatabase))
+
+// Holds the results of lease refreshes on reserved connections, after the
+// database has run them, until `results` opens.
+const holdLeaseRefreshResults = (refreshes: { readonly results: Latch.Latch; pending: number }) =>
+  Layer.effect(
+    SqlClient.SqlClient,
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const executeValues =
+        (connection: SqlConnection.Connection): SqlConnection.Connection["executeValues"] => (query, params) =>
+          query.includes("SET acquired_at")
+            ? Effect.tap(connection.executeValues(query, params), () =>
+              Effect.suspend(() => {
+                refreshes.pending++
+                return refreshes.results.await
+              }))
+            : connection.executeValues(query, params)
+      const wrapConnection = (connection: SqlConnection.Connection): SqlConnection.Connection =>
+        new Proxy(connection, {
+          get(target, property) {
+            if (property === "executeValues") return executeValues(target)
+            const value = Reflect.get(target, property, target)
+            return typeof value === "function" ? value.bind(target) : value
+          }
+        })
+      let client: SqlClient.SqlClient
+      client = new Proxy(sql, {
+        get(target, property, receiver) {
+          if (property === "reserve") {
+            return Effect.map(target.reserve, wrapConnection)
           }
           if (property === "withoutTransforms") {
             return () => client

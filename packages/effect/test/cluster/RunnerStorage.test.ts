@@ -26,6 +26,22 @@ describe("RunnerStorage", () => {
       )
 
       assert.deepStrictEqual(acquired, shards)
-      assert.deepStrictEqual(yield* storage.refresh(address, []), shards)
+      assert.deepStrictEqual(yield* storage.refresh(address, shards), shards)
+    }))
+
+  it.effect("memory refresh keeps the shards of earlier acquisitions", () =>
+    Effect.gen(function*() {
+      const storage = yield* RunnerStorage.makeMemory
+      const runnerA = RunnerAddress.make("localhost", 1234)
+      const runnerB = RunnerAddress.make("localhost", 5678)
+      const [shard1, shard2, shard3] = [1, 2, 3].map((id) => ShardId.make("default", id))
+
+      yield* storage.acquire(runnerA, [shard1])
+      yield* storage.acquire(runnerA, [shard2])
+      assert.deepStrictEqual(yield* storage.refresh(runnerA, [shard1, shard2]), [shard1, shard2])
+
+      yield* storage.acquire(runnerB, [shard3])
+      assert.deepStrictEqual(yield* storage.refresh(runnerA, [shard1, shard2, shard3]), [shard1, shard2])
+      assert.deepStrictEqual(yield* storage.refresh(runnerA, []), [])
     }))
 })
