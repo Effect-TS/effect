@@ -214,7 +214,7 @@ const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectorySco
   return (options) =>
     Effect.acquireRelease(
       makeDirectory(options),
-      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true }))
+      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true, force: true }))
     )
 })()
 
@@ -514,7 +514,7 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
   return (options) =>
     Effect.acquireRelease(
       makeFile(options),
-      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true }))
+      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true, force: true }))
     )
 })()
 

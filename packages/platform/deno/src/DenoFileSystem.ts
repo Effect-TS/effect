@@ -122,7 +122,7 @@ const remove = removeFactory("remove")
 const makeTempDirectoryScoped: FileSystem.FileSystem["makeTempDirectoryScoped"] = (options) =>
   Effect.acquireRelease(
     makeTempDirectoryFactory("makeTempDirectoryScoped")(options),
-    (directory) => Effect.orDie(removeFactory("makeTempDirectoryScoped")(directory, { recursive: true }))
+    (directory) => Effect.orDie(removeFactory("makeTempDirectoryScoped")(directory, { recursive: true, force: true }))
   )
 
 const openOptions = (flag: FileSystem.OpenFlag = "r", mode?: number): Deno.OpenOptions => {
