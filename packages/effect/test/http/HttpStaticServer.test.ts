@@ -84,6 +84,7 @@ describe("HttpStaticServer conditional requests", () => {
         fileResponse: () =>
           Effect.succeed(
             HttpServerResponse.text("0123456789").pipe(
+              HttpServerResponse.setHeader("ETag", "\"v1\""),
               HttpServerResponse.setHeader("Last-Modified", lastModified)
             )
           ),
@@ -91,6 +92,42 @@ describe("HttpStaticServer conditional requests", () => {
       })
     )
   )
+
+  it.effect("evaluates preconditions before cache validators and ranges", () =>
+    Effect.gen(function*() {
+      const app = yield* HttpStaticServer.make({ root: "/root" })
+      const handler = HttpEffect.toWebHandler(app)
+      const earlier = "Sat, 05 Nov 1994 10:00:00 GMT"
+      for (
+        const [method, headers, status] of [
+          ["GET", { "If-Match": "\"stale\"" }, 412],
+          ["HEAD", { "If-Match": "\"stale\"" }, 412],
+          ["GET", { "If-Match": "W/\"v1\"" }, 412],
+          ["GET", { "If-Match": "\"v1\"" }, 200],
+          ["GET", { "If-Match": "*" }, 200],
+          ["GET", { "If-Match": "\"other\", \"v1\"" }, 200],
+          ["GET", { "If-Match": "\"stale\"", Range: "bytes=2-5" }, 412],
+          ["GET", { "If-Match": "\"stale\"", "If-None-Match": "\"v1\"" }, 412],
+          ["GET", { "If-Match": "\"v1\"", "If-None-Match": "\"v1\"" }, 304],
+          ["GET", { "If-Unmodified-Since": earlier }, 412],
+          ["GET", { "If-Unmodified-Since": lastModified }, 200],
+          ["GET", { "If-Unmodified-Since": "Mon, 07 Nov 1994 10:00:00 GMT" }, 200],
+          ["GET", { "If-Unmodified-Since": "invalid" }, 200],
+          ["GET", { "If-Unmodified-Since": earlier, Range: "bytes=2-5" }, 412],
+          ["GET", { "If-Unmodified-Since": earlier, "If-None-Match": "\"v1\"" }, 412],
+          ["GET", { "If-Match": "\"v1\"", "If-Unmodified-Since": earlier }, 200]
+        ] as const
+      ) {
+        const response = yield* Effect.promise(() =>
+          handler(new Request("http://localhost/file.txt", { method, headers }))
+        )
+        assert.strictEqual(response.status, status, JSON.stringify({ method, headers }))
+        if (status === 412) {
+          assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          assert.strictEqual(response.headers.get("content-range"), null)
+        }
+      }
+    }).pipe(Effect.provide(services)))
 
   it.effect("reads an asctime If-Modified-Since as UTC, whatever the process time zone", () =>
     Effect.gen(function*() {

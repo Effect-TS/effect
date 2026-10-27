@@ -121,7 +121,9 @@ export const make: (options: {
   ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HttpServerError.HttpServerError> = Effect.fnUntraced(
     function*(request, filePath, fileSize) {
       const rangeHeader = request.method === "GET" ? request.headers["range"] : undefined
-      const shouldEvaluateConditionals = request.headers["if-none-match"] !== undefined ||
+      const shouldEvaluateConditionals = request.headers["if-match"] !== undefined ||
+        request.headers["if-unmodified-since"] !== undefined ||
+        request.headers["if-none-match"] !== undefined ||
         request.headers["if-modified-since"] !== undefined
 
       let fullResponse: HttpServerResponse.HttpServerResponse | undefined
@@ -446,6 +448,11 @@ const stripWeakEtagPrefix = (value: string): string => {
   return /^w\//i.test(trimmed) ? trimmed.slice(2) : trimmed
 }
 
+const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean =>
+  ifMatch.trim() === "*" ||
+  (etag !== undefined && etag.startsWith("\"") &&
+    (ifMatch.match(/(?:W\/)?"[^"]*"/g)?.includes(etag) ?? false))
+
 const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): boolean => {
   const normalizedEtag = etag === undefined ? undefined : stripWeakEtagPrefix(etag)
   for (const candidate of ifNoneMatch.split(",")) {
@@ -463,18 +470,19 @@ const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): bool
   return false
 }
 
-// An invalid date on either side disables the precondition (RFC 9110 §13.1.3).
-const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | undefined): boolean => {
+// An invalid date on either side disables the precondition (RFC 9110 §13.1.3–4).
+const isModifiedSince = (since: string, lastModified: string | undefined): boolean | undefined => {
   if (lastModified === undefined) {
-    return false
+    return undefined
   }
-  const ifModifiedSinceDate = Headers.parseHttpDate(ifModifiedSince)
-  if (Result.isFailure(ifModifiedSinceDate)) {
-    return false
+  const sinceDate = Headers.parseHttpDate(since)
+  if (Result.isFailure(sinceDate)) {
+    return undefined
   }
   const lastModifiedDate = Headers.parseHttpDate(lastModified)
-  return Result.isSuccess(lastModifiedDate) &&
-    DateTime.toEpochMillis(lastModifiedDate.success) <= DateTime.toEpochMillis(ifModifiedSinceDate.success)
+  return Result.isSuccess(lastModifiedDate)
+    ? DateTime.toEpochMillis(lastModifiedDate.success) > DateTime.toEpochMillis(sinceDate.success)
+    : undefined
 }
 
 // Only a strong entity-tag can match (RFC 9110 §13.1.5). Weak tags start
@@ -511,12 +519,25 @@ const evaluateConditionalRequest = (
   request: HttpServerRequest.HttpServerRequest,
   response: HttpServerResponse.HttpServerResponse
 ): HttpServerResponse.HttpServerResponse | undefined => {
+  const ifMatch = request.headers["if-match"]
+  if (ifMatch !== undefined) {
+    if (!matchesIfMatch(ifMatch, response.headers["etag"])) {
+      return HttpServerResponse.empty({ status: 412 })
+    }
+  } else {
+    const ifUnmodifiedSince = request.headers["if-unmodified-since"]
+    if (
+      ifUnmodifiedSince !== undefined && isModifiedSince(ifUnmodifiedSince, response.headers["last-modified"]) === true
+    ) {
+      return HttpServerResponse.empty({ status: 412 })
+    }
+  }
   const ifNoneMatch = request.headers["if-none-match"]
   if (ifNoneMatch !== undefined) {
     return matchesIfNoneMatch(ifNoneMatch, response.headers["etag"]) ? notModifiedResponse(response) : undefined
   }
   const ifModifiedSince = request.headers["if-modified-since"]
-  if (ifModifiedSince !== undefined && isNotModifiedSince(ifModifiedSince, response.headers["last-modified"])) {
+  if (ifModifiedSince !== undefined && isModifiedSince(ifModifiedSince, response.headers["last-modified"]) === false) {
     return notModifiedResponse(response)
   }
   return undefined
