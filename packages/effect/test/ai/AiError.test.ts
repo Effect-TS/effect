@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Redacted, Schema } from "effect"
 import { AiError } from "effect/ai"
-import { Headers, HttpClientError, HttpClientRequest } from "effect/http"
+import { HttpClientError, HttpClientRequest } from "effect/http"
 
 describe("AiError", () => {
   describe("reason types", () => {
@@ -34,22 +34,6 @@ describe("AiError", () => {
     })
 
     describe("NetworkError.fromRequestError", () => {
-      it("redacts protected query values in a description from the cause", () => {
-        const request = HttpClientRequest.get("https://example.com").pipe(
-          HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
-          HttpClientRequest.appendUrlParam("remote", "public"),
-          HttpClientRequest.setUrlParam("other", Redacted.make("private-\uD800"))
-        )
-        const cause = new TypeError(
-          "Request cannot be constructed from a URL: https://example.com/?remote=param-secret&remote=public&other=private-%EF%BF%BD"
-        )
-        const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
-        assert.strictEqual(
-          error.description,
-          "Request cannot be constructed from a URL: https://example.com/?remote=<redacted>&remote=public&other=<redacted>"
-        )
-      })
-
       it("describes request errors from their cause chain", () => {
         const request = HttpClientRequest.get("http://localhost:11434")
         const cause = new TypeError("fetch failed", {
@@ -66,21 +50,48 @@ describe("AiError", () => {
         )
       })
 
-      it.effect("redacts sensitive header values in a description from the cause", () =>
-        Effect.sync(() => {
-          const request = HttpClientRequest.get("http://localhost:11434").pipe(
-            HttpClientRequest.bearerToken("sk-secret\u0000x "),
-            HttpClientRequest.setHeader("x-custom-key", "sk-secret\u0000x-custom")
-          )
-          const cause = new TypeError("Headers.append: \"Bearer sk-default\u0000x\" is an invalid header value.", {
-            cause: new Error("token sk-secret\u0000x rejected for sk-secret\u0000x-custom")
-          })
+      it("replaces a rejected header value with fixed text", () => {
+        const request = HttpClientRequest.get("http://localhost:11434")
+        // Node, Deno and Bun wordings
+        for (
+          const message of [
+            "Headers.append: \"Bearer sk-default\u0000x\" is an invalid header value.",
+            "Invalid header value: \"Bearer sk-default\u0000x\"",
+            "Header '14' has invalid value: 'Bearer sk-default\u0000x'"
+          ]
+        ) {
+          const cause = new TypeError(message)
           const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
-          assert.strictEqual(
-            error.description,
-            "Invalid HTTP header value: token <redacted> rejected for <redacted>"
-          )
-        }).pipe(Effect.provideService(Headers.CurrentRedactedNames, ["authorization", "x-custom-key"])))
+          assert.strictEqual(error.description, "Invalid HTTP header value")
+        }
+      })
+
+      it("omits URLs embedded in the cause", () => {
+        for (
+          const [url, message, expected] of [
+            // Node
+            [
+              "http://user:pass-secret@127.0.0.1:65531/v1?api_key=query-secret",
+              (url: string) => `Request cannot be constructed from a URL that includes credentials: ${url}`,
+              "Request cannot be constructed from a URL that includes credentials: <url>"
+            ],
+            // Deno
+            [
+              "http://127.0.0.1:65531/v1?q=a%20b)c&api_key=query-secret",
+              (url: string) =>
+                `error sending request for url (${url}): client error (Connect): tcp connect error: Connection refused (os error 111)`,
+              "error sending request for url (<url>): client error (Connect): tcp connect error: Connection refused (os error 111)"
+            ]
+          ] as const
+        ) {
+          const request = HttpClientRequest.get(url)
+          const cause = new TypeError(message(url))
+          const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
+          assert.strictEqual(error.description, expected)
+          assert.notInclude(error.description, "pass-secret")
+          assert.notInclude(error.description, "query-secret")
+        }
+      })
     })
 
     describe("RateLimitError", () => {
