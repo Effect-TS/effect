@@ -15,6 +15,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
+import * as InternalRequestError from "./internal/requestError.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -92,6 +93,13 @@ const formatMessage = (reason: string, description: string | undefined, info: st
 const formatMethodAndUrl = (request: HttpClientRequest.HttpClientRequest) =>
   `${request.method} ${UrlParams.redactUrl(request.url)}`
 
+const formatRequestErrorMessage = (error: RequestError): string =>
+  formatMessage(
+    formatReason(error._tag),
+    error.description ?? InternalRequestError.describe(error),
+    formatMethodAndUrl(error.request)
+  )
+
 // Serialized reasons carry the same request and response information as the
 // message, so headers, URL parameters and bodies stay out of logs. The full
 // objects remain available through the `request` and `response` properties.
@@ -129,8 +137,8 @@ export class TransportError extends Data.TaggedError("TransportError")<{
    * @stability unstable
    * @since 4.0.0
    */
-  override get message() {
-    return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
+  override get message(): string {
+    return formatRequestErrorMessage(this)
   }
 
   override toJSON(): unknown {
@@ -166,8 +174,8 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
    * @stability unstable
    * @since 4.0.0
    */
-  override get message() {
-    return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
+  override get message(): string {
+    return formatRequestErrorMessage(this)
   }
 
   override toJSON(): unknown {
@@ -203,8 +211,8 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
    * @stability unstable
    * @since 4.0.0
    */
-  override get message() {
-    return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
+  override get message(): string {
+    return formatRequestErrorMessage(this)
   }
 
   override toJSON(): unknown {
