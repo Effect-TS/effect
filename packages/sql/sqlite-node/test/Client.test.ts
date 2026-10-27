@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References, Scope } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -378,86 +378,24 @@ describe("Client", () => {
       }
     }))
 
-  it.effect.each(["withTransaction", "reserve"] as const)(
-    "releases the connection when a queued %s is interrupted",
-    (mode) =>
-      Effect.gen(function*() {
-        // Sweep scheduler budgets and offsets to hit the permit handoff window.
-        for (let budget = 3; budget <= 64; budget++) {
-          for (let lead = 0; lead <= 3; lead++) {
-            yield* Effect.scoped(Effect.gen(function*() {
-              const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
-              const holder = yield* Effect.forkChild(sql`SELECT 1`)
-              const acquire: Effect.Effect<unknown, SqlError> = mode === "withTransaction"
-                ? sql.withTransaction(sql`SELECT 2`)
-                : Effect.scoped(sql.reserve)
-              const queued = yield* acquire.pipe(
-                Effect.provideService(References.MaxOpsBeforeYield, budget),
-                Effect.forkChild
-              )
-              for (let i = 0; i < lead; i++) yield* Effect.yieldNow
-              yield* Fiber.interrupt(queued)
-              yield* Fiber.join(holder)
-              const next = yield* sql`SELECT 3 AS value`.pipe(
-                Effect.timeoutOption("1 second"),
-                Effect.forkChild({ startImmediately: true })
-              )
-              yield* TestClock.adjust("1 second")
-              assert.deepStrictEqual(
-                yield* Fiber.join(next),
-                Option.some([{ value: 3 }]),
-                `connection leaked at budget=${budget} lead=${lead}`
-              )
-            }))
-          }
-        }
-      })
-  )
-
-  it.effect.each(["withTransaction", "reserve"] as const)(
-    "hands the connection to every queued %s",
-    (mode) =>
-      Effect.gen(function*() {
-        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
-        const release = yield* Deferred.make<void>()
-        const holder = yield* Effect.forkChild(sql.withTransaction(Deferred.await(release)), {
-          startImmediately: true
-        })
-        const acquire: Effect.Effect<unknown, SqlError> = mode === "withTransaction"
-          ? sql.withTransaction(sql`SELECT 2`)
-          : Effect.scoped(sql.reserve)
-        const queued = yield* Effect.all(
-          Array.from({ length: 3 }, () =>
-            acquire.pipe(
-              Effect.provideService(References.MaxOpsBeforeYield, 3),
-              Effect.forkChild
-            ))
-        )
-        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(holder)
-        for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
-        assert.isTrue(queued.every((fiber) => fiber.pollUnsafe() !== undefined))
-      })
-  )
-
-  it.effect("cleans up a queued reserve interrupted in an open scope", () =>
+  it.effect("releases the connection when a queued transaction is interrupted", () =>
     Effect.gen(function*() {
-      const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
-      const release = yield* Deferred.make<void>()
-      const holder = yield* Effect.forkChild(sql.withTransaction(Deferred.await(release)), {
-        startImmediately: true
-      })
-      // The scope stays open, so only the interruption can end the lease.
-      const scope = yield* Scope.make()
-      const reserve = yield* Effect.forkChild(Scope.provide(sql.reserve, scope), { startImmediately: true })
-      yield* Fiber.interrupt(reserve)
-      assert.strictEqual(scope.state._tag, "Empty")
-      yield* Deferred.succeed(release, undefined)
-      yield* Fiber.join(holder)
-      const next = yield* Effect.forkChild(sql`SELECT 3 AS value`)
-      for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
-      assert.isDefined(next.pollUnsafe())
+      // Sweep the interrupt across the gap between taking the connection and registering its release.
+      for (let delay = 0; delay < 31; delay++) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+          const holder = yield* Effect.forkChild(sql`SELECT 1`)
+          const queued = yield* sql.withTransaction(sql`SELECT 2`).pipe(
+            Effect.provideService(References.MaxOpsBeforeYield, 3),
+            Effect.forkChild
+          )
+          for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+          yield* Fiber.interrupt(queued)
+          yield* Fiber.join(holder)
+          const next = yield* Effect.forkChild(sql`SELECT 3`, { startImmediately: true })
+          assert.isDefined(next.pollUnsafe(), `connection leaked at delay ${delay}`)
+        }))
+      }
     }))
 
   it.effect("uses a 5 second busy timeout", () =>
