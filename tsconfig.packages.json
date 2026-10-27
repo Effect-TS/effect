@@ -5,6 +5,7 @@
   "references": [
     { "path": "ai-docs" },
     { "path": "packages/effect" },
+    { "path": "packages/ai/amazon-bedrock" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/cloudflare" },
     { "path": "packages/ai/openai-compat" },
