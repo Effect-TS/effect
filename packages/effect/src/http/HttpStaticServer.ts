@@ -485,21 +485,18 @@ const matchesIfRange = (ifRange: string, etag: string | undefined): boolean => {
   return value.startsWith("\"") && value === etag
 }
 
+// Headers a 304 must repeat from the 200 response (RFC 9110 §15.4.5), plus Last-Modified for revalidation.
+const notModifiedHeaders = ["cache-control", "content-location", "date", "etag", "expires", "last-modified", "vary"]
+
 const notModifiedResponse = (
   response: HttpServerResponse.HttpServerResponse
 ): HttpServerResponse.HttpServerResponse => {
   const headers: Record<string, string> = {}
-  const etag = response.headers["etag"]
-  if (etag !== undefined) {
-    headers["ETag"] = etag
-  }
-  const cacheControl = response.headers["cache-control"]
-  if (cacheControl !== undefined) {
-    headers["Cache-Control"] = cacheControl
-  }
-  const lastModified = response.headers["last-modified"]
-  if (lastModified !== undefined) {
-    headers["Last-Modified"] = lastModified
+  for (const name of notModifiedHeaders) {
+    const value = response.headers[name]
+    if (value !== undefined) {
+      headers[name] = value
+    }
   }
   return HttpServerResponse.empty({
     status: 304,
