@@ -481,6 +481,8 @@ class TomlParser {
       if (this.input[this.index] === "\n") {
         this.line++
         this.column = 1
+      } else if (this.input[this.index] === "\r" && this.input[this.index + 1] !== "\n") {
+        this.fail("Bare carriage return")
       } else {
         this.column++
       }

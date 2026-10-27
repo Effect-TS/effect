@@ -105,6 +105,10 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it("rejects bare carriage returns", () => {
+    assert.throws(() => Toml.parse("a = 1 # comment\rb = 2"), SyntaxError, "Bare carriage return")
+  })
+
   it("parses Unicode escapes at the scalar value boundaries", () => {
     assert.deepStrictEqual(
       Toml.parse(String.raw`
