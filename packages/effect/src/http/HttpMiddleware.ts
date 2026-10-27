@@ -273,7 +273,8 @@ const responseSpanExit = (
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
   }
-  // Exporters read the error message after the request-scoped redacted names are gone.
+  // The message is path-only, but exporters can still read `error.request.url`
+  // after the request-scoped redacted names are gone.
   const url = UrlParams.redactUrl(request.url, fiber.getRef(UrlParams.CurrentRedactedNames))
   if (url !== request.url) {
     request = request.modify({ url })

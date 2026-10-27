@@ -280,7 +280,7 @@ export class ClientAbort extends Context.Service<ClientAbort, true>()("effect/ht
 }
 
 const formatMethodAndUrl = (request: Request.HttpServerRequest) =>
-  `${request.method} ${internalUrlParams.stripSearchAndHash(request.url)}`
+  `${request.method} ${internalUrlParams.toPath(request.url)}`
 
 const formatRequestMessage = (reason: string, description: string | undefined, info: string) => {
   const prefix = `${reason} (${info})`

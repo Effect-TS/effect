@@ -17,3 +17,18 @@ export const stripSearchAndHash = (url: string): string => {
   }
   return url.slice(0, Math.min(queryIndex, hashIndex))
 }
+
+const originForm = /^\/(?![/\\])/
+
+/** @internal */
+export const toPath = (url: string): string => {
+  // Origin-form targets and "*" are already paths; absolute URLs can carry credentials.
+  if (url === "*" || originForm.test(url)) {
+    return stripSearchAndHash(url)
+  }
+  try {
+    return new URL(url, "http://localhost").pathname
+  } catch {
+    return "<invalid URL>"
+  }
+}
