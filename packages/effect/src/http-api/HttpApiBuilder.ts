@@ -1235,28 +1235,31 @@ function makeStreamBodyEncoder(
 }
 
 // Ends the stream with the encoded failure when the error schema accepts it.
-// The client reads any line with the error schema's encoded shape as an error
-// record, so an encoded element with that shape aborts the response. This
-// check is structural, so it also rejects a record that the error schema's
-// decoding would fail on, and it adds no decoding services.
+// The client reads any line the error schema decodes as an error record, so an
+// encoded element it decodes aborts the response. `StreamNdjson` only accepts
+// error schemas without decoding services, so this adds none to the server.
 function makeNdjsonErrorRecordEncoder(
   error: Schema.Top,
   options: SchemaAST.ParseOptions | undefined
 ): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<unknown, unknown, unknown> {
   if (SchemaAST.isNever(error.ast)) return Function.identity
   const isError = Schema.is(error)
-  const isErrorRecord = Schema.is(Schema.toEncoded(Schema.toCodecJson(error)))
+  const decodeErrorRecord = Schema.decodeUnknownEffect(Schema.toCodecJson(error), options)
   const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(error), options)
   return (stream) =>
     stream.pipe(
       Stream.mapArrayEffect((records) =>
-        records.some(isErrorRecord)
-          ? Effect.die(
-            new Error(
-              "NDJSON element matches the encoded error schema, so the client would read it as an error record"
-            )
-          )
-          : Effect.succeed(records)
+        Effect.flatMap(
+          Effect.forEach(records, (record) => Effect.isSuccess(decodeErrorRecord(record))),
+          (decoded) =>
+            decoded.includes(true)
+              ? Effect.die(
+                new Error(
+                  "NDJSON element decodes with the error schema, so the client would read it as an error record"
+                )
+              )
+              : Effect.succeed(records)
+        )
       ),
       Stream.catchIf(isError, (failure) => Stream.fromEffect(Effect.orDie(encode(failure))))
     )

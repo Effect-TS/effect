@@ -414,10 +414,8 @@ export interface StreamUint8Array extends
  *
  * A line that matches both `error` and `schema` is treated as an error, so
  * keep recoverable notifications out of `error`. The server never writes such
- * a line: an encoded element with the encoded shape of `error` dies instead.
- * The check is structural, so it also rejects an element that `error` would
- * fail to decode, for example `{"code":"x"}` against
- * `Schema.Struct({ code: Schema.FiniteFromString })`.
+ * a line: it decodes each encoded element with `error`, and dies instead of
+ * writing one that decodes. `error` therefore can't require decoding services.
  *
  * Any other failure mid-stream aborts the connection, including a failure
  * `error` does not accept and an error record that fails to encode. The reader
@@ -554,8 +552,8 @@ export const StreamUint8Array = (options?: {
  * **Details**
  *
  * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
- * MiB. `maxBytes` has no default. `error` defaults to `Schema.Never` and only
- * applies to success responses.
+ * MiB. `maxBytes` has no default. `error` defaults to `Schema.Never`, only
+ * applies to success responses, and can't require decoding services.
  *
  * **Example** (Declaring an NDJSON request payload)
  *
@@ -603,7 +601,10 @@ export const StreamUint8Array = (options?: {
  * @category constructors
  * @since 4.0.6
  */
-export const StreamNdjson = <S extends Schema.Constraint, E extends Schema.Constraint = Schema.Never>(options: {
+export const StreamNdjson = <
+  S extends Schema.Constraint,
+  E extends Schema.Constraint & { readonly "DecodingServices": never } = Schema.Never
+>(options: {
   readonly schema: S
   readonly error?: E | undefined
   readonly contentType?: string | undefined
