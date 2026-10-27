@@ -6,34 +6,51 @@ import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { constructionCases, constructionEvents, constructionOptions } from "./fixtures/construction.ts"
 
 describe("Schema compiler construction", { concurrent: false }, () => {
-  it("uses an installed constructor for Class.make", () => {
+  it("uses an installed constructor for Class.make without reinitializing it", () => {
+    class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
+    const instance = new C({ value: "installed" })
+    let reads = 0
+    SchemaCompiler.set(SchemaAST.toType(C.ast), {
+      decodeEffect: Effect.succeed,
+      get makeEffect() {
+        reads++
+        return () => Effect.succeed(instance)
+      }
+    })
+
+    assert.strictEqual(C.make({ value: "input" }), instance)
+    assert.strictEqual(C.make({ value: "another input" }), instance)
+    assert.strictEqual(reads, 1)
+  })
+
+  it("uses an installed synchronous constructor for Class.make without resolving makeEffect", () => {
     class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
     const instance = new C({ value: "installed" })
     SchemaCompiler.set(SchemaAST.toType(C.ast), {
       decodeEffect: Effect.succeed,
-      makeEffect: () => Effect.succeed(instance)
+      make: () => instance,
+      get makeEffect(): SchemaCompiler.MakeEffect {
+        throw new Error("unused detailed constructor")
+      }
     })
 
     assert.strictEqual(C.make({ value: "input" }), instance)
   })
 
-  it("propagates selective compilation through Class.make", () => {
+  it("constructs and validates class fields with selective compilation", () => {
     class C extends Schema.Class<C>("C")({ value: Schema.String }) {}
-    const ast = SchemaAST.toType(C.ast) as SchemaAST.Declaration
-    SchemaJITCompiler.enable(ast)
+    SchemaJITCompiler.enable(SchemaAST.toType(C.ast))
 
     assert.deepStrictEqual(C.make({ value: "input" }), new C({ value: "input" }))
-    assert.isDefined(Registry.resolve(ast.typeParameters[0]).compiled)
+    assert.throws(() => C.make({ value: 1 } as never))
   })
 
-  it("keeps the caller when a registered class entry is not compiled", () => {
+  it("keeps the caller and honors a custom child constructor for an interpreted class", () => {
     class E extends Schema.TaggedError<E>()("E", { message: Schema.String }) {}
-    const ast = SchemaAST.toType(E.ast) as SchemaAST.Declaration
-    const resolved: Array<SchemaAST.AST> = []
-    Registry.set(ast, undefined, (child) => {
-      resolved.push(child)
-      return Registry.resolve(child)
-    })
+    Registry.set(SchemaAST.toType(E.ast), undefined, (child) =>
+      Registry.set(child, {
+        makeEffect: () => Effect.succeed({ _tag: "E", message: "custom child constructor" })
+      }))
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 10
     try {
@@ -42,12 +59,51 @@ describe("Schema compiler construction", { concurrent: false }, () => {
         const error = E.make({ message: "failure" })
         return error
       }
-      assert.include(makeErrorAtCallsite().stack, "makeErrorAtCallsite")
+      const error = makeErrorAtCallsite()
+      assert.include(error.stack, "makeErrorAtCallsite")
+      assert.strictEqual(error.message, "custom child constructor")
     } finally {
       Error.stackTraceLimit = limit
     }
-    assert.deepStrictEqual(resolved, [ast.typeParameters[0]])
   })
+
+  for (const registration of ["decoder", "compiler"] as const) {
+    it.effect(`keeps the caller with a ${registration} that has no constructor operations`, () =>
+      Effect.gen(function*() {
+        class E extends Schema.TaggedError<E>()("E", { message: Schema.String }) {}
+        const ast = SchemaAST.toType(E.ast)
+        let reads = 0
+        const decoder: SchemaCompiler.CompiledDecoder = Object.freeze({
+          decodeEffect: Effect.succeed,
+          get makeEffect(): SchemaCompiler.MakeEffect | undefined {
+            assert.strictEqual<unknown>(this, decoder)
+            reads++
+            return undefined
+          }
+        })
+        if (registration === "decoder") {
+          SchemaCompiler.set(ast, decoder)
+        } else {
+          Registry.setCompiler(ast, (_ast, _resolve, operation) => decoder[operation])
+        }
+        assert.strictEqual(reads, 0)
+        const limit = Error.stackTraceLimit
+        Error.stackTraceLimit = 10
+        try {
+          // Keep the caller frame under JavaScriptCore tail-call optimization.
+          const makeErrorAtCallsite = () => {
+            const error = E.make({ message: "failure" })
+            return error
+          }
+          assert.include(makeErrorAtCallsite().stack, "makeErrorAtCallsite")
+          assert.include(makeErrorAtCallsite().stack, "makeErrorAtCallsite")
+        } finally {
+          Error.stackTraceLimit = limit
+        }
+        assert.strictEqual((yield* E.makeEffect({ message: "failure" })).message, "failure")
+        assert.strictEqual(reads, 1)
+      }))
+  }
 
   it.effect("initializes and caches makers on first access", () =>
     Effect.gen(function*() {

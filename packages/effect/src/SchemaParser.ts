@@ -1169,7 +1169,7 @@ function constructSync<T>(entry: CompilerRegistry.Entry, input: unknown, options
 /**
  * Constructs a class instance from its type-side declaration.
  *
- * When the declaration has no compiled entry, the fields are validated first
+ * When the declaration has no compiled constructor, the fields are validated first
  * and the instance is built outside the parser, so stacks captured by the
  * class constructor keep the caller's frames.
  *
@@ -1183,7 +1183,9 @@ export function makeClassSync<T>(
 ): T {
   const entry = CompilerRegistry.resolve(ast)
   const descriptor = SchemaAST.getConstructorDescriptor(ast)
-  if (entry.compiled !== undefined || descriptor === undefined) return constructSync(entry, input, options)
+  if (descriptor === undefined || entry.make !== undefined || entry.compiledMakeEffect !== undefined) {
+    return constructSync(entry, input, options)
+  }
   if (descriptor.isConstructed(input)) return input as T
   const fields = constructSync<object>((entry.resolve ?? CompilerRegistry.resolve)(descriptor.link.to), input, options)
   try {
