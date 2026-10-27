@@ -157,7 +157,14 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   ),
   HttpRouter.route("GET", "/large", Effect.succeed(HttpServerResponse.text(largeResponseBody))),
   HttpRouter.route("GET", "/hang", Effect.never),
-  HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
+  HttpRouter.route(
+    "GET",
+    "/redirect",
+    Effect.succeed(HttpServerResponse.text("redirecting", {
+      status: 302,
+      headers: { location: "/redirected" }
+    }))
+  ),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
   HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 }))),
   HttpRouter.route(
@@ -173,7 +180,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   },
   {
     name: "node:http",
-    layer: NodeClient.layerNodeHttp
+    layer: NodeClient.layerNodeHttpOptions({ keepAlive: true, maxSockets: 1 })
   },
   {
     name: "undici",
@@ -302,7 +309,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         }).pipe(Effect.provide(localServerTestLayer)))
     }
 
-    it.effect("local server followRedirects", () =>
+    it.live("local server followRedirects", () =>
       Effect.gen(function*() {
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
@@ -310,7 +317,11 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         const response = yield* client.get("/redirect")
         expect(new URL(response.url).pathname).toBe("/redirected")
         expect(yield* response.text).toBe("redirected")
-      }).pipe(Effect.provide(localServerTestLayer)))
+      }).pipe(
+        Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
+        Effect.timeout("2 seconds"),
+        Effect.provide(localServerTestLayer)
+      ))
 
     it.effect("text stream", () =>
       Effect.gen(function*() {
