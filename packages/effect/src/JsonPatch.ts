@@ -303,6 +303,7 @@ function isJsonObject(value: unknown): value is Schema.JsonObject {
  *
  * - `""` (empty pointer) refers to the root and returns `[]`
  * - Non-empty pointers must start with `/`
+ * - `~` must be followed by `0` or `1`
  */
 function tokenize(pointer: string): Array<string> {
   if (pointer === "") return []
