@@ -140,7 +140,7 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
     const len = predicates.length
 
     return (u: unknown) => {
-      if (!Array.isArray(u)) {
+      if (!Array.isArray(u) || u.length < len) {
         return false
       }
 

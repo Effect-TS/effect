@@ -258,17 +258,17 @@ class TomlParser {
       if (normalized.endsWith("nan")) return Number.NaN
       return normalized[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
     }
-    if (/^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(token)) {
-      return Number.parseInt(normalized.slice(2), 16)
-    }
-    if (/^0o[0-7](?:_?[0-7])*$/.test(token)) {
-      return Number.parseInt(normalized.slice(2), 8)
-    }
-    if (/^0b[01](?:_?[01])*$/.test(token)) {
-      return Number.parseInt(normalized.slice(2), 2)
-    }
-    if (/^[+-]?(?:0|[1-9](?:_?\d)*)$/.test(token)) {
-      return Number(normalized)
+    if (
+      /^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(token) ||
+      /^0o[0-7](?:_?[0-7])*$/.test(token) ||
+      /^0b[01](?:_?[01])*$/.test(token) ||
+      /^[+-]?(?:0|[1-9](?:_?\d)*)$/.test(token)
+    ) {
+      const value = Number(normalized)
+      if (!Number.isSafeInteger(value)) {
+        this.fail(`Integer out of range '${token}'`)
+      }
+      return value
     }
     if (
       /^[+-]?(?:(?:0|[1-9](?:_?\d)*)\.\d(?:_?\d)*(?:[eE][+-]?\d(?:_?\d)*)?|(?:0|[1-9](?:_?\d)*)[eE][+-]?\d(?:_?\d)*)$/
@@ -478,9 +478,18 @@ class TomlParser {
 
   private advance(count = 1): void {
     for (let offset = 0; offset < count; offset++) {
+      const code = this.input.charCodeAt(this.index)
+      if (
+        (code < 0x20 && code !== 0x09 && code !== 0x0A && !(code === 0x0D && this.input[this.index + 1] === "\n")) ||
+        code === 0x7F
+      ) {
+        this.fail("Invalid control character")
+      }
       if (this.input[this.index] === "\n") {
         this.line++
         this.column = 1
+      } else if (this.input[this.index] === "\r" && this.input[this.index + 1] !== "\n") {
+        this.fail("Bare carriage return")
       } else {
         this.column++
       }

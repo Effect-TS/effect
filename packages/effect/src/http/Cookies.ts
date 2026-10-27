@@ -272,13 +272,10 @@ function parseSetCookie(header: string): Cookie | undefined {
         break
       }
       case "max-age": {
-        if (value === undefined) {
+        if (value === undefined || !maxAgeRegExp.test(value)) {
           break
         }
-        const maxAge = parseInt(value, 10)
-        if (!isNaN(maxAge)) {
-          options.maxAge = Duration.seconds(maxAge)
-        }
+        options.maxAge = Duration.seconds(parseInt(value, 10))
         break
       }
       case "path": {
@@ -368,6 +365,8 @@ export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.coo
 // oxlint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 const cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+// RFC 6265 section 5.2.2
+const maxAgeRegExp = /^-?[0-9]+$/
 // oxlint-disable-next-line no-control-regex
 const cookieDomainRegExp = /^[\u0009\u0020-\u003a\u003c-\u007e\u0080-\u00ff]+$/
 const cookiePathRegExp = /^[\u0020-\u003a\u003c-\u007e]+$/
@@ -887,14 +886,13 @@ export function parseHeader(header: string): Record<string, string> {
 
     const key = header.substring(pos, eqIdx++).trim()
     if (!Object.hasOwn(result, key)) {
-      const val = header.charCodeAt(eqIdx) === 0x22
-        ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
-        : header.substring(eqIdx, terminatorPos).trim()
+      let value = header.substring(eqIdx, terminatorPos).trim()
+      if (value.charCodeAt(0) === 0x22) value = value.slice(1, -1).trim()
 
       InternalRecord.assignProperty(
         result,
         key,
-        !(val.indexOf("%") === -1) ? tryDecodeURIComponent(val) : val
+        !(value.indexOf("%") === -1) ? tryDecodeURIComponent(value) : value
       )
     }
 
