@@ -1708,45 +1708,33 @@ interface ReplayWindow<A> {
 }
 
 class ReplayWindowImpl<A> implements ReplayWindow<A> {
-  head: ReplayNode<A>
+  // cleared once exhausted, so the window does not retain later messages
+  head: ReplayNode<A> | undefined
   index: number
   remaining: number
   constructor(readonly buffer: ReplayBuffer<A>) {
     this.index = buffer.index
     this.remaining = buffer.size
-    this.head = buffer.head
-  }
-  fastForward() {
-    while (this.index < this.buffer.index) {
-      this.head = this.head.next!
-      this.index++
-    }
+    this.head = this.remaining === 0 ? undefined : buffer.head
   }
   take(): A | undefined {
     if (this.remaining === 0) {
       return undefined
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
+    }
+    let node = this.head!
+    while (this.index < this.buffer.index) {
+      node = node.next!
+      this.index++
     }
     this.remaining--
-    const value = this.head.value
-    this.head = this.head.next!
-    return value as A
+    this.head = this.remaining === 0 ? undefined : node.next!
+    return node.value as A
   }
   takeN(n: number): Chunk.Chunk<A> {
-    if (this.remaining === 0) {
-      return Chunk.empty()
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
+    const items = new Array(Math.max(0, Math.min(n, this.remaining)))
+    for (let i = 0; i < items.length; i++) {
+      items[i] = this.take()
     }
-    const len = Math.min(n, this.remaining)
-    const items = new Array(len)
-    for (let i = 0; i < len; i++) {
-      const value = this.head.value as A
-      this.head = this.head.next!
-      items[i] = value
-    }
-    this.remaining -= len
     return Chunk.unsafeFromArray(items)
   }
   takeAll(): Chunk.Chunk<A> {

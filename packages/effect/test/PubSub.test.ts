@@ -1,6 +1,16 @@
 import { describe, it } from "@effect/vitest"
 import { assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Chunk, Deferred, Effect, Fiber, pipe, PubSub, Queue } from "effect"
+import * as v8 from "node:v8"
+import * as vm from "node:vm"
+
+v8.setFlagsFromString("--expose-gc")
+const gc: () => void = vm.runInNewContext("gc")
+
+const publishTracked = (pubsub: PubSub.PubSub<object>) => {
+  const value = {}
+  return Effect.as(PubSub.publish(pubsub, value), new WeakRef(value))
+}
 
 describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
@@ -724,6 +734,35 @@ describe("PubSub", () => {
 
         const sub3 = yield* PubSub.subscribe(pubsub)
         deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
+      }))
+
+    it.scoped("exhausted replay windows do not retain later messages", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<object>({ replay: 1 })
+        const subs = [yield* PubSub.subscribe(pubsub)]
+        yield* PubSub.publish(pubsub, {})
+        subs.push(yield* PubSub.subscribe(pubsub))
+        yield* Queue.take(subs[1])
+        subs.push(yield* PubSub.subscribe(pubsub))
+        yield* Queue.takeAll(subs[2])
+        yield* Queue.takeAll(subs[0])
+
+        const ref = yield* publishTracked(pubsub)
+        yield* PubSub.publish(pubsub, {})
+        for (const sub of subs) {
+          strictEqual((yield* Queue.takeAll(sub)).length, 2)
+        }
+
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        gc()
+        strictEqual(ref.deref(), undefined)
+      }))
+
+    it.scoped("takeUpTo with a negative limit on an exhausted replay window", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 1 })
+        const sub = yield* PubSub.subscribe(pubsub)
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, -1)), [])
       }))
   })
 })
