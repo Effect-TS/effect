@@ -82,15 +82,30 @@ hello \\
   world"""
 hex = 0xDEAD_BEEF
 fraction = 1_000.5
+limits = [-9_007_199_254_740_991, 9_007_199_254_740_991]
+large_float = 1e20
 local = 2026-08-05 01:02:03
 `),
       {
         message: "hello world",
         hex: 0xdeadbeef,
         fraction: 1000.5,
+        limits: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        large_float: 1e20,
         local: "2026-08-05T01:02:03"
       }
     )
+    for (
+      const token of [
+        "9007199254740992",
+        "-9007199254740992",
+        "0x20000000000000",
+        "0o400000000000000000",
+        "0b100000000000000000000000000000000000000000000000000000"
+      ]
+    ) {
+      assert.throws(() => Toml.parse(`value = ${token}`), SyntaxError, "Integer out of range")
+    }
   })
 
   it.each([
