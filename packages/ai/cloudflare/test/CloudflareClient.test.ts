@@ -172,6 +172,7 @@ describe("CloudflareClient", () => {
       Effect.gen(function*() {
         const error = yield* Effect.flip(createDecisions)
         assert.strictEqual(error.reason._tag, "NetworkError")
+        assert.include(error.message, "Connection refused")
       }).pipe(
         Effect.provide(CloudflareClient.layer({ accountId: "test-account", apiKey: Redacted.make("test-token") })),
         Effect.provide(httpLayer((request) =>

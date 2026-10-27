@@ -17,6 +17,7 @@ import * as Effect from "../Effect.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
+import * as InternalNetworkError from "./internal/networkError.ts"
 
 /**
  * Schema for HTTP responses from an AI provider.
@@ -141,7 +142,7 @@ export class NetworkError extends Schema.Error<NetworkError>(
    */
   static fromRequestError(error: HttpClientError.RequestError): NetworkError {
     return new NetworkError({
-      description: error.description,
+      description: error.description ?? InternalNetworkError.describe(error),
       reason: error._tag,
       method: error.request.method,
       url: error.request.url

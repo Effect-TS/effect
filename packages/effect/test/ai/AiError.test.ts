@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Redacted, Schema } from "effect"
 import { AiError } from "effect/ai"
-import { HttpClientError, HttpClientRequest } from "effect/http"
+import { Headers, HttpClientError, HttpClientRequest } from "effect/http"
 
 describe("AiError", () => {
   describe("reason types", () => {
@@ -31,6 +31,56 @@ describe("AiError", () => {
           const decoded = yield* Schema.decodeEffect(AiError.NetworkError)(encoded)
           assert.strictEqual(decoded.method, "PROPFIND")
         }))
+    })
+
+    describe("NetworkError.fromRequestError", () => {
+      it("redacts protected query values in a description from the cause", () => {
+        const request = HttpClientRequest.get("https://example.com").pipe(
+          HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
+          HttpClientRequest.appendUrlParam("remote", "public"),
+          HttpClientRequest.setUrlParam("other", Redacted.make("private-\uD800"))
+        )
+        const cause = new TypeError(
+          "Request cannot be constructed from a URL: https://example.com/?remote=param-secret&remote=public&other=private-%EF%BF%BD"
+        )
+        const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
+        assert.strictEqual(
+          error.description,
+          "Request cannot be constructed from a URL: https://example.com/?remote=<redacted>&remote=public&other=<redacted>"
+        )
+      })
+
+      it("describes request errors from their cause chain", () => {
+        const request = HttpClientRequest.get("http://localhost:11434")
+        const cause = new TypeError("fetch failed", {
+          cause: new AggregateError([
+            new Error("connect ECONNREFUSED ::1:11434"),
+            new Error("connect ECONNREFUSED 127.0.0.1:11434"),
+            Object.create(null)
+          ])
+        })
+        const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
+        assert.strictEqual(
+          error.description,
+          "fetch failed: connect ECONNREFUSED ::1:11434, connect ECONNREFUSED 127.0.0.1:11434"
+        )
+      })
+
+      it.effect("redacts sensitive header values in a description from the cause", () =>
+        Effect.sync(() => {
+          const request = HttpClientRequest.get("http://localhost:11434").pipe(
+            HttpClientRequest.bearerToken("sk-secret\u0000x "),
+            HttpClientRequest.setHeader("x-custom-key", "sk-secret\u0000x-custom")
+          )
+          const cause = new TypeError("Headers.append: \"Bearer sk-default\u0000x\" is an invalid header value.", {
+            cause: new Error("token sk-secret\u0000x rejected for sk-secret\u0000x-custom")
+          })
+          const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
+          assert.strictEqual(
+            error.description,
+            "Invalid HTTP header value: token <redacted> rejected for <redacted>"
+          )
+        }).pipe(Effect.provideService(Headers.CurrentRedactedNames, ["authorization", "x-custom-key"])))
     })
 
     describe("RateLimitError", () => {
