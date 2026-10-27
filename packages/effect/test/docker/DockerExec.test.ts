@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Redacted, Stream } from "effect"
+import { Cause, Effect, Exit, Redacted, Stream } from "effect"
 import { DockerError, DockerExec } from "effect/docker"
 import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
 
@@ -79,10 +79,13 @@ describe("DockerExec", () => {
       // uneven runs of stdout and stderr
       const sent = Array.from({ length: 40 }, (_, i) => i % 3 === 2 ? `e${i}` : `o${i}`)
       const wire = () => connection(sent.map((text) => frame(text.startsWith("e") ? 2 : 1, text)))
-      const frames = yield* Effect.scoped(Effect.gen(function*() {
+      const [frames, second] = yield* Effect.scoped(Effect.gen(function*() {
         const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
-        return yield* Stream.runCollect(handle.frames)
+        const frames = yield* Stream.runCollect(handle.frames)
+        // one consumer per handle: a second view is a defect, not a DockerError
+        return [frames, yield* Effect.exit(Stream.runDrain(handle.stdout))] as const
       })).pipe(execEngine(wire()).provide)
+      assert(Exit.isFailure(second) && Cause.hasDies(second.cause))
       assert.deepStrictEqual(
         frames.map((frame) => `${frame.stream}:${new TextDecoder().decode(frame.data)}`),
         sent.map((text) => `${text.startsWith("e") ? "stderr" : "stdout"}:${text}`)

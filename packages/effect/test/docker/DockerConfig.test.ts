@@ -125,6 +125,27 @@ describe("DockerConfig", () => {
       assert.strictEqual(missing.reason._tag, "ContextNotFound")
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("falls back to the platform's default Endpoint wherever the CLI uses the OS default", () =>
+    Effect.gen(function*() {
+      const { dir, write } = yield* makeConfigDir
+      // the default NodeDocker.layerFromEnv passes on Windows
+      const onWindows = (env: Record<string, string>) =>
+        read(DockerConfig.layerFromEnv(undefined, { defaultEndpoint: DockerConfig.defaultNpipeEndpoint })).pipe(
+          Effect.map(({ endpoint }) => endpoint),
+          withEnv({ DOCKER_CONFIG: dir, ...env })
+        )
+      assert.deepStrictEqual(DockerConfig.defaultNpipeEndpoint, { _tag: "Npipe", path: "//./pipe/docker_engine" })
+      for (const env of [{}, { DOCKER_HOST: "" }, { DOCKER_CONTEXT: "default" }]) {
+        assert.deepStrictEqual(yield* onWindows(env), DockerConfig.defaultNpipeEndpoint, JSON.stringify(env))
+      }
+      // TLS without a host is tcp://localhost:2376 on every platform, as in the CLI
+      yield* write("ca.pem", "CA")
+      assert.deepStrictEqual(
+        yield* onWindows({ DOCKER_TLS_VERIFY: "1" }),
+        { _tag: "Tcp", host: "localhost", port: 2376, tls: { verify: true, ca: "CA" } }
+      )
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("reads DOCKER_HOST with the TLS variables and certificate files like the CLI", () =>
     Effect.gen(function*() {
       const { dir, write } = yield* makeConfigDir

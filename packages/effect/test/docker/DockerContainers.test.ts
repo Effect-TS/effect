@@ -144,16 +144,15 @@ describe("DockerContainers", () => {
           config: { detachKeys: "ctrl-x,x" }
         }
       )
-      const [stdout, stderr, exitCode] = yield* Effect.scoped(Effect.gen(function*() {
+      const [frames, exitCode] = yield* Effect.scoped(Effect.gen(function*() {
         const handle = yield* use((containers) => containers.attach("c", { stdin: true }))
         yield* Stream.make(bytes("input")).pipe(Stream.run(handle.stdin))
-        return yield* Effect.all([
-          Stream.mkString(Stream.decodeText(handle.stdout)),
-          Stream.mkString(Stream.decodeText(handle.stderr)),
-          handle.exitCode
-        ], { concurrency: "unbounded" })
+        return yield* Effect.all([Stream.runCollect(handle.frames), handle.exitCode], { concurrency: "unbounded" })
       })).pipe(stub.provide)
-      assert.deepStrictEqual([stdout, stderr, exitCode], ["piped\n", "bye\n", 7])
+      assert.deepStrictEqual(
+        [frames.map((frame) => `${frame.stream}:${decode(frame.data)}`), exitCode],
+        [["stdout:piped\n", "stderr:bye\n"], 7]
+      )
       assert.deepStrictEqual(attached.written, [bytes("input")])
       assert.isTrue(attached.halfClosed)
       assert.deepStrictEqual(stub.requests.slice(1).map((request) => `${request.url.pathname}${request.url.search}`), [
