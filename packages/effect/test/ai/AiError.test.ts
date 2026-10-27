@@ -81,6 +81,18 @@ describe("AiError", () => {
               (url: string) =>
                 `error sending request for url (${url}): client error (Connect): tcp connect error: Connection refused (os error 111)`,
               "error sending request for url (<url>): client error (Connect): tcp connect error: Connection refused (os error 111)"
+            ],
+            // Deno, quoting a malformed input that contains raw spaces
+            [
+              "http://user name:pass-secret@localhost:invalid/path?q=a b&api_key=query-secret",
+              (url: string) => `Invalid URL: '${url}'`,
+              "Invalid URL"
+            ],
+            // Node, printing a malformed scheme-relative input
+            [
+              "//user:pass-secret@localhost:invalid/path?api_key=query-secret",
+              (url: string) => `Failed to parse URL from ${url}`,
+              "Invalid URL"
             ]
           ] as const
         ) {
