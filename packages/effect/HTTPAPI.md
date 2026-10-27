@@ -2420,7 +2420,7 @@ const program = Effect.gen(function*() {
 Things to know:
 
 - `Schema.Union` returns the first member that decodes. Put the error shape first when one line can match both, as Docker's format allows. The order is yours to choose.
-- When `Stream.mapEffect` fails, the stream stops reading and releases the response body. Lines after the error line are not read.
+- When `Stream.mapEffect` fails, no later lines are delivered, no further body chunks are read, and the response body is released. Later lines that arrived in the same chunk as the error line may already have been parsed.
 - On the server the error line is a normal element. A stream failure that the handler doesn't turn into a line still aborts the connection.
 
 ### Consuming Streams with the Derived Client
