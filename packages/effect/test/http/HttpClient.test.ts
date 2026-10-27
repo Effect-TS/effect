@@ -717,6 +717,16 @@ Missing key
         "Transport: Request cannot be constructed from a URL: https://example.com/?remote=<redacted>&remote=public&other=<redacted> (GET https://example.com)"
       )
     })
+
+    it("redacts URL userinfo and protected inline query values in a description from the cause", () => {
+      const url = "http://user-secret:password-secret@localhost:11434/path?Signature=signature-secret&q=visible"
+      const cause = new TypeError(`Request cannot be constructed from a URL that includes credentials: ${url}`)
+      const message = new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause }).message
+      assert.include(message, "Request cannot be constructed from a URL that includes credentials")
+      for (const secret of ["user-secret", "password-secret", "signature-secret"]) {
+        assert.notInclude(message, secret)
+      }
+    })
   })
 
   describe("followRedirects", () => {
