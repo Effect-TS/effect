@@ -1717,30 +1717,22 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     this.remaining = buffer.size
     this.head = this.remaining === 0 ? undefined : buffer.head
   }
-  fastForward() {
-    while (this.index < this.buffer.index) {
-      this.head = this.head!.next!
-      this.index++
-    }
-  }
   take(): A | undefined {
     if (this.remaining === 0) {
       return undefined
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
+    }
+    let node = this.head!
+    while (this.index < this.buffer.index) {
+      node = node.next!
+      this.index++
     }
     this.remaining--
-    const value = this.head!.value
-    this.head = this.remaining === 0 ? undefined : this.head!.next!
-    return value as A
+    this.head = this.remaining === 0 ? undefined : node.next!
+    return node.value as A
   }
   takeN(n: number): Chunk.Chunk<A> {
-    if (this.remaining === 0) {
-      return Chunk.empty()
-    }
-    const len = Math.min(n, this.remaining)
-    const items = new Array(len)
-    for (let i = 0; i < len; i++) {
+    const items = new Array(Math.min(n, this.remaining))
+    for (let i = 0; i < items.length; i++) {
       items[i] = this.take()
     }
     return Chunk.unsafeFromArray(items)
