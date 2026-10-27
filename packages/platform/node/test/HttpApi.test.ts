@@ -49,6 +49,7 @@ import {
 } from "effect/http-api"
 import type * as Socket from "effect/socket/Socket"
 import * as Http from "node:http"
+import type * as Net from "node:net"
 
 function* assertServerText(res: HttpClientResponse.HttpClientResponse, status: number, text: string) {
   assert.strictEqual(res.status, status)
@@ -1242,6 +1243,52 @@ describe("HttpApi", () => {
         yield* Effect.scoped(Effect.flatMap(started.socket.writer, (writer) => writer.write("ping")))
         assert.strictEqual(yield* readUntilClose(startReader), "abc:true:ping")
       }).pipe(Effect.scoped, Effect.provide(ApiLayer))
+    })
+
+    it.live("closes an upgraded connection whose headers fail to decode", () => {
+      const Api = HttpApi.make("api").add(
+        HttpApiGroup.make("containers").add(
+          HttpApiEndpoint.post("start", "/start", {
+            success: HttpApiSchema.Upgrade({
+              protocol: "tcp",
+              headers: { "content-type": Schema.Literal("application/raw") }
+            })
+          })
+        )
+      )
+      return Effect.gen(function*() {
+        const closed = yield* Deferred.make<void>()
+        const sockets = new Set<Net.Socket>()
+        const server = yield* Effect.acquireRelease(
+          Effect.callback<Http.Server>((resume) => {
+            const server = Http.createServer()
+            server.on("upgrade", (_request: Http.IncomingMessage, socket: Net.Socket) => {
+              sockets.add(socket)
+              const done = () => Deferred.doneUnsafe(closed, Effect.void)
+              socket.once("end", done)
+              socket.once("close", done)
+              socket.write(
+                "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n" +
+                  "Content-Type: text/plain\r\n\r\n"
+              )
+              // the server side must read for the client's close to arrive
+              socket.resume()
+            })
+            server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+          }),
+          (server) =>
+            Effect.callback<void>((resume) => {
+              for (const socket of sockets) socket.destroy()
+              server.close(() => resume(Effect.void))
+            })
+        )
+        const client = yield* HttpApiClient.make(Api, {
+          baseUrl: `http://127.0.0.1:${(server.address() as Net.AddressInfo).port}`
+        })
+        const error = yield* Effect.flip(Effect.scoped(client.containers.start()))
+        assert.strictEqual(error._tag, "SchemaError")
+        yield* Deferred.await(closed).pipe(Effect.timeout("2 seconds"))
+      }).pipe(Effect.scoped, Effect.provide(NodeHttpClient.layerNodeHttp))
     })
 
     it("no content via toWebHandler", async () => {

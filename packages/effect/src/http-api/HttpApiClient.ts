@@ -1037,11 +1037,13 @@ const makeEndpointDecoder = (options: {
       ? Effect.succeed
       : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
     decodeMap[101] = (response) =>
-      Effect.zipWith(
-        decodeHeaders(response.headers),
-        response.upgrade,
-        (headers, socket): Upgraded<unknown> => ({ headers, socket })
-      )
+      Effect.flatMap(response.upgrade, (socket) =>
+        decodeHeaders(response.headers).pipe(
+          Effect.map((headers): Upgraded<unknown> => ({ headers, socket })),
+          // nothing takes the connection on failure, so close it: releasing
+          // the reader's scope closes the connection
+          Effect.onError(() => Effect.ignore(Effect.scoped(socket.reader)))
+        ))
   }
 
   return (response, sseOptions) => (decodeMap[response.status] ?? decodeMap.orElse)(response, sseOptions)
