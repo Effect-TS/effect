@@ -36,6 +36,8 @@ export interface Connection {
   readonly written: Array<Uint8Array>
   /** Whether the client half-closed the connection. */
   halfClosed: boolean
+  /** How many of `output`'s reads the client has made. */
+  read: number
 }
 
 /** A {@link Connection} for a reply's `upgrade`. */
@@ -43,7 +45,8 @@ export const connection = (output: ReadonlyArray<Uint8Array>, after: Connection[
   output,
   after,
   written: [],
-  halfClosed: false
+  halfClosed: false,
+  read: 0
 })
 
 const toSocket = (connection: Connection): Socket.Socket =>
@@ -53,7 +56,10 @@ const toSocket = (connection: Connection): Socket.Socket =>
       return {
         pull: Effect.suspend(() =>
           next < connection.output.length
-            ? Effect.succeed([connection.output[next++]] as const)
+            ? Effect.sync(() => {
+              connection.read = ++next
+              return [connection.output[next - 1]] as const
+            })
             : connection.after === "hold"
             ? Effect.never
             : Effect.fail(

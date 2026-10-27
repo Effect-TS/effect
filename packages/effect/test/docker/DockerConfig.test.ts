@@ -71,14 +71,18 @@ describe("DockerConfig", () => {
       ["", DockerConfig.defaultEndpoint],
       ["tcp://example.com", { _tag: "Tcp", host: "example.com", port: 2375 }],
       ["tcp://:1234", { _tag: "Tcp", host: "localhost", port: 1234 }],
-      ["tcp://[::1]:2375", { _tag: "Tcp", host: "::1", port: 2375 }]
+      ["tcp://[::1]:2375", { _tag: "Tcp", host: "::1", port: 2375 }],
+      // Docker Desktop on Windows writes named pipes into DOCKER_HOST and every context
+      ["npipe:////./pipe/docker_engine", { _tag: "Npipe", path: "//./pipe/docker_engine" }],
+      ["npipe:////./pipe/dockerDesktopLinuxEngine", { _tag: "Npipe", path: "//./pipe/dockerDesktopLinuxEngine" }],
+      ["npipe://", { _tag: "Npipe", path: "//./pipe/docker_engine" }]
     ]
     for (const [host, expected] of hosts) {
       assert.deepStrictEqual(DockerConfig.parseHost(host), Result.succeed(expected), host)
     }
     const invalid = [
       ["ssh://me@host", "UnsupportedScheme"],
-      ["npipe:////./pipe/docker_engine", "UnsupportedScheme"],
+      ["fd://", "UnsupportedScheme"],
       ["tcp://host/base", "InvalidHost"],
       ["tcp://host:65536", "InvalidHost"]
     ] as const
@@ -102,8 +106,15 @@ describe("DockerConfig", () => {
       const { context, dir, write } = yield* makeConfigDir
       yield* context("pod", "unix:///run/pod.sock")
       yield* context("current", "unix:///run/current.sock")
+      yield* context("desktop-linux", "npipe:////./pipe/dockerDesktopLinuxEngine")
       yield* write("config.json", JSON.stringify({ currentContext: "current" }))
       const cases: ReadonlyArray<[Record<string, string>, typeof DockerConfig.Endpoint.Type]> = [
+        // TLS doesn't apply to named pipes
+        [{ DOCKER_HOST: "npipe:////./pipe/docker_engine", DOCKER_TLS_VERIFY: "1" }, {
+          _tag: "Npipe",
+          path: "//./pipe/docker_engine"
+        }],
+        [{ DOCKER_CONTEXT: "desktop-linux" }, { _tag: "Npipe", path: "//./pipe/dockerDesktopLinuxEngine" }],
         [{ DOCKER_HOST: "unix:///x", DOCKER_CONTEXT: "pod" }, { _tag: "Unix", path: "/x" }],
         [{ DOCKER_CONTEXT: "pod" }, { _tag: "Unix", path: "/run/pod.sock" }],
         [{}, { _tag: "Unix", path: "/run/current.sock" }],
@@ -116,6 +127,27 @@ describe("DockerConfig", () => {
       }
       const missing = yield* discover({ DOCKER_CONFIG: dir, DOCKER_CONTEXT: "missing" }).pipe(Effect.flip)
       assert.strictEqual(missing.reason._tag, "ContextNotFound")
+    }).pipe(Effect.provide(services)))
+
+  it.effect("falls back to the platform's default Endpoint wherever the CLI uses the OS default", () =>
+    Effect.gen(function*() {
+      const { dir, write } = yield* makeConfigDir
+      // the default NodeDocker.layerFromEnv passes on Windows
+      const onWindows = (env: Record<string, string>) =>
+        read(DockerConfig.layerFromEnv(undefined, { defaultEndpoint: DockerConfig.defaultNpipeEndpoint })).pipe(
+          Effect.map(({ endpoint }) => endpoint),
+          withEnv({ DOCKER_CONFIG: dir, ...env })
+        )
+      assert.deepStrictEqual(DockerConfig.defaultNpipeEndpoint, { _tag: "Npipe", path: "//./pipe/docker_engine" })
+      for (const env of [{}, { DOCKER_HOST: "" }, { DOCKER_CONTEXT: "default" }]) {
+        assert.deepStrictEqual(yield* onWindows(env), DockerConfig.defaultNpipeEndpoint, JSON.stringify(env))
+      }
+      // TLS without a host is tcp://localhost:2376 on every platform, as in the CLI
+      yield* write("ca.pem", "CA")
+      assert.deepStrictEqual(
+        yield* onWindows({ DOCKER_TLS_VERIFY: "1" }),
+        { _tag: "Tcp", host: "localhost", port: 2376, tls: { verify: true, ca: "CA" } }
+      )
     }).pipe(Effect.provide(services)))
 
   it.effect("reads DOCKER_HOST with the TLS variables and certificate files like the CLI", () =>

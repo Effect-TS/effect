@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Redacted, Stream } from "effect"
+import { Cause, Effect, Exit, Redacted, Stream } from "effect"
 import { DockerError, DockerExec } from "effect/docker"
 import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
 
@@ -72,6 +72,57 @@ describe("DockerExec", () => {
         Effect.flip
       )
       assert.strictEqual(reset.reason._tag, "ConnectionFailed")
+    }))
+
+  it.effect("streams frames, and all, in the order they arrive", () =>
+    Effect.gen(function*() {
+      // uneven runs of stdout and stderr
+      const sent = Array.from({ length: 40 }, (_, i) => i % 3 === 2 ? `e${i}` : `o${i}`)
+      const wire = () => connection(sent.map((text) => frame(text.startsWith("e") ? 2 : 1, text)))
+      const [frames, second] = yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
+        const frames = yield* Stream.runCollect(handle.frames)
+        // one consumer per handle: a second view is a defect, not a DockerError
+        return [frames, yield* Effect.exit(Stream.runDrain(handle.stdout))] as const
+      })).pipe(execEngine(wire()).provide)
+      assert(Exit.isFailure(second) && Cause.hasDies(second.cause))
+      assert.deepStrictEqual(
+        frames.map((frame) => `${frame.stream}:${new TextDecoder().decode(frame.data)}`),
+        sent.map((text) => `${text.startsWith("e") ? "stderr" : "stdout"}:${text}`)
+      )
+      const all = yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
+        return yield* Stream.runCollect(handle.all)
+      })).pipe(execEngine(wire()).provide)
+      assert.deepStrictEqual(all.map((chunk) => new TextDecoder().decode(chunk)), sent)
+    }))
+
+  it.live("reads a stream alone without stalling on output nobody reads", () =>
+    Effect.gen(function*() {
+      // far more stderr than any buffer holds, then the stdout being read
+      const upgraded = connection([...Array.from({ length: 100 }, (_, i) => frame(2, `e${i}`)), frame(1, "done")])
+      const stdout = yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
+        return yield* Stream.mkString(Stream.decodeText(handle.stdout))
+      })).pipe(execEngine(upgraded).provide, Effect.timeout("2 seconds"))
+      assert.strictEqual(stdout, "done")
+    }))
+
+  it.live("reads ahead of a slow reader only boundedly, and stops reading when it stops", () =>
+    Effect.gen(function*() {
+      const upgraded = connection(Array.from({ length: 1000 }, (_, i) => frame(1, `o${i}`)), "hold")
+      const [first, readAhead] = yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
+        const first = yield* Stream.runCollect(Stream.take(handle.stdout, 1))
+        yield* Effect.sleep("100 millis")
+        return [first, upgraded.read] as const
+      })).pipe(execEngine(upgraded).provide, Effect.timeout("2 seconds"))
+      assert.deepStrictEqual(first.map((chunk) => new TextDecoder().decode(chunk)), ["o0"])
+      assert.isAtMost(readAhead, 64)
+      // nothing reads once the handle's scope has closed
+      const after = upgraded.read
+      yield* Effect.sleep("100 millis")
+      assert.strictEqual(upgraded.read, after)
     }))
 
   it.effect("fails writes to stdin that wasn't attached", () =>
