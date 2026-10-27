@@ -231,8 +231,8 @@ export type SigningKey = PrivateKey | SecretKey<"HS256">
 export type VerificationKey = PublicKey | SecretKey<"HS256">
 
 /**
- * A generated public JWK and its private JWK, both carrying `alg` and the
- * requested `kid`.
+ * A generated public JWK and its private JWK, both carrying `alg`, `use: "sig"`,
+ * and the requested `kid`.
  *
  * @stability unstable
  * @category models
@@ -317,7 +317,7 @@ const exportJwk = (
   KeyFormat.encode(KeyFormat.jwk, key as KeyFormat.Key).pipe(
     Effect.mapBoth({
       onFailure: cryptoFailure("Could not export the key"),
-      onSuccess: (jwk) => ({ ...jwk, ...(kid === undefined ? {} : { kid }), alg: algorithm })
+      onSuccess: (jwk) => ({ ...jwk, ...(kid === undefined ? {} : { kid }), alg: algorithm, use: "sig" })
     })
   )
 
@@ -357,6 +357,7 @@ export const generateKeyPair = Effect.fnUntraced(function*(
  * rejected. To import untrusted JSON, decode it with {@link PublicJwk} first.
  *
  * @see {@link importPrivate}
+ * @see {@link exportPublic}
  *
  * @stability unstable
  * @category constructors
@@ -471,7 +472,24 @@ export const importSecret = Effect.fnUntraced(function*<A extends SecretAlgorith
 })
 
 /**
- * Exports a private key as a JWK carrying its `alg` and `kid`.
+ * Exports a public key as a JWK carrying its `alg`, `kid`, and `use: "sig"`.
+ *
+ * @see {@link importPublic}
+ * @see {@link exportPrivate}
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.1.0
+ */
+export const exportPublic = Effect.fnUntraced(function*(
+  key: PublicKey
+): Effect.fn.Return<PublicJwk, JoseError> {
+  const jwk = yield* exportJwk(key.key, key.algorithm, key.kid)
+  return jwk as PublicJwk
+})
+
+/**
+ * Exports a private key as a JWK carrying its `alg`, `kid`, and `use: "sig"`.
  *
  * @see {@link importPrivate}
  *

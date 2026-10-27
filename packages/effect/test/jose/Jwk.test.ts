@@ -13,6 +13,8 @@ it.effect("generates algorithm-bound key pairs that import for signing and verif
       const pair = yield* Jwk.generateKeyPair({ algorithm, kid: "k1" })
       assert.strictEqual(pair.publicKey.alg, algorithm)
       assert.strictEqual(pair.publicKey.kid, "k1")
+      assert.strictEqual(pair.publicKey.use, "sig")
+      assert.strictEqual(Redacted.value(pair.privateKey).use, "sig")
       assert.isFalse("d" in pair.publicKey)
 
       const privateKey = yield* Jwk.importPrivate(pair.privateKey, algorithm)
@@ -24,6 +26,7 @@ it.effect("generates algorithm-bound key pairs that import for signing and verif
       assert.isTrue(Signature.isPrivateKey(privateKey.key))
       assert.isTrue(Signature.isPublicKey(publicKey.key))
       assert.deepStrictEqual(publicKey.jwk, pair.publicKey)
+      assert.deepStrictEqual(yield* Jwk.exportPublic(publicKey), pair.publicKey)
     }
   }).pipe(Effect.provide(layer)))
 

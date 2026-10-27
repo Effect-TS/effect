@@ -51,13 +51,18 @@ describe("Jwk", () => {
     expect<Jwk.VerificationKey>().type.toBe<Jwk.PublicKey | Jwk.SecretKey<"HS256">>()
   })
 
-  it("imports without services and never exposes CryptoError", () => {
+  it("imports and exports without services and never exposes CryptoError", () => {
     expect(Jwk.importPublic({ kty: "EC", crv: "P-256", x: "", y: "" }, "ES256")).type.toBe<
       Effect.Effect<Jwk.PublicKey, JoseError.JoseError>
     >()
     expect(Jwk.importPkcs8(Redacted.make(payload), "ES256")).type.toBe<
       Effect.Effect<Jwk.PrivateKey, JoseError.JoseError>
     >()
+    expect(Jwk.exportPublic(publicKey)).type.toBe<Effect.Effect<Jwk.PublicJwk, JoseError.JoseError>>()
+    expect(Jwk.exportPrivate(privateKey)).type.toBe<
+      Effect.Effect<Redacted.Redacted<Jwk.PrivateJwk>, JoseError.JoseError>
+    >()
+    expect(Jwk.exportPublic).type.not.toBeCallableWith(privateKey)
     expect(Jwk.generateKeyPair({ algorithm: "ES256" })).type.toBe<
       Effect.Effect<Jwk.KeyPair, JoseError.JoseError, Signature.Signature>
     >()
