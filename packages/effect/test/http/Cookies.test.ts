@@ -62,6 +62,12 @@ describe("Cookies", () => {
     })
   })
 
+  describe("parseHeader", () => {
+    it("unquotes values surrounded by whitespace", () => {
+      deepStrictEqual(Cookies.parseHeader("a=\"1\" ; b= \"2\""), { a: "1", b: "2" })
+    })
+  })
+
   describe("toSetCookieHeaders", () => {
     const invalidCookie = {
       name: "session",

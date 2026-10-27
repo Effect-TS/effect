@@ -886,14 +886,13 @@ export function parseHeader(header: string): Record<string, string> {
 
     const key = header.substring(pos, eqIdx++).trim()
     if (!Object.hasOwn(result, key)) {
-      const val = header.charCodeAt(eqIdx) === 0x22
-        ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
-        : header.substring(eqIdx, terminatorPos).trim()
+      let value = header.substring(eqIdx, terminatorPos).trim()
+      if (value.charCodeAt(0) === 0x22) value = value.slice(1, -1).trim()
 
       InternalRecord.assignProperty(
         result,
         key,
-        !(val.indexOf("%") === -1) ? tryDecodeURIComponent(val) : val
+        !(value.indexOf("%") === -1) ? tryDecodeURIComponent(value) : value
       )
     }
 
