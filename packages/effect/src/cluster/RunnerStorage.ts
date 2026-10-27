@@ -15,8 +15,6 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
-import * as MutableHashSet from "../MutableHashSet.ts"
-import * as Option from "../Option.ts"
 import type { PersistenceError } from "./ClusterError.ts"
 import * as MachineId from "./MachineId.ts"
 import { Runner } from "./Runner.ts"
@@ -84,22 +82,18 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
   readonly releaseAll: (address: RunnerAddress) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Returns the subset of `shardIds` that lock storage currently attributes to
+   * Returns the subset of `shardIds` that lock storage still attributes to
    * `address`.
    *
    * **Details**
    *
-   * Used to fence owner-only writes, such as replies, against shard
-   * ownership. The answer must never include a shard that lock storage could
-   * already attribute to another runner, so an implementation may answer from
-   * its own record of unexpired leases. It must not wait on a connection
-   * reserved for shard locks. The answer is a snapshot at the time the effect
-   * runs, not a lock.
-   *
-   * **Gotchas**
-   *
-   * Implementations whose locks belong to the storage instance rather than to
-   * an address, such as advisory locks, assume one runner per instance.
+   * Sharding checks it before storing the final reply of a persisted request,
+   * so a runner that lost a shard does not decide the stored result. The
+   * answer must not include a shard that another runner could hold before
+   * this one released it, and must not wait on a connection reserved for
+   * shard locks. Shards this runner released may still be reported; Sharding
+   * checks its own releases first. Storages that cannot tell return every
+   * shard, leaving the runner's own view of its shards as the only check.
    */
   readonly owned: (
     address: RunnerAddress,
@@ -168,10 +162,10 @@ export interface Encoded {
   readonly releaseAll: (address: string) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Returns the given shards that lock storage currently attributes to the
-   * given runner.
+   * Returns the given shards that lock storage still attributes to the given
+   * runner. When omitted, every shard is reported as owned.
    */
-  readonly owned: (
+  readonly owned?: (
     address: string,
     shardIds: NonEmptyArray<string>
   ) => Effect.Effect<ReadonlyArray<string>, PersistenceError>
@@ -227,9 +221,10 @@ export const makeEncoded = (encoded: Encoded) =>
       return encoded.releaseAll(encodeRunnerAddress(address))
     },
     owned: (address, shardIds) => {
-      const arr = Array.from(shardIds, (id) => id.toString())
-      if (!isArrayNonEmpty(arr)) return Effect.succeed([])
-      return encoded.owned(encodeRunnerAddress(address), arr).pipe(
+      const arr = Array.from(shardIds)
+      const ids = arr.map((id) => id.toString())
+      if (!encoded.owned || !isArrayNonEmpty(ids)) return Effect.succeed(arr)
+      return encoded.owned(encodeRunnerAddress(address), ids).pipe(
         Effect.map((shards) => shards.map(ShardId.fromString))
       )
     }
@@ -242,12 +237,6 @@ export const makeEncoded = (encoded: Encoded) =>
  *
  * Runner health and shard acquisition are kept only in process memory.
  *
- * **Gotchas**
- *
- * Shard acquisition never denies a shard, so an instance serves a single
- * runner. `owned` reports the shards the given address acquired and has not
- * released.
- *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -255,8 +244,6 @@ export const makeEncoded = (encoded: Encoded) =>
 export const makeMemory = Effect.gen(function*() {
   const runners = MutableHashMap.empty<RunnerAddress, readonly [runner: Runner, healthy: boolean]>()
   let acquired: Array<ShardId.ShardId> = []
-  // the shards each runner acquired and has not released
-  const held = MutableHashMap.empty<RunnerAddress, MutableHashSet.MutableHashSet<ShardId.ShardId>>()
   let id = 0
 
   return RunnerStorage.of({
@@ -274,33 +261,14 @@ export const makeMemory = Effect.gen(function*() {
       Effect.sync(() => {
         MutableHashMap.modify(runners, address, ([runner]) => [runner, healthy] as const)
       }),
-    acquire: (address, shardIds) =>
-      Effect.sync(() => {
-        acquired = Array.from(shardIds)
-        let shards = Option.getOrUndefined(MutableHashMap.get(held, address))
-        if (shards === undefined) {
-          shards = MutableHashSet.empty()
-          MutableHashMap.set(held, address, shards)
-        }
-        for (const shardId of acquired) MutableHashSet.add(shards, shardId)
-        return acquired
-      }),
+    acquire: (_address, shardIds) => {
+      acquired = Array.from(shardIds)
+      return Effect.succeed(acquired)
+    },
     refresh: () => Effect.sync(() => acquired),
-    release: (address, shardId) =>
-      Effect.sync(() => {
-        const shards = MutableHashMap.get(held, address)
-        if (Option.isSome(shards)) MutableHashSet.remove(shards.value, shardId)
-      }),
-    releaseAll: (address) =>
-      Effect.sync(() => {
-        MutableHashMap.remove(held, address)
-      }),
-    owned: (address, shardIds) =>
-      Effect.sync(() => {
-        const shards = MutableHashMap.get(held, address)
-        if (Option.isNone(shards)) return []
-        return Array.from(shardIds).filter((id) => MutableHashSet.has(shards.value, id))
-      })
+    release: () => Effect.void,
+    releaseAll: () => Effect.void,
+    owned: (_address, shardIds) => Effect.succeed(Array.from(shardIds))
   })
 })
 

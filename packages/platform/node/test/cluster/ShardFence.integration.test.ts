@@ -140,10 +140,9 @@ const staleOwnerTest = Effect.fnUntraced(
     yield* waitFor(Effect.sync(() => shardingB.hasShardId(shardId) || undefined)).pipe(
       Effect.timeoutOrElse({ duration: 15_000, orElse: () => Effect.die("runner B never acquired the shard") })
     )
-    yield* Deferred.await(probeB.entered).pipe(
-      Effect.timeoutOrElse({ duration: 10_000, orElse: () => Effect.die("runner B never started the request") })
-    )
 
+    // A finishes after B took over. If A claimed the request again after B
+    // reset the shard, B only sees it once A abandons it.
     yield* probeA.gate.open
     yield* Deferred.await(probeA.returned)
 
@@ -154,6 +153,9 @@ const staleOwnerTest = Effect.fnUntraced(
     const stale = yield* waitFor(storedExit).pipe(Effect.timeoutOption(2000))
     assert.isTrue(Option.isNone(stale), "the stale owner stored its reply")
 
+    yield* Deferred.await(probeB.entered).pipe(
+      Effect.timeoutOrElse({ duration: 15_000, orElse: () => Effect.die("runner B never started the request") })
+    )
     yield* probeB.gate.open
     const reply = yield* waitFor(storedExit).pipe(
       Effect.timeoutOrElse({ duration: 10_000, orElse: () => Effect.die("runner B never stored its reply") })

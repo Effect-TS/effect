@@ -808,48 +808,6 @@ const make = Effect.gen(function*() {
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
 
-    // The local view of shard ownership lags behind lock storage by up to one
-    // lock refresh, or indefinitely while the process is paused. Owner-only
-    // storage writes check lock storage first, so a runner that lost a shard
-    // cannot decide the stored result of its requests. A rejected write is
-    // treated like abandonment: the request is left for the owner.
-    const fenceOwnerWrite = <A, E, R>(
-      address: EntityAddress,
-      write: Effect.Effect<A, E, R>
-    ): Effect.Effect<A, E | EntityNotAssignedToRunner | PersistenceError, R> =>
-      Effect.suspend(() => {
-        // Entities draining from a released shard still hold its lock.
-        if (
-          !MutableHashSet.has(acquiredShards, address.shardId) && !MutableHashSet.has(releasingShards, address.shardId)
-        ) {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
-        return Effect.flatMap(
-          runnerStorage.owned(selfAddress, [address.shardId]),
-          (owned): Effect.Effect<A, E | EntityNotAssignedToRunner, R> =>
-            owned.length === 0 ? Effect.fail(new EntityNotAssignedToRunner({ address })) : write
-        )
-      })
-
-    const fenceIncoming = (message: Message.Incoming<any>): Message.Incoming<any> =>
-      message._tag === "IncomingRequest"
-        ? new Message.IncomingRequest({
-          envelope: message.envelope,
-          lastSentReply: message.lastSentReply,
-          codecFor: message.codecFor,
-          callerScope: message.callerScope,
-          respond: (reply) => fenceOwnerWrite(message.envelope.address, message.respond(reply))
-        })
-        : message
-
-    // Only claim messages for shards that lock storage still attributes to
-    // this runner. A stale claim would hide them from the owner.
-    const ownedAcquiredShards = Effect.suspend(() =>
-      MutableHashSet.size(acquiredShards) === 0
-        ? Effect.succeed([])
-        : runnerStorage.owned(selfAddress, acquiredShards)
-    )
-
     const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
@@ -885,10 +843,7 @@ const make = Effect.gen(function*() {
         readonly limit?: number | undefined
         readonly addresses?: ReadonlyArray<EntityAddress> | undefined
       }) {
-        const shardIds = yield* ownedAcquiredShards
-        messages = shardIds.length === 0
-          ? []
-          : Arr.map(yield* storage.unprocessedMessages(shardIds, options), fenceIncoming)
+        messages = yield* storage.unprocessedMessages(acquiredShards, options)
         index = 0
         yield* processMessages
         return messages.length
@@ -960,14 +915,11 @@ const make = Effect.gen(function*() {
             if (Cause.hasInterrupts(cause)) {
               return Effect.void
             }
-            return fenceOwnerWrite(
-              message.envelope.address,
-              storage.saveReply(Reply.ReplyWithContext.fromDefect({
-                id: snowflakeGen.nextUnsafe(),
-                requestId: message.envelope.requestId,
-                defect: Cause.squash(cause)
-              }))
-            ).pipe(Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void))
+            return storage.saveReply(Reply.ReplyWithContext.fromDefect({
+              id: snowflakeGen.nextUnsafe(),
+              requestId: message.envelope.requestId,
+              defect: Cause.squash(cause)
+            }))
           }
           if (error.success._tag === "AlreadyProcessingMessage") {
             // Completion raced with decoding.
@@ -1163,12 +1115,7 @@ const make = Effect.gen(function*() {
             messageIds.push(id)
           }
 
-          const owned = yield* runnerStorage.owned(selfAddress, [address.shardId])
-          if (owned.length === 0) {
-            return
-          }
-
-          const messages = Arr.map(yield* storage.unprocessedMessagesById(messageIds), fenceIncoming)
+          const messages = yield* storage.unprocessedMessagesById(messageIds)
 
           // this should not happen, but we handle it just in case
           if (messages.length === 0) {
@@ -1952,6 +1899,17 @@ const make = Effect.gen(function*() {
   const reaper = yield* EntityReaper
   const entityManagerLatches = new Map<string, Latch.Latch>()
 
+  // This runner's view of its shards lags lock storage by up to one refresh,
+  // or longer while the process is paused, so final replies of persisted
+  // requests also ask lock storage. Entities draining from a released shard
+  // still hold its lock.
+  const isShardOwned = (runnerAddress: RunnerAddress, shardId: ShardId) =>
+    Effect.suspend(() =>
+      !MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)
+        ? Effect.succeed(false)
+        : Effect.map(runnerStorage.owned(runnerAddress, [shardId]), (owned) => owned.length > 0)
+    )
+
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
       const runnerAddress = getRunnerAddress()
@@ -1970,7 +1928,8 @@ const make = Effect.gen(function*() {
         runnerAddress,
         residency,
         sharding,
-        abandonUndelivered
+        abandonUndelivered,
+        isShardOwned: (shardId) => isShardOwned(runnerAddress, shardId)
       }).pipe(
         Effect.provideContext(services.pipe(
           // Registration overrides construction fallbacks, except for runner-owned services.

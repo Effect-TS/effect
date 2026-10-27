@@ -2,8 +2,6 @@
 "effect": patch
 ---
 
-Stop a runner that lost a shard lock from storing replies for that shard. Reply writes and message claims now check ownership against lock storage first. A rejected write abandons the request, so its new owner decides the stored result.
+Stop a runner that lost a shard lock from storing the final reply of a persisted request on that shard. Before storing it, the runner asks lock storage whether it still owns the shard. If not, the request is left for the shard's new owner.
 
-`RunnerStorage` gains an `owned` method, so custom `RunnerStorage` implementations must add it. `Message.IncomingRequest.respond` and `Message.IncomingRequestLocal.respond` can now fail with `EntityNotAssignedToRunner`.
-
-On MySQL and Vitess, `SqlRunnerStorage` now keeps its advisory lock session pinned after releasing all shard locks, so the lock holder id it compares against stays current behind vtgate.
+`RunnerStorage` gains an `owned` method. `RunnerStorage.makeEncoded` takes it as an optional `Encoded.owned`, and storages without it keep relying on the runner's own view of its shards. `SqlRunnerStorage` implements it.

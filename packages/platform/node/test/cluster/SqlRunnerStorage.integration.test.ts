@@ -613,15 +613,16 @@ describe("SqlRunnerStorage", () => {
           Effect.gen(function*() {
             const sql = yield* SqlClient.SqlClient
             const storage = yield* RunnerStorage.RunnerStorage
-            const shards = [1, 2, 3, 4].map((id) => ShardId.make("default", id))
+            // Shards no other test acquires: releases do not clear what
+            // `owned` reports, so earlier acquisitions would show up.
+            const shards = [21, 22, 23, 24].map((id) => ShardId.make("default", id))
             const ownedIds = Effect.fnUntraced(function*(address: RunnerAddress.RunnerAddress) {
               const owned = yield* storage.owned(address, shards)
               return owned.map((_) => _.id).sort((a, b) => a - b)
             })
 
-            yield* storage.releaseAll(runnerAddress1)
             yield* storage.acquire(runnerAddress1, shards.slice(0, 3))
-            expect(yield* ownedIds(runnerAddress1)).toEqual([1, 2, 3])
+            expect(yield* ownedIds(runnerAddress1)).toEqual([21, 22, 23])
 
             if (label === "pg") {
               // The lock session dies before this runner refreshes its locks.

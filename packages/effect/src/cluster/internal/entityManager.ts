@@ -20,7 +20,13 @@ import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
-import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
+import {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  MalformedMessage,
+  type PersistenceError
+} from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "../ClusterSchema.ts"
 import * as ClusterSchema from "../ClusterSchema.ts"
@@ -115,7 +121,7 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
-    /** Set when lock storage rejected a reply because the shard moved on. */
+    /** Set when the final reply was not stored because the shard moved on. */
     fenced?: boolean | undefined
   }>
   lastActiveCheck: number
@@ -155,6 +161,11 @@ export const make = Effect.fnUntraced(function*<
       address: EntityAddress,
       isDelivered: (requestId: Snowflake.Snowflake) => boolean
     ) => Effect.Effect<void>
+    /**
+     * Whether this runner still owns the shard, checked before storing the
+     * final reply of a persisted request.
+     */
+    readonly isShardOwned?: ((shardId: ShardId) => Effect.Effect<boolean, PersistenceError>) | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -343,7 +354,7 @@ export const make = Effect.fnUntraced(function*<
                   // because this owner can no longer serve it, is left for
                   // replay instead of being answered.
                   const abandoned = ClusterAbandon.isCause(response.exit.cause) &&
-                    (!isActive() || !options.sharding.hasShardId(address.shardId) || request.fenced === true)
+                    (!isActive() || !options.sharding.hasShardId(address.shardId))
                   if (isShuttingDown || request.terminating || abandoned) {
                     activeRequests.delete(Snowflake.Snowflake(response.requestId))
                     return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
@@ -357,7 +368,7 @@ export const make = Effect.fnUntraced(function*<
                     )
                   }
                 }
-                const save = retryRespond(
+                const write = retryRespond(
                   4,
                   Effect.suspend(() =>
                     request.message.respond(
@@ -368,24 +379,28 @@ export const make = Effect.fnUntraced(function*<
                       })
                     )
                   )
-                ).pipe(
-                  Effect.tapError((error) =>
-                    Effect.sync(() => {
-                      if (error._tag === "EntityNotAssignedToRunner") request.fenced = true
-                    })
-                  )
                 )
-                // Lock storage no longer attributes the shard to this runner,
-                // so nothing was saved. Leave the request for the owner and
-                // let local callers re-route their wait.
+                // A runner that lost the shard must not decide the stored
+                // result. A rejection is not retried.
+                const isShardOwned = options.isShardOwned
+                const save = !persisted || !isShardOwned ? write : Effect.flatMap(
+                  retryRespond(4, isShardOwned(address.shardId)),
+                  (owned): Effect.Effect<void, MalformedMessage | PersistenceError | EntityNotAssignedToRunner> => {
+                    if (owned) return write
+                    request.fenced = true
+                    return Effect.fail(new EntityNotAssignedToRunner({ address }))
+                  }
+                )
+                // Leave the request for the shard's owner: release the claim
+                // so its next poll sees it, and let local callers re-route.
                 const abandonFenced = Effect.suspend(() => {
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
                   if (activeRequests.size === 0) {
                     state.lastActiveCheck = clock.currentTimeMillisUnsafe()
                   }
-                  return Effect.andThen(
-                    Effect.logDebug("Abandoning a request whose shard is no longer owned by this runner"),
-                    options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                  return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
+                    Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
+                    Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))
                   )
                 })
                 const complete = Effect.sync(() => {
@@ -414,8 +429,8 @@ export const make = Effect.fnUntraced(function*<
                 }
 
                 if (Exit.isSuccess(exit)) {
-                  // A fenced save fails the transaction, which rolls back
-                  // the handler's writes.
+                  // A rejected save fails the transaction, rolling back the
+                  // handler's writes, and leaves the request for the owner.
                   transaction.settle = (outcome) =>
                     Exit.isSuccess(outcome) ? complete : request.fenced ? abandonFenced : Effect.flatMap(
                       hasStoredExit(request.message.envelope.requestId),
@@ -448,7 +463,7 @@ export const make = Effect.fnUntraced(function*<
                 if (!request.sentReply) {
                   request.sentReply = true
                 }
-                return retryRespond(
+                return Effect.orDie(retryRespond(
                   4,
                   Effect.suspend(() => {
                     const reply = new Reply.Chunk({
@@ -460,15 +475,7 @@ export const make = Effect.fnUntraced(function*<
                     request.lastSentChunk = Option.some(reply)
                     return request.message.respond(reply)
                   })
-                ).pipe(
-                  // Chunks are written by the handler fiber, so this abandons
-                  // the request and the `Exit` leaves it for the owner.
-                  Effect.catchTag("EntityNotAssignedToRunner", () => {
-                    request.fenced = true
-                    return ClusterAbandon.interrupt
-                  }),
-                  Effect.orDie
-                )
+                ))
               }
               case "Defect": {
                 return restartFrom(Cause.die(response.defect))
@@ -709,7 +716,7 @@ export const make = Effect.fnUntraced(function*<
               if (rpc._tag === KeepAliveRpc._tag) {
                 const msg = message as unknown as Message.IncomingRequestLocal<typeof KeepAliveRpc>
                 const reply = Effect.suspend(() =>
-                  retryRespond(
+                  Effect.orDie(retryRespond(
                     4,
                     msg.respond(
                       new Reply.WithExit<typeof KeepAliveRpc>({
@@ -718,11 +725,7 @@ export const make = Effect.fnUntraced(function*<
                         exit: Exit.void
                       })
                     )
-                  ).pipe(
-                    // The new owner of the shard answers it instead.
-                    Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-                    Effect.orDie
-                  )
+                  ))
                 )
 
                 if (server.keepAliveEnabled) return reply
@@ -886,7 +889,7 @@ export const make = Effect.fnUntraced(function*<
             if (message._tag === "IncomingEnvelope") {
               return Effect.die(new MalformedMessage({ cause }))
             }
-            return message.respond(
+            return Effect.orDie(message.respond(
               new Reply.ReplyWithContext({
                 reply: new Reply.WithExit({
                   id: snowflakeGen.nextUnsafe(),
@@ -896,10 +899,7 @@ export const make = Effect.fnUntraced(function*<
                 rpc: entityRpcs.get(message.envelope.tag)!,
                 context: context as any
               })
-            ).pipe(
-              Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-              Effect.orDie
-            )
+            ))
           },
           onSuccess: (decoded) => {
             if (decoded._tag === "IncomingEnvelope") {
@@ -1006,15 +1006,7 @@ const requestEnvelope = (entry: {
   } as any) as any
 })
 
-// A write rejected because the shard moved on is never retried.
-const retryRespond = <A, E extends { readonly _tag: string }, R>(
-  times: number,
-  effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> =>
+const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
     effect :
-    Effect.catchIf(
-      effect,
-      (error) => error._tag !== "EntityNotAssignedToRunner",
-      () => Effect.delay(retryRespond(times - 1, effect), 200)
-    )
+    Effect.catch(effect, () => Effect.delay(retryRespond(times - 1, effect), 200))

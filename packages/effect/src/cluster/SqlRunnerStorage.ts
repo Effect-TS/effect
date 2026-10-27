@@ -39,14 +39,6 @@ import * as ShardingConfig from "./ShardingConfig.ts"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
-// The session holding a storage's advisory locks, as reported to other
-// sessions.
-interface LockSession {
-  pid: number
-  // MySQL only: the lock that pins the session's lock connection
-  readonly pinLock: string | undefined
-}
-
 // This exact FNV-1a hash, including its tag and UTF-8 encoding, is a persistent
 // advisory-lock wire format and must never change.
 const postgresLockNamespace = (prefix: string): number => {
@@ -78,22 +70,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   // PostgreSQL exposes the signed int4 lock key through pg_locks as an unsigned oid.
   const pgLockNamespaceOid = pgLockNamespace >>> 0
 
-  // MySQL identifies a lock holder by connection id. Behind Vitess that is the
-  // id of vtgate's lock connection for the session, which vtgate replaces
-  // once the session releases all of its locks. A lock of the session's own
-  // pins that connection and reads its id.
-  const pinLockSession = Effect.fnUntraced(function*(conn: Connection, pinLock?: string) {
-    while (true) {
-      const name = pinLock ?? `cluster:pid:${(Math.random() * Number.MAX_SAFE_INTEGER) | 0}`
-      const taken = (yield* conn.executeValues(
-        `SELECT GET_LOCK('${name}', 10), IS_USED_LOCK('${name}')`,
-        []
-      ))[0] as [1 | null, number]
-      if (taken[0] === null) continue
-      return { pid: Number(taken[1]), pinLock: name }
-    }
-  })
-
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
   const acquireLockConn = singleSession ? undefined : sql.onDialectOrElse({
@@ -113,17 +89,26 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               Effect.ignoreCause
             ))
         }
-        return [conn, { pid, pinLock: undefined }] as const
+        return [conn, pid] as const
       }, Effect.orDie),
     mysql: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )
-        if (disableAdvisoryLocks) return [conn, { pid: 0, pinLock: undefined }] as const
+        if (disableAdvisoryLocks) return [conn, 0] as const
         // we need to get the connection id using IS_USED_LOCK to properly
         // support vitess
-        const session: LockSession = yield* pinLockSession(conn)
+        let pid: number | undefined = undefined
+        while (pid === undefined) {
+          const address = `cluster:pid:${(Math.random() * Number.MAX_SAFE_INTEGER) | 0}`
+          const taken = (yield* conn.executeValues(
+            `SELECT GET_LOCK('${address}', 10), IS_USED_LOCK('${address}')`,
+            []
+          ))[0] as [1 | null, number]
+          if (taken[0] === null) continue
+          pid = taken[1]
+        }
         if (!disableAdvisoryLocks) {
           yield* Scope.addFinalizerExit(scope, () =>
             conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", []).pipe(
@@ -132,7 +117,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               Effect.ignoreCause
             ))
         }
-        return [conn, session] as const
+        return [conn, pid] as const
       }, Effect.orDie),
     orElse: () => undefined
   })
@@ -156,7 +141,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     )
   })
 
-  const rebuildLockConn = (from?: readonly [Connection, LockSession]) => {
+  const rebuildLockConn = (from?: readonly [Connection, number]) => {
     const rebuild = lockConn?.rebuildUnsafe({ from })
     if (!rebuild) return Effect.void
     // Bound release so a stalled connection cannot block subsequent rebuilds.
@@ -168,13 +153,13 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   }
   // SQL failures replace the held connection; deadlines are handled by withLockOperationDeadline.
   const useLockConn = <A, E, R>(
-    f: (conn: Connection, pid: number, session: LockSession) => Effect.Effect<A, E, R>
+    f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
     Effect.flatMap(
       lockConn!.await,
       (held) =>
         Effect.onError(
-          f(held[0], held[1].pid, held[1]),
+          f(held[0], held[1]),
           (cause) => Cause.hasInterruptsOnly(cause) ? Effect.void : rebuildLockConn(held)
         )
     )
@@ -361,7 +346,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           for (let i = 0; i < shardIds.length; i++) {
             const shardId = shardIds[i]
             const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
-            if (lockTakenBy !== null && Number(lockTakenBy) === pid) {
+            if (lockTakenBy === pid) {
               acquiredShardIds.push(shardId)
             } else if (shardIds.includes(shardId)) {
               toAcquire.push(shardId)
@@ -529,48 +514,22 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // A lease row changes owner only once it has expired: every acquisition
-  // overwrites only its own or expired rows. So a lease returned by `acquire`
-  // or `refresh` belongs to this runner until at least `shardLockExpiration`
-  // after the statement was sent. Lease ownership is answered from these
-  // deadlines, without a query, so it cannot be hidden by the snapshot of a
-  // caller's transaction or wait for a connection that transaction holds.
-  //
-  // This assumes the runner's clock runs at the database's rate within one
-  // lease. A failed operation leaves the deadlines alone, so they only ever
-  // under-claim.
+  // A lease row changes owner only once it has expired, so a lease returned by
+  // `acquire` or `refresh` stays this runner's until at least
+  // `shardLockExpiration` after the statement was sent. Lease ownership is
+  // answered from these deadlines without a query, so it can neither read a
+  // caller's stale transaction snapshot nor wait for a pool connection that
+  // transaction holds. Failed operations and releases leave the deadlines to
+  // expire on their own.
   const leaseMode = disableAdvisoryLocks || sql.onDialectOrElse({
     pg: () => false,
     mysql: () => false,
     orElse: () => true
   })
   const leaseExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
-  const leaseDeadlines = new Map<string, Map<string, number>>()
+  const leaseDeadlines = new Map<string, number>()
 
-  const recordLeases = (
-    address: string,
-    requested: ReadonlyArray<string>,
-    granted: ReadonlyArray<string>,
-    sentAt: number
-  ) => {
-    let leases = leaseDeadlines.get(address)
-    if (leases === undefined) {
-      leases = new Map()
-      leaseDeadlines.set(address, leases)
-    }
-    const deadline = sentAt + leaseExpirationMillis
-    for (const shardId of requested) {
-      if (granted.includes(shardId)) {
-        leases.set(shardId, Math.max(leases.get(shardId) ?? 0, deadline))
-      } else {
-        leases.delete(shardId)
-      }
-    }
-  }
-
-  // Records the leases returned by an acquisition or refresh of `requested`.
   const trackLeases = <A extends ReadonlyArray<string>, E, R>(
-    address: string,
     requested: ReadonlyArray<string>,
     operation: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
@@ -579,68 +538,59 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       Effect.flatMap(Clock.currentTimeMillis, (sentAt) =>
         Effect.tap(operation, (granted) =>
           Effect.sync(() => {
-            recordLeases(address, requested, granted, sentAt)
+            const deadline = sentAt + leaseExpirationMillis
+            for (const shardId of requested) {
+              if (granted.includes(shardId)) {
+                leaseDeadlines.set(shardId, Math.max(leaseDeadlines.get(shardId) ?? 0, deadline))
+              } else {
+                leaseDeadlines.delete(shardId)
+              }
+            }
           })))
 
-  const ownedLeases = (address: string, shardIds: ReadonlyArray<string>) =>
-    Effect.map(Clock.currentTimeMillis, (now) => {
-      const leases = leaseDeadlines.get(address)
-      if (leases === undefined) return []
-      return shardIds.filter((shardId) => (leases.get(shardId) ?? 0) > now)
-    })
-
-  // Advisory locks belong to the reserved connection's session, not to an
-  // address. A storage instance serves a single runner, so the advisory checks
-  // only answer for the address that last acquired through it. This guards
-  // against questions about other runners; it is not an ownership check.
-  let advisoryLockAddress: string | undefined
-
-  // Reads the session at execution time: a rebuild of the reserved connection
-  // releases every advisory lock and replaces the session.
-  const advisorySession = (address: string) => {
-    const held = lockConn?.getUnsafe()
-    return held === undefined || address !== advisoryLockAddress ? undefined : held[1].pid
-  }
-
+  // Advisory locks belong to the reserved connection's session, which is read
+  // when the check runs: a rebuild replaces it and releases every lock.
   const ownedShards = sql.onDialectOrElse({
-    pg: () => {
-      if (disableAdvisoryLocks) return ownedLeases
-      return (address: string, shardIds: ReadonlyArray<string>) =>
-        Effect.suspend(() => {
-          const pid = advisorySession(address)
-          if (pid === undefined) return Effect.succeed([])
-          const toCheck = new Map<number, string>()
-          for (const shardId of shardIds) {
-            const lockNum = lockNumbers.get(shardId)
-            if (lockNum !== undefined) toCheck.set(lockNum, shardId)
-          }
-          if (toCheck.size === 0) return Effect.succeed([])
-          return sql.unsafe(
-            `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} AND objid IN (${
-              Array.from(toCheck.keys()).join(", ")
-            })`
-          ).values.pipe(
-            Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
-          )
-        })
-    },
-    mysql: () => {
-      if (disableAdvisoryLocks) return ownedLeases
-      return (address: string, shardIds: ReadonlyArray<string>) =>
-        Effect.suspend(() => {
-          const pid = advisorySession(address)
-          if (pid === undefined) return Effect.succeed([])
-          const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
-          if (toCheck.length === 0) return Effect.succeed([])
-          return sql.unsafe(
-            `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
-          ).values.pipe(
-            Effect.map((rows) => toCheck.filter((_, i) => Number(rows[0][i]) === pid))
-          )
-        })
-    },
-    orElse: () => ownedLeases
+    pg: () => (_address: string, shardIds: ReadonlyArray<string>) =>
+      Effect.suspend(() => {
+        const pid = lockConn?.getUnsafe()?.[1]
+        if (pid === undefined) return Effect.succeed([])
+        const toCheck = new Map<number, string>()
+        for (const shardId of shardIds) {
+          const lockNum = lockNumbers.get(shardId)
+          if (lockNum !== undefined) toCheck.set(lockNum, shardId)
+        }
+        if (toCheck.size === 0) return Effect.succeed([])
+        return sql.unsafe(
+          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} AND objid IN (${
+            Array.from(toCheck.keys()).join(", ")
+          })`
+        ).values.pipe(
+          Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
+        )
+      }),
+    mysql: () => (_address: string, shardIds: ReadonlyArray<string>) =>
+      Effect.suspend(() => {
+        const pid = lockConn?.getUnsafe()?.[1]
+        if (pid === undefined) return Effect.succeed([])
+        const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
+        if (toCheck.length === 0) return Effect.succeed([])
+        return sql.unsafe(
+          `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
+        ).values.pipe(
+          Effect.map((rows) => toCheck.filter((_, i) => rows[0][i] === pid))
+        )
+      }),
+    orElse: () => () => Effect.succeed([])
   })
+
+  const owned = (address: string, shardIds: ReadonlyArray<string>) =>
+    leaseMode
+      ? Effect.map(
+        Clock.currentTimeMillis,
+        (now) => shardIds.filter((shardId) => (leaseDeadlines.get(shardId) ?? 0) > now)
+      )
+      : ownedShards(address, shardIds)
 
   // On failure, replace the connection ready at entry. If none was ready,
   // retry only a failed rebuild, leaving pending or newly ready connections alone.
@@ -687,7 +637,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               `SELECT IS_USED_LOCK('${lockName}')`,
               []
             )
-            if (takenLocks.length === 0 || Number(takenLocks[0][0]) !== pid) return
+            if (takenLocks.length === 0 || takenLocks[0][0] !== pid) return
           }
         }))
     },
@@ -708,12 +658,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     mysql: () => (address: string) =>
       disableAdvisoryLocks
         ? sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`.pipe(execWithLockConn)
-        : useLockConn(Effect.fnUntraced(function*(conn, _pid, session) {
-          yield* conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", [])
-          // Releasing every lock also releases the pin, so take it again.
-          const pinned = yield* pinLockSession(conn, session.pinLock)
-          session.pid = pinned.pid
-        })),
+        : sql`SELECT RELEASE_ALL_LOCKS()`.pipe(execWithLockConn, Effect.asVoid),
     orElse: () => (address: string) => sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`
   })
 
@@ -747,14 +692,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         ),
 
     acquire: (address, shardIds) =>
-      trackLeases(
-        address,
-        shardIds,
-        withLockOperationDeadline(Effect.suspend(() => {
-          advisoryLockAddress = address
-          return acquireLock(address, shardIds)
-        }))
-      ).pipe(
+      trackLeases(shardIds, withLockOperationDeadline(acquireLock(address, shardIds))).pipe(
         PersistenceError.refail,
         withTracerDisabled
       ),
@@ -772,7 +710,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         )
       }
       return trackLeases(
-        address,
         shardIds,
         withLockOperationDeadline(
           heartbeat.pipe(
@@ -787,27 +724,21 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     },
 
     release: (address, shardId) =>
-      Effect.suspend(() => {
-        leaseDeadlines.get(address)?.delete(shardId)
-        return withLockOperationDeadline(releaseShard(address, shardId))
-      }).pipe(
+      withLockOperationDeadline(releaseShard(address, shardId)).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
       ),
 
     releaseAll: (address) =>
-      Effect.suspend(() => {
-        leaseDeadlines.delete(address)
-        return withLockOperationDeadline(releaseAllShards(address))
-      }).pipe(
+      withLockOperationDeadline(releaseAllShards(address)).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
       ),
 
     owned: (address, shardIds) =>
-      ownedShards(address, shardIds).pipe(
+      owned(address, shardIds).pipe(
         PersistenceError.refail,
         withTracerDisabled
       )
@@ -838,13 +769,11 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  * Changing `prefix` changes all generated table names, so runners using
  * different prefixes do not share registrations or shard locks.
  *
- * Each runner needs its own storage instance. Advisory locks belong to the
- * instance's reserved connection, so runners sharing an instance would share
- * its locks.
- *
- * With table leases, `owned` answers from the leases the instance acquired or
- * refreshed, counting `shardLockExpiration` from when each statement was sent,
- * so it assumes the runner's clock runs at the database's rate.
+ * Each runner needs its own storage instance: advisory locks belong to the
+ * instance's reserved connection, and `owned` answers for the locks and leases
+ * taken through the instance. With table leases it counts
+ * `shardLockExpiration` from when each `acquire` or `refresh` statement was
+ * sent, so it assumes the runner's clock runs at the database's rate.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
