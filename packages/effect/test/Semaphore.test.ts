@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Fiber, Option, PartitionedSemaphore, Semaphore } from "effect"
+import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
@@ -525,6 +525,31 @@ describe("Semaphore", () => {
       const acquired = yield* Semaphore.takeIfAvailable(1)(sem)
       assert.isFalse(acquired)
 
+      yield* sem.release(1)
+      assert.isTrue(yield* sem.takeIfAvailable(1))
+    }))
+
+  it.effect("takeScoped holds permits until the scope closes", () =>
+    Effect.gen(function*() {
+      const sem = yield* Semaphore.make(2)
+      const scope = yield* Scope.make()
+
+      yield* Scope.provide(sem.takeScoped(2), scope)
+      assert.isFalse(yield* sem.takeIfAvailable(1))
+
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(yield* sem.takeIfAvailable(2))
+    }))
+
+  it.effect("takeScoped takes no permits when interrupted while waiting", () =>
+    Effect.gen(function*() {
+      const sem = yield* Semaphore.make(1)
+      yield* sem.take(1)
+      // The scope stays open, so only the interruption can end the acquisition.
+      const scope = yield* Scope.make()
+      const waiter = yield* Effect.forkChild(Scope.provide(sem.takeScoped(1), scope), { startImmediately: true })
+
+      yield* Fiber.interrupt(waiter)
       yield* sem.release(1)
       assert.isTrue(yield* sem.takeIfAvailable(1))
     }))

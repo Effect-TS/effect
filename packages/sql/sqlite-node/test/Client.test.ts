@@ -378,6 +378,26 @@ describe("Client", () => {
       }
     }))
 
+  it.effect("releases the connection when a queued transaction is interrupted", () =>
+    Effect.gen(function*() {
+      // Sweep the interrupt across the gap between taking the connection and registering its release.
+      for (let delay = 0; delay < 31; delay++) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+          const holder = yield* Effect.forkChild(sql`SELECT 1`)
+          const queued = yield* sql.withTransaction(sql`SELECT 2`).pipe(
+            Effect.provideService(References.MaxOpsBeforeYield, 3),
+            Effect.forkChild
+          )
+          for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+          yield* Fiber.interrupt(queued)
+          yield* Fiber.join(holder)
+          const next = yield* Effect.forkChild(sql`SELECT 3`, { startImmediately: true })
+          assert.isDefined(next.pollUnsafe(), `connection leaked at delay ${delay}`)
+        }))
+      }
+    }))
+
   it.effect("uses a 5 second busy timeout", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
