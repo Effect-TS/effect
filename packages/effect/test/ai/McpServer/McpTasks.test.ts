@@ -1,4 +1,4 @@
-import { assert, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as TaskWire from "effect/ai/internal/mcpSchema/v2026_07_28"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
@@ -12,10 +12,13 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
 import * as Scope from "effect/Scope"
+import { TestClock } from "effect/testing"
 import * as Activity from "effect/workflow/Activity"
 import * as DurableDeferred from "effect/workflow/DurableDeferred"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
@@ -366,7 +369,7 @@ it.effect("should reject invalid handles when Workflow task methods are called",
     assert.strictEqual((yield* terminal(harness, task.taskId)).status, "completed")
   }))
 
-it.effect("should ignore nonoutstanding responses when a known task is updated", () =>
+it.effect("should acknowledge unrelated input when a known task is updated", () =>
   Effect.gen(function*() {
     const harness = yield* makeHttpHarness(server)
     const task = yield* create(harness)
@@ -633,29 +636,50 @@ it.effect("should cancel active memory tasks when cancellation is requested", ()
     assert.strictEqual((yield* terminal(harness, created.taskId)).status, "cancelled")
   }))
 
-it.effect("should preserve decoded parameters and request metadata when a memory handler executes", () =>
-  Effect.gen(function*() {
-    class Prefix extends Context.Service<Prefix, string>()("test/MemoryTaskPrefix") {}
-    const tools = Toolkit.make(Tool.make("report", {
-      parameters: Schema.Struct({ rows: Schema.NumberFromString }),
-      success: Schema.String
-    }))
-    const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(
-      Layer.provide(McpTasks.layerMemory(tools, {
-        report: Effect.fnUntraced(function*({ rows }) {
+for (const backend of ["memory", "workflow"] as const) {
+  it.effect(`should use fresh request metadata without a stale transport when a ${backend} layer was built during a request`, () =>
+    Effect.gen(function*() {
+      class Prefix extends Context.Service<Prefix, string>()("test/TaskPrefix") {}
+      const staleClient = McpSchema.McpServerClient.of({
+        clientId: 100,
+        protocolVersion: "2025-11-25",
+        clientCapabilities: {},
+        clientInfo: { name: "stale", version: "1" },
+        initializePayload: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "stale", version: "1" }
+        },
+        getClient: Effect.die("The task must not use the stale transport")
+      })
+      const tools = Toolkit.make(Tool.make("report", {
+        parameters: Schema.Struct({ rows: Schema.NumberFromString }),
+        success: Schema.String
+      }))
+      const handlers = {
+        report: Effect.fnUntraced(function*({ rows }: { readonly rows: number }) {
           const prefix = yield* Prefix
           const request = yield* McpSchema.McpRequestContext
+          assert.strictEqual((yield* Effect.serviceOption(McpSchema.McpServerClient))._tag, "None")
           return `${prefix}:${request.requestMetadata?.tenant}:${rows + 1}`
         })
-      })),
-      Layer.provide(Layer.succeed(Prefix, "memory")),
-      Layer.provideMerge(serverLayer)
-    )
-    const harness = yield* makeHttpHarness(layer)
-    const completed = yield* terminal(harness, (yield* create(harness, "report", { rows: "2" })).taskId)
-    assert.strictEqual(completed.status, "completed")
-    if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "memory:acme:3")
-  }))
+      }
+      const execution = backend === "memory"
+        ? McpTasks.layerMemory(tools, handlers)
+        : McpTasks.layerWorkflow(tools, handlers, { name: "fresh-request" }).pipe(
+          Layer.provide(WorkflowEngine.layerMemory)
+        )
+      const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(
+        Layer.provide(execution.pipe(Layer.provide(Layer.succeed(McpSchema.McpServerClient, staleClient)))),
+        Layer.provide(Layer.succeed(Prefix, backend)),
+        Layer.provideMerge(serverLayer)
+      )
+      const harness = yield* makeHttpHarness(layer)
+      const completed = yield* terminal(harness, (yield* create(harness, "report", { rows: "2" })).taskId)
+      assert.strictEqual(completed.status, "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, `${backend}:acme:3`)
+    }))
+}
 
 it.effect("should interrupt memory handlers and discard records when the execution layer closes", () =>
   Effect.gen(function*() {
@@ -867,3 +891,315 @@ for (
       })
     }))
 }
+
+it.effect("should expose input and status and resume the handler when MCP task methods are called", () =>
+  Effect.gen(function*() {
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) =>
+      McpTasks.layerMemory(tools, {
+        report: Effect.fnUntraced(function*() {
+          const task = yield* McpTasks.TaskContext
+          yield* task.setStatusMessage("choose-roots", "Choose workspace roots")
+          const response = yield* task.requestInput({
+            key: "roots",
+            request: { method: "roots/list" },
+            response: Schema.Struct({ roots: Schema.Array(Schema.Struct({ uri: Schema.String })) })
+          })
+          yield* task.setStatusMessage("ready", "Report ready")
+          return `Report covers ${response.roots.length} roots`
+        }, Effect.orDie)
+      })).pipe(Layer.provideMerge(serverLayer))
+    const harness = yield* makeHttpHarness(layer)
+    const created = yield* create(harness)
+    const capabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
+    let waiting = yield* get(harness, created.taskId, capabilities)
+    for (let attempt = 0; waiting.status === "working" && attempt < 100; attempt++) {
+      yield* Effect.yieldNow
+      waiting = yield* get(harness, created.taskId, capabilities)
+    }
+    assert.strictEqual(waiting.status, "input_required")
+    assert.strictEqual(waiting.statusMessage, "Choose workspace roots")
+    if (waiting.status === "input_required") {
+      assert.deepStrictEqual(waiting.inputRequests, { roots: { method: "roots/list" } })
+    }
+    const acknowledgement = yield* post(
+      harness,
+      "tasks/update",
+      {
+        taskId: created.taskId,
+        inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
+      },
+      undefined,
+      undefined,
+      capabilities
+    )
+    yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.TaskAcknowledgement }))(acknowledgement)
+    const completed = yield* terminal(harness, created.taskId)
+    assert.strictEqual(completed.status, "completed")
+    assert.strictEqual(completed.statusMessage, "Report ready")
+    if (completed.status === "completed") {
+      assert.strictEqual(completed.result.structuredContent, "Report covers 1 roots")
+    }
+  }))
+
+describe("layerMemory input and status", () => {
+  const tools = Toolkit.make(Tool.make("report", { success: Schema.String }))
+  const input = (key: string) => ({
+    key,
+    request: {
+      method: "elicitation/create" as const,
+      params: {
+        mode: "form",
+        message: `Enter ${key}`,
+        requestedSchema: { type: "object", properties: { value: { type: "string" } }, required: ["value"] }
+      }
+    },
+    response: Schema.Struct({
+      action: Schema.Literal("accept"),
+      content: Schema.Struct({ value: Schema.NumberFromString })
+    })
+  })
+  const response = (value: string) => ({ action: "accept", content: { value } })
+  const open = Effect.fnUntraced(function*(handler: Effect.Effect<string, Schema.SchemaError, McpTasks.TaskContext>) {
+    const context = yield* Layer.build(McpTasks.layerMemory(tools, { report: () => Effect.orDie(handler) }))
+    const execution = Context.get(context, McpTasks.Execution)
+    const start = execution.create({
+      toolName: "report",
+      arguments: {},
+      ownerId: "alice",
+      requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+    })
+    const get = (taskId: string) => execution.get({ taskId, ownerId: "alice" })
+    const waitFor = Effect.fnUntraced(function*(taskId: string, predicate: (task: McpTasks.Task) => boolean) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const task = yield* get(taskId)
+        if (predicate(task)) return task
+        yield* Effect.yieldNow
+      }
+      return assert.fail("Task did not reach the expected state")
+    })
+    const update = (taskId: string, inputResponses: McpTasks.UpdateRequest["inputResponses"]) =>
+      execution.update({ taskId, ownerId: "alice", inputResponses })
+    return { execution, start, get, waitFor, update }
+  })
+
+  it.effect("should retain decoded answers and the latest status when successive input rounds complete", () =>
+    Effect.gen(function*() {
+      const harness = yield* open(Effect.gen(function*() {
+        const task = yield* McpTasks.TaskContext
+        yield* task.setStatusMessage("first", "Waiting for the first value")
+        const first = yield* task.requestInput(input("first"))
+        yield* task.setStatusMessage("second", "Waiting for the second value")
+        const second = yield* task.requestInput(input("second"))
+        yield* task.setStatusMessage("ready", "Report ready")
+        return String(first.content.value + second.content.value)
+      }))
+      const created = yield* harness.start
+      const waiting = yield* harness.waitFor(created.taskId, (task) => task.status === "input_required")
+      assert.strictEqual(waiting.statusMessage, "Waiting for the first value")
+      assert.strictEqual(waiting.status, "input_required")
+      if (waiting.status !== "input_required") return
+      assert.deepStrictEqual(waiting.inputRequests, { first: input("first").request })
+      yield* TestClock.adjust(1000)
+      yield* harness.update(created.taskId, { first: response("2") })
+      const second = yield* harness.waitFor(
+        created.taskId,
+        (task) => task.status === "input_required" && "second" in task.inputRequests
+      )
+      assert.strictEqual(second.statusMessage, "Waiting for the second value")
+      assert.notStrictEqual(second.lastUpdatedAt.epochMilliseconds, waiting.lastUpdatedAt.epochMilliseconds)
+      yield* harness.update(created.taskId, { second: response("3") })
+      const completed = yield* harness.waitFor(created.taskId, (task) => task.status === "completed")
+      assert.strictEqual(completed.statusMessage, "Report ready")
+      assert.deepStrictEqual(completed.createdAt, created.createdAt)
+      assert.isFalse("inputRequests" in completed)
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "5")
+    }))
+
+  it.effect("should let the handler request a replacement when the first response fails decoding", () =>
+    Effect.gen(function*() {
+      const harness = yield* open(Effect.gen(function*() {
+        const task = yield* McpTasks.TaskContext
+        const [value, other] = yield* Effect.all([
+          task.requestInput(input("value")).pipe(
+            Effect.catchTag("SchemaError", () => task.requestInput(input("replacement")))
+          ),
+          task.requestInput(input("other"))
+        ], { concurrency: "unbounded" })
+        return String(value.content.value + other.content.value)
+      }))
+      const created = yield* harness.start
+      const waiting = yield* harness.waitFor(
+        created.taskId,
+        (task) => task.status === "input_required" && Object.keys(task.inputRequests).length === 2
+      )
+      const denied = yield* Effect.flip(harness.execution.update({
+        taskId: created.taskId,
+        ownerId: "bob",
+        inputResponses: { value: response("1") }
+      }))
+      assert.strictEqual(denied.message, "Unknown taskId")
+      yield* harness.update(created.taskId, { unknown: response("1") })
+      assert.deepStrictEqual(yield* harness.get(created.taskId), waiting)
+      yield* harness.update(created.taskId, {
+        value: { action: "accept", content: { value: 42 } },
+        other: response("2")
+      })
+      const replacement = yield* harness.waitFor(
+        created.taskId,
+        (task) => task.status === "input_required" && "replacement" in task.inputRequests
+      )
+      if (replacement.status !== "input_required") return assert.fail("Expected a replacement input")
+      assert.deepStrictEqual(Object.keys(replacement.inputRequests), ["replacement"])
+      yield* harness.update(created.taskId, { value: response("7") })
+      assert.deepStrictEqual(yield* harness.get(created.taskId), replacement)
+      yield* harness.update(created.taskId, { replacement: response("8") })
+      const completed = yield* harness.waitFor(created.taskId, (task) => task.status === "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "10")
+    }))
+
+  it.effect("should keep the first received reply when concurrent inputs are answered separately", () =>
+    Effect.gen(function*() {
+      const harness = yield* open(Effect.gen(function*() {
+        const task = yield* McpTasks.TaskContext
+        const results = yield* Effect.all([
+          task.requestInput(input("left")),
+          task.requestInput(input("right"))
+        ], { concurrency: "unbounded" })
+        return String(results[0].content.value + results[1].content.value)
+      }))
+      const created = yield* harness.start
+      yield* harness.waitFor(
+        created.taskId,
+        (task) => task.status === "input_required" && Object.keys(task.inputRequests).length === 2
+      )
+      yield* harness.update(created.taskId, { left: response("2") })
+      yield* harness.update(created.taskId, { left: response("999") })
+      const partial = yield* harness.get(created.taskId)
+      if (partial.status === "input_required") {
+        assert.deepStrictEqual(Object.keys(partial.inputRequests), ["right"])
+      } else assert.fail("The other input must remain outstanding")
+      yield* harness.update(created.taskId, { right: response("3") })
+      const completed = yield* harness.waitFor(created.taskId, (task) => task.status === "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "5")
+    }))
+
+  it.effect("should reserve every batch response when decoding an answer submits another update", () =>
+    Effect.gen(function*() {
+      let updateRight: Effect.Effect<void> = Effect.die("The task has not been created")
+      const leftResponse = Schema.Struct({ value: Schema.NumberFromString }).pipe(Schema.decodeTo(Schema.Number, {
+        decode: SchemaGetter.transformEffect(({ value }) => updateRight.pipe(Effect.as(value))),
+        encode: SchemaGetter.transform((value) => ({ value }))
+      }))
+      const harness = yield* open(Effect.gen(function*() {
+        const task = yield* McpTasks.TaskContext
+        const [left, right] = yield* Effect.all([
+          task.requestInput({ ...input("left"), response: leftResponse }),
+          task.requestInput(input("right"))
+        ], { concurrency: "unbounded" })
+        return String(left + right.content.value)
+      }))
+      const created = yield* harness.start
+      yield* harness.waitFor(
+        created.taskId,
+        (task) => task.status === "input_required" && Object.keys(task.inputRequests).length === 2
+      )
+      updateRight = harness.update(created.taskId, { right: response("999") }).pipe(Effect.orDie)
+      yield* harness.update(created.taskId, { left: { value: "2" }, right: response("3") })
+      const completed = yield* harness.waitFor(created.taskId, (task) => task.status === "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "5")
+    }))
+
+  it.effect("should leave other tasks runnable when an input-waiting task is cancelled", () =>
+    Effect.gen(function*() {
+      const harness = yield* open(
+        McpTasks.TaskContext.use((task) => task.requestInput(input("value"))).pipe(
+          Effect.map((result) => String(result.content.value))
+        )
+      )
+      const first = yield* harness.start
+      const second = yield* harness.start
+      yield* harness.waitFor(first.taskId, (task) => task.status === "input_required")
+      yield* harness.waitFor(second.taskId, (task) => task.status === "input_required")
+      yield* harness.execution.cancel({ taskId: first.taskId, ownerId: "alice" })
+      const cancelled = yield* harness.waitFor(first.taskId, (task) => task.status === "cancelled")
+      assert.isFalse("inputRequests" in cancelled)
+      yield* harness.update(first.taskId, { value: response("2") })
+      assert.deepStrictEqual(yield* harness.get(first.taskId), cancelled)
+      yield* harness.update(second.taskId, { value: response("4") })
+      const completed = yield* harness.waitFor(second.taskId, (task) => task.status === "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "4")
+    }))
+
+  it.effect("should remove abandoned input and clear status when the handler continues", () =>
+    Effect.gen(function*() {
+      const stop = yield* Deferred.make<void>()
+      const finish = yield* Deferred.make<void>()
+      const harness = yield* open(Effect.gen(function*() {
+        const task = yield* McpTasks.TaskContext
+        const waiting = yield* task.requestInput(input("abandoned")).pipe(Effect.forkChild)
+        yield* Deferred.await(stop)
+        yield* Fiber.interrupt(waiting)
+        yield* task.setStatusMessage("working", "Still working")
+        yield* Deferred.await(finish)
+        yield* task.setStatusMessage("clear", undefined)
+        return "done"
+      }))
+      const created = yield* harness.start
+      yield* harness.waitFor(created.taskId, (task) => task.status === "input_required")
+      yield* Deferred.succeed(stop, undefined)
+      const working = yield* harness.waitFor(created.taskId, (task) =>
+        task.status === "working" &&
+        task.statusMessage === "Still working")
+      assert.isFalse("inputRequests" in working)
+      yield* harness.update(created.taskId, { abandoned: response("1") })
+      assert.deepStrictEqual(yield* harness.get(created.taskId), working)
+      yield* Deferred.succeed(finish, undefined)
+      const completed = yield* harness.waitFor(created.taskId, (task) => task.status === "completed")
+      assert.isUndefined(completed.statusMessage)
+    }))
+
+  for (const cancel of [false, true]) {
+    it.effect(`should preserve ${cancel ? "cancellation" : "the first received response"} when the handler is still decoding`, () =>
+      Effect.gen(function*() {
+        const decoding = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        class DecodeLabel extends Context.Service<DecodeLabel, string>()("test/TaskDecodeLabel") {}
+        const value = Schema.String.pipe(Schema.decodeTo(Schema.String, {
+          decode: SchemaGetter.transformEffect(Effect.fnUntraced(function*(value) {
+            const label = yield* DecodeLabel
+            if (value === "slow") {
+              yield* Deferred.succeed(decoding, undefined)
+              yield* Deferred.await(release)
+            }
+            return `${label}:${value}`
+          })),
+          encode: SchemaGetter.transform((value) => value)
+        }))
+        const harness = yield* open(
+          McpTasks.TaskContext.use((task) =>
+            task.requestInput({
+              ...input("value"),
+              response: Schema.Struct({ value })
+            })
+          ).pipe(Effect.provideService(DecodeLabel, "handler"), Effect.map((answer) => answer.value))
+        )
+        const created = yield* harness.start
+        yield* harness.waitFor(created.taskId, (task) => task.status === "input_required")
+        yield* harness.update(created.taskId, { value: { value: "slow" } })
+        yield* Deferred.await(decoding)
+        if (cancel) {
+          yield* harness.execution.cancel({ taskId: created.taskId, ownerId: "alice" })
+        } else {
+          yield* harness.update(created.taskId, { value: { value: "fast" } })
+        }
+        if (cancel) yield* harness.waitFor(created.taskId, (task) => task.status === "cancelled")
+        else assert.strictEqual((yield* harness.get(created.taskId)).status, "working")
+        yield* Deferred.succeed(release, undefined)
+        const terminal = yield* harness.waitFor(
+          created.taskId,
+          (task) => task.status === (cancel ? "cancelled" : "completed")
+        )
+        if (terminal.status === "completed") assert.strictEqual(terminal.result.structuredContent, "handler:slow")
+      }))
+  }
+})
