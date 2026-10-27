@@ -117,6 +117,13 @@ describe("cluster SQL storage with a DML-only role", () => {
 
 const StorageLayer = SqlRunnerStorage.layer
 
+const PoolOfTwo = Layer.unwrap(
+  Effect.gen(function*() {
+    const container = yield* PgContainer
+    return PgClient.layer({ url: Redacted.make(container.getConnectionUri()), maxConnections: 2 })
+  })
+)
+
 // Allow for CI latency in healthy PostgreSQL queries.
 const lockOperationInterval = 1000
 const partitionConfig = {
@@ -419,6 +426,32 @@ describe("SqlRunnerStorage", () => {
       60_000
     )
 
+    it.effect(
+      "checks leases without waiting for a connection held by the caller's transaction",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* SqlRunnerStorage.make({ prefix: "pool" })
+          const shards = [ShardId.make("default", 1)]
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+
+          // The reserved lock connection and the transaction fill the pool.
+          const owned = yield* sql.withTransaction(storage.owned(runnerAddress1, shards)).pipe(
+            Effect.timeoutOrElse({
+              duration: 10_000,
+              orElse: () => Effect.die("owned waited for a connection the pool could not give")
+            })
+          )
+          expect(owned).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(PoolOfTwo),
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true })),
+          TestClock.withLive
+        ),
+      60_000
+    )
+
     it.effect("isolates advisory shard locks by prefix", () =>
       Effect.gen(function*() {
         const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
@@ -620,6 +653,24 @@ describe("SqlRunnerStorage", () => {
           const check = storage.owned(runnerAddress1, shards)
           expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
           expect(yield* check).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
+      it.effect("releases a shard reacquired after releasing all shards", () =>
+        Effect.gen(function*() {
+          const storage = yield* RunnerStorage.RunnerStorage
+          const shards = [ShardId.make("default", 12)]
+
+          yield* storage.releaseAll(runnerAddress1)
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          // Refreshing must not take the lock a second time.
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
+          yield* storage.release(runnerAddress1, shards[0])
+
+          const other = yield* SqlRunnerStorage.make({})
+          expect(yield* other.acquire(runnerAddress2, shards)).toEqual(shards)
         }).pipe(
           Effect.scoped,
           Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
