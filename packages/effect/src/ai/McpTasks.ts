@@ -7,6 +7,7 @@
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -21,6 +22,7 @@ import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as Binding from "./internal/mcpTasksBinding.ts"
 import { TaskError } from "./internal/mcpTasksBinding.ts"
+import * as TaskWorkflow from "./internal/mcpTasksWorkflow.ts"
 import * as McpSchema from "./McpSchema.ts"
 import * as McpServer from "./McpServer.ts"
 import type * as Tool from "./Tool.ts"
@@ -155,6 +157,61 @@ export class Execution extends Context.Service<Execution, {
   readonly update: (request: UpdateRequest) => Effect.Effect<void, TaskError>
   readonly cancel: (request: TaskRequest) => Effect.Effect<void, TaskError>
 }>()("effect/ai/McpTasks/Execution") {}
+
+/**
+ * Requests client input and reports status from a running task handler.
+ *
+ * **Details**
+ *
+ * `layerMemory` and `layerWorkflow` supply this service per task. Updates acknowledge
+ * receipt without waiting for the handler to decode the response. The first received response wins.
+ * Handle decoding failures in the handler. Another input round needs a new key.
+ * Status messages may be cleared with `undefined` and remain on terminal tasks.
+ *
+ * **Gotchas**
+ *
+ * Input keys and status checkpoint keys must each be unique across the task lifetime.
+ * Use stable status keys so Workflow replay can skip completed checkpoints.
+ * Reusing a key is a handler defect. Status changes are visible through task polling;
+ * this service does not emit notifications.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class TaskContext extends Context.Service<TaskContext, {
+  readonly requestInput: <A, R>(options: {
+    readonly key: string
+    readonly request: McpSchema.McpInputRequest
+    readonly response: Schema.Decoder<A, R>
+  }) => Effect.Effect<A, Schema.SchemaError, R>
+  readonly setStatusMessage: (key: string, message: string | undefined) => Effect.Effect<void>
+}>()("effect/ai/McpTasks/TaskContext") {}
+
+/**
+ * Runs a durable Workflow race and withdraws pending input from its losing branches.
+ *
+ * **Details**
+ *
+ * Use this helper for races containing `TaskContext.requestInput`. It delegates
+ * to `DurableDeferred.raceAll` and associates input requests with the named race.
+ * Task polls and updates observe its durable result, including
+ * when replay skips the losing branches.
+ *
+ * **Gotchas**
+ *
+ * Plain `DurableDeferred.raceAll` does not track task input withdrawal. Race names
+ * must be unique within the workflow, and handler code must remain replay-safe.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const workflowRace: typeof DurableDeferred.raceAll = (options) =>
+  Effect.flatMap(TaskWorkflow.CurrentRaces, (parents) =>
+    DurableDeferred.raceAll(options).pipe(
+      Effect.provideService(TaskWorkflow.CurrentRaces, [...parents, `raceAll/${options.name}`])
+    ))
 
 type Handlers<Tools extends Record<string, Tool.Any>> = Toolkit.HandlersFrom<Tools, unknown>
 type Services<H> = H extends (...args: Array<never>) => Effect.Effect<unknown, unknown, infer R>
@@ -321,7 +378,17 @@ const isFailure = Schema.is(Failure)
  * **Details**
  *
  * Handlers may use Activities. Change `name` for replay-incompatible handlers.
- * Workflow owns history cleanup. This implementation issues no input requests.
+ * Workflow owns history cleanup, including durable input and status records.
+ * Updates acknowledge persisted responses without waiting for the handler to decode them.
+ * Responses for inputs that are no longer outstanding are ignored.
+ *
+ * **Gotchas**
+ *
+ * Keep task-context calls and response decoders replay-safe. Activities may
+ * checkpoint side effects between input rounds. Task-state reads incrementally
+ * refresh a bounded projection cache; cold reads rebuild it from durable history.
+ * Use `workflowRace` to withdraw pending inputs from losing race branches,
+ * including when replay skips their execution.
  *
  * @stability unstable
  * @category layers
@@ -404,7 +471,9 @@ export const layerWorkflow = <
           return { ...fact.value, executionId: token.executionId }
         })
 
-        yield* engine.register(workflow, (payload) =>
+        const interaction = yield* TaskWorkflow.make(engine, workflow, scope)
+
+        const register = engine.register(workflow, (payload) =>
           Effect.gen(function*() {
             yield* DurableDeferred.succeed(identity, {
               token: yield* DurableDeferred.token(identity),
@@ -420,12 +489,13 @@ export const layerWorkflow = <
               })
             )
 
+            const taskContext = yield* interaction.context
             return yield* runners.get(tool.name)!({
               toolName: tool.name,
               arguments: payload.arguments,
               requestContext: payload.request,
               ownerId: payload.ownerId
-            })
+            }).pipe(Effect.provideService(TaskContext, taskContext))
           }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine)))
         yield* Effect.updateContext(register, (context: Context.Context<Effect.Services<typeof register>>) =>
           Context.makeUnsafe(McpServer.omitRequestServices(context).mapUnsafe))
@@ -433,17 +503,21 @@ export const layerWorkflow = <
         operations.set(workflow._tag, {
           get: Effect.fnUntraced(function*(request) {
             const fact = yield* findOwned(request)
+            const state = yield* interaction.snapshot(fact.executionId)
             const base = {
               taskId: request.taskId,
               createdAt: fact.createdAt,
-              lastUpdatedAt: fact.createdAt,
+              lastUpdatedAt: state.lastUpdatedAt ?? fact.createdAt,
+              statusMessage: state.statusMessage,
               ttlMs: null
             }
 
             const result = yield* engine.poll(workflow, fact.executionId)
 
             if (Option.isNone(result) || result.value._tag !== "Complete") {
-              return { ...base, status: "working" as const }
+              return Object.keys(state.inputRequests).length === 0
+                ? { ...base, status: "working" as const }
+                : { ...base, status: "input_required" as const, inputRequests: state.inputRequests }
             }
 
             const lastUpdatedAt = yield* readFinishedAt(fact.executionId)
@@ -469,10 +543,12 @@ export const layerWorkflow = <
             } satisfies Task
           }),
           update: Effect.fnUntraced(function*(request) {
-            yield* findOwned(request)
+            const fact = yield* findOwned(request)
+            yield* interaction.update(fact.executionId, request.inputResponses)
           }),
           cancel: Effect.fnUntraced(function*(request) {
             const fact = yield* findOwned(request)
+            yield* interaction.cancel(fact.executionId)
             yield* engine.interrupt(workflow, fact.executionId)
           }),
           create: Effect.fnUntraced(function*(request) {
@@ -557,7 +633,7 @@ export const layerWorkflow = <
  * **Gotchas**
  *
  * Tasks and results are lost when the layer closes. This layer cannot provide
- * durable creation and is intended for development and tests. It issues no input requests.
+ * durable creation and is intended for development and tests.
  *
  * @stability unstable
  * @category layers
@@ -575,18 +651,95 @@ export const layerMemory = <
   Execution,
   EX,
   | Exclude<RX, Scope.Scope>
-  | Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>
+  | Exclude<
+    Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>,
+    TaskContext
+  >
 > =>
   Layer.effect(
     Execution,
     Effect.gen(function*() {
+      type HandlerServices = Exclude<
+        Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>,
+        TaskContext
+      >
       const scope = yield* Scope.fork(yield* Scope.Scope)
-      const services = yield* Effect.context<
-        Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>
-      >()
+      const services = Context.makeUnsafe<HandlerServices>(
+        McpServer.omitRequestServices(yield* Effect.context<HandlerServices>()).mapUnsafe
+      )
       const runners = yield* makeHandlers(tools, handlers)
 
-      const tasks = new Map<string, { ownerId: string; task: Task; fiber?: Fiber.Fiber<void> }>()
+      interface PendingInput {
+        readonly request: McpSchema.McpInputRequest
+        readonly response: Deferred.Deferred<McpSchema.McpInputResponse>
+      }
+      interface Entry {
+        readonly ownerId: string
+        task: Task
+        fiber?: Fiber.Fiber<void>
+        readonly usedKeys: Set<string>
+        readonly pending: Map<string, PendingInput>
+      }
+      const tasks = new Map<string, Entry>()
+
+      const isActive = (entry: Entry) => entry.task.status === "working" || entry.task.status === "input_required"
+      const taskMetadata = (task: Task, lastUpdatedAt: DateTime.Utc) => ({
+        taskId: task.taskId,
+        createdAt: task.createdAt,
+        lastUpdatedAt,
+        ttlMs: task.ttlMs,
+        statusMessage: task.statusMessage
+      })
+      const refresh = (entry: Entry, lastUpdatedAt: DateTime.Utc) => {
+        const base = taskMetadata(entry.task, lastUpdatedAt)
+        entry.task = entry.pending.size === 0
+          ? { ...base, status: "working" }
+          : {
+            ...base,
+            status: "input_required",
+            inputRequests: Object.fromEntries(Array.from(entry.pending, ([key, input]) => [key, input.request]))
+          }
+      }
+
+      const taskContext = (entry: Entry): TaskContext["Service"] => ({
+        requestInput: Effect.fnUntraced(function*<A, R>(options: {
+          readonly key: string
+          readonly request: McpSchema.McpInputRequest
+          readonly response: Schema.Decoder<A, R>
+        }) {
+          const response = yield* Deferred.make<McpSchema.McpInputResponse>()
+          const pending: PendingInput = { request: options.request, response }
+          const key = JSON.stringify(["input", options.key])
+          return yield* Effect.acquireUseRelease(
+            Effect.gen(function*() {
+              const now = yield* DateTime.now
+              if (!isActive(entry) || entry.usedKeys.has(key)) {
+                return yield* Effect.die(new Error("Task input requires an active task and a unique request key"))
+              }
+              entry.usedKeys.add(key)
+              entry.pending.set(options.key, pending)
+              refresh(entry, now)
+            }),
+            () => Deferred.await(response).pipe(Effect.flatMap(Schema.decodeUnknownEffect(options.response))),
+            () =>
+              Effect.gen(function*() {
+                const now = yield* DateTime.now
+                if (entry.pending.get(options.key) === pending) {
+                  entry.pending.delete(options.key)
+                  if (isActive(entry)) refresh(entry, now)
+                }
+              })
+          )
+        }),
+        setStatusMessage: Effect.fnUntraced(function*(key, message) {
+          const now = yield* DateTime.now
+          if (!isActive(entry)) return
+          const operation = JSON.stringify(["status", key])
+          if (entry.usedKeys.has(operation)) return yield* Effect.die(new Error("Task status requires a unique key"))
+          entry.usedKeys.add(operation)
+          entry.task = { ...entry.task, statusMessage: message, lastUpdatedAt: now }
+        })
+      })
 
       yield* Scope.addFinalizer(scope, Effect.sync(() => tasks.clear()))
 
@@ -614,18 +767,22 @@ export const layerMemory = <
             status: "working"
           }
 
-          const entry: { ownerId: string; task: Task; fiber?: Fiber.Fiber<void> } = {
+          const entry: Entry = {
             ownerId: request.ownerId,
-            task
+            task,
+            usedKeys: new Set(),
+            pending: new Map()
           }
 
           tasks.set(task.taskId, entry)
 
           entry.fiber = yield* run(request).pipe(
-            Effect.provideContext(services),
+            Effect.provideService(TaskContext, taskContext(entry)),
+            Effect.setContext(services),
             Effect.onExit(Effect.fnUntraced(function*(exit) {
               const lastUpdatedAt = yield* DateTime.now
-              const base = { ...task, lastUpdatedAt }
+              const base = taskMetadata(entry.task, lastUpdatedAt)
+              entry.pending.clear()
 
               if (Exit.isSuccess(exit)) entry.task = { ...base, status: "completed", result: exit.value }
               else if (Cause.hasInterrupts(exit.cause)) entry.task = { ...base, status: "cancelled" }
@@ -649,7 +806,20 @@ export const layerMemory = <
           return task
         }),
         get: (request) => Effect.map(find(request), (entry) => entry.task),
-        update: (request) => Effect.asVoid(find(request)),
+        update: Effect.fnUntraced(function*(request) {
+          const entry = yield* find(request)
+          const now = yield* DateTime.now
+          if (!isActive(entry)) return
+          const received: Array<readonly [PendingInput, McpSchema.McpInputResponse]> = []
+          for (const [key, response] of Object.entries(request.inputResponses)) {
+            const pending = entry.pending.get(key)
+            if (!pending) continue
+            entry.pending.delete(key)
+            received.push([pending, response])
+          }
+          if (received.length > 0) refresh(entry, now)
+          for (const [pending, response] of received) Deferred.doneUnsafe(pending.response, Effect.succeed(response))
+        }),
         cancel: Effect.fnUntraced(function*(request) {
           const entry = yield* find(request)
           if (entry.fiber) yield* Fiber.interrupt(entry.fiber).pipe(Effect.forkIn(scope), Effect.asVoid)
