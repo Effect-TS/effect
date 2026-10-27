@@ -757,5 +757,12 @@ describe("PubSub", () => {
         gc()
         strictEqual(ref.deref(), undefined)
       }))
+
+    it.scoped("takeUpTo with a negative limit on an exhausted replay window", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 1 })
+        const sub = yield* PubSub.subscribe(pubsub)
+        deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(sub, -1)), [])
+      }))
   })
 })
