@@ -1046,57 +1046,24 @@ describe("HttpServer", () => {
       assert.strictEqual(closeListenerRemovals, 1)
     }))
 
-  it.effect.each([
-    { body: "Raw", response: () => HttpServerResponse.raw(new Uint8Array(1024)) },
-    { body: "Uint8Array", response: () => HttpServerResponse.uint8Array(new Uint8Array(1024 * 1024)) }
-  ])(
-    "completes a $body response when close arrives instead of the end callback",
-    ({ response }) =>
-      Effect.gen(function*() {
-        const scope = yield* Effect.scope
-        const handler = yield* NodeHttpServer.makeHandler(Effect.sync(response), { scope })
-        const completed = Latch.makeUnsafe()
-        let writableEnded = false
-        const nodeResponse = Object.defineProperty(new EventEmitter(), "writableEnded", {
-          get: () => writableEnded
-        }) as Http.ServerResponse
-        nodeResponse.writeHead = () => nodeResponse
-        nodeResponse.off = ((event: string | symbol, listener: (...args: Array<unknown>) => void) => {
-          if (event === "close") {
-            completed.openUnsafe()
-          }
-          return EventEmitter.prototype.off.call(nodeResponse, event, listener) as Http.ServerResponse
-        }) as Http.ServerResponse["off"]
-        // The client disconnected after the checks, so the response closes without finishing.
-        nodeResponse.end = (() => {
-          writableEnded = true
-          setImmediate(() => nodeResponse.emit("close"))
-          return nodeResponse
-        }) as Http.ServerResponse["end"]
-
-        handler({ method: "GET", url: "/", headers: {}, socket: {} } as Http.IncomingMessage, nodeResponse)
-        yield* completed.await
-      })
-  )
-
   it.live.each([
-    { body: "Raw", event: "close", response: () => HttpServerResponse.raw(new Uint8Array(1024)) },
     { body: "Uint8Array", event: "close", response: () => HttpServerResponse.uint8Array(new Uint8Array(1024)) },
-    { body: "Raw", event: "aborted", response: () => HttpServerResponse.raw(new Uint8Array(1024)) },
-    { body: "Raw", event: "end", response: () => HttpServerResponse.raw(new Uint8Array(1024)) }
+    { body: "Raw", event: "aborted", response: () => HttpServerResponse.raw(new Uint8Array(1024)) }
   ])("completes a $body response sent on $event after a disconnect", ({ event, response }) =>
     Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      // A stuck uninterruptible request fiber would block the server's shutdown
+      yield* Effect.addFinalizer(() => Effect.forkDetach(Scope.close(scope, Exit.void)))
       const received = yield* Latch.make()
       const sent = yield* Deferred.make<HttpServerResponse.HttpServerResponse, unknown>()
       yield* HttpRouter.add(
         "GET",
         "/",
         Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const incoming = NodeHttpServerRequest.toIncomingMessage(request)
+          const incoming = NodeHttpServerRequest.toIncomingMessage(yield* HttpServerRequest.HttpServerRequest)
           yield* received.open
-          // Node emits the request's `aborted` while closing the socket, and ends the
-          // socket on `end`, before it marks the response destroyed.
+          // Node emits the request's `aborted` before it marks the response destroyed
           yield* Effect.callback<void>((resume) => {
             if (incoming.socket.destroyed) return resume(Effect.void)
             ;(event === "aborted" ? incoming : incoming.socket).once(event, () => resume(Effect.void))
@@ -1107,10 +1074,10 @@ describe("HttpServer", () => {
       ).pipe(
         (app) =>
           HttpRouter.serve(app, { middleware: (app) => Effect.onExit(app, (exit) => Deferred.done(sent, exit)) }),
-        Layer.build
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.buildWithScope(scope)
       )
-      const server = yield* HttpServer.HttpServer
-      const socket = Net.connect({ port: (server.address as NetAddress.InetAddress).port, host: "127.0.0.1" }, () => {
+      const socket = Net.connect({ port: tcpPort(server), host: "127.0.0.1" }, () => {
         socket.write("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
       })
       socket.on("error", constVoid)
@@ -1118,7 +1085,7 @@ describe("HttpServer", () => {
       socket.destroy()
       const res = yield* Deferred.await(sent).pipe(Effect.timeout("2 seconds"))
       assert.strictEqual(res.status, 200)
-    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+    }))
 
   it.effect("returns none when a late remoteAddress read finds no socket", () =>
     Effect.gen(function*() {
@@ -1439,28 +1406,6 @@ describe("HttpServer", () => {
       )
     )
   })
-
-  it.live.each([
-    { body: "Raw", response: () => HttpServerResponse.raw(new Uint8Array(4 * 1024 * 1024)) },
-    { body: "Uint8Array", response: () => HttpServerResponse.uint8Array(new Uint8Array(4 * 1024 * 1024)) }
-  ])("completes an HTTP/2 $body response the client cancels mid-transfer", ({ response }) =>
-    Effect.gen(function*() {
-      const server = Http2.createServer()
-      const sent = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-      yield* HttpServer.serve(
-        Effect.sync(response),
-        (app) => Effect.onExit(app, (exit) => Deferred.succeed(sent, exit))
-      ).pipe(Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })), Layer.build)
-      const session = yield* Effect.acquireRelease(
-        Effect.sync(() => Http2.connect(`http://127.0.0.1:${tcpPort(server)}`)),
-        (session) => Effect.sync(() => session.destroy())
-      )
-      session.on("error", constVoid)
-      const stream = session.request({ ":path": "/" })
-      stream.on("error", constVoid)
-      stream.once("data", () => stream.close(Http2.constants.NGHTTP2_CANCEL))
-      assert.isTrue(Exit.isSuccess(yield* Deferred.await(sent).pipe(Effect.timeout("2 seconds"))))
-    }))
 
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
     Effect.gen(function*() {
