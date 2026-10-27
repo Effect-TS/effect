@@ -3473,7 +3473,12 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const after = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
         assert.strictEqual(after.count - before.count, 1)
         assert.strictEqual(after.sum - before.sum, 1050)
-      }).pipe(Effect.provide(layer), Effect.scoped)
+      }).pipe(
+        Effect.provide(layer),
+        Effect.scoped,
+        // Keep fractional samples from other tests out of the duration delta.
+        Effect.provideService(Metric.MetricRegistry, new Map())
+      )
     }))
 
   it.effect("delivers a client interrupt to a request still draining on the lock holder", () =>
