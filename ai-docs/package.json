@@ -5,6 +5,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@effect/ai-anthropic": "workspace:*",
+    "@effect/ai-cloudflare": "workspace:*",
     "@effect/ai-openai": "workspace:*",
     "@effect/ai-openai-compat": "workspace:*",
     "@effect/ai-openrouter": "workspace:*",
