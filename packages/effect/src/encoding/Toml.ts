@@ -258,17 +258,17 @@ class TomlParser {
       if (normalized.endsWith("nan")) return Number.NaN
       return normalized[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
     }
-    if (/^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(token)) {
-      return this.checkInteger(Number.parseInt(normalized.slice(2), 16), token)
-    }
-    if (/^0o[0-7](?:_?[0-7])*$/.test(token)) {
-      return this.checkInteger(Number.parseInt(normalized.slice(2), 8), token)
-    }
-    if (/^0b[01](?:_?[01])*$/.test(token)) {
-      return this.checkInteger(Number.parseInt(normalized.slice(2), 2), token)
-    }
-    if (/^[+-]?(?:0|[1-9](?:_?\d)*)$/.test(token)) {
-      return this.checkInteger(Number(normalized), token)
+    if (
+      /^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(token) ||
+      /^0o[0-7](?:_?[0-7])*$/.test(token) ||
+      /^0b[01](?:_?[01])*$/.test(token) ||
+      /^[+-]?(?:0|[1-9](?:_?\d)*)$/.test(token)
+    ) {
+      const value = Number(normalized)
+      if (!Number.isSafeInteger(value)) {
+        this.fail(`Integer out of range '${token}'`)
+      }
+      return value
     }
     if (
       /^[+-]?(?:(?:0|[1-9](?:_?\d)*)\.\d(?:_?\d)*(?:[eE][+-]?\d(?:_?\d)*)?|(?:0|[1-9](?:_?\d)*)[eE][+-]?\d(?:_?\d)*)$/
@@ -279,13 +279,6 @@ class TomlParser {
       return Number(normalized)
     }
     return undefined
-  }
-
-  private checkInteger(value: number, token: string): number {
-    if (!Number.isSafeInteger(value)) {
-      this.fail(`Integer out of range '${token}'`)
-    }
-    return value
   }
 
   private parseBasicString(multiline: boolean): string {
