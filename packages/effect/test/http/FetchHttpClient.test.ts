@@ -3,6 +3,16 @@ import { Effect, Option, Stream } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("FetchHttpClient", () => {
+  it.effect("describes a rejected header value without exposing it", () =>
+    Effect.gen(function*() {
+      const error = yield* HttpClient.get("http://localhost:1/").pipe(Effect.flip)
+      assert.include(error.message, "Invalid HTTP header value")
+      assert.notInclude(error.message, "sk-default")
+    }).pipe(
+      Effect.provide(FetchHttpClient.layer),
+      Effect.provideService(FetchHttpClient.RequestInit, { headers: { authorization: "Bearer sk-default\u0000x" } })
+    ))
+
   it.effect("sends bodies from Web requests", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.fromWeb(

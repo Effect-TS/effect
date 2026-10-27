@@ -16,7 +16,15 @@ import {
   Schema,
   Stream
 } from "effect"
-import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
+import {
+  Cookies,
+  Headers,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  UrlParams
+} from "effect/http"
 import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -664,6 +672,51 @@ Missing key
 
         strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
+
+    it("describes request errors from their cause chain", () => {
+      const request = HttpClientRequest.get("http://localhost:11434")
+      const cause = new TypeError("fetch failed", {
+        cause: new AggregateError([
+          new Error("connect ECONNREFUSED ::1:11434"),
+          new Error("connect ECONNREFUSED 127.0.0.1:11434"),
+          Object.create(null)
+        ])
+      })
+      strictEqual(
+        new HttpClientError.TransportError({ request, cause }).message,
+        "Transport: fetch failed: connect ECONNREFUSED ::1:11434, connect ECONNREFUSED 127.0.0.1:11434 (GET http://localhost:11434)"
+      )
+    })
+
+    it.effect("redacts sensitive header values in a description from the cause", () =>
+      Effect.sync(() => {
+        const request = HttpClientRequest.get("http://localhost:11434").pipe(
+          HttpClientRequest.bearerToken("sk-secret\u0000x "),
+          HttpClientRequest.setHeader("x-custom-key", "sk-secret\u0000x-custom")
+        )
+        const cause = new TypeError("Headers.append: \"Bearer sk-default\u0000x\" is an invalid header value.", {
+          cause: new Error("token sk-secret\u0000x rejected for sk-secret\u0000x-custom")
+        })
+        strictEqual(
+          new HttpClientError.TransportError({ request, cause }).message,
+          "Transport: Invalid HTTP header value: token <redacted> rejected for <redacted> (GET http://localhost:11434)"
+        )
+      }).pipe(Effect.provideService(Headers.CurrentRedactedNames, ["authorization", "x-custom-key"])))
+
+    it("redacts protected query values in a description from the cause", () => {
+      const request = HttpClientRequest.get("https://example.com").pipe(
+        HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
+        HttpClientRequest.appendUrlParam("remote", "public"),
+        HttpClientRequest.setUrlParam("other", Redacted.make("private-\uD800"))
+      )
+      const cause = new TypeError(
+        "Request cannot be constructed from a URL: https://example.com/?remote=param-secret&remote=public&other=private-%EF%BF%BD"
+      )
+      strictEqual(
+        new HttpClientError.TransportError({ request, cause }).message,
+        "Transport: Request cannot be constructed from a URL: https://example.com/?remote=<redacted>&remote=public&other=<redacted> (GET https://example.com)"
+      )
+    })
   })
 
   describe("followRedirects", () => {
