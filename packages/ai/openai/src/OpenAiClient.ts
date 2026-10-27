@@ -573,7 +573,7 @@ const makeSocket = Effect.gen(function*() {
                 method: "createResponseStream",
                 reason: new AiError.NetworkError({
                   reason: "TransportError",
-                  method: "POST",
+                  method: request.method,
                   url: request.url,
                   description: "Failed to send message over WebSocket"
                 })
@@ -658,7 +658,7 @@ const makeSocket = Effect.gen(function*() {
             method: "createResponseStream",
             reason: new AiError.NetworkError({
               reason: "TransportError",
-              method: "POST",
+              method: request.method,
               url: request.url,
               description: error.message
             })

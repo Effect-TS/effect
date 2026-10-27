@@ -96,7 +96,7 @@ export class NetworkError extends Schema.Error<NetworkError>(
 )({
   _tag: Schema.tag("NetworkError"),
   reason: Schema.Literals(["TransportError", "EncodeError", "InvalidUrlError"]),
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "QUERY"]),
+  method: Schema.String,
   url: Schema.String,
   description: Schema.optional(Schema.String)
 }) {

@@ -8,4 +8,4 @@
 "@effect/ai-typesafe": minor
 ---
 
-Remove `AiError.HttpRequestDetails` and `Response.HttpRequestDetails`. `AiError.NetworkError` now has `method` and `url` fields in place of `request`, `AiError.HttpContext` no longer has a `request` field, and `Response.ResponseMetadataPart` no longer has a `request` field. AI errors and response metadata no longer include request headers or query parameters.
+Remove `AiError.HttpRequestDetails` and `Response.HttpRequestDetails`, so AI errors and response metadata no longer carry request headers or query parameters. `AiError.NetworkError` records the request as `method` and `url` fields instead of `request`, and the `request` field is gone from `AiError.HttpContext` and `Response.ResponseMetadataPart`.

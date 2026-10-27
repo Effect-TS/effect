@@ -2285,7 +2285,6 @@ export const HttpResponseDetails = AiError.HttpResponseDetails
  *   {
  *     id: "resp_123",
  *     modelId: "gpt-4",
-
  *     timestamp: DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  *   }
  * )
