@@ -19,7 +19,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
-import * as Context from "../Context.ts"
+import * as Clock from "../Clock.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -529,32 +529,65 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // Ownership checks run on the pool, never on the reserved lock connection,
-  // so they can fence owner-only writes made on the pool.
+  // A lease row changes owner only once it has expired: every acquisition
+  // overwrites only its own or expired rows. So a lease returned by `acquire`
+  // or `refresh` belongs to this runner until at least `shardLockExpiration`
+  // after the statement was sent. Lease ownership is answered from these
+  // deadlines, without a query, so it cannot be hidden by the snapshot of a
+  // caller's transaction or wait for a connection that transaction holds.
   //
-  // A caller's transaction may hold an old snapshot of the locks table, as
-  // with MySQL's default REPEATABLE READ, so leases are checked outside it. A
-  // rejected check still fails the caller's transaction. Single-session
-  // clients have no other connection to use, and their transactions see every
-  // committed lease.
-  const outsideTransaction = singleSession || sql.onDialectOrElse({ sqlite: () => true, orElse: () => false })
-    ? <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
-    : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-      Effect.updateContext(
-        effect,
-        (context: Context.Context<R>) => Context.omit(sql.transactionService)(context) as Context.Context<R>
-      )
+  // This assumes the runner's clock runs at the database's rate within one
+  // lease. A failed operation leaves the deadlines alone, so they only ever
+  // under-claim.
+  const leaseMode = disableAdvisoryLocks || sql.onDialectOrElse({
+    pg: () => false,
+    mysql: () => false,
+    orElse: () => true
+  })
+  const leaseExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
+  const leaseDeadlines = new Map<string, Map<string, number>>()
+
+  const recordLeases = (
+    address: string,
+    requested: ReadonlyArray<string>,
+    granted: ReadonlyArray<string>,
+    sentAt: number
+  ) => {
+    let leases = leaseDeadlines.get(address)
+    if (leases === undefined) {
+      leases = new Map()
+      leaseDeadlines.set(address, leases)
+    }
+    const deadline = sentAt + leaseExpirationMillis
+    for (const shardId of requested) {
+      if (granted.includes(shardId)) {
+        leases.set(shardId, Math.max(leases.get(shardId) ?? 0, deadline))
+      } else {
+        leases.delete(shardId)
+      }
+    }
+  }
+
+  // Records the leases returned by an acquisition or refresh of `requested`.
+  const trackLeases = <A extends ReadonlyArray<string>, E, R>(
+    address: string,
+    requested: ReadonlyArray<string>,
+    operation: Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R> =>
+    !leaseMode ?
+      operation :
+      Effect.flatMap(Clock.currentTimeMillis, (sentAt) =>
+        Effect.tap(operation, (granted) =>
+          Effect.sync(() => {
+            recordLeases(address, requested, granted, sentAt)
+          })))
 
   const ownedLeases = (address: string, shardIds: ReadonlyArray<string>) =>
-    sql`
-      SELECT shard_id FROM ${locksTableSql}
-      WHERE address = ${address}
-      AND acquired_at >= ${lockExpiresAt}
-      AND shard_id IN ${stringLiteralArr(shardIds)}
-    `.values.pipe(
-      Effect.map((rows) => rows.map((row) => row[0] as string)),
-      outsideTransaction
-    )
+    Effect.map(Clock.currentTimeMillis, (now) => {
+      const leases = leaseDeadlines.get(address)
+      if (leases === undefined) return []
+      return shardIds.filter((shardId) => (leases.get(shardId) ?? 0) > now)
+    })
 
   // Advisory locks belong to the reserved connection's session, not to an
   // address. A storage instance serves a single runner, so the advisory checks
@@ -714,10 +747,14 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         ),
 
     acquire: (address, shardIds) =>
-      withLockOperationDeadline(Effect.suspend(() => {
-        advisoryLockAddress = address
-        return acquireLock(address, shardIds)
-      })).pipe(
+      trackLeases(
+        address,
+        shardIds,
+        withLockOperationDeadline(Effect.suspend(() => {
+          advisoryLockAddress = address
+          return acquireLock(address, shardIds)
+        }))
+      ).pipe(
         PersistenceError.refail,
         withTracerDisabled
       ),
@@ -734,10 +771,14 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           withTracerDisabled
         )
       }
-      return withLockOperationDeadline(
-        heartbeat.pipe(
-          execWithLockConn,
-          Effect.andThen(refreshShards(address, shardIds))
+      return trackLeases(
+        address,
+        shardIds,
+        withLockOperationDeadline(
+          heartbeat.pipe(
+            execWithLockConn,
+            Effect.andThen(refreshShards(address, shardIds))
+          )
         )
       ).pipe(
         PersistenceError.refail,
@@ -746,14 +787,20 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     },
 
     release: (address, shardId) =>
-      withLockOperationDeadline(releaseShard(address, shardId)).pipe(
+      Effect.suspend(() => {
+        leaseDeadlines.get(address)?.delete(shardId)
+        return withLockOperationDeadline(releaseShard(address, shardId))
+      }).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
       ),
 
     releaseAll: (address) =>
-      withLockOperationDeadline(releaseAllShards(address)).pipe(
+      Effect.suspend(() => {
+        leaseDeadlines.delete(address)
+        return withLockOperationDeadline(releaseAllShards(address))
+      }).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
@@ -794,6 +841,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  * Each runner needs its own storage instance. Advisory locks belong to the
  * instance's reserved connection, so runners sharing an instance would share
  * its locks.
+ *
+ * With table leases, `owned` answers from the leases the instance acquired or
+ * refreshed, counting `shardLockExpiration` from when each statement was sent,
+ * so it assumes the runner's clock runs at the database's rate.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix

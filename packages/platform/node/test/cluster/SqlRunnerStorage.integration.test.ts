@@ -667,7 +667,9 @@ describe("SqlRunnerStorage", () => {
 
       it.effect("releases a shard reacquired after releasing all shards", () =>
         Effect.gen(function*() {
-          const storage = yield* RunnerStorage.RunnerStorage
+          // A storage of its own: the pg owned test kills the shared one's
+          // lock session.
+          const storage = yield* SqlRunnerStorage.make({})
           const shards = [ShardId.make("default", 12)]
 
           yield* storage.releaseAll(runnerAddress1)

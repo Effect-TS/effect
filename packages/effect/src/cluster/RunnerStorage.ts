@@ -16,6 +16,7 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as MutableHashSet from "../MutableHashSet.ts"
+import * as Option from "../Option.ts"
 import type { PersistenceError } from "./ClusterError.ts"
 import * as MachineId from "./MachineId.ts"
 import { Runner } from "./Runner.ts"
@@ -88,16 +89,17 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
    *
    * **Details**
    *
-   * Runs on the shared connections, never on a connection reserved for shard
-   * locks, so it can fence owner-only writes such as replies against shard
-   * ownership. The answer is a snapshot of the lock state at the time the
-   * effect runs, not a lock. Each call costs one storage query.
+   * Used to fence owner-only writes, such as replies, against shard
+   * ownership. The answer must never include a shard that lock storage could
+   * already attribute to another runner, so an implementation may answer from
+   * its own record of unexpired leases. It must not wait on a connection
+   * reserved for shard locks. The answer is a snapshot at the time the effect
+   * runs, not a lock.
    *
    * **Gotchas**
    *
    * Implementations whose locks belong to the storage instance rather than to
-   * an address, such as advisory locks or the in-memory storage, assume one
-   * runner per instance.
+   * an address, such as advisory locks, assume one runner per instance.
    */
   readonly owned: (
     address: RunnerAddress,
@@ -242,9 +244,9 @@ export const makeEncoded = (encoded: Encoded) =>
  *
  * **Gotchas**
  *
- * Shard acquisition ignores runner addresses and never denies a shard, so an
- * instance serves a single runner. `owned` reports the shards acquired through
- * the instance and not yet released, whatever address is passed.
+ * Shard acquisition never denies a shard, so an instance serves a single
+ * runner. `owned` reports the shards the given address acquired and has not
+ * released.
  *
  * @stability unstable
  * @category constructors
@@ -253,8 +255,8 @@ export const makeEncoded = (encoded: Encoded) =>
 export const makeMemory = Effect.gen(function*() {
   const runners = MutableHashMap.empty<RunnerAddress, readonly [runner: Runner, healthy: boolean]>()
   let acquired: Array<ShardId.ShardId> = []
-  // every shard acquired and not yet released
-  const held = MutableHashSet.empty<ShardId.ShardId>()
+  // the shards each runner acquired and has not released
+  const held = MutableHashMap.empty<RunnerAddress, MutableHashSet.MutableHashSet<ShardId.ShardId>>()
   let id = 0
 
   return RunnerStorage.of({
@@ -272,21 +274,33 @@ export const makeMemory = Effect.gen(function*() {
       Effect.sync(() => {
         MutableHashMap.modify(runners, address, ([runner]) => [runner, healthy] as const)
       }),
-    acquire: (_address, shardIds) => {
-      acquired = Array.from(shardIds)
-      for (const shardId of acquired) MutableHashSet.add(held, shardId)
-      return Effect.succeed(acquired)
-    },
+    acquire: (address, shardIds) =>
+      Effect.sync(() => {
+        acquired = Array.from(shardIds)
+        let shards = Option.getOrUndefined(MutableHashMap.get(held, address))
+        if (shards === undefined) {
+          shards = MutableHashSet.empty()
+          MutableHashMap.set(held, address, shards)
+        }
+        for (const shardId of acquired) MutableHashSet.add(shards, shardId)
+        return acquired
+      }),
     refresh: () => Effect.sync(() => acquired),
-    release: (_address, shardId) =>
+    release: (address, shardId) =>
       Effect.sync(() => {
-        MutableHashSet.remove(held, shardId)
+        const shards = MutableHashMap.get(held, address)
+        if (Option.isSome(shards)) MutableHashSet.remove(shards.value, shardId)
       }),
-    releaseAll: () =>
+    releaseAll: (address) =>
       Effect.sync(() => {
-        MutableHashSet.clear(held)
+        MutableHashMap.remove(held, address)
       }),
-    owned: (_address, shardIds) => Effect.sync(() => Array.from(shardIds).filter((id) => MutableHashSet.has(held, id)))
+    owned: (address, shardIds) =>
+      Effect.sync(() => {
+        const shards = MutableHashMap.get(held, address)
+        if (Option.isNone(shards)) return []
+        return Array.from(shardIds).filter((id) => MutableHashSet.has(shards.value, id))
+      })
   })
 })
 
