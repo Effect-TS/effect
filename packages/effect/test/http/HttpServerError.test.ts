@@ -33,13 +33,13 @@ describe("HttpServerError", () => {
       assert.strictEqual(routeNotFound.message, "RouteNotFound (POST /widgets)")
     })
 
-    it.effect("redacts query params using the current redacted names", () =>
+    it.effect("omits the query string", () =>
       Effect.gen(function*() {
         const request = makeRequest("GET", "http://example.com/widgets?token=token-secret&sig=sig-visible")
 
         assert.strictEqual(
           new RouteNotFound({ request }).message,
-          "RouteNotFound (GET /widgets?token=REDACTED&sig=sig-visible)"
+          "RouteNotFound (GET /widgets)"
         )
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
 
