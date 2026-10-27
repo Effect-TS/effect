@@ -43,6 +43,14 @@ describe("HttpServerError", () => {
         )
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
 
+    it("formats an absolute request URL as its path", () => {
+      const request = makeRequest("GET", "http://example.com/").modify({
+        url: "https://user:password@api.test/path?token=secret"
+      })
+
+      assert.strictEqual(new RouteNotFound({ request }).message, "RouteNotFound (GET /path)")
+    })
+
     it("formats response reason messages", () => {
       const request = makeRequest("GET", "http://example.com/tea")
       const response = makeResponse(418)
