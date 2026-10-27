@@ -631,19 +631,26 @@ describe("SqlRunnerStorage", () => {
           }
 
           if (label.endsWith("(no advisory)")) {
-            // The lease expires and another runner takes it over.
-            yield* sql.unsafe(`UPDATE cluster_locks SET acquired_at = '2000-01-01 00:00:00'`)
+            // A's lease expires without a refresh and B takes it over. Each
+            // runner asks its own storage.
             yield* Effect.gen(function*() {
-              const other = yield* SqlRunnerStorage.make({})
-              expect(yield* other.acquire(runnerAddress2, shards.slice(0, 3))).toHaveLength(3)
+              const storageA = yield* SqlRunnerStorage.make({})
+              const storageB = yield* SqlRunnerStorage.make({})
+              const leased = [5, 6, 7].map((id) => ShardId.make("default", id))
+              const ids = (owned: ReadonlyArray<ShardId.ShardId>) => owned.map((_) => _.id).sort((a, b) => a - b)
+
+              expect(yield* storageA.acquire(runnerAddress1, leased)).toHaveLength(3)
+              yield* Effect.sleep(3_500)
+              expect(yield* storageB.acquire(runnerAddress2, leased)).toHaveLength(3)
+              expect(ids(yield* storageA.owned(runnerAddress1, leased))).toEqual([])
+              expect(ids(yield* storageB.owned(runnerAddress2, leased))).toEqual([5, 6, 7])
             }).pipe(
               Effect.scoped,
-              Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+              Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: 2_000 })),
+              TestClock.withLive
             )
-            expect(yield* ownedIds(runnerAddress1)).toEqual([])
-            expect(yield* ownedIds(runnerAddress2)).toEqual([1, 2, 3])
           }
-        }))
+        }), 30_000)
 
       it.effect("owned checks ownership when it runs, not when it is created", () =>
         Effect.gen(function*() {
