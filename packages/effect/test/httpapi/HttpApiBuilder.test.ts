@@ -688,6 +688,65 @@ it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder structured URL parameters", (it) => {
+  const Structured = Schema.Struct({
+    "page[size]": Schema.String,
+    meta: Schema.fromJsonString(Schema.Record(Schema.String, Schema.String))
+  })
+  const Nested = Schema.Struct({ meta: Schema.optional(Schema.Record(Schema.String, Schema.String)) })
+  const Api = HttpApi.make("Api").add(
+    HttpApiGroup.make("test")
+      .add(HttpApiEndpoint.get("query", "/query", { query: Structured.fields, success: Structured }))
+      .add(HttpApiEndpoint.get("payload", "/payload", { payload: Structured.fields, success: Structured }))
+      .add(HttpApiEndpoint.post("form", "/form", {
+        payload: Structured.pipe(HttpApiSchema.asFormUrlEncoded()),
+        success: Structured
+      }))
+      .add(HttpApiEndpoint.get("nestedQuery", "/nested-query", { query: Nested.fields }))
+      .add(HttpApiEndpoint.get("nestedPayload", "/nested-payload", { payload: Nested.fields }))
+      .add(HttpApiEndpoint.post("nestedForm", "/nested-form", {
+        payload: Nested.pipe(HttpApiSchema.asFormUrlEncoded())
+      }))
+  )
+  let handled = 0
+  const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+    handlers
+      .handle("query", ({ query }) => Effect.succeed(query))
+      .handle("payload", ({ payload }) => Effect.succeed(payload))
+      .handle("form", ({ payload }) => Effect.succeed(payload))
+      .handle("nestedQuery", () => Effect.sync(() => void handled++))
+      .handle("nestedPayload", () => Effect.sync(() => void handled++))
+      .handle("nestedForm", () => Effect.sync(() => void handled++)))
+
+  it.effect("round trips explicit codecs and declared bracket keys", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const value = { "page[size]": "10", meta: { k: "v" } }
+
+      assert.deepStrictEqual(yield* client.test.query({ query: value }), value)
+      assert.deepStrictEqual(yield* client.test.payload({ payload: value }), value)
+      assert.deepStrictEqual(yield* client.test.form({ payload: value }), value)
+    }))
+
+  it.effect("rejects nested objects before sending them as URL parameters", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const meta = { k: "v" }
+
+      for (
+        const exit of [
+          yield* Effect.exit(client.test.nestedQuery({ query: { meta } })),
+          yield* Effect.exit(client.test.nestedPayload({ payload: { meta } })),
+          yield* Effect.exit(client.test.nestedForm({ payload: { meta } }))
+        ]
+      ) {
+        assert(exit._tag === "Failure", "Expected the nested object to be rejected")
+        assert.include(Cause.pretty(exit.cause), "Schema.fromJsonString")
+      }
+      assert.strictEqual(handled, 0)
+    }))
+})
+
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
   it.effect("encodes WithHeaders using the schema for the response status", () =>
     Effect.gen(function*() {
