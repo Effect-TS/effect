@@ -168,9 +168,7 @@ const Proto = {
       InternalRecord.assignProperty(
         newGroups,
         key,
-        group.annotateMerge(
-          mergeRedactedNames(Context.merge(api.annotations, group.annotations), api.annotations, group.annotations)
-        )
+        group.annotateMerge(Context.merge(api.annotations, group.annotations))
       )
     }
     return makeProto({
@@ -521,6 +519,14 @@ export interface RedactedNamesOptions {
  * and decoded are unchanged, and `Redacted` fields stay redacted regardless of
  * this list.
  *
+ * **Gotchas**
+ *
+ * - `addHttpApi` copies the added API's annotations onto its groups like any
+ *   other annotation, so a group's own `RedactedNames` replaces them. Repeat
+ *   the names on the group to keep both.
+ * - Only URL and header attributes use these names. `user_agent.original` and
+ *   the messages of span errors are recorded as is.
+ *
  * **Example** (Redacting Docker build arguments)
  *
  * ```ts
@@ -612,20 +618,4 @@ export const getEndpointRedactedNames = (
     if (options.headers !== undefined) headers.push(...options.headers)
   }
   return query.length === 0 && headers.length === 0 ? undefined : { query, headers }
-}
-
-// `addHttpApi` copies the API annotations onto its groups, where a group
-// annotation would otherwise replace the API's names.
-const mergeRedactedNames = (
-  annotations: Context.Context<never>,
-  outer: Context.Context<never>,
-  inner: Context.Context<never>
-): Context.Context<never> => {
-  const outerNames = Context.getOrUndefined(outer, RedactedNames)
-  const innerNames = Context.getOrUndefined(inner, RedactedNames)
-  if (outerNames === undefined || innerNames === undefined) return annotations
-  return Context.add(annotations, RedactedNames, {
-    query: [...(outerNames.query ?? []), ...(innerNames.query ?? [])],
-    headers: [...(outerNames.headers ?? []), ...(innerNames.headers ?? [])]
-  })
 }

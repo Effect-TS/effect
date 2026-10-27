@@ -33,18 +33,7 @@ import * as Headers from "./Headers.ts"
 import { hasBody } from "./HttpMethod.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
-import {
-  causeResponseStripped,
-  ClientAbort,
-  formatReasonMessage,
-  HttpServerError,
-  type HttpServerErrorReason,
-  InternalError,
-  isHttpServerError,
-  RequestParseError,
-  ResponseError,
-  RouteNotFound
-} from "./HttpServerError.ts"
+import { causeResponseStripped, ClientAbort, HttpServerError, ResponseError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -288,11 +277,9 @@ export const isTracerDisabledUnsafe = (
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
 // OpenTelemetry requires failed server spans for 5xx responses.
-// The URL is redacted up front, as exporters format the error after the request.
 const responseSpanExit = (
   request: HttpServerRequest,
-  response: HttpServerResponse,
-  redactedNames: ReadonlyArray<string | RegExp>
+  response: HttpServerResponse
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
@@ -300,99 +287,10 @@ const responseSpanExit = (
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
   try {
-    const redacted = request.modify({ url: UrlParams.redactUrl(request.url, redactedNames) })
-    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request: redacted, response }) }))
+    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
   } finally {
     setStackTraceLimit(stackTraceLimit)
   }
-}
-
-// Redacts the request URLs held by the errors in a span failure. Exporters
-// render the whole `cause` chain, so every error in a chain that holds a
-// server request is replaced by a plain error. Their messages are read here,
-// so rendering them later cannot fail. The originals are not modified, and
-// this never throws, so the span always ends.
-const redactCause = (
-  cause: Cause.Cause<unknown>,
-  redactedNames: ReadonlyArray<string | RegExp>
-): Cause.Cause<unknown> => {
-  let changed = false
-  const reasons = cause.reasons.map((reason) => {
-    if (reason._tag === "Interrupt") return reason
-    const error = reason._tag === "Fail" ? reason.error : reason.defect
-    let redacted: unknown
-    try {
-      redacted = redactErrorChain(error, redactedNames)
-    } catch {
-      redacted = new Error("The failure could not be redacted")
-    }
-    if (redacted === error) return reason
-    changed = true
-    return Object.assign(
-      Object.create(Object.getPrototypeOf(reason)),
-      reason,
-      reason._tag === "Fail" ? { error: redacted } : { defect: redacted }
-    )
-  })
-  return changed ? Cause.fromReasons(reasons) : cause
-}
-
-const isRequestReason = (u: unknown): u is HttpServerErrorReason =>
-  u instanceof InternalError || u instanceof RequestParseError || u instanceof RouteNotFound ||
-  u instanceof ResponseError
-
-const redactErrorChain = (error: unknown, redactedNames: ReadonlyArray<string | RegExp>): unknown => {
-  const chain: Array<object> = []
-  const causes: Array<unknown> = []
-  let found = false
-  let u: unknown = error
-  while (typeof u === "object" && u !== null && !chain.includes(u)) {
-    chain.push(u)
-    found ||= isHttpServerError(u) || isRequestReason(u)
-    // Read once, as `Cause.prettyErrors` does, including inherited getters.
-    u = (u as { readonly cause?: unknown }).cause
-    causes.push(u)
-  }
-  if (!found) return error
-  const errors = chain.map((link) => toPlainError(link, redactedNames))
-  // Causes are linked once every error exists, so a cycle points to a plain error.
-  for (let i = 0; i < chain.length; i++) {
-    if (causes[i] === undefined) continue
-    const next = chain.indexOf(causes[i] as object)
-    Object.defineProperty(errors[i], "cause", {
-      value: next === -1 ? causes[i] : errors[next],
-      writable: true,
-      configurable: true
-    })
-  }
-  return errors[0]
-}
-
-// Keeps the name and stack frames of an error. Messages of request-backed
-// errors are formatted again from the redacted request.
-const toPlainError = (link: object, redactedNames: ReadonlyArray<string | RegExp>): Error => {
-  const original = link as Partial<Error>
-  const name = typeof original.name === "string" ? original.name : "Error"
-  const message = isHttpServerError(link)
-    ? formatReasonMessage(link.reason, redactedNames)
-    : isRequestReason(link)
-    ? formatReasonMessage(link, redactedNames)
-    : typeof original.message === "string"
-    ? original.message
-    : ""
-  const stack = typeof original.stack === "string" ? original.stack : ""
-  const frames = stack.indexOf("\n    at ")
-  const stackTraceLimit = getStackTraceLimit()
-  setStackTraceLimit(0)
-  let error: Error
-  try {
-    error = new Error(message)
-  } finally {
-    setStackTraceLimit(stackTraceLimit)
-  }
-  error.name = name
-  error.stack = `${name}: ${message}${frames === -1 ? "" : stack.slice(frames)}`
-  return error
 }
 
 const withStateNames = (
@@ -417,7 +315,6 @@ export const tracer: <E, R>(
       return httpApp
     }
     const nameGenerator = fiber.getRef(SpanNameGenerator)
-    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
     const span = internalEffect.makeSpanUnsafe(fiber, nameGenerator(request), {
       parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
       kind: "server"
@@ -427,18 +324,13 @@ export const tracer: <E, R>(
     internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
-      const redactedUrlParamNames = withStateNames(
-        fiber.getRef(UrlParams.CurrentRedactedNames),
-        state?.redactedUrlParamNames
-      )
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(request, exit.value, redactedUrlParamNames))
+        span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
-      const redactedHeaderNames = withStateNames(
-        fiber.getRef(Headers.CurrentRedactedNames),
-        state?.redactedHeaderNames
-      )
+      // Names added by the request handler, such as `HttpApiBuilder`, after the context is restored.
+      const state = Context.getOrUndefined(prevServices, CurrentRequestState)
+      const redactedHeaderNames = withStateNames(fiber.getRef(Headers.CurrentRedactedNames), state?.redactedHeaderNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       // Complete the span before the request fiber exits so shutdown can flush it.
       let response: HttpServerResponse
@@ -448,24 +340,24 @@ export const tracer: <E, R>(
         response = failureResponse
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
-          ? Exit.failCause(redactCause(cause.value, redactedUrlParamNames))
-          : responseSpanExit(request, response, redactedUrlParamNames)
+          ? Exit.failCause(cause.value)
+          : responseSpanExit(request, response)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(request, response, redactedUrlParamNames)
+        spanExit = responseSpanExit(request, response)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)
         const url = Request.toURL(request)
         if (Option.isSome(url)) {
-          tracing.addUrlAttributes(span, url.value, redactedUrlParamNames)
-        }
-        // Recorded regardless of `TracerHeaderFilter`, but still redacted.
-        if (request.headers["user-agent"] !== undefined) {
-          span.attribute(
-            "user_agent.original",
-            Headers.isRedactedName("user-agent", redactedHeaderNames) ? "<redacted>" : request.headers["user-agent"]
+          tracing.addUrlAttributes(
+            span,
+            url.value,
+            withStateNames(fiber.getRef(UrlParams.CurrentRedactedNames), state?.redactedUrlParamNames)
           )
+        }
+        if (request.headers["user-agent"] !== undefined) {
+          span.attribute("user_agent.original", request.headers["user-agent"])
         }
         tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
         if (Option.isSome(request.remoteAddress)) {

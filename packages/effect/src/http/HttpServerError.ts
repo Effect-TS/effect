@@ -114,8 +114,8 @@ export class RequestParseError extends Data.TaggedError("RequestParseError")<{
     return formatMethodAndUrl(this.request)
   }
 
-  override get message(): string {
-    return formatReasonMessage(this)
+  override get message() {
+    return formatRequestMessage(this._tag, this.description, this.methodAndUrl)
   }
 }
 
@@ -146,8 +146,8 @@ export class RouteNotFound extends Data.TaggedError("RouteNotFound")<{
     return formatMethodAndUrl(this.request)
   }
 
-  override get message(): string {
-    return formatReasonMessage(this)
+  override get message() {
+    return formatRequestMessage(this._tag, this.description, this.methodAndUrl)
   }
 }
 
@@ -181,8 +181,8 @@ export class InternalError extends Data.TaggedError("InternalError")<{
     return formatMethodAndUrl(this.request)
   }
 
-  override get message(): string {
-    return formatReasonMessage(this)
+  override get message() {
+    return formatRequestMessage(this._tag, this.description, this.methodAndUrl)
   }
 }
 
@@ -221,8 +221,9 @@ export class ResponseError extends Data.TaggedError("ResponseError")<{
     return formatMethodAndUrl(this.request)
   }
 
-  override get message(): string {
-    return formatReasonMessage(this)
+  override get message() {
+    const info = `${this._tag} (${this.response.status} ${this.methodAndUrl})`
+    return this.description ? `${info}: ${this.description}` : info
   }
 }
 
@@ -281,24 +282,9 @@ export class ClientAbort extends Context.Service<ClientAbort, true>()("effect/ht
 const formatMethodAndUrl = (request: Request.HttpServerRequest) =>
   `${request.method} ${UrlParams.redactUrl(request.url)}`
 
-/**
- * Formats the message of an error reason. Uses `methodAndUrl`, which
- * subclasses can override, unless `redactedNames` is supplied: then the URL
- * is formatted again from the request and redacted with those names.
- *
- * @internal
- */
-export const formatReasonMessage = (
-  reason: HttpServerErrorReason,
-  redactedNames?: ReadonlyArray<string | RegExp>
-): string => {
-  const methodAndUrl = redactedNames === undefined
-    ? reason.methodAndUrl
-    : `${reason.request.method} ${UrlParams.redactUrl(reason.request.url, redactedNames)}`
-  const info = reason._tag === "ResponseError"
-    ? `${reason._tag} (${reason.response.status} ${methodAndUrl})`
-    : `${reason._tag} (${methodAndUrl})`
-  return reason.description ? `${info}: ${reason.description}` : info
+const formatRequestMessage = (reason: string, description: string | undefined, info: string) => {
+  const prefix = `${reason} (${info})`
+  return description ? `${prefix}: ${description}` : prefix
 }
 
 /**
