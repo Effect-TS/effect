@@ -2072,6 +2072,10 @@ describe("HttpApiBuilder RedactedNames", () => {
         HttpApiEndpoint.get("failure", "/failure", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] }),
         HttpApiEndpoint.get("defect", "/defect", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("nested", "/nested", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("bare", "/bare", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] })
       )
     )
@@ -2091,6 +2095,20 @@ describe("HttpApiBuilder RedactedNames", () => {
             Effect.die(
               new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request }) })
             ))
+          .handle("nested", ({ request }) =>
+            Effect.die(
+              new HttpServerError.HttpServerError({
+                reason: new HttpServerError.InternalError({
+                  request,
+                  cause: new Error("wrapped failure", {
+                    cause: new HttpServerError.HttpServerError({
+                      reason: new HttpServerError.InternalError({ request })
+                    })
+                  })
+                })
+              })
+            ))
+          .handle("bare", ({ request }) => Effect.die(new HttpServerError.InternalError({ request })))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2114,7 +2132,11 @@ describe("HttpApiBuilder RedactedNames", () => {
           "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git",
           "/failure?token=s3cret",
           // Fails with an error that holds the request, which the span keeps as its cause.
-          "/defect?token=s3cret"
+          "/defect?token=s3cret",
+          // Holds the request again further down its `cause` chain.
+          "/nested?token=s3cret",
+          // Fails with a request-backed reason that is not wrapped in `HttpServerError`.
+          "/bare?token=s3cret"
         ]
       ) {
         const response = await handler(
@@ -2130,8 +2152,8 @@ describe("HttpApiBuilder RedactedNames", () => {
       await dispose()
     }
 
-    assert.deepStrictEqual(statuses, [200, 400, 500, 500])
-    const [success, invalid, failure, defect] = spans
+    assert.deepStrictEqual(statuses, [200, 400, 500, 500, 500, 500])
+    const [success, invalid, failure, defect, nested, bare] = spans
     assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
@@ -2152,6 +2174,20 @@ describe("HttpApiBuilder RedactedNames", () => {
     assert.include(defectError.message, "GET /defect?token=REDACTED")
     assert.notInclude(defectError.message, "s3cret")
     assert.notInclude(defectError.stack, "s3cret")
+    // Rendered as OTLP exporters do, including the `cause` chain.
+    const exported = (span: Tracer.NativeSpan) => {
+      assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
+      return Cause.prettyErrors(span.status.exit.cause, { includeCauseInStack: true })
+        .map((error) => `${error.message}\n${error.stack}`)
+        .join("\n")
+    }
+    const nestedExported = exported(nested)
+    assert.include(nestedExported, "wrapped failure")
+    assert.include(nestedExported, "GET /nested?token=REDACTED")
+    assert.notInclude(nestedExported, "s3cret")
+    const bareExported = exported(bare)
+    assert.include(bareExported, "GET /bare?token=REDACTED")
+    assert.notInclude(bareExported, "s3cret")
   })
 })
 
