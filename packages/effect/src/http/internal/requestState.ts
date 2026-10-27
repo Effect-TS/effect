@@ -10,9 +10,7 @@ import type { PreResponseHandler } from "../HttpEffect.ts"
 export class RequestState {
   preResponseHandler: PreResponseHandler | undefined = undefined
   loggerDisabled = false
-  /** Added to `UrlParams.CurrentRedactedNames` for the server span, such as by `HttpApiBuilder`. */
   redactedUrlParamNames: ReadonlyArray<string | RegExp> = []
-  /** Added to `Headers.CurrentRedactedNames` for the server span, such as by `HttpApiBuilder`. */
   redactedHeaderNames: ReadonlyArray<string | RegExp> = []
 }
 

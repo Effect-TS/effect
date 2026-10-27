@@ -328,7 +328,6 @@ export const tracer: <E, R>(
         span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
-      // Names added by the request handler, such as `HttpApiBuilder`, after the context is restored.
       const state = Context.getOrUndefined(prevServices, CurrentRequestState)
       const redactedHeaderNames = withStateNames(fiber.getRef(Headers.CurrentRedactedNames), state?.redactedHeaderNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)

@@ -486,38 +486,18 @@ export class ErrorParseOptions extends Context.Service<
 >()("effect/http-api/HttpApi/ErrorParseOptions") {}
 
 /**
- * Wire names of query parameters and headers to redact in spans.
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export interface RedactedNamesOptions {
-  /**
-   * Query parameter names or patterns. A name also matches the bracketed keys
-   * of a nested parameter, such as `buildargs[NPM_TOKEN]` for `buildargs`.
-   */
-  readonly query?: ReadonlyArray<string | RegExp> | undefined
-  /**
-   * Request and response header names or patterns.
-   */
-  readonly headers?: ReadonlyArray<string | RegExp> | undefined
-}
-
-/**
  * Declares query parameters and headers whose values are only sometimes secret,
  * so they are redacted in spans without being modelled as `Redacted`.
  *
  * **Details**
  *
- * Names are the names on the wire, after encoding, and are matched like
- * `Headers.isRedactedName`: strings case-insensitively, regular expressions by
- * test. For the request of the endpoint on the client, and for the server span
- * of the matched route, they extend `UrlParams.CurrentRedactedNames` and
- * `Headers.CurrentRedactedNames` rather than replacing them. Names annotated on
- * the API, its groups and its endpoints are combined. The values sent, received
- * and decoded are unchanged, and `Redacted` fields stay redacted regardless of
- * this list.
+ * Names are wire names after encoding, matched like `Headers.isRedactedName`:
+ * strings case-insensitively, regular expressions by test. A string query name
+ * also matches the bracketed keys of a nested parameter, such as
+ * `buildargs[NPM_TOKEN]` for `buildargs`. For the endpoint's client request and
+ * server span, they extend `UrlParams.CurrentRedactedNames` and
+ * `Headers.CurrentRedactedNames`. Names from the API, its groups and its
+ * endpoints are combined. Values sent and decoded are unchanged.
  *
  * **Gotchas**
  *
@@ -531,34 +511,25 @@ export interface RedactedNamesOptions {
  *
  * ```ts
  * import { Schema } from "effect"
- * import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
+ * import { HttpApi, HttpApiEndpoint } from "effect/http-api"
  *
  * const Build = HttpApiEndpoint.post("build", "/build", {
- *   query: {
- *     buildargs: Schema.optional(Schema.Record(Schema.String, Schema.String)),
- *     remote: Schema.optional(Schema.String),
- *     t: Schema.optional(Schema.String)
- *   },
+ *   query: { buildargs: Schema.optional(Schema.Record(Schema.String, Schema.String)) },
  *   headers: { "x-registry-config": Schema.optional(Schema.String) }
  * }).annotate(HttpApi.RedactedNames, {
- *   query: ["buildargs", "remote"],
+ *   query: ["buildargs"],
  *   headers: ["x-registry-config"]
  * })
- *
- * const Api = HttpApi.make("Docker")
- *   .add(HttpApiGroup.make("images").add(Build))
- *   // Applies to every endpoint of the API.
- *   .annotate(HttpApi.RedactedNames, { headers: ["x-registry-auth"] })
  * ```
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export class RedactedNames extends Context.Service<
-  RedactedNames,
-  RedactedNamesOptions
->()("effect/http-api/HttpApi/RedactedNames") {}
+export class RedactedNames extends Context.Service<RedactedNames, {
+  readonly query?: ReadonlyArray<string | RegExp> | undefined
+  readonly headers?: ReadonlyArray<string | RegExp> | undefined
+}>()("effect/http-api/HttpApi/RedactedNames") {}
 
 /**
  * @internal
