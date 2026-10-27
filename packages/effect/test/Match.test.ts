@@ -69,4 +69,15 @@ describe("Match", () => {
     strictEqual(match({ [key]: "other" }), "miss")
     strictEqual(match({} as any), "miss")
   })
+
+  it("array patterns match prefixes and reject shorter arrays", () => {
+    const match = Match.type<ReadonlyArray<number>>().pipe(
+      Match.when([Match.any, Match.any], () => "hit"),
+      Match.orElse(() => "miss")
+    )
+
+    strictEqual(match([1]), "miss")
+    strictEqual(match([1, 2]), "hit")
+    strictEqual(match([1, 2, 3]), "hit")
+  })
 })
