@@ -282,8 +282,9 @@ const formatMethodAndUrl = (request: Request.HttpServerRequest) =>
   `${request.method} ${UrlParams.redactUrl(request.url)}`
 
 /**
- * Formats the message of an error reason. The request URL is redacted with
- * `redactedNames`, or the current fiber's names when omitted.
+ * Formats the message of an error reason. Uses `methodAndUrl`, which
+ * subclasses can override, unless `redactedNames` is supplied: then the URL
+ * is formatted again from the request and redacted with those names.
  *
  * @internal
  */
@@ -291,7 +292,9 @@ export const formatReasonMessage = (
   reason: HttpServerErrorReason,
   redactedNames?: ReadonlyArray<string | RegExp>
 ): string => {
-  const methodAndUrl = `${reason.request.method} ${UrlParams.redactUrl(reason.request.url, redactedNames)}`
+  const methodAndUrl = redactedNames === undefined
+    ? reason.methodAndUrl
+    : `${reason.request.method} ${UrlParams.redactUrl(reason.request.url, redactedNames)}`
   const info = reason._tag === "ResponseError"
     ? `${reason._tag} (${reason.response.status} ${methodAndUrl})`
     : `${reason._tag} (${methodAndUrl})`
