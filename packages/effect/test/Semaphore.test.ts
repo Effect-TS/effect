@@ -4,6 +4,26 @@ import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
 describe("Semaphore", () => {
+  it.effect("take admits requests in FIFO order when a holder immediately reacquires", () =>
+    Effect.gen(function*() {
+      const sem = yield* Semaphore.make(1)
+      let asked = 0
+      const admitted: Array<number> = []
+      const use = Effect.scoped(Effect.gen(function*() {
+        const ticket = asked++
+        yield* Effect.acquireRelease(sem.take(1), () => sem.release(1))
+        admitted.push(ticket)
+        yield* Effect.sleep("10 millis")
+      }))
+      const chained = yield* Effect.forkChild(Effect.repeat(use, { times: 2 }))
+      const others = yield* Effect.forEach([1, 2, 3], (at) => Effect.forkChild(Effect.delay(use, at)))
+
+      yield* TestClock.adjust("100 millis")
+      yield* Fiber.join(chained)
+      yield* Fiber.joinAll(others)
+      assert.deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
+    }))
+
   it.effect("basic single partition operation", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make({ permits: 4 })
