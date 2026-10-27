@@ -2076,6 +2076,10 @@ describe("HttpApiBuilder RedactedNames", () => {
         HttpApiEndpoint.get("nested", "/nested", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] }),
         HttpApiEndpoint.get("bare", "/bare", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("readonly", "/readonly", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("frozen", "/frozen", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] })
       )
     )
@@ -2109,6 +2113,20 @@ describe("HttpApiBuilder RedactedNames", () => {
               })
             ))
           .handle("bare", ({ request }) => Effect.die(new HttpServerError.InternalError({ request })))
+          .handle("readonly", ({ request }) =>
+            Effect.die(
+              Object.defineProperty(new Error("readonly wrapper"), "cause", {
+                value: new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request }) })
+              })
+            ))
+          .handle("frozen", ({ request }) =>
+            Effect.die(
+              Object.freeze(
+                new Error("frozen wrapper", {
+                  cause: new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request }) })
+                })
+              )
+            ))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2136,7 +2154,10 @@ describe("HttpApiBuilder RedactedNames", () => {
           // Holds the request again further down its `cause` chain.
           "/nested?token=s3cret",
           // Fails with a request-backed reason that is not wrapped in `HttpServerError`.
-          "/bare?token=s3cret"
+          "/bare?token=s3cret",
+          // Wrap the request in errors whose `cause` cannot be reassigned on a copy.
+          "/readonly?token=s3cret",
+          "/frozen?token=s3cret"
         ]
       ) {
         const response = await handler(
@@ -2152,8 +2173,8 @@ describe("HttpApiBuilder RedactedNames", () => {
       await dispose()
     }
 
-    assert.deepStrictEqual(statuses, [200, 400, 500, 500, 500, 500])
-    const [success, invalid, failure, defect, nested, bare] = spans
+    assert.deepStrictEqual(statuses, [200, 400, 500, 500, 500, 500, 500, 500])
+    const [success, invalid, failure, defect, nested, bare, readonly, frozen] = spans
     assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
@@ -2188,6 +2209,17 @@ describe("HttpApiBuilder RedactedNames", () => {
     const bareExported = exported(bare)
     assert.include(bareExported, "GET /bare?token=REDACTED")
     assert.notInclude(bareExported, "s3cret")
+    const readonlyExported = exported(readonly)
+    assert.include(readonlyExported, "readonly wrapper")
+    assert.include(readonlyExported, "GET /readonly?token=REDACTED")
+    assert.notInclude(readonlyExported, "s3cret")
+    // Redaction must not throw: the span ends with only the handler's defect.
+    const frozenExported = exported(frozen)
+    assert(frozen.status._tag === "Ended" && frozen.status.exit._tag === "Failure")
+    assert.strictEqual(frozen.status.exit.cause.reasons.length, 1)
+    assert.include(frozenExported, "frozen wrapper")
+    assert.include(frozenExported, "GET /frozen?token=REDACTED")
+    assert.notInclude(frozenExported, "s3cret")
   })
 })
 
