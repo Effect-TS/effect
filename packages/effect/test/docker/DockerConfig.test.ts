@@ -83,4 +83,30 @@ describe("DockerConfig", () => {
       assert.deepStrictEqual(config.endpoint, DockerConfig.defaultEndpoint)
       assert.strictEqual(config.apiVersion, "1.44")
     }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("on Windows, finds the config in USERPROFILE and falls back to the default pipe", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const { context, dir, write } = yield* configDir
+      yield* context("desktop", "npipe:////./pipe/dockerDesktopLinuxEngine")
+      yield* write("config.json", JSON.stringify({ currentContext: "desktop" }))
+      const userProfile = yield* fs.makeTempDirectoryScoped()
+      yield* fs.symlink(dir, `${userProfile}/.docker`)
+      // as NodeDocker.layerFromEnv configures it on Windows; HOME, as Git Bash sets it, is ignored
+      const onWindows = (env: Record<string, string>) =>
+        Effect.gen(function*() {
+          return (yield* DockerConfig.DockerConfig).endpoint
+        }).pipe(
+          Effect.provide(DockerConfig.layerFromEnv(undefined, {
+            defaultEndpoint: DockerConfig.defaultNpipeEndpoint,
+            homeVariable: "USERPROFILE"
+          })),
+          Effect.provideService(
+            ConfigProvider.ConfigProvider,
+            ConfigProvider.fromEnv({ env: { USERPROFILE: userProfile, HOME: "/nonexistent", ...env } })
+          )
+        )
+      assert.deepStrictEqual(yield* onWindows({}), { _tag: "Npipe", path: "//./pipe/dockerDesktopLinuxEngine" })
+      assert.deepStrictEqual(yield* onWindows({ DOCKER_CONTEXT: "default" }), DockerConfig.defaultNpipeEndpoint)
+    }).pipe(Effect.provide(NodeServices.layer)))
 })

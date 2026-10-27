@@ -38,4 +38,19 @@ describe("DockerImages", () => {
       assert.notInclude(JSON.stringify(error), secret)
       assert.notInclude(attributes().join("\n"), secret)
     }))
+
+  it.effect("rejects a digest as a push reference or tag target, before sending anything", () =>
+    Effect.gen(function*() {
+      const digest = `sha256:${"ab".repeat(32)}`
+      const stub = makeStubEngine(withPing("1.44"))
+      const errors = yield* DockerImages.DockerImages.use((images) =>
+        Effect.all([
+          // the Engine would push every tag of the repository, or tag `latest`
+          Effect.flip(images.push(`ghcr.io/org/app@${digest}`)),
+          Effect.flip(images.tag("alpine", `ghcr.io/org/app@${digest}`))
+        ])
+      ).pipe(stub.provide)
+      assert.deepStrictEqual(errors.map((error) => error.reason._tag), ["InvalidReference", "InvalidReference"])
+      assert.strictEqual(stub.requests.length, 0)
+    }))
 })
