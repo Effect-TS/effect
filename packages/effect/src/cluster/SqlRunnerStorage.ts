@@ -19,6 +19,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
+import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -37,6 +38,14 @@ import * as ShardId from "./ShardId.ts"
 import * as ShardingConfig from "./ShardingConfig.ts"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
+
+// The session holding a storage's advisory locks, as reported to other
+// sessions.
+interface LockSession {
+  pid: number
+  // MySQL only: the lock that pins the session's lock connection
+  readonly pinLock: string | undefined
+}
 
 // This exact FNV-1a hash, including its tag and UTF-8 encoding, is a persistent
 // advisory-lock wire format and must never change.
@@ -69,6 +78,22 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   // PostgreSQL exposes the signed int4 lock key through pg_locks as an unsigned oid.
   const pgLockNamespaceOid = pgLockNamespace >>> 0
 
+  // MySQL identifies a lock holder by connection id. Behind Vitess that is the
+  // id of vtgate's lock connection for the session, which vtgate replaces
+  // once the session releases all of its locks. A lock of the session's own
+  // pins that connection and reads its id.
+  const pinLockSession = Effect.fnUntraced(function*(conn: Connection, pinLock?: string) {
+    while (true) {
+      const name = pinLock ?? `cluster:pid:${(Math.random() * Number.MAX_SAFE_INTEGER) | 0}`
+      const taken = (yield* conn.executeValues(
+        `SELECT GET_LOCK('${name}', 10), IS_USED_LOCK('${name}')`,
+        []
+      ))[0] as [1 | null, number]
+      if (taken[0] === null) continue
+      return { pid: Number(taken[1]), pinLock: name }
+    }
+  })
+
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
   const acquireLockConn = singleSession ? undefined : sql.onDialectOrElse({
@@ -88,26 +113,17 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               Effect.ignoreCause
             ))
         }
-        return [conn, pid] as const
+        return [conn, { pid, pinLock: undefined }] as const
       }, Effect.orDie),
     mysql: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )
-        if (disableAdvisoryLocks) return [conn, 0] as const
+        if (disableAdvisoryLocks) return [conn, { pid: 0, pinLock: undefined }] as const
         // we need to get the connection id using IS_USED_LOCK to properly
         // support vitess
-        let pid: number | undefined = undefined
-        while (pid === undefined) {
-          const address = `cluster:pid:${(Math.random() * Number.MAX_SAFE_INTEGER) | 0}`
-          const taken = (yield* conn.executeValues(
-            `SELECT GET_LOCK('${address}', 10), IS_USED_LOCK('${address}')`,
-            []
-          ))[0] as [1 | null, number]
-          if (taken[0] === null) continue
-          pid = taken[1]
-        }
+        const session: LockSession = yield* pinLockSession(conn)
         if (!disableAdvisoryLocks) {
           yield* Scope.addFinalizerExit(scope, () =>
             conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", []).pipe(
@@ -116,7 +132,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               Effect.ignoreCause
             ))
         }
-        return [conn, pid] as const
+        return [conn, session] as const
       }, Effect.orDie),
     orElse: () => undefined
   })
@@ -140,7 +156,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     )
   })
 
-  const rebuildLockConn = (from?: readonly [Connection, number]) => {
+  const rebuildLockConn = (from?: readonly [Connection, LockSession]) => {
     const rebuild = lockConn?.rebuildUnsafe({ from })
     if (!rebuild) return Effect.void
     // Bound release so a stalled connection cannot block subsequent rebuilds.
@@ -152,13 +168,13 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   }
   // SQL failures replace the held connection; deadlines are handled by withLockOperationDeadline.
   const useLockConn = <A, E, R>(
-    f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
+    f: (conn: Connection, pid: number, session: LockSession) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
     Effect.flatMap(
       lockConn!.await,
       (held) =>
         Effect.onError(
-          f(held[0], held[1]),
+          f(held[0], held[1].pid, held[1]),
           (cause) => Cause.hasInterruptsOnly(cause) ? Effect.void : rebuildLockConn(held)
         )
     )
@@ -345,7 +361,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           for (let i = 0; i < shardIds.length; i++) {
             const shardId = shardIds[i]
             const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
-            if (lockTakenBy === pid) {
+            if (lockTakenBy !== null && Number(lockTakenBy) === pid) {
               acquiredShardIds.push(shardId)
             } else if (shardIds.includes(shardId)) {
               toAcquire.push(shardId)
@@ -513,8 +529,22 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // Ownership checks run on the caller's connection, never on the reserved lock
-  // connection, so they can fence owner-only writes made on the pool.
+  // Ownership checks run on the pool, never on the reserved lock connection,
+  // so they can fence owner-only writes made on the pool.
+  //
+  // A caller's transaction may hold an old snapshot of the locks table, as
+  // with MySQL's default REPEATABLE READ, so leases are checked outside it. A
+  // rejected check still fails the caller's transaction. Single-session
+  // clients have no other connection to use, and their transactions see every
+  // committed lease.
+  const outsideTransaction = singleSession || sql.onDialectOrElse({ sqlite: () => true, orElse: () => false })
+    ? <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
+    : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+      Effect.updateContext(
+        effect,
+        (context: Context.Context<R>) => Context.omit(sql.transactionService)(context) as Context.Context<R>
+      )
+
   const ownedLeases = (address: string, shardIds: ReadonlyArray<string>) =>
     sql`
       SELECT shard_id FROM ${locksTableSql}
@@ -522,48 +552,59 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       AND acquired_at >= ${lockExpiresAt}
       AND shard_id IN ${stringLiteralArr(shardIds)}
     `.values.pipe(
-      Effect.map((rows) => rows.map((row) => row[0] as string))
+      Effect.map((rows) => rows.map((row) => row[0] as string)),
+      outsideTransaction
     )
 
-  // Advisory locks belong to a session rather than an address, so remember
-  // which runners acquired them through this storage.
-  const advisoryLockAddresses = new Set<string>()
+  // Advisory locks belong to the reserved connection's session, not to an
+  // address. A storage instance serves a single runner, so the advisory checks
+  // only answer for the address that last acquired through it. This guards
+  // against questions about other runners; it is not an ownership check.
+  let advisoryLockAddress: string | undefined
+
+  // Reads the session at execution time: a rebuild of the reserved connection
+  // releases every advisory lock and replaces the session.
+  const advisorySession = (address: string) => {
+    const held = lockConn?.getUnsafe()
+    return held === undefined || address !== advisoryLockAddress ? undefined : held[1].pid
+  }
 
   const ownedShards = sql.onDialectOrElse({
     pg: () => {
       if (disableAdvisoryLocks) return ownedLeases
-      return (address: string, shardIds: ReadonlyArray<string>) => {
-        // A rebuild of the reserved connection releases every advisory lock.
-        const held = lockConn?.getUnsafe()
-        if (held === undefined || !advisoryLockAddresses.has(address)) return Effect.succeed([])
-        const toCheck = new Map<number, string>()
-        for (const shardId of shardIds) {
-          const lockNum = lockNumbers.get(shardId)
-          if (lockNum !== undefined) toCheck.set(lockNum, shardId)
-        }
-        if (toCheck.size === 0) return Effect.succeed([])
-        return sql.unsafe(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${
-            held[1]
-          } AND objid IN (${Array.from(toCheck.keys()).join(", ")})`
-        ).values.pipe(
-          Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
-        )
-      }
+      return (address: string, shardIds: ReadonlyArray<string>) =>
+        Effect.suspend(() => {
+          const pid = advisorySession(address)
+          if (pid === undefined) return Effect.succeed([])
+          const toCheck = new Map<number, string>()
+          for (const shardId of shardIds) {
+            const lockNum = lockNumbers.get(shardId)
+            if (lockNum !== undefined) toCheck.set(lockNum, shardId)
+          }
+          if (toCheck.size === 0) return Effect.succeed([])
+          return sql.unsafe(
+            `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} AND objid IN (${
+              Array.from(toCheck.keys()).join(", ")
+            })`
+          ).values.pipe(
+            Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
+          )
+        })
     },
     mysql: () => {
       if (disableAdvisoryLocks) return ownedLeases
-      return (address: string, shardIds: ReadonlyArray<string>) => {
-        const held = lockConn?.getUnsafe()
-        if (held === undefined || !advisoryLockAddresses.has(address)) return Effect.succeed([])
-        const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
-        if (toCheck.length === 0) return Effect.succeed([])
-        return sql.unsafe(
-          `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
-        ).values.pipe(
-          Effect.map((rows) => toCheck.filter((_, i) => Number(rows[0][i]) === held[1]))
-        )
-      }
+      return (address: string, shardIds: ReadonlyArray<string>) =>
+        Effect.suspend(() => {
+          const pid = advisorySession(address)
+          if (pid === undefined) return Effect.succeed([])
+          const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
+          if (toCheck.length === 0) return Effect.succeed([])
+          return sql.unsafe(
+            `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
+          ).values.pipe(
+            Effect.map((rows) => toCheck.filter((_, i) => Number(rows[0][i]) === pid))
+          )
+        })
     },
     orElse: () => ownedLeases
   })
@@ -613,7 +654,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
               `SELECT IS_USED_LOCK('${lockName}')`,
               []
             )
-            if (takenLocks.length === 0 || takenLocks[0][0] !== pid) return
+            if (takenLocks.length === 0 || Number(takenLocks[0][0]) !== pid) return
           }
         }))
     },
@@ -634,7 +675,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     mysql: () => (address: string) =>
       disableAdvisoryLocks
         ? sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`.pipe(execWithLockConn)
-        : sql`SELECT RELEASE_ALL_LOCKS()`.pipe(execWithLockConn, Effect.asVoid),
+        : useLockConn(Effect.fnUntraced(function*(conn, _pid, session) {
+          yield* conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", [])
+          // Releasing every lock also releases the pin, so take it again.
+          const pinned = yield* pinLockSession(conn, session.pinLock)
+          session.pid = pinned.pid
+        })),
     orElse: () => (address: string) => sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`
   })
 
@@ -669,7 +715,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
 
     acquire: (address, shardIds) =>
       withLockOperationDeadline(Effect.suspend(() => {
-        advisoryLockAddresses.add(address)
+        advisoryLockAddress = address
         return acquireLock(address, shardIds)
       })).pipe(
         PersistenceError.refail,
@@ -744,6 +790,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  *
  * Changing `prefix` changes all generated table names, so runners using
  * different prefixes do not share registrations or shard locks.
+ *
+ * Each runner needs its own storage instance. Advisory locks belong to the
+ * instance's reserved connection, so runners sharing an instance would share
+ * its locks.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix

@@ -88,10 +88,16 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
    *
    * **Details**
    *
-   * Runs on the caller's connection, never on a connection reserved for shard
+   * Runs on the shared connections, never on a connection reserved for shard
    * locks, so it can fence owner-only writes such as replies against shard
-   * ownership. The answer is a snapshot of the lock state, not a lock. Each
-   * call costs one storage query.
+   * ownership. The answer is a snapshot of the lock state at the time the
+   * effect runs, not a lock. Each call costs one storage query.
+   *
+   * **Gotchas**
+   *
+   * Implementations whose locks belong to the storage instance rather than to
+   * an address, such as advisory locks or the in-memory storage, assume one
+   * runner per instance.
    */
   readonly owned: (
     address: RunnerAddress,
@@ -233,6 +239,12 @@ export const makeEncoded = (encoded: Encoded) =>
  * **Details**
  *
  * Runner health and shard acquisition are kept only in process memory.
+ *
+ * **Gotchas**
+ *
+ * Shard acquisition ignores runner addresses and never denies a shard, so an
+ * instance serves a single runner. `owned` reports the shards acquired through
+ * the instance and not yet released, whatever address is passed.
  *
  * @stability unstable
  * @category constructors
