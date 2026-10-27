@@ -1368,7 +1368,10 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * The getter is pure and never fails. It splits the string by `separator`
  * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`),
  * preserving the rest of the value. An empty `keyValueSeparator` uses the first
- * two characters as the key and value. Pairs missing a key or value are skipped.
+ * two characters as the key and value. Pairs without a `keyValueSeparator` or
+ * with an empty key are skipped. Pairs with an empty value are skipped unless
+ * `keepEmptyValues` is `true`, in which case the value is `""`. When `trim` is
+ * `true`, keys and values are trimmed before these checks.
  *
  * **Example** (Parsing a key-value string)
  *
@@ -1390,23 +1393,32 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
 export function splitKeyValue<E extends string>(options?: {
   readonly separator?: string | undefined
   readonly keyValueSeparator?: string | undefined
+  readonly trim?: boolean | undefined
+  readonly keepEmptyValues?: boolean | undefined
 }): Getter<Record<string, string>, E> {
   const separator = options?.separator ?? ","
   const keyValueSeparator = options?.keyValueSeparator ?? "="
+  const trim = options?.trim ?? false
+  const keepEmptyValues = options?.keepEmptyValues ?? false
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
+      let key: string
+      let value: string
       if (keyValueSeparator === "") {
-        const [key, value] = pair.split("")
-        if (key && value) InternalRecord.assignProperty(acc, key, value)
-        return acc
+        key = pair.slice(0, 1)
+        value = pair.slice(1, 2)
+      } else {
+        const index = pair.indexOf(keyValueSeparator)
+        if (index === -1) return acc
+        key = pair.slice(0, index)
+        value = pair.slice(index + keyValueSeparator.length)
       }
-      const index = pair.indexOf(keyValueSeparator)
-      if (index <= 0) return acc
-      const key = pair.slice(0, index)
-      const value = pair.slice(index + keyValueSeparator.length)
-      if (value) {
-        InternalRecord.assignProperty(acc, key, value)
+      if (trim) {
+        key = key.trim()
+        value = value.trim()
       }
+      if (key === "" || (value === "" && !keepEmptyValues)) return acc
+      InternalRecord.assignProperty(acc, key, value)
       return acc
     }, {} as Record<string, string>)
   )

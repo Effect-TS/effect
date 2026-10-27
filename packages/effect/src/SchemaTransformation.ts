@@ -753,9 +753,12 @@ export function uncapitalize(): Transformation<string, string> {
  * **Details**
  *
  * Decoding splits the string by `separator` (default `","`) into pairs, then
- * splits each pair by `keyValueSeparator` (default `"="`). Encoding joins the
- * record back into a string using the same separators. The transformation is
- * round-trippable when keys and values do not contain the separators.
+ * splits each pair by `keyValueSeparator` (default `"="`). Set `trim` to trim
+ * keys and values, and `keepEmptyValues` to keep pairs with an empty value as
+ * `""` instead of skipping them (see {@link SchemaGetter.splitKeyValue}).
+ * Encoding joins the record back into a string using the same separators. The
+ * transformation is round-trippable when keys and values do not contain the
+ * separators and, with `trim`, have no surrounding whitespace.
  *
  * **Example** (Parsing key-value pairs)
  *
@@ -781,6 +784,8 @@ export function uncapitalize(): Transformation<string, string> {
 export function splitKeyValue(options?: {
   readonly separator?: string | undefined
   readonly keyValueSeparator?: string | undefined
+  readonly trim?: boolean | undefined
+  readonly keepEmptyValues?: boolean | undefined
 }): Transformation<Record<string, string>, string> {
   return new Transformation(
     SchemaGetter.splitKeyValue(options),
