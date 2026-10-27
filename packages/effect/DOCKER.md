@@ -60,9 +60,9 @@ const DockerLive = NodeDocker.layer.pipe(
 )
 ```
 
-An endpoint is a unix socket or TCP, with TLS material as PEM contents rather than file paths. `DockerConfig.parseHost` reads a `DOCKER_HOST` string. The rest of the configuration is what changes what the client sends: a pinned `apiVersion`, where registry credentials come from, `httpHeaders` for every request, the proxy passed to builds and new containers, and the default `platform`, `builder` and `detachKeys`. Docker Desktop and rootless Docker are found through the contexts they create; nothing probes for sockets.
+An endpoint is a unix socket, a Windows named pipe or TCP, with TLS material as PEM contents rather than file paths. Where the CLI falls back to the OS default, `NodeDocker.layerFromEnv()` uses `npipe:////./pipe/docker_engine` on Windows and `unix:///var/run/docker.sock` elsewhere. `DockerConfig.parseHost` reads a `DOCKER_HOST` string. The rest of the configuration is what changes what the client sends: a pinned `apiVersion`, where registry credentials come from, `httpHeaders` for every request, the proxy passed to builds and new containers, and the default `platform`, `builder` and `detachKeys`. Docker Desktop and rootless Docker are found through the contexts they create; nothing probes for sockets.
 
-`ssh://` hosts aren't supported yet: they need an SSH transport, which is planned on top of Effect's SSH client. `fd://` and `npipe://` hosts aren't supported.
+`ssh://` hosts aren't supported yet: they need an SSH transport, which is planned on top of Effect's SSH client. `fd://` hosts aren't supported.
 
 ## Services
 
@@ -89,7 +89,7 @@ Streaming operations return a `Stream` that ends when the Engine's response does
 - Progress (image pull, push, load and build, plugin pull and upgrade) is the Engine's messages. The Engine reports a failure as one more message after a `200`, and the stream fails with `StreamFailed` there.
 - Events and stats are decoded one message at a time.
 
-Attach and exec upgrade the connection. `DockerContainers.attach` and `DockerExec.start` return a scoped `Handle`, shaped like `effect/process`'s `ChildProcessHandle`: `stdin` is a `Sink`, `stdout`, `stderr` and `all` are streams, `exitCode` waits for the end, and `resize` sets the TTY's size. Closing the scope closes the connection.
+Attach and exec upgrade the connection. `DockerContainers.attach` and `DockerExec.start` return a scoped `Handle`: `stdin` is a `Sink`, `frames` is the output in arrival order, `exitCode` waits for the end, and `resize` sets the TTY's size. `all`, `stdout` and `stderr` are views of `frames`: `all` keeps the order, `stdout` and `stderr` discard the other stream's frames, so an unread stream never stalls the one being read. The output is read once, through one view; reading a second one dies. To send stdout and stderr to different places, read `frames` and dispatch on `frame.stream`. Closing the scope closes the connection.
 
 ```ts
 import { Effect, Stream } from "effect"

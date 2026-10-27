@@ -68,7 +68,7 @@ const spawnerLayer = NodeChildProcessSpawner.layer.pipe(
 /**
  * Builds a `DockerEngine` on Node.js from the `DockerConfig` in the context,
  * over a `node:http` `HttpClient` whose agents reach the Endpoint: its unix
- * socket, or TCP with the Endpoint's TLS settings.
+ * socket or named pipe, or TCP with the Endpoint's TLS settings.
  *
  * **Details**
  *
@@ -88,7 +88,8 @@ export const make: Effect.Effect<
 > = Effect.gen(function*() {
   const { endpoint } = yield* DockerConfig.DockerConfig
   const agent = yield* NodeHttpClient.makeAgent(
-    endpoint._tag === "Unix"
+    // Node reaches a named pipe as it does a unix socket
+    endpoint._tag !== "Tcp"
       ? { socketPath: endpoint.path }
       : endpoint.tls !== undefined
       ? tlsOptions(endpoint, endpoint.tls)
@@ -134,8 +135,10 @@ export const layer: Layer.Layer<
 
 /**
  * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
- * `Docker.layer` on Node.js, configured as a bare `docker` invocation is: {@link layer} over
- * `DockerConfig.layerFromEnv(overrides)`.
+ * `Docker.layer` on Node.js, configured as a bare `docker` invocation is:
+ * {@link layer} over `DockerConfig.layerFromEnv(overrides)`, whose default
+ * Endpoint is the named pipe `//./pipe/docker_engine` on Windows and the
+ * socket `/var/run/docker.sock` elsewhere.
  *
  * **Details**
  *
@@ -144,6 +147,10 @@ export const layer: Layer.Layer<
  * are never read: an `endpoint` skips Discovery, and so on. The `DOCKER_*`
  * variables are always read and validated. Building the layer never contacts
  * the Engine.
+ *
+ * Provided where `layer` is already built, such as inside another
+ * `layerFromEnv`, it reuses that engine, as Effect reuses any built layer:
+ * provide it with `{ local: true }` for an engine of its own.
  *
  * @stability unstable
  * @category layers
@@ -156,6 +163,8 @@ export const layerFromEnv = (
   DockerConfig.DockerConfigError
 > =>
   layer.pipe(
-    Layer.provide(DockerConfig.layerFromEnv(overrides)),
+    Layer.provide(DockerConfig.layerFromEnv(overrides, {
+      defaultEndpoint: process.platform === "win32" ? DockerConfig.defaultNpipeEndpoint : DockerConfig.defaultEndpoint
+    })),
     Layer.provide(NodeServices.layer)
   )

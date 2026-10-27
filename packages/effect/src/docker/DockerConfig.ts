@@ -89,12 +89,15 @@ const isHost = Schema.makeFilter(
 
 /**
  * The address of an Engine, with any TLS material needed to reach it: a unix
- * socket (`Unix`) or TCP (`Tcp`), plain or with `tls`.
+ * socket (`Unix`), a Windows named pipe (`Npipe`), or TCP (`Tcp`), plain or
+ * with `tls`.
  *
  * **Details**
  *
- * A `Tcp` host is a domain name or an IP address, and its port is between 1
- * and 65535. Construct the cases with `Endpoint.cases.Unix.make` and
+ * A named pipe's `path` is written as the Docker CLI writes it, such as
+ * `//./pipe/docker_engine`. A `Tcp` host is a domain name or an IP address,
+ * and its port is between 1 and 65535. Construct the cases with
+ * `Endpoint.cases.Unix.make`, `Endpoint.cases.Npipe.make` and
  * `Endpoint.cases.Tcp.make`, or write them as literals; match them with
  * `Endpoint.match`.
  *
@@ -104,6 +107,7 @@ const isHost = Schema.makeFilter(
  */
 export const Endpoint = Schema.TaggedUnion({
   Unix: { path: Schema.String },
+  Npipe: { path: Schema.String },
   Tcp: {
     host: Schema.String.check(isHost),
     port: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 })),
@@ -112,13 +116,24 @@ export const Endpoint = Schema.TaggedUnion({
 })
 
 /**
- * The Docker CLI's default Endpoint, `unix:///var/run/docker.sock`.
+ * The Docker CLI's default Endpoint on Linux and macOS,
+ * `unix:///var/run/docker.sock`.
  *
  * @stability unstable
  * @category constants
  * @since 4.0.7
  */
 export const defaultEndpoint: typeof Endpoint.cases.Unix.Type = { _tag: "Unix", path: "/var/run/docker.sock" }
+
+/**
+ * The Docker CLI's default Endpoint on Windows,
+ * `npipe:////./pipe/docker_engine`.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.0.7
+ */
+export const defaultNpipeEndpoint: typeof Endpoint.cases.Npipe.Type = { _tag: "Npipe", path: "//./pipe/docker_engine" }
 
 // -----------------------------------------------------------------------------
 // errors
@@ -165,8 +180,8 @@ export class InvalidContext extends Data.TaggedError("InvalidContext")<{
 }> {}
 
 /**
- * The Docker host uses a scheme other than `unix://` and `tcp://`.
- * `npipe://` and `fd://` are not supported. `ssh://` isn't yet: it needs an
+ * The Docker host uses a scheme other than `unix://`, `npipe://` and
+ * `tcp://`. `fd://` is not supported. `ssh://` isn't yet: it needs an
  * SSH transport, which is planned on top of Effect's SSH client.
  *
  * @stability unstable
@@ -178,7 +193,7 @@ export class UnsupportedScheme extends Data.TaggedError("UnsupportedScheme")<{
   readonly scheme: string
 }> {
   override get message() {
-    return `Unsupported Docker host scheme "${this.scheme}://" in ${this.host}: only unix:// and tcp:// are supported`
+    return `Unsupported Docker host scheme "${this.scheme}://" in ${this.host}: only unix://, npipe:// and tcp:// are supported`
   }
 }
 
@@ -301,12 +316,15 @@ export class DockerConfigError extends Data.TaggedError("DockerConfigError")<{
  *
  * **Details**
  *
- * - An empty string means `unix:///var/run/docker.sock`.
+ * - An empty string means `unix:///var/run/docker.sock`, the default on
+ *   Linux and macOS; {@link layerFromEnv} applies the platform's default.
  * - `unix:///path`; an empty path means `/var/run/docker.sock`.
+ * - `npipe:////./pipe/name`, a Windows named pipe; an empty path means
+ *   `//./pipe/docker_engine`.
  * - `tcp://host:port`, or `host:port` without a scheme. The port defaults to
  *   2375 and the host to `localhost`, as in the CLI. The host must be a
  *   domain name or an IP address, and the port between 1 and 65535.
- * - `npipe://`, `ssh://`, `fd://` and any other scheme fail with
+ * - `ssh://`, `fd://` and any other scheme fail with
  *   `UnsupportedScheme`.
  *
  * A host string carries no TLS settings: add `tls` to a `Tcp` Endpoint
@@ -334,6 +352,9 @@ export const parseHost = (host: string): Result.Result<typeof Endpoint.Type, Doc
   const scheme = separator === -1 ? "tcp" : value.slice(0, separator).toLowerCase()
   const address = separator === -1 ? value : value.slice(separator + 3)
   if (scheme === "unix") return Result.succeed({ _tag: "Unix", path: address === "" ? defaultEndpoint.path : address })
+  if (scheme === "npipe") {
+    return Result.succeed({ _tag: "Npipe", path: address === "" ? defaultNpipeEndpoint.path : address })
+  }
   if (scheme !== "tcp") return invalid(new UnsupportedScheme({ host: value, scheme }))
   let url: URL
   try {
@@ -521,6 +542,8 @@ export const defaults: ResolvedConfig = {
 /**
  * Provides a `DockerConfig` from static values, merged over {@link defaults}.
  * Nothing is read: `DOCKER_HOST`, Contexts and `config.json` are ignored.
+ * Without an `endpoint`, it is {@link defaultEndpoint} on every platform; only
+ * {@link layerFromEnv} applies the platform's default.
  *
  * @see {@link layerFromEnv} for configuring the client as the Docker CLI is
  *
@@ -556,10 +579,12 @@ export const layer = (
  *    directory (missing: `ContextNotFound`; malformed: `InvalidContext`), its
  *    TLS material in `contexts/tls/<sha256(name)>/docker/*.pem` (that
  *    directory turns TLS on, and `SkipTLSVerify` turns verification off);
- *    `"default"` means `DOCKER_HOST`, or the default socket;
+ *    `"default"` means `DOCKER_HOST`, or the default Endpoint;
  * 3. `currentContext` in `$DOCKER_CONFIG/config.json` (default `~/.docker`);
- * 4. `unix:///var/run/docker.sock` (`tcp://localhost:2376` when the TLS
- *    variables are set).
+ * 4. the default Endpoint, `options.defaultEndpoint`, by default
+ *    {@link defaultEndpoint} (`tcp://localhost:2376` when the TLS variables
+ *    are set, on every platform). `NodeDocker.layerFromEnv` passes
+ *    {@link defaultNpipeEndpoint} on Windows.
  *
  * TLS follows the CLI: whatever it accepts works here. A lone `cert.pem` or
  * `key.pem` is ignored, with a warning. With `DOCKER_TLS_VERIFY`, a missing
@@ -585,8 +610,8 @@ export const layer = (
  * entirely, like `docker -H`, and overriding every setting of `config.json`
  * skips that file. The variables are always read and validated: one that
  * doesn't parse fails with `InvalidConfig`, even when its setting is
- * overridden. `DOCKER_BUILDKIT` is read as Go's `strconv.ParseBool` does. A malformed `config.json` fails with
- * `InvalidConfigFile`.
+ * overridden. `DOCKER_BUILDKIT` is read as Go's `strconv.ParseBool` does.
+ * A malformed `config.json` fails with `InvalidConfigFile`.
  *
  * Environment variables are read through `Config`, so through the current
  * `ConfigProvider`, and files through `FileSystem`. Building the layer never
@@ -600,7 +625,11 @@ export const layer = (
  * @since 4.0.7
  */
 export const layerFromEnv = (
-  overrides?: Partial<ResolvedConfig> | undefined
+  overrides?: Partial<ResolvedConfig> | undefined,
+  options?: {
+    /** The Endpoint where the CLI falls back to the OS default; by default {@link defaultEndpoint}. */
+    readonly defaultEndpoint?: typeof Endpoint.Type | undefined
+  }
 ): Layer.Layer<DockerConfig, DockerConfigError, FileSystem.FileSystem | Path.Path | Crypto.Crypto> =>
   Layer.effect(DockerConfig)(Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
@@ -676,7 +705,11 @@ export const layerFromEnv = (
     // a host string with the TLS variables: `DOCKER_TLS_VERIFY` (verify) or `DOCKER_TLS` (don't)
     const fromDockerHost = Effect.fnUntraced(function*(host: string) {
       const verify = Option.isSome(variables.tlsVerify)
-      if (!verify && Option.isNone(variables.tls)) return yield* Effect.fromResult(parseHost(host))
+      if (!verify && Option.isNone(variables.tls)) {
+        return host.trim() === ""
+          ? options?.defaultEndpoint ?? defaultEndpoint
+          : yield* Effect.fromResult(parseHost(host))
+      }
       // TLS without a host means `tcp://localhost:2376`, as in the CLI
       const endpoint: typeof Endpoint.Type = host.trim() === ""
         ? { _tag: "Tcp", host: "localhost", port: 2376 }

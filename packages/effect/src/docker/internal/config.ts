@@ -73,13 +73,15 @@ export const hostAndPort = (endpoint: typeof Endpoint.cases.Tcp.Type): string =>
   `${endpoint.host.includes(":") ? `[${endpoint.host}]` : endpoint.host}:${endpoint.port}`
 
 /**
- * An Endpoint as the Docker CLI writes a host, `unix:///path` or
- * `tcp://host:port`, without TLS material: what `parseHost` reads.
+ * An Endpoint as the Docker CLI writes a host, `unix:///path`,
+ * `npipe:////./pipe/name` or `tcp://host:port`, without TLS material: what `parseHost` reads.
  *
  * @internal
  */
 export const formatHost = (endpoint: typeof Endpoint.Type): string =>
-  endpoint._tag === "Unix" ? `unix://${endpoint.path}` : `tcp://${hostAndPort(endpoint)}`
+  endpoint._tag === "Tcp"
+    ? `tcp://${hostAndPort(endpoint)}`
+    : `${endpoint._tag === "Unix" ? "unix" : "npipe"}://${endpoint.path}`
 
 // -----------------------------------------------------------------------------
 // the Docker CLI's files and variables

@@ -39,7 +39,7 @@ import { compareApiVersions, formatHost, hostAndPort } from "./config.ts"
 
 /** The base URL that transports receive: the host only matters for TCP. */
 const baseUrl = (endpoint: typeof DockerConfig.Endpoint.Type): string =>
-  endpoint._tag === "Unix"
+  endpoint._tag !== "Tcp"
     ? "http://localhost"
     : `${endpoint.tls !== undefined ? "https" : "http"}://${hostAndPort(endpoint)}`
 
@@ -68,10 +68,12 @@ const connectionHint = (
     case "ENOENT":
       return endpoint._tag === "Unix"
         ? { hint: `the socket ${endpoint.path} doesn't exist: is the Engine running?`, permanent: false }
+        : endpoint._tag === "Npipe"
+        ? { hint: `the named pipe ${endpoint.path} doesn't exist: is Docker Desktop running?`, permanent: false }
         : { permanent: false }
     case "EACCES":
     case "EPERM":
-      return endpoint._tag === "Unix"
+      return endpoint._tag !== "Tcp"
         ? { hint: `permission denied on ${endpoint.path}: is the user allowed to use the Engine?`, permanent: true }
         : { hint: "permission denied", permanent: true }
     case "ECONNREFUSED":

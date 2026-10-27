@@ -34,6 +34,7 @@ import type * as Scope from "../Scope.ts"
 import type * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
+import type { LogFrame } from "./DockerContainers.ts"
 import { DockerEngine } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
@@ -41,20 +42,27 @@ import { apiClient, withOperation } from "./internal/engine.ts"
 import { contentTypeOf, makeHandle, releaseOnFailure, upgradeContentType } from "./internal/stream.ts"
 
 /**
- * A running exec or attach, shaped like `effect/process`'s
- * `ChildProcessHandle`.
+ * A running exec or attach.
  *
  * **Details**
  *
  * - `stdin`: ending it half-closes the connection, which is stdin EOF; an
  *   input stream that fails doesn't half-close. It fails with
  *   `StdinNotAttached` when stdin wasn't requested.
- * - `stdout`, `stderr` and `all` share one connection. Each stream has a small
- *   bounded buffer, so an unread stream stalls the connection (and
- *   `exitCode` with it), as an unread pipe stalls a process. Nothing is
- *   dropped. With a TTY, all output is on `stdout`.
- * - `exitCode`: for an exec, the exit code once the output has ended; for an
- *   attach, the result of `/wait?condition=next-exit`.
+ * - `frames` is the output as the Engine sends it: stdout and stderr chunks
+ *   in arrival order, on one connection. With a TTY, every frame is
+ *   `stdout`. `all` is the same chunks without their stream, `stdout` and
+ *   `stderr` the chunks of one stream: the other stream's are discarded, so
+ *   reading `stdout` alone never stalls on unread stderr.
+ * - The output is read once, through one of `frames`, `all`, `stdout` and
+ *   `stderr`. Reading a second one, even after the first has ended, dies with
+ *   a defect. To send stdout and stderr to different places, read `frames`
+ *   and dispatch on `frame.stream`.
+ * - A few frames are read ahead of the reader; a reader that doesn't keep up
+ *   stalls the connection, and the Engine with it.
+ * - `exitCode`: for an exec, the exit code once the output has ended, so read
+ *   the output alongside it; for an attach, the result of
+ *   `/wait?condition=next-exit`.
  * - `resize` sets the TTY size.
  *
  * Closing the handle's scope closes the connection.
@@ -65,6 +73,7 @@ import { contentTypeOf, makeHandle, releaseOnFailure, upgradeContentType } from 
  */
 export interface Handle {
   readonly stdin: Sink.Sink<void, Uint8Array, never, DockerError>
+  readonly frames: Stream.Stream<LogFrame, DockerError>
   readonly stdout: Stream.Stream<Uint8Array, DockerError>
   readonly stderr: Stream.Stream<Uint8Array, DockerError>
   readonly all: Stream.Stream<Uint8Array, DockerError>
@@ -226,7 +235,7 @@ export class DockerExec extends Context.Service<DockerExec, {
    * **Details**
    *
    * Creates the exec, starts it, writes `stdin` (if given) and closes it, and
-   * reads stdout and stderr concurrently, as bytes: decode them with
+   * reads its output, split into stdout and stderr, as bytes: decode them with
    * `TextDecoder` for text. It doesn't fail on a non-zero exit code. With
    * `tty: true` all output is in `stdout`.
    *
@@ -362,20 +371,17 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
           )
         const stdout: Array<Uint8Array> = []
         const stderr: Array<Uint8Array> = []
-        const collect = (stream: Stream.Stream<Uint8Array, DockerError>, into: Array<Uint8Array>) =>
-          Stream.runForEach(stream, (chunk) => Effect.sync(() => into.push(chunk)))
         const outputEnded = yield* Deferred.make<void>()
-        // each output stream is read to its end, even if the other fails first
-        const output = Effect.all([
-          Effect.exit(collect(exec.stdout, stdout)),
-          Effect.exit(collect(exec.stderr, stderr))
-        ], { concurrency: 2 }).pipe(Effect.ensuring(Deferred.succeed(outputEnded, undefined)))
+        const output = Stream.runForEach(
+          exec.frames,
+          (frame) => Effect.sync(() => (frame.stream === "stdout" ? stdout : stderr).push(frame.data))
+        ).pipe(Effect.exit, Effect.ensuring(Deferred.succeed(outputEnded, undefined)))
         // once the output has ended, input that is still pending is dropped, as the Docker CLI does
-        const [stdin, [stdoutExit, stderrExit]] = yield* Effect.all([
+        const [stdin, outputExit] = yield* Effect.all([
           Effect.raceFirst(writeStdin, Effect.as(Deferred.await(outputEnded), Exit.void)),
           output
         ], { concurrency: 2 })
-        const failed = Exit.isFailure(stdoutExit) ? stdoutExit : Exit.isFailure(stderrExit) ? stderrExit : undefined
+        const failed = Exit.isFailure(outputExit) ? outputExit : undefined
         const result = (exitCode: number): RunResult => ({ exitCode, stdout: concat(stdout), stderr: concat(stderr) })
         if (failed === undefined) return result(yield* exec.exitCode)
         // the command stopped reading its stdin and the connection then dropped: the exit code

@@ -208,8 +208,10 @@ export const releaseOnFailure = <A, E, R>(
     )
   })
 
-/** How many chunks each view buffers before the connection stalls, like a pipe's buffer. */
-const bufferChunks = 16
+/** How many frames are read ahead of the reader before the connection stalls. */
+const bufferFrames = 16
+
+const alreadyRead = "The handle's output is already being read; read it through one of frames, all, stdout or stderr"
 
 /** The end of the Engine's side of an upgraded connection, rather than a failure. */
 const isEnd = (error: Socket.SocketError): boolean =>
@@ -217,8 +219,9 @@ const isEnd = (error: Socket.SocketError): boolean =>
 
 /**
  * Builds a handle over an upgraded connection. A fiber in the current scope
- * pumps the connection into one bounded queue per stream, so an unread stream
- * stalls the connection and nothing is dropped.
+ * pumps the connection's frames, in arrival order, into one bounded queue,
+ * which the first view to be read owns: `stdout` and `stderr` discard the
+ * other stream's frames, and reading a second view dies.
  *
  * @internal
  */
@@ -244,8 +247,7 @@ export const makeHandle = (options: {
     // releasing the reader's scope (the caller's) closes the connection
     const pull = yield* Effect.mapError(Socket.readerBytes(options.socket), failed)
     const contentType = yield* options.contentType
-    const stdout = yield* Queue.bounded<Uint8Array, DockerError | Cause.Done>(bufferChunks)
-    const stderr = yield* Queue.bounded<Uint8Array, DockerError | Cause.Done>(bufferChunks)
+    const frames = yield* Queue.bounded<LogFrame, DockerError | Cause.Done>(bufferFrames)
     const outputDone = yield* Deferred.make<void, DockerError>()
 
     const demuxer = makeDemuxer()
@@ -258,13 +260,11 @@ export const makeHandle = (options: {
         if (chunks === undefined) break
         for (const chunk of chunks) {
           if (contentType === "application/vnd.docker.raw-stream") {
-            yield* Queue.offer(stdout, chunk)
+            yield* Queue.offer(frames, { stream: "stdout", data: chunk })
             continue
           }
           const result = demuxer.push(chunk)
-          for (const frame of result.frames) {
-            yield* Queue.offer(frame.stream === "stdout" ? stdout : stderr, frame.data)
-          }
+          for (const frame of result.frames) yield* Queue.offer(frames, frame)
           if (result._tag === "SystemError") return yield* Effect.fail(systemError(result.message))
         }
       }
@@ -272,9 +272,8 @@ export const makeHandle = (options: {
       if (demuxer.pending > 0) return yield* Effect.fail(truncatedFrame(demuxer.pending))
     }).pipe(
       Effect.matchEffect({
-        onFailure: (error) =>
-          Effect.all([Queue.fail(stdout, error), Queue.fail(stderr, error), Deferred.fail(outputDone, error)]),
-        onSuccess: () => Effect.all([Queue.end(stdout), Queue.end(stderr), Deferred.succeed(outputDone, undefined)])
+        onFailure: (error) => Effect.all([Queue.fail(frames, error), Deferred.fail(outputDone, error)]),
+        onSuccess: () => Effect.all([Queue.end(frames), Deferred.succeed(outputDone, undefined)])
       }),
       Effect.onInterrupt(() => Deferred.interrupt(outputDone))
     )
@@ -293,13 +292,21 @@ export const makeHandle = (options: {
 
     const exitCode = yield* Effect.cached(options.exitCode(Deferred.await(outputDone)))
 
-    const stdoutStream = Stream.fromQueue(stdout)
-    const stderrStream = Stream.fromQueue(stderr)
+    // one consumer per handle: the first view to be read owns the queue
+    let owned = false
+    const output = Stream.suspend(() => {
+      if (owned) return Stream.die(new Error(alreadyRead))
+      owned = true
+      return Stream.fromQueue(frames)
+    })
+    const ofStream = (stream: LogFrame["stream"]) =>
+      output.pipe(Stream.filter((frame) => frame.stream === stream), Stream.map((frame) => frame.data))
     return {
       stdin,
-      stdout: stdoutStream,
-      stderr: stderrStream,
-      all: Stream.merge(stdoutStream, stderrStream),
+      frames: output,
+      stdout: ofStream("stdout"),
+      stderr: ofStream("stderr"),
+      all: Stream.map(output, (frame) => frame.data),
       exitCode,
       resize: options.resize
     }
