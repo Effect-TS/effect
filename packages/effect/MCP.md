@@ -744,6 +744,69 @@ export const loadContext = (client: McpClient.McpClient) =>
   })
 ```
 
+## Client task polling
+
+Enable polling when constructing a client with the July protocol. `callTool` returns the final result whether the server completes the call immediately or creates a task:
+
+```ts
+import { Effect, Schema } from "effect"
+import { McpClient, McpProtocol } from "effect/ai"
+
+const ClientLive = McpClient.layerHttp({
+  name: "report-app",
+  version: "1.0.0",
+  url: "http://localhost:3000/mcp",
+  protocol: McpProtocol.v2026_07_28,
+  tasks: { mode: "poll" }
+})
+
+const report = Effect.gen(function*() {
+  const client = yield* McpClient.McpClient
+  const tool = (yield* client.listTools()).find((tool) => tool.name === "workspace_report")
+  if (tool === undefined) return yield* Effect.die("Missing workspace_report tool")
+  return yield* client.callTool({ tool, arguments: { workspaceId: "demo" }, schema: Schema.String })
+})
+```
+
+Provide an `HttpClient` implementation to `ClientLive` as in the HTTP client examples above. Task polling requires `2026-07-28`; November Tasks is a different protocol and is not implemented by this client.
+
+Use `startTool` for explicit cancellation:
+
+```ts
+const execution = yield * client.startTool({ tool, schema: Schema.String })
+const waiting = yield * execution.awaitResult().pipe(Effect.forkChild)
+
+// In response to an application cancellation action:
+yield * execution.cancel()
+```
+
+`taskId` is undefined for an immediate result. A task-backed execution shares one polling worker across all waiters. The client scope owns that worker. Interrupting or timing out a waiter leaves remote work running. Closing the client scope stops local polling without requesting remote cancellation.
+
+`cancel()` acknowledges intent. `awaitResult()` observes the actual outcome and fails with `McpClientError` reason `TaskCancelled` only when the server confirms cancellation. If completion wins the race, it returns the result instead. Cancelling while an input handler is active interrupts that handler after the server acknowledges the cancellation request.
+
+Configure application-owned input handlers through the constructor or transport layer:
+
+```ts
+const client = yield * McpClient.make({
+  name: "report-app",
+  version: "1.0.0",
+  tasks: { mode: "poll", requestTimeout: "30 seconds" },
+  input: {
+    elicitation: showPrompt,
+    roots: listAllowedRoots,
+    sampling: sampleWithApproval
+  }
+})
+```
+
+`showPrompt`, `listAllowedRoots`, and `sampleWithApproval` are application functions returning Effects with the matching MCP response. Elicitation handlers accept both form and URL requests. The client captures their service requirements during construction and advertises them during discovery and on requests that support client input. Prompt and resource input continuations are not supported. A handler failure becomes `InputError` with its original cause. User actions such as `decline` and `cancel` are input responses; they do not themselves cancel the task.
+
+The client keeps polling while input handlers run in separate scopes. It submits ready answers through `tasks/update` without waiting for other prompts, and sends each acknowledged answer once. Withdrawn inputs and terminal task states interrupt pending handlers and release their resources. Ordinary tool input continuations use these handlers too, with the server's opaque `requestState` returned unchanged. Automatic retries of failed creation or polling requests are not included.
+
+`tasks.pollInterval` supplies the fallback interval when the server omits one. Server-provided intervals take precedence and may change. `tasks.requestTimeout` bounds each follow-up request and defaults to the client's discovery timeout. A `callTool` timeout bounds the whole call. A `startTool` timeout bounds creation and ordinary input continuations; `awaitResult` has its own optional timeout. Schema decoding requirements belong to `awaitResult`'s caller, while input-handler services belong to client construction.
+
+The existing `McpClient.toolkit` integration also waits for task-backed calls before returning model tool output. Task subscriptions, persisted recovery, and November task support are not included.
+
 ## Tasks
 
 `McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an

@@ -4,8 +4,8 @@
  * Clients discover tools, prompts and resources using the protocol revision selected by
  * their transport. `callTool` returns tool-reported errors as results; supplying a schema
  * turns them into a `ToolError` reason that retains the original result. Transport and
- * protocol failures fail the Effect. Interactive server requests, subscriptions, OAuth
- * and retries are not included.
+ * protocol failures fail the Effect. July Tasks use opt-in polling and application-owned input handlers. Subscriptions,
+ * legacy interactive server requests, OAuth and retries are not included.
  *
  * @stability experimental
  * @since 4.0.6
@@ -18,6 +18,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Fiber from "../Fiber.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
@@ -28,19 +29,23 @@ import type * as ChildProcess from "../process/ChildProcess.ts"
 import { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
 import * as Queue from "../Queue.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
+import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
+import type * as TaskWire from "./internal/mcpSchema/v2026_07_28.ts"
 import {
   ClosedError,
   ConfigurationError,
   HttpError,
+  InputError,
   isMcpClientError,
   LimitError,
   McpClientError,
   type McpClientErrorReason,
   ProtocolError,
+  TaskCancelled,
   TimeoutError,
   ToolError,
   TransportError,
@@ -64,6 +69,73 @@ import * as Toolkit from "./Toolkit.ts"
  * @since 4.0.6
  */
 export type ProtocolVersion = "2025-11-25" | "2026-07-28"
+
+/**
+ * Application handlers for July task input and ordinary tool input continuations.
+ * Only configured handlers are advertised. Elicitation handlers support both form and URL modes.
+ * Handler services are captured when the client is constructed.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export interface InputHandlers<R = never> {
+  readonly roots?:
+    | ((request: typeof McpSchema.ListRoots.payloadSchema.Type) => Effect.Effect<McpSchema.ListRootsResult, unknown, R>)
+    | undefined
+  readonly sampling?:
+    | ((
+      request: typeof McpSchema.CreateMessage.payloadSchema.Type
+    ) => Effect.Effect<McpSchema.CreateMessageResult, unknown, R>)
+    | undefined
+  readonly elicitation?:
+    | ((request: McpSchema.ElicitRequestParams) => Effect.Effect<McpSchema.ElicitResult, unknown, R>)
+    | undefined
+}
+
+/**
+ * Identity and behavior shared by the client constructors and transport layers.
+ * Tasks and input handlers require protocol revision 2026-07-28.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export interface ClientOptions<R = never> {
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
+  readonly tasks?: {
+    readonly mode: "poll"
+    /** Fallback when the server omits its polling interval. Defaults to one second. */
+    readonly pollInterval?: Duration.Input | undefined
+    /** Bounds each follow-up request. Defaults to the client's discovery timeout. */
+    readonly requestTimeout?: Duration.Input | undefined
+  } | undefined
+  readonly input?: InputHandlers<R> | undefined
+}
+
+/**
+ * A tool execution, with one shared polling worker owned by the client scope.
+ * Interrupting a waiter does not cancel remote work. `cancel` acknowledges cancellation intent;
+ * `awaitResult` observes the actual outcome, which may still be successful completion.
+ * Immediate results have no task ID and cancellation is a no-op.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export interface ToolExecution<A, R = never> {
+  readonly taskId: string | undefined
+  readonly awaitResult: (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<A, McpClientError, R>
+  readonly cancel: (options?: { readonly timeout?: Duration.Input | undefined }) => Effect.Effect<void, McpClientError>
+}
 
 /**
  * Service tag for applications that provide one default MCP connection.
@@ -120,29 +192,32 @@ export interface McpClient {
    */
   readonly callTool: {
     (
-      params: {
-        readonly tool: McpSchema.Tool
-        readonly schema?: undefined
-        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
-      },
-      options?: { readonly timeout?: Duration.Input | undefined }
+      params: ToolCallParams,
+      options?: CallOptions
     ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
     <S extends Schema.Top>(
-      params: {
-        readonly tool: McpSchema.Tool
-        readonly schema: S
-        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
-      },
-      options?: { readonly timeout?: Duration.Input | undefined }
+      params: ToolCallParams<S> & { readonly schema: S },
+      options?: CallOptions
     ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
     <S extends Schema.Top = never>(
-      params: {
-        readonly tool: McpSchema.Tool
-        readonly schema?: S | undefined
-        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
-      },
-      options?: { readonly timeout?: Duration.Input | undefined }
+      params: ToolCallParams<S>,
+      options?: CallOptions
     ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  }
+  /** Starts a call and returns shared execution controls. `timeout` bounds creation only. */
+  readonly startTool: {
+    (
+      params: ToolCallParams,
+      options?: CallOptions
+    ): Effect.Effect<ToolExecution<McpSchema.CallToolResult>, McpClientError>
+    <S extends Schema.Top>(
+      params: ToolCallParams<S> & { readonly schema: S },
+      options?: CallOptions
+    ): Effect.Effect<ToolExecution<S["Type"], S["DecodingServices"]>, McpClientError>
+    <S extends Schema.Top = never>(
+      params: ToolCallParams<S>,
+      options?: CallOptions
+    ): Effect.Effect<ToolExecution<McpSchema.CallToolResult | S["Type"], S["DecodingServices"]>, McpClientError>
   }
 }
 
@@ -175,29 +250,29 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * @category constructors
  * @since 4.0.6
  */
-export const make: (options: {
-  readonly name: string
-  readonly version: string
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly timeout?: Duration.Input | undefined
-}) => Effect.Effect<
+export const make = Effect.fnUntraced(function*<R = never>(options: ClientOptions<R>): Effect.fn.Return<
   McpClient,
   McpClientError,
-  Scope.Scope | Transport
-> = Effect.fnUntraced(function*(options: Options): Effect.fn.Return<
-  McpClient,
-  McpClientError,
-  Scope.Scope | Transport
+  Scope.Scope | Transport | R
 > {
+  const scope = yield* Scope.fork(yield* Effect.scope)
+  const inputContext = yield* Effect.context<R>()
   const transport = yield* Transport
   const protocol = transport.protocol
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
+  if (!modern && (options.tasks !== undefined || options.input !== undefined)) {
+    return yield* fail(new UnsupportedError({ description: "Tasks and input handlers require MCP 2026-07-28" }))
+  }
+  const clientCapabilities = options.tasks === undefined ? {} : { extensions: { "io.modelcontextprotocol/tasks": {} } }
+  const inputCapabilities = {
+    ...(options.input?.roots === undefined ? {} : { roots: {} }),
+    ...(options.input?.sampling === undefined ? {} : { sampling: {} }),
+    ...(options.input?.elicitation === undefined ? {} : { elicitation: { form: {}, url: {} } })
+  }
   const closed = yield* Deferred.make<never, McpClientError>()
+  // Register after the child scope so waiters receive ClosedError before workers are interrupted.
   yield* Effect.addFinalizer(() =>
     Deferred.fail(closed, fail(new ClosedError({ description: "MCP client scope closed" })))
   )
@@ -217,7 +292,7 @@ export const make: (options: {
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
     "io.modelcontextprotocol/clientInfo": clientInfo,
-    "io.modelcontextprotocol/clientCapabilities": {}
+    "io.modelcontextprotocol/clientCapabilities": clientCapabilities
   }
 
   const request = Effect.fnUntraced(function*<A>(
@@ -231,7 +306,11 @@ export const make: (options: {
     }
 
     const codecs = protocol.payloadCodecs(rpc)
-    const payload = yield* codecs.decode(modern ? { ...params, _meta: meta } : params).pipe(
+    // Discovery needs these capabilities for visibility, but prompt/resource continuations are unsupported.
+    const requestMeta = method === "prompts/get" || method === "resources/read"
+      ? meta
+      : { ...meta, "io.modelcontextprotocol/clientCapabilities": { ...clientCapabilities, ...inputCapabilities } }
+    const payload = yield* codecs.decode(modern ? { ...params, _meta: requestMeta } : params).pipe(
       Effect.flatMap(codecs.encode),
       Effect.mapError(validationError)
     )
@@ -258,8 +337,19 @@ export const make: (options: {
     }
 
     const validated = yield* decodeUnknown(rpc.successSchema, result)
+    if (isRecord(result) && result.resultType === "task") {
+      if (method !== "tools/call" || options.tasks === undefined || !modern) {
+        return yield* fail(new ProtocolError({ description: "Unexpected MCP task result" }))
+      }
+      return validated as A
+    }
     if (isRecord(result) && result.resultType === "input_required") {
-      return yield* fail(new UnsupportedError({ description: "MCP input continuation is not supported" }))
+      if (method !== "tools/call") {
+        return yield* fail(
+          new UnsupportedError({ description: "MCP input continuation is only supported for tools/call" })
+        )
+      }
+      return validated as A
     }
     const publicRpc = publicRpcs.get(method)
     return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
@@ -360,33 +450,219 @@ export const make: (options: {
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
 
-  const callTool = Effect.fnUntraced(
-    function*<S extends Schema.Top>(
-      params: {
-        readonly tool: McpSchema.Tool
-        readonly schema?: S | undefined
-        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
-      },
-      _options?: CallOptions
+  const handleInput = Effect.fnUntraced(function*(input: McpSchema.McpInputRequest) {
+    const invoke = Effect.fnUntraced(function*<S extends Schema.Top, A>(
+      schema: S,
+      handler: ((params: S["Type"]) => Effect.Effect<A, unknown, R>) | undefined,
+      params: unknown,
+      resultSchema: Schema.ConstraintCodec<unknown, Record<string, unknown>>
     ) {
-      const result = yield* call<McpSchema.CallToolResult>(
-        "tools",
-        "tools/call",
-        { name: params.tool.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
-        params.tool
-      )
-      if (params.schema === undefined) return result
-      if (result.isError === true) {
-        return yield* fail(new ToolError({ result }))
+      if (handler === undefined) {
+        return yield* fail(new UnsupportedError({ description: `No input handler for ${input.method}` }))
       }
-      return yield* Schema.decodeUnknownEffect(params.schema)(result.structuredContent).pipe(
-        Effect.mapError((cause) =>
-          fail(new ValidationError({ description: "MCP structured result validation failed", cause }))
+      const decoded = yield* decodeUnknown(schema, params)
+      const result = yield* handler(decoded).pipe(
+        Effect.scoped,
+        Effect.provideContext(inputContext),
+        Effect.mapError((cause) => fail(new InputError({ method: input.method, cause })))
+      )
+      return yield* Schema.decodeUnknownEffect(resultSchema)(result).pipe(
+        Effect.flatMap(Schema.encodeEffect(resultSchema)),
+        Effect.mapError(validationError)
+      )
+    })
+    switch (input.method) {
+      case "roots/list":
+        return yield* invoke(
+          McpSchema.ListRoots.payloadSchema,
+          options.input?.roots,
+          input.params,
+          McpSchema.ListRootsResult
+        )
+      case "sampling/createMessage":
+        return yield* invoke(
+          McpSchema.CreateMessage.payloadSchema,
+          options.input?.sampling,
+          input.params,
+          McpSchema.CreateMessageResult
+        )
+      case "elicitation/create":
+        return yield* invoke(
+          McpSchema.ElicitRequestParams,
+          options.input?.elicitation,
+          input.params,
+          McpSchema.ElicitResult
+        )
+    }
+  })
+
+  const inputResponses = (requests: Readonly<Record<string, McpSchema.McpInputRequest>>) =>
+    Effect.forEach(
+      Object.entries(requests),
+      ([key, input]) => Effect.map(handleInput(input), (response) => [key, response] as const)
+    ).pipe(Effect.map(Object.fromEntries))
+
+  const decodeToolResult = <S extends Schema.Top>(
+    result: McpSchema.CallToolResult,
+    schema: S | undefined
+  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]> => {
+    if (schema === undefined) return Effect.succeed(result)
+    if (result.isError === true) return Effect.fail(fail(new ToolError({ result })))
+    return Schema.decodeUnknownEffect(schema)(result.structuredContent).pipe(
+      Effect.mapError((cause) =>
+        fail(new ValidationError({ description: "MCP structured result validation failed", cause }))
+      )
+    )
+  }
+
+  type ToolOutcome =
+    | McpSchema.CallToolResult
+    | typeof TaskWire.CreateTaskResult.Type
+    | typeof TaskWire.InputRequiredResult.Type
+  const startTool = Effect.fnUntraced(function*<S extends Schema.Top>(
+    params: ToolCallParams<S>,
+    callOptions?: CallOptions
+  ) {
+    const initial = {
+      name: params.tool.name,
+      ...(params.arguments === undefined ? {} : { arguments: params.arguments })
+    }
+    const create = Effect.gen(function*() {
+      let continuation: Record<string, unknown> = {}
+      for (let round = 0; round < MAX_INPUT_ROUNDS; round++) {
+        const result = yield* call<ToolOutcome>("tools", "tools/call", { ...initial, ...continuation }, params.tool)
+        if (!("resultType" in result) || result.resultType !== "input_required") return result
+        continuation = {
+          ...(result.requestState === undefined ? {} : { requestState: result.requestState }),
+          inputResponses: yield* inputResponses(result.inputRequests ?? {})
+        }
+      }
+      return yield* limitError("MCP tool input exceeded its continuation limit")
+    })
+    const initialResult = yield* withDeadline(create, "tools/call", callOptions?.timeout)
+    if (!("resultType" in initialResult) || initialResult.resultType !== "task") {
+      const result = yield* decodeUnknown(McpSchema.CallToolResult, initialResult)
+      return {
+        taskId: undefined,
+        awaitResult: (waitOptions?: CallOptions) =>
+          withDeadline(decodeToolResult(result, params.schema), "tools/call", waitOptions?.timeout),
+        cancel: () => Effect.void
+      }
+    }
+    if (!isRecord(capabilities.extensions?.["io.modelcontextprotocol/tasks"])) {
+      return yield* fail(new ProtocolError({ description: "Server returned a task without advertising Tasks support" }))
+    }
+    const taskId = initialResult.taskId
+    const cancellation = yield* Deferred.make<void>()
+    const followup = <A>(
+      method: string,
+      payload: Record<string, unknown>,
+      duration = options.tasks?.requestTimeout ?? timeout
+    ) => withDeadline(request<A>(method, { taskId, ...payload }), method, duration)
+    const polling = Effect.scoped(Effect.gen(function*() {
+      const activeInputs = new Map<string, Fiber.Fiber<Record<string, unknown>, McpClientError>>()
+      // Keep acknowledged and withdrawn keys so a stale snapshot cannot reopen a prompt.
+      const settledInputs = new Set<string>()
+      let interval: Duration.Input = options.tasks?.pollInterval ?? "1 second"
+      const poll = Effect.fnUntraced(function*() {
+        const task = yield* followup<typeof TaskWire.GetTaskResult.Type>("tasks/get", {})
+        if (task.taskId !== taskId) {
+          return yield* fail(new ProtocolError({ description: "MCP task response does not match its task ID" }))
+        }
+        interval = task.pollIntervalMs === undefined
+          ? options.tasks?.pollInterval ?? "1 second"
+          : Duration.millis(Math.max(1, task.pollIntervalMs))
+        switch (task.status) {
+          case "completed":
+            return yield* decodeUnknown(McpSchema.CallToolResult, task.result)
+          case "failed":
+            return yield* fail(
+              new ProtocolError({
+                code: task.error.code,
+                description: task.error.message,
+                data: task.error.data
+              })
+            )
+          case "cancelled":
+            return yield* fail(new TaskCancelled({ taskId }))
+        }
+        const outstanding = task.status === "input_required" && !(yield* Deferred.isDone(cancellation))
+          ? task.inputRequests :
+          {}
+        for (const [key, fiber] of activeInputs) {
+          if (Object.hasOwn(outstanding, key)) continue
+          settledInputs.add(key)
+          activeInputs.delete(key)
+          yield* Fiber.interrupt(fiber)
+        }
+        const pending: Record<string, Record<string, unknown>> = Object.create(null)
+        for (const [key, input] of Object.entries(outstanding)) {
+          if (settledInputs.has(key) || (yield* Deferred.isDone(cancellation))) continue
+          let fiber = activeInputs.get(key)
+          if (fiber === undefined) {
+            fiber = yield* handleInput(input).pipe(
+              Effect.raceFirst(Deferred.await(cancellation).pipe(Effect.andThen(Effect.interrupt))),
+              Effect.forkScoped({ startImmediately: true })
+            )
+            activeInputs.set(key, fiber)
+          }
+          const result = fiber.pollUnsafe()
+          if (result !== undefined && !(yield* Deferred.isDone(cancellation))) pending[key] = yield* result
+        }
+        if (Object.keys(pending).length > 0 && !(yield* Deferred.isDone(cancellation))) {
+          yield* followup("tasks/update", { inputResponses: pending })
+          for (const key of Object.keys(pending)) {
+            settledInputs.add(key)
+            activeInputs.delete(key)
+          }
+        }
+      })
+      return yield* poll().pipe(
+        Effect.repeat({
+          until: Predicate.isNotUndefined,
+          schedule: Schedule.spaced("1 second").pipe(Schedule.modifyDelay(() => Effect.succeed(interval)))
+        }),
+        Effect.filterOrFail(
+          Predicate.isNotUndefined,
+          () => fail(new ProtocolError({ description: "MCP task ended without a result" }))
         )
       )
-    },
-    (effect, _params, callOptions) => withDeadline(effect, "tools/call", callOptions?.timeout)
-  )
+    }))
+    const worker = yield* Effect.forkIn(
+      initialResult.pollIntervalMs === undefined ? polling : polling.pipe(
+        Effect.delay(Duration.millis(Math.max(1, initialResult.pollIntervalMs)))
+      ),
+      scope
+    )
+    return {
+      taskId,
+      awaitResult: (waitOptions?: CallOptions) =>
+        withDeadline(
+          Effect.flatMap(Fiber.join(worker), (result) => decodeToolResult(result, params.schema)),
+          "tools/call",
+          waitOptions?.timeout
+        ),
+      cancel: (cancelOptions?: CallOptions) =>
+        followup("tasks/cancel", {}, cancelOptions?.timeout).pipe(
+          Effect.andThen(Deferred.succeed(cancellation, undefined)),
+          Effect.asVoid
+        )
+    }
+  })
+
+  const callTool = Effect.fnUntraced(function*<S extends Schema.Top>(
+    params: ToolCallParams<S>,
+    callOptions?: CallOptions
+  ) {
+    return yield* withDeadline(
+      Effect.gen(function*() {
+        const execution = yield* startTool(params)
+        return yield* execution.awaitResult()
+      }),
+      "tools/call",
+      callOptions?.timeout
+    )
+  })
 
   return {
     [TypeId]: TypeId,
@@ -412,7 +688,8 @@ export const make: (options: {
         "resources/read",
         callOptions?.timeout
       ),
-    callTool: callTool as McpClient["callTool"]
+    callTool: callTool as McpClient["callTool"],
+    startTool: startTool as McpClient["startTool"]
   }
 })
 
@@ -679,22 +956,14 @@ export const stdio: (options: {
  * @category layers
  * @since 4.0.6
  */
-export const layerStdio: (options: {
-  readonly name: string
-  readonly version: string
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly timeout?: Duration.Input | undefined
-  readonly command: ChildProcess.Command
-  readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
-  readonly maxMessageBytes?: ByteSize.Input | undefined
-}) => Layer.Layer<
-  McpClient,
-  McpClientError,
-  ChildProcessSpawner
-> = (options) => Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(stdio(options))))
+export const layerStdio = <R = never>(
+  options: ClientOptions<R> & {
+    readonly command: ChildProcess.Command
+    readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
+    readonly maxMessageBytes?: ByteSize.Input | undefined
+  }
+): Layer.Layer<McpClient, McpClientError, ChildProcessSpawner | R> =>
+  Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(stdio(options))))
 
 /**
  * Creates a Streamable HTTP transport with request-owned JSON or SSE responses.
@@ -913,23 +1182,15 @@ export const http: (options: {
  * @category layers
  * @since 4.0.6
  */
-export const layerHttp: (options: {
-  readonly name: string
-  readonly version: string
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly timeout?: Duration.Input | undefined
-  readonly url: string | URL
-  readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
-  readonly headers?: Readonly<Record<string, string>> | undefined
-  readonly maxMessageBytes?: ByteSize.Input | undefined
-}) => Layer.Layer<
-  McpClient,
-  McpClientError,
-  HttpClient.HttpClient
-> = (options) => Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(http(options))))
+export const layerHttp = <R = never>(
+  options: ClientOptions<R> & {
+    readonly url: string | URL
+    readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly maxMessageBytes?: ByteSize.Input | undefined
+  }
+): Layer.Layer<McpClient, McpClientError, HttpClient.HttpClient | R> =>
+  Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(http(options))))
 
 // =============================================================================
 // Internal
@@ -940,6 +1201,7 @@ const TransportTypeId = "~effect/ai/McpClient/Transport" as const
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 const CLOSE_TIMEOUT = Duration.seconds(5)
+const MAX_INPUT_ROUNDS = 100
 const MAX_DISCOVERY_PAGES = 100
 const MAX_DISCOVERY_ITEMS = 10_000
 const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
@@ -948,9 +1210,13 @@ const decoder = new TextDecoder()
 
 type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
 
-type Options = Parameters<typeof make>[0]
-
 type Capability = "tools" | "prompts" | "resources"
+
+interface ToolCallParams<S extends Schema.Top = never> {
+  readonly tool: McpSchema.Tool
+  readonly schema?: S | undefined
+  readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+}
 
 interface CallOptions {
   readonly timeout?: Duration.Input | undefined
@@ -987,10 +1253,16 @@ const encodeImplementation = Schema.encodeSync(McpSchema.Implementation)
 // The protocol payload codec validates argument values; the toolkit only checks for an object.
 const decodeToolArguments = Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Unknown))
 
-const decodeUnknown = (schema: Schema.Constraint, value: unknown) =>
-  Schema.decodeUnknownEffect(schema as Schema.ConstraintCodec<unknown, unknown>)(value).pipe(
+function decodeUnknown<S extends Schema.ConstraintCodec<unknown, unknown>>(
+  schema: S,
+  value: unknown
+): Effect.Effect<S["Type"], McpClientError>
+function decodeUnknown(schema: Schema.Constraint, value: unknown): Effect.Effect<unknown, McpClientError>
+function decodeUnknown(schema: Schema.Constraint, value: unknown): Effect.Effect<unknown, McpClientError> {
+  return Schema.decodeUnknownEffect(schema as Schema.ConstraintCodec<unknown, unknown>)(value).pipe(
     Effect.mapError(validationError)
   )
+}
 
 const publicRpcs: ReadonlyMap<string, { readonly successSchema: Schema.Constraint }> =
   McpSchema.ClientRequestRpcs.requests
@@ -1152,6 +1424,9 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
     (message.method === "tools/call" || message.method === "prompts/get" || message.method === "resources/read")
   ) {
     headers["mcp-name"] = headerValue(name)
+  }
+  if (message.method === "tasks/get" || message.method === "tasks/update" || message.method === "tasks/cancel") {
+    headers["mcp-name"] = headerValue(String(params.taskId))
   }
   if (message.method !== "tools/call") return headers
 

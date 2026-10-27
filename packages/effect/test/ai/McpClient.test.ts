@@ -688,3 +688,111 @@ const connectStdioServer = Effect.fnUntraced(function*(
     Effect.provideService(Spawner.ChildProcessSpawner, spawner)
   )
 })
+
+const connectWithInput = Effect.fnUntraced(function*(
+  registration: Layer.Layer<never, never, McpServer.McpServer>,
+  input?: McpClient.ClientOptions["input"] | undefined
+) {
+  const { handler } = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(serverLayer)))
+  const requests: Array<{ message: McpSchema.JsonRpcRequest }> = []
+  const fetch: typeof globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init)
+    requests.push({ message: await request.clone().json() as McpSchema.JsonRpcRequest })
+    return handler(request)
+  }, { preconnect() {} })
+  const client = yield* McpClient.make({ ...clientInfo, input }).pipe(
+    Effect.provideService(
+      McpClient.Transport,
+      yield* McpClient.http({ url: MCP_ENDPOINT, protocol: McpProtocol.v2026_07_28 }).pipe(
+        Effect.provide(FetchHttpClient.layer),
+        Effect.provideService(FetchHttpClient.Fetch, fetch)
+      )
+    )
+  )
+  return { client, requests }
+})
+
+describe("client input", () => {
+  it.effect("should preserve arguments and opaque state when an ordinary tool call requests input", () =>
+    Effect.gen(function*() {
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: McpSchema.Tool.make({ name: "interactive", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            McpSchema.McpRequestContext.useSync((context) => {
+              if (context.requestState === "opaque-state" && context.inputResponses?.answer?.action === "accept") {
+                return new McpSchema.CallToolResult({ content: [], structuredContent: "continued" })
+              }
+              return new McpSchema.InputRequired({
+                requestState: "opaque-state",
+                inputRequests: {
+                  answer: {
+                    method: "elicitation/create",
+                    params: {
+                      mode: "form",
+                      message: "Continue?",
+                      requestedSchema: { type: "object", properties: {} }
+                    }
+                  }
+                }
+              })
+            })
+        })
+      ))
+      const { client, requests } = yield* connectWithInput(registration, {
+        elicitation: () => Effect.succeed({ action: "accept", content: {} })
+      })
+      const tool = (yield* client.listTools()).find((tool) => tool.name === "interactive")
+      assert.isDefined(tool)
+      const execution = yield* client.startTool({ tool, arguments: { value: 42 }, schema: Schema.String })
+      assert.isUndefined(execution.taskId)
+      assert.strictEqual(yield* execution.awaitResult(), "continued")
+      const calls = requests.filter(({ message }) => message.method === "tools/call")
+      assert.strictEqual(calls.length, 2)
+      assert.deepStrictEqual(calls.map(({ message }) => message.params?.arguments), [{ value: 42 }, { value: 42 }])
+      assert.strictEqual(calls[1].message.params?.requestState, "opaque-state")
+      assert.deepStrictEqual(calls[1].message.params?.inputResponses, { answer: { action: "accept", content: {} } })
+      assert.notStrictEqual(calls[0].message.id, calls[1].message.id)
+    }))
+  it.effect("should withhold input capabilities when prompt and resource retrieval cannot continue", () =>
+    Effect.gen(function*() {
+      const registration = Layer.mergeAll(
+        McpServer.prompt({ name: "plain", content: () => Effect.succeed("prompt") }),
+        McpServer.resource({ uri: "test://plain", name: "plain", content: Effect.succeed("resource") })
+      )
+      const { client, requests } = yield* connectWithInput(registration, {
+        elicitation: () => Effect.succeed({ action: "decline" })
+      })
+      const prompt = (yield* client.listPrompts()).find((prompt) => prompt.name === "plain")
+      assert.isDefined(prompt)
+      yield* client.getPrompt({ prompt })
+      yield* client.readResource({ uri: "test://plain" })
+      yield* client.callTool({ tool: yield* findTool(client, "add"), arguments: { a: 1, b: 2 } })
+      for (const { message } of requests) {
+        const meta = message.params?._meta as Record<string, unknown>
+        const capabilities = meta["io.modelcontextprotocol/clientCapabilities"] as McpSchema.ClientCapabilities
+        if (message.method === "prompts/get" || message.method === "resources/read") {
+          assert.isUndefined(capabilities.elicitation, message.method)
+        } else {
+          assert.isDefined(capabilities.elicitation, message.method)
+        }
+      }
+    }))
+  it.effect("should discover capability-dependent tools when input handlers are configured", () =>
+    Effect.gen(function*() {
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: McpSchema.Tool.make({ name: "needs_input", inputSchema: { type: "object" } }),
+          annotations: Context.make(McpSchema.EnabledWhen, (profile) => profile.capabilities.elicitation !== undefined),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+      ))
+      const enabled = yield* connectWithInput(registration, {
+        elicitation: () => Effect.succeed({ action: "decline" })
+      })
+      assert.isTrue((yield* enabled.client.listTools()).some((tool) => tool.name === "needs_input"))
+      const disabled = yield* connectWithInput(registration)
+      assert.isFalse((yield* disabled.client.listTools()).some((tool) => tool.name === "needs_input"))
+    }))
+})
