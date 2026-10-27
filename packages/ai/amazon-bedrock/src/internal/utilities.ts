@@ -1,5 +1,4 @@
 import type * as Response from "effect/ai/Response"
-import * as Predicate from "effect/Predicate"
 
 const finishReasonMap: Record<string, Response.FinishReason> = {
   end_turn: "stop",
@@ -18,12 +17,6 @@ export const resolveFinishReason = (
   stopReason: string,
   isJsonResponse: boolean = false
 ): Response.FinishReason => {
-  const reason = Object.hasOwn(finishReasonMap, stopReason) ? finishReasonMap[stopReason] : undefined
-  if (Predicate.isUndefined(reason)) {
-    return "other"
-  }
-  if (isJsonResponse && reason === "tool-calls") {
-    return "stop"
-  }
-  return reason
+  const reason = Object.hasOwn(finishReasonMap, stopReason) ? finishReasonMap[stopReason] : "other"
+  return isJsonResponse && reason === "tool-calls" ? "stop" : reason
 }

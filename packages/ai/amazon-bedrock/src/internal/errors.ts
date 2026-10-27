@@ -3,7 +3,6 @@ import type * as Response from "effect/ai/Response"
 import * as Effect from "effect/Effect"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
-import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -12,27 +11,25 @@ import type { EventStreamError } from "./eventStream.ts"
 
 const module = "AmazonBedrockClient"
 
+/**
+ * An `AiError` of the client module.
+ *
+ * @internal
+ */
+export const make = (method: string, reason: AiError.AiErrorReason): AiError.AiError =>
+  AiError.make({ module, method, reason })
+
 // =============================================================================
 // Error Mappers
 // =============================================================================
 
 /** @internal */
 export const mapSchemaError = (error: Schema.SchemaError, method: string): AiError.AiError =>
-  AiError.make({
-    module,
-    method,
-    reason: AiError.InvalidResponseError.fromSchemaError(error)
-  })
+  make(method, AiError.InvalidResponseError.fromSchemaError(error))
 
 /** @internal */
 export const mapEventStreamError = (error: EventStreamError, method: string): AiError.AiError =>
-  AiError.make({
-    module,
-    method,
-    reason: error.reason === "ErrorFrame"
-      ? new AiError.InternalProviderError({ description: error.description })
-      : new AiError.InvalidResponseError({ description: error.description })
-  })
+  make(method, new AiError.InvalidResponseError({ description: error.description }))
 
 /**
  * Maps an exception frame of a ConverseStream response, such as a
@@ -46,21 +43,14 @@ export const mapStreamException = (
   method: string
 ): AiError.AiError => {
   const description = Predicate.isUndefined(message) ? exceptionType : `${exceptionType}: ${message}`
-  let reason: AiError.AiErrorReason
-  switch (exceptionType) {
-    case "throttlingException": {
-      reason = new AiError.RateLimitError({})
-      break
-    }
-    case "validationException": {
-      reason = new AiError.InvalidRequestError({ description })
-      break
-    }
-    default: {
-      reason = new AiError.InternalProviderError({ description })
-    }
-  }
-  return AiError.make({ module, method, reason })
+  return make(
+    method,
+    exceptionType === "throttlingException"
+      ? new AiError.RateLimitError({})
+      : exceptionType === "validationException"
+      ? new AiError.InvalidRequestError({ description })
+      : new AiError.InternalProviderError({ description })
+  )
 }
 
 /** @internal */
@@ -73,36 +63,27 @@ export const mapHttpClientError = (
     case "TransportError":
     case "EncodeError":
     case "InvalidUrlError": {
-      return Effect.fail(AiError.make({
-        module,
+      return Effect.fail(make(
         method,
-        reason: new AiError.NetworkError({
+        new AiError.NetworkError({
           reason: reason._tag,
           description: reason.description,
           request: buildHttpRequestDetails(reason.request)
         })
-      }))
+      ))
     }
     case "StatusCodeError": {
       return mapStatusCodeError(reason, method)
     }
-    case "DecodeError": {
-      return Effect.fail(AiError.make({
-        module,
-        method,
-        reason: new AiError.InvalidOutputError({
-          description: reason.description ?? "Failed to decode response"
-        })
-      }))
-    }
+    case "DecodeError":
     case "EmptyBodyError": {
-      return Effect.fail(AiError.make({
-        module,
+      return Effect.fail(make(
         method,
-        reason: new AiError.InvalidOutputError({
-          description: reason.description ?? "Response body was empty"
+        new AiError.InvalidOutputError({
+          description: reason.description ??
+            (reason._tag === "DecodeError" ? "Failed to decode response" : "Response body was empty")
         })
-      }))
+      ))
     }
   }
 }
@@ -121,10 +102,9 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   method: string
 ) {
   const { description, request, response } = error
-  const status = response.status
 
   let body: string | undefined = description
-  if (!description || !description.startsWith("{")) {
+  if (!description?.startsWith("{")) {
     const responseBody = yield* Effect.option(response.text)
     if (Option.isSome(responseBody) && responseBody.value) {
       body = responseBody.value
@@ -134,14 +114,23 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   const decoded = decodeErrorBody(body)
   const message = Option.isSome(decoded) ? decoded.value.message ?? decoded.value.Message : undefined
 
-  const reason = mapStatusCodeToReason({
-    status,
-    message,
-    errorType: extractErrorType(response.headers["x-amzn-errortype"]),
-    http: buildHttpContext({ request, response, body })
-  })
-
-  return yield* AiError.make({ module, method, reason })
+  return yield* make(
+    method,
+    mapStatusCodeToReason({
+      status: response.status,
+      message,
+      // AWS sends the exception shape as `Name:http://internal.amazon.com/coral/...`.
+      errorType: response.headers["x-amzn-errortype"]?.split(":")[0],
+      http: {
+        request: buildHttpRequestDetails(request),
+        response: {
+          status: response.status,
+          headers: Redactable.redact(response.headers) as Record<string, string>
+        },
+        body
+      }
+    })
+  )
 })
 
 // =============================================================================
@@ -158,31 +147,9 @@ const buildHttpRequestDetails = (
   headers: Redactable.redact(request.headers) as Record<string, string>
 })
 
-const buildHttpContext = (params: {
-  readonly request: HttpClientRequest.HttpClientRequest
-  readonly response?: HttpClientResponse.HttpClientResponse
-  readonly body?: string | undefined
-}): typeof AiError.HttpContext.Type => ({
-  request: buildHttpRequestDetails(params.request),
-  response: Predicate.isNotUndefined(params.response)
-    ? {
-      status: params.response.status,
-      headers: Redactable.redact(params.response.headers) as Record<string, string>
-    }
-    : undefined,
-  body: params.body
-})
-
 // =============================================================================
 // HTTP Status Code
 // =============================================================================
-
-/**
- * AWS sends the exception shape as `Name:http://internal.amazon.com/coral/...`.
- * Only the part before the colon identifies it.
- */
-const extractErrorType = (header: string | undefined): string | undefined =>
-  Predicate.isUndefined(header) ? undefined : header.split(":")[0]
 
 /**
  * Bedrock answers 403 for several unrelated problems: a bad key, an expired

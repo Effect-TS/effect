@@ -1,5 +1,6 @@
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
+import * as Hex from "effect/encoding/Hex"
 import type * as HttpBody from "effect/http/HttpBody"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Url from "effect/http/Url"
@@ -20,14 +21,6 @@ const encoder = new TextEncoder()
 
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-
-const hex = (bytes: Uint8Array): string => {
-  let out = ""
-  for (let i = 0; i < bytes.length; i++) {
-    out += bytes[i].toString(16).padStart(2, "0")
-  }
-  return out
-}
 
 const sha256 = (data: Uint8Array): Effect.Effect<Uint8Array> =>
   Effect.map(
@@ -50,6 +43,8 @@ const hmac = (key: Uint8Array, data: string): Effect.Effect<Uint8Array> =>
 /** Percent-encodes a string per RFC 3986, as SigV4 requires. */
 const encodeRfc3986 = (value: string): string =>
   encodeURIComponent(value).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+
+const service = "bedrock"
 
 /** `YYYYMMDD'T'HHMMSS'Z'`, the SigV4 timestamp format. */
 const formatAmzDate = (date: Date): string => date.toISOString().replace(/[-:]|\.\d{3}/g, "")
@@ -104,7 +99,6 @@ export const sign = (
   }
 ): Effect.Effect<HttpClientRequest.HttpClientRequest> =>
   Effect.gen(function*() {
-    const service = "bedrock"
     const { accessKeyId, secretAccessKey, sessionToken } = options.credentials
     const amzDate = formatAmzDate(new Date(yield* Clock.currentTimeMillis))
     const date = amzDate.slice(0, 8)
@@ -115,16 +109,15 @@ export const sign = (
     }
     const url = urlResult.success
 
-    const headers: Record<string, string> = {
-      host: url.host,
-      "x-amz-date": amzDate
+    // The headers this signer adds, which are also signed.
+    const amzHeaders: Record<string, string> = {
+      "x-amz-date": amzDate,
+      ...(sessionToken !== undefined ? { "x-amz-security-token": sessionToken } : {})
     }
+    const headers: Record<string, string> = { host: url.host, ...amzHeaders }
     const contentType = request.headers["content-type"]
     if (contentType !== undefined) {
       headers["content-type"] = contentType.trim().replace(/\s+/g, " ")
-    }
-    if (sessionToken !== undefined) {
-      headers["x-amz-security-token"] = sessionToken
     }
     const signedHeaderNames = Object.keys(headers).sort()
     const canonicalHeaders = signedHeaderNames.map((name) => `${name}:${headers[name]}\n`).join("")
@@ -136,7 +129,7 @@ export const sign = (
       .sort(([a, av], [b, bv]) => a < b ? -1 : a > b ? 1 : av < bv ? -1 : av > bv ? 1 : 0)
       .map(([key, value]) => `${key}=${value}`)
       .join("&")
-    const payloadHash = hex(yield* sha256(yield* bodyBytes(request.body)))
+    const payloadHash = Hex.encode(yield* sha256(yield* bodyBytes(request.body)))
 
     const canonicalRequest = [
       request.method,
@@ -152,19 +145,18 @@ export const sign = (
       "AWS4-HMAC-SHA256",
       amzDate,
       scope,
-      hex(yield* sha256(encoder.encode(canonicalRequest)))
+      Hex.encode(yield* sha256(encoder.encode(canonicalRequest)))
     ].join("\n")
 
     const kDate = yield* hmac(encoder.encode(`AWS4${secretAccessKey}`), date)
     const kRegion = yield* hmac(kDate, options.region)
     const kService = yield* hmac(kRegion, service)
     const kSigning = yield* hmac(kService, "aws4_request")
-    const signature = hex(yield* hmac(kSigning, stringToSign))
+    const signature = Hex.encode(yield* hmac(kSigning, stringToSign))
 
     return HttpClientRequest.setHeaders(request, {
       authorization:
         `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-      "x-amz-date": amzDate,
-      ...(sessionToken !== undefined ? { "x-amz-security-token": sessionToken } : {})
+      ...amzHeaders
     })
   })
