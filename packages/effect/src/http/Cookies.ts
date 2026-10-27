@@ -272,7 +272,7 @@ function parseSetCookie(header: string): Cookie | undefined {
         break
       }
       case "max-age": {
-        if (value === undefined) {
+        if (value === undefined || !/^-?\d+$/.test(value)) {
           break
         }
         const maxAge = parseInt(value, 10)
