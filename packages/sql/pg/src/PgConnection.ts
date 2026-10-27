@@ -1698,7 +1698,6 @@ const streamRows = (
       Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
       scope
     )
-    if (conn.deadWith !== undefined) return yield* conn.deadWith
     if (pinned.released) return yield* pinReleasedError()
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
@@ -1862,7 +1861,8 @@ const streamRows = (
     yield* Scope.addFinalizer(
       scope,
       Effect.suspend(() => {
-        if (done) return Effect.void
+        // A dead session has nothing left to drain.
+        if (done || conn.deadWith !== undefined) return Effect.void
         aborted = true
         const drain = drainAborted(conn, "Stream cancellation timed out", (onDrained) => {
           drainDone = onDrained
@@ -1872,6 +1872,9 @@ const streamRows = (
       })
     )
 
+    // Checked as the consumer is registered: a session that dies any earlier
+    // has no consumer to tell through `onFatal`.
+    if (conn.deadWith !== undefined) return yield* conn.deadWith
     conn.consumer = { onMessage, onBatchEnd, onFatal }
     parser.readField = undefined
     // @effect-diagnostics-next-line tryCatchInEffectGen:off
