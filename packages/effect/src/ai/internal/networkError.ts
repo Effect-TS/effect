@@ -1,3 +1,5 @@
+import type * as HttpClientError from "../../http/HttpClientError.ts"
+
 // Node, Deno and Bun wordings for a rejected header value
 const invalidHeaderValue = /invalid header value|has invalid value/i
 
@@ -23,11 +25,17 @@ const causeMessage = (cause: Error): string => {
   return message.replace(embeddedUrl, "<url>")
 }
 
-export const describe = (cause: unknown): string | undefined => {
+const describeCause = (cause: unknown): string | undefined => {
   const messages: Array<string> = []
   for (let depth = 0; depth < 3 && cause instanceof Error; depth++, cause = cause.cause) {
     const message = causeMessage(cause)
     if (message !== "") messages.push(message)
   }
   return messages.length === 0 ? undefined : messages.join(": ")
+}
+
+export const describe = (error: HttpClientError.RequestError): string | undefined => {
+  const description = describeCause(error.cause)
+  // the cause of an invalid URL can print the raw input, in any engine's wording
+  return description !== undefined && error._tag === "InvalidUrlError" ? "Invalid URL" : description
 }
