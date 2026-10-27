@@ -8,6 +8,26 @@ const waitUntil = (predicate: () => boolean) =>
   Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(predicate)), { until: (done) => done })
 
 describe("Pool", () => {
+  it.effect("admits requests in FIFO order when a borrower immediately reacquires", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("connection"), size: 1 })
+      let asked = 0
+      const admitted: Array<number> = []
+      const use = Effect.scoped(Effect.gen(function*() {
+        const ticket = asked++
+        yield* Pool.get(pool)
+        admitted.push(ticket)
+        yield* Effect.sleep("10 millis")
+      }))
+      const chained = yield* Effect.forkChild(Effect.repeat(use, { times: 2 }))
+      const others = yield* Effect.forEach([1, 2, 3], (at) => Effect.forkChild(Effect.delay(use, at)))
+
+      yield* TestClock.adjust("100 millis")
+      yield* Fiber.join(chained)
+      yield* Fiber.joinAll(others)
+      deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
+    }))
+
   it.effect("preallocates pool items", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)

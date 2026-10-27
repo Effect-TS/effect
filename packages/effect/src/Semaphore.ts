@@ -13,7 +13,7 @@
  */
 import type * as Effect from "./Effect.ts"
 import type { Fiber } from "./Fiber.ts"
-import { dual } from "./Function.ts"
+import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import type * as Option from "./Option.ts"
@@ -214,26 +214,58 @@ export interface Semaphore {
  */
 export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(permits)
 
-const waitForPermits = <A, E, R>(
+interface Waiter {
+  readonly permits: number
+  resume: ((effect: Effect.Effect<void>) => void) | undefined
+}
+
+// The first queued request that fits in the free permits. Larger requests
+// ahead of it keep their place but are overtaken, as documented on `take`.
+const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
+  for (const waiter of self.waiters) {
+    if (waiter.permits <= self.free) return waiter
+  }
+}
+
+const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
-  effect: Effect.Effect<A, E, R>
+  onAcquire: () => Effect.Effect<A, E, R>,
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity
 ): Effect.Effect<A, E, R> =>
-  internal.callback((resume) => {
-    if (self.free >= n) return resume(effect)
-    const observer = () => {
-      if (self.free < n) return
-      self.waiters.delete(observer)
-      resume(effect)
+  core.withFiber((fiber) => {
+    if (self.free >= n && firstAvailableWaiter(self) === undefined) {
+      self.taken += n
+      return onAcquire()
     }
-    self.waiters.add(observer)
-    return internal.sync(() => {
-      self.waiters.delete(observer)
+    // A wake does not reserve permits: the waiter keeps its queue entry until
+    // it acquires or is interrupted, and re-checks eligibility when it runs.
+    const waiter: Waiter = { permits: n, resume: undefined }
+    const remove = () => {
+      if (self.waiters.delete(waiter)) self.releaseUnsafe(fiber, 0)
+      return undefined
+    }
+    self.waiters.add(waiter)
+    internal.onExitUnsafe(fiber, remove)
+    const wait = restore(internal.callback<void>((resume) => {
+      // The fiber may have yielded since the last check, missing a wake.
+      if (firstAvailableWaiter(self) === waiter) {
+        resume(internal.void)
+      } else {
+        waiter.resume = resume
+      }
+    }))
+    const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
+      if (firstAvailableWaiter(self) !== waiter) return loop
+      self.taken += n
+      remove()
+      return onAcquire()
     })
+    return loop
   })
 
 class SemaphoreImpl implements Semaphore {
-  public waiters = new Set<() => void>()
+  public waiters = new Set<Waiter>()
   public taken = 0
   public permits: number
 
@@ -246,14 +278,7 @@ class SemaphoreImpl implements Semaphore {
   }
 
   take(n: number): Effect.Effect<number> {
-    const take: Effect.Effect<number> = internal.suspend(() => {
-      if (this.free < n) {
-        return waitForPermits(this, n, take)
-      }
-      this.taken += n
-      return internal.succeed(n)
-    })
-    return take
+    return takePermits(this, n, () => internal.succeed(n))
   }
 
   takeIfAvailable(n: number): Effect.Effect<boolean> {
@@ -268,9 +293,17 @@ class SemaphoreImpl implements Semaphore {
     this.taken -= n
     if (this.waiters.size > 0) {
       fiber.currentDispatcher.scheduleTask(() => {
-        for (const observer of this.waiters) {
-          if (this.free <= 0) break
-          observer()
+        // Wake every queued request that fits in the free permits. Waiters
+        // that were already woken still count against the budget, since they
+        // keep their place until they acquire. Resumed fibers run inline and
+        // can add or remove waiters, so iterate over a snapshot.
+        let remaining = this.free
+        for (const waiter of Array.from(this.waiters)) {
+          if (!this.waiters.has(waiter) || waiter.permits > remaining) continue
+          remaining -= waiter.permits
+          const resume = waiter.resume
+          waiter.resume = undefined
+          resume?.(internal.void)
         }
       }, 0)
     }
@@ -296,24 +329,18 @@ class SemaphoreImpl implements Semaphore {
 
   withPermits(n: number) {
     return <A, E, R>(self: Effect.Effect<A, E, R>) =>
-      internal.uninterruptibleMask((restore) => {
-        const acquire: Effect.Effect<A, E, R> = internal.suspend(() => {
-          if (this.free < n) {
-            const wait = waitForPermits(this, n, internal.void)
-            return internal.flatMap(restore(wait), () => acquire)
-          }
-          this.taken += n
-          return internal.onExitPrimitive(
-            restore(self),
-            () => {
+      internal.uninterruptibleMask((restore) =>
+        takePermits(
+          this,
+          n,
+          () =>
+            internal.onExitPrimitive(restore(self), () => {
               this.releaseUnsafe(internal.getCurrentFiber()!, n)
               return undefined
-            },
-            true
-          )
-        })
-        return acquire
-      })
+            }, true),
+          restore
+        )
+      )
   }
 
   readonly withPermit = this.withPermits(1)

@@ -4,6 +4,53 @@ import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
 describe("Semaphore", () => {
+  it.effect("take admits requests in FIFO order when a holder immediately reacquires", () =>
+    Effect.gen(function*() {
+      const sem = yield* Semaphore.make(1)
+      let asked = 0
+      const admitted: Array<number> = []
+      const use = Effect.scoped(Effect.gen(function*() {
+        const ticket = asked++
+        yield* Effect.acquireRelease(sem.take(1), () => sem.release(1))
+        admitted.push(ticket)
+        yield* Effect.sleep("10 millis")
+      }))
+      const chained = yield* Effect.forkChild(Effect.repeat(use, { times: 2 }))
+      const others = yield* Effect.forEach([1, 2, 3], (at) => Effect.forkChild(Effect.delay(use, at)))
+
+      yield* TestClock.adjust("100 millis")
+      yield* Fiber.join(chained)
+      yield* Fiber.joinAll(others)
+      assert.deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
+    }))
+
+  it.effect("admits queued requests covered by a release in one dispatcher turn", () =>
+    Effect.gen(function*() {
+      const turns: Array<() => void> = []
+      const scheduler = new Scheduler.MixedScheduler("async", (run) => {
+        turns.push(run)
+        return () => {}
+      })
+      const sem = yield* Semaphore.make(2)
+      yield* sem.take(2)
+      const admitted: Array<number> = []
+      const waiters = yield* Effect.forEach([0, 1], (ticket) =>
+        Effect.forkChild(
+          Effect.andThen(
+            sem.take(1),
+            Effect.sync(() => {
+              admitted.push(ticket)
+            })
+          ).pipe(Effect.provideService(Scheduler.Scheduler, scheduler)),
+          { startImmediately: true }
+        ))
+
+      yield* sem.release(2).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      yield* Effect.sync(() => turns.shift()!())
+      assert.deepStrictEqual(admitted, [0, 1])
+      yield* Fiber.joinAll(waiters)
+    }))
+
   it.effect("basic single partition operation", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make({ permits: 4 })
