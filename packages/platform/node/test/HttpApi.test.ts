@@ -10,6 +10,8 @@ import {
   Deferred,
   Effect,
   Equal,
+  Exit,
+  Fiber,
   FileSystem,
   Layer,
   Option,
@@ -1245,51 +1247,35 @@ describe("HttpApi", () => {
       }).pipe(Effect.scoped, Effect.provide(ApiLayer))
     })
 
-    it.live("closes an upgraded connection whose headers fail to decode", () => {
-      const Api = HttpApi.make("api").add(
-        HttpApiGroup.make("containers").add(
-          HttpApiEndpoint.post("start", "/start", {
-            success: HttpApiSchema.Upgrade({
-              protocol: "tcp",
-              headers: { "content-type": Schema.Literal("application/raw") }
-            })
-          })
-        )
-      )
-      return Effect.gen(function*() {
-        const closed = yield* Deferred.make<void>()
-        const sockets = new Set<Net.Socket>()
-        const server = yield* Effect.acquireRelease(
-          Effect.callback<Http.Server>((resume) => {
-            const server = Http.createServer()
-            server.on("upgrade", (_request: Http.IncomingMessage, socket: Net.Socket) => {
-              sockets.add(socket)
-              const done = () => Deferred.doneUnsafe(closed, Effect.void)
-              socket.once("end", done)
-              socket.once("close", done)
-              socket.write(
-                "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n" +
-                  "Content-Type: text/plain\r\n\r\n"
-              )
-              // the server side must read for the client's close to arrive
-              socket.resume()
-            })
-            server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
-          }),
-          (server) =>
-            Effect.callback<void>((resume) => {
-              for (const socket of sockets) socket.destroy()
-              server.close(() => resume(Effect.void))
-            })
-        )
-        const client = yield* HttpApiClient.make(Api, {
-          baseUrl: `http://127.0.0.1:${(server.address() as Net.AddressInfo).port}`
-        })
+    it.live("closes an upgraded connection whose headers fail to decode", () =>
+      Effect.gen(function*() {
+        const { baseUrl, closed } = yield* makeUpgradeServer
+        const client = yield* HttpApiClient.make(UpgradeApi, { baseUrl })
         const error = yield* Effect.flip(Effect.scoped(client.containers.start()))
         assert.strictEqual(error._tag, "SchemaError")
         yield* Deferred.await(closed).pipe(Effect.timeout("2 seconds"))
-      }).pipe(Effect.scoped, Effect.provide(NodeHttpClient.layerNodeHttp))
-    })
+      }).pipe(Effect.scoped, Effect.provide(NodeHttpClient.layerNodeHttp)))
+
+    it.live("closes an upgraded connection when interrupted as the upgrade is taken", () =>
+      Effect.gen(function*() {
+        const { baseUrl, closed } = yield* makeUpgradeServer
+        const client = yield* HttpApiClient.make(UpgradeApi, { baseUrl })
+        const response = yield* client.containers.start({ responseMode: "response-only" })
+        // interrupts the decoding fiber as soon as the upgrade succeeds
+        const interrupted: HttpClientResponse.HttpClientResponse = Object.create(response, {
+          upgrade: {
+            value: Effect.tap(response.upgrade, () =>
+              Effect.withFiber((fiber) => {
+                fiber.interruptUnsafe()
+                return Effect.void
+              }))
+          }
+        })
+        const decodeStart = HttpApiClient.decodeResponse(UpgradeApi, { group: "containers", endpoint: "start" })
+        const exit = yield* Fiber.await(yield* Effect.forkChild(decodeStart(interrupted)))
+        assert.isTrue(Exit.hasInterrupts(exit))
+        yield* Deferred.await(closed).pipe(Effect.timeout("2 seconds"))
+      }).pipe(Effect.scoped, Effect.provide(NodeHttpClient.layerNodeHttp)))
 
     it("no content via toWebHandler", async () => {
       const Api = HttpApi.make("api")
@@ -1896,6 +1882,48 @@ describe("HttpApi", () => {
         ])
       ))
   })
+})
+
+const UpgradeApi = HttpApi.make("api").add(
+  HttpApiGroup.make("containers").add(
+    HttpApiEndpoint.post("start", "/start", {
+      success: HttpApiSchema.Upgrade({
+        protocol: "tcp",
+        headers: { "content-type": Schema.Literal("application/raw") }
+      })
+    })
+  )
+)
+
+// Answers upgrade requests with a 101 whose Content-Type does not match
+// UpgradeApi, and completes `closed` once the client closes the connection.
+const makeUpgradeServer = Effect.gen(function*() {
+  const closed = yield* Deferred.make<void>()
+  const sockets = new Set<Net.Socket>()
+  const server = yield* Effect.acquireRelease(
+    Effect.callback<Http.Server>((resume) => {
+      const server = Http.createServer()
+      server.on("upgrade", (_request: Http.IncomingMessage, socket: Net.Socket) => {
+        sockets.add(socket)
+        const done = () => Deferred.doneUnsafe(closed, Effect.void)
+        socket.once("end", done)
+        socket.once("close", done)
+        socket.write(
+          "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n" +
+            "Content-Type: text/plain\r\n\r\n"
+        )
+        // the server side must read for the client's close to arrive
+        socket.resume()
+      })
+      server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+    }),
+    (server) =>
+      Effect.callback<void>((resume) => {
+        for (const socket of sockets) socket.destroy()
+        server.close(() => resume(Effect.void))
+      })
+  )
+  return { baseUrl: `http://127.0.0.1:${(server.address() as Net.AddressInfo).port}`, closed }
 })
 
 const readUntilClose = Effect.fnUntraced(function*(reader: Socket.Reader) {
