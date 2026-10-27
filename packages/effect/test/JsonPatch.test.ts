@@ -515,11 +515,14 @@ describe("JsonPatch", () => {
     })
 
     describe("errors", () => {
-      it("rejects invalid JSON Pointers", () => {
+      it("rejects non-empty pointers that do not start with '/'", () => {
         expectMessage(
           () => JsonPatch.apply([{ op: "add", path: "invalid", value: 1 }], {}),
           `must start with "/"`
         )
+      })
+
+      it("rejects invalid escape sequences", () => {
         for (const path of ["/a~", "/a~2"]) {
           expectMessage(
             () => JsonPatch.apply([{ op: "add", path, value: 1 }], {}),
