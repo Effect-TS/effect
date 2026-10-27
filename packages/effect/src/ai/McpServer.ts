@@ -16,6 +16,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as Exit from "../Exit.ts"
@@ -1441,6 +1442,82 @@ class McpClientKey extends Data.Class<{
 }> {}
 
 /**
+ * A client cache hint for one kind of `v2026_07_28` result.
+ *
+ * **Details**
+ *
+ * `ttl` is how long a client may treat the result as fresh. It is sent as a
+ * whole number of milliseconds, rounded down, so it must be finite,
+ * nonnegative and at most `Number.MAX_SAFE_INTEGER` milliseconds. Only
+ * `"private"` scope is supported, so shared caches must not store the result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CacheHint {
+  readonly ttl: Duration.Input
+  readonly cacheScope: "private"
+}
+
+/**
+ * Client cache hints for `v2026_07_28` discovery and list results.
+ *
+ * **Details**
+ *
+ * Each entry sets the freshness and `cacheScope` of one result kind:
+ * `server/discover`, `tools/list`, `resources/list`,
+ * `resources/templates/list` and `prompts/list`. Omitted entries, and
+ * `resources/read` results, keep `{ ttlMs: 0, cacheScope: "private" }`.
+ * Earlier protocol revisions have no cache hints and ignore this option.
+ *
+ * These are hints for clients. The server does not cache results, and
+ * visibility and invocation checks still run on every request.
+ *
+ * **Gotchas**
+ *
+ * A positive `ttl` lets a client keep showing a list after registrations or
+ * per-request visibility change, until the hint expires. Private scope does
+ * not key a client's cache by user, so a client shared between users can
+ * reuse one user's list for another.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CacheHints {
+  readonly discover?: CacheHint | undefined
+  readonly tools?: CacheHint | undefined
+  readonly resources?: CacheHint | undefined
+  readonly resourceTemplates?: CacheHint | undefined
+  readonly prompts?: CacheHint | undefined
+}
+
+// Converts each hint to the wire's nonnegative integer `ttlMs` once, when the server is built.
+const normalizeCacheHints = (
+  cacheHints: CacheHints | undefined
+): Effect.Effect<McpProtocolInternal.CacheHints | undefined, Cause.IllegalArgumentError> => {
+  if (cacheHints === undefined) return Effect.succeed(undefined)
+  const normalized: Record<string, { readonly ttlMs: number; readonly cacheScope: "private" }> = {}
+  for (const [name, hint] of Object.entries(cacheHints)) {
+    if (hint === undefined) continue
+    const ttlMs = Option.match(Duration.fromInput(hint.ttl), {
+      onNone: () => NaN,
+      onSome: (ttl) => Math.floor(Duration.toMillis(ttl))
+    })
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || hint.cacheScope !== "private") {
+      return Effect.fail(
+        new Cause.IllegalArgumentError(
+          `McpServer cacheHints.${name} must have a finite, nonnegative ttl and a "private" cacheScope`
+        )
+      )
+    }
+    normalized[name] = { ttlMs, cacheScope: "private" }
+  }
+  return Effect.succeed(normalized)
+}
+
+/**
  * Runs an MCP server over the current `RpcServer.Protocol`.
  *
  * **Details**
@@ -1462,6 +1539,7 @@ export const run: (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
 }) => Effect.Effect<
   never,
   Cause.IllegalArgumentError,
@@ -1475,12 +1553,14 @@ export const run: (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
 }) {
+  const cacheHints = yield* normalizeCacheHints(options.cacheHints)
   const runtimeOption = yield* Effect.serviceOption(McpRuntime.ServerRuntime)
   const runtime = Option.isSome(runtimeOption)
     ? runtimeOption.value
     : yield* McpRuntime.make(options.protocols)
-  return yield* runWithRuntime(options, runtime, "custom")
+  return yield* runWithRuntime({ ...options, cacheHints }, runtime, "custom")
 })
 
 const runWithRuntime = Effect.fnUntraced(function*(
@@ -1492,6 +1572,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
     readonly extensions?: ServerExtensions | undefined
+    readonly cacheHints?: McpProtocolInternal.CacheHints | undefined
     readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
@@ -2241,6 +2322,7 @@ export const layer = <
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2261,13 +2343,15 @@ const layerWithRuntime = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<any, any, any> | undefined
 }, transport: "custom" | "http" | "stdio") =>
   Layer.effectDiscard(
     Effect.gen(function*() {
+      const cacheHints = yield* normalizeCacheHints(options.cacheHints)
       const runtime = yield* McpRuntime.ServerRuntime
-      yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
+      yield* Effect.forkScoped(runWithRuntime({ ...options, cacheHints }, runtime, transport))
     })
   ).pipe(
     Layer.provide(options.registrations ?? Layer.empty),
@@ -2315,6 +2399,7 @@ export const layerStdio = <
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2471,6 +2556,7 @@ export const layerHttp = <
   readonly path: HttpRouter.PathInput
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
@@ -2545,6 +2631,7 @@ export const layerHttpRequestScoped = <
   readonly path: HttpRouter.PathInput
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
+  readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2562,6 +2649,7 @@ export const layerHttpRequestScoped = <
         `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
       )
     }
+    const serverOptions = { ...options, cacheHints: yield* normalizeCacheHints(options.cacheHints) }
     const server = yield* McpServer
     const { core, notificationDelivery } = internalState.get(server)!
     // Subscriptions are disabled, so handlers hold no per-request state and
@@ -2572,7 +2660,7 @@ export const layerHttpRequestScoped = <
       subscribeServerNotifications: Effect.die("Subscriptions are disabled for request-scoped MCP servers"),
       getListChangeRevision: () => notificationDelivery.listChangeRevision,
       defaultLogLevel: yield* CurrentLogLevel,
-      serverInfo: options
+      serverInfo: serverOptions
     }) as Effect.Effect<Context.Context<never>>)
     yield* Effect.acquireRelease(
       Effect.sync(() => {
@@ -2592,7 +2680,7 @@ export const layerHttpRequestScoped = <
           Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
         )
         const notifications = yield* Queue.make<QueuedServerNotification>()
-        yield* runWithRuntime(options, runtime, "http", { notifications, handlers }).pipe(
+        yield* runWithRuntime(serverOptions, runtime, "http", { notifications, handlers }).pipe(
           Effect.provideService(RpcServer.Protocol, protocol),
           Effect.provideService(McpServer, server),
           Effect.forkScoped({ startImmediately: true })

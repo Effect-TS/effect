@@ -327,6 +327,11 @@ export const makeHandlers = (
     context.serverInfo.extensions,
     (value): value is Readonly<Record<string, unknown>> => Predicate.isReadonlyObject(value)
   )
+  // Project only the wire fields; structurally compatible hints can carry extra properties.
+  const cacheHint = (family: keyof McpProtocol.CacheHints) => {
+    const hint = context.serverInfo.cacheHints?.[family]
+    return hint === undefined ? privateStaleCache : { ttlMs: hint.ttlMs, cacheScope: hint.cacheScope }
+  }
   const getDiscovery = Effect.map(context.registrationPresence, (presence) => {
     const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
     if (extensions !== undefined) capabilities.extensions = extensions
@@ -483,7 +488,7 @@ export const makeHandlers = (
     ) {
       const discovery = yield* getDiscovery
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...cacheHint("discover"),
         supportedVersions: Array.from(discovery.supportedVersions),
         capabilities: discovery.capabilities,
         instructions: context.serverInfo.instructions
@@ -496,7 +501,7 @@ export const makeHandlers = (
       const invocation = yield* getInvocation
       const resources = yield* core.resources.list(invocation)
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...cacheHint("resources"),
         resources: resources.map(projectResource)
       }, context.serverInfo)
       return yield* decodeListResourcesResult(result)
@@ -507,7 +512,7 @@ export const makeHandlers = (
       const invocation = yield* getInvocation
       const resourceTemplates = yield* core.resources.listTemplates(invocation)
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...cacheHint("resourceTemplates"),
         resourceTemplates: resourceTemplates.map(projectResourceTemplate)
       }, context.serverInfo)
       return yield* decodeListResourceTemplatesResult(result)
@@ -540,7 +545,7 @@ export const makeHandlers = (
       const prompts = yield* core.prompts.list(invocation)
       const projectedPrompts = yield* Effect.forEach(prompts, projectPrompt)
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...cacheHint("prompts"),
         prompts: projectedPrompts
       }, context.serverInfo)
       return yield* decodeListPromptsResult(result)
@@ -596,7 +601,7 @@ export const makeHandlers = (
       const tools = yield* core.tools.list(invocation)
       const projectedTools = yield* Effect.forEach(tools, projectTool)
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...cacheHint("tools"),
         tools: projectedTools
       }, context.serverInfo)
       return yield* decodeListToolsResult(result)
