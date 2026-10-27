@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Trim surrounding whitespace before unquoting Cookie header values.
+Fix `Cookies.parseHeader` leaving quotes on values surrounded by whitespace.
