@@ -127,7 +127,7 @@ describe("DockerConfig", () => {
 
   it.effect("falls back to the platform's default Endpoint wherever the CLI uses the OS default", () =>
     Effect.gen(function*() {
-      const { dir, write } = yield* makeConfigDir
+      const { context, dir, write } = yield* makeConfigDir
       // the default NodeDocker.layerFromEnv passes on Windows
       const onWindows = (env: Record<string, string>) =>
         read(DockerConfig.layerFromEnv(undefined, { defaultEndpoint: DockerConfig.defaultNpipeEndpoint })).pipe(
@@ -143,6 +143,23 @@ describe("DockerConfig", () => {
       assert.deepStrictEqual(
         yield* onWindows({ DOCKER_TLS_VERIFY: "1" }),
         { _tag: "Tcp", host: "localhost", port: 2376, tls: { verify: true, ca: "CA" } }
+      )
+      // without DOCKER_CONFIG, the config directory is in the platform's home, %USERPROFILE% on Windows, as
+      // Go's os.UserHomeDir reads it: HOME, which Git Bash sets there, is ignored
+      yield* context("desktop-linux", "npipe:////./pipe/dockerDesktopLinuxEngine")
+      yield* write("config.json", JSON.stringify({ currentContext: "desktop-linux", HttpHeaders: { "X-Home": "1" } }))
+      const fs = yield* FileSystem.FileSystem
+      const userProfile = yield* fs.makeTempDirectoryScoped()
+      yield* fs.symlink(dir, `${userProfile}/.docker`)
+      const config = yield* readAll(
+        DockerConfig.layerFromEnv(undefined, {
+          defaultEndpoint: DockerConfig.defaultNpipeEndpoint,
+          homeVariable: "USERPROFILE"
+        })
+      ).pipe(withEnv({ USERPROFILE: userProfile, HOME: yield* fs.makeTempDirectoryScoped() }))
+      assert.deepStrictEqual(
+        [config.endpoint, config.httpHeaders],
+        [{ _tag: "Npipe", path: "//./pipe/dockerDesktopLinuxEngine" }, { "X-Home": "1" }]
       )
     }).pipe(Effect.provide(NodeServices.layer)))
 
