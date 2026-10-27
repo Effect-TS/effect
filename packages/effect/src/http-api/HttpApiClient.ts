@@ -30,7 +30,6 @@ import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Predicate from "../Predicate.ts"
-import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
@@ -485,7 +484,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                 }
               } else {
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
-                httpRequest = yield* appendFlatUrlParams(httpRequest, urlParams)
+                httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
               }
             } else if (streamPayloadEncoder !== undefined) {
               return yield* new Schema.SchemaError(
@@ -502,7 +501,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
-              httpRequest = yield* appendFlatUrlParams(httpRequest, query)
+              httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
             }
           }
 
@@ -866,8 +865,6 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         const queryInput = request?.query === undefined
           ? undefined
           : (encodeQuery === undefined ? request.query : encodeQuery(request.query)) as UrlParams.Input
-        const issue = getNestedUrlParamIssue(queryInput)
-        if (issue !== undefined) throw new Schema.SchemaError(issue)
         const urlParams = queryInput === undefined ? UrlParams.empty : UrlParams.fromInput(queryInput)
         if (options?.baseUrl === undefined) {
           const query = UrlParams.toString(urlParams)
@@ -1475,8 +1472,6 @@ function getEncodePayloadSchemaFromBody(
                 new SchemaIssue.InvalidValue({ message: "Expected a record" }, t, options)
               )
             }
-            const issue = getNestedUrlParamIssue(t)
-            if (issue !== undefined) return Effect.fail(issue)
             return Effect.succeed(HttpBody.urlParams(UrlParams.fromInput(t as any), encoding.contentType))
           }
           case "Uint8Array": {
@@ -1497,37 +1492,4 @@ function getEncodePayloadSchemaFromBody(
   ))
   bodyFromPayloadCache.set(ast, out)
   return out
-}
-
-// URL parameters are flat: `UrlParams.fromInput` writes a nested object as
-// bracket keys and an object inside an array as "[object Object]", and the
-// server reads neither back. Structured values need an explicit codec.
-function getNestedUrlParamIssue(input: unknown): SchemaIssue.Issue | undefined {
-  if (!Predicate.isObject(input) || Predicate.isIterable(input)) return undefined
-  for (const [key, value] of Object.entries(input)) {
-    const values: ReadonlyArray<unknown> = Array.isArray(value) ? value : [value]
-    if (values.some((value) => Predicate.isObjectOrArray(value) && !Redacted.isRedacted(value))) {
-      return new SchemaIssue.Pointer(
-        [key],
-        new SchemaIssue.InvalidValue(
-          {
-            message:
-              "Expected a flat URL parameter value, got a nested object. Use Schema.fromJsonString to send structured values"
-          },
-          value
-        )
-      )
-    }
-  }
-  return undefined
-}
-
-function appendFlatUrlParams(
-  request: HttpClientRequest.HttpClientRequest,
-  input: Record<string, string>
-): Effect.Effect<HttpClientRequest.HttpClientRequest, Schema.SchemaError> {
-  const issue = getNestedUrlParamIssue(input)
-  return issue === undefined
-    ? Effect.succeed(HttpClientRequest.appendUrlParams(request, input))
-    : Effect.fail(new Schema.SchemaError(issue))
 }

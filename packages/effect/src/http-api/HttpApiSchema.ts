@@ -1277,9 +1277,9 @@ export function asJson(options?: {
  *
  * **Gotchas**
  *
- * Fields are flat. The client rejects a payload field that encodes to a
- * nested object; use an explicit codec such as `Schema.fromJsonString(...)`
- * for structured values.
+ * Fields are flat on the server. A field that encodes to a nested object is
+ * sent as bracket keys that the server does not read back; use an explicit
+ * codec such as `Schema.fromJsonString(...)` for structured values.
  *
  * @stability unstable
  * @category encoding

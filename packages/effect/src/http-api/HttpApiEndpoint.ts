@@ -1181,12 +1181,13 @@ type ErrorNoStream<S extends ErrorConstraint> = [
  *
  * **Gotchas**
  *
- * URL parameters are flat: each `query` field, each field of a no-body
- * `payload` and each field of a form-urlencoded `payload` must encode to a
- * string or an array of strings. The client rejects a field that encodes to a
- * nested object. Send structured values with an explicit codec such as
- * `Schema.fromJsonString(...)`, or declare bracket keys literally, for example
- * `"page[size]": Schema.String`.
+ * URL parameters are flat on the server: each `query` field, each field of a
+ * no-body `payload` and each field of a form-urlencoded `payload` should encode
+ * to a string or an array of strings. A field that encodes to a nested object
+ * is sent as bracket keys (`meta[k]=v`) that the server does not read back, so
+ * it is dropped, or reported missing when required. Send structured values with
+ * an explicit codec such as `Schema.fromJsonString(...)`, or declare bracket
+ * keys literally, for example `"page[size]": Schema.String`.
  *
  * @stability unstable
  * @category constructors
