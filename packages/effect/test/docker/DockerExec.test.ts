@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Stream } from "effect"
-import { DockerExec } from "effect/docker"
+import { Cause, Effect, Exit, Stream } from "effect"
+import { type DockerError, DockerExec } from "effect/docker"
 import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -14,6 +14,15 @@ const execEngine = (upgrade: Connection, exitCode = 0) =>
         : request.url.pathname.endsWith("/start")
         ? { headers: { "content-type": "application/vnd.docker.multiplexed-stream" }, upgrade }
         : json({ ID: "e", Running: false, ExitCode: exitCode, OpenStdin: true, ProcessConfig: { tty: false } }))
+  )
+
+/** Starts exec `e` over a connection that sends `output`, and runs `f` with its handle. */
+const withHandle = <A>(
+  output: ReadonlyArray<Uint8Array>,
+  f: (handle: DockerExec.Handle) => Effect.Effect<A, DockerError.DockerError>
+) =>
+  Effect.scoped(DockerExec.DockerExec.use((exec) => Effect.flatMap(exec.start("e"), f))).pipe(
+    execEngine(connection(output)).provide
   )
 
 describe("DockerExec", () => {
@@ -37,5 +46,21 @@ describe("DockerExec", () => {
         exec.run("c", ["echo", "done"], { stdin: Stream.never })
       ).pipe(execEngine(connection([frame(1, "done\n")])).provide)
       assert.deepStrictEqual(result.stdout, bytes("done\n"))
+    }))
+
+  it.live("reads the output once, in arrival order, without stalling on output nobody reads", () =>
+    Effect.gen(function*() {
+      const sent = Array.from({ length: 40 }, (_, i) => i % 3 === 2 ? `e${i}` : `o${i}`)
+      const [frames, second] = yield* withHandle(
+        sent.map((text) => frame(text.startsWith("e") ? 2 : 1, text)),
+        (handle) => Effect.all([Stream.runCollect(handle.frames), Effect.exit(Stream.runDrain(handle.stdout))])
+      )
+      assert.deepStrictEqual(frames.map((frame) => new TextDecoder().decode(frame.data)), sent)
+      assert(Exit.isFailure(second) && Cause.hasDies(second.cause))
+      const stdout = yield* withHandle(
+        [...Array.from({ length: 100 }, (_, i) => frame(2, `e${i}`)), frame(1, "done")],
+        (handle) => Stream.mkString(Stream.decodeText(handle.stdout))
+      ).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(stdout, "done")
     }))
 })

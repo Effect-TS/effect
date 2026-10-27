@@ -108,5 +108,9 @@ describe("DockerError", () => {
         assert.strictEqual(error.reason._tag, tag)
         assert.strictEqual(error.isRetryable, tag === "TooManyRequests" || tag === "Unavailable")
       }
+      // a declared status's body is capped at 1 MiB too
+      const oversized = yield* classify(500, JSON.stringify({ message: "x".repeat(2 * 1024 * 1024) }))
+      assert(oversized.reason._tag === "ServerError")
+      assert.isAtMost(oversized.reason.message.length, 1024 * 1024)
     }))
 })
