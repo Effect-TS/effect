@@ -429,13 +429,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
-  const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) =>
-      restore(semaphore.take(1)).pipe(
-        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-        Effect.andThen(available)
-      ))
-  )
+  const lease = Effect.uninterruptibleMask((restore) => Effect.andThen(restore(semaphore.takeScoped(1)), available))
 
   return {
     acquirer: lease,
