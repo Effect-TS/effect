@@ -81,8 +81,10 @@ export const make = (options: {
  *
  * Keys and values in `OTEL_RESOURCE_ATTRIBUTES` are trimmed, then
  * percent-decoded. Entries with an empty value are kept as `""`; entries
- * without `=` or with an empty key are skipped. Invalid percent-encoding is a
- * `ConfigError` and is converted to a defect.
+ * without `=` or with an empty key are skipped. When a key is repeated as
+ * written, the last entry wins and the earlier ones are not decoded. Invalid
+ * percent-encoding in the remaining entries is a `ConfigError` and is
+ * converted to a defect.
  *
  * @stability unstable
  * @category constructors

@@ -109,9 +109,10 @@ export const configToAttributes = (options: {
  * `OTEL_RESOURCE_ATTRIBUTES` is read with `Config.Record`, so a structured
  * config value is accepted as well as a `key=value` list. In the list, keys and
  * values are trimmed, then percent-decoded once. Entries with an empty value
- * are kept as `""`; entries without `=` or with an empty key are skipped. If
- * any key or value is not valid percent-encoding, the whole variable is
- * discarded and a warning is logged.
+ * are kept as `""`; entries without `=` or with an empty key are skipped. When
+ * a key is repeated as written, the last entry wins and the earlier ones are
+ * not decoded. If any remaining key or value is not valid percent-encoding,
+ * the whole variable is discarded and a warning is logged.
  *
  * @stability unstable
  * @category layers
