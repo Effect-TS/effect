@@ -1037,13 +1037,16 @@ const makeEndpointDecoder = (options: {
       ? Effect.succeed
       : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
     decodeMap[101] = (response) =>
-      Effect.flatMap(response.upgrade, (socket) =>
-        decodeHeaders(response.headers).pipe(
-          Effect.map((headers): Upgraded<unknown> => ({ headers, socket })),
-          // nothing takes the connection on failure, so close it: releasing
-          // the reader's scope closes the connection
-          Effect.onError(() => Effect.ignore(Effect.scoped(socket.reader)))
-        ))
+      // the cleanup must be in place before an interruption can be observed
+      Effect.uninterruptibleMask((restore) =>
+        Effect.flatMap(response.upgrade, (socket) =>
+          restore(decodeHeaders(response.headers)).pipe(
+            Effect.map((headers): Upgraded<unknown> => ({ headers, socket })),
+            // nothing takes the connection on failure, so close it: releasing
+            // the reader's scope closes the connection
+            Effect.onError(() => Effect.ignore(Effect.scoped(socket.reader)))
+          ))
+      )
   }
 
   return (response, sseOptions) => (decodeMap[response.status] ?? decodeMap.orElse)(response, sseOptions)
