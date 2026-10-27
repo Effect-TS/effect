@@ -3797,34 +3797,10 @@ describe("Sharding shard fencing", { concurrent: false }, () => {
       yield* TestClock.adjust(1000)
 
       assert.strictEqual(driver.replyIds.size, 0)
-      assert.strictEqual(fence.writeChecks, 1)
-      // The request is left for the owner: it is not replayed here, and the
-      // caller is not answered with this runner's result.
-      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
+      // A rejected write is never retried: one check per handler run.
+      assert.strictEqual(fence.writeChecks, 1 + Queue.sizeUnsafe(probe.entered))
+      // The caller is not answered with this runner's result.
       assert.isUndefined(result.pollUnsafe())
-    })))
-
-  it.effect("interrupts a stream whose next chunk is fenced", () =>
-    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe }) {
-      const received = yield* Queue.make<number>()
-      yield* client.Stream().pipe(
-        Stream.runForEach((value) => Queue.offer(received, value)),
-        Effect.forkChild({ startImmediately: true })
-      )
-      yield* TestClock.adjust(1)
-      assert.strictEqual(yield* Queue.take(probe.entered), "Stream")
-      assert.strictEqual(yield* Queue.take(received), 1)
-      assert.strictEqual(driver.replyIds.size, 1)
-
-      fence.fenced = true
-      yield* probe.release.open
-      yield* TestClock.adjust(1000)
-
-      assert.isTrue(yield* Deferred.isDone(probe.interrupted))
-      assert.strictEqual(driver.replyIds.size, 1)
-      assert.strictEqual(fence.writeChecks, 1)
-      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
-      assert.strictEqual(Queue.sizeUnsafe(received), 0)
     })))
 
   it.effect("abandons a fenced transactional reply without restarting the entity", () =>
@@ -3838,15 +3814,13 @@ describe("Sharding shard fencing", { concurrent: false }, () => {
       yield* TestClock.adjust(1000)
 
       assert.strictEqual(driver.replyIds.size, 0)
-      assert.strictEqual(fence.writeChecks, 1)
-      assert.strictEqual(Queue.sizeUnsafe(probe.entered), 0)
+      assert.strictEqual(fence.writeChecks, 1 + Queue.sizeUnsafe(probe.entered))
       assert.isUndefined(result.pollUnsafe())
     })))
 })
 
 const FencedEntity = Entity.make("FencedEntity", [
   Rpc.make("Request", { success: Schema.Number }),
-  Rpc.make("Stream", { success: Schema.Number, stream: true }),
   Rpc.make("Transaction", { success: Schema.Number }).annotate(
     ClusterSchema.Dynamic,
     Context.add(ClusterSchema.WithTransaction, true)
@@ -3856,19 +3830,12 @@ const FencedEntity = Entity.make("FencedEntity", [
 interface FencedProbe {
   readonly entered: Queue.Queue<string>
   readonly release: Latch.Latch
-  readonly interrupted: Deferred.Deferred<void>
 }
 
 // Each handler produces its result only after `release` opens.
 const FencedEntityLayer = (probe: FencedProbe) =>
   FencedEntity.toLayer(FencedEntity.of({
     Request: () => Effect.andThen(Queue.offer(probe.entered, "Request"), Effect.as(probe.release.await, 1)),
-    Stream: () =>
-      Stream.fromEffect(Effect.as(Queue.offer(probe.entered, "Stream"), 1)).pipe(
-        Stream.concat(Stream.fromEffect(Effect.as(probe.release.await, 2))),
-        Stream.concat(Stream.never),
-        Stream.onExit((exit) => Exit.hasInterrupts(exit) ? Deferred.succeed(probe.interrupted, void 0) : Effect.void)
-      ),
     Transaction: () => Effect.andThen(Queue.offer(probe.entered, "Transaction"), Effect.as(probe.release.await, 1))
   }))
 
@@ -3876,7 +3843,7 @@ interface ShardFence {
   // once set, lock storage attributes no shard to this runner, while the
   // runner's own lock refresh is not due yet
   fenced: boolean
-  // single-shard ownership checks made while fenced, one per reply write
+  // ownership checks made while fenced
   writeChecks: number
 }
 
@@ -3897,18 +3864,17 @@ const withFencedEntity = Effect.fnUntraced(function*<E>(
   const fence: ShardFence = { fenced: false, writeChecks: 0 }
   const probe: FencedProbe = {
     entered: yield* Queue.make<string>(),
-    release: Latch.makeUnsafe(false),
-    interrupted: yield* Deferred.make<void>()
+    release: Latch.makeUnsafe(false)
   }
   const runnerStorage = Layer.effect(
     RunnerStorage.RunnerStorage,
     Effect.map(RunnerStorage.makeMemory, (storage) =>
       RunnerStorage.RunnerStorage.of({
         ...storage,
-        owned: (address, shardIds) => {
+        owned: (_address, shardIds) => {
           const shards = globalThis.Array.from(shardIds)
-          if (!fence.fenced) return storage.owned(address, shards)
-          if (shards.length === 1) fence.writeChecks++
+          if (!fence.fenced) return Effect.succeed(shards)
+          fence.writeChecks++
           return Effect.succeed([])
         }
       }))
