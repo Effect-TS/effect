@@ -1901,7 +1901,7 @@ const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
 function mcpJsonRpcSerialization(options?: {
   readonly contentType?: string | undefined
 }): RpcSerialization.RpcSerialization["Service"] {
-  const serialization = RpcSerialization.jsonRpc(options)
+  const serialization = RpcSerialization.jsonRpc({ ...options, controlMessages: false })
   return RpcSerialization.RpcSerialization.of({
     ...serialization,
     makeUnsafe: () => {
