@@ -29,8 +29,6 @@ const bigint1 = BigInt(1)
 const bigint2 = BigInt(2)
 const bigint10 = BigInt(10)
 const FRACTION_REGEXP = /^([+-]?\d+)(?:\/([+-]?\d+))?$/
-const MAX_EXPONENT = 1023
-const MIN_NORMAL_EXPONENT = -1022
 const QUOTIENT_BITS = 64
 const MANTISSA_BITS = 53
 const MIN_SUBNORMAL_EXPONENT = -1074
@@ -879,25 +877,6 @@ export const format = (n: Rational): string => `${n.numerator}/${n.denominator}`
 
 const bitLength = (n: bigint): number => n.toString(2).length
 
-// Exact for |exponent| within the double range; chunks keep intermediates normal.
-const scaleByPowerOfTwo = (value: number, exponent: number): number => {
-  while (exponent > MAX_EXPONENT) {
-    value *= 2 ** MAX_EXPONENT
-    exponent -= MAX_EXPONENT
-    if (!Number.isFinite(value)) {
-      return value
-    }
-  }
-  while (exponent < MIN_NORMAL_EXPONENT) {
-    value *= 2 ** MIN_NORMAL_EXPONENT
-    exponent -= MIN_NORMAL_EXPONENT
-    if (value === 0) {
-      return value
-    }
-  }
-  return value * 2 ** exponent
-}
-
 /**
  * Converts a rational to the nearest JavaScript `number`.
  *
@@ -941,21 +920,25 @@ export const toNumberUnsafe = (n: Rational): number => {
   } else if (shift < 0) {
     denominator <<= BigInt(-shift)
   }
-  const quotient = numerator / denominator
-  const inexact = quotient * denominator !== numerator
+  let quotient = numerator / denominator
+  if (quotient * denominator !== numerator) {
+    // A sticky bit keeps a truncated remainder from being mistaken for a tie.
+    quotient |= bigint1
+  }
   // Round once, at the destination precision: 53 bits for normal results, or
   // units of Number.MIN_VALUE for subnormal ones. The quotient has at least 64
   // bits, so at least 11 are dropped.
   const exponent = Math.max(bitLength(quotient) - shift - MANTISSA_BITS, MIN_SUBNORMAL_EXPONENT)
   const drop = BigInt(exponent + shift)
   let rounded = quotient >> drop
-  const remainder = quotient - (rounded << drop)
+  const remainder = quotient & ((bigint1 << drop) - bigint1)
   const half = bigint1 << (drop - bigint1)
-  if (remainder > half || (remainder === half && (inexact || (rounded & bigint1) === bigint1))) {
+  if (remainder > half || (remainder === half && (rounded & bigint1) === bigint1)) {
     rounded += bigint1
   }
-  // `rounded` is at most 2^53, so the conversion and the scaling are exact.
-  const magnitude = scaleByPowerOfTwo(Number(rounded), exponent)
+  // `rounded` is at most 2^53 and `exponent` is at least -1074, so both the
+  // conversion and the power-of-two scaling are exact; overflow gives Infinity.
+  const magnitude = Number(rounded) * 2 ** exponent
   return negative ? -magnitude : magnitude
 }
 
