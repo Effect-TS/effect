@@ -1731,7 +1731,7 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     return node.value as A
   }
   takeN(n: number): Chunk.Chunk<A> {
-    const items = new Array(Math.min(n, this.remaining))
+    const items = new Array(Math.max(0, Math.min(n, this.remaining)))
     for (let i = 0; i < items.length; i++) {
       items[i] = this.take()
     }
