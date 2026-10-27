@@ -485,11 +485,15 @@ const matchesIfRange = (ifRange: string, etag: string | undefined): boolean => {
   return value.startsWith("\"") && value === etag
 }
 
+// Metadata a 304 must repeat from the 200 response (RFC 9110 §15.4.5), plus
+// Last-Modified for cache revalidation.
+const notModifiedHeaders = ["cache-control", "content-location", "date", "etag", "expires", "last-modified", "vary"]
+
 const notModifiedResponse = (
   response: HttpServerResponse.HttpServerResponse
 ): HttpServerResponse.HttpServerResponse => {
   const headers: Record<string, string> = {}
-  for (const name of ["cache-control", "content-location", "date", "etag", "expires", "last-modified", "vary"]) {
+  for (const name of notModifiedHeaders) {
     const value = response.headers[name]
     if (value !== undefined) {
       headers[name] = value
