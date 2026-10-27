@@ -105,7 +105,11 @@ local = 2026-08-05 01:02:03
         "0b100000000000000000000000000000000000000000000000000000"
       ]
     ) {
-      assert.throws(() => Toml.parse(`value = ${token}`), SyntaxError, "Integer out of range")
+      const result = Toml.parse(`value = ${token}`)
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.include(result.failure.message, "Integer out of range")
+      }
     }
   })
 
