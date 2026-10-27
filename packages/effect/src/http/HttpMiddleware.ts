@@ -278,11 +278,17 @@ export const isTracerDisabledUnsafe = (
 
 // OpenTelemetry requires failed server spans for 5xx responses.
 const responseSpanExit = (
+  fiber: Fiber.Fiber<unknown, unknown>,
   request: HttpServerRequest,
   response: HttpServerResponse
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
+  }
+  // Exporters read the error message after the request-scoped redacted names are gone.
+  const url = UrlParams.redactUrl(request.url, fiber.getRef(UrlParams.CurrentRedactedNames))
+  if (url !== request.url) {
+    request = request.modify({ url })
   }
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
@@ -319,7 +325,7 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(request, exit.value))
+        span.end(endTime, responseSpanExit(fiber, request, exit.value))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
@@ -333,10 +339,10 @@ export const tracer: <E, R>(
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
           ? Exit.failCause(cause.value)
-          : responseSpanExit(request, response)
+          : responseSpanExit(fiber, request, response)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(request, response)
+        spanExit = responseSpanExit(fiber, request, response)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)
