@@ -132,15 +132,21 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const pinned = yield* Scope.provide(connection.pin, pinScope)
       const listenScope = yield* Scope.make()
       yield* Scope.provide(pinned.listen("released_listener"), listenScope)
-      // Queue the listener cleanup behind a statement that holds the wire.
-      const closing = yield* Effect.forkDetach(Effect.andThen(Effect.yieldNow, Scope.close(listenScope, Exit.void)))
-      yield* pinned.query("SELECT pg_sleep(0.05)")
+      // Release the pin in the same fiber as the statement, so the release
+      // follows the statement's response without waiting on the scheduler.
+      const releasing = yield* Effect.forkChild(
+        Effect.andThen(pinned.query("SELECT pg_sleep(0.05)"), Scope.close(pinScope, Exit.void)),
+        { startImmediately: true }
+      )
+      // Close the listener while the statement holds the wire, queueing
+      // UNLISTEN behind it.
+      const closing = yield* Effect.forkChild(Scope.close(listenScope, Exit.void), { startImmediately: true })
+      yield* Fiber.join(releasing)
+      yield* Fiber.join(closing)
 
-      yield* Scope.close(pinScope, Exit.void)
       const next = yield* Effect.forkDetach(connection.query("SELECT 1 AS one"))
       const result = yield* Fiber.join(next).pipe(Effect.timeout("2 seconds"))
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
-      yield* Fiber.join(closing)
     }).pipe(TestClock.withLive))
 
   it.effect("waits for an UNLISTEN holding the wire at pin release", () =>
