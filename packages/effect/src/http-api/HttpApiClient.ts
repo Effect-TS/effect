@@ -485,8 +485,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                 }
               } else {
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
-                yield* checkFlatUrlParams(urlParams)
-                httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
+                httpRequest = yield* appendFlatUrlParams(httpRequest, urlParams)
               }
             } else if (streamPayloadEncoder !== undefined) {
               return yield* new Schema.SchemaError(
@@ -503,8 +502,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
-              yield* checkFlatUrlParams(query)
-              httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
+              httpRequest = yield* appendFlatUrlParams(httpRequest, query)
             }
           }
 
@@ -868,10 +866,8 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         const queryInput = request?.query === undefined
           ? undefined
           : (encodeQuery === undefined ? request.query : encodeQuery(request.query)) as UrlParams.Input
-        if (queryInput !== undefined) {
-          const issue = getNestedUrlParamIssue(queryInput)
-          if (issue !== undefined) throw new Schema.SchemaError(issue)
-        }
+        const issue = getNestedUrlParamIssue(queryInput)
+        if (issue !== undefined) throw new Schema.SchemaError(issue)
         const urlParams = queryInput === undefined ? UrlParams.empty : UrlParams.fromInput(queryInput)
         if (options?.baseUrl === undefined) {
           const query = UrlParams.toString(urlParams)
@@ -1507,10 +1503,10 @@ function getEncodePayloadSchemaFromBody(
 // bracket keys and an object inside an array as "[object Object]", and the
 // server reads neither back. Structured values need an explicit codec.
 function getNestedUrlParamIssue(input: unknown): SchemaIssue.Issue | undefined {
-  if (!Predicate.isObject(input) || UrlParams.isUrlParams(input) || Symbol.iterator in input) return undefined
+  if (!Predicate.isObject(input) || Predicate.isIterable(input)) return undefined
   for (const [key, value] of Object.entries(input)) {
     const values: ReadonlyArray<unknown> = Array.isArray(value) ? value : [value]
-    if (values.some((value) => typeof value === "object" && value !== null && !Redacted.isRedacted(value))) {
+    if (values.some((value) => Predicate.isObjectOrArray(value) && !Redacted.isRedacted(value))) {
       return new SchemaIssue.Pointer(
         [key],
         new SchemaIssue.InvalidValue(
@@ -1526,7 +1522,12 @@ function getNestedUrlParamIssue(input: unknown): SchemaIssue.Issue | undefined {
   return undefined
 }
 
-const checkFlatUrlParams = (input: unknown): Effect.Effect<void, Schema.SchemaError> => {
+function appendFlatUrlParams(
+  request: HttpClientRequest.HttpClientRequest,
+  input: Record<string, string>
+): Effect.Effect<HttpClientRequest.HttpClientRequest, Schema.SchemaError> {
   const issue = getNestedUrlParamIssue(input)
-  return issue === undefined ? Effect.void : Effect.fail(new Schema.SchemaError(issue))
+  return issue === undefined
+    ? Effect.succeed(HttpClientRequest.appendUrlParams(request, input))
+    : Effect.fail(new Schema.SchemaError(issue))
 }
