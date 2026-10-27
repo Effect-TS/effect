@@ -791,14 +791,11 @@ an existing SQL-backed `ClusterWorkflowEngine`. Keep the Workflow name stable fo
 compatible handlers and change it for replay-incompatible changes. Completed
 Activities reuse their recorded results. Code outside Activities can run again.
 
-Workflow owns execution, results, interruption, and history cleanup. The MCP
-implementation stores two immutable facts through `DurableDeferred`: owner and
-creation time, and a finished timestamp recorded by a Workflow finalizer. A normal
-active read uses two engine lookups. A terminal read uses three. Neither scans
-history or starts a background poller. After submission, creation waits until the
-identity is readable before returning its handle. It does not report a retryable
-creation error for work already accepted by Workflow. Terminal reads briefly
-retry a missing finished timestamp, then return a retryable error for that handle.
+Workflow owns execution, results, interruption, and history cleanup. Task input
+and status survive runner reconstruction. Creation waits until the task is
+readable before returning its handle. Accepted submissions are not reported as
+retryable creation failures. A read can report a retryable error while a terminal
+outcome becomes available.
 
 ### Memory execution
 
@@ -813,6 +810,27 @@ const ReportsExecution = McpTasks.layerMemory(Reports, {
 This layer has no Workflow dependency. It interrupts its fibers and clears task
 records when its scope closes. It does not survive a restart or provide durable
 task creation, so use it for development and tests.
+
+### Handler input and status
+
+`layerMemory` and `layerWorkflow` provide `McpTasks.TaskContext` to each handler.
+Use `requestInput` to request roots, sampling, or elicitation input and decode the
+client's response. Updates acknowledge receipt without waiting for handler decoding.
+The first received response wins, including when decoding fails. Handle the
+`SchemaError` in the handler or use `Effect.orDie` to treat invalid input as a
+handler defect. Another input round needs a new key. Request keys must be unique
+within the task.
+
+Use `setStatusMessage(key, message)` to publish a message through task polling.
+Give each status checkpoint a stable, unique key, such as
+`setStatusMessage("building", "Building report")`. Passing `undefined` as the
+message clears it. Workflow retains responses and status across runner
+reconstruction, including when completed Activities are skipped during replay.
+Memory execution retains them only while its layer is open.
+
+Use `McpTasks.workflowRace` when racing input against other work in a Workflow.
+Inputs from losing branches are withdrawn, including when replay uses a recorded
+race outcome. Keep handler code and response decoders replay-safe.
 
 ### External jobs
 
@@ -860,8 +878,10 @@ no automatic request deduplication.
 
 The full `Task` union supports `working`, `input_required`, `completed`, `failed`,
 and `cancelled`. Input-required tasks expose `inputRequests`. `tasks/update`
-forwards keyed responses to the execution service. Workflow and memory layers
-issue no input requests, so they authorize updates and ignore response keys.
+forwards keyed responses to the execution service. Workflow and memory handlers
+can issue these requests through `TaskContext`. Both layers acknowledge receipt
+without waiting for application decoding and ignore responses for unknown,
+answered, or withdrawn input keys. Authorization still applies to every update.
 
 Cancellation acknowledges intent. It does not guarantee termination, and later
 reads report the actual outcome. Each backend supplies `ttlMs`, optional

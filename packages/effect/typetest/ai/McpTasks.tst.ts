@@ -210,3 +210,71 @@ it("should preserve unknown requirements for widened task handler records", () =
   expect<Layer.Services<typeof workflow>>().type.toBe<unknown>()
   expect(Effect.runPromise).type.not.toBeCallableWith(Layer.launch(memory))
 })
+
+it("should retain application requirements when memory handlers receive the task context", () => {
+  const execution = McpTasks.layerMemory(reports, {
+    report: Effect.fnUntraced(function*() {
+      const task = yield* McpTasks.TaskContext
+      yield* task.setStatusMessage("approval", "Waiting for approval")
+      yield* task.requestInput({
+        key: "approval",
+        request: { method: "elicitation/create", params: {} },
+        response: Schema.Struct({ approved: Schema.Boolean })
+      }).pipe(Effect.orDie)
+      return yield* Database.useSync(() => "report")
+    })
+  })
+  expect(execution).type.toBe<Layer.Layer<McpTasks.Execution, never, Database>>()
+})
+
+it("should infer response values and retain decoder requirements when a handler requests input", () => {
+  const response = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+    decode: SchemaGetter.transformEffect((value) => Effect.map(Decoder, (scale) => Number(value) * scale)),
+    encode: SchemaGetter.transformEffect((value: number) => Effect.succeed(String(value)))
+  }))
+  const requested = McpTasks.TaskContext.use((task) =>
+    task.requestInput({
+      key: "scaled",
+      request: { method: "elicitation/create", params: {} },
+      response: Schema.Struct({ value: response })
+    })
+  )
+  expect(requested).type.toBe<
+    Effect.Effect<{ readonly value: number }, Schema.SchemaError, McpTasks.TaskContext | Decoder>
+  >()
+})
+
+it("should retain decoder and application requirements when Workflow handlers receive the task context", () => {
+  const value = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+    decode: SchemaGetter.transformEffect((value) => Effect.map(Decoder, (scale) => Number(value) * scale)),
+    encode: SchemaGetter.transformEffect((value: number) => Effect.succeed(String(value)))
+  }))
+  const execution = McpTasks.layerWorkflow(reports, {
+    report: Effect.fnUntraced(function*() {
+      const task = yield* McpTasks.TaskContext
+      yield* task.setStatusMessage("input", "Waiting for input")
+      const result = yield* task.requestInput({
+        key: "scaled",
+        request: { method: "elicitation/create", params: {} },
+        response: Schema.Struct({ value })
+      }).pipe(Effect.orDie)
+      expect(result.value).type.toBe<number>()
+      return yield* Database.useSync(() => String(result.value))
+    })
+  }, options)
+  expect(execution).type.toBe<
+    Layer.Layer<McpTasks.Execution, Schema.SchemaError, WorkflowEngine.WorkflowEngine | Decoder | Database>
+  >()
+})
+
+it("should preserve values, failures, and application services when Workflow effects race", () => {
+  const race = McpTasks.workflowRace({
+    name: "typed-race",
+    success: Schema.String,
+    error: Schema.String,
+    effects: [Database.useSync(() => "ready"), Effect.fail("failed")]
+  })
+  expect(race).type.toBe<
+    Effect.Effect<string, string, Database | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance>
+  >()
+})
