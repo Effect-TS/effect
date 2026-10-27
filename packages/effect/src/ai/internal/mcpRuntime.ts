@@ -139,6 +139,7 @@ export interface HandlerInstallationOptions {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
     readonly extensions?: NonNullable<PublicMcpSchema.ServerCapabilities["extensions"]> | undefined
+    readonly cacheHints?: McpProtocol.CacheHints | undefined
   }
 }
 
