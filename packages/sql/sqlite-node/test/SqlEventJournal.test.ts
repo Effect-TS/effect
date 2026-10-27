@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
+import { Array as Arr, Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
@@ -39,6 +39,19 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+
+// Rejects statements binding more than 999 parameters, SQLite's default limit
+// before 3.32, so oversized batches fail whatever limit the local build has.
+const maxParameters = 999
+const limitParameters = Effect.provideService(Statement.CurrentTransformer, (statement) => {
+  const parameters = statement.compile()[1].length
+  return parameters > maxParameters
+    ? Effect.die(`statement binds ${parameters} parameters`)
+    : Effect.succeed(statement)
+})
+// Over the limit in every per-entry statement, with distinct keys so conflict
+// lookups grow with the batch too.
+const oversizedCount = maxParameters + 1
 
 // Fresh module instances keep their own entry id clock. They load before any
 // test runs, so loading them cannot stall running tests.
@@ -772,6 +785,83 @@ describe("SqlEventJournal", () => {
       }))
       assert.deepStrictEqual(yield* journal.entries, [])
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("writeFromRemote commits a batch over the statement parameter limit in one callback", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const entries = remoteEntries(Arr.makeBy(oversizedCount, (i) => entry(1_000 + i, "Repro", String(i))))
+      const failed = yield* Effect.exit(journal.writeFromRemote({
+        remoteId,
+        entries,
+        effect: () =>
+          Effect.fail(new EventJournal.EventJournalError({ method: "writeFromRemote", cause: "callback failed" }))
+      }))
+      const afterFailure = {
+        failed: Exit.isFailure(failed),
+        entries: (yield* journal.entries).length,
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }
+      const callbacks: Array<number> = []
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries,
+        effect: (batch) =>
+          Effect.sync(() => {
+            callbacks.push(batch.length)
+          })
+      })
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
+      const ids = entries.map(({ entry }) => entry.idString)
+      assert.deepStrictEqual({
+        afterFailure,
+        callbacks,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId),
+        uploadToSource: yield* upload(remoteId),
+        uploadToOther: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        afterFailure: { failed: true, entries: 0, nextSequence: 0 },
+        callbacks: [oversizedCount],
+        stored: ids,
+        nextSequence: oversizedCount,
+        uploadToSource: Option.none(),
+        uploadToOther: Option.some(ids)
+      })
+    }).pipe(limitParameters))
+
+  it.effect("writeMany commits a batch over the statement parameter limit in one callback", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const entries = Arr.makeBy(oversizedCount, (i) => localEntry(String(i)))
+      const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
+      const afterFailure = { failed: Exit.isFailure(failed), entries: (yield* journal.entries).length }
+      const callbacks: Array<number> = []
+      const written = yield* journal.writeMany({
+        entries,
+        effect: (committed) =>
+          Effect.sync(() => {
+            callbacks.push(committed.length)
+            return committed
+          })
+      })
+      const ids = written.map((entry) => entry.idString)
+      assert.deepStrictEqual({
+        afterFailure,
+        callbacks,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        uploaded: yield* journal.withRemoteUncommited(
+          EventJournal.makeRemoteIdUnsafe(),
+          (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+        )
+      }, {
+        afterFailure: { failed: true, entries: 0 },
+        callbacks: [oversizedCount],
+        stored: ids,
+        uploaded: Option.some(ids)
+      })
+    }).pipe(limitParameters))
 
   it.effect("writes and reads entries", () =>
     Effect.gen(function*() {
