@@ -50,6 +50,16 @@ describe("Cookies", () => {
       assertNone(Cookies.get(cookies, "bad name"))
       assertSome(Cookies.getValue(cookies, "session"), "abc")
     })
+
+    it("ignores invalid Max-Age attributes", () => {
+      deepStrictEqual(
+        Cookies.toSetCookieHeaders(Cookies.fromSetCookie([
+          "session=abc; Max-Age=0oops",
+          "theme=dark; Max-Age=60; Max-Age=1.5"
+        ])),
+        ["session=abc", "theme=dark; Max-Age=60"]
+      )
+    })
   })
 
   describe("toSetCookieHeaders", () => {
