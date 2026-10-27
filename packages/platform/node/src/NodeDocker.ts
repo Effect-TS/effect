@@ -136,9 +136,10 @@ export const layer: Layer.Layer<
 /**
  * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
  * `Docker.layer` on Node.js, configured as a bare `docker` invocation is:
- * {@link layer} over `DockerConfig.layerFromEnv(overrides)`, whose default
- * Endpoint is the named pipe `//./pipe/docker_engine` on Windows and the
- * socket `/var/run/docker.sock` elsewhere.
+ * {@link layer} over `DockerConfig.layerFromEnv(overrides)`, with the
+ * platform's defaults: on Windows, the config directory in `%USERPROFILE%`
+ * and the named pipe `//./pipe/docker_engine`; elsewhere, the config
+ * directory in `$HOME` and the socket `/var/run/docker.sock`.
  *
  * **Details**
  *
@@ -163,8 +164,11 @@ export const layerFromEnv = (
   DockerConfig.DockerConfigError
 > =>
   layer.pipe(
-    Layer.provide(DockerConfig.layerFromEnv(overrides, {
-      defaultEndpoint: process.platform === "win32" ? DockerConfig.defaultNpipeEndpoint : DockerConfig.defaultEndpoint
-    })),
+    Layer.provide(DockerConfig.layerFromEnv(
+      overrides,
+      process.platform === "win32"
+        ? { defaultEndpoint: DockerConfig.defaultNpipeEndpoint, homeVariable: "USERPROFILE" }
+        : { defaultEndpoint: DockerConfig.defaultEndpoint, homeVariable: "HOME" }
+    )),
     Layer.provide(NodeServices.layer)
   )

@@ -184,8 +184,7 @@ export const EnvironmentVariables = Config.all({
     "DOCKER_BUILDKIT"
   )),
   authConfig: Config.option(Config.schema(Schema.fromJsonString(ConfigFile), "DOCKER_AUTH_CONFIG")),
-  config: Config.option(Config.String("DOCKER_CONFIG")),
-  home: Config.option(Config.String("HOME"))
+  config: Config.option(Config.String("DOCKER_CONFIG"))
 })
 
 // -----------------------------------------------------------------------------

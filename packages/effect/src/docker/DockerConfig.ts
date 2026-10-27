@@ -10,13 +10,13 @@
  * - {@link layerFromEnv} reads everything as the Docker CLI does, so "if
  *   `docker ps` reaches an Engine, so do we", with any values you pass
  *   taking precedence. It reads the `DOCKER_*` variables and the files in
- *   `~/.docker` once, when the layer is built, and never runs the `docker`
- *   CLI.
+ *   the config directory (`~/.docker`, `%USERPROFILE%\.docker` on Windows)
+ *   once, when the layer is built, and never runs the `docker` CLI.
  *
- * An {@link Endpoint} is the address of an Engine (a unix socket or TCP)
- * together with any TLS material needed to reach it. {@link parseHost} reads
- * a Docker host string. Discovery never contacts the Engine and never probes
- * for sockets. Docker Desktop and rootless Docker are found through the
+ * An {@link Endpoint} is the address of an Engine (a unix socket, a Windows
+ * named pipe or TCP) together with any TLS material needed to reach it.
+ * {@link parseHost} reads a Docker host string. Discovery never contacts the
+ * Engine and never probes for sockets. Docker Desktop and rootless Docker are found through the
  * Contexts they create.
  *
  * **Example** (A static configuration)
@@ -33,6 +33,7 @@
  * @stability unstable
  * @since 4.0.7
  */
+import * as Config from "../Config.ts"
 import * as Context from "../Context.ts"
 import * as Crypto from "../Crypto.ts"
 import * as Data from "../Data.ts"
@@ -580,7 +581,11 @@ export const layer = (
  *    TLS material in `contexts/tls/<sha256(name)>/docker/*.pem` (that
  *    directory turns TLS on, and `SkipTLSVerify` turns verification off);
  *    `"default"` means `DOCKER_HOST`, or the default Endpoint;
- * 3. `currentContext` in `$DOCKER_CONFIG/config.json` (default `~/.docker`);
+ * 3. `currentContext` in the config directory's `config.json`: the config
+ *    directory is `DOCKER_CONFIG`, otherwise `.docker` in the home directory
+ *    that the variable `options.homeVariable` holds, by default `HOME`
+ *    (`NodeDocker.layerFromEnv` passes `USERPROFILE` on Windows, as the CLI
+ *    reads it there). Without either variable, no files are read;
  * 4. the default Endpoint, `options.defaultEndpoint`, by default
  *    {@link defaultEndpoint} (`tcp://localhost:2376` when the TLS variables
  *    are set, on every platform). `NodeDocker.layerFromEnv` passes
@@ -629,6 +634,8 @@ export const layerFromEnv = (
   options?: {
     /** The Endpoint where the CLI falls back to the OS default; by default {@link defaultEndpoint}. */
     readonly defaultEndpoint?: typeof Endpoint.Type | undefined
+    /** The variable that holds the home directory, the OS's: by default `HOME`, `USERPROFILE` on Windows. */
+    readonly homeVariable?: string | undefined
   }
 ): Layer.Layer<DockerConfig, DockerConfigError, FileSystem.FileSystem | Path.Path | Crypto.Crypto> =>
   Layer.effect(DockerConfig)(Effect.gen(function*() {
@@ -646,11 +653,12 @@ export const layerFromEnv = (
           ? fail(new InvalidConfig({ cause: error.cause }))
           : Effect.die(error))
     )
-    // the config directory: `DOCKER_CONFIG`, otherwise `~/.docker`
+    // the config directory: `DOCKER_CONFIG`, otherwise `.docker` in the home directory
+    const home = yield* Effect.orDie(Config.option(Config.String(options?.homeVariable ?? "HOME")))
     const dir = Option.isSome(variables.config)
       ? variables.config.value
-      : Option.isSome(variables.home)
-      ? path.join(variables.home.value, ".docker")
+      : Option.isSome(home)
+      ? path.join(home.value, ".docker")
       : undefined
     // `config.json` is read at most once, and only when something needs it; a missing one is `undefined`
     const configFile = yield* Effect.cached(
