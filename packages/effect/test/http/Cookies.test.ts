@@ -52,6 +52,18 @@ describe("Cookies", () => {
     })
   })
 
+  it("trims whitespace before unquoting request cookie values", () => {
+    for (
+      const header of [
+        "session=\"abc\"; theme=dark",
+        "session=\"abc\" ; theme=dark",
+        "session= \"abc\"; theme=dark"
+      ]
+    ) {
+      deepStrictEqual(Cookies.parseHeader(header), { session: "abc", theme: "dark" })
+    }
+  })
+
   describe("toSetCookieHeaders", () => {
     const invalidCookie = {
       name: "session",

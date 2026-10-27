@@ -887,9 +887,8 @@ export function parseHeader(header: string): Record<string, string> {
 
     const key = header.substring(pos, eqIdx++).trim()
     if (!Object.hasOwn(result, key)) {
-      const val = header.charCodeAt(eqIdx) === 0x22
-        ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
-        : header.substring(eqIdx, terminatorPos).trim()
+      const value = header.substring(eqIdx, terminatorPos).trim()
+      const val = value.charCodeAt(0) === 0x22 ? value.slice(1, -1).trim() : value
 
       InternalRecord.assignProperty(
         result,
