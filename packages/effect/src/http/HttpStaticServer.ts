@@ -448,16 +448,21 @@ const stripWeakEtagPrefix = (value: string): string => {
   return /^w\//i.test(trimmed) ? trimmed.slice(2) : trimmed
 }
 
-// Entity tags may contain commas, so the list is validated whole rather than split.
+// If-Match uses strong comparison (RFC 9110 §13.1.1), so weak tags never
+// match. Tags may contain commas, so the list is validated whole rather than
+// split, and a malformed list matches nothing.
 const entityTagList = /^[\s,]*(?:(?:W\/)?"[^"]*"\s*(?:,[\s,]*|$))*$/
 const entityTag = /(?:W\/)?"[^"]*"/g
 
-// If-Match uses strong comparison (RFC 9110 §13.1.1): weak tags never match,
-// and a malformed list matches nothing.
-const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean =>
-  ifMatch.trim() === "*" ||
-  (etag !== undefined && etag.startsWith("\"") && entityTagList.test(ifMatch) &&
-    (ifMatch.match(entityTag)?.includes(etag) ?? false))
+const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean => {
+  if (ifMatch.trim() === "*") {
+    return true
+  }
+  if (etag === undefined || !etag.startsWith("\"") || !entityTagList.test(ifMatch)) {
+    return false
+  }
+  return ifMatch.match(entityTag)?.includes(etag) ?? false
+}
 
 const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): boolean => {
   const normalizedEtag = etag === undefined ? undefined : stripWeakEtagPrefix(etag)
@@ -525,25 +530,25 @@ const evaluateConditionalRequest = (
   request: HttpServerRequest.HttpServerRequest,
   response: HttpServerResponse.HttpServerResponse
 ): HttpServerResponse.HttpServerResponse | undefined => {
+  const etag = response.headers["etag"]
+  const lastModified = response.headers["last-modified"]
   const ifMatch = request.headers["if-match"]
   if (ifMatch !== undefined) {
-    if (!matchesIfMatch(ifMatch, response.headers["etag"])) {
+    if (!matchesIfMatch(ifMatch, etag)) {
       return HttpServerResponse.empty({ status: 412 })
     }
   } else {
     const ifUnmodifiedSince = request.headers["if-unmodified-since"]
-    if (
-      ifUnmodifiedSince !== undefined && isModifiedSince(ifUnmodifiedSince, response.headers["last-modified"]) === true
-    ) {
+    if (ifUnmodifiedSince !== undefined && isModifiedSince(ifUnmodifiedSince, lastModified) === true) {
       return HttpServerResponse.empty({ status: 412 })
     }
   }
   const ifNoneMatch = request.headers["if-none-match"]
   if (ifNoneMatch !== undefined) {
-    return matchesIfNoneMatch(ifNoneMatch, response.headers["etag"]) ? notModifiedResponse(response) : undefined
+    return matchesIfNoneMatch(ifNoneMatch, etag) ? notModifiedResponse(response) : undefined
   }
   const ifModifiedSince = request.headers["if-modified-since"]
-  if (ifModifiedSince !== undefined && isModifiedSince(ifModifiedSince, response.headers["last-modified"]) === false) {
+  if (ifModifiedSince !== undefined && isModifiedSince(ifModifiedSince, lastModified) === false) {
     return notModifiedResponse(response)
   }
   return undefined

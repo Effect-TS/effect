@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Honor `If-Match` and `If-Unmodified-Since` in `HttpStaticServer`, returning 412 for failed preconditions before cache validation or range handling.
+Fix `HttpStaticServer` ignoring `If-Match` and `If-Unmodified-Since`. Failed preconditions now return 412 before cache validation and range handling.
