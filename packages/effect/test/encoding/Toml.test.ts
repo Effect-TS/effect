@@ -118,10 +118,11 @@ nul = "\u0000"
   })
 
   it("rejects raw control characters", () => {
-    for (const input of [`key = "\u0000"`, `key = '\u007F'`, "# comment\u001F"]) {
+    for (const input of [`"\u0000" = 1`, `key = '\u007F'`, `key = """\u001F"""`, "# comment\r"]) {
       assert.throws(() => Toml.parse(input), SyntaxError, "Invalid control character")
     }
-    assert.deepStrictEqual(Toml.parse("key = '\t' #\t\n"), { key: "\t" })
+    assert.throws(() => Toml.parse(`key = "a\u0000"`), SyntaxError, "Invalid control character at line 1, column 9")
+    assert.deepStrictEqual(Toml.parse("key = '''\t\r\n'''\r\n# \t\r\n"), { key: "\t\r\n" })
   })
 
   it.each([
