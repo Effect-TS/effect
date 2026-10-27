@@ -27,13 +27,12 @@ interface AtomStore<A> {
 
 const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry, WeakMap<Atom.Atom<any>, AtomStore<any>>>()
 
-// React reads snapshots while rendering. A first read builds the atom, and its
-// effect can set other atoms, whose readers React must not hear of during the
-// render. Those notifications wait for the reading component's effects, or a
-// microtask when the render does not commit.
+// React reads snapshots during render. A first read builds the atom, and its
+// effect may set other atoms, whose React subscribers must not be notified
+// mid-render. Those callbacks wait for the reading component's effects, or for
+// a microtask when that render never commits.
 let snapshotDepth = 0
 const deferred = new Set<() => void>()
-let flushScheduled = false
 
 function readSnapshot<A>(read: () => A): A {
   snapshotDepth++
@@ -44,27 +43,18 @@ function readSnapshot<A>(read: () => A): A {
   }
 }
 
-function defer(listener: () => void): void {
-  deferred.add(listener)
-  if (!flushScheduled) {
-    flushScheduled = true
-    queueMicrotask(flushDeferred)
-  }
+function notify(f: () => void): void {
+  if (snapshotDepth === 0) return f()
+  if (deferred.size === 0) queueMicrotask(flushDeferred)
+  deferred.add(f)
 }
 
 function flushDeferred(): void {
-  flushScheduled = false
-  // a listener removed by an earlier one is skipped, one added is run
-  for (const listener of deferred) {
-    deferred.delete(listener)
-    listener()
+  // Set iteration skips callbacks removed by an earlier one and runs added ones
+  for (const f of deferred) {
+    deferred.delete(f)
+    f()
   }
-}
-
-function useFlushDeferred(): void {
-  React.useEffect(() => {
-    if (deferred.size > 0) flushDeferred()
-  })
 }
 
 function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): AtomStore<A> {
@@ -84,17 +74,10 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   const newStore: AtomStore<A> = {
     subscribe(f) {
       subscribers++
-      const listener = () => {
-        if (snapshotDepth > 0) {
-          defer(listener)
-        } else {
-          f()
-        }
-      }
-      const unsubscribe = registry.subscribe(atom, listener)
+      const unsubscribe = registry.subscribe(atom, () => notify(f))
       return () => {
         subscribers--
-        deferred.delete(listener)
+        deferred.delete(f)
         unsubscribe()
       }
     },
@@ -114,7 +97,7 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
 
 function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A {
   const store = makeStore(registry, atom)
-  useFlushDeferred()
+  React.useEffect(flushDeferred)
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
@@ -130,7 +113,7 @@ function useSelectedStore<A, B>(registry: AtomRegistry.AtomRegistry, atom: Atom.
       return last.value
     }
   }, [f])
-  useFlushDeferred()
+  React.useEffect(flushDeferred)
   return React.useSyncExternalStore(
     store.subscribe,
     () => select(store.snapshot()),
