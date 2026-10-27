@@ -1179,6 +1179,15 @@ type ErrorNoStream<S extends ErrorConstraint> = [
  * and response schemas, applying automatic JSON or string-tree codecs unless
  * `disableCodecs` is enabled.
  *
+ * **Gotchas**
+ *
+ * URL parameters are flat: each `query` field, each field of a no-body
+ * `payload` and each field of a form-urlencoded `payload` must encode to a
+ * string or an array of strings. The client rejects a field that encodes to a
+ * nested object. Send structured values with an explicit codec such as
+ * `Schema.fromJsonString(...)`, or declare bracket keys literally, for example
+ * `"page[size]": Schema.String`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0

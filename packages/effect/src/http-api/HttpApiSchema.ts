@@ -1275,6 +1275,12 @@ export function asJson(options?: {
  *
  * The schema's encoded side must be a record of strings.
  *
+ * **Gotchas**
+ *
+ * Fields are flat. The client rejects a payload field that encodes to a
+ * nested object; use an explicit codec such as `Schema.fromJsonString(...)`
+ * for structured values.
+ *
  * @stability unstable
  * @category encoding
  * @since 4.0.0
