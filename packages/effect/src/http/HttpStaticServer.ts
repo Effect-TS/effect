@@ -448,10 +448,16 @@ const stripWeakEtagPrefix = (value: string): string => {
   return /^w\//i.test(trimmed) ? trimmed.slice(2) : trimmed
 }
 
+// Entity tags may contain commas, so the list is validated whole rather than split.
+const entityTagList = /^[\s,]*(?:(?:W\/)?"[^"]*"\s*(?:,[\s,]*|$))*$/
+const entityTag = /(?:W\/)?"[^"]*"/g
+
+// If-Match uses strong comparison (RFC 9110 §13.1.1): weak tags never match,
+// and a malformed list matches nothing.
 const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean =>
   ifMatch.trim() === "*" ||
-  (etag !== undefined && etag.startsWith("\"") &&
-    (ifMatch.match(/(?:W\/)?"[^"]*"/g)?.includes(etag) ?? false))
+  (etag !== undefined && etag.startsWith("\"") && entityTagList.test(ifMatch) &&
+    (ifMatch.match(entityTag)?.includes(etag) ?? false))
 
 const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): boolean => {
   const normalizedEtag = etag === undefined ? undefined : stripWeakEtagPrefix(etag)
