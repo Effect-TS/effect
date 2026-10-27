@@ -295,11 +295,17 @@ class SemaphoreImpl implements Semaphore {
     this.taken -= n
     if (this.waiters.size > 0) {
       fiber.currentDispatcher.scheduleTask(() => {
-        const waiter = firstAvailableWaiter(this)
-        if (waiter === undefined) return
-        const resume = waiter.resume
-        waiter.resume = undefined
-        resume?.()
+        let remaining = this.free
+        // A resumed fiber can register more waiters or cancel another one.
+        for (const waiter of Array.from(this.waiters)) {
+          if (!this.waiters.has(waiter) || waiter.permits > remaining) continue
+          // Count already-woken waiters too: they keep their place until they
+          // acquire, but must not spend the same wake budget twice.
+          remaining -= waiter.permits
+          const resume = waiter.resume
+          waiter.resume = undefined
+          resume?.()
+        }
       }, 0)
     }
     return this.free
