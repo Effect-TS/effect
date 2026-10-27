@@ -32,6 +32,8 @@ const FRACTION_REGEXP = /^([+-]?\d+)(?:\/([+-]?\d+))?$/
 const MAX_EXPONENT = 1023
 const MIN_NORMAL_EXPONENT = -1022
 const QUOTIENT_BITS = 64
+const MANTISSA_BITS = 53
+const MIN_SUBNORMAL_EXPONENT = -1074
 
 /**
  * Represents an exact rational number as a reduced fraction.
@@ -939,12 +941,21 @@ export const toNumberUnsafe = (n: Rational): number => {
   } else if (shift < 0) {
     denominator <<= BigInt(-shift)
   }
-  let quotient = numerator / denominator
-  if (quotient * denominator !== numerator) {
-    // A sticky bit keeps a truncated remainder from being mistaken for a tie.
-    quotient |= bigint1
+  const quotient = numerator / denominator
+  const inexact = quotient * denominator !== numerator
+  // Round once, at the destination precision: 53 bits for normal results, or
+  // units of Number.MIN_VALUE for subnormal ones. The quotient has at least 64
+  // bits, so at least 11 are dropped.
+  const exponent = Math.max(bitLength(quotient) - shift - MANTISSA_BITS, MIN_SUBNORMAL_EXPONENT)
+  const drop = BigInt(exponent + shift)
+  let rounded = quotient >> drop
+  const remainder = quotient - (rounded << drop)
+  const half = bigint1 << (drop - bigint1)
+  if (remainder > half || (remainder === half && (inexact || (rounded & bigint1) === bigint1))) {
+    rounded += bigint1
   }
-  const magnitude = scaleByPowerOfTwo(Number(quotient), -shift)
+  // `rounded` is at most 2^53, so the conversion and the scaling are exact.
+  const magnitude = scaleByPowerOfTwo(Number(rounded), exponent)
   return negative ? -magnitude : magnitude
 }
 
