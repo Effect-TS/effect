@@ -16278,7 +16278,12 @@ function makeClass<
       return getClassSchema(this).rebuild(ast)
     }
     static make(input: S["~type.make.in"], options?: MakeOptions): Self {
-      return SchemaParser.make(getClassSchema(this) as any)(input ?? {}, options) as Self
+      return SchemaParser.makeClassSync(
+        SchemaAST.toType(getClassSchema(this).ast),
+        input ?? {},
+        options,
+        (fields) => makeClassTrusted(this, fields)
+      )
     }
     static makeOption(input: S["~type.make.in"], options?: MakeOptions): Option_.Option<Self> {
       return SchemaParser.makeOption(getClassSchema(this) as any)(input ?? {}, options) as any

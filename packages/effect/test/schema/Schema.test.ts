@@ -7032,6 +7032,20 @@ Expected a value between -2147483648 and 2147483647`
       assert.strictEqual(constructions, 1)
     })
 
+    it("make preserves constructor defects", () => {
+      const defect = new Error("constructor defect")
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {
+        readonly failure = (() => {
+          throw defect
+        })()
+      }
+
+      throws(() => A.make({ a: "a" }), (error) => {
+        assertTrue(error instanceof Error)
+        assert.deepStrictEqual(error.cause, Cause.die(defect))
+      })
+    })
+
     it("make with void input", () => {
       class A extends Schema.Class<A>("A")({}) {}
       deepStrictEqual(A.make(), new A())
@@ -7689,6 +7703,22 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Error", () => {
+    it("make retains the caller in error stacks", () => {
+      class Untagged extends Schema.Error<Untagged>("Untagged")({ message: Schema.String }) {}
+      class Tagged extends Schema.TaggedError<Tagged>()("Tagged", { message: Schema.String }) {}
+      const limit = Error.stackTraceLimit
+      Error.stackTraceLimit = 10
+      try {
+        for (const ErrorClass of [Untagged, Tagged]) {
+          const makeErrorAtCallsite = () => ErrorClass.make({ message: "failure" })
+          const error = makeErrorAtCallsite()
+          assert.include(error.stack, "makeErrorAtCallsite")
+        }
+      } finally {
+        Error.stackTraceLimit = limit
+      }
+    })
+
     it("make with void input", () => {
       class E extends Schema.Error<E>("E")({}) {}
       deepStrictEqual(E.make(), new E())
