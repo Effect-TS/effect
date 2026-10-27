@@ -1,12 +1,53 @@
-import { redact } from "../../Redactable.ts"
+import * as Context from "../../Context.ts"
+import { currentFiberTypeId, redact } from "../../Redactable.ts"
 import * as Redacted from "../../Redacted.ts"
 import type * as HttpClientError from "../HttpClientError.ts"
 import type * as HttpClientRequest from "../HttpClientRequest.ts"
+import * as UrlParams from "../UrlParams.ts"
 
 // Node, Deno and Bun wordings for a rejected header value
 const invalidHeaderValue = /invalid header value|has invalid value/i
 
 const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+// a printed URL encodes lone surrogates as U+FFFD, which `encodeURIComponent` rejects
+const queryValueForms = (value: string): Array<string> => {
+  const wellFormed = value.replace(loneSurrogate, "\uFFFD")
+  return [value, encodeURIComponent(wellFormed), new URLSearchParams([["", wellFormed]]).toString().slice(1)]
+}
+
+const decode = (value: string, plusAsSpace: boolean): string => {
+  try {
+    return decodeURIComponent(plusAsSpace ? value.replace(/\+/g, " ") : value)
+  } catch {
+    return value
+  }
+}
+
+const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
+  Context.get((globalThis as any)[currentFiberTypeId]?.context ?? Context.empty(), UrlParams.CurrentRedactedNames)
+
+// secrets written into the URL string itself, following `UrlParams.redactUrl`
+const urlSecrets = (url: string): Array<string> => {
+  const secrets: Array<string> = []
+  try {
+    const { password, username } = new URL(url)
+    for (const part of [username, password]) secrets.push(part, decode(part, false))
+  } catch {
+    // a malformed URL can still carry a query
+  }
+  const queryStart = url.indexOf("?")
+  if (queryStart === -1) return secrets
+  const hashStart = url.indexOf("#", queryStart)
+  const names = currentRedactedNames()
+  for (const part of url.slice(queryStart + 1, hashStart === -1 ? undefined : hashStart).split("&")) {
+    const index = part.indexOf("=")
+    if (index === -1 || !UrlParams.isRedactedName(decode(part.slice(0, index), true), names)) continue
+    const value = part.slice(index + 1)
+    secrets.push(value, ...queryValueForms(decode(value, true)))
+  }
+  return secrets
+}
 
 /**
  * The sensitive header and query values of a request, in the forms they can
@@ -30,11 +71,9 @@ const requestSecrets = (request: HttpClientRequest.HttpClientRequest): Array<str
       : Redacted.isRedacted(params[name])
       ? value
       : undefined
-    if (secret === undefined) continue
-    // a printed URL encodes lone surrogates as U+FFFD, which `encodeURIComponent` rejects
-    const wellFormed = secret.replace(loneSurrogate, "\uFFFD")
-    secrets.push(secret, encodeURIComponent(wellFormed), new URLSearchParams([["", wellFormed]]).toString().slice(1))
+    if (secret !== undefined) secrets.push(...queryValueForms(secret))
   }
+  secrets.push(...urlSecrets(request.url))
   return secrets.filter((secret) => secret !== "").sort((a, b) => b.length - a.length)
 }
 
