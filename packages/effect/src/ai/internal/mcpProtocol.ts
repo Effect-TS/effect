@@ -16,6 +16,7 @@ import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import type * as PublicMcpServer from "../McpServer.ts"
 import * as McpCore from "./mcpCore.ts"
 
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
@@ -443,12 +444,25 @@ export interface HandlerInstallationContext {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
     readonly extensions?: PublicMcpSchema.ServerCapabilities["extensions"] | undefined
+    readonly cacheHints?: CacheHints | undefined
   }
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
   }>
+}
+
+/**
+ * Cache hints normalized to wire values when the server is constructed.
+ *
+ * @internal
+ */
+export type CacheHints = {
+  readonly [Family in keyof PublicMcpServer.CacheHints]?: {
+    readonly ttlMs: number
+    readonly cacheScope: "private"
+  }
 }
 
 /**

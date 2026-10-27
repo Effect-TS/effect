@@ -351,6 +351,38 @@ const Registrations = Layer.mergeAll(
 - `list_changed` notifications are not sent when visibility changes; clients see the change on
   their next list request.
 
+### Cache hints
+
+Under `v2026_07_28`, discovery, list and resource-read results tell clients how long they may
+treat the result as fresh. By default every result has `{ ttlMs: 0, cacheScope: "private" }`, so
+clients refetch each time. Pass `cacheHints` to a server layer to let clients keep a list for
+longer:
+
+```typescript
+import { McpProtocol, McpServer } from "effect/ai"
+
+const ServerLayer = McpServer.layerHttp({
+  name: "Demo Server",
+  version: "1.0.0",
+  path: "/mcp",
+  protocols: [McpProtocol.v2026_07_28],
+  cacheHints: {
+    tools: { ttl: "1 minute", cacheScope: "private" }
+  }
+})
+```
+
+- The entries are `discover`, `tools`, `resources`, `resourceTemplates` and `prompts`. Omitted
+  entries and `resources/read` keep the default. Earlier protocol revisions ignore the option.
+- `ttl` accepts any `Duration.Input` and is sent as whole milliseconds, rounded down. It must be
+  finite and nonnegative, and only `"private"` scope is supported. Otherwise building the layer
+  fails with `IllegalArgumentError`.
+- The hints only tell clients what they may cache. The server still lists registrations, applies
+  visibility and checks each call on every request.
+- With a positive `ttl`, a client can keep showing a list after registrations or visibility
+  change, until the hint expires. Private scope does not separate users, so a client shared between
+  users can show one user's list to another.
+
 ## Elicitation requests
 
 Elicitation requests are used to request additional input directly from the user. An elicitation
