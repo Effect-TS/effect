@@ -27,6 +27,36 @@ interface AtomStore<A> {
 
 const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry, WeakMap<Atom.Atom<any>, AtomStore<any>>>()
 
+// React reads snapshots during render. A first read builds the atom, and its
+// effect may set other atoms, whose React subscribers must not be notified
+// mid-render. Those callbacks wait for the reading component's effects, or for
+// a microtask when that render never commits.
+let snapshotDepth = 0
+const deferred = new Set<() => void>()
+
+function readSnapshot<A>(read: () => A): A {
+  snapshotDepth++
+  try {
+    return read()
+  } finally {
+    snapshotDepth--
+  }
+}
+
+function notify(f: () => void): void {
+  if (snapshotDepth === 0) return f()
+  if (deferred.size === 0) queueMicrotask(flushDeferred)
+  deferred.add(f)
+}
+
+function flushDeferred(): void {
+  // Set iteration skips callbacks removed by an earlier one and runs added ones
+  for (const f of deferred) {
+    deferred.delete(f)
+    f()
+  }
+}
+
 function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): AtomStore<A> {
   let stores = storeRegistry.get(registry)
   if (stores === undefined) {
@@ -44,18 +74,19 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   const newStore: AtomStore<A> = {
     subscribe(f) {
       subscribers++
-      const unsubscribe = registry.subscribe(atom, f)
+      const unsubscribe = registry.subscribe(atom, () => notify(f))
       return () => {
         subscribers--
+        deferred.delete(f)
         unsubscribe()
       }
     },
     snapshot() {
-      return registry.get(atom)
+      return readSnapshot(() => registry.get(atom))
     },
     getServerSnapshot() {
       if (subscribers === 0 || serverSnapshot === undefined) {
-        serverSnapshot = { value: Atom.getServerValue(atom, registry) }
+        serverSnapshot = { value: readSnapshot(() => Atom.getServerValue(atom, registry)) }
       }
       return serverSnapshot.value
     }
@@ -66,7 +97,7 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
 
 function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A {
   const store = makeStore(registry, atom)
-
+  React.useEffect(flushDeferred)
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
@@ -82,7 +113,7 @@ function useSelectedStore<A, B>(registry: AtomRegistry.AtomRegistry, atom: Atom.
       return last.value
     }
   }, [f])
-
+  React.useEffect(flushDeferred)
   return React.useSyncExternalStore(
     store.subscribe,
     () => select(store.snapshot()),
