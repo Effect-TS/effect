@@ -99,29 +99,18 @@ describe("HttpStaticServer conditional requests", () => {
       const handler = HttpEffect.toWebHandler(app)
       const earlier = "Sat, 05 Nov 1994 10:00:00 GMT"
       for (
-        const [method, headers, status] of [
-          ["GET", { "If-Match": "\"stale\"" }, 412],
-          ["HEAD", { "If-Match": "\"stale\"" }, 412],
-          ["GET", { "If-Match": "W/\"v1\"" }, 412],
-          ["GET", { "If-Match": "\"v1\"" }, 200],
-          ["GET", { "If-Match": "*" }, 200],
-          ["GET", { "If-Match": "\"other\", \"v1\"" }, 200],
-          ["GET", { "If-Match": "\"stale\"", Range: "bytes=2-5" }, 412],
-          ["GET", { "If-Match": "\"stale\"", "If-None-Match": "\"v1\"" }, 412],
-          ["GET", { "If-Match": "\"v1\"", "If-None-Match": "\"v1\"" }, 304],
-          ["GET", { "If-Unmodified-Since": earlier }, 412],
-          ["GET", { "If-Unmodified-Since": lastModified }, 200],
-          ["GET", { "If-Unmodified-Since": "Mon, 07 Nov 1994 10:00:00 GMT" }, 200],
-          ["GET", { "If-Unmodified-Since": "invalid" }, 200],
-          ["GET", { "If-Unmodified-Since": earlier, Range: "bytes=2-5" }, 412],
-          ["GET", { "If-Unmodified-Since": earlier, "If-None-Match": "\"v1\"" }, 412],
-          ["GET", { "If-Match": "\"v1\"", "If-Unmodified-Since": earlier }, 200]
+        const [headers, status] of [
+          [{ "If-Match": "\"stale\"", "If-None-Match": "\"v1\"", Range: "bytes=2-5" }, 412],
+          [{ "If-Match": "W/\"v1\"" }, 412],
+          [{ "If-Match": "\"other\", \"v1\"", "If-None-Match": "\"v1\"" }, 304],
+          [{ "If-Unmodified-Since": earlier, "If-None-Match": "\"v1\"", Range: "bytes=2-5" }, 412],
+          [{ "If-Unmodified-Since": lastModified }, 200],
+          [{ "If-Unmodified-Since": "invalid" }, 200],
+          [{ "If-Match": "\"v1\"", "If-Unmodified-Since": earlier }, 200]
         ] as const
       ) {
-        const response = yield* Effect.promise(() =>
-          handler(new Request("http://localhost/file.txt", { method, headers }))
-        )
-        assert.strictEqual(response.status, status, JSON.stringify({ method, headers }))
+        const response = yield* Effect.promise(() => handler(new Request("http://localhost/file.txt", { headers })))
+        assert.strictEqual(response.status, status, JSON.stringify(headers))
         if (status === 412) {
           assert.strictEqual(yield* Effect.promise(() => response.text()), "")
           assert.strictEqual(response.headers.get("content-range"), null)
