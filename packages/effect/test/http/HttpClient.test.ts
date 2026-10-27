@@ -719,13 +719,38 @@ Missing key
     })
 
     it("redacts URL userinfo and protected inline query values in a description from the cause", () => {
-      const url = "http://user-secret:password-secret@localhost:11434/path?Signature=signature-secret&q=visible"
-      const cause = new TypeError(`Request cannot be constructed from a URL that includes credentials: ${url}`)
-      const message = new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause }).message
-      assert.include(message, "Request cannot be constructed from a URL that includes credentials")
-      for (const secret of ["user-secret", "password-secret", "signature-secret"]) {
-        assert.notInclude(message, secret)
+      for (
+        const [url, printed = url] of [
+          ["http://user-secret:password-secret@localhost:11434/path?Signature=signature-secret&q=visible"],
+          // malformed and scheme-relative authorities
+          ["http://user-secret:password-secret@localhost:invalid/path?Signature=signature-secret"],
+          ["http://user-secret:password-secret@[::1x]/path"],
+          ["//user-secret:password-secret@localhost:11434/path?Signature=signature-secret"],
+          // percent-encoded userinfo, printed raw and decoded
+          [
+            "http://user%2Dsecret:password%2Dsecret@localhost:11434/path",
+            "http://user%2Dsecret:password%2Dsecret@localhost:11434/path http://user-secret:password-secret@localhost:11434/path"
+          ]
+        ]
+      ) {
+        const cause = new TypeError(`Request cannot be constructed from a URL that includes credentials: ${printed}`)
+        const message = new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause }).message
+        assert.include(message, "Request cannot be constructed from a URL that includes credentials")
+        for (
+          const secret of ["user-secret", "password-secret", "signature-secret", "user%2Dsecret", "password%2Dsecret"]
+        ) {
+          assert.notInclude(message, secret, url)
+        }
       }
+    })
+
+    it("keeps fragment text in a description from the cause", () => {
+      const url = "http://localhost:11434/path#?Signature=not-a-secret"
+      const error = new HttpClientError.TransportError({
+        request: HttpClientRequest.get(url),
+        cause: new Error(`fetch ${url}`)
+      })
+      strictEqual(error.message, `Transport: fetch ${url} (GET ${url})`)
     })
   })
 
