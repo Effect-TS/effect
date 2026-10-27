@@ -1,6 +1,6 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Queue, Redacted, Scheduler, Scope, Stream } from "effect"
 import type { SqlError } from "effect/sql/SqlError"
 import * as TestClock from "effect/testing/TestClock"
 import * as Net from "node:net"
@@ -97,6 +97,35 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(result.rows, [{ one: 1 }])
       yield* Fiber.join(closing)
     }).pipe(TestClock.withLive))
+
+  it.effect("waits for an UNLISTEN holding the wire at pin release", () =>
+    Effect.gen(function*() {
+      // Each run has a narrow window, so repeat it to make a regression show up reliably.
+      for (let run = 0; run < 10; run++) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* makeConnection()
+          const pinScope = yield* Scope.make()
+          const pinned = yield* Scope.provide(connection.pin, pinScope)
+          const listenScope = yield* Scope.make()
+          yield* Scope.provide(pinned.listen("unlistening_listener"), listenScope)
+          const closing = yield* Effect.forkDetach(
+            Effect.andThen(Effect.yieldNow, Scope.close(listenScope, Exit.void))
+          )
+          yield* pinned.query("SELECT pg_sleep(0.05)")
+          // Let the queued UNLISTEN take the wire, so the release lands while
+          // it runs or between its completion and the permit release.
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+
+          yield* Scope.close(pinScope, Exit.void)
+          const next = yield* Effect.forkDetach(connection.query("SELECT 1 AS one"))
+          const result = yield* Fiber.join(next).pipe(Effect.timeout("2 seconds"))
+          assert.deepStrictEqual(result.rows, [{ one: 1 }])
+          yield* Fiber.join(closing)
+        }))
+      }
+    }).pipe(TestClock.withLive, Effect.provideService(Scheduler.MaxOpsBeforeYield, 5)))
 
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
