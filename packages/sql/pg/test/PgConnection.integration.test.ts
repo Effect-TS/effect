@@ -24,6 +24,51 @@ const assertInterruptedOnClose = Effect.fnUntraced(function*(
   assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
 })
 
+// Runs a fiber normally until `holding` is set, then queues its tasks and runs
+// them one at a time through `step`, so a test can stop it between two operations.
+class SteppedScheduler implements Scheduler.Scheduler {
+  readonly executionMode = "async"
+  holding = false
+  private readonly fallback = new Scheduler.MixedScheduler()
+  private readonly held: Array<() => void> = []
+  private onHeld: (() => void) | undefined
+
+  // While holding, yield after one operation; the first operation after a
+  // yield only resumes the yielded continuation.
+  shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+    return this.holding ? fiber.currentOpCount > 2 : this.fallback.shouldYield(fiber)
+  }
+
+  makeDispatcher(): Scheduler.SchedulerDispatcher {
+    const dispatcher = this.fallback.makeDispatcher()
+    return {
+      scheduleTask: (task, priority) => {
+        if (!this.holding) return dispatcher.scheduleTask(task, priority)
+        this.held.push(task)
+        const onHeld = this.onHeld
+        this.onHeld = undefined
+        onHeld?.()
+      },
+      flush: () => dispatcher.flush()
+    }
+  }
+
+  readonly step: Effect.Effect<void> = Effect.callback((resume) => {
+    const run = () =>
+      setImmediate(() => {
+        this.held.shift()!()
+        resume(Effect.void)
+      })
+    if (this.held.length > 0) run()
+    else this.onHeld = run
+  })
+
+  release(): void {
+    this.holding = false
+    for (const task of this.held.splice(0)) setImmediate(task)
+  }
+}
+
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
   it.effect("interrupts notification consumers when the connection scope closes", () =>
     Effect.gen(function*() {
@@ -126,6 +171,56 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         }))
       }
     }).pipe(TestClock.withLive, Effect.provideService(Scheduler.MaxOpsBeforeYield, 5)))
+
+  it.effect("does not wait for ordinary work that overtakes UNLISTEN at pin release", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const sockets: Array<Net.Socket> = []
+      const written: Array<string> = []
+      const connection = yield* makeConnection({
+        stream: () => {
+          const socket = Net.connect({ host: container.getHost(), port: container.getMappedPort(5432) })
+          const write = socket.write.bind(socket) as (chunk: Uint8Array) => boolean
+          socket.write = ((chunk: Uint8Array) => {
+            written.push(Buffer.from(chunk).toString("latin1"))
+            return write(chunk)
+          }) as typeof socket.write
+          sockets.push(socket)
+          return socket
+        }
+      })
+      const sent = (text: string) => written.some((frame) => frame.includes(text))
+      const pinScope = yield* Scope.make()
+      const pinned = yield* Scope.provide(connection.pin, pinScope)
+      const listenScope = yield* Scope.make()
+      yield* Scope.provide(pinned.listen("overtaken_listener"), listenScope)
+
+      yield* Effect.gen(function*() {
+        // Hold the UNLISTEN reply so the cleanup keeps the wire.
+        for (const socket of sockets) socket.pause()
+        const scheduler = new SteppedScheduler()
+        const closing = yield* Effect.forkDetach(Scope.close(listenScope, Exit.void)).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        while (!sent("UNLISTEN")) yield* Effect.yieldNow
+        const overtaking = yield* Effect.forkDetach(pinned.query("SELECT pg_sleep(30)"))
+        // The forked query queues on the wire before this fiber resumes.
+        yield* Effect.yieldNow
+
+        // Step the cleanup until the wire passes to the queued query, leaving
+        // the rest of the cleanup unrun.
+        scheduler.holding = true
+        for (const socket of sockets) socket.resume()
+        while (!sent("pg_sleep(30)")) yield* scheduler.step
+
+        const releasing = yield* Effect.forkDetach(Scope.close(pinScope, Exit.void))
+        scheduler.release()
+        const released = yield* Fiber.await(releasing).pipe(Effect.timeoutOption("2 seconds"))
+        assert.isTrue(Option.isSome(released), "pin release waited for the overtaking query")
+        assert.isTrue(Exit.isFailure(yield* Fiber.await(overtaking)))
+        yield* Fiber.join(closing)
+      }).pipe(Effect.ensuring(Effect.sync(() => sockets.forEach((socket) => socket.destroy()))))
+    }).pipe(TestClock.withLive), { timeout: 30000 })
 
   it.effect("connects through ReadyForQuery", () =>
     Effect.gen(function*() {
