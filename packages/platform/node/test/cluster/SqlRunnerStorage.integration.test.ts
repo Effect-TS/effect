@@ -117,13 +117,6 @@ describe("cluster SQL storage with a DML-only role", () => {
 
 const StorageLayer = SqlRunnerStorage.layer
 
-const PoolOfTwo = Layer.unwrap(
-  Effect.gen(function*() {
-    const container = yield* PgContainer
-    return PgClient.layer({ url: Redacted.make(container.getConnectionUri()), maxConnections: 2 })
-  })
-)
-
 // Allow for CI latency in healthy PostgreSQL queries.
 const lockOperationInterval = 1000
 const partitionConfig = {
@@ -426,32 +419,6 @@ describe("SqlRunnerStorage", () => {
       60_000
     )
 
-    it.effect(
-      "checks leases without waiting for a connection held by the caller's transaction",
-      () =>
-        Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
-          const storage = yield* SqlRunnerStorage.make({ prefix: "pool" })
-          const shards = [ShardId.make("default", 1)]
-          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
-
-          // The reserved lock connection and the transaction fill the pool.
-          const owned = yield* sql.withTransaction(storage.owned(runnerAddress1, shards)).pipe(
-            Effect.timeoutOrElse({
-              duration: 10_000,
-              orElse: () => Effect.die("owned waited for a connection the pool could not give")
-            })
-          )
-          expect(owned).toEqual(shards)
-        }).pipe(
-          Effect.scoped,
-          Effect.provide(PoolOfTwo),
-          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true })),
-          TestClock.withLive
-        ),
-      60_000
-    )
-
     it.effect("isolates advisory shard locks by prefix", () =>
       Effect.gen(function*() {
         const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
@@ -606,86 +573,6 @@ describe("SqlRunnerStorage", () => {
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
-
-      // A storage instance serves a single runner, so each runner asks its own.
-      if (label.startsWith("pg")) {
-        it.effect("owned", () =>
-          Effect.gen(function*() {
-            const sql = yield* SqlClient.SqlClient
-            const storage = yield* RunnerStorage.RunnerStorage
-            // Shards no other test acquires: releases do not clear what
-            // `owned` reports, so earlier acquisitions would show up.
-            const shards = [21, 22, 23, 24].map((id) => ShardId.make("default", id))
-            const ownedIds = Effect.fnUntraced(function*(address: RunnerAddress.RunnerAddress) {
-              const owned = yield* storage.owned(address, shards)
-              return owned.map((_) => _.id).sort((a, b) => a - b)
-            })
-
-            yield* storage.acquire(runnerAddress1, shards.slice(0, 3))
-            expect(yield* ownedIds(runnerAddress1)).toEqual([21, 22, 23])
-
-            if (label === "pg") {
-              // The lock session dies before this runner refreshes its locks.
-              yield* sql`SELECT pg_terminate_backend(pid, 10000) FROM pg_locks
-              WHERE locktype = 'advisory' AND objsubid = 2
-              AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`
-              expect(yield* ownedIds(runnerAddress1)).toEqual([])
-            }
-
-            if (label.endsWith("(no advisory)")) {
-              // A's lease expires without a refresh and B takes it over. Each
-              // runner asks its own storage.
-              yield* Effect.gen(function*() {
-                const storageA = yield* SqlRunnerStorage.make({})
-                const storageB = yield* SqlRunnerStorage.make({})
-                const leased = [5, 6, 7].map((id) => ShardId.make("default", id))
-                const ids = (owned: ReadonlyArray<ShardId.ShardId>) => owned.map((_) => _.id).sort((a, b) => a - b)
-
-                expect(yield* storageA.acquire(runnerAddress1, leased)).toHaveLength(3)
-                yield* Effect.sleep(3_500)
-                expect(yield* storageB.acquire(runnerAddress2, leased)).toHaveLength(3)
-                expect(ids(yield* storageA.owned(runnerAddress1, leased))).toEqual([])
-                expect(ids(yield* storageB.owned(runnerAddress2, leased))).toEqual([5, 6, 7])
-              }).pipe(
-                Effect.scoped,
-                Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: 2_000 })),
-                TestClock.withLive
-              )
-            }
-          }), 30_000)
-      }
-
-      // SQLite has no separate lock connection, so its refreshes run inside
-      // the caller's transaction.
-      if (label.endsWith("(no advisory)") && !label.startsWith("sqlite")) {
-        it.effect(
-          "owned sees lease refreshes made after the caller's transaction started",
-          () =>
-            Effect.gen(function*() {
-              const sql = yield* SqlClient.SqlClient
-              const storage = yield* SqlRunnerStorage.make({})
-              const shards = [ShardId.make("default", 11)]
-              expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
-
-              yield* sql.withTransaction(Effect.gen(function*() {
-                // An early read, like a handler's, fixes the snapshot of a
-                // REPEATABLE READ transaction.
-                expect(yield* storage.owned(runnerAddress1, shards)).toEqual(shards)
-                // The lease stays alive past its expiration.
-                for (let i = 0; i < 5; i++) {
-                  yield* Effect.sleep(1000)
-                  expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
-                }
-                expect(yield* storage.owned(runnerAddress1, shards)).toEqual(shards)
-              }))
-            }).pipe(
-              Effect.scoped,
-              Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: 3000 })),
-              TestClock.withLive
-            ),
-          30_000
-        )
-      }
 
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>

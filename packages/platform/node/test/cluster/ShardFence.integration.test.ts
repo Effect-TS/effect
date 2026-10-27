@@ -1,16 +1,14 @@
 import { NodeCrypto } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Latch, Layer, Option, Schema } from "effect"
+import { Clock, Context, Deferred, Effect, Latch, Layer, Option, Schema } from "effect"
 import {
   ClusterSchema,
   Entity,
   EntityId,
   MessageStorage,
-  type Runner,
   RunnerAddress,
   RunnerHealth,
   Runners,
-  RunnerStorage,
   Sharding,
   ShardingConfig,
   type Snowflake,
@@ -53,37 +51,34 @@ const HoldLayer = (probe: RunnerProbe) =>
     })
   }))
 
-// What a frozen runner believes: its locks are fine, no shard is free and the
-// set of runners has not changed. Its heartbeat stops with its refreshes.
-const freezableRunnerStorage = (frozen: { value: boolean }) =>
-  Layer.effect(
-    RunnerStorage.RunnerStorage,
-    Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      let runners: Array<readonly [runner: Runner.Runner, healthy: boolean]> = []
-      return RunnerStorage.RunnerStorage.of({
-        ...storage,
-        getRunners: Effect.suspend(() =>
-          frozen.value ? Effect.succeed(runners) : Effect.map(storage.getRunners, (current) => runners = current)
-        ),
-        acquire: (address, shardIds) =>
-          Effect.suspend(() => frozen.value ? Effect.succeed([]) : storage.acquire(address, shardIds)),
-        refresh: (address, shardIds) =>
-          Effect.suspend(() =>
-            frozen.value ? Effect.succeed(globalThis.Array.from(shardIds)) : storage.refresh(address, shardIds)
-          )
-      })
-    })
-  ).pipe(Layer.provide(SqlRunnerStorage.layer))
+// A clock whose timers stop firing while frozen, as in a paused process: the
+// runner's lock refreshes, heartbeats and storage polls stall, while work that
+// does not wait on a timer, such as a running handler, carries on.
+const makeFreezableClock = () => {
+  const live = Clock.Clock.defaultValue()
+  const thawed = Latch.makeUnsafe(true)
+  const clock: Clock.Clock = {
+    currentTimeMillisUnsafe: () => live.currentTimeMillisUnsafe(),
+    currentTimeMillis: live.currentTimeMillis,
+    currentTimeNanosUnsafe: () => live.currentTimeNanosUnsafe(),
+    currentTimeNanos: live.currentTimeNanos,
+    monotonicTimeNanosUnsafe: () => live.monotonicTimeNanosUnsafe(),
+    monotonicTimeNanos: live.monotonicTimeNanos,
+    sleep: (duration) => Effect.andThen(live.sleep(duration), thawed.await)
+  }
+  return {
+    clock,
+    freeze: Effect.sync(() => {
+      thawed.closeUnsafe()
+    }),
+    thaw: thawed.open
+  }
+}
 
-const RunnerLayer = (
-  probe: RunnerProbe,
-  runnerStorage: Layer.Layer<RunnerStorage.RunnerStorage, unknown, SqlClient.SqlClient | ShardingConfig.ShardingConfig>,
-  config: Partial<ShardingConfig.ShardingConfig["Service"]>
-) =>
+const RunnerLayer = (probe: RunnerProbe, config: Partial<ShardingConfig.ShardingConfig["Service"]>) =>
   HoldLayer(probe).pipe(
     Layer.provideMerge(Sharding.layer),
-    Layer.provide([runnerStorage, RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provide([SqlRunnerStorage.layer, RunnerHealth.layerNoop, Runners.layerNoop]),
     Layer.provideMerge(SqlMessageStorage.layer),
     Layer.provide(NodeCrypto.layer),
     Layer.provide(ShardingConfig.layer({
@@ -112,11 +107,13 @@ const staleOwnerTest = Effect.fnUntraced(
   function*(options: { readonly advisory: boolean }) {
     const sql = yield* SqlClient.SqlClient
     const config = { shardLockDisableAdvisory: !options.advisory }
-    const frozen = { value: false }
+    const pauseA = makeFreezableClock()
     const probeA = makeProbe(1234)
     const probeB = makeProbe(5678)
 
-    const contextA = yield* Layer.build(RunnerLayer(probeA, freezableRunnerStorage(frozen), config))
+    const contextA = yield* Layer.build(RunnerLayer(probeA, config)).pipe(
+      Effect.provideService(Clock.Clock, pauseA.clock)
+    )
     const storage = Context.get(contextA, MessageStorage.MessageStorage)
     yield* Hold.client.pipe(
       Effect.flatMap((makeClient) => makeClient("1").Hold(void 0, { discard: true })),
@@ -126,23 +123,25 @@ const staleOwnerTest = Effect.fnUntraced(
       Effect.timeoutOrElse({ duration: 10_000, orElse: () => Effect.die("runner A never started the request") })
     )
 
-    // A partition: A stops observing lock storage and loses its lock session.
-    frozen.value = true
+    // A is paused, and its lock session is lost.
+    yield* pauseA.freeze
     if (options.advisory) {
       yield* sql`SELECT pg_terminate_backend(pid, 10000) FROM pg_locks
         WHERE locktype = 'advisory' AND objsubid = 2
         AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`
     }
 
-    const contextB = yield* Layer.build(RunnerLayer(probeB, SqlRunnerStorage.layer, config))
+    const contextB = yield* Layer.build(RunnerLayer(probeB, config))
     const shardingB = Context.get(contextB, Sharding.Sharding)
     const shardId = shardingB.getShardId(EntityId.make("1"), "default")
     yield* waitFor(Effect.sync(() => shardingB.hasShardId(shardId) || undefined)).pipe(
       Effect.timeoutOrElse({ duration: 15_000, orElse: () => Effect.die("runner B never acquired the shard") })
     )
+    yield* Deferred.await(probeB.entered).pipe(
+      Effect.timeoutOrElse({ duration: 15_000, orElse: () => Effect.die("runner B never started the request") })
+    )
 
-    // A finishes after B took over. If A claimed the request again after B
-    // reset the shard, B only sees it once A abandons it.
+    // A's handler finishes before A's lock refresh has run again.
     yield* probeA.gate.open
     yield* Deferred.await(probeA.returned)
 
@@ -153,9 +152,8 @@ const staleOwnerTest = Effect.fnUntraced(
     const stale = yield* waitFor(storedExit).pipe(Effect.timeoutOption(2000))
     assert.isTrue(Option.isNone(stale), "the stale owner stored its reply")
 
-    yield* Deferred.await(probeB.entered).pipe(
-      Effect.timeoutOrElse({ duration: 15_000, orElse: () => Effect.die("runner B never started the request") })
-    )
+    // Once A resumes, its reply must not land either: B's is the one stored.
+    yield* pauseA.thaw
     yield* probeB.gate.open
     const reply = yield* waitFor(storedExit).pipe(
       Effect.timeoutOrElse({ duration: 10_000, orElse: () => Effect.die("runner B never stored its reply") })

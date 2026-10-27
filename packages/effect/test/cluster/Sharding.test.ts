@@ -3797,8 +3797,8 @@ describe("Sharding shard fencing", { concurrent: false }, () => {
       yield* TestClock.adjust(1000)
 
       assert.strictEqual(driver.replyIds.size, 0)
-      // A rejected write is never retried: one check per handler run.
-      assert.strictEqual(fence.writeChecks, 1 + Queue.sizeUnsafe(probe.entered))
+      // A rejected write is never retried: one lock refresh per handler run.
+      assert.strictEqual(fence.refreshes, 1 + Queue.sizeUnsafe(probe.entered))
       // The caller is not answered with this runner's result.
       assert.isUndefined(result.pollUnsafe())
     })))
@@ -3814,7 +3814,7 @@ describe("Sharding shard fencing", { concurrent: false }, () => {
       yield* TestClock.adjust(1000)
 
       assert.strictEqual(driver.replyIds.size, 0)
-      assert.strictEqual(fence.writeChecks, 1 + Queue.sizeUnsafe(probe.entered))
+      assert.strictEqual(fence.refreshes, 1 + Queue.sizeUnsafe(probe.entered))
       assert.isUndefined(result.pollUnsafe())
     })))
 })
@@ -3840,11 +3840,11 @@ const FencedEntityLayer = (probe: FencedProbe) =>
   }))
 
 interface ShardFence {
-  // once set, lock storage attributes no shard to this runner, while the
-  // runner's own lock refresh is not due yet
+  // once set, lock refreshes no longer return any shard, while the runner's
+  // periodic lock refresh is not due yet
   fenced: boolean
-  // ownership checks made while fenced
-  writeChecks: number
+  // lock refreshes of shards made while fenced
+  refreshes: number
 }
 
 const withFencedEntity = Effect.fnUntraced(function*<E>(
@@ -3861,7 +3861,7 @@ const withFencedEntity = Effect.fnUntraced(function*<E>(
       restarts.push(message)
     }
   })
-  const fence: ShardFence = { fenced: false, writeChecks: 0 }
+  const fence: ShardFence = { fenced: false, refreshes: 0 }
   const probe: FencedProbe = {
     entered: yield* Queue.make<string>(),
     release: Latch.makeUnsafe(false)
@@ -3871,10 +3871,10 @@ const withFencedEntity = Effect.fnUntraced(function*<E>(
     Effect.map(RunnerStorage.makeMemory, (storage) =>
       RunnerStorage.RunnerStorage.of({
         ...storage,
-        owned: (_address, shardIds) => {
+        refresh: (address, shardIds) => {
           const shards = globalThis.Array.from(shardIds)
-          if (!fence.fenced) return Effect.succeed(shards)
-          fence.writeChecks++
+          if (!fence.fenced) return storage.refresh(address, shards)
+          if (shards.length > 0) fence.refreshes++
           return Effect.succeed([])
         }
       }))
