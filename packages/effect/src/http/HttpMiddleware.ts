@@ -37,8 +37,12 @@ import {
   causeResponseStripped,
   ClientAbort,
   HttpServerError,
+  type HttpServerErrorReason,
+  InternalError,
   isHttpServerError,
-  ResponseError
+  RequestParseError,
+  ResponseError,
+  RouteNotFound
 } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
@@ -302,9 +306,10 @@ const responseSpanExit = (
   }
 }
 
-// Copies the HTTP errors in a span failure with redacted request URLs, keeping
-// the rest of each error and reason. Stacks are rebuilt from the redacted
-// message, as they are captured with the URL the error was created with.
+// Copies the errors in a span failure whose `cause` chain holds a server
+// request, with the request URLs redacted. Exporters render the whole chain,
+// so every error in it is copied. The rest of each error and reason is kept,
+// and the originals are not modified.
 const redactCause = (
   cause: Cause.Cause<unknown>,
   redactedNames: ReadonlyArray<string | RegExp>
@@ -313,34 +318,83 @@ const redactCause = (
   const reasons = cause.reasons.map((reason) => {
     if (reason._tag === "Interrupt") return reason
     const error = reason._tag === "Fail" ? reason.error : reason.defect
-    if (!isHttpServerError(error)) return reason
+    const redacted = redactErrorChain(error, redactedNames)
+    if (redacted === error) return reason
     changed = true
-    const request = error.reason.request.modify({
-      url: UrlParams.redactUrl(error.reason.request.url, redactedNames)
-    })
-    const redacted = copyError(error, { reason: copyError(error.reason, { request }) })
-    return copy(reason, reason._tag === "Fail" ? { error: redacted } : { defect: redacted })
+    return Object.assign(
+      Object.create(Object.getPrototypeOf(reason)),
+      reason,
+      reason._tag === "Fail" ? { error: redacted } : { defect: redacted }
+    )
   })
   return changed ? Cause.fromReasons(reasons) : cause
 }
 
-const copy = <A extends object>(self: A, fields: Partial<A>): A =>
-  Object.assign(Object.create(Object.getPrototypeOf(self)), self, fields)
+const isRequestReason = (u: unknown): u is HttpServerErrorReason =>
+  u instanceof InternalError || u instanceof RequestParseError || u instanceof RouteNotFound ||
+  u instanceof ResponseError
+
+const redactErrorChain = (error: unknown, redactedNames: ReadonlyArray<string | RegExp>): unknown => {
+  const chain: Array<object> = []
+  let found = false
+  for (
+    let u: unknown = error;
+    typeof u === "object" && u !== null && !chain.includes(u);
+    u = (u as { readonly cause?: unknown }).cause
+  ) {
+    chain.push(u)
+    found ||= isHttpServerError(u) || isRequestReason(u)
+  }
+  if (!found) return error
+  const copies = new Map<unknown, any>()
+  for (const u of chain) {
+    copies.set(
+      u,
+      isHttpServerError(u)
+        ? copyObject(u, { reason: redactReason(u.reason, redactedNames) }, true)
+        : isRequestReason(u)
+        ? redactReason(u, redactedNames)
+        : copyObject(u, {}, false)
+    )
+  }
+  // Causes are relinked once every copy exists, so a cycle points to a copy.
+  const relink = (target: any) => {
+    const descriptor = Object.getOwnPropertyDescriptor(target, "cause")
+    if (descriptor !== undefined && (descriptor.writable || descriptor.configurable) && copies.has(target.cause)) {
+      Object.defineProperty(target, "cause", { value: copies.get(target.cause) })
+    }
+  }
+  for (const copied of copies.values()) {
+    relink(copied)
+    if (isHttpServerError(copied)) relink(copied.reason)
+  }
+  return copies.get(error)
+}
+
+const redactReason = (
+  reason: HttpServerErrorReason,
+  redactedNames: ReadonlyArray<string | RegExp>
+): HttpServerErrorReason =>
+  copyObject(reason, {
+    request: reason.request.modify({ url: UrlParams.redactUrl(reason.request.url, redactedNames) })
+  }, true)
 
 // Keeps non-enumerable properties such as `cause`. V8 errors hold `stack` in
-// an accessor bound to the original, so it is redefined as a value.
-const copyError = <A extends Error>(self: A, fields: Partial<A>): A => {
-  const error: A = Object.assign(
+// an accessor bound to the original, so it is redefined as a value. When the
+// message changes, the stack is rebuilt from it, keeping the frames.
+const copyObject = <A extends object>(self: A, fields: Partial<A>, rebuildStack: boolean): A => {
+  const copy: A = Object.assign(
     Object.create(Object.getPrototypeOf(self), Object.getOwnPropertyDescriptors(self)),
     fields
   )
-  const frames = self.stack?.indexOf("\n    at ") ?? -1
-  Object.defineProperty(error, "stack", {
-    value: `${error.name}: ${error.message}${frames === -1 ? "" : self.stack!.slice(frames)}`,
-    writable: true,
-    configurable: true
-  })
-  return error
+  if (!(self instanceof Error)) return copy
+  let stack = self.stack
+  if (rebuildStack) {
+    const frames = stack?.indexOf("\n    at ") ?? -1
+    stack = `${self.name}: ${(copy as Error).message}${frames === -1 ? "" : stack!.slice(frames)}`
+  }
+  Object.defineProperty(copy, "stack", { value: stack, writable: true, configurable: true })
+  return copy
 }
 
 const withStateNames = (
