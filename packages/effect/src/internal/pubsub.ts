@@ -1708,8 +1708,7 @@ interface ReplayWindow<A> {
 }
 
 class ReplayWindowImpl<A> implements ReplayWindow<A> {
-  // Cleared once the window is exhausted: the buffer keeps appending to the node list, so holding
-  // on to a node would keep every later message reachable for as long as the subscription lives.
+  // released once exhausted, so later messages are not retained
   head: ReplayNode<A> | undefined
   index: number
   remaining: number
@@ -1738,19 +1737,11 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
   takeN(n: number): Chunk.Chunk<A> {
     if (this.remaining === 0) {
       return Chunk.empty()
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
     }
     const len = Math.min(n, this.remaining)
     const items = new Array(len)
     for (let i = 0; i < len; i++) {
-      const value = this.head!.value as A
-      this.head = this.head!.next!
-      items[i] = value
-    }
-    this.remaining -= len
-    if (this.remaining === 0) {
-      this.head = undefined
+      items[i] = this.take()
     }
     return Chunk.unsafeFromArray(items)
   }
