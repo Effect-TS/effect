@@ -1005,7 +1005,10 @@ export const fail: <E>(error: E) => Effect.Effect<never, E> = exitFail
 export const sync: <A>(thunk: LazyArg<A>) => Effect.Effect<A> = makePrimitive({
   op: "Sync",
   [evaluate](fiber): Primitive | Yield {
-    const value = this[args]()
+    // call the thunk without a receiver, so V8 does not name its frame after
+    // the args property, which the stack cleaner cuts at
+    const thunk = this[args]
+    const value = thunk()
     const cont = fiber.getCont(contA)
     return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
   }
@@ -1017,44 +1020,11 @@ export const suspend: <A, E, R>(
 ) => Effect.Effect<A, E, R> = makePrimitive({
   op: "Suspend",
   [evaluate](_fiber) {
-    // A call inside `try` is never a tail call, so JavaScriptCore keeps this
-    // frame, which the stack cleaner needs to cut internal frames. Minifiers
-    // drop an empty `finally`, but keep a rethrowing `catch`.
-    try {
-      return this[args]()
-      // oxlint-disable-next-line no-useless-catch
-    } catch (error) {
-      throw error
-    }
+    // see Sync
+    const thunk = this[args]
+    return thunk()
   }
 })
-
-// V8 names a thunk frame after the property holding the thunk, so frames of
-// thunks stored under `args` are cut from rendered stacks as internal. The
-// public constructors store the thunk under a key the cutoff ignores instead,
-// keeping the throw location of defects raised directly in user thunks. `args`
-// stays readable through a getter, which V8 skips when naming frames.
-const userThunk = "~effect/thunk"
-
-const withUserThunk = <Fn extends (thunk: LazyArg<any>) => Effect.Effect<any, any, any>>(primitive: Fn): Fn => {
-  const UserThunkPrimitive = function(this: any, thunk: LazyArg<any>) {
-    this[userThunk] = thunk
-  } as unknown as new(thunk: LazyArg<any>) => Effect.Effect<any, any, any>
-  UserThunkPrimitive.prototype = Object.create(Object.getPrototypeOf(primitive(undefined as any)), {
-    [args]: {
-      get(this: any) {
-        return this[userThunk]
-      }
-    }
-  })
-  return ((thunk: LazyArg<any>) => new UserThunkPrimitive(thunk)) as Fn
-}
-
-/** @internal */
-export const userSync: typeof sync = withUserThunk(sync)
-
-/** @internal */
-export const userSuspend: typeof suspend = withUserThunk(suspend)
 
 /** @internal */
 export const fromOption: <

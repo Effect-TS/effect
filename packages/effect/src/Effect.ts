@@ -1170,7 +1170,7 @@ export const succeedSome: <A>(value: A) => Effect<Option<A>> = internal.succeedS
  */
 export const suspend: <A, E, R>(
   effect: LazyArg<Effect<A, E, R>>
-) => Effect<A, E, R> = internal.userSuspend
+) => Effect<A, E, R> = internal.suspend
 
 /**
  * Creates an `Effect` that represents a synchronous side-effectful computation.
@@ -1212,7 +1212,7 @@ export const suspend: <A, E, R>(
  * @category constructors
  * @since 2.0.0
  */
-export const sync: <A>(thunk: LazyArg<A>) => Effect<A> = internal.userSync
+export const sync: <A>(thunk: LazyArg<A>) => Effect<A> = internal.sync
 
 const void_: Effect<void> = internal.void
 export {
