@@ -1005,7 +1005,10 @@ export const fail: <E>(error: E) => Effect.Effect<never, E> = exitFail
 export const sync: <A>(thunk: LazyArg<A>) => Effect.Effect<A> = makePrimitive({
   op: "Sync",
   [evaluate](fiber): Primitive | Yield {
-    const value = this[args]()
+    // call the thunk without a receiver, so V8 does not name its frame after
+    // the args property, which the stack cleaner cuts at
+    const thunk = this[args]
+    const value = thunk()
     const cont = fiber.getCont(contA)
     return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
   }
@@ -1017,7 +1020,9 @@ export const suspend: <A, E, R>(
 ) => Effect.Effect<A, E, R> = makePrimitive({
   op: "Suspend",
   [evaluate](_fiber) {
-    return this[args]()
+    // see Sync
+    const thunk = this[args]
+    return thunk()
   }
 })
 
