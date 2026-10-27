@@ -849,6 +849,30 @@ export const days = (days: number): Duration => make(days * 86_400_000)
 export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
 
 /**
+ * Converts a Duration to microseconds.
+ *
+ * **Example** (Converting durations to microseconds)
+ *
+ * ```ts import.meta.vitest
+ * import { Duration } from "effect"
+ *
+ * Duration.toMicros(Duration.millis(5)) // => 5000
+ * Duration.toMicros(Duration.nanos(123n)) // => 0.123
+ * ```
+ *
+ * @stability stable
+ * @category getters
+ * @since 4.1.0
+ */
+export const toMicros = (self: Input): number =>
+  match(fromInputUnsafe(self), {
+    onMillis: (millis) => millis * 1_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 1_000),
+    onInfinity: () => Infinity,
+    onNegativeInfinity: () => -Infinity
+  })
+
+/**
  * Converts a Duration to milliseconds.
  *
  * **Example** (Converting durations to milliseconds)
