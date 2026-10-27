@@ -677,6 +677,8 @@ const Proto = {
  *
  * `HttpClientError` messages redact the request URL with the `UrlParams.CurrentRedactedNames` of the fiber that executes the request, even for errors the runner creates in callbacks outside that fiber. This applies to errors that reference the request passed to the runner, including through the response. Build responses from that request object: errors for a response built from a different request only use the names active where they are created.
  *
+ * The names of every execution of a request object are combined, so executing a reused request under another policy cannot undo the redaction of earlier errors. Errors for a reused request are therefore also redacted with the names of its other executions.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -707,7 +709,7 @@ export const make = (
         }
         const url = urlResult.success
         const run = (request: HttpClientRequest.HttpClientRequest) => {
-          Error.setRequestRedactedNames(request, fiber.getRef(UrlParams.CurrentRedactedNames))
+          Error.addRequestRedactedNames(request, fiber.getRef(UrlParams.CurrentRedactedNames))
           return f(request, url, controller.signal, fiber as any)
         }
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||

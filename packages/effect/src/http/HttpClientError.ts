@@ -92,7 +92,7 @@ const formatMessage = (reason: string, description: string | undefined, info: st
 // The fiber that renders an error later, such as a span exporter, may not
 // have the `UrlParams.CurrentRedactedNames` of the request. URLs are therefore
 // redacted with the names active when a reason is created, plus the names of
-// the fiber that executed its request.
+// the fibers that executed its request.
 const redactedUrls = new WeakMap<object, string>()
 const requestRedactedNames = new WeakMap<HttpClientRequest.HttpClientRequest, ReadonlyArray<string | RegExp>>()
 
@@ -113,18 +113,35 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
 }
 
 /**
- * Records the redaction names of the fiber executing a request. Errors that
+ * Adds the redaction names of the fiber executing a request. Errors that
  * reference the request use them, even when they are created in callbacks
- * that run outside that fiber.
+ * that run outside that fiber. Names are never removed, so executing a reused
+ * request under another policy cannot undo the redaction of earlier errors.
  *
  * @internal
  */
-export const setRequestRedactedNames = (
+export const addRequestRedactedNames = (
   request: HttpClientRequest.HttpClientRequest,
   redactedNames: ReadonlyArray<string | RegExp>
 ): void => {
-  requestRedactedNames.set(request, redactedNames)
+  const current = requestRedactedNames.get(request)
+  if (current === undefined) {
+    requestRedactedNames.set(request, redactedNames)
+    return
+  }
+  let merged: Array<string | RegExp> | undefined
+  for (const name of redactedNames) {
+    if (current.some((existing) => isSameName(existing, name))) continue
+    ;(merged ??= [...current]).push(name)
+  }
+  if (merged !== undefined) requestRedactedNames.set(request, merged)
 }
+
+// Strings match case-insensitively, like `UrlParams.isRedactedName`.
+const isSameName = (a: string | RegExp, b: string | RegExp): boolean =>
+  typeof a === "string"
+    ? typeof b === "string" && a.toLowerCase() === b.toLowerCase()
+    : typeof b !== "string" && a.source === b.source && a.flags === b.flags
 
 const formatMethodAndUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) =>
   `${reason.request.method} ${redactedUrl(reason)}`
