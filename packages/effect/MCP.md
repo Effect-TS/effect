@@ -383,6 +383,10 @@ const ServerLayer = McpServer.layerHttp({
   change, until the hint expires. Private scope does not separate users, so a client shared between
   users can show one user's list to another.
 
+A tool result is sent to the client in its JSON encoding, the same encoding its advertised
+`outputSchema` describes. For example, a `Schema.Date` field is sent as an ISO string and a
+`Schema.Void` field as `null`.
+
 ## Elicitation requests
 
 Elicitation requests are used to request additional input directly from the user. An elicitation

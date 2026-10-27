@@ -2289,7 +2289,7 @@ describe("McpServer", () => {
         }))
     }
 
-    it.effect("reports response serialization defects before returning a generic message", () =>
+    it.effect("reports response serialization failures before returning a generic message", () =>
       Effect.gen(function*() {
         const { client, reported } = yield* makeToolkitTestClient()
 
@@ -2301,8 +2301,9 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
         assert.lengthOf(reported, 1)
-        assert.isTrue(Cause.hasDies(reported[0]))
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        const error = Cause.squash(reported[0])
+        assertTrue(AiError.isAiError(error))
+        assert.strictEqual(error.reason._tag, "ToolResultEncodingError")
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>

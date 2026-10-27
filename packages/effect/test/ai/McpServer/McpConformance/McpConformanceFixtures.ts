@@ -56,8 +56,32 @@ const RequestMetadataTool = Tool.make("RequestMetadataTool", {
   dependencies: [McpSchema.McpRequestContext]
 })
 
+// Results whose schema-encoded value is not JSON; MCP carries their JSON-encoded form.
+const VoidFieldTool = Tool.make("VoidFieldTool", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ reply: Schema.Void, version: Schema.Number })
+})
+
+const DateFieldTool = Tool.make("DateFieldTool", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ at: Schema.Date })
+})
+
+const OptionalFieldTool = Tool.make("OptionalFieldTool", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ note: Schema.optional(Schema.String) })
+})
+
 const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersion: string) => {
-  const TestToolkit = Toolkit.make(TestTool, makeStructuredTool(protocolVersion), LogLevelTool, RequestMetadataTool)
+  const TestToolkit = Toolkit.make(
+    TestTool,
+    makeStructuredTool(protocolVersion),
+    LogLevelTool,
+    RequestMetadataTool,
+    VoidFieldTool,
+    DateFieldTool,
+    OptionalFieldTool
+  )
   return McpServer.toolkit(TestToolkit).pipe(
     Layer.provide(TestToolkit.toLayer({
       TestTool: ({ value }) =>
@@ -68,7 +92,10 @@ const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersi
       StructuredTool: () => Effect.succeed({ value: "structured" }),
       LogLevelTool: () => CurrentLogLevel,
       RequestMetadataTool: () =>
-        McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata))
+        McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata)),
+      VoidFieldTool: () => Effect.succeed({ reply: undefined, version: 1 }),
+      DateFieldTool: () => Effect.succeed({ at: new Date(0) }),
+      OptionalFieldTool: () => Effect.succeed({ note: undefined })
     }))
   )
 }
