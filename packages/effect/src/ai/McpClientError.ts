@@ -220,6 +220,41 @@ export class ToolError extends Schema.Error<ToolError>("effect/ai/McpClientError
 }
 
 /**
+ * The server confirmed that a task was cancelled.
+ *
+ * @stability experimental
+ * @category reasons
+ * @since 4.0.6
+ */
+export class TaskCancelled extends Schema.Error<TaskCancelled>("effect/ai/McpClientError/TaskCancelled")({
+  _tag: Schema.tag("TaskCancelled"),
+  taskId: Schema.String
+}) {
+  readonly [ReasonTypeId] = ReasonTypeId
+  override get message(): string {
+    return `MCP task ${this.taskId} was cancelled`
+  }
+}
+
+/**
+ * An application input handler failed. The original failure is retained as the cause.
+ *
+ * @stability experimental
+ * @category reasons
+ * @since 4.0.6
+ */
+export class InputError extends Schema.Error<InputError>("effect/ai/McpClientError/InputError")({
+  _tag: Schema.tag("InputError"),
+  method: Schema.String,
+  cause: Schema.Defect()
+}) {
+  readonly [ReasonTypeId] = ReasonTypeId
+  override get message(): string {
+    return `MCP input handler failed for ${this.method}`
+  }
+}
+
+/**
  * Union of MCP client and transport failure reasons.
  *
  * @stability experimental
@@ -237,6 +272,8 @@ export type McpClientErrorReason =
   | ConfigurationError
   | ValidationError
   | ToolError
+  | TaskCancelled
+  | InputError
 
 /**
  * Schema for the reasons carried by an `McpClientError`.
@@ -255,7 +292,9 @@ export const McpClientErrorReason: Schema.Union<[
   typeof LimitError,
   typeof ConfigurationError,
   typeof ValidationError,
-  typeof ToolError
+  typeof ToolError,
+  typeof TaskCancelled,
+  typeof InputError
 ]> = Schema.Union([
   TransportError,
   ProtocolError,
@@ -266,7 +305,9 @@ export const McpClientErrorReason: Schema.Union<[
   LimitError,
   ConfigurationError,
   ValidationError,
-  ToolError
+  ToolError,
+  TaskCancelled,
+  InputError
 ])
 
 /**
