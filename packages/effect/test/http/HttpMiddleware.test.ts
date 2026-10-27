@@ -532,7 +532,7 @@ describe("HttpMiddleware", () => {
         const error = Cause.squash(exit.cause)
         assert(error instanceof HttpServerError.HttpServerError)
         // Exporters read the message after the request-scoped redacted names are gone.
-        assert.strictEqual(error.message, "ResponseError (500 GET /failure?token=REDACTED)")
+        assert.strictEqual(error.message, "ResponseError (500 GET /failure)")
       }))
 
     it.effect("preserves the stream failure when the sent response is 500", () =>
