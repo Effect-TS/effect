@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reject malformed JSON Pointer escape sequences in `JsonPatch.apply` paths.
+`JsonPatch.apply` now throws on malformed JSON Pointer escapes, such as `/a~2` or a trailing `~`, instead of treating them as literal keys.
