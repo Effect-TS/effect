@@ -368,21 +368,12 @@ export const make = (options?: {
 
       yield* lockWriters
 
-      const existingIds = new Set<string>()
-      yield* forEachChunk(
+      const existingRows = yield* forEachChunk(
         entries,
         1,
         (chunk) => sql`SELECT id FROM ${entryTableSql} WHERE ${sql.in("id", chunk.map((entry) => entry.id))}`
-      ).pipe(
-        Effect.flatMap(decodeEntryIdRows),
-        Effect.tap((rows) =>
-          Effect.sync(() => {
-            for (const row of rows) {
-              existingIds.add(Uuid.stringify(row.id))
-            }
-          })
-        )
-      )
+      ).pipe(Effect.flatMap(decodeEntryIdRows))
+      const existingIds = new Set(existingRows.map((row) => Uuid.stringify(row.id)))
       // Overlapping batches can repeat an entry; the first copy wins.
       const incomingIds = new Set<string>()
       const uncommitted = options.entries.filter((entry) => {
@@ -400,21 +391,18 @@ export const make = (options?: {
 
       if (Arr.isReadonlyArrayNonEmpty(compacted)) {
         const index = new ConflictIndex(compacted)
-        const events = index.events
         const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
-        // Match the hash index; exact predicates below rule out hash collisions.
-        const hashed = (events: ReadonlyArray<string>, primaryKeys: ReadonlyArray<string>) =>
-          sql.onDialectOrElse({
-            pg: () => [
-              sql`md5(event) IN (${sql.csv(events.map((event) => sql`md5(${event})`))})`,
-              sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
-            ],
-            orElse: () => []
-          })
         const conflicts = (events: ReadonlyArray<string>, primaryKeys: ReadonlyArray<string>) =>
           sql`SELECT * FROM ${entryTableSql} WHERE ${
             sql.and([
-              ...hashed(events, primaryKeys),
+              // Match the hash index; exact predicates below rule out hash collisions.
+              ...sql.onDialectOrElse({
+                pg: () => [
+                  sql`md5(event) IN (${sql.csv(events.map((event) => sql`md5(${event})`))})`,
+                  sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
+                ],
+                orElse: () => []
+              }),
               sql.in("event", events),
               sql.in("primary_key", primaryKeys),
               // A coarse filter: the index compares ids exactly.
@@ -425,13 +413,15 @@ export const make = (options?: {
         // row exactly once. PostgreSQL binds each value twice, and one parameter
         // is left for the timestamp.
         const values = Math.floor((maxParameters - 1) / sql.onDialectOrElse({ pg: () => 2, orElse: () => 1 }))
-        const eventsPerChunk = Math.min(events.length, Math.floor(values / 2))
+        const eventsPerChunk = Math.min(index.events.length, Math.floor(values / 2))
         const stored = yield* Effect.forEach(
-          Arr.chunksOf(events, eventsPerChunk),
-          (events) =>
-            Effect.forEach(Arr.chunksOf(primaryKeys, values - eventsPerChunk), (keys) => conflicts(events, keys))
+          Arr.cartesian(
+            Arr.chunksOf(index.events, eventsPerChunk),
+            Arr.chunksOf(primaryKeys, values - eventsPerChunk)
+          ),
+          ([events, keys]) => conflicts(events, keys)
         ).pipe(
-          Effect.flatMap((rows) => decodeEntryRows(rows.flat(2))),
+          Effect.flatMap((rows) => decodeEntryRows(rows.flat())),
           Effect.map(toEntries)
         )
         for (const entry of stored) {
