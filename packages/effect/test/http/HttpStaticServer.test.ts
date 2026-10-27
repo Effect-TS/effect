@@ -102,6 +102,7 @@ describe("HttpStaticServer conditional requests", () => {
         const [headers, status] of [
           [{ "If-Match": "\"stale\"", "If-None-Match": "\"v1\"", Range: "bytes=2-5" }, 412],
           [{ "If-Match": "W/\"v1\"" }, 412],
+          [{ "If-Match": "w/\"v1\"" }, 412],
           [{ "If-Match": "\"other\", \"v1\"", "If-None-Match": "\"v1\"" }, 304],
           [{ "If-Unmodified-Since": earlier, "If-None-Match": "\"v1\"", Range: "bytes=2-5" }, 412],
           [{ "If-Unmodified-Since": lastModified }, 200],
