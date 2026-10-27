@@ -28,6 +28,13 @@ const decode = (value: string, plusAsSpace: boolean): string => {
 const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
   Context.get((globalThis as any)[currentFiberTypeId]?.context ?? Context.empty(), UrlParams.CurrentRedactedNames)
 
+// the percent-encoded form a serialized URL prints; the setter never throws
+const serializeUserinfo = (part: string): string => {
+  const url = new URL("http://localhost")
+  url.username = part
+  return url.username
+}
+
 // secrets written into the URL string itself, within the same bounds as `UrlParams.redactUrl`
 const urlSecrets = (url: string): Array<string> => {
   const secrets: Array<string> = []
@@ -38,7 +45,7 @@ const urlSecrets = (url: string): Array<string> => {
     for (const form of [text, text.replace(/[\t\n\r]/g, "")]) {
       const colon = form.indexOf(":")
       for (const part of colon === -1 ? [form] : [form.slice(0, colon), form.slice(colon + 1)]) {
-        secrets.push(part, decode(part, false))
+        secrets.push(part, decode(part, false), serializeUserinfo(part))
       }
     }
   }
