@@ -612,6 +612,51 @@ describe("SqlRunnerStorage", () => {
           }
         }))
 
+      it.effect("owned checks ownership when it runs, not when it is created", () =>
+        Effect.gen(function*() {
+          const storage = yield* SqlRunnerStorage.make({})
+          const shards = [ShardId.make("default", 10)]
+
+          const check = storage.owned(runnerAddress1, shards)
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          expect(yield* check).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
+      // SQLite has no separate lock connection, so its refreshes run inside
+      // the caller's transaction.
+      if (label.endsWith("(no advisory)") && !label.startsWith("sqlite")) {
+        it.effect(
+          "owned sees lease refreshes made after the caller's transaction started",
+          () =>
+            Effect.gen(function*() {
+              const sql = yield* SqlClient.SqlClient
+              const storage = yield* SqlRunnerStorage.make({})
+              const shards = [ShardId.make("default", 11)]
+              expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+
+              yield* sql.withTransaction(Effect.gen(function*() {
+                // An early read, like a handler's, fixes the snapshot of a
+                // REPEATABLE READ transaction.
+                expect(yield* storage.owned(runnerAddress1, shards)).toEqual(shards)
+                // The lease stays alive past its expiration.
+                for (let i = 0; i < 5; i++) {
+                  yield* Effect.sleep(1000)
+                  expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
+                }
+                expect(yield* storage.owned(runnerAddress1, shards)).toEqual(shards)
+              }))
+            }).pipe(
+              Effect.scoped,
+              Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: 3000 })),
+              TestClock.withLive
+            ),
+          30_000
+        )
+      }
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
