@@ -730,6 +730,11 @@ Missing key
           [
             "http://user%2Dsecret:password%2Dsecret@localhost:11434/path",
             "http://user%2Dsecret:password%2Dsecret@localhost:11434/path http://user-secret:password-secret@localhost:11434/path"
+          ],
+          // raw userinfo, printed after URL serialization percent-encodes it
+          [
+            "http://user secret:pāss@secret@localhost:11434/path",
+            "http://user%20secret:p%C4%81ss%40secret@localhost:11434/path"
           ]
         ]
       ) {
@@ -737,7 +742,15 @@ Missing key
         const message = new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause }).message
         assert.include(message, "Request cannot be constructed from a URL that includes credentials")
         for (
-          const secret of ["user-secret", "password-secret", "signature-secret", "user%2Dsecret", "password%2Dsecret"]
+          const secret of [
+            "user-secret",
+            "password-secret",
+            "signature-secret",
+            "user%2Dsecret",
+            "password%2Dsecret",
+            "user%20secret",
+            "p%C4%81ss%40secret"
+          ]
         ) {
           assert.notInclude(message, secret, url)
         }
