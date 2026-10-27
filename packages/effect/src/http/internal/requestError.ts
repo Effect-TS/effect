@@ -35,28 +35,44 @@ const serializeUserinfo = (part: string): string => {
   return url.username
 }
 
+// the query-encoded form a serialized URL prints; the setter never throws
+const serializeQueryValue = (value: string): string => {
+  const url = new URL("http://localhost")
+  url.search = `?k=${value}`
+  return url.search.slice(3)
+}
+
+// the URL parser drops tabs and newlines and trims leading and trailing spaces and C0 controls
+const normalizeUrl = (url: string): string => {
+  const stripped = url.replace(/[\t\n\r]/g, "")
+  let start = 0
+  let end = stripped.length
+  while (start < end && stripped.charCodeAt(start) <= 32) start++
+  while (end > start && stripped.charCodeAt(end - 1) <= 32) end--
+  return stripped.slice(start, end)
+}
+
 // secrets written into the URL string itself, within the same bounds as `UrlParams.redactUrl`
 const urlSecrets = (url: string): Array<string> => {
   const secrets: Array<string> = []
-  const userinfo = InternalUrlParams.userinfoRange(url)
-  if (userinfo !== undefined) {
-    const text = url.slice(userinfo[0], userinfo[1])
-    // the URL parser drops tabs and newlines before printing
-    for (const form of [text, text.replace(/[\t\n\r]/g, "")]) {
-      const colon = form.indexOf(":")
-      for (const part of colon === -1 ? [form] : [form.slice(0, colon), form.slice(colon + 1)]) {
+  const names = currentRedactedNames()
+  for (const form of [url, normalizeUrl(url)]) {
+    const userinfo = InternalUrlParams.userinfoRange(form)
+    if (userinfo !== undefined) {
+      const text = form.slice(userinfo[0], userinfo[1])
+      const colon = text.indexOf(":")
+      for (const part of colon === -1 ? [text] : [text.slice(0, colon), text.slice(colon + 1)]) {
         secrets.push(part, decode(part, false), serializeUserinfo(part))
       }
     }
-  }
-  const query = InternalUrlParams.queryRange(url)
-  if (query === undefined) return secrets
-  const names = currentRedactedNames()
-  for (const part of url.slice(query[0], query[1]).split("&")) {
-    const index = part.indexOf("=")
-    if (index === -1 || !UrlParams.isRedactedName(decode(part.slice(0, index), true), names)) continue
-    const value = part.slice(index + 1)
-    secrets.push(value, ...queryValueForms(decode(value, true)))
+    const query = InternalUrlParams.queryRange(form)
+    if (query === undefined) continue
+    for (const part of form.slice(query[0], query[1]).split("&")) {
+      const index = part.indexOf("=")
+      if (index === -1 || !UrlParams.isRedactedName(decode(part.slice(0, index), true), names)) continue
+      const value = part.slice(index + 1)
+      secrets.push(value, serializeQueryValue(value), ...queryValueForms(decode(value, true)))
+    }
   }
   return secrets
 }
