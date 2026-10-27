@@ -16,7 +16,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
-import { ConflictIndex } from "./internal/conflicts.ts"
+import { type ConflictGroup, ConflictIndex } from "./internal/conflicts.ts"
 
 type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
 
@@ -391,9 +391,10 @@ export const make = (options?: {
 
       if (Arr.isReadonlyArrayNonEmpty(compacted)) {
         const index = new ConflictIndex(compacted)
-        const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
-        const conflicts = (events: ReadonlyArray<string>, primaryKeys: ReadonlyArray<string>) =>
-          sql`SELECT * FROM ${entryTableSql} WHERE ${
+        const conflicts = (groups: ReadonlyArray<ConflictGroup>) => {
+          const events = Array.from(new Set(groups.map((group) => group.event)))
+          const primaryKeys = Array.from(new Set(groups.map((group) => group.primaryKey)))
+          return sql`SELECT * FROM ${entryTableSql} WHERE ${
             sql.and([
               // Match the hash index; exact predicates below rule out hash collisions.
               ...sql.onDialectOrElse({
@@ -409,22 +410,19 @@ export const make = (options?: {
               sql`timestamp >= ${index.oldestMillis}`
             ])
           }`
-        // Query every pairing of event and key chunks, which covers each stored
-        // row exactly once. PostgreSQL binds each value twice, and one parameter
-        // is left for the timestamp.
-        const values = Math.floor((maxParameters - 1) / sql.onDialectOrElse({ pg: () => 2, orElse: () => 1 }))
-        const eventsPerChunk = Math.min(index.events.length, Math.floor(values / 2))
-        const stored = yield* Effect.forEach(
-          Arr.cartesian(
-            Arr.chunksOf(index.events, eventsPerChunk),
-            Arr.chunksOf(primaryKeys, values - eventsPerChunk)
-          ),
-          ([events, keys]) => conflicts(events, keys)
-        ).pipe(
+        }
+        // Each group binds its event and key, twice on PostgreSQL, and one
+        // parameter is left for the timestamp.
+        const groupsPerChunk = Math.floor((maxParameters - 1) / sql.onDialectOrElse({ pg: () => 4, orElse: () => 2 }))
+        const stored = yield* Effect.forEach(Arr.chunksOf(index.groups(), groupsPerChunk), conflicts).pipe(
           Effect.flatMap((rows) => decodeEntryRows(rows.flat())),
           Effect.map(toEntries)
         )
+        // Chunks can share an event and a key, so a row can be returned twice.
+        const added = new Set<string>()
         for (const entry of stored) {
+          if (added.has(entry.idString)) continue
+          added.add(entry.idString)
           index.add(entry)
         }
         yield* options.effect(index.toBatch())

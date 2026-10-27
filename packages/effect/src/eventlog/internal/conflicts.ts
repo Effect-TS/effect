@@ -82,10 +82,6 @@ export class ConflictIndex {
     }
   }
 
-  get events(): Array<string> {
-    return Array.from(this.stored.keys())
-  }
-
   /** The `(event, primaryKey)` groups in the batch. */
   *groups(): Iterable<ConflictGroup> {
     for (const byKey of this.stored.values()) {
