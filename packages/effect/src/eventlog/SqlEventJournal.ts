@@ -687,9 +687,9 @@ const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural })
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
-// Statements bind at most this many parameters, so batches of any size fit
-// SQLite builds before 3.32 and drivers that spread parameters into a call.
-const maxParameters = 999
+// Statements bind at most this many parameters: Cloudflare Durable Object
+// SQLite's per-statement limit, the lowest of the supported databases.
+const maxParameters = 100
 
 // Runs `f` in order over chunks of `values`, each binding `parametersPerValue`
 // parameters per value, and concatenates the rows.
