@@ -957,6 +957,25 @@ describe("Completions", () => {
     const script = Completions.generate("greet", "powershell", desc)
     assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'greet'`)
   })
+
+  it("derives a zsh script from a Command tree without running its handlers", () => {
+    const handler = () => {
+      throw new Error("command handler should not run")
+    }
+    const cli = Command.make("server", {}, handler).pipe(
+      Command.withSubcommands([
+        Command.make("start", { port: Flag.Int("port") }, handler)
+      ])
+    )
+
+    const descriptor = Completions.fromCommand(cli)
+    assert.deepStrictEqual(descriptor.subcommands.map((subcommand) => subcommand.name), ["start"])
+
+    const script = Completions.generate("server", "zsh", descriptor)
+    assert.include(script, "#compdef server")
+    assert.include(script, "_server_start()")
+    assert.include(script, "--port")
+  })
 })
 
 // ---------------------------------------------------------------------------
