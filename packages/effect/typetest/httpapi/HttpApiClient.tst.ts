@@ -1052,7 +1052,7 @@ describe("HttpApiClient", () => {
       type StreamError = { readonly error: string }
 
       const Item = hole<Schema.Codec<Item, Item, "ItemDecoding", never>>()
-      const Error = hole<Schema.Codec<StreamError, StreamError, "ErrorDecoding", never>>()
+      const Error = hole<Schema.Codec<StreamError, StreamError, never, never>>()
       const Api = HttpApi.make("Api")
         .add(
           HttpApiGroup.make("group")
@@ -1072,7 +1072,7 @@ describe("HttpApiClient", () => {
         Effect.Effect<
           ClientStream,
           HttpClientError.HttpClientError | Schema.SchemaError,
-          "ItemDecoding" | "ErrorDecoding"
+          "ItemDecoding"
         >
       >()
     })

@@ -621,7 +621,7 @@ describe("HttpApiEndpoint", () => {
       type StreamError = { readonly error: string }
 
       const Item = hole<Schema.Codec<Item, Item, "ItemDecoding", "ItemEncoding">>()
-      const Error = hole<Schema.Codec<StreamError, StreamError, "ErrorDecoding", "ErrorEncoding">>()
+      const Error = hole<Schema.Codec<StreamError, StreamError, never, "ErrorEncoding">>()
       const endpoint = HttpApiEndpoint.get("a", "/a", {
         success: HttpApiSchema.StreamNdjson({ schema: Item, error: Error })
       })
@@ -629,7 +629,13 @@ describe("HttpApiEndpoint", () => {
       // Failures the error schema does not accept still abort the response
       expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Stream.Stream<Item, unknown>>()
       expect<HttpApiEndpoint.ServerServices<typeof endpoint>>().type.toBe<"ItemEncoding" | "ErrorEncoding">()
-      expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"ItemDecoding" | "ErrorDecoding">()
+      expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"ItemDecoding">()
+    })
+
+    it("rejects StreamNdjson error schemas that require decoding services", () => {
+      // The server decodes each element with the error schema
+      const Error = hole<Schema.Codec<{ readonly error: string }, { readonly error: string }, "ErrorDecoding", never>>()
+      expect(HttpApiSchema.StreamNdjson).type.not.toBeCallableWith({ schema: Schema.String, error: Error })
     })
   })
 
