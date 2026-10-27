@@ -815,40 +815,28 @@ export const make = Effect.gen(function*() {
           if (exit) {
             return Option.some(exit)
           }
-          const key = {
-            address: entityAddressFor({
-              workflow: instance.workflow,
-              entityType: `Workflow/${instance.workflow._tag}`,
-              executionId: instance.executionId
-            }),
+          const requestId = yield* requestIdFor({
+            workflow: instance.workflow,
+            entityType: `Workflow/${instance.workflow._tag}`,
+            executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          }
-          // Storage without `requestForPrimaryKey` only exposes processed completions.
-          const request = storage.requestForPrimaryKey
-            ? yield* storage.requestForPrimaryKey(key)
-            : undefined
-          const requestId = request
-            ? Option.map(request, (request) => Snowflake.Snowflake(request.requestId))
-            : yield* storage.requestIdForPrimaryKey(key)
+          })
           if (Option.isNone(requestId)) {
             return Option.none<Exit.Exit<unknown, unknown>>()
           }
           const reply = yield* replyForRequestId(requestId.value)
           if (Option.isSome(reply)) {
-            const decoded = decodeDeferredWithExit(reply.value as any)
-            return Option.some(
-              decoded.exit._tag === "Success"
-                ? decoded.exit.value
-                : decoded.exit
-            )
-          }
-          if (!request || Option.isNone(request)) {
-            return Option.none<Exit.Exit<unknown, unknown>>()
+            return Option.some(deferredReplyExit(reply.value))
           }
           // The first completion saved under the deferred name wins, so a
           // request the owner has not processed yet already holds the result.
-          return Option.some(decodeDeferredPayload(request.value.payload).exit)
+          const [request] = yield* storage.unprocessedMessagesById([requestId.value])
+          if (request?.envelope._tag === "Request") {
+            return Option.some(decodeDeferredPayload(request.envelope.payload).exit)
+          }
+          // It was processed after the first read, so its reply is stored now.
+          return Option.map(yield* replyForRequestId(requestId.value), deferredReplyExit)
         })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
@@ -997,6 +985,10 @@ const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>)
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 const decodeDeferredPayload = Schema.decodeUnknownSync(Schema.toCodecJson(DeferredRpc.payloadSchema))
+const deferredReplyExit = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>): Exit.Exit<unknown, unknown> => {
+  const decoded = decodeDeferredWithExit(reply as any)
+  return decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
+}
 
 const ResumeRpc = Rpc.make("resume", {
   // Older persisted resume envelopes have an empty payload and use the empty key.

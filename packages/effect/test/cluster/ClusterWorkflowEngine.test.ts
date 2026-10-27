@@ -1622,7 +1622,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const text = DurableDeferred.make("UnprocessedRaceResult/Text", { success: Schema.String })
       const result = DurableDeferred.make("raceAll/pick", { success: Schema.String })
       const storage = yield* makeSharedStorage
-      // The race result is durable, but no runner has read it back yet.
+      // The race result is durable, but the runner's mailbox poll has not read it yet.
       const isResult = (message: Message.Incoming<any>) =>
         message.envelope._tag === "Request" && message.envelope.tag === "deferred" &&
         (message.envelope.payload as { name: string }).name === result.name
@@ -1640,9 +1640,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             Effect.map(
               storage.unprocessedMessages(shardIds, options),
               (messages) => messages.filter((m) => !isResult(m))
-            ),
-          unprocessedMessagesById: (ids) =>
-            Effect.map(storage.unprocessedMessagesById(ids), (messages) => messages.filter((m) => !isResult(m)))
+            )
         })
       })))
       const executionId = yield* workflow.executionId({})
