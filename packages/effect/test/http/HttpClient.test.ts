@@ -735,7 +735,21 @@ Missing key
           [
             "http://user secret:pāss@secret@localhost:11434/path",
             "http://user%20secret:p%C4%81ss%40secret@localhost:11434/path"
-          ]
+          ],
+          // protected query values, printed after URL serialization encodes and trims them
+          [
+            "http://localhost:11434/path?Signature=secret/ space",
+            "http://localhost:11434/path?Signature=secret/%20space"
+          ],
+          [
+            "http://localhost:11434/path?Signature=secret%ZZ space",
+            "http://localhost:11434/path?Signature=secret%ZZ%20space"
+          ],
+          [
+            "http://localhost:11434/path?Signature=secret%2f space",
+            "http://localhost:11434/path?Signature=secret%2f%20space"
+          ],
+          ["http://localhost:11434/path?Signature=secret-token ", "http://localhost:11434/path?Signature=secret-token"]
         ]
       ) {
         const cause = new TypeError(`Request cannot be constructed from a URL that includes credentials: ${printed}`)
@@ -749,7 +763,11 @@ Missing key
             "user%2Dsecret",
             "password%2Dsecret",
             "user%20secret",
-            "p%C4%81ss%40secret"
+            "p%C4%81ss%40secret",
+            "secret/%20space",
+            "secret%ZZ%20space",
+            "secret%2f%20space",
+            "secret-token"
           ]
         ) {
           assert.notInclude(message, secret, url)
