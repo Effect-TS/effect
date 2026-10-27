@@ -36,6 +36,7 @@ import { HttpPlatform } from "./HttpPlatform.ts"
 import {
   causeResponseStripped,
   ClientAbort,
+  formatReasonMessage,
   HttpServerError,
   type HttpServerErrorReason,
   InternalError,
@@ -308,9 +309,9 @@ const responseSpanExit = (
 
 // Redacts the request URLs held by the errors in a span failure. Exporters
 // render the whole `cause` chain, so every error in a chain that holds a
-// server request is copied, or replaced by a plain error when it cannot be
-// copied safely. The originals are not modified, and this never throws, so
-// the span always ends.
+// server request is replaced by a plain error. Their messages are read here,
+// so rendering them later cannot fail. The originals are not modified, and
+// this never throws, so the span always ends.
 const redactCause = (
   cause: Cause.Cause<unknown>,
   redactedNames: ReadonlyArray<string | RegExp>
@@ -353,88 +354,34 @@ const redactErrorChain = (error: unknown, redactedNames: ReadonlyArray<string | 
     causes.push(u)
   }
   if (!found) return error
-  const copies = new Map<unknown, any>()
-  for (const link of chain) {
-    copies.set(link, copyLink(link, redactedNames) ?? replaceLink(link, redactedNames))
-  }
-  // Causes are relinked once every copy exists, so a cycle points to a copy.
-  // Copies only exist when `cause` can be redefined, and replacements own it.
+  const errors = chain.map((link) => toPlainError(link, redactedNames))
+  // Causes are linked once every error exists, so a cycle points to a plain error.
   for (let i = 0; i < chain.length; i++) {
-    const next = copies.get(causes[i])
-    if (next === undefined) continue
-    const copy = copies.get(chain[i])
-    Object.defineProperty(copy, "cause", { value: next })
-    if (isHttpServerError(copy) && copies.has(copy.reason.cause)) {
-      Object.defineProperty(copy.reason, "cause", { value: copies.get(copy.reason.cause) })
-    }
-  }
-  return copies.get(error)
-}
-
-const copyLink = (link: object, redactedNames: ReadonlyArray<string | RegExp>): object | undefined => {
-  if (isHttpServerError(link)) {
-    if (!isCopyable(link, ["reason"]) || !isCopyable(link.reason, ["request"])) return undefined
-    const reason = copyObject(link.reason, { request: redactRequest(link.reason.request, redactedNames) }, true)
-    return copyObject(link, { reason }, true)
-  } else if (isRequestReason(link)) {
-    return isCopyable(link, ["request"])
-      ? copyObject(link, { request: redactRequest(link.request, redactedNames) }, true)
-      : undefined
-  }
-  return isCopyable(link, []) ? copyObject(link, {}, false) : undefined
-}
-
-// A copy can redefine the replaced fields, `cause` and `stack`. Frozen errors,
-// and inherited or fixed properties, are replaced instead.
-const isCopyable = (self: object, fields: ReadonlyArray<string>): boolean => {
-  if (!Object.isExtensible(self)) return false
-  for (const key of [...fields, "cause", "stack"]) {
-    const descriptor = Object.getOwnPropertyDescriptor(self, key)
-    if (descriptor === undefined) {
-      if (key in self) return false
-    } else if (
-      key === "stack"
-        ? !descriptor.configurable
-        : !("value" in descriptor) || !(descriptor.writable || descriptor.configurable)
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
-const redactRequest = (request: HttpServerRequest, redactedNames: ReadonlyArray<string | RegExp>) =>
-  request.modify({ url: UrlParams.redactUrl(request.url, redactedNames) })
-
-// Keeps non-enumerable properties such as `cause`. V8 errors hold `stack` in
-// an accessor bound to the original, so it is redefined as a value. When the
-// message changes, the stack is rebuilt from it, keeping the frames.
-const copyObject = <A extends object>(self: A, fields: Partial<A>, rebuildStack: boolean): A => {
-  const copy: A = Object.create(Object.getPrototypeOf(self), Object.getOwnPropertyDescriptors(self))
-  for (const key of Object.keys(fields)) {
-    Object.defineProperty(copy, key, { value: fields[key as keyof A] })
-  }
-  if (self instanceof Error) {
-    Object.defineProperty(copy, "stack", {
-      value: rebuildStack ? stackWithMessage(self.name, (copy as Error).message, self.stack) : self.stack,
+    if (causes[i] === undefined) continue
+    const next = chain.indexOf(causes[i] as object)
+    Object.defineProperty(errors[i], "cause", {
+      value: next === -1 ? causes[i] : errors[next],
       writable: true,
       configurable: true
     })
   }
-  return copy
+  return errors[0]
 }
 
-// Keeps the name and frames of an error, and its message with the request URL
-// redacted. Messages format the URL with the current fiber's names.
-const replaceLink = (link: object, redactedNames: ReadonlyArray<string | RegExp>): Error => {
-  const original = link as Partial<Error> & { readonly request?: HttpServerRequest }
+// Keeps the name and stack frames of an error. Messages of request-backed
+// errors are formatted again from the redacted request.
+const toPlainError = (link: object, redactedNames: ReadonlyArray<string | RegExp>): Error => {
+  const original = link as Partial<Error>
   const name = typeof original.name === "string" ? original.name : "Error"
-  let message = typeof original.message === "string" ? original.message : ""
-  if (isHttpServerError(link) || isRequestReason(link)) {
-    const url = original.request!.url
-    const redacted = UrlParams.redactUrl(url, redactedNames)
-    message = message.split(UrlParams.redactUrl(url)).join(redacted).split(url).join(redacted)
-  }
+  const message = isHttpServerError(link)
+    ? formatReasonMessage(link.reason, redactedNames)
+    : isRequestReason(link)
+    ? formatReasonMessage(link, redactedNames)
+    : typeof original.message === "string"
+    ? original.message
+    : ""
+  const stack = typeof original.stack === "string" ? original.stack : ""
+  const frames = stack.indexOf("\n    at ")
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
   let error: Error
@@ -444,13 +391,8 @@ const replaceLink = (link: object, redactedNames: ReadonlyArray<string | RegExp>
     setStackTraceLimit(stackTraceLimit)
   }
   error.name = name
-  error.stack = stackWithMessage(name, message, typeof original.stack === "string" ? original.stack : undefined)
+  error.stack = `${name}: ${message}${frames === -1 ? "" : stack.slice(frames)}`
   return error
-}
-
-const stackWithMessage = (name: string, message: string, stack: string | undefined): string => {
-  const frames = stack?.indexOf("\n    at ") ?? -1
-  return `${name}: ${message}${frames === -1 ? "" : stack!.slice(frames)}`
 }
 
 const withStateNames = (
