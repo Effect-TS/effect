@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Add `trim` and `keepEmptyValues` options to `SchemaGetter.splitKeyValue`, `SchemaTransformation.splitKeyValue` and `Config.Record`. Both default to `false`, so existing callers are unaffected.
