@@ -1738,8 +1738,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
@@ -1793,8 +1792,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
@@ -1877,8 +1875,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ]),
@@ -1937,8 +1934,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
@@ -1998,8 +1994,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
@@ -2088,8 +2083,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
@@ -2185,8 +2179,7 @@ describe("LanguageModel", () => {
                     type: "response-metadata",
                     id: "resp_next",
                     modelId: undefined,
-                    timestamp: undefined,
-                    request: undefined
+                    timestamp: undefined
                   },
                   finishPart
                 ])
