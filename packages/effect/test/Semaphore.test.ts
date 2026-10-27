@@ -24,6 +24,33 @@ describe("Semaphore", () => {
       assert.deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
     }))
 
+  it.effect("admits queued requests covered by a release in one dispatcher turn", () =>
+    Effect.gen(function*() {
+      const turns: Array<() => void> = []
+      const scheduler = new Scheduler.MixedScheduler("async", (run) => {
+        turns.push(run)
+        return () => {}
+      })
+      const sem = yield* Semaphore.make(2)
+      yield* sem.take(2)
+      const admitted: Array<number> = []
+      const waiters = yield* Effect.forEach([0, 1], (ticket) =>
+        Effect.forkChild(
+          Effect.andThen(
+            sem.take(1),
+            Effect.sync(() => {
+              admitted.push(ticket)
+            })
+          ).pipe(Effect.provideService(Scheduler.Scheduler, scheduler)),
+          { startImmediately: true }
+        ))
+
+      yield* sem.release(2).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      yield* Effect.sync(() => turns.shift()!())
+      assert.deepStrictEqual(admitted, [0, 1])
+      yield* Fiber.joinAll(waiters)
+    }))
+
   it.effect("basic single partition operation", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make({ permits: 4 })
