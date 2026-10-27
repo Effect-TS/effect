@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
+import { Array as Arr, Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
@@ -39,6 +39,13 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+
+// Durable Object SQLite binds at most 100 parameters per statement. Rejecting
+// larger statements makes oversized batches fail whatever the local SQLite build.
+const limitParameters = Effect.provideService(
+  Statement.CurrentTransformer,
+  (statement) => statement.compile()[1].length > 100 ? Effect.die("too many parameters") : Effect.succeed(statement)
+)
 
 // Fresh module instances keep their own entry id clock. They load before any
 // test runs, so loading them cannot stall running tests.
@@ -772,6 +779,51 @@ describe("SqlEventJournal", () => {
       }))
       assert.deepStrictEqual(yield* journal.entries, [])
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("writeMany commits a batch over the statement parameter limit", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const written = yield* journal.writeMany({
+        entries: Arr.makeBy(101, (i) => localEntry(String(i))),
+        effect: Effect.succeed
+      })
+      assert.deepStrictEqual(
+        (yield* journal.entries).map((entry) => entry.idString),
+        written.map((entry) => entry.idString)
+      )
+    }).pipe(limitParameters))
+
+  it.effect("writeFromRemote reports each conflict once for a batch over the statement parameter limit", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      // Two events sharing 101 keys: as 101 is prime, conflict lookups split
+      // into chunks that mix both events, so a stored row matches several.
+      const incoming = ["A", "B"].flatMap((event, e) =>
+        Arr.makeBy(101, (i) => entry(1_000 + e * 101 + i, event, String(i)))
+      )
+      const newer = incoming.map((stored) => entry(stored.createdAtMillis + 1_000, stored.event, stored.primaryKey))
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: remoteEntries(newer),
+        effect: () => Effect.void
+      })
+      const batches: Array<ReadonlyArray<readonly [string, ReadonlyArray<string>]>> = []
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: remoteEntries(incoming),
+        effect: (batch) =>
+          Effect.sync(() => {
+            batches.push(
+              batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)] as const)
+            )
+          })
+      })
+      assert.deepStrictEqual({ batches, nextSequence: yield* journal.nextRemoteSequence(remoteId) }, {
+        batches: [incoming.map((entry, i) => [entry.idString, [newer[i].idString]] as const)],
+        nextSequence: 202
+      })
+    }).pipe(limitParameters))
 
   it.effect("writes and reads entries", () =>
     Effect.gen(function*() {
