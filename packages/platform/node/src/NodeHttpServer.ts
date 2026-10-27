@@ -882,8 +882,7 @@ const writeResponse = (
   nodeResponse: Http.ServerResponse,
   headers: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, HttpServerError> => {
-  // A destroyed HTTP/1 response never emits `finish`, so `end`'s callback never
-  // runs and content-length checks throw. Nothing can be sent, so skip the write.
+  // Nothing can reach a disconnected client, and writing would throw or never finish
   if (nodeResponse.destroyed) {
     return cancelResponseBody(response.body)
   }
@@ -1102,8 +1101,8 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
   return Effect.void
 }
 
-// Node only runs `end`'s callback on `finish`. A response whose client disconnects
-// before it finishes closes instead, so resume on whichever comes first.
+// `end`'s callback only runs on `finish`, which a disconnect replaces with `close`.
+// A response that is already destroyed emits neither.
 const endAndAwait = (nodeResponse: Http.ServerResponse, chunk?: unknown): Effect.Effect<void> =>
   Effect.callback<void>((resume) => {
     if (nodeResponse.destroyed) return resume(Effect.void)
