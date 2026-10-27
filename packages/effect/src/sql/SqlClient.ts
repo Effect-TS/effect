@@ -15,6 +15,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -87,8 +88,7 @@ export interface SqlClient extends Constructor {
    * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
-   * that don't go through `makeWithTransaction`, such as those of
-   * `@effect/sql-sqlite-do`, invalidate immediately.
+   * that don't go through `makeWithTransaction` invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -136,8 +136,8 @@ export interface SqlClient extends Constructor {
    * long-running work.
    * Registering after the transaction has ended is a defect.
    *
-   * Transactions that don't go through `makeWithTransaction`, such as those
-   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   * Transactions that don't go through `makeWithTransaction` run callbacks
+   * immediately.
    */
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
@@ -525,6 +525,12 @@ const makeAfterCommit =
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
  *
+ * **Details**
+ *
+ * Transactions started this way are also recognized by `SqlResolver` when the
+ * caller's context has no `SqlClient`, so their requests don't share a batch
+ * with requests outside the transaction.
+ *
  * @stability unstable
  * @category transactions
  * @since 4.0.0
@@ -612,6 +618,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)

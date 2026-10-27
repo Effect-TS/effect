@@ -776,6 +776,11 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
  *
+ * **Gotchas**
+ *
+ * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
+ * the original `MissingOption` error is returned.
+ *
  * **Example** (Falling back to prompts)
  *
  * ```ts import.meta.vitest

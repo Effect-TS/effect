@@ -228,7 +228,7 @@ describe("SchemaRepresentation built-in string revivers", () => {
       payload: null,
       reviver: SchemaRepresentation.isULIDReviver,
       valid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-      invalid: "not-a-ulid"
+      invalid: "80000000000000000000000000"
     })
   })
 

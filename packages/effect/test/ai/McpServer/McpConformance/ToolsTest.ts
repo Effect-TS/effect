@@ -277,11 +277,11 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               method: "tools/call",
               params: { name: "DefectTool", arguments: {} }
             })
-            const result = yield* test.decodeError(response)
+            // Checked before schema decoding, which would accept extra members such as `_tag`.
+            const message = (yield* readMcpHttpResponse(response)) as { readonly error: unknown }
 
-            assert.strictEqual(result.error.code, McpSchema.INTERNAL_ERROR_CODE)
-            assert.strictEqual(result.error.message, "Internal error")
-            assert.notMatch(JSON.stringify(result), /private defect details/)
+            assert.deepStrictEqual(message.error, { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" })
+            assert.notMatch(JSON.stringify(message), /private defect details/)
           }))
 
         it.effect.skipIf(protocol.protocolVersion === "2024-11-05")(

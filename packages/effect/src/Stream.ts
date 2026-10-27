@@ -7467,10 +7467,10 @@ export const rechunk: {
       let chunk = Arr.empty<A>() as Arr.NonEmptyArray<A>
       let index = 0
       let current: Arr.NonEmptyReadonlyArray<A> | undefined
-      let done = false
+      let cause: Cause.Cause<E | Cause.Done> | undefined
 
       return Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> {
-        if (done) return Cause.done()
+        if (cause) return Effect.failCause(cause)
         else if (current === undefined) {
           return Effect.flatMap(pull, (arr) => {
             if (chunk.length === 0 && arr.length === target) {
@@ -7497,10 +7497,10 @@ export const rechunk: {
         current = undefined
         return loop()
       }).pipe(
-        Pull.catchDone(() => {
-          if (chunk.length === 0) return Cause.done()
+        Effect.catchCause((cause_) => {
+          if (chunk.length === 0) return Effect.failCause(cause_)
           const result = chunk
-          done = true
+          cause = cause_
           chunk = [] as any
           return Effect.succeed(result)
         })
@@ -8879,7 +8879,12 @@ const groupByImpl = <A, E, R, K, V, E2, R2>(
         body: constant(Effect.flatMap(pull, (arr) => f(arr, queues, queueMap))),
         step: constVoid
       }).pipe(
-        Effect.catchCause((cause) => Queue.failCause(out, cause)),
+        Effect.catchCause((cause) => {
+          for (const [, queue] of queueMap) {
+            Queue.endUnsafe(queue)
+          }
+          return Queue.failCause(out, cause)
+        }),
         Effect.forkIn(scope)
       )
 

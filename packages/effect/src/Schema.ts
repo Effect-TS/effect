@@ -6744,9 +6744,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ password: "123456", confirmPassword: "1234567" })
- * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Pointer") {
- *   result.failure.issue.issue.path // => ["password"]
- * }
+ * const message = Result.isFailure(result) ? result.failure.message : ""
+ * message // => "password and confirmPassword must match\n  at [\"password\"]"
  * ```
  *
  * **Example** (Reporting multiple failures at once)
@@ -6766,9 +6765,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ a: 1, b: 0, c: 0 })
- * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Composite") {
- *   result.failure.issue.issue.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []) // => [["b"], ["c"]]
- * }
+ * const message = Result.isFailure(result) ? result.failure.message : ""
+ * message // => "b must be greater than 0\n  at [\"b\"]\nc must be greater than 0\n  at [\"c\"]"
  * ```
  *
  * @stability stable
@@ -7044,7 +7042,7 @@ export function isUUID(version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, annotations?: An
   )
 }
 
-const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/
+const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/u
 /**
  * Validates that a string has the GUID / UUID textual shape.
  *
@@ -7079,17 +7077,21 @@ export function isGUID(annotations?: Annotations.Filter) {
         id: "effect/schema/isGUID",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: GUID_REGEXP.source }),
       toCode: () => ({ runtime: "Schema.isGUID()" }),
       ...annotations
     }
   )
 }
+
+const ULID_REGEXP = /^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$/u
 /**
  * Validates that a string is a valid ULID (Universally Unique Lexicographically
  * Sortable Identifier).
  *
  * **Details**
+ *
+ * Accepts uppercase and lowercase characters. The first character must be
+ * between `0` and `7` so the value fits in 128 bits.
  *
  * JSON Schema:
  *
@@ -7106,15 +7108,13 @@ export function isGUID(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isULID(annotations?: Annotations.Filter) {
-  const regExp = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/
   return isPattern(
-    regExp,
+    ULID_REGEXP,
     {
       representation: {
         id: "effect/schema/isULID",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
       toCode: () => ({ runtime: "Schema.isULID()" }),
       ...annotations
     }

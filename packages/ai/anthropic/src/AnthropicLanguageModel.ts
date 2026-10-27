@@ -752,7 +752,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const capabilities = getConfigCapabilities(config)
       const { messages, system } = yield* prepareMessages({ betas, capabilities, options, toolNameMapper })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
-      const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
+      const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options, toolNameMapper })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
       if (betas.size > 0) {
         params["anthropic-beta"] = Array.from(betas).join(",")
@@ -957,62 +957,7 @@ const prepareMessages = Effect.fnUntraced(
                     }
 
                     case "file": {
-                      if (part.mediaType.startsWith("image/")) {
-                        const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
-                          (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
-
-                        const source = isUrlData(part.data)
-                          ? { type: "url", url: getUrlString(part.data) } as const
-                          : {
-                            type: "base64",
-                            media_type: mediaType,
-                            data: typeof part.data === "string"
-                              ? part.data.replace(/^data:[^;]+;base64,/, "")
-                              : Base64.encode(part.data)
-                          } as const
-
-                        content.push({ type: "image", source, cache_control: cacheControl })
-                      } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
-                        betas.add("pdfs-2024-09-25")
-
-                        const enableCitations = areCitationsEnabled(part)
-                        const documentOptions = getDocumentMetadata(part)
-
-                        const source = isUrlData(part.data)
-                          ? {
-                            type: "url",
-                            url: getUrlString(part.data)
-                          } as const
-                          : part.mediaType === "application/pdf"
-                          ? {
-                            type: "base64",
-                            media_type: "application/pdf",
-                            data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
-                          } as const
-                          : {
-                            type: "text",
-                            media_type: "text/plain",
-                            data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
-                          } as const
-
-                        content.push({
-                          type: "document",
-                          source,
-                          title: documentOptions?.title ?? part.fileName ?? null,
-                          cache_control: cacheControl,
-                          ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
-                          ...(enableCitations ? { citations: { enabled: true } } : undefined)
-                        })
-                      } else {
-                        return yield* new AiError.AiError({
-                          module: "AnthropicLanguageModel",
-                          method: "prepareMessages",
-                          reason: new AiError.InvalidUserInputError({
-                            description: `Detected unsupported media type for file: '${part.mediaType}'`
-                          })
-                        })
-                      }
-
+                      content.push(yield* prepareFilePart(part, cacheControl, betas))
                       break
                     }
                   }
@@ -1042,7 +987,9 @@ const prepareMessages = Effect.fnUntraced(
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
-                    content: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+                    content: Predicate.isUndefined(part.modelOutput)
+                      ? typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+                      : yield* prepareToolResultContent(part.modelOutput, betas),
                     is_error: part.isFailure,
                     cache_control: cacheControl
                   })
@@ -1197,7 +1144,7 @@ const prepareMessages = Effect.fnUntraced(
                     content.push({
                       type: "tool_use",
                       id: part.id,
-                      name: part.name,
+                      name: toolNameMapper.getProviderName(part.name),
                       input: part.params as any,
                       ...(Predicate.isNotUndefined(caller) ? { caller } : undefined)
                     })
@@ -1363,12 +1310,104 @@ export type AnthropicProviderDefinedTool =
   | typeof Generated.BetaWebFetchTool_20250910.Encoded
   | typeof Generated.BetaWebSearchTool_20250305.Encoded
 
+const prepareToolResultContent = Effect.fnUntraced(function*(
+  modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
+  betas: Set<string>
+): Effect.fn.Return<
+  | string
+  | Array<
+    | typeof Generated.BetaRequestTextBlock.Encoded
+    | typeof Generated.BetaRequestImageBlock.Encoded
+    | typeof Generated.BetaRequestDocumentBlock.Encoded
+  >,
+  AiError.AiError
+> {
+  if (modelOutput.length === 0) {
+    return ""
+  }
+  const content: Array<
+    | typeof Generated.BetaRequestTextBlock.Encoded
+    | typeof Generated.BetaRequestImageBlock.Encoded
+    | typeof Generated.BetaRequestDocumentBlock.Encoded
+  > = []
+  for (const part of modelOutput) {
+    const cacheControl = getCacheControl(part)
+    content.push(
+      part.type === "text"
+        ? { type: "text", text: part.text, cache_control: cacheControl }
+        : yield* prepareFilePart(part, cacheControl, betas)
+    )
+  }
+  return content
+})
+
+const getBase64Data = (data: string | Uint8Array): string =>
+  typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
+
+const prepareFilePart = Effect.fnUntraced(function*(
+  part: Prompt.FilePart,
+  cacheControl: typeof Generated.CacheControlEphemeral.Encoded | null,
+  betas: Set<string>
+): Effect.fn.Return<
+  typeof Generated.BetaRequestImageBlock.Encoded | typeof Generated.BetaRequestDocumentBlock.Encoded,
+  AiError.AiError
+> {
+  if (part.mediaType.startsWith("image/")) {
+    const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
+      (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
+
+    const source = isUrlData(part.data)
+      ? { type: "url", url: getUrlString(part.data) } as const
+      : { type: "base64", media_type: mediaType, data: getBase64Data(part.data) } as const
+
+    return { type: "image", source, cache_control: cacheControl }
+  }
+
+  if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
+    betas.add("pdfs-2024-09-25")
+
+    const enableCitations = areCitationsEnabled(part)
+    const documentOptions = getDocumentMetadata(part)
+
+    const source = isUrlData(part.data)
+      ? {
+        type: "url",
+        url: getUrlString(part.data)
+      } as const
+      : part.mediaType === "application/pdf"
+      ? { type: "base64", media_type: "application/pdf", data: getBase64Data(part.data) } as const
+      : {
+        type: "text",
+        media_type: "text/plain",
+        data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
+      } as const
+
+    return {
+      type: "document",
+      source,
+      title: documentOptions?.title ?? part.fileName ?? null,
+      cache_control: cacheControl,
+      ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
+      ...(enableCitations ? { citations: { enabled: true } } : undefined)
+    }
+  }
+
+  return yield* new AiError.AiError({
+    module: "AnthropicLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidUserInputError({
+      description: `Detected unsupported media type for file: '${part.mediaType}'`
+    })
+  })
+})
+
 const prepareTools = Effect.fnUntraced(
-  function*({ betas, capabilities, config, options }: {
+  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, capabilities, config, options, toolNameMapper }: {
     readonly betas: Set<string>
     readonly capabilities: ModelCapabilities
     readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
+    readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<{
     readonly tools: ReadonlyArray<AnthropicUserDefinedTool | AnthropicProviderDefinedTool> | undefined
     readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
@@ -1575,7 +1614,7 @@ const prepareTools = Effect.fnUntraced(
       }
     }
 
-    let tools = [...userTools, ...providerTools]
+    const tools = [...userTools, ...providerTools]
     let toolChoice: Mutable<typeof Generated.BetaToolChoice.Encoded> | undefined = undefined
 
     if (options.toolChoice === "auto") {
@@ -1583,10 +1622,8 @@ const prepareTools = Effect.fnUntraced(
     } else if (options.toolChoice === "required") {
       toolChoice = { type: "any" }
     } else if ("tool" in options.toolChoice) {
-      toolChoice = { type: "tool", name: options.toolChoice.tool }
+      toolChoice = { type: "tool", name: toolNameMapper.getProviderName(options.toolChoice.tool) }
     } else {
-      const allowedTools = new Set(options.toolChoice.oneOf)
-      tools = tools.filter((tool) => allowedTools.has(tool.name))
       toolChoice = { type: options.toolChoice.mode === "required" ? "any" : "auto" }
     }
 
@@ -2206,7 +2243,7 @@ const makeStreamResponse = Effect.fnUntraced(
             rawUsage = { ...rawUsage, ...event.usage } as any
 
             if (
-              Predicate.isNotNull(event.usage.input_tokens) &&
+              Predicate.isNotNullish(event.usage.input_tokens) &&
               usage.inputTokens !== event.usage.input_tokens
             ) {
               usage.inputTokens = event.usage.input_tokens
@@ -2214,13 +2251,13 @@ const makeStreamResponse = Effect.fnUntraced(
             usage.outputTokens = event.usage.output_tokens
 
             if (
-              Predicate.isNotNull(event.usage.cache_read_input_tokens) &&
+              Predicate.isNotNullish(event.usage.cache_read_input_tokens) &&
               usage.cacheReadInputTokens !== event.usage.cache_read_input_tokens
             ) {
               usage.cacheReadInputTokens = event.usage.cache_read_input_tokens
             }
             if (
-              Predicate.isNotNull(event.usage.cache_creation_input_tokens) &&
+              Predicate.isNotNullish(event.usage.cache_creation_input_tokens) &&
               usage.cacheWriteInputTokens !== event.usage.cache_creation_input_tokens
             ) {
               usage.cacheWriteInputTokens = event.usage.cache_creation_input_tokens
@@ -3028,7 +3065,7 @@ const getDocumentMetadata = (part: Prompt.FilePart): {
 
 const areCitationsEnabled = (part: Prompt.FilePart): boolean => part.options.anthropic?.citations?.enabled ?? false
 
-const isCitationPart = (part: Prompt.UserMessagePart): part is Prompt.FilePart =>
+const isCitationPart = (part: Prompt.UserMessagePart | Prompt.ToolModelOutputPart): part is Prompt.FilePart =>
   part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")
     ? areCitationsEnabled(part)
     : false
@@ -3042,15 +3079,23 @@ interface CitableDocument {
 const extractCitableDocuments = (prompt: Prompt.Prompt): Array<CitableDocument> => {
   const citableDocuments: Array<CitableDocument> = []
 
+  const addCitableDocument = (part: Prompt.UserMessagePart | Prompt.ToolModelOutputPart) => {
+    if (isCitationPart(part)) {
+      citableDocuments.push({
+        title: part.fileName ?? "Untitled Document",
+        fileName: part.fileName,
+        mediaType: part.mediaType
+      })
+    }
+  }
+
   for (const message of prompt.content) {
     if (message.role === "user") {
+      message.content.forEach(addCitableDocument)
+    } else if (message.role === "tool") {
       for (const part of message.content) {
-        if (isCitationPart(part)) {
-          citableDocuments.push({
-            title: part.fileName ?? "Untitled Document",
-            fileName: part.fileName,
-            mediaType: part.mediaType
-          })
+        if (part.type === "tool-result") {
+          part.modelOutput?.forEach(addCitableDocument)
         }
       }
     }
@@ -3240,11 +3285,27 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
+    catch: (error) => toolParametersError(tool, error, method)
+  }).pipe(Effect.filterOrFail(
+    // A raw JSON Schema given to a dynamic tool is sent unchanged
+    (jsonSchema) => jsonSchema.type === "object" || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    (jsonSchema) =>
+      toolParametersError(
+        tool,
+        `expected a JSON Schema with type "object", received ${JSON.stringify(jsonSchema)}`,
+        method
+      )
+  ))
 
 const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   readonly capabilities: ModelCapabilities

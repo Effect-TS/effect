@@ -10649,9 +10649,14 @@ describe("Check", () => {
 
     const decoding = asserts.decoding()
     await decoding.succeed("01H4PGGGJVN2DKP2K1H7EH996V")
+    await decoding.succeed("7" + "z".repeat(25))
+    await decoding.fail(
+      "80000000000000000000000000",
+      `Expected a string matching the RegExp ^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$`
+    )
     await decoding.fail(
       "",
-      `Expected a string matching the RegExp ^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$`
+      `Expected a string matching the RegExp ^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$`
     )
   })
 

@@ -25,6 +25,7 @@ import * as CliError from "./CliError.ts"
 import type { Environment } from "./Command.ts"
 import * as Primitive from "./Primitive.ts"
 import * as Prompt from "./Prompt.ts"
+import * as TerminalCapabilities from "./TerminalCapabilities.ts"
 
 const TypeId = "~effect/cli/Param"
 
@@ -1468,6 +1469,9 @@ export const withFallbackConfig: {
  *
  * This only handles missing options and missing arguments. Invalid values do not
  * prompt, and prompt cancellation re-fails with the original missing error.
+ * When `TerminalCapabilities.canPrompt` is `false`, the fallback is skipped
+ * entirely: no prompt is built or shown, and the original missing error is
+ * returned.
  *
  * @see {@link FallbackPrompt} for accepted fallback prompt forms
  * @see {@link withFallbackConfig} for loading a fallback from config
@@ -1484,11 +1488,16 @@ export const withFallbackPrompt: {
   self: Param<Kind, A>,
   prompt: FallbackPrompt<B>
 ): Param<Kind, A | B> => {
-  const runPrompt = (error: CliError.MissingOption | CliError.MissingArgument, args: ParsedArgs) =>
-    Effect.flatMap(Prompt.isPrompt(prompt) ? Effect.succeed(prompt) : prompt, Prompt.run).pipe(
-      Effect.map((value) => [args.arguments, value as A | B] as const),
-      Effect.catchTag("QuitError", () => Effect.fail(error))
-    )
+  const runPrompt = Effect.fnUntraced(function*(
+    error: CliError.MissingOption | CliError.MissingArgument,
+    args: ParsedArgs
+  ) {
+    const { canPrompt } = yield* TerminalCapabilities.TerminalCapabilities
+    if (!canPrompt) return yield* Effect.fail(error)
+    const built = Prompt.isPrompt(prompt) ? prompt : yield* prompt
+    const value = yield* Effect.catchTag(Prompt.run(built), "QuitError", () => Effect.fail(error))
+    return [args.arguments, value as A | B] as const
+  })
   return transform(
     self,
     (parse) => (args) =>
@@ -2126,7 +2135,15 @@ const parseFlag: <A>(
     return yield* new CliError.MissingOption({ option: name })
   }
 
-  // Parse the first value (later we can handle multiple)
+  if (providedValues.length > 1) {
+    return yield* new CliError.InvalidValue({
+      option: name,
+      value: `${providedValues.length} occurrences`,
+      expected: "at most 1 value",
+      kind: "flag"
+    })
+  }
+
   const arg = providedValues[0]
   const value = yield* Effect.mapError(
     primitiveType.parse(arg),

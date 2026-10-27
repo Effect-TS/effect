@@ -1342,7 +1342,7 @@ const ComputerUse_20251124_Actions = Schema.Union([
 export const ComputerUse_20241022 = Tool.providerDefined({
   id: "anthropic.computer_use_20241022",
   customName: "AnthropicComputerUse",
-  providerName: "computer_use",
+  providerName: "computer",
   requiresHandler: true,
   args: ComputerUse_20241022_Args,
   parameters: ComputerUse_20241022_Actions,

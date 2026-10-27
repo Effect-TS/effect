@@ -7,9 +7,9 @@ describe("Toml", () => {
       Toml.parse(`
 title = "Effect"
 ports = [8000, 8001]
-database.connection.timeout = 30
 
 [database]
+connection.timeout = 30
 enabled = true
 credentials = { user = "root", roles = ["admin", "writer"] }
 `),
@@ -105,8 +105,43 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it("parses Unicode escapes at the scalar value boundaries", () => {
+    assert.deepStrictEqual(
+      Toml.parse(String.raw`
+before = "\uD7FF"
+after = "\uE000"
+max = "\U0010FFFF"
+`),
+      { before: "\uD7FF", after: "\uE000", max: "\u{10FFFF}" }
+    )
+  })
+
+  it.each([
+    String.raw`value = "\uD800"`,
+    String.raw`value = "\uDFFF"`,
+    String.raw`value = "\uD83D\uDE00"`,
+    String.raw`value = "\U00110000"`
+  ])("rejects Unicode escapes that are not scalar values: %s", (input) => {
+    assert.throws(() => Toml.parse(input), SyntaxError, "Invalid unicode escape at line 1, column 12")
+  })
+
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))
+  })
+
+  it("rejects tables defined twice", () => {
+    const invalid = [
+      "[fruit]\napple.color = \"red\"\n[fruit.apple]\n",
+      "[a.b]\n[a]\nb.c = 1\n",
+      "[[a]]\n[a]\n"
+    ]
+    for (const input of invalid) {
+      assert.throws(() => Toml.parse(input))
+    }
+    assert.deepStrictEqual(
+      Toml.parse("[fruit]\napple.color = \"red\"\napple.taste.sweet = true\n[fruit.apple.texture]\nsmooth = true\n"),
+      { fruit: { apple: { color: "red", taste: { sweet: true }, texture: { smooth: true } } } }
+    )
   })
 })

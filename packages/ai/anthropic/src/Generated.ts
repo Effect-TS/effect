@@ -7467,9 +7467,9 @@ export type BetaMessageDeltaEvent = {
   readonly "delta": BetaMessageDelta
   readonly "type": "message_delta"
   readonly "usage": {
-    readonly "cache_creation_input_tokens": number | null
-    readonly "cache_read_input_tokens": number | null
-    readonly "input_tokens": number | null
+    readonly "cache_creation_input_tokens"?: number | null
+    readonly "cache_read_input_tokens"?: number | null
+    readonly "input_tokens"?: number | null
     readonly "iterations"?: BetaIterationsUsage
     readonly "output_tokens": number
     readonly "server_tool_use"?: BetaServerToolUsage | null
@@ -7485,30 +7485,36 @@ export const BetaMessageDeltaEvent = Schema.Struct({
   "delta": BetaMessageDelta,
   "type": Schema.Literal("message_delta").annotate({ "title": "Type", "default": "message_delta" }),
   "usage": Schema.Struct({
-    "cache_creation_input_tokens": Schema.Union([
-      Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
-      Schema.Null
-    ]).annotate({
-      "title": "Cache Creation Input Tokens",
-      "description": "The cumulative number of input tokens used to create the cache entry.",
-      "default": null
-    }),
-    "cache_read_input_tokens": Schema.Union([
-      Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
-      Schema.Null
-    ]).annotate({
-      "title": "Cache Read Input Tokens",
-      "description": "The cumulative number of input tokens read from the cache.",
-      "default": null
-    }),
-    "input_tokens": Schema.Union([
-      Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
-      Schema.Null
-    ]).annotate({
-      "title": "Input Tokens",
-      "description": "The cumulative number of input tokens which were used.",
-      "default": null
-    }),
+    "cache_creation_input_tokens": Schema.optionalKey(
+      Schema.Union([
+        Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+        Schema.Null
+      ]).annotate({
+        "title": "Cache Creation Input Tokens",
+        "description": "The cumulative number of input tokens used to create the cache entry.",
+        "default": null
+      })
+    ),
+    "cache_read_input_tokens": Schema.optionalKey(
+      Schema.Union([
+        Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+        Schema.Null
+      ]).annotate({
+        "title": "Cache Read Input Tokens",
+        "description": "The cumulative number of input tokens read from the cache.",
+        "default": null
+      })
+    ),
+    "input_tokens": Schema.optionalKey(
+      Schema.Union([
+        Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+        Schema.Null
+      ]).annotate({
+        "title": "Input Tokens",
+        "description": "The cumulative number of input tokens which were used.",
+        "default": null
+      })
+    ),
     "iterations": Schema.optionalKey(BetaIterationsUsage),
     "output_tokens": Schema.Number.annotate({
       "title": "Output Tokens",
@@ -7815,15 +7821,15 @@ export type BetaMessage = {
   readonly "stop_reason": BetaStopReason | null
   readonly "stop_sequence": string | null
   readonly "usage": {
-    readonly "cache_creation": BetaCacheCreation | null
-    readonly "cache_creation_input_tokens": number | null
-    readonly "cache_read_input_tokens": number | null
+    readonly "cache_creation"?: BetaCacheCreation | null
+    readonly "cache_creation_input_tokens"?: number | null
+    readonly "cache_read_input_tokens"?: number | null
     readonly "inference_geo"?: string | null
     readonly "input_tokens": number
     readonly "iterations"?: BetaIterationsUsage
     readonly "output_tokens": number
     readonly "server_tool_use"?: BetaServerToolUsage | null
-    readonly "service_tier": "standard" | "priority" | "batch" | null
+    readonly "service_tier"?: "standard" | "priority" | "batch" | null
     readonly "speed"?: BetaSpeed | null
   }
   readonly "context_management"?: BetaResponseContextManagement | null
@@ -7862,26 +7868,32 @@ export const BetaMessage = Schema.Struct({
     "default": null
   }),
   "usage": Schema.Struct({
-    "cache_creation": Schema.Union([BetaCacheCreation, Schema.Null]).annotate({
-      "description": "Breakdown of cached tokens by TTL",
-      "default": null
-    }),
-    "cache_creation_input_tokens": Schema.Union([
-      Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
-      Schema.Null
-    ]).annotate({
-      "title": "Cache Creation Input Tokens",
-      "description": "The number of input tokens used to create the cache entry.",
-      "default": null
-    }),
-    "cache_read_input_tokens": Schema.Union([
-      Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
-      Schema.Null
-    ]).annotate({
-      "title": "Cache Read Input Tokens",
-      "description": "The number of input tokens read from the cache.",
-      "default": null
-    }),
+    "cache_creation": Schema.optionalKey(
+      Schema.Union([BetaCacheCreation, Schema.Null]).annotate({
+        "description": "Breakdown of cached tokens by TTL",
+        "default": null
+      })
+    ),
+    "cache_creation_input_tokens": Schema.optionalKey(
+      Schema.Union([
+        Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+        Schema.Null
+      ]).annotate({
+        "title": "Cache Creation Input Tokens",
+        "description": "The number of input tokens used to create the cache entry.",
+        "default": null
+      })
+    ),
+    "cache_read_input_tokens": Schema.optionalKey(
+      Schema.Union([
+        Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+        Schema.Null
+      ]).annotate({
+        "title": "Cache Read Input Tokens",
+        "description": "The number of input tokens read from the cache.",
+        "default": null
+      })
+    ),
     "inference_geo": Schema.optionalKey(
       Schema.Union([Schema.String, Schema.Null]).annotate({
         "title": "Inference Geo",
@@ -7904,11 +7916,13 @@ export const BetaMessage = Schema.Struct({
         "default": null
       })
     ),
-    "service_tier": Schema.Union([Schema.Literals(["standard", "priority", "batch"]), Schema.Null]).annotate({
-      "title": "Service Tier",
-      "description": "If the request used the priority, standard, or batch tier.",
-      "default": null
-    }),
+    "service_tier": Schema.optionalKey(
+      Schema.Union([Schema.Literals(["standard", "priority", "batch"]), Schema.Null]).annotate({
+        "title": "Service Tier",
+        "description": "If the request used the priority, standard, or batch tier.",
+        "default": null
+      })
+    ),
     "speed": Schema.optionalKey(
       Schema.Union([BetaSpeed, Schema.Null]).annotate({
         "description": "The inference speed mode used for this request.",

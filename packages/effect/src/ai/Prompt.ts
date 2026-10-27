@@ -684,6 +684,60 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
 // =============================================================================
 
 /**
+ * A part returned by a tool's `toModelOutput` mapping and sent to the model in
+ * place of the serialized tool result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type ToolModelOutputPart = TextPart | FilePart
+
+/**
+ * Schema for validation and encoding of tool model output parts.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolModelOutputPart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
+  TextPart,
+  FilePart
+])
+
+/**
+ * Converts tool model output to text for providers that only accept text tool
+ * results.
+ *
+ * **Details**
+ *
+ * Joins text parts with newlines and replaces each file part with a placeholder
+ * naming its media type and file name.
+ *
+ * **Example** (Converting tool model output to text)
+ *
+ * ```ts import.meta.vitest
+ * import { Prompt } from "effect/ai"
+ *
+ * const text = Prompt.toolModelOutputToText([
+ *   Prompt.textPart({ text: "Screenshot" }),
+ *   Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+ * ])
+ * text // => "Screenshot\n[image/png screenshot.png omitted]"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const toolModelOutputToText = (parts: ReadonlyArray<ToolModelOutputPart>): string =>
+  parts.map((part) =>
+    part.type === "text"
+      ? part.text
+      : `[${part.mediaType}${part.fileName === undefined ? "" : ` ${part.fileName}`} omitted]`
+  ).join("\n")
+
+/**
  * Content part representing the result of a tool call.
  *
  * **Example** (Creating tool result parts)
@@ -727,6 +781,10 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    */
   readonly result: unknown
   /**
+   * Content sent to the model in place of the serialized `result`.
+   */
+  readonly modelOutput?: ReadonlyArray<ToolModelOutputPart> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted: boolean
@@ -757,6 +815,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
+   * Content sent to the model in place of the serialized `result`.
+   */
+  readonly modelOutput?: ReadonlyArray<TextPartEncoded | FilePartEncoded> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted?: boolean | undefined
@@ -785,6 +847,7 @@ export const ToolResultPart: Schema.Struct<{
   readonly name: Schema.String
   readonly isFailure: Schema.Boolean
   readonly result: Schema.Unknown
+  readonly modelOutput: Schema.optional<Schema.$Array<typeof ToolModelOutputPart>>
   readonly providerExecuted: Schema.withDecodingDefault<Schema.Boolean>
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
@@ -800,6 +863,7 @@ export const ToolResultPart: Schema.Struct<{
   name: Schema.String,
   isFailure: Schema.Boolean,
   result: Schema.Unknown,
+  modelOutput: Schema.optional(Schema.Array(ToolModelOutputPart)),
   providerExecuted: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false)))
 }).annotate({ identifier: "ToolResultPart" })
 
@@ -2266,6 +2330,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
             name: part.name,
             isFailure: part.isFailure,
             result: part.encodedResult,
+            ...(part.modelOutput !== undefined ? { modelOutput: part.modelOutput } : undefined),
             providerExecuted: part.providerExecuted ?? false,
             options: part.metadata
           }))

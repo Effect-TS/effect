@@ -13,7 +13,7 @@ import * as AiError from "effect/ai/AiError"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
 import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import * as Tool from "effect/ai/Tool"
 import * as Arr from "effect/Array"
@@ -920,7 +920,11 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               role: "tool",
               tool_call_id: part.id,
-              content: typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+              content: Predicate.isNotUndefined(part.modelOutput)
+                ? Prompt.toolModelOutputToText(part.modelOutput)
+                : typeof part.result === "string"
+                ? part.result
+                : JSON.stringify(part.result)
             })
           }
 
@@ -1375,6 +1379,13 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
 
@@ -1459,7 +1470,10 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
       } else {
-        const prepared = yield* tryCodecTransform(tool.parametersSchema, "prepareTools")
+        const prepared = yield* Effect.try({
+          try: () => toCodecOpenAI(tool.parametersSchema),
+          catch: (error) => toolParametersError(tool, error, "prepareTools")
+        })
         parameters = prepared.jsonSchema
         // Reused to normalize this tool's calls in the response.
         toolCodecs.set(tool, prepared.codec)

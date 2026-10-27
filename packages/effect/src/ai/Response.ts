@@ -18,6 +18,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as AiError from "./AiError.ts"
+import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
@@ -172,6 +173,18 @@ const toolPartSchemas = (tool: Tool.Any) => {
 
 type AnyToolParts = ToolCallPart<string, unknown> | ToolResultPart<string, unknown, unknown>
 
+type ToolkitTools<T> = T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>
+
+type ToolkitTool<T> = ToolkitTools<T>[keyof ToolkitTools<T>]
+
+type ToolkitDecodingServices<T> =
+  | Tool.ParametersDecodingServices<ToolkitTool<T>>
+  | Tool.ResultDecodingServices<ToolkitTool<T>>
+
+type ToolkitEncodingServices<T> =
+  | Tool.ParametersEncodingServices<ToolkitTool<T>>
+  | Tool.ResultEncodingServices<ToolkitTool<T>>
+
 const toolPartSchemasFor = (
   toolkit: Toolkit.Any | Toolkit.WithHandler<any> | undefined
 ): ReadonlyArray<Schema.Top> => {
@@ -222,10 +235,10 @@ const toolPartSchemasFor = (
  */
 export const AllParts: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    AllParts<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    AllParts<ToolkitTools<T>>,
     AllPartsEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<AllParts<{}> | AnyToolParts, AllPartsEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -313,10 +326,10 @@ export type PartEncoded =
  */
 export const Part: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    Part<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    Part<ToolkitTools<T>>,
     PartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<Part<{}> | AnyToolParts, PartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -407,10 +420,10 @@ export type StreamPartEncoded =
  */
 export const StreamPart: {
   <T extends Toolkit.Any | Toolkit.WithHandler<any>>(toolkit: T): Schema.Codec<
-    StreamPart<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
+    StreamPart<ToolkitTools<T>>,
     StreamPartEncoded,
-    Tool.ResultDecodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>,
-    Tool.ResultEncodingServices<Toolkit.Tools<T>[keyof Toolkit.Tools<T>]>
+    ToolkitDecodingServices<T>,
+    ToolkitEncodingServices<T>
   >
   (): Schema.Codec<StreamPart<{}> | AnyToolParts, StreamPartEncoded>
 } = (toolkit?: Toolkit.Any | Toolkit.WithHandler<any>) =>
@@ -1578,6 +1591,10 @@ export interface BaseToolResult<Name extends string> extends BasePart<"tool-resu
    */
   readonly encodedResult: unknown
   /**
+   * Content sent to the model in place of the encoded result.
+   */
+  readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted: boolean
@@ -1701,6 +1718,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly result: unknown
   /**
+   * Content sent to the model in place of the result.
+   */
+  readonly modelOutput?: ReadonlyArray<Prompt.TextPartEncoded | Prompt.FilePartEncoded> | undefined
+  /**
    * Whether or not the result of executing the tool call handler was an error.
    */
   readonly isFailure: boolean
@@ -1753,6 +1774,8 @@ export const ToolResultPart = <
     identifier: `ToolResultPart(${name})`
   }) as any
 
+const ModelOutput = Schema.Array(Prompt.ToolModelOutputPart)
+
 const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failure: Schema.Constraint) => {
   const makeSchema = (result: Schema.Constraint, isFailure: boolean) => {
     const encodedResult = Schema.toEncoded(result)
@@ -1769,11 +1792,13 @@ const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failur
       providerExecuted: Schema.Boolean,
       metadata: ProviderMetadata,
       encodedResult,
+      modelOutput: Schema.optional(ModelOutput),
       preliminary: Schema.Boolean
     })
     const Encoded = Schema.Struct({
       ...Common,
       result: encodedResult,
+      modelOutput: Schema.optional(Schema.toEncoded(ModelOutput)),
       providerExecuted: Schema.optional(Schema.Boolean),
       metadata: Schema.optional(ProviderMetadata),
       preliminary: Schema.optional(Schema.Boolean)

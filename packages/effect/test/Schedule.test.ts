@@ -506,6 +506,16 @@ describe("Schedule", () => {
       }))
   })
 
+  describe("fibonacci", () => {
+    it.effect("repeats the initial delay", () =>
+      Effect.gen(function*() {
+        const schedule = Schedule.fibonacci("100 millis")
+        const inputs = Array.makeBy(5, constUndefined)
+        const output = yield* runDelays(schedule, inputs)
+        expect(output).toEqual([100, 100, 200, 300, 500].map(Duration.millis))
+      }))
+  })
+
   describe("fixed", () => {
     it.effect("constant delays", () =>
       Effect.gen(function*() {

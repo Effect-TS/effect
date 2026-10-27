@@ -98,7 +98,8 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 /**
  * Creates a migrator that ensures the migrations table exists, runs pending
  * migrations in a transaction, and optionally dumps the schema after successful
- * migrations.
+ * migrations. ClickHouse runs without a transaction and records each migration
+ * only after it succeeds.
  *
  * @stability unstable
  * @category constructors
@@ -240,6 +241,12 @@ ORDER BY migration_id`,
 
     // === run
 
+    // BEGIN is still experimental on clickhouse
+    const transactional = sql.onDialectOrElse({
+      clickhouse: () => false,
+      orElse: () => true
+    })
+
     const run = Effect.gen(function*() {
       yield* sql.onDialectOrElse({
         pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
@@ -279,7 +286,8 @@ ORDER BY migration_id`,
         ])
       }
 
-      if (required.length > 0) {
+      // rows recorded up front are only rolled back inside a transaction
+      if (transactional && required.length > 0) {
         yield* pipe(
           insertMigrations(required.map(([id, name]) => [id, name])),
           Effect.mapError((error): MigrationError | SqlError =>
@@ -298,6 +306,7 @@ ORDER BY migration_id`,
         ([id, name, effect]) =>
           Effect.logDebug(`Running migration`).pipe(
             Effect.flatMap(() => runMigration(id, name, effect)),
+            Effect.andThen(transactional ? Effect.void : insertMigrations([[id, name]])),
             Effect.annotateLogs("migration_id", String(id)),
             Effect.annotateLogs("migration_name", name),
             Effect.withSpan(`Migrator ${id}_${name}`)
@@ -325,11 +334,7 @@ ORDER BY migration_id`,
     yield* ensureMigrationsTable
 
     const completed = yield* pipe(
-      sql.onDialectOrElse({
-        // BEGIN is still experimental on clickhouse
-        clickhouse: () => run,
-        orElse: () => sql.withTransaction(run)
-      }),
+      transactional ? sql.withTransaction(run) : run,
       Effect.catchTag("MigrationError", (_) =>
         _.kind === "Locked"
           ? Effect.as(Effect.logDebug(_.message), [])

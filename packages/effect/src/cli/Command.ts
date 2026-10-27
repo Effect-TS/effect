@@ -2045,6 +2045,9 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       // 3. Parse command arguments from remaining tokens
       const parsedArgs = yield* Parser.parseArgs({ tokens: remainder, trailingOperands }, command)
       const commandPath = [command.name, ...Parser.getCommandPath(parsedArgs)] as const
+      const toShowHelp = Effect.mapError((error: CliError.CliError) =>
+        error._tag === "ShowHelp" ? error : new CliError.ShowHelp({ commandPath, errors: [error] })
+      )
       const handlerCtx: GlobalFlag.HandlerContext = { builtIns, command, commandPath, version: config.version }
       const activeFlags = getGlobalFlagsForCommandPath(command, commandPath, builtIns)
 
@@ -2067,7 +2070,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
           return entries !== undefined && entries.length > 0
         })
         if (!hasEntry) continue
-        const [, value] = yield* flag.flag.parse(emptyArgs)
+        const [, value] = yield* flag.flag.parse(emptyArgs).pipe(toShowHelp)
         if (flag === GlobalFlag.Wizard) {
           const { colors } = yield* Prompt.Theme
           return yield* Effect.gen(function*() {
@@ -2100,23 +2103,17 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       if (parsedArgs.errors && parsedArgs.errors.length > 0) {
         return yield* new CliError.ShowHelp({ commandPath, errors: parsedArgs.errors })
       }
-      const parseResult = yield* Effect.result(commandImpl.parse(parsedArgs))
-      if (parseResult._tag === "Failure") {
-        return yield* new CliError.ShowHelp({
-          commandPath,
-          errors: [parseResult.failure as CliError.NonShowHelpErrors]
-        })
-      }
+      const input = yield* commandImpl.parse(parsedArgs).pipe(toShowHelp)
 
       // 7. Provide setting values
-      let program = commandImpl.handle(parseResult.success, [command.name])
+      let program = commandImpl.handle(input, [command.name])
       const logLevel = activeFlags.includes(GlobalFlag.LogLevel)
-        ? (yield* GlobalFlag.LogLevel.flag.parse(emptyArgs))[1]
+        ? (yield* GlobalFlag.LogLevel.flag.parse(emptyArgs).pipe(toShowHelp))[1]
         : Option.none()
       program = Effect.provideService(program, GlobalFlag.LogLevel, logLevel)
       for (const flag of activeFlags) {
         if (flag._tag !== "Setting" || flag === GlobalFlag.LogLevel) continue
-        const [, value] = yield* flag.flag.parse(emptyArgs)
+        const [, value] = yield* flag.flag.parse(emptyArgs).pipe(toShowHelp)
         program = Effect.provideService(program, flag, value)
       }
 

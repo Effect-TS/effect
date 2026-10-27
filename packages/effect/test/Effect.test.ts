@@ -32,6 +32,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
+import { collectGarbage } from "./utils/gc.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
 
@@ -2351,6 +2352,24 @@ describe("Effect", () => {
         )
       }))
 
+    it.effect("interrupting a fiber inside spans records the interruption once", () =>
+      Effect.gen(function*() {
+        const inner = Effect.fn("inner")(() => Effect.never)
+        const outer = Effect.fn("outer")(() => inner())
+        for (const effect of [Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")), outer()]) {
+          const fiber = yield* Effect.forkChild(effect)
+          yield* Effect.yieldNow
+          const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
+          assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
+        }
+        class Value extends Context.Service<Value, number>()("InterruptValue") {}
+        const fiber = yield* Effect.forkChild(Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")))
+        yield* Effect.yieldNow
+        yield* Fiber.interruptAs(fiber, 123, Context.make(Value, NaN))
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
+      }))
+
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make()
@@ -4620,6 +4639,25 @@ describe("Effect", () => {
   })
 
   describe("Effect.fn", () => {
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "does not retain arguments in the stack frame of forked fibers",
+      () =>
+        Effect.gen(function*() {
+          const start = Effect.fn("start")(function*(_input: object) {
+            yield* Effect.forkChild(Effect.never)
+          })
+          let reference: WeakRef<object> | undefined
+          const makeInput = () => {
+            const input = {}
+            reference = new WeakRef(input)
+            return input
+          }
+          yield* start(makeInput())
+          yield* collectGarbage
+          assert.isUndefined(reference!.deref())
+        })
+    )
+
     it.effect("should support pipeable arguments", () => {
       const fn = Effect.fn(function*(s: string) {
         return s.length

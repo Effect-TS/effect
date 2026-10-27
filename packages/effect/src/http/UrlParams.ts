@@ -645,7 +645,9 @@ const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
  *
  * **Details**
  *
- * Defaults include `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`.
+ * Defaults match the OpenTelemetry `url.full` list: `X-Amz-Signature`,
+ * `X-Amz-Credential`, `X-Amz-Security-Token`, `AWSAccessKeyId`, `Signature`,
+ * `sig` and `X-Goog-Signature`.
  * A custom list replaces the defaults. Matching uses `isRedactedName`.
  * Redaction leaves request URLs and parameter values unchanged. `Redacted`
  * values are redacted regardless of this list.
@@ -658,6 +660,9 @@ export const CurrentRedactedNames = Context.Reference<
   ReadonlyArray<string | RegExp>
 >("effect/http/UrlParams/CurrentRedactedNames", {
   defaultValue: () => [
+    "X-Amz-Signature",
+    "X-Amz-Credential",
+    "X-Amz-Security-Token",
     "AWSAccessKeyId",
     "Signature",
     "sig",

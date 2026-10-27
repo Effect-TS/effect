@@ -26,6 +26,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { Duplex } from "node:stream"
 import { finished, Readable } from "node:stream"
+import { StringDecoder } from "node:string_decoder"
 import { destroyStream as destroyReadable } from "./internal/stream.ts"
 import { pullIntoWritable } from "./NodeSink.ts"
 
@@ -234,6 +235,9 @@ export const toReadableNever = <E>(stream: Stream.Stream<string | Uint8Array, E,
  * Consumes a Node readable stream into a string using the selected encoding,
  * failing through `onError` on stream errors or when `maxBytes` is exceeded
  * and destroying the stream on interruption or failure.
+ * `maxBytes` counts the bytes read from the stream. Streams that already emit
+ * strings are counted by encoded string length, which can differ from the
+ * bytes originally read.
  * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
  * destroying the stream when the byte limit is exceeded.
  *
@@ -255,7 +259,12 @@ export const toString = <E = Cause.UnknownError>(
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
     const stream = readable() as Readable
-    stream.setEncoding(encoding)
+    // Decoding here keeps `maxBytes` on raw bytes. A stream that already
+    // decodes only emits strings, so switch it to `encoding` instead.
+    // Object-mode strings are not encoded bytes and count as UTF-8.
+    const decodes = stream.readableEncoding !== null
+    if (decodes) stream.setEncoding(encoding)
+    const decoder = new StringDecoder(encoding)
 
     let string = ""
     let bytes = 0
@@ -266,12 +275,17 @@ export const toString = <E = Cause.UnknownError>(
         resume(Effect.fail(onError(err) as E))
       } else {
         cleanup()
-        resume(Effect.succeed(string))
+        resume(Effect.succeed(string + decoder.end()))
       }
     })
-    function onData(chunk: string) {
-      string += chunk
-      bytes += Buffer.byteLength(chunk)
+    function onData(chunk: string | Uint8Array) {
+      if (typeof chunk === "string") {
+        string += chunk
+        bytes += Buffer.byteLength(chunk, decodes ? encoding : "utf8")
+      } else {
+        string += decoder.write(chunk)
+        bytes += chunk.byteLength
+      }
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
         if (options?.destroyOnOverflow === false) {

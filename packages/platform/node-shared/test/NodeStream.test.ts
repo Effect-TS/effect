@@ -323,6 +323,55 @@ describe("Stream", () => {
       assert.isTrue(stream.destroyed)
     }))
 
+  it.effect("toString limits the bytes read before decoding", () =>
+    Effect.gen(function*() {
+      const latin1 = yield* NodeStream.toString(() => Readable.from([Buffer.from([0xe9])]), {
+        encoding: "latin1",
+        maxBytes: 1
+      })
+      const utf16le = yield* NodeStream.toString(() => Readable.from([Buffer.from("abcd", "utf16le")]), {
+        encoding: "utf16le",
+        maxBytes: 7,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(latin1, "é")
+      assert.instanceOf(utf16le, NodeStream.MaxBytesError)
+    }))
+
+  it.effect("toString decodes characters split across chunks", () =>
+    Effect.gen(function*() {
+      const chunks = [Buffer.from([0xe2, 0x82]), Buffer.from([0xac, 0xe2])]
+      const text = yield* NodeStream.toString(() => Readable.from(chunks), { maxBytes: 4 })
+
+      assert.strictEqual(text, "€\ufffd")
+    }))
+
+  it.effect("toString limits the bytes read by a stream that already decodes", () =>
+    Effect.gen(function*() {
+      const stream = new Readable({
+        read() {
+          this.push(Buffer.from([0xe9]))
+          this.push(null)
+        }
+      })
+      stream.setEncoding("utf8")
+      const text = yield* NodeStream.toString(() => stream, { encoding: "latin1", maxBytes: 1 })
+
+      assert.strictEqual(text, "é")
+    }))
+
+  it.effect("toString limits object-mode strings by their UTF-8 length", () =>
+    Effect.gen(function*() {
+      const error = yield* NodeStream.toString(() => Readable.from(["a", "b", "c", "d"]), {
+        encoding: "hex",
+        maxBytes: 3,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
+    }))
+
   it.effect("toArrayBuffer enforces a zero maxBytes limit", () =>
     Effect.gen(function*() {
       let emitted = false

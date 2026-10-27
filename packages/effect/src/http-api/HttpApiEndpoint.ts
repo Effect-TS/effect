@@ -9,6 +9,62 @@
  * constructors, payload and response schema helpers, and type utilities used by
  * builders and generated clients.
  *
+ * **Request variants**
+ *
+ * A server needs a distinct method and path per endpoint.
+ * `HttpApiBuilder.layer` rejects two endpoints that share them, even when their
+ * query, headers or payload differ. Declare the variants of one operation as a
+ * single endpoint instead:
+ *
+ * - discriminate with a `query` or `headers` field, such as `stream: Schema.Boolean`
+ * - list several `payload` schemas, chosen by the request `Content-Type`
+ * - list several `success` schemas with distinct content types or statuses. One
+ *   of them can be a stream. The server encodes whichever value the handler
+ *   returns, and the client decodes by the response `Content-Type`
+ *
+ * The handler branches on the decoded request, and OpenAPI documents one
+ * operation with every alternative. The generated client returns the union of
+ * the success types. Wrap the client method to narrow the result per variant
+ * when callers need it.
+ *
+ * **Example** (Buffered and streaming variants of one operation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, Stream } from "effect"
+ * import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+ *
+ * const Stats = Schema.Struct({ cpu: Schema.Number })
+ *
+ * const Api = HttpApi.make("Docker").add(
+ *   HttpApiGroup.make("containers").add(
+ *     // GET /stats?stream=false returns JSON, ?stream=true returns NDJSON
+ *     HttpApiEndpoint.get("stats", "/stats", {
+ *       query: { stream: Schema.Boolean },
+ *       success: [Stats, HttpApiSchema.StreamNdjson({ schema: Stats })]
+ *     }),
+ *     // POST /images accepts a JSON pull request or a tar archive
+ *     HttpApiEndpoint.post("createImage", "/images", {
+ *       payload: [
+ *         Schema.Struct({ fromImage: Schema.String }),
+ *         HttpApiSchema.StreamUint8Array({ contentType: "application/x-tar" })
+ *       ],
+ *       success: Schema.String
+ *     })
+ *   )
+ * )
+ *
+ * const ContainersLive = HttpApiBuilder.group(Api, "containers", (handlers) =>
+ *   handlers
+ *     .handle("stats", ({ query }) =>
+ *       Effect.succeed(query.stream ? Stream.make({ cpu: 1 }, { cpu: 2 }) : { cpu: 1 })
+ *     )
+ *     .handle("createImage", ({ payload }) =>
+ *       Stream.isStream(payload)
+ *         ? Effect.as(Stream.runDrain(payload), "imported")
+ *         : Effect.succeed(`pulled ${payload.fromImage}`)
+ *     ))
+ * ```
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -1294,11 +1350,13 @@ function getPayload(
         throw new Error("Multiple streaming payloads are not supported")
       }
       hasStream = true
-      const contentType = MediaType.normalize(schema.contentType)
-      if (result.has(contentType)) {
-        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${schema.contentType}`)
+      for (const declared of schema.contentTypes) {
+        const contentType = MediaType.normalize(declared)
+        if (result.has(contentType)) {
+          throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${declared}`)
+        }
+        result.set(contentType, { encoding: { _tag: "Stream", contentType: declared }, schemas: [schema] })
       }
-      result.set(contentType, { encoding: { _tag: "Stream", contentType: schema.contentType }, schemas: [schema] })
       continue
     }
     const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
@@ -1407,10 +1465,12 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
-      if (entry.bufferedContentTypes.has(MediaType.normalize(inner.contentType))) {
-        throw new Error(
-          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${inner.contentType}`
-        )
+      for (const declared of inner.contentTypes) {
+        if (entry.bufferedContentTypes.has(MediaType.normalize(declared))) {
+          throw new Error(
+            `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${declared}`
+          )
+        }
       }
       statuses.set(status, { ...entry, stream: inner })
     } else {
@@ -1421,9 +1481,8 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
           throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
         }
         const encoding = HttpApiSchema.getResponseEncodingSchema(schema)
-        if (
-          MediaType.normalize(encoding.contentType) === MediaType.normalize(entry.stream.contentType)
-        ) {
+        const contentType = MediaType.normalize(encoding.contentType)
+        if (entry.stream.contentTypes.some((declared) => MediaType.normalize(declared) === contentType)) {
           throw new Error(
             `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${encoding.contentType}`
           )

@@ -1621,6 +1621,28 @@ describe("Stream", () => {
         )
         assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
       }))
+
+    it.effect("groupByKey - groups end when the upstream ends", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.groupByKey((n) => n % 2 === 0 ? "even" : "odd"),
+          Stream.mapEffect(([key, group]) => Effect.map(Stream.runCollect(group), (values) => [key, values] as const)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [["odd", [1, 3, 5]], ["even", [2, 4]]])
+      }))
+
+    it.effect("groupByKey - groups end when the upstream fails", () =>
+      Effect.gen(function*() {
+        const exit = yield* Stream.make(1, 2, 3).pipe(
+          Stream.concat(Stream.fail("boom")),
+          Stream.groupByKey((n) => n % 2),
+          Stream.mapEffect(([, group]) => Stream.runCollect(group)),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("boom"))
+      }))
   })
 
   describe("concat", () => {
@@ -2109,6 +2131,17 @@ describe("Stream", () => {
       ]
       assert.deepStrictEqual(rechunked, expected)
       assert.deepStrictEqual(groupedResults, expected)
+    }))
+
+  it.effect("rechunk emits buffered elements before failing", () =>
+    Effect.gen(function*() {
+      const result = yield* Stream.make(1, 2, 3).pipe(
+        Stream.concat(Stream.fail("Ouch")),
+        Stream.rechunk(10),
+        Stream.catch((error) => Stream.make(error)),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(result, [1, 2, 3, "Ouch"])
     }))
 
   describe("transduce", () => {

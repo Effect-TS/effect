@@ -90,19 +90,33 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
       | Path
     >()
     const routes: Array<HttpRouter.Route<any, any>> = []
+    const routeOwners = new Map<string, string>()
     const availableGroups = Array.from(services.mapUnsafe.keys()).filter((key) =>
       key.startsWith("effect/http-api/HttpApiGroup/")
     )
     const groups = Object.values(api.groups) as ReadonlyArray<HttpApiGroup.Top>
     for (const group of groups) {
-      const groupRoutes = services.mapUnsafe.get(group.key)?.routes as Array<HttpRouter.Route<any, any>>
-      if (groupRoutes === undefined) {
+      const service = services.mapUnsafe.get(group.key) as GroupService | undefined
+      if (service === undefined) {
         const available = availableGroups.length === 0 ? "none" : availableGroups.join(", ")
         return yield* Effect.die(
           `HttpApiGroup "${group.identifier}" not found (key: "${group.key}"). Did you forget to provide HttpApiBuilder.group(api, "${group.identifier}", ...)? Available groups: ${available}`
         )
       }
-      routes.push(...groupRoutes)
+      for (const { endpoint } of service.handlers.values()) {
+        const owner = `${group.identifier}.${endpoint.identifier}`
+        const key = `${endpoint.method} ${HttpApiPath.toRouterPath(endpoint.path, endpoint.params)}`
+        const existing = routeOwners.get(key)
+        if (existing !== undefined) {
+          return yield* Effect.die(
+            new Error(
+              `HttpApiEndpoint "${owner}" (${endpoint.method} ${endpoint.path}) has the same method and path as "${existing}". Declare one endpoint whose query, headers, payload or success schemas cover each variant instead.`
+            )
+          )
+        }
+        routeOwners.set(key, owner)
+      }
+      routes.push(...service.routes)
     }
     yield* (router.addAll(routes) as Effect.Effect<void>)
     if (options?.openapiPath) {
@@ -159,12 +173,8 @@ export const group = <
     for (const item of handlers.handlers.values()) {
       routes.push(handlerToRoute(api, group as any, item, services))
     }
-    return Context.makeUnsafe(
-      new Map([[group.key, {
-        routes,
-        handlers: handlers.handlers
-      }]])
-    )
+    const service: GroupService = { routes, handlers: handlers.handlers }
+    return Context.makeUnsafe(new Map([[group.key, service]]))
   })) as any
 
 /**
@@ -243,6 +253,14 @@ export interface HandlerRuntime {
   readonly handler: HttpApiEndpoint.Handler<HttpApiEndpoint.Constraint, unknown, unknown>
   readonly isRaw: boolean
   readonly uninterruptible: boolean
+}
+
+/**
+ * @internal
+ */
+export interface GroupService {
+  readonly routes: Array<HttpRouter.Route<any, any>>
+  readonly handlers: Map<string, HandlerRuntime>
 }
 
 type HandleAllEntry<Endpoint extends HttpApiEndpoint.Constraint> =
