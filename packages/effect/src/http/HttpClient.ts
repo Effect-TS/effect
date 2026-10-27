@@ -675,6 +675,10 @@ const Proto = {
  *
  * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, and aborting non-scoped requests on interruption.
  *
+ * `HttpClientError` messages redact the request URL with the `UrlParams.CurrentRedactedNames` of the fiber that executes the request, even for errors the runner creates in callbacks outside that fiber. This applies to errors that reference the request passed to the runner, including through the response. Build responses from that request object: errors for a response built from a different request only use the names active where they are created.
+ *
+ * The names of every execution of a request object are combined, so executing a reused request under another policy cannot undo the redaction of earlier errors. Errors for a reused request are therefore also redacted with the names of its other executions.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -704,10 +708,14 @@ export const make = (
           )
         }
         const url = urlResult.success
+        const run = (request: HttpClientRequest.HttpClientRequest) => {
+          Error.addRequestRedactedNames(request, fiber.getRef(UrlParams.CurrentRedactedNames))
+          return f(request, url, controller.signal, fiber as any)
+        }
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
-          const effect = f(request, url, controller.signal, fiber as any)
+          const effect = run(request)
           if (scopedController) return effect
           return Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(effect), {
@@ -741,7 +749,7 @@ export const make = (
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
             return Effect.uninterruptibleMask((restore) =>
-              restore(f(request, url, controller.signal, fiber as any)).pipe(
+              restore(run(request)).pipe(
                 Effect.withParentSpan(span, { captureStackTrace: false }),
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {

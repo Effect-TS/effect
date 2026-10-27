@@ -89,15 +89,69 @@ const formatReason = (tag: string) => tag.endsWith("Error") ? tag.slice(0, -5) :
 const formatMessage = (reason: string, description: string | undefined, info: string) =>
   description ? `${reason}: ${description} (${info})` : `${reason} error (${info})`
 
-const formatMethodAndUrl = (request: HttpClientRequest.HttpClientRequest) =>
-  `${request.method} ${UrlParams.redactUrl(request.url)}`
+// The fiber that renders an error later, such as a span exporter, may not
+// have the `UrlParams.CurrentRedactedNames` of the request. URLs are therefore
+// redacted with the names active when a reason is created, plus the names of
+// the fibers that executed its request.
+const redactedUrls = new WeakMap<object, string>()
+const requestRedactedNames = new WeakMap<HttpClientRequest.HttpClientRequest, ReadonlyArray<string | RegExp>>()
+
+const redactedUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) => {
+  const url = redactedUrls.get(reason) ?? UrlParams.redactUrl(reason.request.url)
+  const redactedNames = requestRedactedNames.get(reason.request)
+  return redactedNames === undefined ? url : UrlParams.redactUrl(url, redactedNames)
+}
+
+const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.TaggedError<Tag>> => {
+  class Base extends Data.TaggedError(tag)<{ readonly request: HttpClientRequest.HttpClientRequest }> {
+    constructor(props: { readonly request: HttpClientRequest.HttpClientRequest }) {
+      super(props)
+      redactedUrls.set(this, UrlParams.redactUrl(props.request.url))
+    }
+  }
+  return Base as any
+}
+
+/**
+ * Adds the redaction names of the fiber executing a request. Errors that
+ * reference the request use them, even when they are created in callbacks
+ * that run outside that fiber. Names are never removed, so executing a reused
+ * request under another policy cannot undo the redaction of earlier errors.
+ *
+ * @internal
+ */
+export const addRequestRedactedNames = (
+  request: HttpClientRequest.HttpClientRequest,
+  redactedNames: ReadonlyArray<string | RegExp>
+): void => {
+  const current = requestRedactedNames.get(request)
+  if (current === undefined) {
+    requestRedactedNames.set(request, redactedNames)
+    return
+  }
+  let merged: Array<string | RegExp> | undefined
+  for (const name of redactedNames) {
+    if (current.some((existing) => isSameName(existing, name))) continue
+    ;(merged ??= [...current]).push(name)
+  }
+  if (merged !== undefined) requestRedactedNames.set(request, merged)
+}
+
+// Strings match case-insensitively, like `UrlParams.isRedactedName`.
+const isSameName = (a: string | RegExp, b: string | RegExp): boolean =>
+  typeof a === "string"
+    ? typeof b === "string" && a.toLowerCase() === b.toLowerCase()
+    : typeof b !== "string" && a.source === b.source && a.flags === b.flags
+
+const formatMethodAndUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) =>
+  `${reason.request.method} ${redactedUrl(reason)}`
 
 // Serialized reasons carry the same request and response information as the
 // message, so headers, URL parameters and bodies stay out of logs. The full
 // objects remain available through the `request` and `response` properties.
 const reasonToJSON = (reason: HttpClientErrorReason, json: unknown) => ({
   ...(json as object),
-  request: { _id: "HttpClientRequest", method: reason.request.method, url: UrlParams.redactUrl(reason.request.url) },
+  request: { _id: "HttpClientRequest", method: reason.request.method, url: redactedUrl(reason) },
   ...("response" in reason ? { response: { _id: "HttpClientResponse", status: reason.response.status } } : undefined)
 })
 
@@ -108,7 +162,7 @@ const reasonToJSON = (reason: HttpClientErrorReason, json: unknown) => ({
  * @category errors
  * @since 4.0.0
  */
-export class TransportError extends Data.TaggedError("TransportError")<{
+export class TransportError extends ReasonError("TransportError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly cause?: unknown
   readonly description?: string
@@ -120,7 +174,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
@@ -145,7 +199,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
  * @category errors
  * @since 4.0.0
  */
-export class EncodeError extends Data.TaggedError("EncodeError")<{
+export class EncodeError extends ReasonError("EncodeError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly cause?: unknown
   readonly description?: string
@@ -157,7 +211,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
@@ -182,7 +236,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
  * @category errors
  * @since 4.0.0
  */
-export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
+export class InvalidUrlError extends ReasonError("InvalidUrlError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly cause?: unknown
   readonly description?: string
@@ -194,7 +248,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
@@ -219,7 +273,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
  * @category errors
  * @since 4.0.0
  */
-export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
+export class StatusCodeError extends ReasonError("StatusCodeError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly response: ClientResponse.HttpClientResponse
   readonly cause?: unknown
@@ -232,7 +286,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
@@ -259,7 +313,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
  * @category errors
  * @since 4.0.0
  */
-export class DecodeError extends Data.TaggedError("DecodeError")<{
+export class DecodeError extends ReasonError("DecodeError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly response: ClientResponse.HttpClientResponse
   readonly cause?: unknown
@@ -272,7 +326,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
@@ -298,7 +352,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
  * @category errors
  * @since 4.0.0
  */
-export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
+export class EmptyBodyError extends ReasonError("EmptyBodyError")<{
   readonly request: HttpClientRequest.HttpClientRequest
   readonly response: ClientResponse.HttpClientResponse
   readonly cause?: unknown
@@ -311,7 +365,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
+    return formatMethodAndUrl(this)
   }
 
   /**
