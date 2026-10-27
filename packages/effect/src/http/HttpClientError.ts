@@ -89,13 +89,18 @@ const formatReason = (tag: string) => tag.endsWith("Error") ? tag.slice(0, -5) :
 const formatMessage = (reason: string, description: string | undefined, info: string) =>
   description ? `${reason}: ${description} (${info})` : `${reason} error (${info})`
 
-// Request URLs are redacted when a reason is created, because the fiber that
-// renders it later, such as a span exporter, may not have the same
-// `UrlParams.CurrentRedactedNames`.
+// The fiber that renders an error later, such as a span exporter, may not
+// have the `UrlParams.CurrentRedactedNames` of the request. URLs are therefore
+// redacted with the names active when a reason is created, plus the names of
+// the fiber that executed its request.
 const redactedUrls = new WeakMap<object, string>()
+const requestRedactedNames = new WeakMap<HttpClientRequest.HttpClientRequest, ReadonlyArray<string | RegExp>>()
 
-const redactedUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) =>
-  redactedUrls.get(reason) ?? UrlParams.redactUrl(reason.request.url)
+const redactedUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) => {
+  const url = redactedUrls.get(reason) ?? UrlParams.redactUrl(reason.request.url)
+  const redactedNames = requestRedactedNames.get(reason.request)
+  return redactedNames === undefined ? url : UrlParams.redactUrl(url, redactedNames)
+}
 
 const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.TaggedError<Tag>> => {
   class Base extends Data.TaggedError(tag)<{ readonly request: HttpClientRequest.HttpClientRequest }> {
@@ -108,14 +113,17 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
 }
 
 /**
- * Redacts the request URL of an error with additional names. `HttpClient.make`
- * uses it for transport errors, which may be created in callbacks that run
- * outside the request fiber.
+ * Records the redaction names of the fiber executing a request. Errors that
+ * reference the request use them, even when they are created in callbacks
+ * that run outside that fiber.
  *
  * @internal
  */
-export const redactUrlWith = (error: HttpClientError, redactedNames: ReadonlyArray<string | RegExp>): void => {
-  redactedUrls.set(error.reason, UrlParams.redactUrl(redactedUrl(error.reason), redactedNames))
+export const setRequestRedactedNames = (
+  request: HttpClientRequest.HttpClientRequest,
+  redactedNames: ReadonlyArray<string | RegExp>
+): void => {
+  requestRedactedNames.set(request, redactedNames)
 }
 
 const formatMethodAndUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) =>

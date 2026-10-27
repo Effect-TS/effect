@@ -675,6 +675,8 @@ const Proto = {
  *
  * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, and aborting non-scoped requests on interruption.
  *
+ * `HttpClientError` messages redact the request URL with the `UrlParams.CurrentRedactedNames` of the fiber that executes the request, even for errors the runner creates in callbacks outside that fiber. This applies to errors that reference the request passed to the runner, including through the response. Build responses from that request object: errors for a response built from a different request only use the names active where they are created.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -704,15 +706,10 @@ export const make = (
           )
         }
         const url = urlResult.success
-        // Transports may create errors in callbacks outside this fiber, so
-        // their URLs are redacted again with this fiber's names.
-        const run = (request: HttpClientRequest.HttpClientRequest) =>
-          Effect.mapError(f(request, url, controller.signal, fiber as any), (error) => {
-            if (Error.isHttpClientError(error)) {
-              Error.redactUrlWith(error, fiber.getRef(UrlParams.CurrentRedactedNames))
-            }
-            return error
-          })
+        const run = (request: HttpClientRequest.HttpClientRequest) => {
+          Error.setRequestRedactedNames(request, fiber.getRef(UrlParams.CurrentRedactedNames))
+          return f(request, url, controller.signal, fiber as any)
+        }
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
