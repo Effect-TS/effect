@@ -1226,22 +1226,34 @@ describe("HttpApiClient", () => {
         strictEqual(capture.sent.headers["x-registry-config"], "cfg-s3cret")
       }))
 
-    it.effect("combines names declared on the API, group and endpoint with the current defaults", () =>
+    it.effect("combines names declared on the APIs, group and endpoint with the current defaults", () =>
       Effect.gen(function*() {
-        const Api = HttpApi.make("Api").add(
+        const Child = HttpApi.make("Child").add(
           HttpApiGroup.make("test").add(
             HttpApiEndpoint.get("get", "/get", {
-              query: { a: Schema.String, b: Schema.String, c: Schema.String, sig: Schema.String, page: Schema.String }
+              query: {
+                a: Schema.String,
+                b: Schema.String,
+                c: Schema.String,
+                d: Schema.String,
+                sig: Schema.String,
+                page: Schema.String
+              }
             }).annotate(HttpApi.RedactedNames, { query: ["c"] })
           ).annotate(HttpApi.RedactedNames, { query: ["b"] })
-        ).annotate(HttpApi.RedactedNames, { query: ["a"] })
+        ).annotate(HttpApi.RedactedNames, { query: ["d"] })
+        // `addHttpApi` copies the child API's names onto its groups.
+        const Api = HttpApi.make("Api").addHttpApi(Child).annotate(HttpApi.RedactedNames, { query: ["a"] })
         const capture = captureRequest()
         const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
 
-        yield* capture.trace(client.test.get({ query: { a: "1", b: "2", c: "3", sig: "4", page: "5" } }))
+        yield* capture.trace(client.test.get({ query: { a: "1", b: "2", c: "3", d: "4", sig: "5", page: "6" } }))
 
-        strictEqual(capture.span.attributes.get("url.query"), "a=REDACTED&b=REDACTED&c=REDACTED&sig=REDACTED&page=5")
-        strictEqual(capture.sent.url, "http://test/get?a=1&b=2&c=3&sig=4&page=5")
+        strictEqual(
+          capture.span.attributes.get("url.query"),
+          "a=REDACTED&b=REDACTED&c=REDACTED&d=REDACTED&sig=REDACTED&page=6"
+        )
+        strictEqual(capture.sent.url, "http://test/get?a=1&b=2&c=3&d=4&sig=5&page=6")
       }))
   })
 

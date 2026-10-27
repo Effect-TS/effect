@@ -23,6 +23,7 @@ import {
   HttpMiddleware,
   HttpPlatform,
   HttpRouter,
+  HttpServerError,
   HttpServerRequest,
   HttpServerResponse
 } from "effect/http"
@@ -2069,6 +2070,8 @@ describe("HttpApiBuilder RedactedNames", () => {
           headers: ["x-registry-config", "user-agent"]
         }),
         HttpApiEndpoint.get("failure", "/failure", { query: { token: Schema.String } })
+          .annotate(HttpApi.RedactedNames, { query: ["token"] }),
+        HttpApiEndpoint.get("defect", "/defect", { query: { token: Schema.String } })
           .annotate(HttpApi.RedactedNames, { query: ["token"] })
       )
     )
@@ -2084,6 +2087,10 @@ describe("HttpApiBuilder RedactedNames", () => {
               return "ok"
             }))
           .handle("failure", () => Effect.succeed(HttpServerResponse.empty({ status: 500 })))
+          .handle("defect", ({ request }) =>
+            Effect.die(
+              new HttpServerError.HttpServerError({ reason: new HttpServerError.InternalError({ request }) })
+            ))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2105,7 +2112,9 @@ describe("HttpApiBuilder RedactedNames", () => {
           "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
           // Fails query decoding, as `t` is missing: names apply before decoding.
           "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git",
-          "/failure?token=s3cret"
+          "/failure?token=s3cret",
+          // Fails with an error that holds the request, which the span keeps as its cause.
+          "/defect?token=s3cret"
         ]
       ) {
         const response = await handler(
@@ -2121,8 +2130,8 @@ describe("HttpApiBuilder RedactedNames", () => {
       await dispose()
     }
 
-    assert.deepStrictEqual(statuses, [200, 400, 500])
-    const [success, invalid, failure] = spans
+    assert.deepStrictEqual(statuses, [200, 400, 500, 500])
+    const [success, invalid, failure, defect] = spans
     assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
@@ -2137,6 +2146,12 @@ describe("HttpApiBuilder RedactedNames", () => {
     const error = Cause.squash(failure.status.exit.cause) as Error
     assert.include(error.message, "GET /failure?token=REDACTED")
     assert.notInclude(error.message, "s3cret")
+    assert.strictEqual(defect.attributes.get("url.full"), "http://localhost/defect?token=REDACTED")
+    assert(defect.status._tag === "Ended" && defect.status.exit._tag === "Failure")
+    const defectError = Cause.squash(defect.status.exit.cause) as Error
+    assert.include(defectError.message, "GET /defect?token=REDACTED")
+    assert.notInclude(defectError.message, "s3cret")
+    assert.notInclude(defectError.stack, "s3cret")
   })
 })
 
