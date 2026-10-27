@@ -221,7 +221,7 @@ describe("TypeSafeClient", () => {
         if (result.reason._tag !== "InvalidRequestError" || result.reason.http === undefined) {
           return yield* Effect.die(new Error("Expected InvalidRequestError with HTTP context"))
         }
-        assert.strictEqual(String(result.reason.http.request.headers["authorization"]), "<redacted>")
+        assert.notInclude(JSON.stringify(result), "secret-key")
         assert.strictEqual(result.reason.http.response?.status, 422)
       }).pipe(Effect.provide(makeTestLayer({
         apiKey: Redacted.make("secret-key")

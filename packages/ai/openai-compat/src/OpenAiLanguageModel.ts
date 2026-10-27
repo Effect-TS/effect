@@ -22,10 +22,8 @@ import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
 import * as Redactable from "effect/Redactable"
@@ -941,16 +939,6 @@ const prepareMessages = Effect.fnUntraced(
 // HTTP Details
 // =============================================================================
 
-const buildHttpRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest
-): typeof Response.HttpRequestDetails.Type => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
-})
-
 const buildHttpResponseDetails = (
   response: HttpClientResponse.HttpClientResponse
 ): typeof Response.HttpResponseDetails.Type => ({
@@ -1001,8 +989,7 @@ const makeResponse = Effect.fnUntraced(
       type: "response-metadata",
       id: rawResponse.id,
       modelId: rawResponse.model as string,
-      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt)),
-      request: buildHttpRequestDetails(response.request)
+      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt))
     })
 
     const choice = rawResponse.choices[0]
@@ -1188,8 +1175,7 @@ const makeStreamResponse = Effect.fnUntraced(
             type: "response-metadata",
             id: event.id,
             modelId: event.model,
-            timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(new Date(event.created * 1000))),
-            request: buildHttpRequestDetails(response.request)
+            timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(new Date(event.created * 1000)))
           })
         }
 

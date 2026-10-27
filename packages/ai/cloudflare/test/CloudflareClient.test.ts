@@ -115,7 +115,7 @@ describe("CloudflareClient", () => {
           assert.strictEqual(error.reason._tag, tag)
           if ("http" in error.reason) {
             assert.strictEqual(error.reason.http?.response?.status, status)
-            assert.notInclude(JSON.stringify(error.reason.http?.request), "test-token")
+            assert.notInclude(JSON.stringify(error.reason), "test-token")
           }
           if ("description" in error.reason) {
             assert.include(error.reason.description, "Request failed")

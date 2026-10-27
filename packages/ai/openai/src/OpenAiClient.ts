@@ -573,13 +573,8 @@ const makeSocket = Effect.gen(function*() {
                 method: "createResponseStream",
                 reason: new AiError.NetworkError({
                   reason: "TransportError",
-                  request: {
-                    method: "POST",
-                    url: request.url,
-                    urlParams: [],
-                    hash: undefined,
-                    headers: request.headers
-                  },
+                  method: request.method,
+                  url: request.url,
                   description: "Failed to send message over WebSocket"
                 })
               })
@@ -630,14 +625,7 @@ const makeSocket = Effect.gen(function*() {
                   : status,
                 metadata: error as any,
                 http: {
-                  body: json,
-                  request: {
-                    method: "POST",
-                    url: request.url,
-                    urlParams: [],
-                    hash: undefined,
-                    headers: request.headers
-                  }
+                  body: json
                 }
               })
             }))
@@ -670,13 +658,8 @@ const makeSocket = Effect.gen(function*() {
             method: "createResponseStream",
             reason: new AiError.NetworkError({
               reason: "TransportError",
-              request: {
-                method: "POST",
-                url: request.url,
-                urlParams: [],
-                hash: undefined,
-                headers: request.headers
-              },
+              method: request.method,
+              url: request.url,
               description: error.message
             })
           })),
