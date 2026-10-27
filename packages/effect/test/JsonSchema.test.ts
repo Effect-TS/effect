@@ -1673,12 +1673,13 @@ describe("JsonSchema", () => {
           properties: {
             mode: { const: "on" },
             value: { type: "number", exclusiveMinimum: 0 },
-            tuple: { type: "array", prefixItems: [{ type: "string" }], items: false }
+            tuple: { type: "array", prefixItems: [{ type: "string" }], items: false },
+            empty: { enum: [], $ref: "#/$defs/Anything" }
           },
           required: ["mode", "value", "tuple"],
           additionalProperties: false
         },
-        definitions: {}
+        definitions: { Anything: {} }
       })
       const schema = makeSchema(document)
       deepStrictEqual(ajvDraft07.validateSchema(schema), true)
@@ -1688,6 +1689,7 @@ describe("JsonSchema", () => {
       deepStrictEqual(validate({ mode: "off", value: 1, tuple: ["a"] }), false)
       deepStrictEqual(validate({ mode: "on", value: 0, tuple: ["a"] }), false)
       deepStrictEqual(validate({ mode: "on", value: 1, tuple: ["a", "b"] }), false)
+      deepStrictEqual(validate({ mode: "on", value: 1, tuple: ["a"], empty: null }), false)
     })
 
     it("rewrites $defs refs to Draft-07 definitions refs", () => {
