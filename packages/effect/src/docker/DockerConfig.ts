@@ -634,7 +634,7 @@ export const layerFromEnv = (
   options?: {
     /** The Endpoint where the CLI falls back to the OS default; by default {@link defaultEndpoint}. */
     readonly defaultEndpoint?: typeof Endpoint.Type | undefined
-    /** The variable that holds the home directory, the OS's: by default `HOME`, `USERPROFILE` on Windows. */
+    /** The variable that holds the home directory; defaults to `HOME`. `NodeDocker` passes `USERPROFILE` on Windows. */
     readonly homeVariable?: string | undefined
   }
 ): Layer.Layer<DockerConfig, DockerConfigError, FileSystem.FileSystem | Path.Path | Crypto.Crypto> =>
