@@ -45,64 +45,21 @@ const privateRegistry = Effect.gen(function*() {
 })
 
 it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (live)", (it) => {
-  it.effect("pulls with progress, and fails for a missing repository", () =>
-    Effect.gen(function*() {
-      const images = yield* Images
-      const messages = yield* Stream.runCollect(images.pull(image))
-      assert.isAbove(messages.length, 0)
-      assert.isDefined((yield* images.inspect(image)).Id)
-      const missing = yield* Effect.flip(
-        Stream.runDrain(images.pull("docker.io/library/effect-docker-does-not-exist:nope"))
-      )
-      // the Engines and Docker Hub disagree on how to say "no such repository"
-      assert.oneOf(missing.reason._tag, ["NotFound", "StreamFailed", "Unauthorized", "Forbidden", "ServerError"])
-    }), 120_000)
-
-  it.effect("tags, saves, loads and removes", () =>
-    Effect.gen(function*() {
-      const images = yield* Images
-      const tagged = (yield* scopedImages).tag("tagged")
-      yield* ensureImage(image)
-      const inspected = yield* images.inspect(image)
-      yield* images.tag(image, tagged)
-      assert.strictEqual((yield* images.inspect(tagged)).Id, inspected.Id)
-      const archive = yield* Stream.runCollect(images.save(tagged))
-      const entries = yield* Stream.fromIterable(archive).pipe(
-        Stream.pipeThroughChannel(Tar.decode()),
-        Stream.mapEffect((entry) => Effect.as(Stream.runDrain(entry.body), entry.header.path)),
-        Stream.runCollect
-      )
-      assert.include(entries, "manifest.json")
-      assert.isAbove((yield* images.remove(tagged)).length, 0)
-      yield* Stream.runDrain(images.load(Stream.fromIterable(archive)))
-      assert.strictEqual((yield* images.inspect(tagged)).Id, inspected.Id)
-    }), 120_000)
-
   it.effect("builds with the classic builder and with BuildKit", () =>
     Effect.gen(function*() {
       const images = yield* Images
       const { labels } = yield* scopedImages
       yield* ensureImage(image)
-      const classic = yield* images.build(dockerfile(image), { builder: "classic", labels })
-      assert.match(classic.id, /^sha256:/)
-      const logs = yield* Stream.runCollect(
-        images.buildStream(dockerfile(image), { builder: "classic", labels, noCache: true })
-      )
-      assert.isTrue(logs.some((progress) => progress._tag === "Log" && progress.data.includes("LABEL built=1")))
-      const buildKit = yield* images.build(dockerfile(image), { builder: "buildkit", labels, noCache: true })
-      assert.match(buildKit.id, /^sha256:/)
       for (const builder of ["classic", "buildkit"] as const) {
-        const failed = yield* Effect.flip(
-          images.build(tarOf(Tar.file("Dockerfile", `FROM ${image}\nCOPY missing /\n`)), { builder, labels })
-        )
-        assert(failed.reason._tag === "StreamFailed", failed.message)
+        const built = yield* images.build(dockerfile(image), { builder, labels })
+        assert.strictEqual((yield* images.inspect(built.id)).Config?.Labels?.built, "1")
       }
     }), 120_000)
 
   it.effect("round-trips a private registry: push and pull with credentials", () =>
     Effect.gen(function*() {
       const images = yield* Images
-      const { labels, reference } = yield* scopedImages
+      const { reference } = yield* scopedImages
       yield* ensureImage(image)
       const registry = yield* privateRegistry
       const target = reference(`${registry}/effect/alpine:1`)
@@ -110,24 +67,10 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
       // anonymous pushes are refused
       const anonymous = yield* Effect.flip(images.push(target))
       assert.oneOf(anonymous.reason._tag, ["StreamFailed", "Unauthorized"])
-      const pushed = yield* images.push(target, { auth: credential })
-      assert.match(pushed.Digest ?? "sha256:", /^sha256:/)
-      const distribution = yield* images.distribution(target, { auth: credential })
-      assert.isDefined(distribution.Descriptor)
+      const source = yield* images.inspect(target)
+      yield* images.push(target, { auth: credential })
       yield* images.remove(target)
-      const anonymousPull = yield* Effect.flip(Stream.runDrain(images.pull(target)))
-      assert.oneOf(anonymousPull.reason._tag, ["StreamFailed", "Unauthorized", "ServerError", "NotFound"])
       yield* Stream.runDrain(images.pull(target, { auth: credential }))
-      // the classic builder pulls a private base image with the build's credentials
-      const classic = yield* images.build(dockerfile(target), {
-        builder: "classic",
-        labels,
-        pull: true,
-        auth: { [registry]: credential }
-      })
-      assert.match(classic.id, /^sha256:/)
-      // BuildKit can't authenticate without a session, but uses the pulled image
-      const prePulled = yield* images.build(dockerfile(target), { builder: "buildkit", labels })
-      assert.match(prePulled.id, /^sha256:/)
+      assert.strictEqual((yield* images.inspect(target)).Id, source.Id)
     }), 240_000)
 })

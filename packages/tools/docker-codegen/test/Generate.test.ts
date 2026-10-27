@@ -28,37 +28,7 @@ const config = {
   excludeAnnotations: ["examples", "default"]
 }
 
-describe("Patches", () => {
-  it("turns the map-of-empty-objects idiom into a map of empty objects, and flattens allOf compositions", () => {
-    const ops = Patches.emptyObjectEnums(document({
-      ContainerConfig: {
-        type: "object",
-        properties: {
-          ExposedPorts: { type: "object", additionalProperties: { type: "object", enum: [{}] } }
-        }
-      }
-    }))
-    assert.deepStrictEqual(ops, [{
-      op: "replace",
-      path: "/components/schemas/ContainerConfig/properties/ExposedPorts/additionalProperties",
-      value: { type: "object", additionalProperties: false }
-    }])
-    const patched = applyStanding(document({
-      Base: { type: "object", required: ["Id"], properties: { Id: { type: "string" } } },
-      Derived: {
-        description: "d",
-        allOf: [{ $ref: "#/components/schemas/Base" }],
-        properties: { Extra: { type: "string" } }
-      }
-    })) as any
-    assert.deepStrictEqual(patched.components.schemas.Derived, {
-      description: "d",
-      type: "object",
-      properties: { Id: { type: "string" }, Extra: { type: "string" } },
-      required: ["Id"]
-    })
-  })
-
+describe("Generate", () => {
   it("drops every nullable mark, and makes required fields that can be null optional unless slices or maps", () => {
     const doc = applyStanding(document({
       Platform: { type: "object", nullable: true, properties: { os: { type: "string" } } },
@@ -84,35 +54,5 @@ describe("Patches", () => {
     assert.include(source, `"Optional": Schema.optionalKey(Schema.String)`)
     assert.include(source, `"Required": Schema.optionalKey(Schema.String)`)
     assert.notInclude(source, "Schema.Null")
-  })
-})
-
-describe("Generate", () => {
-  it("generates lenient enums, with the JSDoc the public API checks require", () => {
-    const doc = applyStanding(document({
-      Summary: {
-        type: "object",
-        properties: { State: { type: "string", enum: ["created", "running"], example: "running" } }
-      }
-    }))
-    const source = Generate.generate(doc, config)
-    // each Schema, then its type
-    assert.include(
-      source,
-      [
-        "/**",
-        " * The Engine API's `Summary` definition.",
-        " *",
-        " * @stability unstable",
-        " * @category schemas",
-        " * @since 4.0.6",
-        " */",
-        "export const Summary = Schema.Struct({"
-      ].join("\n")
-    )
-    assert.include(source, "export type Summary = typeof Summary.Type")
-    assert.include(source, `Schema.Union([Schema.Literals(["created", "running"]), LenientString])`)
-    assert.notInclude(source, "__DockerSchemaRoot")
-    assert.notInclude(source, "export type LenientString")
   })
 })

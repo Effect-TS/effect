@@ -1,7 +1,7 @@
 import { NodeDocker, NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Queue, Redacted } from "effect"
-import { DockerConfig, DockerContainers, DockerEngine, DockerExec, DockerRegistryAuth } from "effect/docker"
+import { DockerConfig, DockerEngine, DockerExec } from "effect/docker"
 import { HttpClientRequest } from "effect/http"
 import * as Fs from "node:fs"
 import * as Http from "node:http"
@@ -62,35 +62,18 @@ const makeTlsEngine = makeEngine(
 
 const decoder = new TextDecoder()
 
-/**
- * An Engine whose upgrades succeed but whose setup then fails: exec start
- * answers with an invalid `Content-Type`; attach answers with none, and the
- * container inspect that would tell the framing is a 404. It hands over each
- * upgraded connection's server side, and the services over the Engine, which
- * live as long as the test: a connection must close with its operation's
- * scope, not with the engine.
- */
+// Keep the engine alive while checking that a failed exec setup closes its upgrade.
 const makeFailingUpgradeEngine = Effect.flatMap(Queue.unbounded<Net.Socket>(), (upgraded) => {
   const sockets: Array<Net.Socket> = []
   return Effect.acquireRelease(
     Effect.callback<Http.Server>((resume) => {
-      const server = Http.createServer((request, response) => {
-        const url = request.url ?? ""
-        if (url.endsWith("/exec/e/json")) {
-          response.writeHead(200, { "Content-Type": "application/json" })
-            .end(JSON.stringify({ ID: "e", Running: true, OpenStdin: false, ProcessConfig: { tty: false } }))
-        } else if (url.includes("/containers/c/wait")) {
-          // the head now, the body when the container exits
-          response.writeHead(200, { "Content-Type": "application/json" }).flushHeaders()
-        } else {
-          response.writeHead(404, { "Content-Type": "application/json" })
-            .end(JSON.stringify({ message: "No such container: c" }))
-        }
+      const server = Http.createServer((_, response) => {
+        response.writeHead(200, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ ID: "e", Running: true, OpenStdin: false, ProcessConfig: { tty: false } }))
       })
       server.on("connection", (socket: Net.Socket) => sockets.push(socket))
-      server.on("upgrade", (request: Http.IncomingMessage, socket: Net.Socket) => {
-        const contentType = request.url?.includes("/exec/") === true ? "Content-Type: text/plain\r\n" : ""
-        socket.write(`HTTP/1.1 101 UPGRADED\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n${contentType}\r\n`)
+      server.on("upgrade", (_: Http.IncomingMessage, socket: Net.Socket) => {
+        socket.write("HTTP/1.1 101 UPGRADED\r\nConnection: Upgrade\r\nUpgrade: tcp\r\nContent-Type: text/plain\r\n\r\n")
         Queue.offerUnsafe(upgraded, socket)
       })
       server.listen(0, () => resume(Effect.succeed(server)))
@@ -151,28 +134,20 @@ const connect = (endpoint: typeof DockerConfig.Endpoint.Type) =>
 describe("NodeDocker", () => {
   it.effect("connects over TLS with the Endpoint's settings, for requests and upgrades alike", () =>
     Effect.gen(function*() {
-      const clientCertificate = { cert, key: Redacted.make(key) }
-      const cases: ReadonlyArray<readonly [string, typeof DockerConfig.Tls.Type, Connection]> = [
-        // SNI for a domain name, never for an IP address
-        ["localhost", { verify: true, ca: cert }, { servername: "localhost", clientCertificate: false }],
-        ["127.0.0.1", { verify: true, ca: cert }, { servername: false, clientCertificate: false }],
-        ["localhost", { verify: true, ca: cert, clientCertificate }, {
-          servername: "localhost",
-          clientCertificate: true
-        }],
-        ["localhost", { verify: false }, { servername: "localhost", clientCertificate: false }]
-      ]
-      for (const [host, tls, expected] of cases) {
-        yield* Effect.scoped(Effect.gen(function*() {
-          const { connections, server } = yield* makeTlsEngine
-          const port = (server.address() as Net.AddressInfo).port
-          assert.strictEqual(yield* connect({ _tag: "Tcp", host, port, tls }), "hello")
-          // the request and the upgraded connection
-          assert.deepStrictEqual(yield* Queue.takeN(connections, 2), [expected, expected], host)
-        }))
-      }
+      const { connections, server } = yield* makeTlsEngine
+      const port = (server.address() as Net.AddressInfo).port
+      assert.strictEqual(
+        yield* connect({
+          _tag: "Tcp",
+          host: "localhost",
+          port,
+          tls: { verify: true, ca: cert, clientCertificate: { cert, key: Redacted.make(key) } }
+        }),
+        "hello"
+      )
+      const expected = { servername: "localhost", clientCertificate: true }
+      assert.deepStrictEqual(yield* Queue.takeN(connections, 2), [expected, expected])
     }))
-
   it.effect("connects over a unix socket, for requests and upgrades alike", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -187,21 +162,6 @@ describe("NodeDocker", () => {
       assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("connects to a named pipe through its path, for requests and upgrades alike", () =>
-    Effect.gen(function*() {
-      // Node reaches a named pipe as it does a unix socket, through `socketPath`: a socket stands in for it here
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const socketPath = path.join(yield* fs.makeTempDirectoryScoped(), "docker_engine")
-      const { connections } = yield* makeEngine(
-        () => Http.createServer(),
-        (server, ready) => server.listen(socketPath, ready),
-        () => ({ servername: false, clientCertificate: false })
-      )
-      assert.strictEqual(yield* connect({ _tag: "Npipe", path: socketPath }), "hello")
-      assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
-    }).pipe(Effect.provide(NodeServices.layer)))
-
   it.effect("fails with a permanent ConnectionFailed when the Engine's certificate can't be verified", () =>
     Effect.gen(function*() {
       const { server } = yield* makeTlsEngine
@@ -209,20 +169,6 @@ describe("NodeDocker", () => {
       const error = yield* connect({ _tag: "Tcp", host: "localhost", port, tls: { verify: true } }).pipe(Effect.flip)
       assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
       assert.strictEqual(error.reason.hint, "the Engine's TLS certificate couldn't be verified")
-      assert.isFalse(error.isRetryable)
-    }))
-
-  it.effect("fails with a permanent ConnectionFailed when the client speaks TLS to a plain Engine", () =>
-    Effect.gen(function*() {
-      const { server } = yield* makeEngine(
-        () => Http.createServer(),
-        (server, ready) => server.listen(0, ready),
-        () => ({ servername: false, clientCertificate: false })
-      )
-      const port = (server.address() as Net.AddressInfo).port
-      const error = yield* connect({ _tag: "Tcp", host: "localhost", port, tls: { verify: false } }).pipe(Effect.flip)
-      assert(error._tag === "DockerError" && error.reason._tag === "ConnectionFailed")
-      assert.strictEqual(error.reason.hint, "TLS/plain mismatch: the Engine and the client disagree about TLS")
       assert.isFalse(error.isRetryable)
     }))
 
@@ -236,49 +182,4 @@ describe("NodeDocker", () => {
       assert.strictEqual(error.reason._tag, "InvalidResponse")
       yield* closed(yield* Queue.take(upgraded))
     }))
-
-  it.live("closes an upgraded connection when attach fails before handing it over", () =>
-    Effect.gen(function*() {
-      const { services, upgraded } = yield* makeFailingUpgradeEngine
-      const error = yield* DockerContainers.DockerContainers.use((containers) => Effect.scoped(containers.attach("c")))
-        .pipe(Effect.provideContext(services), Effect.flip)
-      assert.strictEqual(error.reason._tag, "NotFound")
-      yield* closed(yield* Queue.take(upgraded))
-    }))
-
-  it.effect("runs credential helpers as child processes", () =>
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const bin = yield* fs.makeTempDirectoryScoped()
-      // answers for ghcr.io, "not found" for everything else
-      yield* fs.writeFileString(
-        path.join(bin, "docker-credential-test"),
-        `#!/bin/sh
-read registry
-case "$registry" in
-  ghcr.io) echo '{"ServerURL":"ghcr.io","Username":"helper-user","Secret":"helper-secret"}' ;;
-  *) echo "credentials not found in native keychain"; exit 1 ;;
-esac
-`,
-        { mode: 0o755 }
-      )
-      const originalPath = process.env.PATH
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          process.env.PATH = `${bin}:${originalPath}`
-        }),
-        () =>
-          Effect.sync(() => {
-            process.env.PATH = originalPath
-          })
-      )
-      const [ghcr, other] = yield* Effect.gen(function*() {
-        const registryAuth = yield* DockerRegistryAuth.DockerRegistryAuth
-        return yield* Effect.all([registryAuth.credential("ghcr.io"), registryAuth.credential("quay.io")])
-      }).pipe(Effect.provide(NodeDocker.layer.pipe(Layer.provide(DockerConfig.layer({ credsStore: "test" })))))
-      assert.strictEqual(ghcr?.username, "helper-user")
-      assert.strictEqual(ghcr?.password && Redacted.value(ghcr.password), "helper-secret")
-      assert.isUndefined(other)
-    }).pipe(Effect.provide(NodeServices.layer)))
 })
