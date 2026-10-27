@@ -121,6 +121,20 @@ describe("SchemaGetter", () => {
     await encoding("f", "Zg==")
   })
 
+  it("splitKeyValue trims and keeps empty values when requested", async () => {
+    const input = " b = x ,empty=,blank= , =ignored,novalue"
+    await makeAsserts(SchemaGetter.splitKeyValue<string>())(input, { " b ": " x ", blank: " ", " ": "ignored" })
+    await makeAsserts(SchemaGetter.splitKeyValue<string>({ trim: true }))(input, { b: "x" })
+    await makeAsserts(SchemaGetter.splitKeyValue<string>({ keepEmptyValues: true }))(
+      input,
+      { " b ": " x ", empty: "", blank: " ", " ": "ignored" }
+    )
+    await makeAsserts(SchemaGetter.splitKeyValue<string>({ trim: true, keepEmptyValues: true }))(
+      input,
+      { b: "x", empty: "", blank: "" }
+    )
+  })
+
   describe("makeTreeRecord", () => {
     it("preserves array-valued leaves at duplicate paths", () => {
       deepStrictEqual(
