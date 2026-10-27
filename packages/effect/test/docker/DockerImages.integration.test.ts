@@ -71,6 +71,10 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
       yield* images.push(target, { auth: credential })
       yield* images.remove(target)
       yield* Stream.runDrain(images.pull(target, { auth: credential }))
-      assert.strictEqual((yield* images.inspect(target)).Id, source.Id)
+      // the same layers: with the containerd image store the Id is a manifest digest, and a push sends only the
+      // local platform's manifest of a multi-platform image
+      const pulled = yield* images.inspect(target)
+      assert.isNotEmpty(source.RootFS?.Layers)
+      assert.deepStrictEqual(pulled.RootFS?.Layers, source.RootFS?.Layers)
     }), 240_000)
 })
