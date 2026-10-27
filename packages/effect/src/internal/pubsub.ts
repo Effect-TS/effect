@@ -1708,7 +1708,7 @@ interface ReplayWindow<A> {
 }
 
 class ReplayWindowImpl<A> implements ReplayWindow<A> {
-  // released once exhausted, so later messages are not retained
+  // cleared once exhausted, so the window does not retain later messages
   head: ReplayNode<A> | undefined
   index: number
   remaining: number
