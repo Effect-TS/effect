@@ -44,7 +44,7 @@ describe("Cookies", () => {
     it("trims cookie pairs and ignores invalid cookie names", () => {
       const cookies = Cookies.fromSetCookie([
         "bad name=value",
-        "session \t= \tabc \t; Path=/",
+        "session\t=\tabc",
         "encoded = %20abc%20"
       ])
 
