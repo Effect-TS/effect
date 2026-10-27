@@ -272,13 +272,10 @@ function parseSetCookie(header: string): Cookie | undefined {
         break
       }
       case "max-age": {
-        if (value === undefined || !/^-?\d+$/.test(value)) {
+        if (value === undefined || !maxAgeRegExp.test(value)) {
           break
         }
-        const maxAge = parseInt(value, 10)
-        if (!isNaN(maxAge)) {
-          options.maxAge = Duration.seconds(maxAge)
-        }
+        options.maxAge = Duration.seconds(parseInt(value, 10))
         break
       }
       case "path": {
@@ -368,6 +365,8 @@ export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.coo
 // oxlint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 const cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+// RFC 6265 section 5.2.2
+const maxAgeRegExp = /^-?[0-9]+$/
 // oxlint-disable-next-line no-control-regex
 const cookieDomainRegExp = /^[\u0009\u0020-\u003a\u003c-\u007e\u0080-\u00ff]+$/
 const cookiePathRegExp = /^[\u0020-\u003a\u003c-\u007e]+$/
