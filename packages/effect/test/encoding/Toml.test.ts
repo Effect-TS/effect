@@ -111,9 +111,17 @@ local = 2026-08-05 01:02:03
 before = "\uD7FF"
 after = "\uE000"
 max = "\U0010FFFF"
+nul = "\u0000"
 `),
-      { before: "\uD7FF", after: "\uE000", max: "\u{10FFFF}" }
+      { before: "\uD7FF", after: "\uE000", max: "\u{10FFFF}", nul: "\u0000" }
     )
+  })
+
+  it("rejects raw control characters", () => {
+    for (const input of [`key = "\u0000"`, `key = '\u007F'`, "# comment\u001F"]) {
+      assert.throws(() => Toml.parse(input), SyntaxError, "Invalid control character")
+    }
+    assert.deepStrictEqual(Toml.parse("key = '\t' #\t\n"), { key: "\t" })
   })
 
   it.each([

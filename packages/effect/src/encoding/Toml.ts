@@ -478,6 +478,10 @@ class TomlParser {
 
   private advance(count = 1): void {
     for (let offset = 0; offset < count; offset++) {
+      const code = this.input.charCodeAt(this.index)
+      if ((code < 0x20 && code !== 0x09 && code !== 0x0A && code !== 0x0D) || code === 0x7F) {
+        this.fail("Invalid control character")
+      }
       if (this.input[this.index] === "\n") {
         this.line++
         this.column = 1
