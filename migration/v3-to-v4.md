@@ -4910,7 +4910,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `AiError.AiError` -> `AiError.AiError`: Moved to effect/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
 
-- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
+- `AiError.HttpRequestDetails` -> `none`: Removed. NetworkError carries only the request method and url, and HttpContext and response metadata parts no longer record the request.
 
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
@@ -5054,7 +5054,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Response.reasoningStartPart` -> `Response.makePart("reasoning-start", params)`: The lowercase convenience constructor was removed; construct the retained ReasoningStartPart through Response.makePart.
 
-- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values, and optional HTTP request details were added.
+- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values.
 
 - `Response.textDeltaPart` -> `Response.makePart("text-delta", params)`: The lowercase convenience constructor was removed; construct the retained TextDeltaPart through Response.makePart.
 

@@ -2,7 +2,7 @@ import { AnthropicClient } from "@effect/ai-anthropic"
 import * as Errors from "@effect/ai-anthropic/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Duration, Effect, Layer, Redacted, type Schema } from "effect"
-import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicClient", () => {
   it.effect("maps a gateway 400 without an Anthropic error envelope", () =>
@@ -109,18 +109,12 @@ describe("AnthropicClient", () => {
           max_tokens: 1,
           messages: [{ role: "user", content: "hello" }]
         }
-      }).pipe(
-        Effect.flip,
-        Effect.updateService(Headers.CurrentRedactedNames, () => [])
-      )
+      }).pipe(Effect.flip)
 
       assert.strictEqual(result.reason._tag, "InvalidRequestError")
-      if (result.reason._tag !== "InvalidRequestError" || result.reason.http === undefined) {
-        return yield* Effect.die(new Error("Expected InvalidRequestError with HTTP context"))
-      }
       const requests = yield* MockHttpClient.requests
       assert.include(requests[0]?.url, "/v1/messages")
-      assert.strictEqual(String(result.reason.http.request.headers["x-api-key"]), "<redacted>")
+      assert.notInclude(JSON.stringify(result), "sk-test-key")
     }).pipe(Effect.provide(makeTestLayer({
       _tag: "Json",
       status: 400,
@@ -182,7 +176,9 @@ describe("AnthropicClient", () => {
       headers: {},
       message: undefined,
       metadata: { errorType: null, requestId: null },
-      http: makeHttpContext("https://api.anthropic.com/v1/messages?beta=true", body)
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages?beta=true",
+      http: { body }
     })
 
     assert.strictEqual(reason._tag, "InvalidRequestError")
@@ -307,14 +303,3 @@ const makeResponse = (
     })
   )
 }
-
-const makeHttpContext = (url: string, body: string) => ({
-  request: {
-    method: "POST" as const,
-    url,
-    urlParams: [],
-    hash: undefined,
-    headers: {}
-  },
-  body
-})
