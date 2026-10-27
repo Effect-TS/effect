@@ -44,6 +44,7 @@ import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -135,19 +136,6 @@ export declare namespace HttpMiddleware {
  */
 export const make = <M extends HttpMiddleware>(middleware: M): M => middleware
 
-const stripSearchAndHash = (url: string): string => {
-  const queryIndex = url.indexOf("?")
-  const hashIndex = url.indexOf("#")
-
-  if (queryIndex === -1) {
-    return hashIndex === -1 ? url : url.slice(0, hashIndex)
-  }
-  if (hashIndex === -1) {
-    return url.slice(0, queryIndex)
-  }
-  return url.slice(0, Math.min(queryIndex, hashIndex))
-}
-
 /**
  * Runs an effect with HTTP response logging disabled for the current server request.
  *
@@ -232,7 +220,7 @@ export const logger: <E, R>(
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
     const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
-    const path = stripSearchAndHash(request.url)
+    const path = internalUrlParams.stripSearchAndHash(request.url)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (state?.loggerDisabled) {
