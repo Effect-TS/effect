@@ -327,7 +327,16 @@ export const sign = Effect.fnUntraced(function*<
  * @category cryptography
  * @since 4.1.0
  */
-export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint, K extends VerificationKey>(
+export const verify: <S extends Schema.Constraint, K extends VerificationKey>(
+  schema: S,
+  token: string | Redacted.Redacted<string>,
+  key: K,
+  options?: VerifyOptions
+) => Effect.Effect<
+  Verified<S["Type"]>,
+  JwtError,
+  S["DecodingServices"] | Jws.KeyRequirements<K>
+> = Effect.fnUntraced(function*<S extends Schema.Constraint, K extends VerificationKey>(
   schema: S,
   token: string | Redacted.Redacted<string>,
   key: K,
@@ -348,7 +357,15 @@ export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint, K
  * @category cryptography
  * @since 4.1.0
  */
-export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Constraint>(
+export const verifyWithKeySet: <S extends Schema.Constraint>(
+  schema: S,
+  token: string | Redacted.Redacted<string>,
+  options: VerifyWithKeySetOptions
+) => Effect.Effect<
+  Verified<S["Type"]> & { readonly key: PublicKey },
+  JwtError,
+  S["DecodingServices"] | Jwks | Signature.Signature
+> = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
   token: string | Redacted.Redacted<string>,
   options: VerifyWithKeySetOptions
