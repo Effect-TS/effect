@@ -1,6 +1,9 @@
 // Node, Deno and Bun wordings for a rejected header value
 const invalidHeaderValue = /invalid header value|has invalid value/i
 
+// Node, Deno and Bun wordings for a URL that fails to parse, which print the raw input
+const invalidUrl = /invalid url|failed to parse url|cannot be parsed as a url/i
+
 // absolute URLs end at whitespace, the end of the text, or Deno's `): ` separator
 const embeddedUrl = /[a-z][a-z\d+.-]*:\/\/\S+?(?=\):\s|\s|$)/gi
 
@@ -15,7 +18,9 @@ const causeMessage = (cause: Error): string => {
     : cause.message
   // a rejected header value can come from outside the request, such as `FetchHttpClient.RequestInit`,
   // and a URL can carry userinfo or query secrets
-  return invalidHeaderValue.test(message) ? "Invalid HTTP header value" : message.replace(embeddedUrl, "<url>")
+  if (invalidHeaderValue.test(message)) return "Invalid HTTP header value"
+  if (invalidUrl.test(message)) return "Invalid URL"
+  return message.replace(embeddedUrl, "<url>")
 }
 
 export const describe = (cause: unknown): string | undefined => {
