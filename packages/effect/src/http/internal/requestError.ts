@@ -79,8 +79,8 @@ const urlSecrets = (url: string): Array<string> => {
 
 /**
  * The sensitive header and query values of a request, in the forms they can
- * take in an error message, longest first so that a secret containing another
- * is replaced whole.
+ * take in an error message, deduplicated and longest first so that a secret
+ * containing another is replaced whole.
  */
 const requestSecrets = (request: HttpClientRequest.HttpClientRequest): Array<string> => {
   const secrets: Array<string> = []
@@ -102,7 +102,7 @@ const requestSecrets = (request: HttpClientRequest.HttpClientRequest): Array<str
     if (secret !== undefined) secrets.push(...queryValueForms(secret))
   }
   secrets.push(...urlSecrets(request.url))
-  return secrets.filter((secret) => secret !== "").sort((a, b) => b.length - a.length)
+  return Array.from(new Set(secrets.filter((secret) => secret !== ""))).sort((a, b) => b.length - a.length)
 }
 
 /**

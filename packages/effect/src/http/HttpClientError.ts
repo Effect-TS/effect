@@ -94,11 +94,7 @@ const formatMethodAndUrl = (request: HttpClientRequest.HttpClientRequest) =>
   `${request.method} ${UrlParams.redactUrl(request.url)}`
 
 const formatRequestErrorMessage = (error: RequestError): string =>
-  formatMessage(
-    formatReason(error._tag),
-    error.description ?? InternalRequestError.describe(error),
-    formatMethodAndUrl(error.request)
-  )
+  formatMessage(formatReason(error._tag), error.description ?? InternalRequestError.describe(error), error.methodAndUrl)
 
 // Serialized reasons carry the same request and response information as the
 // message, so headers, URL parameters and bodies stay out of logs. The full
