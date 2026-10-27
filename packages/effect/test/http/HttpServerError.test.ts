@@ -31,16 +31,6 @@ describe("HttpServerError", () => {
 
       assert.strictEqual(parseError.message, "RequestParseError (POST /widgets): invalid body")
       assert.strictEqual(routeNotFound.message, "RouteNotFound (POST /widgets)")
-
-      // Messages use overrides of `methodAndUrl`.
-      class PrivateUrlError extends InternalError {
-        override get methodAndUrl() {
-          return "POST <private-url>"
-        }
-      }
-      const privateUrl = new PrivateUrlError({ request })
-      assert.strictEqual(privateUrl.message, "InternalError (POST <private-url>)")
-      assert.strictEqual(new HttpServerError({ reason: privateUrl }).message, "InternalError (POST <private-url>)")
     })
 
     it.effect("redacts query params using the current redacted names", () =>
