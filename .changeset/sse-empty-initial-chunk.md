@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve SSE leading BOM handling when empty text chunks arrive before the first nonempty chunk.
+Fix `Sse.makeParser` dropping the first event of a stream that starts with a UTF-8 BOM when an empty chunk is fed first.
