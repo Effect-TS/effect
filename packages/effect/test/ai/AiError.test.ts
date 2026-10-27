@@ -68,7 +68,7 @@ describe("AiError", () => {
 
       it("omits URLs embedded in the cause", () => {
         for (
-          const [url, message, expected] of [
+          const [url, message, expected, Reason = HttpClientError.TransportError] of [
             // Node
             [
               "http://user:pass-secret@127.0.0.1:65531/v1?api_key=query-secret",
@@ -93,12 +93,19 @@ describe("AiError", () => {
               "//user:pass-secret@localhost:invalid/path?api_key=query-secret",
               (url: string) => `Failed to parse URL from ${url}`,
               "Invalid URL"
+            ],
+            // Firefox, as an `InvalidUrlError` from a browser client
+            [
+              "http://user name:pass-secret@localhost:invalid/path?api_key=query-secret",
+              (url: string) => `URL constructor: ${url} is not a valid URL.`,
+              "Invalid URL",
+              HttpClientError.InvalidUrlError
             ]
           ] as const
         ) {
           const request = HttpClientRequest.get(url)
           const cause = new TypeError(message(url))
-          const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
+          const error = AiError.NetworkError.fromRequestError(new Reason({ request, cause }))
           assert.strictEqual(error.description, expected)
           assert.notInclude(error.description, "pass-secret")
           assert.notInclude(error.description, "query-secret")
