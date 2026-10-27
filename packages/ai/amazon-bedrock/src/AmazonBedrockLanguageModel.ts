@@ -25,6 +25,7 @@ import type * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import { addGenAIAnnotations } from "effect/ai/Telemetry"
 import * as Tool from "effect/ai/Tool"
+import * as Bytes from "effect/Bytes"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
@@ -39,7 +40,6 @@ import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
 import { AmazonBedrockClient } from "./AmazonBedrockClient.ts"
-import { UnknownConverseStreamEvent } from "./AmazonBedrockSchema.ts"
 import type {
   CachePointBlock,
   ContentBlock,
@@ -262,21 +262,15 @@ declare module "effect/ai/Response" {
 }
 
 /**
- * Reads the cache point a message or part requests, if any.
- */
-const getCachePoint = (carrier: { readonly options: CachePointOptions }): CachePoint | undefined =>
-  carrier.options["amazon-bedrock"]?.cachePoint ?? undefined
-
-/**
  * Appends the cache point a message or part requests, if any, after the blocks
  * already emitted for it.
  */
 const pushCachePoint = (
-  content: Array<typeof ContentBlock.Encoded>,
+  content: Array<typeof ContentBlock.Encoded> | Array<typeof SystemContentBlock.Encoded>,
   carrier: { readonly options: CachePointOptions }
 ): void => {
-  const cachePoint = getCachePoint(carrier)
-  if (Predicate.isNotUndefined(cachePoint)) {
+  const cachePoint = carrier.options["amazon-bedrock"]?.cachePoint
+  if (!Predicate.isNullish(cachePoint)) {
     content.push({ cachePoint })
   }
 }
@@ -396,7 +390,6 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
     }, AiError.AiError> {
       const services = yield* Effect.context<never>()
       const { outputConfig: configOutputConfig, structuredOutputs, ...config } = {
-        modelId: model,
         ...providerConfig,
         ...Context.getOrUndefined(services, Config)
       }
@@ -407,7 +400,10 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
 
       let outputConfig: typeof OutputConfig.Encoded | undefined = configOutputConfig
       if (responseFormat.type === "json") {
-        const json = yield* tryJsonSchema(responseFormat.schema, "makeRequest")
+        const json = yield* tryJsonSchema(
+          "makeRequest",
+          () => Tool.getJsonSchemaFromSchema(responseFormat.schema, { transformer: toCodecAnthropic })
+        )
         const description = SchemaAST.resolveDescription(responseFormat.schema.ast)
         if (structuredOutputs === true) {
           // Native structured output. The caller's own tools still go out
@@ -459,15 +455,11 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
         )
       )
       if (hasToolBlocks && Predicate.isUndefined(request.toolConfig)) {
-        return yield* AiError.make({
-          module: "AmazonBedrockLanguageModel",
-          method: "makeRequest",
-          reason: new AiError.InvalidUserInputError({
-            description: "The prompt contains tool calls or tool results, and Converse rejects them in a " +
-              "request that carries no tools. Pass the toolkit that produced the tool calls, with a " +
-              "toolChoice other than \"none\"."
-          })
-        })
+        return yield* invalidUserInput(
+          "makeRequest",
+          "The prompt contains tool calls or tool results, and Converse rejects them in a request that " +
+            "carries no tools. Pass the toolkit that produced the tool calls, with a toolChoice other than \"none\"."
+        )
       }
       return { request, nameMapper }
     }
@@ -479,7 +471,6 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
       const { nameMapper, request } = yield* makeRequest(options)
       annotateRequest(options.span, request)
       const response = yield* client.converse(toConverseRequest(request))
-      annotateResponse(options.span, request.modelId, response.stopReason, response.usage)
       return yield* makeResponse(request, response, options, nameMapper)
     }),
     streamText: Effect.fnUntraced(function*(options) {
@@ -574,12 +565,11 @@ const urlPattern = /^[a-z][a-z0-9+.-]*:\/\//i
 /** Matches the header of a `data:` url, up to the comma before its payload. */
 const dataUrlPattern = /^data:[^,]*?(;base64)?,/i
 
+const fail = (method: string, reason: AiError.AiErrorReason): AiError.AiError =>
+  AiError.make({ module: "AmazonBedrockLanguageModel", method, reason })
+
 const invalidUserInput = (method: string, description: string) =>
-  AiError.make({
-    module: "AmazonBedrockLanguageModel",
-    method,
-    reason: new AiError.InvalidUserInputError({ description })
-  })
+  fail(method, new AiError.InvalidUserInputError({ description }))
 
 /**
  * Resolves file part data into base64 bytes.
@@ -669,10 +659,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
           }
           for (const message of group.messages) {
             system.push({ text: message.content })
-            const cachePoint = getCachePoint(message)
-            if (Predicate.isNotUndefined(cachePoint)) {
-              system.push({ cachePoint })
-            }
+            pushCachePoint(system, message)
           }
           break
         }
@@ -692,15 +679,12 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                     }
                     case "file": {
                       const imageFormat = imageFormats[part.mediaType]
+                      const documentFormat = documentFormats[part.mediaType]
                       if (Predicate.isNotUndefined(imageFormat)) {
                         content.push({
                           image: { format: imageFormat, source: { bytes: yield* fileBytes(part.data) } }
                         })
-                        pushCachePoint(content, part)
-                        break
-                      }
-                      const documentFormat = documentFormats[part.mediaType]
-                      if (Predicate.isNotUndefined(documentFormat)) {
+                      } else if (Predicate.isNotUndefined(documentFormat)) {
                         documentCount += 1
                         content.push({
                           document: {
@@ -709,13 +693,14 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                             source: { bytes: yield* fileBytes(part.data) }
                           }
                         })
-                        pushCachePoint(content, part)
-                        break
+                      } else {
+                        return yield* invalidUserInput(
+                          "prepareMessages",
+                          `Unsupported media type '${part.mediaType}' for file part - this provider supports the images and documents Converse has a format for`
+                        )
                       }
-                      return yield* invalidUserInput(
-                        "prepareMessages",
-                        `Unsupported media type '${part.mediaType}' for file part - this provider supports the images and documents Converse has a format for`
-                      )
+                      pushCachePoint(content, part)
+                      break
                     }
                   }
                 }
@@ -764,9 +749,9 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                     continue
                   }
                   content.push({
-                    // Amazon Bedrock does not allow trailing whitespace in
-                    // assistant content blocks
-                    text: trimIfLast(isLastGroup, isLastMessage, isLastPart, part.text)
+                    // Amazon Bedrock does not allow trailing whitespace in a
+                    // pre-filled assistant response.
+                    text: isLastGroup && isLastMessage && isLastPart ? part.text.trim() : part.text
                   })
                   pushCachePoint(content, part)
                   break
@@ -833,25 +818,14 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 // Schema Helpers
 // =============================================================================
 
-const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError =>
-  AiError.make({
-    module: "AmazonBedrockLanguageModel",
-    method,
-    reason: new AiError.UnsupportedSchemaError({
-      description: error instanceof Error ? error.message : String(error)
-    })
-  })
-
-const tryToolJsonSchema = (tool: Tool.Any, method: string) =>
+const tryJsonSchema = <A>(method: string, evaluate: () => A): Effect.Effect<A, AiError.AiError> =>
   Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
-
-const tryJsonSchema = (schema: Schema.Top, method: string) =>
-  Effect.try({
-    try: () => Tool.getJsonSchemaFromSchema(schema, { transformer: toCodecAnthropic }),
-    catch: (error) => unsupportedSchemaError(error, method)
+    try: evaluate,
+    catch: (error) =>
+      fail(
+        method,
+        new AiError.UnsupportedSchemaError({ description: error instanceof Error ? error.message : String(error) })
+      )
   })
 
 // Bedrock is sent each tool's codec schema, which differs from the tool's own
@@ -899,7 +873,7 @@ const prepareTools: (
       )
     }
     const description = Tool.getDescription(tool)
-    const json = yield* tryToolJsonSchema(tool, "prepareTools")
+    const json = yield* tryJsonSchema("prepareTools", () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }))
     tools.push({
       toolSpec: {
         name: nameMapper.getProviderName(tool.name),
@@ -956,15 +930,7 @@ const makeResponse: (
       : response.output.message.content.find((part) => part.toolUse?.name === objectToolName)
     const hasObjectTool = Predicate.isNotUndefined(objectToolPart)
 
-    parts.push({
-      type: "response-metadata",
-      // Converse returns no response identifier, and the client service does
-      // not surface the raw HTTP request.
-      id: undefined,
-      modelId: request.modelId,
-      timestamp: DateTime.formatIso(yield* DateTime.now),
-      request: undefined
-    })
+    parts.push(yield* responseMetadataPart(request.modelId))
 
     for (const part of response.output.message.content) {
       if (Predicate.isNotUndefined(part.text)) {
@@ -1017,19 +983,38 @@ const makeResponse: (
       // and are ignored.
     }
 
-    parts.push({
-      type: "finish",
-      // Calling the object tool is how the model finishes, not a request to
-      // run a tool.
-      reason: InternalUtilities.resolveFinishReason(response.stopReason, hasObjectTool),
-      usage: makeUsage(response.usage),
-      response: undefined,
-      metadata: { "amazon-bedrock": { stopReason: response.stopReason } }
-    })
+    const usage = makeUsage(response.usage)
+    annotateResponse(options.span, request.modelId, response.stopReason, usage)
+    // Calling the object tool is how the model finishes, not a request to run
+    // a tool.
+    parts.push(
+      finishPart(InternalUtilities.resolveFinishReason(response.stopReason, hasObjectTool), response.stopReason, usage)
+    )
 
     return parts
   }
 )
+
+/**
+ * Converse returns no response identifier, and the client service does not
+ * surface the raw HTTP request.
+ */
+const responseMetadataPart = (modelId: string) =>
+  Effect.map(DateTime.now, (now) => ({
+    type: "response-metadata",
+    id: undefined,
+    modelId,
+    timestamp: DateTime.formatIso(now),
+    request: undefined
+  } as const))
+
+const finishPart = (reason: Response.FinishReason, stopReason: string | null, usage: Response.Usage) => ({
+  type: "finish",
+  reason,
+  usage,
+  response: undefined,
+  metadata: { "amazon-bedrock": { stopReason } }
+} as const)
 
 const makeUsage = (usage: TokenUsage): Response.Usage => {
   const cacheRead = usage.cacheReadInputTokens
@@ -1049,8 +1034,6 @@ const makeUsage = (usage: TokenUsage): Response.Usage => {
   }
 }
 
-const isUnknownStreamEvent = Schema.is(UnknownConverseStreamEvent)
-
 /**
  * A streamed reasoning block in flight. Converse streams the signature after
  * the text, and redacted reasoning as several base64 chunks of one byte
@@ -1064,18 +1047,8 @@ interface ReasoningBlock {
 
 const reasoningBlockInfo = (block: ReasoningBlock): ReasoningInfo => ({
   ...(Predicate.isNotUndefined(block.signature) ? { signature: block.signature } : {}),
-  ...(block.redactedChunks.length > 0 ? { redactedContent: Base64.encode(concatBytes(block.redactedChunks)) } : {})
+  ...(block.redactedChunks.length > 0 ? { redactedContent: Base64.encode(Bytes.concat(block.redactedChunks)) } : {})
 })
-
-const concatBytes = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
-  const out = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.length, 0))
-  let offset = 0
-  for (const chunk of chunks) {
-    out.set(chunk, offset)
-    offset += chunk.length
-  }
-  return out
-}
 
 const makeStreamResponse = (
   request: typeof ConverseRequest.Encoded,
@@ -1101,19 +1074,8 @@ const makeStreamResponse = (
     Stream.mapEffect(Effect.fnUntraced(function*(event) {
       const parts: Array<Response.StreamPartEncoded> = []
 
-      // Events this provider does not model are ignored.
-      if (isUnknownStreamEvent(event)) {
-        return parts
-      }
-
       if ("messageStart" in event) {
-        parts.push({
-          type: "response-metadata",
-          id: undefined,
-          modelId: request.modelId,
-          timestamp: DateTime.formatIso(yield* DateTime.now),
-          request: undefined
-        })
+        parts.push(yield* responseMetadataPart(request.modelId))
       } else if ("contentBlockStart" in event) {
         // Tool-use blocks announce themselves here.
         const start = event.contentBlockStart.start?.toolUse
@@ -1150,15 +1112,14 @@ const makeStreamResponse = (
           if (Predicate.isNotUndefined(reasoningContent.redactedContent)) {
             const chunk = Base64.decode(reasoningContent.redactedContent)
             if (Result.isFailure(chunk)) {
-              return yield* AiError.make({
-                module: "AmazonBedrockLanguageModel",
-                method: "makeStreamResponse",
-                reason: new AiError.InvalidResponseError({
+              return yield* fail(
+                "makeStreamResponse",
+                new AiError.InvalidResponseError({
                   description: `Bedrock streamed redacted reasoning that is not base64: ${
                     truncate(reasoningContent.redactedContent, 100)
                   }`
                 })
-              })
+              )
             }
             block.redactedChunks.push(chunk.success)
           }
@@ -1189,14 +1150,13 @@ const makeStreamResponse = (
             // A tool taking no arguments streams no deltas at all.
             try: () => Tool.unsafeSecureJsonParse(block.params.length === 0 ? "{}" : block.params),
             catch: () =>
-              AiError.make({
-                module: "AmazonBedrockLanguageModel",
-                method: "makeStreamResponse",
-                reason: new AiError.InvalidOutputError({
+              fail(
+                "makeStreamResponse",
+                new AiError.InvalidOutputError({
                   description: `Bedrock streamed input for the \`${block.name}\` tool that is not valid JSON: ` +
                     truncate(block.params, 500)
                 })
-              })
+              )
           })
           parts.push({ type: "tool-params-end", id: block.id })
           parts.push({
@@ -1210,15 +1170,16 @@ const makeStreamResponse = (
       } else if ("messageStop" in event) {
         stopReason = event.messageStop.stopReason
       } else if ("metadata" in event) {
-        annotateResponse(span, request.modelId, stopReason, event.metadata.usage)
-        parts.push({
-          type: "finish",
-          reason: stopReason === null ? "unknown" : InternalUtilities.resolveFinishReason(stopReason),
-          usage: makeUsage(event.metadata.usage),
-          response: undefined,
-          metadata: { "amazon-bedrock": { stopReason } }
-        })
+        const usage = makeUsage(event.metadata.usage)
+        annotateResponse(span, request.modelId, stopReason, usage)
+        parts.push(finishPart(
+          stopReason === null ? "unknown" : InternalUtilities.resolveFinishReason(stopReason),
+          stopReason,
+          usage
+        ))
       }
+      // Events this provider does not model match none of the branches and
+      // are ignored.
 
       return parts
     })),
@@ -1244,21 +1205,19 @@ const annotateRequest = (span: Span, request: typeof ConverseRequest.Encoded): v
   })
 }
 
-const annotateResponse = (span: Span, modelId: string, stopReason: string | null, usage: TokenUsage): void => {
-  const cacheRead = usage.cacheReadInputTokens ?? 0
-  const cacheWrite = usage.cacheWriteInputTokens ?? 0
+const annotateResponse = (span: Span, modelId: string, stopReason: string | null, usage: Response.Usage): void => {
   addGenAIAnnotations(span, {
     response: {
       model: modelId,
       finishReasons: stopReason === null ? undefined : [stopReason]
     },
     usage: {
-      inputTokens: usage.inputTokens + cacheRead + cacheWrite,
-      outputTokens: usage.outputTokens
+      inputTokens: usage.inputTokens.total,
+      outputTokens: usage.outputTokens.total
     }
   })
-  span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
-  span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
+  span.attribute("gen_ai.usage.cache_read.input_tokens", usage.inputTokens.cacheRead ?? 0)
+  span.attribute("gen_ai.usage.cache_write.input_tokens", usage.inputTokens.cacheWrite ?? 0)
 }
 
 // =============================================================================
@@ -1320,18 +1279,6 @@ const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
   }
   return messages
 }
-
-/**
- * Amazon Bedrock does not allow trailing whitespace in pre-filled assistant
- * responses, so the final text part is trimmed if it is the last message in
- * the group.
- */
-const trimIfLast = (
-  isLastGroup: boolean,
-  isLastMessage: boolean,
-  isLastPart: boolean,
-  text: string
-) => isLastGroup && isLastMessage && isLastPart ? text.trim() : text
 
 const truncate = (text: string, maxLength: number): string =>
   text.length > maxLength ? `${text.slice(0, maxLength)}...` : text

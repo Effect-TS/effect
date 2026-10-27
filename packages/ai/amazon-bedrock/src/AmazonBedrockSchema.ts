@@ -598,14 +598,18 @@ export const ConverseStreamMetadataEvent = ResponseStruct({
   trace: Schema.optional(Schema.Unknown)
 })
 
-const knownStreamEventTypes = new Set([
-  "messageStart",
-  "contentBlockStart",
-  "contentBlockDelta",
-  "contentBlockStop",
-  "messageStop",
-  "metadata"
+const KnownConverseStreamEvent = Schema.Union([
+  Schema.Struct({ messageStart: MessageStartEvent }),
+  Schema.Struct({ contentBlockStart: ContentBlockStartEvent }),
+  Schema.Struct({ contentBlockDelta: ContentBlockDeltaEvent }),
+  Schema.Struct({ contentBlockStop: ContentBlockStopEvent }),
+  Schema.Struct({ messageStop: MessageStopEvent }),
+  Schema.Struct({ metadata: ConverseStreamMetadataEvent })
 ])
+
+const knownStreamEventTypes = new Set(
+  KnownConverseStreamEvent.members.flatMap((member) => Object.keys(member.fields))
+)
 
 /**
  * A ConverseStream event this provider does not model, keyed by its
@@ -654,15 +658,7 @@ export const UnknownConverseStreamEvent = Schema.declare<UnknownConverseStreamEv
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseStreamEvent = Schema.Union([
-  Schema.Struct({ messageStart: MessageStartEvent }),
-  Schema.Struct({ contentBlockStart: ContentBlockStartEvent }),
-  Schema.Struct({ contentBlockDelta: ContentBlockDeltaEvent }),
-  Schema.Struct({ contentBlockStop: ContentBlockStopEvent }),
-  Schema.Struct({ messageStop: MessageStopEvent }),
-  Schema.Struct({ metadata: ConverseStreamMetadataEvent }),
-  UnknownConverseStreamEvent
-])
+export const ConverseStreamEvent = Schema.Union([...KnownConverseStreamEvent.members, UnknownConverseStreamEvent])
 
 /**
  * The type of {@link ConverseStreamEvent}.
@@ -681,6 +677,6 @@ export type ConverseStreamEvent = typeof ConverseStreamEvent.Type
  * @category schemas
  * @since 4.0.0
  */
-export const ConverseStreamException = Schema.Struct({
+export const ConverseStreamException = ResponseStruct({
   message: Schema.optional(Schema.String)
 })

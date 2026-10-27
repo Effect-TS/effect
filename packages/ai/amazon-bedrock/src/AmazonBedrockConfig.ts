@@ -31,7 +31,7 @@ export class AmazonBedrockConfig extends Context.Service<
    */
   static readonly getOrUndefined: Effect.Effect<typeof AmazonBedrockConfig.Service | undefined> = Effect.map(
     Effect.context<never>(),
-    (services) => services.mapUnsafe.get(AmazonBedrockConfig.key)
+    Context.getOrUndefined(AmazonBedrockConfig)
   )
 }
 

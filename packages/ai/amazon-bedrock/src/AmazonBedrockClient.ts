@@ -192,11 +192,7 @@ const CurrentRequestCredentials = Context.Reference<RequestCredentials | undefin
   { defaultValue: () => undefined }
 )
 
-const RedactedAmazonBedrockHeaders = {
-  AmzSecurityToken: "x-amz-security-token"
-}
-
-const appendRedactedHeaders = Array.appendAll(Object.values(RedactedAmazonBedrockHeaders))
+const appendRedactedHeaders = Array.append("x-amz-security-token")
 
 const withRedactedHeaders = Effect.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
 
@@ -204,20 +200,21 @@ const emptyToUndefined = (value: string | undefined): string | undefined =>
   value === undefined || value === "" ? undefined : value
 
 const missingKey = (method: string, description: string) =>
-  AiError.make({
-    module: "AmazonBedrockClient",
-    method,
-    reason: new AiError.AuthenticationError({ kind: "MissingKey", description })
-  })
+  Errors.make(method, new AiError.AuthenticationError({ kind: "MissingKey", description }))
+
+const sigV4 = (accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined): RequestCredentials => ({
+  _tag: "SigV4",
+  credentials: { accessKeyId, secretAccessKey, sessionToken: emptyToUndefined(sessionToken) }
+})
 
 const makeResolveCredentials = (
   options: Options
 ): (method: string) => Effect.Effect<RequestCredentials, AiError.AiError> => {
-  if (Predicate.isNotUndefined(options.apiKey)) {
-    const credentials: RequestCredentials = { _tag: "Bearer", apiKey: options.apiKey }
-    return () => Effect.succeed(credentials)
+  if (options.apiKey !== undefined) {
+    const credentials = Effect.succeed<RequestCredentials>({ _tag: "Bearer", apiKey: options.apiKey })
+    return () => credentials
   }
-  if (Predicate.isNotUndefined(options.credentials)) {
+  if (options.credentials !== undefined) {
     const resolve = options.credentials
     return (method) =>
       Effect.flatMap(resolve, (credentials) =>
@@ -225,27 +222,15 @@ const makeResolveCredentials = (
           ? Effect.fail(
             missingKey(method, "The credentials effect returned an empty access key ID or secret access key")
           )
-          : Effect.succeed<RequestCredentials>({
-            _tag: "SigV4",
-            credentials: {
-              accessKeyId: credentials.accessKeyId,
-              secretAccessKey: credentials.secretAccessKey,
-              sessionToken: emptyToUndefined(credentials.sessionToken)
-            }
-          }))
+          : Effect.succeed(sigV4(credentials.accessKeyId, credentials.secretAccessKey, credentials.sessionToken)))
   }
-  if (Predicate.isNotUndefined(options.accessKeyId) && Predicate.isNotUndefined(options.secretAccessKey)) {
-    const credentials: RequestCredentials = {
-      _tag: "SigV4",
-      credentials: {
-        accessKeyId: options.accessKeyId,
-        secretAccessKey: Redacted.value(options.secretAccessKey),
-        sessionToken: emptyToUndefined(
-          Predicate.isUndefined(options.sessionToken) ? undefined : Redacted.value(options.sessionToken)
-        )
-      }
-    }
-    return () => Effect.succeed(credentials)
+  if (options.accessKeyId !== undefined && options.secretAccessKey !== undefined) {
+    const credentials = Effect.succeed(sigV4(
+      options.accessKeyId,
+      Redacted.value(options.secretAccessKey),
+      options.sessionToken === undefined ? undefined : Redacted.value(options.sessionToken)
+    ))
+    return () => credentials
   }
   return (method) =>
     Effect.fail(missingKey(
@@ -289,6 +274,15 @@ export const make = Effect.fnUntraced(
     const baseClient = yield* HttpClient.HttpClient
     const resolveCredentials = makeResolveCredentials(options)
 
+    // Resolves the credentials of one request before it executes, so that a
+    // credentials failure is not an `HttpClientError` a retry policy would
+    // retry, and provides them for `authenticateRequest` to sign each attempt.
+    const withCredentials = (method: string) => <A, E, R>(self: Effect.Effect<A, E, R>) =>
+      Effect.flatMap(
+        resolveCredentials(method),
+        (credentials) => Effect.provideService(self, CurrentRequestCredentials, credentials)
+      )
+
     const httpClient = baseClient.pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
@@ -297,42 +291,39 @@ export const make = Effect.fnUntraced(
         )
       ),
       HttpClient.mapRequestEffect(authenticateRequest(region)),
-      Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity
+      options.transformClient ?? identity
     )
 
-    // The exposed client resolves the credentials of a request itself, unless
-    // `converse` or `converseStream` already did, and redacts the session
-    // token in header tracing as they do.
+    // The exposed client resolves the credentials of each request itself and
+    // redacts the session token in header tracing, as the helpers do.
     const client = HttpClient.makeWith(
       (requestEffect) =>
         Effect.flatMap(
           requestEffect,
-          (request) =>
-            Effect.flatMap(CurrentRequestCredentials, (current) =>
-              Predicate.isNotUndefined(current)
-                ? httpClient.execute(request)
-                : Effect.flatMap(resolveCredentials("execute"), (credentials) =>
-                  Effect.provideService(httpClient.execute(request), CurrentRequestCredentials, credentials)))
-        ).pipe(withRedactedHeaders),
+          (request) => httpClient.execute(request).pipe(withCredentials("execute"), withRedactedHeaders)
+        ),
       Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
     )
 
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
 
-    const withConfigClient = Effect.fnUntraced(function*() {
-      const config = yield* AmazonBedrockConfig.getOrUndefined
-      return Predicate.isNotUndefined(config?.transformClient) ? config.transformClient(httpClientOk) : httpClientOk
-    })
+    const configClient = Effect.map(
+      AmazonBedrockConfig.getOrUndefined,
+      (config) => (config?.transformClient ?? identity)(httpClientOk)
+    )
 
-    const makeRequest = (path: string, body: Omit<typeof ConverseRequest.Encoded, "modelId">) =>
-      HttpClientRequest.post(path, { body: HttpBody.jsonUnsafe(body) })
+    const makeRequest = (
+      operation: "converse" | "converse-stream",
+      { modelId, ...body }: typeof ConverseRequest.Encoded
+    ) =>
+      HttpClientRequest.post(`/model/${encodeURIComponent(modelId)}/${operation}`, {
+        body: HttpBody.jsonUnsafe(body)
+      })
 
-    const converse: Service["converse"] = Effect.fnUntraced(function*({ modelId, ...body }) {
-      const client = yield* withConfigClient()
-      const credentials = yield* resolveCredentials("converse")
-      const request = makeRequest(`/model/${encodeURIComponent(modelId)}/converse`, body)
-      return yield* client.execute(request).pipe(
-        Effect.provideService(CurrentRequestCredentials, credentials),
+    const converse: Service["converse"] = Effect.fnUntraced(function*(request) {
+      const client = yield* configClient
+      return yield* client.execute(makeRequest("converse", request)).pipe(
+        withCredentials("converse"),
         Effect.flatMap(HttpClientResponse.schemaBodyJson(ConverseResponse)),
         Effect.catchTags({
           HttpClientError: (error) => Errors.mapHttpClientError(error, "converse"),
@@ -363,12 +354,14 @@ export const make = Effect.fnUntraced(
           )
         }
         case "error": {
-          return yield* new EventStream.EventStreamError({
-            reason: "ErrorFrame",
-            description: `Event stream error frame [${frame.headers[":error-code"] ?? "unknown"}]: ${
-              frame.headers[":error-message"] ?? "no error message provided"
-            }`
-          })
+          return yield* Errors.make(
+            "converseStream",
+            new AiError.InternalProviderError({
+              description: `Event stream error frame [${frame.headers[":error-code"] ?? "unknown"}]: ${
+                frame.headers[":error-message"] ?? "no error message provided"
+              }`
+            })
+          )
         }
         default: {
           return undefined
@@ -376,14 +369,11 @@ export const make = Effect.fnUntraced(
       }
     })
 
-    const converseStream: Service["converseStream"] = ({ modelId, ...body }) =>
+    const converseStream: Service["converseStream"] = (request) =>
       Stream.unwrap(
-        Effect.gen(function*() {
-          const client = yield* withConfigClient()
-          const credentials = yield* resolveCredentials("converseStream")
-          const request = makeRequest(`/model/${encodeURIComponent(modelId)}/converse-stream`, body)
-          return client.execute(request).pipe(
-            Effect.provideService(CurrentRequestCredentials, credentials),
+        Effect.map(configClient, (client) =>
+          client.execute(makeRequest("converse-stream", request)).pipe(
+            withCredentials("converseStream"),
             Effect.map((response) => response.stream),
             Stream.unwrap,
             EventStream.decode,
@@ -395,8 +385,7 @@ export const make = Effect.fnUntraced(
               EventStreamError: (error) => Stream.fail(Errors.mapEventStreamError(error, "converseStream"))
             }),
             Stream.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
-          )
-        })
+          ))
       )
 
     return AmazonBedrockClient.of({
@@ -458,20 +447,16 @@ export const layerConfig = (options?: {
     AmazonBedrockClient,
     Effect.gen(function*() {
       return yield* make({
-        region: yield* options?.region ?? optionalString("AWS_REGION"),
+        region: yield* options?.region ?? optional(Config.String("AWS_REGION")),
         apiUrl: yield* options?.apiUrl ?? Effect.undefined,
-        accessKeyId: yield* options?.accessKeyId ?? optionalString("AWS_ACCESS_KEY_ID"),
-        secretAccessKey: yield* options?.secretAccessKey ?? optionalRedacted("AWS_SECRET_ACCESS_KEY"),
-        sessionToken: yield* options?.sessionToken ?? optionalRedacted("AWS_SESSION_TOKEN"),
-        apiKey: yield* options?.apiKey ?? optionalRedacted("AWS_BEARER_TOKEN_BEDROCK"),
+        accessKeyId: yield* options?.accessKeyId ?? optional(Config.String("AWS_ACCESS_KEY_ID")),
+        secretAccessKey: yield* options?.secretAccessKey ?? optional(Config.Redacted("AWS_SECRET_ACCESS_KEY")),
+        sessionToken: yield* options?.sessionToken ?? optional(Config.Redacted("AWS_SESSION_TOKEN")),
+        apiKey: yield* options?.apiKey ?? optional(Config.Redacted("AWS_BEARER_TOKEN_BEDROCK")),
         credentials: options?.credentials,
         transformClient: options?.transformClient
       })
     })
   )
 
-const optionalString = (name: string): Config.Config<string | undefined> =>
-  Config.String(name).pipe(Config.withDefault(undefined))
-
-const optionalRedacted = (name: string): Config.Config<Redacted.Redacted<string> | undefined> =>
-  Config.Redacted(name).pipe(Config.withDefault(undefined))
+const optional = <A>(config: Config.Config<A>): Config.Config<A | undefined> => Config.withDefault(config, undefined)

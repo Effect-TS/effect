@@ -16,20 +16,19 @@
  *
  * @see https://docs.aws.amazon.com/lexv2/latest/dg/event-stream-encoding.html
  */
+import * as Bytes from "effect/Bytes"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 /**
- * A frame that cannot be decoded (`MalformedFrame`), or a frame whose
- * `:message-type` is `error` (`ErrorFrame`).
+ * A frame that cannot be decoded.
  *
  * @internal
  */
 export class EventStreamError extends Schema.TaggedError<EventStreamError>(
   "@effect/ai-amazon-bedrock/internal/eventStream/EventStreamError"
 )("EventStreamError", {
-  reason: Schema.Literals(["MalformedFrame", "ErrorFrame"]),
   description: Schema.String
 }) {}
 
@@ -65,7 +64,7 @@ const crc32 = (bytes: Uint8Array): number => {
   return (crc ^ -1) >>> 0
 }
 
-const malformed = (description: string) => new EventStreamError({ reason: "MalformedFrame", description })
+const malformed = (description: string) => new EventStreamError({ description })
 
 /** Prelude (12 bytes) plus message CRC (4 bytes). */
 const minimumFrameLength = 16
@@ -162,17 +161,9 @@ const takeFrames = (buffer: Uint8Array): [frames: Array<Frame>, rest: Uint8Array
   return [frames, buffer]
 }
 
-const concat = (a: Uint8Array, b: Uint8Array): Uint8Array => {
-  if (a.length === 0) return b
-  const out = new Uint8Array(a.length + b.length)
-  out.set(a)
-  out.set(b, a.length)
-  return out
-}
-
 /**
  * Decodes a stream of bytes into event stream frames. A stream that ends in
- * the middle of a frame fails with a `MalformedFrame` error.
+ * the middle of a frame fails with an `EventStreamError`.
  *
  * @internal
  */
@@ -183,7 +174,7 @@ export const decode = <E>(bytes: Stream.Stream<Uint8Array, E>): Stream.Stream<Fr
       Stream.mapEffect((chunk) =>
         Effect.try({
           try: () => {
-            const [frames, rest] = takeFrames(concat(buffer, chunk))
+            const [frames, rest] = takeFrames(buffer.length === 0 ? chunk : Bytes.concat([buffer, chunk]))
             buffer = rest
             return frames
           },
