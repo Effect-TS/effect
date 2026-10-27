@@ -33,7 +33,13 @@ import * as Headers from "./Headers.ts"
 import { hasBody } from "./HttpMethod.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
-import { causeResponseStripped, ClientAbort, HttpServerError, ResponseError } from "./HttpServerError.ts"
+import {
+  causeResponseStripped,
+  ClientAbort,
+  HttpServerError,
+  isHttpServerError,
+  ResponseError
+} from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -296,6 +302,47 @@ const responseSpanExit = (
   }
 }
 
+// Copies the HTTP errors in a span failure with redacted request URLs, keeping
+// the rest of each error and reason. Stacks are rebuilt from the redacted
+// message, as they are captured with the URL the error was created with.
+const redactCause = (
+  cause: Cause.Cause<unknown>,
+  redactedNames: ReadonlyArray<string | RegExp>
+): Cause.Cause<unknown> => {
+  let changed = false
+  const reasons = cause.reasons.map((reason) => {
+    if (reason._tag === "Interrupt") return reason
+    const error = reason._tag === "Fail" ? reason.error : reason.defect
+    if (!isHttpServerError(error)) return reason
+    changed = true
+    const request = error.reason.request.modify({
+      url: UrlParams.redactUrl(error.reason.request.url, redactedNames)
+    })
+    const redacted = copyError(error, { reason: copyError(error.reason, { request }) })
+    return copy(reason, reason._tag === "Fail" ? { error: redacted } : { defect: redacted })
+  })
+  return changed ? Cause.fromReasons(reasons) : cause
+}
+
+const copy = <A extends object>(self: A, fields: Partial<A>): A =>
+  Object.assign(Object.create(Object.getPrototypeOf(self)), self, fields)
+
+// Keeps non-enumerable properties such as `cause`. V8 errors hold `stack` in
+// an accessor bound to the original, so it is redefined as a value.
+const copyError = <A extends Error>(self: A, fields: Partial<A>): A => {
+  const error: A = Object.assign(
+    Object.create(Object.getPrototypeOf(self), Object.getOwnPropertyDescriptors(self)),
+    fields
+  )
+  const frames = self.stack?.indexOf("\n    at ") ?? -1
+  Object.defineProperty(error, "stack", {
+    value: `${error.name}: ${error.message}${frames === -1 ? "" : self.stack!.slice(frames)}`,
+    writable: true,
+    configurable: true
+  })
+  return error
+}
+
 const withStateNames = (
   names: ReadonlyArray<string | RegExp>,
   stateNames: ReadonlyArray<string | RegExp> | undefined
@@ -349,7 +396,7 @@ export const tracer: <E, R>(
         response = failureResponse
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
-          ? Exit.failCause(cause.value)
+          ? Exit.failCause(redactCause(cause.value, redactedUrlParamNames))
           : responseSpanExit(request, response, redactedUrlParamNames)
       } else {
         response = exit.value
