@@ -410,6 +410,88 @@ against the defined schema, ensuring that only `"yes"` or `"no"` responses are a
 declines to answer or the elicitation fails, a fallback value is provided—here, the default answer
 is `"no"`.
 
+## Multi round-trip tool results
+
+Under `v2026_07_28` the server has no session for sending requests back to the client, so
+`McpServer.elicit` is not available. Instead, a tool returns an `input_required` result that lists
+the input it needs and an opaque `requestState`. The client collects the input and retries the
+same call with `inputResponses` and the unchanged `requestState`.
+
+A handler registered with `McpServer.addTool` returns `McpSchema.InputRequired` directly. In a
+toolkit, declare the condition as a tool failure and map it with the `inputRequired` option:
+
+```typescript
+import { Effect, Layer, Schema } from "effect"
+import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+
+class ConfirmationRequired extends Schema.TaggedError<ConfirmationRequired>()("ConfirmationRequired", {
+  noteId: Schema.String
+}) {}
+
+const ArchiveNote = Tool.make("ArchiveNote", {
+  parameters: Schema.Struct({ noteId: Schema.String }),
+  success: Schema.Struct({ archived: Schema.String }),
+  failure: ConfirmationRequired,
+  dependencies: [McpSchema.McpRequestContext]
+})
+
+const NotesToolkit = Toolkit.make(ArchiveNote)
+
+// For example an HMAC from `effect/crypto/Mac`, with a key shared by every server instance.
+declare const signState: (noteId: string) => Effect.Effect<string>
+declare const verifyState: (state: string, noteId: string) => Effect.Effect<boolean>
+declare const archiveNote: (noteId: string) => Effect.Effect<void>
+
+const NotesLayer = McpServer.toolkit(NotesToolkit, {
+  inputRequired: {
+    ArchiveNote: (error) =>
+      Effect.map(signState(error.noteId), (requestState) =>
+        new McpSchema.InputRequired({
+          inputRequests: {
+            confirm: {
+              method: "elicitation/create",
+              params: {
+                message: `Archive note ${error.noteId}?`,
+                requestedSchema: {
+                  type: "object",
+                  properties: { confirmed: { type: "boolean" } },
+                  required: ["confirmed"]
+                }
+              }
+            }
+          },
+          requestState
+        }))
+  }
+}).pipe(
+  Layer.provide(NotesToolkit.toLayer({
+    ArchiveNote: Effect.fnUntraced(function*({ noteId }) {
+      const request = yield* McpSchema.McpRequestContext
+      const verified = request.requestState !== undefined &&
+        (yield* verifyState(request.requestState, noteId))
+      if (!verified || request.inputResponses?.confirm?.action !== "accept") {
+        return yield* new ConfirmationRequired({ noteId })
+      }
+      yield* archiveNote(noteId)
+      return { archived: noteId }
+    })
+  }))
+)
+```
+
+When `ArchiveNote` fails with `ConfirmationRequired`, its mapper turns the failure into an
+`input_required` result. On the retry, the handler reads the answer and the state from
+`McpRequestContext`.
+
+- Mappers run only under protocols that support client input (`v2026_07_28`). Earlier revisions
+  return the failure as an `isError` result, as does a mapper that returns `undefined`.
+- The client must declare the capability each input request needs, such as `elicitation`.
+  Otherwise the call fails with error `-32021` and HTTP status 400.
+- `requestState` passes through the client. Sign it with a key every server instance shares, bind
+  it to the call's arguments, and verify it before acting on a retry. The retry may reach another
+  instance.
+- A client can send the same retry more than once, so make the side effect idempotent.
+
 ## Complete Working Example
 
 Here's a complete, copy/pastable MCP server example that combines all the concepts:

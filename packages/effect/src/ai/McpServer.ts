@@ -2987,6 +2987,48 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
   | McpRequest.From<"Requires", Exclude<RequestServices, McpRequestContext>>
 
 /**
+ * Maps declared tool failures to MCP `input_required` results, keyed by tool
+ * name.
+ *
+ * **When to use**
+ *
+ * Use with {@link toolkit} or {@link registerToolkit} when a toolkit handler
+ * cannot complete until the client supplies input, such as a confirmation, and
+ * signals this with a failure declared in the tool's `failure` schema.
+ *
+ * **Details**
+ *
+ * When the handler fails with a declared failure, the mapper for its tool runs
+ * with `McpRequestContext` available. Returning an `InputRequired` sends it as
+ * an `input_required` result; returning `undefined` keeps the usual `isError`
+ * result. The client retries the call with `inputResponses` and the unchanged
+ * `requestState`, which the handler reads from `McpRequestContext`.
+ *
+ * Mappers run only for protocols that support client input (`2026-07-28`).
+ * Earlier protocols keep the `isError` result without running the mapper.
+ * Services the mappers require, other than `McpRequestContext`, are required
+ * when the toolkit is registered.
+ *
+ * **Gotchas**
+ *
+ * - `requestState` round-trips through the client. Sign or encrypt it, bind it
+ *   to the call's arguments, and verify it before acting on a retry.
+ * - A retry can be served by another server instance, so the state must be
+ *   self-contained and the handler's side effects idempotent.
+ *
+ * @see {@link McpSchema.InputRequired} for the request and state fields
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.0
+ */
+export type ToolkitInputRequired<Tools extends Record<string, Tool.Any>, R = never> = {
+  readonly [Name in keyof Tools]?: (
+    error: Tool.Failure<Tools[Name]>
+  ) => Effect.Effect<McpSchema.InputRequired | undefined, never, R>
+}
+
+/**
  * Registers a `Toolkit` with the `McpServer`.
  *
  * **Details**
@@ -2994,18 +3036,32 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  *
+ * The `inputRequired` option maps declared tool failures to `input_required`
+ * results; see {@link ToolkitInputRequired}.
+ *
  * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
-export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.Toolkit<Tools>
-) => Effect.Effect<void, never, ToolkitRequirements<Tools>> = Effect.fnUntraced(function*<
-  Tools extends Record<string, Tool.Any>
+export const registerToolkit: <Tools extends Record<string, Tool.Any>, R = never>(
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: {
+    readonly inputRequired?: ToolkitInputRequired<NoInfer<Tools>, R> | undefined
+  } | undefined
+) => Effect.Effect<
+  void,
+  never,
+  ToolkitRequirements<Tools> | Exclude<R, McpRequestContext>
+> = Effect.fnUntraced(function*<
+  Tools extends Record<string, Tool.Any>,
+  R = never
 >(
-  toolkit: Toolkit.Toolkit<Tools>
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: {
+    readonly inputRequired?: ToolkitInputRequired<NoInfer<Tools>, R> | undefined
+  } | undefined
 ) {
   const registry = yield* McpServer
   const built = yield* (toolkit as any as Effect.Effect<
@@ -3058,6 +3114,28 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), (encoded) =>
           new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
+    const inputRequired = options?.inputRequired !== undefined && Object.hasOwn(options.inputRequired, tool.name)
+      ? (options.inputRequired as Record<
+        string,
+        (error: unknown) => Effect.Effect<McpSchema.InputRequired | undefined, never, unknown>
+      >)[tool.name]
+      : undefined
+    // Only protocols that carry `input_required` results run the mapper; earlier adapters reject them.
+    const handlerFailureResult = <E, R2>(
+      error: unknown,
+      fallback: Effect.Effect<CallToolResult, E, R2>
+    ): Effect.Effect<CallToolResult | McpSchema.InputRequired, E, R2 | McpRequestContext> =>
+      inputRequired === undefined || !isDeclaredFailure(error)
+        ? fallback
+        : McpRequestContext.use((request) =>
+          request.protocolVersion === "2026-07-28"
+            ? Effect.flatMap(
+              inputRequired(error) as Effect.Effect<McpSchema.InputRequired | undefined>,
+              (result): Effect.Effect<CallToolResult | McpSchema.InputRequired, E, R2> =>
+                result === undefined ? fallback : Effect.succeed(result)
+            )
+            : fallback
+        )
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -3067,7 +3145,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           return Effect.fail(new InvalidParams({ message: error.reason.message }))
         }
         if (origin === "handler" && isDeclaredFailure(error)) {
-          return Effect.catchCause(declaredFailureResult(error), internalToolError)
+          return Effect.catchCause(handlerFailureResult(error, declaredFailureResult(error)), internalToolError)
         }
       }
       return internalToolError(cause)
@@ -3113,23 +3191,25 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) =>
+          Effect.flatMap((result): Effect.Effect<CallToolResult | McpSchema.InputRequired, unknown, unknown> => {
             // Declared failures return their encoded payload; anything else is classified by origin.
-            result.isFailure && result.failureOrigin !== "handler"
-              ? Effect.failCause(Cause.annotate(
+            if (result.isFailure && result.failureOrigin !== "handler") {
+              return Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : Effect.succeed(
-                new CallToolResult({
-                  isError: result.isFailure,
-                  structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: toolResultContent(result.encodedResult)
-                })
-              )
-          ),
+            }
+            const callToolResult = Effect.succeed(
+              new CallToolResult({
+                isError: result.isFailure,
+                structuredContent: result.isFailure ? undefined : result.encodedResult,
+                content: toolResultContent(result.encodedResult)
+              })
+            )
+            return result.isFailure ? handlerFailureResult(result.result, callToolResult) : callToolResult
+          }),
           Effect.catchCause(handleCause)
-        ) as Effect.Effect<CallToolResult, InvalidParams, never>
+        ) as Effect.Effect<CallToolResult | McpSchema.InputRequired, InvalidParams, McpRequestContext>
       },
       services
     })
@@ -3168,15 +3248,22 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  * The layer requires `McpServer`. Pass it to a transport through the
  * `registrations` option, or provide the transport layer to it.
  *
+ * The `inputRequired` option maps declared tool failures to `input_required`
+ * results; see {@link ToolkitInputRequired}.
+ *
  * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const toolkit = <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.Toolkit<Tools>
-): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit))
+export const toolkit = <Tools extends Record<string, Tool.Any>, R = never>(
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: {
+    readonly inputRequired?: ToolkitInputRequired<NoInfer<Tools>, R> | undefined
+  } | undefined
+): Layer.Layer<never, never, ToolkitRequirements<Tools> | Exclude<R, McpRequestContext>> =>
+  Layer.effectDiscard(registerToolkit(toolkit, options))
 
 /**
  * Utility type that validates a completion-handler record against the allowed

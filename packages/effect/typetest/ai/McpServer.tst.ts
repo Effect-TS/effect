@@ -209,6 +209,58 @@ describe("McpServer", () => {
     >()
   })
 
+  describe("toolkit inputRequired", () => {
+    class NeedsConfirmation extends Schema.TaggedError<NeedsConfirmation>()("NeedsConfirmation", {
+      id: Schema.String
+    }) {}
+    class Signer extends Context.Service<Signer, { readonly sign: (id: string) => Effect.Effect<string> }>()(
+      "Signer"
+    ) {}
+    const toolkit = Toolkit.make(
+      Tool.make("Confirm", { success: Schema.Boolean, failure: NeedsConfirmation }),
+      Tool.make("Plain", { success: Schema.String })
+    )
+    const toInputRequired = Effect.fnUntraced(function*(error: NeedsConfirmation) {
+      const signer = yield* Signer
+      const request = yield* McpSchema.McpRequestContext
+      return request.protocolVersion === "2026-07-28"
+        ? new McpSchema.InputRequired({ requestState: yield* signer.sign(error.id) })
+        : undefined
+    })
+
+    it("should type each mapper's error as its tool's declared failure", () => {
+      McpServer.toolkit(toolkit, {
+        inputRequired: {
+          Confirm: (error) => {
+            expect(error).type.toBe<NeedsConfirmation>()
+            return Effect.succeed(undefined)
+          }
+        }
+      })
+    })
+
+    it("should reject mappers for unknown tools or with other results", () => {
+      expect(McpServer.toolkit).type.not.toBeCallableWith(toolkit, {
+        inputRequired: { Missing: () => Effect.succeed(undefined) }
+      })
+      expect(McpServer.toolkit).type.not.toBeCallableWith(toolkit, {
+        inputRequired: { Confirm: () => Effect.succeed("input") }
+      })
+      expect(McpServer.registerToolkit).type.not.toBeCallableWith(toolkit, {
+        inputRequired: { Confirm: () => Effect.fail("boom") }
+      })
+    })
+
+    it("should require mapper services other than the request context at registration in both APIs", () => {
+      const registered = McpServer.registerToolkit(toolkit, { inputRequired: { Confirm: toInputRequired } })
+      const layer = McpServer.toolkit(toolkit, { inputRequired: { Confirm: toInputRequired } })
+      type Requirements = McpServer.McpServer | Tool.HandlersFor<typeof toolkit.tools> | Signer
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Requirements>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
+    })
+  })
+
   describe("resource templates", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     class IdCodec extends Context.Service<IdCodec, { readonly n: number }>()("IdCodec") {}
