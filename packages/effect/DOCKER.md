@@ -38,7 +38,7 @@ Building the layer never contacts the Engine. The first request negotiates the A
 
 ## Configuration
 
-`NodeDocker.layerFromEnv()` configures the client as a bare `docker` invocation is: it reads the `DOCKER_*` variables, the current context and `~/.docker/config.json` once, when the layer is built, and never runs the `docker` CLI. Values you pass take precedence:
+`NodeDocker.layerFromEnv()` configures the client as a bare `docker` invocation is: it reads the `DOCKER_*` variables, the current context and `~/.docker/config.json` (`%USERPROFILE%\.docker\config.json` on Windows) once, when the layer is built, and never runs the `docker` CLI. Values you pass take precedence:
 
 ```ts
 import { NodeDocker } from "@effect/platform-node"
