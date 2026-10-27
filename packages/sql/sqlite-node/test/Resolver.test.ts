@@ -193,7 +193,7 @@ describe("Resolver", () => {
           Request: Schema.Number,
           execute: (ids) => {
             batches.push(ids)
-            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+            return sql`INSERT INTO writes ${sql.insert(Arr.map(ids, (id) => ({ id })))}`
           }
         }))
         yield* Effect.all([
@@ -219,7 +219,7 @@ describe("Resolver", () => {
           Request: Schema.Number,
           execute: (ids) => {
             batches.push(ids)
-            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+            return sql`INSERT INTO writes ${sql.insert(Arr.map(ids, (id) => ({ id })))}`
           }
         }))
         yield* other.withTransaction(Effect.all([
@@ -241,7 +241,7 @@ describe("Resolver", () => {
           Request: Schema.Number,
           execute: (ids) => {
             batches.push(ids)
-            return sql`INSERT INTO writes ${sql.insert(ids.map((id) => ({ id })))}`
+            return sql`INSERT INTO writes ${sql.insert(Arr.map(ids, (id) => ({ id })))}`
           }
         }))
         let outside: Fiber.Fiber<void, unknown> | undefined

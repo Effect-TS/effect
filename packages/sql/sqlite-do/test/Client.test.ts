@@ -2,6 +2,7 @@ import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
+import * as Arr from "effect/Array"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as SqlResolver from "effect/sql/SqlResolver"
@@ -515,7 +516,7 @@ describe("Client", () => {
         Request: Schema.Number,
         execute: (ids) => {
           batches.push(ids)
-          return sql`INSERT INTO test ${sql.insert(ids.map((id) => ({ id })))}`
+          return sql`INSERT INTO test ${sql.insert(Arr.map(ids, (id) => ({ id })))}`
         }
       }))
 
