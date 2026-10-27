@@ -54,15 +54,21 @@ import * as HttpApiPath from "./internal/path.ts"
  * @category models
  * @since 4.0.0
  */
-export type Client<Groups extends HttpApiGroup.Constraint, E = never, R = never> = Simplify<
+export type Client<
+  Groups extends HttpApiGroup.Constraint,
+  E = never,
+  R = never,
+  Mapping extends Client.Mapping = Client.Unmapped
+> = Simplify<
   & {
     readonly [Group in Extract<Groups, { readonly topLevel: false }> as HttpApiGroup.Identifier<Group>]: Client.Group<
       Group,
       E,
-      R
+      R,
+      Mapping
     >
   }
-  & Client.TopLevelMethods<Groups, E, R>
+  & Client.TopLevelMethods<Groups, E, R, Mapping>
 >
 
 /**
@@ -73,8 +79,12 @@ export type Client<Groups extends HttpApiGroup.Constraint, E = never, R = never>
  * @category utility types
  * @since 4.0.0
  */
-export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api extends
-  HttpApi.HttpApi<infer _Id, infer Groups> ? Client<Groups, E, R> :
+export type ForApi<
+  Api extends HttpApi.Constraint,
+  E = never,
+  R = never,
+  Mapping extends Client.Mapping = Client.Unmapped
+> = Api extends HttpApi.HttpApi<infer _Id, infer Groups> ? Client<Groups, E, R, Mapping> :
   never
 
 /**
@@ -82,26 +92,35 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
  * success schema, including headers, streaming Server-Sent Events, and
  * streaming byte responses.
  *
+ * **Details**
+ *
+ * When `Mapping` is `Client.Mapped<E>`, `E` replaces the error channel of
+ * returned streams, matching a client built with `mapError`.
+ *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
+export type SuccessType<S, Mapping extends Client.Mapping = Client.Unmapped> = S extends HttpApiSchema.WithHeaders<
   infer _Inner,
   infer _Headers
-> ? HttpApiSchema.withHeaders<SuccessType<_Inner>, _Headers["Type"]>
+> ? HttpApiSchema.withHeaders<SuccessType<_Inner, Mapping>, _Headers["Type"]>
   : S extends HttpApiSchema.StreamSse<
     infer _Events,
     infer _Error,
     infer _Value
   > ? Stream.Stream<
       _Value,
-      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+      ReplaceError<
+        Mapping,
+        _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
+      >,
       never
     >
-  : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
+  : S extends HttpApiSchema.StreamUint8Array ?
+    Stream.Stream<Uint8Array, ReplaceError<Mapping, HttpClientError.HttpClientError>, never>
   : S extends HttpApiSchema.StreamNdjson<infer _S> ?
-    Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError, never>
+    Stream.Stream<_S["Type"], ReplaceError<Mapping, HttpClientError.HttpClientError | Schema.SchemaError>, never>
   : S extends HttpApiSchema.Upgrade<infer _Headers> ? [_Headers] extends [never] ? Upgraded : Upgraded<_Headers["Type"]>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -125,6 +144,24 @@ export interface Upgraded<Headers = Headers.Headers> {
   readonly headers: Headers
   readonly socket: Socket.Socket
 }
+
+// `Client.Mapped<E>` is not a generic type even when `E` is, so this resolves
+// for generic, `any` and `never` mapper results
+type ReplaceError<Mapping extends Client.Mapping, E> = Mapping extends Client.Mapped<infer MappedE> ? MappedE : E
+
+type StreamError<A> = A extends Stream.Stream<infer _A, infer _E, infer _R> ? _E
+  : A extends HttpApiSchema.withHeaders<infer _Body, infer _Headers> ? StreamError<_Body>
+  : never
+
+// A group without endpoint identifiers, such as the base `Constraint` that
+// `Parameters` reads an overload with, gets `string` rather than `never`
+type GroupsInfo<Groups extends HttpApiGroup.Constraint> = Groups extends any ? Client.Info<
+    HttpApiGroup.Identifier<Groups>,
+    OrString<HttpApiEndpoint.Identifier<HttpApiGroup.Endpoints<Groups>>>
+  >
+  : never
+
+type OrString<A extends string> = [A] extends [never] ? string : A
 
 type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Events,
@@ -176,11 +213,101 @@ export declare namespace Client {
     : Mode extends "response-only" ? HttpClientResponse.HttpClientResponse
     : Success
 
-  type GroupByEndpoint<Group extends HttpApiGroup.Constraint, E, R> = Group["endpoints"] extends
-    infer Endpoints extends Readonly<Record<string, HttpApiEndpoint.ConstraintRequest>> ? {
-      readonly [Identifier in keyof Endpoints]: Method<Endpoints[Identifier], E, R>
-    }
-    : {}
+  /**
+   * The default for the error mapping parameter of the client types, meaning
+   * the client was built without `mapError` and keeps its endpoint-specific
+   * errors.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.7
+   */
+  export interface Unmapped {
+    readonly "~effect/http-api/HttpApiClient/Unmapped": "~effect/http-api/HttpApiClient/Unmapped"
+  }
+
+  /**
+   * The error mapping parameter of a client built with `mapError`. `E` is the
+   * mapper's result, which replaces the typed errors of every method and of
+   * the streams they succeed with.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.7
+   */
+  export interface Mapped<E> {
+    readonly "~effect/http-api/HttpApiClient/Mapped": "~effect/http-api/HttpApiClient/Mapped"
+    readonly error: E
+  }
+
+  /**
+   * Whether a client's errors were replaced by `mapError`.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.7
+   */
+  export type Mapping = Unmapped | Mapped<any>
+
+  /**
+   * Identifies the endpoint a client method was generated for. It is passed to
+   * `mapError` and `transformResponse`.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.7
+   */
+  export interface Info<Group extends string = string, Endpoint extends string = string> {
+    readonly group: Group
+    readonly endpoint: Endpoint
+  }
+
+  /**
+   * The typed failures a client method for an endpoint can produce, including
+   * the errors of streams it returns. This is the input of `mapError` for
+   * `HttpApiClient.endpoint`.
+   *
+   * **Details**
+   *
+   * `E` is the error of the `HttpClient` used by the client.
+   *
+   * @stability unstable
+   * @category utility types
+   * @since 4.0.7
+   */
+  export type MethodError<Endpoint extends HttpApiEndpoint.ConstraintRequest, E = never> = Endpoint extends any ?
+      | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
+      | HttpApiMiddleware.ClientError<Endpoint["~Middleware"]>
+      | E
+      | HttpClientError.HttpClientError
+      | Endpoint["~Error"]["Type"]
+      | Schema.SchemaError
+      | StreamError<SuccessType<Endpoint["~Success"]>>
+    : never
+
+  /**
+   * The typed failures any client method for the given groups can produce,
+   * including the errors of streams they return. This is the input of
+   * `mapError` for `HttpApiClient.make`, `makeWith` and `group`.
+   *
+   * **Details**
+   *
+   * `E` is the error of the `HttpClient` used by the client.
+   *
+   * @stability unstable
+   * @category utility types
+   * @since 4.0.7
+   */
+  export type Error<Groups extends HttpApiGroup.Constraint, E = never> = MethodError<
+    Extract<HttpApiGroup.Endpoints<Groups>, HttpApiEndpoint.ConstraintRequest>,
+    E
+  >
+
+  type GroupByEndpoint<Group extends HttpApiGroup.Constraint, E, R, Mapping extends Client.Mapping> =
+    Group["endpoints"] extends infer Endpoints extends Readonly<Record<string, HttpApiEndpoint.ConstraintRequest>> ? {
+        readonly [Identifier in keyof Endpoints]: Method<Endpoints[Identifier], E, R, Mapping>
+      }
+      : {}
 
   /**
    * The client object for one API group, mapping each endpoint identifier in that
@@ -190,21 +317,26 @@ export declare namespace Client {
    * @category models
    * @since 4.0.0
    */
-  export type Group<Group extends HttpApiGroup.Constraint, E, R> = GroupByEndpoint<Group, E, R>
+  export type Group<Group extends HttpApiGroup.Constraint, E, R, Mapping extends Client.Mapping = Unmapped> =
+    GroupByEndpoint<Group, E, R, Mapping>
 
   type MethodReturn<
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
     R,
+    Mapping extends Client.Mapping,
     Mode extends ResponseMode,
     PayloadR
   > = Effect.Effect<
-    Response<SuccessType<Endpoint["~Success"]>, Mode>,
-    | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
-    | HttpApiMiddleware.ClientError<Endpoint["~Middleware"]>
-    | E
-    | HttpClientError.HttpClientError
-    | ([Mode] extends ["response-only"] ? never : Endpoint["~Error"]["Type"] | Schema.SchemaError),
+    Response<SuccessType<Endpoint["~Success"], Mapping>, Mode>,
+    ReplaceError<
+      Mapping,
+      | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
+      | HttpApiMiddleware.ClientError<Endpoint["~Middleware"]>
+      | E
+      | HttpClientError.HttpClientError
+      | ([Mode] extends ["response-only"] ? never : Endpoint["~Error"]["Type"] | Schema.SchemaError)
+    >,
     | R
     | PayloadR
     | Endpoint["~Params"]["EncodingServices"]
@@ -226,7 +358,8 @@ export declare namespace Client {
    * **Details**
    *
    * The services of a streaming `payload` are inferred and added to the
-   * returned effect.
+   * returned effect. When `Mapping` is `Client.Mapped<E>`, `E` replaces the
+   * typed errors of the returned effect and of any stream it succeeds with.
    *
    * @stability unstable
    * @category models
@@ -235,7 +368,8 @@ export declare namespace Client {
   export type Method<
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
-    R
+    R,
+    Mapping extends Client.Mapping = Unmapped
   > = <
     Mode extends ResponseMode = "decoded-only",
     PayloadR extends PayloadServicesConstraint<Endpoint["~Payload"]> = never
@@ -250,7 +384,7 @@ export declare namespace Client {
         PayloadR
       >
     >
-  ) => MethodReturn<Endpoint, E, R, Mode, NoInfer<PayloadR>>
+  ) => MethodReturn<Endpoint, E, R, Mapping, Mode, NoInfer<PayloadR>>
 
   /**
    * Extracts client methods for endpoints in top-level groups so they can be exposed
@@ -260,14 +394,15 @@ export declare namespace Client {
    * @category models
    * @since 4.0.0
    */
-  export type TopLevelMethods<Groups extends HttpApiGroup.Constraint, E, R> = {
-    readonly [
-      Endpoint in Extract<
-        HttpApiGroup.Endpoints<Extract<Groups, { readonly topLevel: true }>>,
-        HttpApiEndpoint.ConstraintRequest
-      > as Endpoint["identifier"]
-    ]: Method<Endpoint, E, R>
-  }
+  export type TopLevelMethods<Groups extends HttpApiGroup.Constraint, E, R, Mapping extends Client.Mapping = Unmapped> =
+    {
+      readonly [
+        Endpoint in Extract<
+          HttpApiGroup.Endpoints<Extract<Groups, { readonly topLevel: true }>>,
+          HttpApiEndpoint.ConstraintRequest
+        > as Endpoint["identifier"]
+      ]: Method<Endpoint, E, R, Mapping>
+    }
 }
 
 type UrlBuilderRequestPart<Key extends string, Value> = [Value] extends [never] ? {}
@@ -322,13 +457,24 @@ type UrlBuilderTopLevelMethods<Groups extends HttpApiGroup.Constraint> = {
   ]: UrlBuilderMethod<Endpoint>
 }
 
+type MakeClientOptions<E, R> = {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
+  readonly mapError?: ((error: unknown, info: Client.Info) => unknown) | undefined
+  readonly transformResponse?:
+    | ((
+      effect: Effect.Effect<unknown, unknown, unknown>,
+      info: Client.Info
+    ) => Effect.Effect<unknown, unknown, unknown>)
+    | undefined
+  readonly baseUrl?: URL | string | undefined
+}
+
 /**
  * @internal
  */
 export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Constraint, E, R>(
   api: HttpApi.HttpApi<ApiId, Groups>,
-  options: {
-    readonly httpClient: HttpClient.HttpClient.With<E, R>
+  options: MakeClientOptions<E, R> & {
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.Top
       readonly group: HttpApiGroup.Top
@@ -346,10 +492,6 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
       readonly errors: ReadonlyMap<number, readonly [Schema.Top, ...Array<Schema.Top>]>
       readonly endpointFn: Function
     }) => void
-    readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
-      | undefined
-    readonly baseUrl?: URL | string | undefined
   }
 ): Effect.Effect<void> =>
   Effect.gen(function*() {
@@ -442,7 +584,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
 
-        const endpointFn = Effect.fnUntraced(function*(
+        const info: Client.Info = { group: group.identifier, endpoint: endpoint.identifier }
+        const mapError = UndefinedOr.map(options.mapError, (f) => (error: unknown) => f(error, info))
+
+        const execute = Effect.fnUntraced(function*(
           request: {
             readonly params: Record<string, string> | undefined
             readonly query: unknown
@@ -522,12 +667,16 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           }
 
           const decoded = decodeEndpointResponse(response, request?.sseOptions)
-          const value = yield* (options.transformResponse === undefined
+          const transformed = yield* (options.transformResponse === undefined
             ? decoded
-            : options.transformResponse(decoded))
+            : options.transformResponse(decoded, info))
+          const value = mapError === undefined ? transformed : mapStreamError(transformed, mapError)
 
           return request?.responseMode === "decoded-and-response" ? [value, response] : value
         })
+        const endpointFn = mapError === undefined
+          ? execute
+          : (request: Parameters<typeof execute>[0]) => Effect.mapError(execute(request), mapError)
 
         options.onEndpoint({
           ...onEndpointOptions,
@@ -537,28 +686,65 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
     })
   })
 
+type BaseOptions<Info> = {
+  readonly transformResponse?:
+    | ((effect: Effect.Effect<unknown, unknown, unknown>, info: Info) => Effect.Effect<unknown, unknown, unknown>)
+    | undefined
+  readonly baseUrl?: URL | string | undefined
+}
+
+// Each constructor has an overload that requires a defined `mapError` and one
+// that only accepts an omitted or `undefined` one, so a mapper that may be
+// absent matches neither
+type WithMapper<Error, Info, MappedE> = {
+  readonly mapError: (error: Error, info: Info) => MappedE
+}
+
+type WithoutMapper = {
+  readonly mapError?: undefined
+}
+
+type MakeOptions<Groups extends HttpApiGroup.Constraint> = BaseOptions<GroupsInfo<Groups>> & {
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+}
+
 /**
  * Constructs a type-safe client for an HTTP API using the `HttpClient` service,
  * endpoint schemas, middleware, and optional client or response transformations.
+ *
+ * **Details**
+ *
+ * `mapError` replaces the typed failures of every method, and of the streams
+ * they succeed with, with the mapper's result. It receives the failure and the
+ * group and endpoint identifiers. Defects and interruptions are not mapped,
+ * and neither are failures of an upgraded socket or of reading a response
+ * returned with `responseMode: "response-only"`. A `mapError` that may be
+ * `undefined` is a type error; use `f ?? identity` to map only sometimes.
+ *
+ * `transformResponse` wraps the decoding of each response and receives the
+ * same identifiers. It runs inside `mapError`, so its failures are mapped too.
+ *
+ * The constructors are overloaded, so pass them to higher-order functions
+ * through a lambda, as in `Effect.flatMap((api) => HttpApiClient.make(api))`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = <ApiId extends string, Groups extends HttpApiGroup.Constraint>(
-  api: HttpApi.HttpApi<ApiId, Groups>,
-  options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-    readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
-      | undefined
-    readonly baseUrl?: URL | string | undefined
-  }
-): Effect.Effect<
-  Client<Groups>,
-  never,
-  HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>
-> =>
+export const make: {
+  <ApiId extends string, Groups extends HttpApiGroup.Constraint, MappedE>(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options: MakeOptions<Groups> & WithMapper<Client.Error<Groups>, GroupsInfo<Groups>, MappedE>
+  ): Effect.Effect<
+    Client<Groups, never, never, Client.Mapped<MappedE>>,
+    never,
+    HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>
+  >
+  <ApiId extends string, Groups extends HttpApiGroup.Constraint>(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options?: MakeOptions<Groups> & WithoutMapper
+  ): Effect.Effect<Client<Groups>, never, HttpClient.HttpClient | HttpApiGroup.MiddlewareClient<Groups>>
+} = (api: HttpApi.Top, options?: any): any =>
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
     makeWith(api, {
       ...options,
@@ -570,24 +756,39 @@ export const make = <ApiId extends string, Groups extends HttpApiGroup.Constrain
  * using the API metadata to encode requests, execute middleware, and decode
  * responses.
  *
+ * **Details**
+ *
+ * `mapError` and `transformResponse` behave as described for `make`. The
+ * failures passed to `mapError` include the `HttpClient` error.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Constraint, E, R>(
-  api: HttpApi.HttpApi<ApiId, Groups>,
-  options: {
-    readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
-      | undefined
-    readonly baseUrl?: URL | string | undefined
-  }
-): Effect.Effect<
-  Client<Groups, Exclude<E, HttpClientError.HttpClientError>, R>,
-  never,
-  HttpApiGroup.MiddlewareClient<Groups>
-> => {
+export const makeWith: {
+  <ApiId extends string, Groups extends HttpApiGroup.Constraint, E, R, MappedE>(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options:
+      & BaseOptions<GroupsInfo<Groups>>
+      & WithMapper<Client.Error<Groups, NoInfer<E>>, GroupsInfo<Groups>, MappedE>
+      & { readonly httpClient: HttpClient.HttpClient.With<E, R> }
+  ): Effect.Effect<
+    Client<Groups, Exclude<E, HttpClientError.HttpClientError>, R, Client.Mapped<MappedE>>,
+    never,
+    HttpApiGroup.MiddlewareClient<Groups>
+  >
+  <ApiId extends string, Groups extends HttpApiGroup.Constraint, E, R>(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options:
+      & BaseOptions<GroupsInfo<Groups>>
+      & WithoutMapper
+      & { readonly httpClient: HttpClient.HttpClient.With<E, R> }
+  ): Effect.Effect<
+    Client<Groups, Exclude<E, HttpClientError.HttpClientError>, R>,
+    never,
+    HttpApiGroup.MiddlewareClient<Groups>
+  >
+} = (api: HttpApi.Top, options: any): any => {
   const client: Record<string, Record<string, any>> = {}
   return makeClient(api, {
     ...options,
@@ -602,38 +803,65 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Const
         endpointFn
       )
     }
-  }).pipe(Effect.as(client)) as any
+  }).pipe(Effect.as(client))
 }
+
+type GroupOptions<Group extends HttpApiGroup.Constraint, GroupIdentifier extends string, E, R> =
+  & BaseOptions<GroupsInfo<Group>>
+  & {
+    readonly group: GroupIdentifier
+    readonly httpClient: HttpClient.HttpClient.With<E, R>
+  }
 
 /**
  * Builds a typed client object for a single API group from the supplied
  * `HttpClient`, filtering the API to that group.
  *
+ * **Details**
+ *
+ * `mapError` and `transformResponse` behave as described for `make`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const group = <
-  ApiId extends string,
-  Groups extends HttpApiGroup.Constraint,
-  const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
-  E,
-  R
->(
-  api: HttpApi.HttpApi<ApiId, Groups>,
-  options: {
-    readonly group: GroupIdentifier
-    readonly httpClient: HttpClient.HttpClient.With<E, R>
-    readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
-      | undefined
-    readonly baseUrl?: URL | string | undefined
-  }
-): Effect.Effect<
-  Client.Group<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, E, R>,
-  never,
-  HttpApiGroup.MiddlewareClient<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>
-> => {
+export const group: {
+  <
+    ApiId extends string,
+    Groups extends HttpApiGroup.Constraint,
+    const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+    E,
+    R,
+    MappedE
+  >(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options:
+      & GroupOptions<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, GroupIdentifier, E, R>
+      & WithMapper<
+        Client.Error<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, NoInfer<E>>,
+        GroupsInfo<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>,
+        MappedE
+      >
+  ): Effect.Effect<
+    Client.Group<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, E, R, Client.Mapped<MappedE>>,
+    never,
+    HttpApiGroup.MiddlewareClient<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>
+  >
+  <
+    ApiId extends string,
+    Groups extends HttpApiGroup.Constraint,
+    const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+    E,
+    R
+  >(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options: GroupOptions<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, GroupIdentifier, E, R> & WithoutMapper
+  ): Effect.Effect<
+    Client.Group<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>, E, R>,
+    never,
+    HttpApiGroup.MiddlewareClient<HttpApiGroup.WithIdentifier<Groups, GroupIdentifier>>
+  >
+} = (api: HttpApi.Top, options: any): any => {
   const client: Record<string, any> = {}
   return makeClient(api, {
     ...options,
@@ -641,51 +869,85 @@ export const group = <
     onEndpoint({ endpoint, endpointFn }) {
       InternalRecord.assignProperty(client, endpoint.identifier, endpointFn)
     }
-  }).pipe(Effect.map(() => client)) as any
+  }).pipe(Effect.as(client))
 }
 
-type EndpointReturn<
+type EndpointWithIdentifier<
   Groups extends HttpApiGroup.Constraint,
   GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
-  EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
-  E,
-  R,
-  Endpoint extends HttpApiEndpoint.ConstraintRequest = Extract<
-    HttpApiEndpoint.WithIdentifier<HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>, EndpointIdentifier>,
-    HttpApiEndpoint.ConstraintRequest
-  >
-> = Effect.Effect<Client.Method<Endpoint, E, R>, never, HttpApiEndpoint.MiddlewareClient<Endpoint>>
+  EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"]
+> = Extract<
+  HttpApiEndpoint.WithIdentifier<HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>, EndpointIdentifier>,
+  HttpApiEndpoint.ConstraintRequest
+>
 
-/**
- * Builds the typed client method for one endpoint in one API group, using the
- * supplied `HttpClient` and endpoint metadata.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const endpoint = <
-  ApiId extends string,
-  Groups extends HttpApiGroup.Constraint,
-  const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
-  const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
-  E,
-  R
->(
-  api: HttpApi.HttpApi<ApiId, Groups>,
-  options: {
+type EndpointOptions<GroupIdentifier extends string, EndpointIdentifier extends string, E, R> =
+  & BaseOptions<Client.Info<GroupIdentifier, EndpointIdentifier>>
+  & {
     readonly group: GroupIdentifier
     readonly endpoint: EndpointIdentifier
     readonly httpClient: HttpClient.HttpClient.With<E, R>
     readonly transformClient?:
       | ((client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
       | undefined
-    readonly transformResponse?:
-      | ((effect: Effect.Effect<unknown, unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>)
-      | undefined
-    readonly baseUrl?: URL | string | undefined
   }
-): EndpointReturn<Groups, GroupIdentifier, EndpointIdentifier, E, R> => {
+
+type EndpointReturn<
+  Endpoint extends HttpApiEndpoint.ConstraintRequest,
+  E,
+  R,
+  Mapping extends Client.Mapping
+> = Effect.Effect<Client.Method<Endpoint, E, R, Mapping>, never, HttpApiEndpoint.MiddlewareClient<Endpoint>>
+
+/**
+ * Builds the typed client method for one endpoint in one API group, using the
+ * supplied `HttpClient` and endpoint metadata.
+ *
+ * **Details**
+ *
+ * `mapError` and `transformResponse` behave as described for `make`. The
+ * failures passed to `mapError` are only those of this endpoint.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const endpoint: {
+  <
+    ApiId extends string,
+    Groups extends HttpApiGroup.Constraint,
+    const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+    const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
+    E,
+    R,
+    MappedE
+  >(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options:
+      & EndpointOptions<GroupIdentifier, EndpointIdentifier, E, R>
+      & WithMapper<
+        Client.MethodError<EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>, NoInfer<E>>,
+        Client.Info<GroupIdentifier, EndpointIdentifier>,
+        MappedE
+      >
+  ): EndpointReturn<
+    EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>,
+    E,
+    R,
+    Client.Mapped<MappedE>
+  >
+  <
+    ApiId extends string,
+    Groups extends HttpApiGroup.Constraint,
+    const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+    const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
+    E,
+    R
+  >(
+    api: HttpApi.HttpApi<ApiId, Groups>,
+    options: EndpointOptions<GroupIdentifier, EndpointIdentifier, E, R> & WithoutMapper
+  ): EndpointReturn<EndpointWithIdentifier<Groups, GroupIdentifier, EndpointIdentifier>, E, R, Client.Unmapped>
+} = (api: HttpApi.Top, options: any): any => {
   let client: any = undefined
   return makeClient(api, {
     ...options,
@@ -696,7 +958,7 @@ export const endpoint = <
     onEndpoint({ endpointFn }) {
       client = endpointFn
     }
-  }).pipe(Effect.map(() => client)) as any
+  }).pipe(Effect.map(() => client))
 }
 
 type DecodeResponse<
@@ -736,7 +998,7 @@ type DecodeResponse<
  * `HttpClientError` whose reason is a `DecodeError`. Parse options are resolved
  * from the API, group and endpoint annotations. The body is only read when the
  * returned effect runs, so it must run inside the scope that owns the response.
- * Middleware and `transformResponse` are not applied.
+ * Middleware, `transformResponse` and `mapError` are not applied.
  *
  * Building the decoder walks the API declaration, so build it once per
  * endpoint and reuse it.
@@ -1127,6 +1389,18 @@ function failUnsupportedContentType(
       })
     })
   )
+}
+
+// An endpoint can succeed with a stream on one status and a plain value on
+// another, so streams are detected per call
+function mapStreamError(value: unknown, f: (error: unknown) => unknown): unknown {
+  if (Stream.isStream(value)) {
+    return Stream.mapError(value, f)
+  }
+  if (HttpApiSchema.isWithHeadersValue(value) && Stream.isStream(value.body)) {
+    return HttpApiSchema.withHeaders({ body: Stream.mapError(value.body, f), headers: value.headers })
+  }
+  return value
 }
 
 const reservedStreamFailureEvent = "effect/http-api/stream/failure"
