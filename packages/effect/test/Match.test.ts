@@ -69,4 +69,23 @@ describe("Match", () => {
     strictEqual(match({ [key]: "other" }), "miss")
     strictEqual(match({} as any), "miss")
   })
+
+  it("requires every element of an array prefix pattern", () => {
+    const match = Match.type<ReadonlyArray<number>>().pipe(
+      Match.when([Match.any, Match.any], () => "hit"),
+      Match.orElse(() => "miss")
+    )
+
+    strictEqual(match([]), "miss")
+    strictEqual(match([1]), "miss")
+    strictEqual(match([1, 2]), "hit")
+    strictEqual(match([1, 2, 3]), "hit")
+    strictEqual(
+      Match.value([] as Array<number>).pipe(
+        Match.when([Match.any], () => "hit"),
+        Match.orElse(() => "miss")
+      ),
+      "miss"
+    )
+  })
 })
