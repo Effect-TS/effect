@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add MCP Tasks with an Execution service, Workflow and memory layers, and support for external job services, input updates, result retrieval, and cooperative cancellation for the 2026-07-28 protocol.
+Add MCP Tasks server execution with `TaskContext` input and status, plus client polling through `callTool` and `startTool` with input handlers and cancellation.
