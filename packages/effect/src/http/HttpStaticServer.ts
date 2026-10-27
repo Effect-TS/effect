@@ -485,8 +485,7 @@ const matchesIfRange = (ifRange: string, etag: string | undefined): boolean => {
   return value.startsWith("\"") && value === etag
 }
 
-// Metadata a 304 must repeat from the 200 response (RFC 9110 §15.4.5), plus
-// Last-Modified for cache revalidation.
+// Headers a 304 must repeat from the 200 response (RFC 9110 §15.4.5), plus Last-Modified for revalidation.
 const notModifiedHeaders = ["cache-control", "content-location", "date", "etag", "expires", "last-modified", "vary"]
 
 const notModifiedResponse = (

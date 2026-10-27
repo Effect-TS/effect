@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve `Content-Location`, `Date`, `Expires`, and `Vary` from file responses when `HttpStaticServer` returns 304.
+Fix `HttpStaticServer` dropping `Content-Location`, `Date`, `Expires` and `Vary` from 304 responses.
