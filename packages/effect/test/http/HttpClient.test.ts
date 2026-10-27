@@ -677,6 +677,34 @@ Missing key
         strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED)")
         assert.notInclude(JSON.stringify(error), "token-secret")
       }))
+    it.live("keeps the redaction of an earlier execution when the request is reused", () =>
+      Effect.gen(function*() {
+        // Fails from a timer callback, outside the request fiber, like native
+        // transports do.
+        const client = HttpClient.make((request) =>
+          Effect.callback<never, HttpClientError.HttpClientError>((resume) => {
+            setTimeout(() =>
+              resume(Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.TransportError({ request })
+                })
+              )), 0)
+          })
+        )
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+        const message = "Transport error (GET http://test/path?token=REDACTED)"
+
+        const error = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        strictEqual(error.message, message)
+
+        yield* client.execute(request).pipe(Effect.flip)
+
+        strictEqual(error.message, message)
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
   })
 
   describe("followRedirects", () => {
