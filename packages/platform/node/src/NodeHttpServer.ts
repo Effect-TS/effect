@@ -882,22 +882,14 @@ const writeResponse = (
   nodeResponse: Http.ServerResponse,
   headers: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, HttpServerError> => {
+  // A destroyed HTTP/1 response never emits `finish`, so `end`'s callback never
+  // runs and content-length checks throw. Nothing can be sent, so skip the write.
+  if (nodeResponse.destroyed) {
+    return cancelResponseBody(response.body)
+  }
   if (request.method === "HEAD") {
     writeHead(nodeResponse, response, headers)
-    return Effect.andThen(
-      cancelResponseBody(response.body),
-      Effect.callback<void>((resume) => {
-        let completed = false
-        const done = () => {
-          if (completed) return
-          completed = true
-          nodeResponse.off("close", done)
-          resume(Effect.void)
-        }
-        nodeResponse.once("close", done)
-        nodeResponse.end(done)
-      })
-    )
+    return Effect.andThen(cancelResponseBody(response.body), endAndAwait(nodeResponse))
   }
   if (Response.omitsBody(response)) {
     writeHead(nodeResponse, response, headers)
@@ -932,9 +924,7 @@ const writeResponse = (
           Effect.tapCause(handleCause(nodeResponse, response))
         )
       }
-      return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.body, () => resume(Effect.void))
-      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
+      return endAndAwait(nodeResponse, body.body).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "Uint8Array": {
       writeHead(nodeResponse, response, headers)
@@ -943,9 +933,9 @@ const writeResponse = (
         // Writing text directly lets Node flush headers and body together.
         return end(nodeResponse, response, body.text ?? body.body)
       }
-      return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
-      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
+      return endAndAwait(nodeResponse, body.text ?? body.body).pipe(
+        Effect.tapCause(handleCause(nodeResponse, response))
+      )
     }
     case "FormData": {
       const r = new globalThis.Response(body.formData)
@@ -1111,6 +1101,26 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
   }
   return Effect.void
 }
+
+// Node only runs `end`'s callback on `finish`. A response whose client disconnects
+// before it finishes closes instead, so resume on whichever comes first.
+const endAndAwait = (nodeResponse: Http.ServerResponse, chunk?: unknown): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    if (nodeResponse.destroyed) return resume(Effect.void)
+    let completed = false
+    const done = () => {
+      if (completed) return
+      completed = true
+      nodeResponse.off("close", done)
+      resume(Effect.void)
+    }
+    nodeResponse.once("close", done)
+    if (chunk === undefined) {
+      nodeResponse.end(done)
+    } else {
+      nodeResponse.end(chunk, done)
+    }
+  })
 
 const end = (
   nodeResponse: Http.ServerResponse,
