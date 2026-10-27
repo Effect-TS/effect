@@ -704,10 +704,19 @@ export const make = (
           )
         }
         const url = urlResult.success
+        // Transports may create errors in callbacks outside this fiber, so
+        // their URLs are redacted again with this fiber's names.
+        const run = (request: HttpClientRequest.HttpClientRequest) =>
+          Effect.mapError(f(request, url, controller.signal, fiber as any), (error) => {
+            if (Error.isHttpClientError(error)) {
+              Error.redactUrlWith(error, fiber.getRef(UrlParams.CurrentRedactedNames))
+            }
+            return error
+          })
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
-          const effect = f(request, url, controller.signal, fiber as any)
+          const effect = run(request)
           if (scopedController) return effect
           return Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(effect), {
@@ -741,7 +750,7 @@ export const make = (
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
             return Effect.uninterruptibleMask((restore) =>
-              restore(f(request, url, controller.signal, fiber as any)).pipe(
+              restore(run(request)).pipe(
                 Effect.withParentSpan(span, { captureStackTrace: false }),
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {

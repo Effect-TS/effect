@@ -107,6 +107,17 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
   return Base as any
 }
 
+/**
+ * Redacts the request URL of an error with additional names. `HttpClient.make`
+ * uses it for transport errors, which may be created in callbacks that run
+ * outside the request fiber.
+ *
+ * @internal
+ */
+export const redactUrlWith = (error: HttpClientError, redactedNames: ReadonlyArray<string | RegExp>): void => {
+  redactedUrls.set(error.reason, UrlParams.redactUrl(redactedUrl(error.reason), redactedNames))
+}
+
 const formatMethodAndUrl = (reason: { readonly request: HttpClientRequest.HttpClientRequest }) =>
   `${reason.request.method} ${redactedUrl(reason)}`
 
