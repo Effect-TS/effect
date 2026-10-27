@@ -31,6 +31,7 @@ import { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import * as Respondable from "../http/HttpServerRespondable.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
+import { addRedactedNamesUnsafe } from "../http/internal/requestState.ts"
 import * as Multipart from "../http/Multipart.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import { stringOrRedacted } from "../internal/redacted.ts"
@@ -964,8 +965,9 @@ function handlerToHttpEffect(
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
+  const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
 
-  return applyMiddleware(
+  const effect = applyMiddleware(
     group,
     endpoint,
     context,
@@ -1048,6 +1050,12 @@ function handlerToHttpEffect(
     }),
     Effect.provideContext(context)
   )
+  if (redactedNames === undefined) return effect
+  // Added before middleware and decoding run, so their failures are redacted too.
+  return Effect.withFiber((fiber) => {
+    addRedactedNamesUnsafe(fiber.context, redactedNames.query, redactedNames.headers)
+    return effect
+  })
 }
 
 /**

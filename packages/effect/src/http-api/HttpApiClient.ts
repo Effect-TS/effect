@@ -19,7 +19,7 @@ import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
-import type * as Headers from "../http/Headers.ts"
+import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -441,6 +441,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         )
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
+        const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -509,13 +510,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
           }
 
-          const response = yield* executeMiddleware(
+          const execute = executeMiddleware(
             group,
             endpoint,
             httpRequest,
             middlewareKeys,
             middlewareKeys.length - 1
           )
+          const response = yield* (redactedNames === undefined ? execute : withRedactedNames(execute, redactedNames))
 
           if (request?.responseMode === "response-only") {
             return response
@@ -536,6 +538,15 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
       }
     })
   })
+
+const withRedactedNames = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  redactedNames: HttpApi.EndpointRedactedNames
+): Effect.Effect<A, E, R> =>
+  effect.pipe(
+    Effect.updateService(UrlParams.CurrentRedactedNames, (names) => [...names, ...redactedNames.query]),
+    Effect.updateService(Headers.CurrentRedactedNames, (names) => [...names, ...redactedNames.headers])
+  )
 
 /**
  * Constructs a type-safe client for an HTTP API using the `HttpClient` service,

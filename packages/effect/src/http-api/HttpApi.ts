@@ -16,6 +16,7 @@ import * as InternalRecord from "../internal/record.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Record from "../Record.ts"
+import * as RegExp_ from "../RegExp.ts"
 import type * as Schema from "../Schema.ts"
 import type * as SchemaAST from "../SchemaAST.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
@@ -167,7 +168,9 @@ const Proto = {
       InternalRecord.assignProperty(
         newGroups,
         key,
-        group.annotateMerge(Context.merge(api.annotations, group.annotations))
+        group.annotateMerge(
+          mergeRedactedNames(Context.merge(api.annotations, group.annotations), api.annotations, group.annotations)
+        )
       )
     }
     return makeProto({
@@ -576,4 +579,53 @@ export const getSlotParseOptions = (annotations: Context.Context<never>): SlotPa
     success: Context.getOrUndefined(annotations, SuccessParseOptions) ?? fallback,
     error: Context.getOrUndefined(annotations, ErrorParseOptions) ?? fallback
   }
+}
+
+/**
+ * @internal
+ */
+export interface EndpointRedactedNames {
+  readonly query: ReadonlyArray<string | RegExp>
+  readonly headers: ReadonlyArray<string | RegExp>
+}
+
+/**
+ * Combines the `RedactedNames` of an API, group and endpoint. A string query
+ * name also matches the bracketed keys of a nested parameter.
+ *
+ * @internal
+ */
+export const getEndpointRedactedNames = (
+  api: Pick<Top, "annotations">,
+  group: HttpApiGroup.Top,
+  endpoint: HttpApiEndpoint.Top
+): EndpointRedactedNames | undefined => {
+  const query: Array<string | RegExp> = []
+  const headers: Array<string | RegExp> = []
+  for (const annotations of [api.annotations, group.annotations, endpoint.annotations]) {
+    const options = Context.getOrUndefined(annotations, RedactedNames)
+    if (options === undefined) continue
+    for (const name of options.query ?? []) {
+      query.push(name)
+      if (typeof name === "string") query.push(new RegExp(`^${RegExp_.escape(name)}\\[`, "i"))
+    }
+    if (options.headers !== undefined) headers.push(...options.headers)
+  }
+  return query.length === 0 && headers.length === 0 ? undefined : { query, headers }
+}
+
+// `addHttpApi` copies the API annotations onto its groups, where a group
+// annotation would otherwise replace the API's names.
+const mergeRedactedNames = (
+  annotations: Context.Context<never>,
+  outer: Context.Context<never>,
+  inner: Context.Context<never>
+): Context.Context<never> => {
+  const outerNames = Context.getOrUndefined(outer, RedactedNames)
+  const innerNames = Context.getOrUndefined(inner, RedactedNames)
+  if (outerNames === undefined || innerNames === undefined) return annotations
+  return Context.add(annotations, RedactedNames, {
+    query: [...(outerNames.query ?? []), ...(innerNames.query ?? [])],
+    headers: [...(outerNames.headers ?? []), ...(innerNames.headers ?? [])]
+  })
 }
