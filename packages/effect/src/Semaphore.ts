@@ -146,9 +146,10 @@ export interface Semaphore {
    *
    * **Details**
    *
-   * Waiting can be interrupted. The permits are taken and their release is
-   * added to the scope in one uninterruptible step, so an interrupted
-   * acquisition never keeps them.
+   * Waiting can be interrupted unless the caller is uninterruptible. The
+   * permits are taken and their release is added to the scope in one
+   * uninterruptible step, so acquired permits are always returned when the
+   * scope closes.
    */
   takeScoped(this: Semaphore, permits: number): Effect.Effect<void, never, Scope.Scope>
 
@@ -555,9 +556,10 @@ export const take: {
  *
  * **Details**
  *
- * The effect waits until enough permits are available, and the wait can be
- * interrupted. The permits are taken and their release is added to the scope
- * in one uninterruptible step, so an interrupted acquisition never keeps them.
+ * The effect waits until enough permits are available. The wait can be
+ * interrupted unless the caller is uninterruptible. The permits are taken and
+ * their release is added to the scope in one uninterruptible step, so acquired
+ * permits are always returned when the scope closes.
  *
  * **Example** (Holding a permit for a scope)
  *
