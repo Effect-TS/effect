@@ -18,6 +18,19 @@ describe("AiError", () => {
         assert.notInclude(output, "param-secret")
         assert.notInclude(output, "header-secret")
       })
+
+      it.effect("round-trips an extension method", () =>
+        Effect.gen(function*() {
+          const error = new AiError.NetworkError({
+            reason: "TransportError",
+            method: "PROPFIND",
+            url: "https://api.example.com/resources"
+          })
+          const encoded = yield* Schema.encodeEffect(AiError.NetworkError)(error)
+          assert.strictEqual(encoded.method, "PROPFIND")
+          const decoded = yield* Schema.decodeEffect(AiError.NetworkError)(encoded)
+          assert.strictEqual(decoded.method, "PROPFIND")
+        }))
     })
 
     describe("RateLimitError", () => {
@@ -693,23 +706,6 @@ describe("AiError", () => {
   })
 
   describe("supporting schemas", () => {
-    describe("HttpRequestDetails", () => {
-      it.effect("round-trips an extension method", () =>
-        Effect.gen(function*() {
-          const request = {
-            method: "PROPFIND",
-            url: "https://api.example.com/resources",
-            urlParams: [],
-            hash: undefined,
-            headers: {}
-          }
-          const encoded = yield* Schema.encodeEffect(AiError.HttpRequestDetails)(request)
-          assert.strictEqual(encoded.method, "PROPFIND")
-          const decoded = yield* Schema.decodeEffect(AiError.HttpRequestDetails)(encoded)
-          assert.deepStrictEqual(decoded, request)
-        }))
-    })
-
     describe("ProviderMetadata", () => {
       it.effect("should encode and decode roundtrip", () =>
         Effect.gen(function*() {
