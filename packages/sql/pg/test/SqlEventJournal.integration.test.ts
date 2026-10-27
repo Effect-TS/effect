@@ -1,6 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer, Option, Redacted } from "effect"
+import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as SqlEventJournalSharedTest from "effect-test/eventlog/SqlEventJournalSharedTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
@@ -104,6 +105,12 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       assert.strictEqual(entries[0].createdAtMillis, 1_700_000_000_000)
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
     }))
+
+  // PostgreSQL binds conflict lookup values twice to match its hash index.
+  it.effect("reports exact conflicts for a batch with many distinct events and keys", () =>
+    ConflictsTest.conflictsAcrossChunks(
+      SqlEventJournal.make({ entryTable: "cross_chunk_entries", remotesTable: "cross_chunk_remotes" })
+    ))
 
   it.effect("reopens a migrated journal read-only", () =>
     Effect.gen(function*() {

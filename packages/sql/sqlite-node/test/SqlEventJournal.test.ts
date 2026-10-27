@@ -3,6 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Array as Arr, Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
+import { limitParameters, maxParameters } from "effect-test/eventlog/SqlParameterLimit"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -40,15 +41,6 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
-// Rejects statements binding more than 999 parameters, SQLite's default limit
-// before 3.32, so oversized batches fail whatever limit the local build has.
-const maxParameters = 999
-const limitParameters = Effect.provideService(Statement.CurrentTransformer, (statement) => {
-  const parameters = statement.compile()[1].length
-  return parameters > maxParameters
-    ? Effect.die(`statement binds ${parameters} parameters`)
-    : Effect.succeed(statement)
-})
 // Over the limit in every per-entry statement, with distinct keys so conflict
 // lookups grow with the batch too.
 const oversizedCount = maxParameters + 1
@@ -785,6 +777,9 @@ describe("SqlEventJournal", () => {
       }))
       assert.deepStrictEqual(yield* journal.entries, [])
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("reports exact conflicts for a batch with many distinct events and keys", () =>
+    ConflictsTest.conflictsAcrossChunks(makeJournal))
 
   it.effect("writeFromRemote commits a batch over the statement parameter limit in one callback", () =>
     Effect.gen(function*() {

@@ -1,6 +1,6 @@
 import type { DurableObjectNamespace, DurableObjectState } from "@cloudflare/workers-types"
 import * as SqliteClient from "@effect/sql-sqlite-do/SqliteClient"
-import { Effect } from "effect"
+import { Array as Arr, Cause, Effect, Exit } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -8,7 +8,11 @@ import * as SqlClient from "effect/sql/SqlClient"
 export class JournalObject {
   constructor(private readonly state: DurableObjectState) {}
 
-  async fetch() {
+  async fetch(request: Request) {
+    const layer = SqliteClient.layer({ storage: this.state.storage })
+    if (new URL(request.url).pathname === "/batch") {
+      return Response.json(await Effect.runPromise(batch.pipe(Effect.scoped, Effect.provide(layer))))
+    }
     const program = Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const journal = yield* SqlEventJournal.make()
@@ -36,10 +40,46 @@ export class JournalObject {
         written: written._tag === "Success" ? [written.value.idString] : written._tag,
         entries: (yield* journal.entries).map((entry) => entry.idString)
       }
-    }).pipe(Effect.scoped, Effect.provide(SqliteClient.layer({ storage: this.state.storage })))
+    }).pipe(Effect.scoped, Effect.provide(layer))
     return Response.json(await Effect.runPromise(program))
   }
 }
+
+// Durable Object SQLite binds at most 100 parameters per statement.
+const batchCount = 101
+
+const outcome = <A, E>(exit: Exit.Exit<A, E>) => Exit.isSuccess(exit) ? "Success" : Cause.pretty(exit.cause)
+
+// Imports and writes batches that exceed the parameter limit in every
+// per-entry statement.
+const batch = Effect.gen(function*() {
+  const journal = yield* SqlEventJournal.make()
+  const remoteId = EventJournal.makeRemoteIdUnsafe()
+  const imported = yield* Effect.exit(journal.writeFromRemote({
+    remoteId,
+    entries: Arr.makeBy(batchCount, (i) =>
+      new EventJournal.RemoteEntry({
+        remoteSequence: i,
+        entry: new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs: 1_000 + i }),
+          event: "Repro",
+          primaryKey: `remote-${i}`,
+          payload: new Uint8Array()
+        }, { disableChecks: true })
+      })),
+    effect: () => Effect.void
+  }))
+  const written = yield* Effect.exit(journal.writeMany({
+    entries: Arr.makeBy(batchCount, (i) => ({ event: "Repro", primaryKey: `local-${i}`, payload: new Uint8Array() })),
+    effect: Effect.succeed
+  }))
+  return {
+    imported: outcome(imported),
+    written: outcome(written),
+    entries: (yield* journal.entries).length,
+    nextSequence: yield* journal.nextRemoteSequence(remoteId)
+  }
+})
 
 export default {
   fetch(request: Request, env: { JOURNAL: DurableObjectNamespace }) {
