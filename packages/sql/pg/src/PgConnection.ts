@@ -775,7 +775,9 @@ class PgConnectionImpl implements PgConnection {
         Effect.suspend(() => {
           view.released = true
           this.pinned = false
-          return this.wire.takeIfAvailable(1)
+          // An `UNLISTEN` that took the wire before the release is bounded by its
+          // own timeout, so wait for it rather than treating it as leaked work.
+          return view.unlistening ? Effect.as(this.wire.take(1), true) : this.wire.takeIfAvailable(1)
         }),
         (idle) => {
           // Retire rather than wait indefinitely for leaked work to finish.
@@ -838,6 +840,7 @@ class PinnedPgConnection implements PgConnection {
   readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>
   released = false
   listeners = 0
+  unlistening = false
 
   constructor(base: PgConnectionImpl) {
     this.base = base
@@ -1938,17 +1941,22 @@ const listenChannel = (
  * The timer starts once the wire is free, so a long statement on the same
  * pinned session does not count against it. Nothing is sent once the session
  * is dead or its pin released, as the session may already have a new owner.
+ * A pin released while `UNLISTEN` holds the wire waits for it to finish.
  */
 const unlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection, identifier: string): Effect.Effect<void> =>
   conn.wire.withPermit(Effect.suspend(() => {
     if (conn.deadWith !== undefined || pinned.released) return Effect.void
+    pinned.unlistening = true
     const timeout = setTimeout(
       () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
       unlistenTimeoutMillis
     )
     return Effect.ensuring(
       Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
-      Effect.sync(() => clearTimeout(timeout))
+      Effect.sync(() => {
+        clearTimeout(timeout)
+        pinned.unlistening = false
+      })
     )
   }))
 
