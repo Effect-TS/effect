@@ -664,6 +664,19 @@ Missing key
 
         strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
+
+    it.effect("redacts query params using the redacted names active when the error is created", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+        const error = yield* Effect.sync(() =>
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request })
+          })
+        ).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED)")
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }))
   })
 
   describe("followRedirects", () => {
