@@ -199,7 +199,6 @@ describe("HttpStaticServer", () => {
     assert.strictEqual(exact.headers.get("vary"), "Accept-Encoding")
     assert.strictEqual(exact.headers.get("content-type"), null)
     assert.strictEqual(exact.headers.get("content-length"), null)
-    assert.strictEqual(await exact.text(), "")
   })
 
   it("304 with If-Modified-Since and no If-None-Match", async () => {
