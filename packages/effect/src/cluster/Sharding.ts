@@ -15,6 +15,7 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -42,8 +43,12 @@ import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
-import type { MailboxFull, PersistenceError } from "./ClusterError.ts"
-import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterError.ts"
+import {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  type MailboxFull,
+  PersistenceError
+} from "./ClusterError.ts"
 import * as ClusterMetrics from "./ClusterMetrics.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -290,6 +295,18 @@ const make = Effect.gen(function*() {
     updateReleasingShardsGauge()
   }
   const activeShardsLatch = yield* Latch.make(false)
+
+  // Moves the refreshed shards that a lock refresh did not return from
+  // `acquiredShards` to `releasingShards`. Shards acquired during the refresh
+  // are absent from its response, so only the refreshed ones are considered.
+  const releaseLostShards = (refreshed: ReadonlyArray<ShardId>, acquired: ReadonlyArray<ShardId>) => {
+    for (const shardId of refreshed) {
+      if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
+        MutableHashSet.remove(acquiredShards, shardId)
+        MutableHashSet.add(releasingShards, shardId)
+      }
+    }
+  }
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
   // open once the handoff has released every shard lock
@@ -693,13 +710,7 @@ const make = Effect.gen(function*() {
     const refreshShardLocks = Effect.gen(function*() {
       const refreshed = [...acquiredShards, ...releasingShards]
       const acquired = yield* runnerStorage.refresh(selfAddress, refreshed)
-      // Shards acquired during the request are absent from its response.
-      for (const shardId of refreshed) {
-        if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
-          MutableHashSet.remove(acquiredShards, shardId)
-          MutableHashSet.add(releasingShards, shardId)
-        }
-      }
+      releaseLostShards(refreshed, acquired)
       for (let i = 0; i < acquired.length; i++) {
         const shardId = acquired[i]
         if (!MutableHashSet.has(selfShards, shardId)) {
@@ -1900,15 +1911,50 @@ const make = Effect.gen(function*() {
   const entityManagerLatches = new Map<string, Latch.Latch>()
 
   // This runner's view of its shards lags lock storage by up to one refresh,
-  // or longer while the process is paused, so final replies of persisted
-  // requests also ask lock storage. Entities draining from a released shard
-  // still hold its lock.
-  const isShardOwned = (runnerAddress: RunnerAddress, shardId: ShardId) =>
-    Effect.suspend(() =>
-      !MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)
-        ? Effect.succeed(false)
-        : Effect.map(runnerStorage.owned(runnerAddress, [shardId]), (owned) => owned.length > 0)
-    )
+  // or longer while the process is paused. So the final reply of a persisted
+  // request is stored only once a lock refresh confirms the shard. Concurrent
+  // writers share a refresh that covers their shard. Entities draining from a
+  // released shard still hold its lock.
+  let pendingLockCheck: {
+    readonly shards: ReadonlyArray<ShardId>
+    readonly result: Deferred.Deferred<ReadonlyArray<ShardId>, PersistenceError>
+  } | undefined
+  const confirmShardLock = (runnerAddress: RunnerAddress, shardId: ShardId): Effect.Effect<boolean, PersistenceError> =>
+    Effect.suspend(() => {
+      if (!MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)) {
+        return Effect.succeed(false)
+      }
+      let check = pendingLockCheck
+      let start: Effect.Effect<unknown> = Effect.void
+      if (check === undefined || !check.shards.includes(shardId)) {
+        const pending = {
+          shards: [...acquiredShards, ...releasingShards],
+          result: Deferred.makeUnsafe<ReadonlyArray<ShardId>, PersistenceError>()
+        }
+        check = pendingLockCheck = pending
+        start = runnerStorage.refresh(runnerAddress, pending.shards).pipe(
+          Effect.timeoutOrElse({
+            duration: shardLockInterval,
+            orElse: () => Effect.fail(new PersistenceError({ cause: new Error("Shard lock refresh timed out") }))
+          }),
+          Effect.tap((acquired) =>
+            Effect.sync(() => {
+              releaseLostShards(pending.shards, acquired)
+              updateShardGauges()
+              if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
+            })
+          ),
+          Effect.exit,
+          Effect.flatMap((exit) => {
+            if (pendingLockCheck === pending) pendingLockCheck = undefined
+            return Deferred.done(pending.result, exit)
+          }),
+          Effect.forkIn(shardingScope, { startImmediately: true })
+        )
+      }
+      const result = check.result
+      return Effect.andThen(start, Effect.map(Deferred.await(result), (acquired) => acquired.includes(shardId)))
+    })
 
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
@@ -1929,7 +1975,7 @@ const make = Effect.gen(function*() {
         residency,
         sharding,
         abandonUndelivered,
-        isShardOwned: (shardId) => isShardOwned(runnerAddress, shardId)
+        isShardOwned: (shardId) => confirmShardLock(runnerAddress, shardId)
       }).pipe(
         Effect.provideContext(services.pipe(
           // Registration overrides construction fallbacks, except for runner-owned services.

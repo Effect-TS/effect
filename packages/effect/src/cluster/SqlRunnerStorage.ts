@@ -19,7 +19,6 @@
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
-import * as Clock from "../Clock.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -514,84 +513,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // A lease row changes owner only once it has expired, so a lease returned by
-  // `acquire` or `refresh` stays this runner's until at least
-  // `shardLockExpiration` after the statement was sent. Lease ownership is
-  // answered from these deadlines without a query, so it can neither read a
-  // caller's stale transaction snapshot nor wait for a pool connection that
-  // transaction holds. Failed operations and releases leave the deadlines to
-  // expire on their own.
-  const leaseMode = disableAdvisoryLocks || sql.onDialectOrElse({
-    pg: () => false,
-    mysql: () => false,
-    orElse: () => true
-  })
-  const leaseExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
-  const leaseDeadlines = new Map<string, number>()
-
-  const trackLeases = <A extends ReadonlyArray<string>, E, R>(
-    requested: ReadonlyArray<string>,
-    operation: Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E, R> =>
-    !leaseMode ?
-      operation :
-      Effect.flatMap(Clock.currentTimeMillis, (sentAt) =>
-        Effect.tap(operation, (granted) =>
-          Effect.sync(() => {
-            const deadline = sentAt + leaseExpirationMillis
-            for (const shardId of requested) {
-              if (granted.includes(shardId)) {
-                leaseDeadlines.set(shardId, Math.max(leaseDeadlines.get(shardId) ?? 0, deadline))
-              } else {
-                leaseDeadlines.delete(shardId)
-              }
-            }
-          })))
-
-  // Advisory locks belong to the reserved connection's session, which is read
-  // when the check runs: a rebuild replaces it and releases every lock.
-  const ownedShards = sql.onDialectOrElse({
-    pg: () => (_address: string, shardIds: ReadonlyArray<string>) =>
-      Effect.suspend(() => {
-        const pid = lockConn?.getUnsafe()?.[1]
-        if (pid === undefined) return Effect.succeed([])
-        const toCheck = new Map<number, string>()
-        for (const shardId of shardIds) {
-          const lockNum = lockNumbers.get(shardId)
-          if (lockNum !== undefined) toCheck.set(lockNum, shardId)
-        }
-        if (toCheck.size === 0) return Effect.succeed([])
-        return sql.unsafe(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} AND objid IN (${
-            Array.from(toCheck.keys()).join(", ")
-          })`
-        ).values.pipe(
-          Effect.map((rows) => rows.map((row) => toCheck.get(Number(row[0]))!))
-        )
-      }),
-    mysql: () => (_address: string, shardIds: ReadonlyArray<string>) =>
-      Effect.suspend(() => {
-        const pid = lockConn?.getUnsafe()?.[1]
-        if (pid === undefined) return Effect.succeed([])
-        const toCheck = shardIds.filter((shardId) => lockNames.has(shardId))
-        if (toCheck.length === 0) return Effect.succeed([])
-        return sql.unsafe(
-          `SELECT ${toCheck.map((shardId) => `IS_USED_LOCK('${lockNames.get(shardId)!}')`).join(", ")}`
-        ).values.pipe(
-          Effect.map((rows) => toCheck.filter((_, i) => rows[0][i] === pid))
-        )
-      }),
-    orElse: () => () => Effect.succeed([])
-  })
-
-  const owned = (address: string, shardIds: ReadonlyArray<string>) =>
-    leaseMode
-      ? Effect.map(
-        Clock.currentTimeMillis,
-        (now) => shardIds.filter((shardId) => (leaseDeadlines.get(shardId) ?? 0) > now)
-      )
-      : ownedShards(address, shardIds)
-
   // On failure, replace the connection ready at entry. If none was ready,
   // retry only a failed rebuild, leaving pending or newly ready connections alone.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
@@ -692,7 +613,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         ),
 
     acquire: (address, shardIds) =>
-      trackLeases(shardIds, withLockOperationDeadline(acquireLock(address, shardIds))).pipe(
+      withLockOperationDeadline(acquireLock(address, shardIds)).pipe(
         PersistenceError.refail,
         withTracerDisabled
       ),
@@ -709,13 +630,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           withTracerDisabled
         )
       }
-      return trackLeases(
-        shardIds,
-        withLockOperationDeadline(
-          heartbeat.pipe(
-            execWithLockConn,
-            Effect.andThen(refreshShards(address, shardIds))
-          )
+      return withLockOperationDeadline(
+        heartbeat.pipe(
+          execWithLockConn,
+          Effect.andThen(refreshShards(address, shardIds))
         )
       ).pipe(
         PersistenceError.refail,
@@ -733,12 +651,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     releaseAll: (address) =>
       withLockOperationDeadline(releaseAllShards(address)).pipe(
         Effect.asVoid,
-        PersistenceError.refail,
-        withTracerDisabled
-      ),
-
-    owned: (address, shardIds) =>
-      owned(address, shardIds).pipe(
         PersistenceError.refail,
         withTracerDisabled
       )
@@ -768,12 +680,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  *
  * Changing `prefix` changes all generated table names, so runners using
  * different prefixes do not share registrations or shard locks.
- *
- * Each runner needs its own storage instance: advisory locks belong to the
- * instance's reserved connection, and `owned` answers for the locks and leases
- * taken through the instance. With table leases it counts
- * `shardLockExpiration` from when each `acquire` or `refresh` statement was
- * sent, so it assumes the runner's clock runs at the database's rate.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix

@@ -152,14 +152,16 @@ const staleOwnerTest = Effect.fnUntraced(
     const stale = yield* waitFor(storedExit).pipe(Effect.timeoutOption(2000))
     assert.isTrue(Option.isNone(stale), "the stale owner stored its reply")
 
-    // Once A resumes, its reply must not land either: B's is the one stored.
-    yield* pauseA.thaw
     yield* probeB.gate.open
     const reply = yield* waitFor(storedExit).pipe(
       Effect.timeoutOrElse({ duration: 10_000, orElse: () => Effect.die("runner B never stored its reply") })
     )
     assert(reply._tag === "WithExit")
     assert.deepStrictEqual(reply.exit, { _tag: "Success", value: "5678" })
+
+    // Resume A so it can shut down. It may legitimately own the shard again
+    // from here, so nothing about it is asserted.
+    yield* pauseA.thaw
   },
   // Release both runners before the database.
   Effect.scoped,

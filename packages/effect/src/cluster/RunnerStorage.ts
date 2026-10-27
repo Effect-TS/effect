@@ -80,25 +80,6 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
    * Release all the shards assigned to the given runner.
    */
   readonly releaseAll: (address: RunnerAddress) => Effect.Effect<void, PersistenceError>
-
-  /**
-   * Returns the subset of `shardIds` that lock storage still attributes to
-   * `address`.
-   *
-   * **Details**
-   *
-   * Sharding checks it before storing the final reply of a persisted request,
-   * so a runner that lost a shard does not decide the stored result. The
-   * answer must not include a shard that another runner could hold before
-   * this one released it, and must not wait on a connection reserved for
-   * shard locks. Shards this runner released may still be reported; Sharding
-   * checks its own releases first. Storages that cannot tell return every
-   * shard, leaving the runner's own view of its shards as the only check.
-   */
-  readonly owned: (
-    address: RunnerAddress,
-    shardIds: Iterable<ShardId.ShardId>
-  ) => Effect.Effect<Array<ShardId.ShardId>, PersistenceError>
 }>()("effect/cluster/RunnerStorage") {}
 
 /**
@@ -160,15 +141,6 @@ export interface Encoded {
    * Release the lock on all shards for the given runner.
    */
   readonly releaseAll: (address: string) => Effect.Effect<void, PersistenceError>
-
-  /**
-   * Returns the given shards that lock storage still attributes to the given
-   * runner. When omitted, every shard is reported as owned.
-   */
-  readonly owned?: (
-    address: string,
-    shardIds: NonEmptyArray<string>
-  ) => Effect.Effect<ReadonlyArray<string>, PersistenceError>
 }
 
 /**
@@ -219,14 +191,6 @@ export const makeEncoded = (encoded: Encoded) =>
     },
     releaseAll(address) {
       return encoded.releaseAll(encodeRunnerAddress(address))
-    },
-    owned: (address, shardIds) => {
-      const arr = Array.from(shardIds)
-      const ids = arr.map((id) => id.toString())
-      if (!encoded.owned || !isArrayNonEmpty(ids)) return Effect.succeed(arr)
-      return encoded.owned(encodeRunnerAddress(address), ids).pipe(
-        Effect.map((shards) => shards.map(ShardId.fromString))
-      )
     }
   })
 
@@ -267,8 +231,7 @@ export const makeMemory = Effect.gen(function*() {
     },
     refresh: () => Effect.sync(() => acquired),
     release: () => Effect.void,
-    releaseAll: () => Effect.void,
-    owned: (_address, shardIds) => Effect.succeed(Array.from(shardIds))
+    releaseAll: () => Effect.void
   })
 })
 
