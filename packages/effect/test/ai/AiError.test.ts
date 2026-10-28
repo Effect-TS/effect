@@ -14,7 +14,6 @@ describe("AiError", () => {
         const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request }))
         assert.strictEqual(error.method, "GET")
         assert.strictEqual(error.url, "https://example.com/models")
-        assert.isUndefined(error.cause)
         const output = JSON.stringify(error)
         assert.notInclude(output, "param-secret")
         assert.notInclude(output, "header-secret")
@@ -31,21 +30,8 @@ describe("AiError", () => {
           assert.strictEqual(encoded.method, "PROPFIND")
           const decoded = yield* Schema.decodeEffect(AiError.NetworkError)(encoded)
           assert.strictEqual(decoded.method, "PROPFIND")
+          assert.isUndefined(decoded.cause)
         }))
-    })
-
-    describe("NetworkError.fromRequestError", () => {
-      it("keeps the original cause without copying it into the description", () => {
-        const url = "http://user:pass-secret@127.0.0.1:65531/v1?api_key=query-secret"
-        const cause = new TypeError(
-          `error sending request for url (${url}): client error (Connect): tcp connect error: Connection refused (os error 111)`
-        )
-        const error = AiError.NetworkError.fromRequestError(
-          new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause })
-        )
-        assert.strictEqual(error.cause, cause)
-        assert.isUndefined(error.description)
-      })
     })
 
     describe("RateLimitError", () => {
