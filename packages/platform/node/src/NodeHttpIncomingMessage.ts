@@ -26,6 +26,8 @@ import * as NodeStream from "./NodeStream.ts"
 
 const textDecoder = new TextDecoder()
 
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
  *
@@ -104,9 +106,9 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes))),
         catch: this.onError
       }))
   }

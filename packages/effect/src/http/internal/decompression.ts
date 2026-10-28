@@ -13,6 +13,7 @@ import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
 import * as UrlParams from "../UrlParams.ts"
 import * as lazyStream from "./lazyStream.ts"
+import * as internalUrlParams from "./urlParams.ts"
 
 /**
  * @internal
@@ -187,9 +188,9 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (text) =>
+    return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(text)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) => this.parseError(cause)
       }))
   }

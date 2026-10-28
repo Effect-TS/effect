@@ -188,6 +188,14 @@ describe("HttpServerRequest", () => {
       assert.strictEqual(yield* server.stream.pipe(Stream.decodeText(), Stream.mkString), "a=1&b=two")
     }))
 
+  it.effect("urlParamsBody preserves a leading BOM", () =>
+    Effect.gen(function*() {
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://localhost/", { method: "POST", body: "\uFEFFname=value" })
+      )
+      deepStrictEqual([...yield* request.urlParamsBody], [["\uFEFFname", "value"]])
+    }))
+
   it.effect("schemaBodyJson applies parse options", () =>
     Effect.gen(function*() {
       const request = HttpServerRequest.fromWeb(

@@ -449,6 +449,8 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
   this.buffer.push(_)
 }
 
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
@@ -563,22 +565,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    if (this.textEffect) {
-      return this.textEffect
-    }
-    this.textEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.text(),
-        catch: (cause) =>
-          new Error.HttpServerError({
-            reason: new Error.RequestParseError({
-              request: this,
-              cause
-            })
-          })
-      })
-    ))
-    return this.textEffect
+    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
   }
 
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
@@ -596,9 +583,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes))),
         catch: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({
@@ -651,7 +638,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           })
       })
     ))
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }
 

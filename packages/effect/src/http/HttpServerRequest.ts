@@ -36,6 +36,7 @@ import { hasBody } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as lazyStream from "./internal/lazyStream.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -616,27 +617,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
 
   private textEffect: Effect.Effect<string, HttpServerError> | undefined
   get text(): Effect.Effect<string, HttpServerError> {
-    if (this.textEffect) {
-      return this.textEffect
-    }
-    this.textEffect = Effect.withFiber((fiber) =>
-      fiber.getRef(HttpIncomingMessage.MaxBodySize) === undefined
-        ? Effect.tryPromise({
-          try: () => this.source.text(),
-          catch: (cause) =>
-            new HttpServerError({
-              reason: new RequestParseError({
-                request: this,
-                cause
-              })
-            })
-        })
-        : Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
-    ).pipe(
-      Effect.cached,
-      Effect.runSync
-    )
-    return this.textEffect
+    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
   }
 
   get json(): Effect.Effect<Schema.Json, HttpServerError> {
@@ -654,9 +635,9 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
@@ -896,9 +877,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) => requestParseError(this, undefined, cause)
       }))
   }

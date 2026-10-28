@@ -374,6 +374,8 @@ const convertFormData = (formData: FormData, undici: typeof Undici): Undici.Form
 
 function noopErrorHandler(_: any) {}
 
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pipeable {
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly [Response.TypeId]: typeof Response.TypeId
@@ -459,9 +461,9 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpClientError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes))),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({

@@ -18,6 +18,13 @@ export const stripSearchAndHash = (url: string): string => {
   return url.slice(0, Math.min(queryIndex, hashIndex))
 }
 
+// URL-encoded bodies keep a leading U+FEFF as form data
+const bodyDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
+/** @internal */
+export const fromBody = (bytes: ArrayBuffer | Uint8Array): URLSearchParams =>
+  new URLSearchParams(bodyDecoder.decode(bytes))
+
 const originForm = /^\/(?![/\\])/
 
 /** @internal */
