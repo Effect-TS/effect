@@ -92,6 +92,23 @@ describe("Trie", () => {
     )
   })
 
+  it("stores the empty string key like any other key", () => {
+    const base = Trie.make(["a", 2])
+    const withEmpty = Trie.insert(base, "", 1)
+    const removed = Trie.remove(withEmpty, "")
+
+    deepStrictEqual(
+      [Trie.size(withEmpty), Trie.has(withEmpty, ""), Array.from(withEmpty)],
+      [2, true, [["", 1], ["a", 2]]]
+    )
+    deepStrictEqual(Array.from(Trie.make(["a", 2], ["", 1])), [["", 1], ["a", 2]])
+    deepStrictEqual(
+      [Array.from(base), Array.from(removed), Trie.size(removed)],
+      [[["a", 2]], [["a", 2]], 1],
+      "inserting and removing the empty key must not mutate other tries"
+    )
+  })
+
   it("fromIterable preserves an empty iterable", () => {
     const iterable: Array<[string, number]> = []
     const trie = Trie.fromIterable(iterable)
@@ -403,6 +420,14 @@ describe("Trie", () => {
     assertSome(Trie.longestPrefixOf(trie, "sells"), ["sells", 1])
     assertSome(Trie.longestPrefixOf(trie, "shell"), ["she", 2])
     assertSome(Trie.longestPrefixOf(trie, "shellsort"), ["shells", 0])
+  })
+
+  it("longestPrefixOf falls back to a stored empty key", () => {
+    const trie = Trie.make(["", 1], ["a", 2])
+
+    assertSome(Trie.longestPrefixOf(trie, "xyz"), ["", 1])
+    assertSome(Trie.longestPrefixOf(trie, ""), ["", 1])
+    assertSome(Trie.longestPrefixOf(trie, "ab"), ["a", 2])
   })
 
   it("longestPrefixOf ignores valued sibling nodes that do not match the input", () => {
