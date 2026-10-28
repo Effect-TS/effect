@@ -326,7 +326,8 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
       : this.text
     return Effect.flatMap(text, (text) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(text)),
+        // A leading "?" is form data; URLSearchParams would drop it as a query prefix.
+        try: () => UrlParams.fromInput(new URLSearchParams(text.replace(/^\?/, "%3F"))),
         catch: this.onError
       }))
   }
