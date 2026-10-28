@@ -239,8 +239,9 @@ export const make = Effect.fnUntraced(function*(
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>,
   httpOptions?: HttpOptions
 ) {
-  const statelessHttp = httpOptions?.sessionMode === "stateless"
   const statefulProtocol = protocols.find((protocol) => protocol.runtime._tag === "Stateful")
+  // Stateless mode only changes how legacy protocols are served.
+  const statelessHttp = httpOptions?.sessionMode === "stateless" && statefulProtocol !== undefined
   const stateful = statefulProtocol === undefined ? undefined : McpStatefulRuntime.make()
   const protocolVersions = protocols.map((protocol) => protocol.protocolVersion)
   let statelessDescriptor: PublicMcpProtocol.StatelessRuntimeDescriptor | undefined
