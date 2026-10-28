@@ -3561,6 +3561,49 @@ describe("fromJsonSchemaDocument", () => {
       assert.isFalse(is({ kind: 1, a: 1 }))
     })
 
+    it("keeps conditionals when intersecting literal unions", () => {
+      const checked = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        allOf: [{ enum: ["a", "b"] }, { enum: ["a", "b"], if: true, then: false }]
+      }))
+      assert.isFalse(Schema.is(checked)("a"))
+      assert.isFalse(Schema.is(checked)("b"))
+
+      const duplicated = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        allOf: [
+          { enum: ["a", "b"] },
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          { anyOf: [{ const: "a" }, { const: "a", if: true, then: false }] }
+        ]
+      }))
+      assert.isTrue(Schema.is(duplicated)("a"))
+      assert.isFalse(Schema.is(duplicated)("b"))
+    })
+
+    it("rejects conditional additionalProperties alongside properties", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            properties: { a: { type: "string" } },
+            // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+            additionalProperties: { if: true, then: false }
+          })),
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
+      )
+    })
+
+    it("does not strip excess properties before evaluating a closed condition", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        if: { type: "object", properties: { kind: { const: "box" } }, additionalProperties: false },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: false
+      }))
+      assert.isTrue(Schema.is(schema)({ kind: "box", extra: 1 }))
+      assert.isFalse(Schema.is(schema)({ kind: "box" }))
+    })
+
     it("keeps conditionals when intersecting a primitive with a literal", () => {
       for (
         const [condition, expected] of [
