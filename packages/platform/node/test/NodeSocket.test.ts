@@ -1,4 +1,4 @@
-import { NodeSocket, NodeSocketServer } from "@effect/platform-node"
+import { NodeSocket, NodeSocketServer, NodeWS } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Option, Queue, Redacted } from "effect"
 import * as Exit from "effect/Exit"
@@ -124,7 +124,7 @@ describe("Socket", { concurrent: false }, () => {
       const server = yield* NodeSocketServer.makeWebSocket({ host: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
       assert.strictEqual(server.address._tag, "InetAddressV4")
       if (server.address._tag !== "InetAddressV4") return
-      const socket = new NodeSocket.NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
+      const socket = new NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
       yield* Effect.promise(() =>
         new Promise<void>((resolve, reject) => {
           socket.once("open", resolve)
@@ -740,7 +740,7 @@ describe("Socket", { concurrent: false }, () => {
             yield* socket.reader
           }).pipe(
             Effect.scoped,
-            Effect.provide(NodeSocket.layerWebSocketConstructorWS),
+            Effect.provide(NodeWS.layerWebSocketConstructor),
             Effect.forkChild
           )
           // Accept TCP without ever completing the WebSocket upgrade.
@@ -772,7 +772,7 @@ describe("Socket", { concurrent: false }, () => {
     it.live("receives messages after handing a paused WebSocket to the reader", () =>
       Effect.gen(function*() {
         const serverScope = yield* Scope.make()
-        const connections = new Set<NodeSocket.NodeWS.WebSocket>()
+        const connections = new Set<NodeWS.WebSocket>()
         yield* Effect.addFinalizer(() =>
           Effect.gen(function*() {
             for (const connection of connections) connection.terminate()
@@ -789,7 +789,7 @@ describe("Socket", { concurrent: false }, () => {
         yield* server.run((socket) =>
           Effect.gen(function*() {
             const native = Option.getOrThrow(yield* Effect.serviceOption(Socket.WebSocket))
-            if (native instanceof NodeSocket.NodeWS.WebSocket) connections.add(native)
+            if (native instanceof NodeWS.WebSocket) connections.add(native)
             const { pull } = yield* socket.reader
             const writer = yield* socket.writer
             yield* writer.write("reader-ready")
@@ -797,7 +797,7 @@ describe("Socket", { concurrent: false }, () => {
           }).pipe(Effect.scoped)
         ).pipe(Effect.forkIn(serverScope))
 
-        const client = new NodeSocket.NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
+        const client = new NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
         connections.add(client)
         const open = new Promise<void>((resolve, reject) => {
           client.once("open", resolve)
@@ -818,14 +818,14 @@ describe("Socket", { concurrent: false }, () => {
       }))
 
     it.live.each([
-      { name: "layerWebSocketConstructor", layer: NodeSocket.layerWebSocketConstructor },
-      { name: "layerWebSocketConstructorWS", layer: NodeSocket.layerWebSocketConstructorWS }
+      { name: "NodeSocket.layerWebSocketConstructor", layer: NodeSocket.layerWebSocketConstructor },
+      { name: "NodeWS.layerWebSocketConstructor", layer: NodeWS.layerWebSocketConstructor }
     ])("$name passes headers and a subprotocol to the opening handshake", ({ layer }) =>
       Effect.gen(function*() {
         const handshake = yield* Deferred.make<{ authorization: string | undefined; protocol: string }>()
         const server = yield* Effect.acquireRelease(
-          Effect.callback<NodeSocket.NodeWS.WebSocketServer>((resume) => {
-            const server = new NodeSocket.NodeWS.WebSocketServer({ host: "127.0.0.1", port: 0 })
+          Effect.callback<NodeWS.WebSocketServer>((resume) => {
+            const server = new NodeWS.WebSocketServer({ host: "127.0.0.1", port: 0 })
             server.once("listening", () => resume(Effect.succeed(server)))
             server.once("error", (error) => resume(Effect.die(error)))
             server.on("connection", (client, request) => {
@@ -865,7 +865,7 @@ describe("Socket", { concurrent: false }, () => {
         const server = yield* NodeSocketServer.makeWebSocket({
           host: "127.0.0.1",
           port: 0,
-          verifyClient: ({ req }: Parameters<NodeSocket.NodeWS.VerifyClientCallbackSync>[0]) => {
+          verifyClient: ({ req }: Parameters<NodeWS.VerifyClientCallbackSync>[0]) => {
             Deferred.doneUnsafe(authorization, Effect.succeed(req.headers.authorization))
             return true
           }
@@ -886,7 +886,7 @@ describe("Socket", { concurrent: false }, () => {
         client.addEventListener("error", () => {})
 
         assert.strictEqual(yield* Deferred.await(authorization).pipe(Effect.timeout("1 second")), "Bearer test")
-      }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
+      }).pipe(Effect.provide(NodeWS.layerWebSocketConstructor)))
 
     it.effect("fails TLS upgrade with SocketUpgradeError", () =>
       Effect.gen(function*() {
