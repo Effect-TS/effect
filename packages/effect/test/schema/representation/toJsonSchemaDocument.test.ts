@@ -688,7 +688,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
     it("round trips isConditional without absent branches", () => {
       const output = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(
-          Schema.Json.check(Schema.isConditional(Schema.String, { else: Schema.Finite })).ast
+          Schema.Json.check(Schema.isConditional(Schema.String, { onFalse: Schema.Finite })).ast
         )
       )
       assert.deepStrictEqual(output.schema, { if: { type: "string" }, else: { type: "number" } })
