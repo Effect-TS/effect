@@ -381,6 +381,57 @@ describe("McpClient", () => {
         assert(McpClientError.isMcpClientError(error) && error.reason._tag === "TimeoutError")
       }))
 
+    it.effect("should retain custom policy and the remote contract when a tool is renamed", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/call"
+            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "done" }] })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const toolkit = yield* McpClient.toolkit(client, {
+          tools: [slowTool],
+          transformTool: (tool, descriptor) => {
+            assert.strictEqual(descriptor, slowTool)
+            return Tool.make("renamed", {
+              parameters: tool.parametersSchema,
+              success: tool.successSchema,
+              failure: tool.failureSchema
+            }).setNeedsApproval(true).annotate(Tool.Title, "Approved tool")
+          }
+        })
+        const tool = toolkit.tools.renamed
+        assert.isTrue(tool.needsApproval)
+        assert.strictEqual(Context.getUnsafe(tool.annotations, Tool.Title), "Approved tool")
+        assert.strictEqual(Context.getUnsafe(tool.annotations, McpClient.ToolDescriptor), slowTool)
+        assert.deepStrictEqual(Tool.getJsonSchema(tool), slowTool.inputSchema)
+        const [output] = yield* toolkit.handle("renamed", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.strictEqual(output.result, "done")
+        const call = sent.find(({ message }) => methodOf(message) === "tools/call")?.message
+        assert(call !== undefined && "method" in call)
+        assert.strictEqual(call.params?.name, "slow")
+      }))
+
+    it.effect("should reject toolkit construction when final names are invalid or duplicated", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) => scriptedReply(McpProtocol.v2026_07_28, message))
+        for (const [name, count] of [["invalid.name", 1], ["duplicate", 2]] as const) {
+          const tools = Array.from(
+            { length: count },
+            (_, index) => McpSchema.Tool.make({ ...slowTool, name: `remote_${index}` })
+          )
+          const error = yield* McpClient.toolkit(client, {
+            tools,
+            transformTool: (tool) =>
+              Tool.make(name, {
+                parameters: tool.parametersSchema,
+                success: tool.successSchema,
+                failure: tool.failureSchema
+              })
+          }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "ConfigurationError")
+        }
+      }))
+
     it.effect("should bind and execute the last tool when an approved snapshot is large", () =>
       Effect.gen(function*() {
         const { client, sent } = yield* scriptedHttp((message) =>

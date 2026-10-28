@@ -537,7 +537,7 @@ export class ToolDescriptor
 {}
 
 /**
- * Native tool bound to a remote MCP descriptor with configurable results.
+ * Native tool bound to a remote MCP descriptor with configurable result and failure modes.
  *
  * @stability experimental
  * @category models
@@ -545,7 +545,8 @@ export class ToolDescriptor
  */
 export type RemoteTool<
   ResultMode extends "text" | "complete" = "text",
-  FailureMode extends Tool.FailureMode = "error"
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
 > = Tool.Tool<string, {
   readonly parameters: typeof Schema.Unknown
   readonly success: {
@@ -554,19 +555,25 @@ export type RemoteTool<
   }[ResultMode]
   readonly failure: typeof McpClientError
   readonly failureMode: FailureMode
-}>
+}, Requirements>
 
 /**
- * Configures remote tool discovery and results.
+ * Configures discovery, results and native Tool behavior.
  *
  * **Details**
  *
- * Supply approved `tools` to skip discovery. `resultMode` defaults to `"text"`;
- * `"complete"` preserves all content and structured data. `timeout` bounds
- * discovery and each tool call.
- * Native `failureMode` defaults to `"error"`; `"return"` captures typed handler
- * failures, including operational errors. Tool errors retain the full result.
- * Server hints remain untrusted unless `trustAnnotations` is enabled.
+ * Defaults to text results, `"error"` failure mode and untrusted server hints.
+ * `"complete"` preserves all content and structured data. `"return"` sends typed
+ * handler failures to the model, including transport errors. `ToolError` keeps
+ * the complete failed result.
+ *
+ * Pass approved `tools` to skip discovery; keep them unchanged while in use.
+ * `timeout` bounds discovery and calls. `trustAnnotations` copies server hints
+ * to native annotations without setting approval or granting authorization.
+ *
+ * `transformTool` runs after annotations and before binding. It can rename tools,
+ * set approval and annotations, or add dependencies. Schemas and failure mode
+ * must stay unchanged. Renamed tools still call the original remote tool.
  *
  * @stability experimental
  * @category models
@@ -574,13 +581,22 @@ export type RemoteTool<
  */
 export type ToolkitOptions<
   ResultMode extends "text" | "complete" = "text",
-  FailureMode extends Tool.FailureMode = "error"
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
 > =
   & {
     readonly prefix?: string | undefined
     readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
-    readonly timeout?: Duration.Input | undefined
     readonly trustAnnotations?: boolean | undefined
+    readonly timeout?: Duration.Input | undefined
+    readonly transformTool?:
+      | (
+        (
+          tool: RemoteTool<ResultMode, FailureMode>,
+          descriptor: McpSchema.Tool
+        ) => RemoteTool<ResultMode, FailureMode, Requirements>
+      )
+      | undefined
   }
   & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
   & ("error" extends FailureMode ? { readonly failureMode?: FailureMode | undefined }
@@ -591,9 +607,11 @@ export type ToolkitOptions<
  *
  * **Details**
  *
- * Pass a prefix such as `"reports__"` or an options object. Remote JSON Schemas
- * are advertised without local schema import. Model names must contain 1–64
- * ASCII letters, digits, underscores or hyphens.
+ * Pass a prefix such as `"reports__"` or an options object for approved snapshots,
+ * complete results, failure handling and native Tool customization. Without an
+ * options object, tools are discovered and successful results become text.
+ * Remote JSON Schemas are advertised without local schema import. Model tool
+ * names must contain 1–64 ASCII letters, digits, underscores or hyphens.
  *
  * @stability experimental
  * @category constructors
@@ -605,33 +623,40 @@ export function toolkit(
 ): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
 export function toolkit<
   ResultMode extends "text" | "complete" = "text",
-  FailureMode extends Tool.FailureMode = "error"
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
 >(
   client: McpClient,
-  options: ToolkitOptions<ResultMode, FailureMode>
-): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>, McpClientError>
+  options: ToolkitOptions<ResultMode, FailureMode, Requirements>
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>, McpClientError>
 export function toolkit<
   ResultMode extends "text" | "complete" = "text",
-  FailureMode extends Tool.FailureMode = "error"
->(client: McpClient, options: string | ToolkitOptions<ResultMode, FailureMode> = ""): Effect.Effect<
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
+>(
+  client: McpClient,
+  options: string | ToolkitOptions<ResultMode, FailureMode, Requirements> = ""
+): Effect.Effect<
   | Toolkit.WithHandler<Record<string, RemoteTool>>
-  | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>,
+  | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>,
   McpClientError
 > {
-  if (typeof options === "string") return toolkit<"text", "error">(client, { prefix: options })
+  if (typeof options === "string") return toolkit<"text", "error", never>(client, { prefix: options })
   const config = options
   return Effect.gen(function*() {
     const descriptors = config.tools ?? (yield* client.listTools({ timeout: config.timeout }))
+    // The conditional schema follows the runtime resultMode, without changing its services.
     const success = (config.resultMode === "complete" ? McpSchema.CallToolResult : Schema.String) as RemoteTool<
       ResultMode,
       FailureMode
     >["successSchema"]
     const failureMode = (config.failureMode ?? "error") as FailureMode
-    const tools: Array<RemoteTool<ResultMode, FailureMode>> = []
+    const tools: Array<RemoteTool<ResultMode, FailureMode, Requirements>> = []
     const handlers: Record<
       string,
       (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
     > = Object.create(null)
+
     for (const descriptor of descriptors) {
       let tool: RemoteTool<ResultMode, FailureMode> = Tool.dynamic(`${config.prefix ?? ""}${descriptor.name}`, {
         parameters: descriptor.inputSchema,
@@ -647,11 +672,17 @@ export function toolkit<
           .annotate(Tool.OpenWorld, descriptor.annotations.openWorldHint)
         if (descriptor.annotations.title !== undefined) tool = tool.annotate(Tool.Title, descriptor.annotations.title)
       }
-      const name = tool.name
+      // Keep the approved remote contract when customization replaces the native tool.
+      const customized = Object.assign(
+        (config.transformTool === undefined ? tool : config.transformTool(tool, descriptor))
+          .annotate(ToolDescriptor, descriptor),
+        { [Tool.DynamicTypeId]: Tool.DynamicTypeId, jsonSchema: descriptor.inputSchema }
+      )
+      const name = customized.name
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
         return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
       }
-      tools.push(tool)
+      tools.push(customized)
       handlers[name] = Effect.fnUntraced(function*(params: unknown) {
         const args = yield* decodeToolArguments(params).pipe(
           Effect.mapError((cause) =>
@@ -663,15 +694,20 @@ export function toolkit<
         return config.resultMode === "complete" ? result : yield* toText(result)
       })
     }
-    const bindingTools: Array<RemoteTool<"text" | "complete", Tool.FailureMode>> = tools
+
+    const bindingTools: Array<RemoteTool<"text" | "complete", Tool.FailureMode, Requirements>> = tools
+    // Bound native variadic calls independently of caller-controlled discovery limits.
     let native = Toolkit.make(...bindingTools.slice(0, TOOLKIT_BATCH_SIZE))
     for (let offset = TOOLKIT_BATCH_SIZE; offset < bindingTools.length; offset += TOOLKIT_BATCH_SIZE) {
       native = Toolkit.merge(native, Toolkit.make(...bindingTools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
     }
     const bound = yield* native.pipe(Effect.provideContext(yield* native.toHandlers(handlers)))
+    // The selected mode narrows schemas; request dependencies remain unchanged.
     return {
       tools: Object.fromEntries(tools.map((tool) => [tool.name, tool] as const)),
-      handle: bound.handle as Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>["handle"]
+      handle: bound.handle as Toolkit.WithHandler<
+        Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>
+      >["handle"]
     }
   })
 }

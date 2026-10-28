@@ -93,6 +93,35 @@ describe("McpClient", () => {
     expect<Tool.HandlerError<BoundTool<typeof text>>>().type.toBe<never>()
   })
 
+  it("should retain customization dependencies when the bound handler is invoked", () => {
+    const customized = McpClient.toolkit(client, {
+      resultMode: "complete",
+      failureMode: "return",
+      transformTool: (remote, descriptor) => {
+        expect(descriptor).type.toBe<McpSchema.Tool>()
+        expect<Tool.Success<typeof remote>>().type.toBe<McpSchema.CallToolResult>()
+        return remote.addDependency(Policy).setNeedsApproval(true)
+      }
+    })
+
+    expect<Effect.Services<typeof customized>>().type.toBe<never>()
+    const handled = Effect.gen(function*() {
+      const toolkit = yield* customized
+      return yield* toolkit.handle("remote", {})
+    })
+    expect<Effect.Services<typeof handled>>().type.toBe<Policy>()
+  })
+
+  it("should reject customization when its result or failure schema changes", () => {
+    expect(McpClient.toolkit).type.not.toBeCallableWith(client, {
+      resultMode: "complete" as const,
+      transformTool: (remote: McpClient.RemoteTool<"complete">) => remote.setSuccess(Schema.Number)
+    })
+    expect(McpClient.toolkit).type.not.toBeCallableWith(client, {
+      transformTool: (remote: McpClient.RemoteTool) => remote.setFailure(Schema.String)
+    })
+  })
+
   it("should require explicit selectors when type arguments choose nondefault modes", () => {
     expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client, {})
     expect(McpClient.toolkit<"text", "return">).type.not.toBeCallableWith(client, {})
