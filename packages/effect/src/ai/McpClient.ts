@@ -49,6 +49,7 @@ import {
 } from "./McpClientError.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
+import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -75,42 +76,21 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
 export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<McpClient>("effect/ai/McpClient")
 
 /**
- * Schema for tools, prompts and resources discovery limits.
+ * Limits for one tools, prompts or resources discovery scan.
  *
  * **Details**
  *
- * Defaults to 100 pages and 10,000 items, with no byte limits. Page and item
- * limits are nonnegative safe integers. Byte limits accept byte counts or
- * strings such as `"1 MiB"`. Zero pages prevents requests; other
- * zero limits allow empty values.
- *
- * Description bytes count UTF-8 text. Total bytes count UTF-8 descriptor JSON,
- * including unknown fields and filtered tools, without page envelopes or array
- * separators. Transport message limits still apply.
- *
- * @stability experimental
- * @category schemas
- * @since 4.1.0
- */
-export const DiscoveryLimits = Schema.Struct({
-  maxPages: Schema.Natural.pipe(Schema.withDecodingDefault(Effect.sync(() => DEFAULT_DISCOVERY_PAGES))),
-  maxItems: Schema.Natural.pipe(Schema.withDecodingDefault(Effect.sync(() => DEFAULT_DISCOVERY_ITEMS))),
-  maxDescriptionBytes: Schema.optional(
-    Schema.Union([Schema.ByteSize, Schema.ByteSizeFromBigInt, Schema.ByteSizeFromNumber, Schema.ByteSizeFromString])
-  ),
-  maxBytes: Schema.optional(
-    Schema.Union([Schema.ByteSize, Schema.ByteSizeFromBigInt, Schema.ByteSizeFromNumber, Schema.ByteSizeFromString])
-  )
-})
-
-/**
- * Caller-supplied limits for one discovery scan.
+ * Defaults to 100 pages and 10,000 items. Limits are nonnegative safe integers.
+ * Transport message limits still apply to each page.
  *
  * @stability experimental
  * @category models
  * @since 4.1.0
  */
-export type DiscoveryLimits = typeof DiscoveryLimits.Encoded
+export interface DiscoveryLimits {
+  readonly maxPages?: number | undefined
+  readonly maxItems?: number | undefined
+}
 
 /**
  * Options for one discovery scan, inheriting unspecified client limits.
@@ -219,7 +199,8 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
  * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
+ * `listResources` scan. `discoveryLimits` sets the default page and item limits
+ * for those scans. `callTool`, `getPrompt` and `readResource` have no
  * deadline unless their own `timeout` option is supplied.
  * Schema decoding requires the schema's services from the caller.
  *
@@ -250,15 +231,7 @@ export const make: (options: {
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
-  const decodeDiscoveryLimits = Schema.decodeUnknownEffect(DiscoveryLimits.mapFields((fields) => ({
-    maxPages: fields.maxPages.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxPages))),
-    maxItems: fields.maxItems.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxItems))),
-    maxDescriptionBytes: fields.maxDescriptionBytes.pipe(
-      Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxDescriptionBytes))
-    ),
-    maxBytes: fields.maxBytes.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxBytes)))
-  })))
-  yield* decodeDiscoveryLimits({}).pipe(Effect.mapError(discoveryConfigurationError))
+  const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
   const closed = yield* Deferred.make<never, McpClientError>()
   yield* Effect.addFinalizer(() =>
     Deferred.fail(closed, fail(new ClosedError({ description: "MCP client scope closed" })))
@@ -285,11 +258,7 @@ export const make: (options: {
   const request = Effect.fnUntraced(function*<A>(
     method: string,
     params: Record<string, unknown>,
-    tool?: McpSchema.Tool,
-    discovery?: {
-      readonly kind: Capability
-      readonly check: (items: ReadonlyArray<unknown>) => Effect.Effect<void, McpClientError>
-    }
+    tool?: McpSchema.Tool
   ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
@@ -317,10 +286,6 @@ export const make: (options: {
     }
 
     let result: unknown = response.result
-    if (discovery !== undefined && isRecord(result)) {
-      const items = result[discovery.kind]
-      if (Array.isArray(items)) yield* discovery.check(items)
-    }
     // Older modern peers may omit the complete discriminator.
     if (modern && isRecord(result) && result.resultType === undefined) result = { ...result, resultType: "complete" }
     if (method === "tools/list" && isRecord(result) && Array.isArray(result.tools)) {
@@ -407,45 +372,16 @@ export const make: (options: {
   const list = <K extends Capability, A>(kind: K) =>
     Effect.fnUntraced(
       function*(callOptions?: DiscoveryOptions) {
-        const limits = yield* decodeDiscoveryLimits(callOptions?.limits ?? {}).pipe(
-          Effect.mapError(discoveryConfigurationError)
-        )
+        const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
         if (capabilities[kind] === undefined) return []
         const items: Array<A> = []
         const cursors = new Set<string>()
-        let totals = { items: 0, bytes: BigInt(0) }
-        const check = Effect.fnUntraced(function*(page: ReadonlyArray<unknown>) {
-          if (page.length > limits.maxItems - totals.items) {
-            return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
-          }
-          const bytes = yield* Effect.reduce(page, () => totals.bytes, (bytes, item) =>
-            Effect.gen(function*() {
-              if (
-                limits.maxDescriptionBytes !== undefined && isRecord(item) && typeof item.description === "string" &&
-                BigInt(encoder.encode(item.description).byteLength) > limits.maxDescriptionBytes
-              ) return yield* limitError(`MCP ${kind} discovery exceeded its description byte limit`)
-              if (limits.maxBytes === undefined) return bytes
-              const json = yield* encodeDiscoveryDescriptor(item).pipe(
-                Effect.mapError((cause) =>
-                  fail(new ProtocolError({ description: "Invalid MCP discovery descriptor", cause }))
-                )
-              )
-              const size = BigInt(encoder.encode(json).byteLength)
-              if (size > limits.maxBytes - bytes) {
-                return yield* limitError(`MCP ${kind} discovery exceeded its byte limit`)
-              }
-              return bytes + size
-            }))
-          totals = { items: totals.items + page.length, bytes }
-        })
         let cursor: string | undefined
         for (let page = 0; page < limits.maxPages; page++) {
-          const result = yield* request<ListResult<K, A>>(
-            `${kind}/list`,
-            cursor === undefined ? {} : { cursor },
-            undefined,
-            { kind, check }
-          )
+          const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
+          if (result[kind].length > limits.maxItems - items.length) {
+            return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
+          }
           for (const item of result[kind]) items.push(item)
           if (result.nextCursor === undefined) return items
           if (cursors.has(result.nextCursor)) {
@@ -563,93 +499,75 @@ export type RemoteTool<
  * **Details**
  *
  * Defaults to text results, `"error"` failure mode and untrusted server hints.
- * `"complete"` preserves all content and structured data. `"return"` sends typed
- * handler failures to the model, including transport errors. `ToolError` keeps
- * the complete failed result.
+ * `"complete"` preserves the full `CallToolResult` and sends its content blocks
+ * to the model as text and file parts. `"return"` sends typed handler failures
+ * to the model, including transport errors. `ToolError` keeps the failed result.
  *
  * Pass approved `tools` to skip discovery; keep them unchanged while in use.
- * `timeout` bounds discovery and calls. `trustAnnotations` copies server hints
- * to native annotations without setting approval or granting authorization.
+ * `timeout` bounds each tool call. `trustAnnotations` copies server hints to
+ * native annotations without setting approval or granting authorization.
  *
- * `transformTool` runs after annotations and before binding. It can rename tools,
- * set approval and annotations, or add dependencies. Schemas and failure mode
- * must stay unchanged. Renamed tools still call the original remote tool.
+ * `transformTool` runs after annotations and before binding. Return a tool
+ * derived from the input, e.g. with `setNeedsApproval`, `annotate` or
+ * `addDependency`; its name, schemas and failure mode must stay unchanged.
  *
  * @stability experimental
  * @category models
  * @since 4.1.0
  */
-export type ToolkitOptions<
+export interface ToolkitOptions<
   ResultMode extends "text" | "complete" = "text",
   FailureMode extends Tool.FailureMode = "error",
   Requirements = never
-> =
-  & {
-    readonly prefix?: string | undefined
-    readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
-    readonly trustAnnotations?: boolean | undefined
-    readonly timeout?: Duration.Input | undefined
-    readonly transformTool?:
-      | (
-        (
-          tool: RemoteTool<ResultMode, FailureMode>,
-          descriptor: McpSchema.Tool
-        ) => RemoteTool<ResultMode, FailureMode, Requirements>
-      )
-      | undefined
-  }
-  & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
-  & ("error" extends FailureMode ? { readonly failureMode?: FailureMode | undefined }
-    : { readonly failureMode: FailureMode })
+> {
+  readonly prefix?: string | undefined
+  readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+  readonly resultMode?: ResultMode | undefined
+  readonly failureMode?: FailureMode | undefined
+  readonly trustAnnotations?: boolean | undefined
+  readonly timeout?: Duration.Input | undefined
+  readonly transformTool?:
+    | ((
+      tool: RemoteTool<ResultMode, FailureMode>,
+      descriptor: McpSchema.Tool
+    ) => RemoteTool<ResultMode, FailureMode, Requirements>)
+    | undefined
+}
 
 /**
  * Binds remote tools using the standard Toolkit implementation.
  *
  * **Details**
  *
- * Pass a prefix such as `"reports__"` or an options object for approved snapshots,
- * complete results, failure handling and native Tool customization. Without an
- * options object, tools are discovered and successful results become text.
- * Remote JSON Schemas are advertised without local schema import. Model tool
- * names must contain 1–64 ASCII letters, digits, underscores or hyphens.
+ * Pass a prefix such as `"reports__"` or `ToolkitOptions`. Without `tools`, the
+ * client's current tools are discovered. Remote JSON Schemas are advertised
+ * without local schema import. Model tool names must contain 1–64 ASCII
+ * letters, digits, underscores or hyphens. Build a new toolkit to discover
+ * changes between model turns.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
-export function toolkit(
-  client: McpClient,
-  prefix?: string
-): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
-export function toolkit<
+export const toolkit = <
   ResultMode extends "text" | "complete" = "text",
   FailureMode extends Tool.FailureMode = "error",
   Requirements = never
 >(
   client: McpClient,
-  options: ToolkitOptions<ResultMode, FailureMode, Requirements>
-): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>, McpClientError>
-export function toolkit<
-  ResultMode extends "text" | "complete" = "text",
-  FailureMode extends Tool.FailureMode = "error",
-  Requirements = never
->(
-  client: McpClient,
-  options: string | ToolkitOptions<ResultMode, FailureMode, Requirements> = ""
+  options: string | ToolkitOptions<ResultMode, FailureMode, Requirements> = {}
 ): Effect.Effect<
-  | Toolkit.WithHandler<Record<string, RemoteTool>>
-  | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>,
+  Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>,
   McpClientError
-> {
-  if (typeof options === "string") return toolkit<"text", "error", never>(client, { prefix: options })
-  const config = options
-  return Effect.gen(function*() {
-    const descriptors = config.tools ?? (yield* client.listTools({ timeout: config.timeout }))
-    // The conditional schema follows the runtime resultMode, without changing its services.
-    const success = (config.resultMode === "complete" ? McpSchema.CallToolResult : Schema.String) as RemoteTool<
-      ResultMode,
-      FailureMode
-    >["successSchema"]
+> =>
+  Effect.gen(function*() {
+    const config: ToolkitOptions<ResultMode, FailureMode, Requirements> = typeof options === "string"
+      ? { prefix: options }
+      : options
+    const descriptors = config.tools ?? (yield* client.listTools())
+    const complete = config.resultMode === "complete"
+    // The success schema follows the runtime resultMode.
+    const success = (complete ? McpSchema.CallToolResult : Schema.String) as RemoteTool<ResultMode>["successSchema"]
     const failureMode = (config.failureMode ?? "error") as FailureMode
     const tools: Array<RemoteTool<ResultMode, FailureMode, Requirements>> = []
     const handlers: Record<
@@ -658,12 +576,17 @@ export function toolkit<
     > = Object.create(null)
 
     for (const descriptor of descriptors) {
-      let tool: RemoteTool<ResultMode, FailureMode> = Tool.dynamic(`${config.prefix ?? ""}${descriptor.name}`, {
+      const name = `${config.prefix ?? ""}${descriptor.name}`
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
+        return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
+      }
+      let tool: RemoteTool<ResultMode, FailureMode> = Tool.dynamic(name, {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
         success,
         failure: McpClientError,
-        failureMode
+        failureMode,
+        toModelOutput: complete ? toModelOutput : undefined
       }).annotate(Tool.Strict, false).annotate(ToolDescriptor, descriptor)
       if (config.trustAnnotations && descriptor.annotations !== undefined) {
         tool = tool.annotate(Tool.Readonly, descriptor.annotations.readOnlyHint)
@@ -672,17 +595,7 @@ export function toolkit<
           .annotate(Tool.OpenWorld, descriptor.annotations.openWorldHint)
         if (descriptor.annotations.title !== undefined) tool = tool.annotate(Tool.Title, descriptor.annotations.title)
       }
-      // Keep the approved remote contract when customization replaces the native tool.
-      const customized = Object.assign(
-        (config.transformTool === undefined ? tool : config.transformTool(tool, descriptor))
-          .annotate(ToolDescriptor, descriptor),
-        { [Tool.DynamicTypeId]: Tool.DynamicTypeId, jsonSchema: descriptor.inputSchema }
-      )
-      const name = customized.name
-      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
-        return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
-      }
-      tools.push(customized)
+      tools.push(config.transformTool === undefined ? tool : config.transformTool(tool, descriptor))
       handlers[name] = Effect.fnUntraced(function*(params: unknown) {
         const args = yield* decodeToolArguments(params).pipe(
           Effect.mapError((cause) =>
@@ -691,26 +604,21 @@ export function toolkit<
         )
         const result = yield* client.callTool({ tool: descriptor, arguments: args }, { timeout: config.timeout })
         if (result.isError === true) return yield* fail(new ToolError({ result }))
-        return config.resultMode === "complete" ? result : yield* toText(result)
+        return complete ? result : yield* toText(result)
       })
     }
 
-    const bindingTools: Array<RemoteTool<"text" | "complete", Tool.FailureMode, Requirements>> = tools
-    // Bound native variadic calls independently of caller-controlled discovery limits.
-    let native = Toolkit.make(...bindingTools.slice(0, TOOLKIT_BATCH_SIZE))
-    for (let offset = TOOLKIT_BATCH_SIZE; offset < bindingTools.length; offset += TOOLKIT_BATCH_SIZE) {
-      native = Toolkit.merge(native, Toolkit.make(...bindingTools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
-    }
-    const bound = yield* native.pipe(Effect.provideContext(yield* native.toHandlers(handlers)))
-    // The selected mode narrows schemas; request dependencies remain unchanged.
+    // Bind with the widened tool type; the selected modes only narrow the schemas.
+    const binding: Array<RemoteTool<"text" | "complete", Tool.FailureMode, Requirements>> = tools
+    const toolkit = Toolkit.make(...binding)
+    const bound = yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
     return {
-      tools: Object.fromEntries(tools.map((tool) => [tool.name, tool] as const)),
+      tools: Object.fromEntries(tools.map((tool) => [tool.name, tool])),
       handle: bound.handle as Toolkit.WithHandler<
         Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>
       >["handle"]
     }
   })
-}
 
 // =============================================================================
 // Transports
@@ -1163,9 +1071,7 @@ const TransportTypeId = "~effect/ai/McpClient/Transport" as const
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 const CLOSE_TIMEOUT = Duration.seconds(5)
-const DEFAULT_DISCOVERY_PAGES = 100
-const DEFAULT_DISCOVERY_ITEMS = 10_000
-const TOOLKIT_BATCH_SIZE = 10_000
+const DEFAULT_DISCOVERY_LIMITS = { maxPages: 100, maxItems: 10_000 }
 const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -1193,10 +1099,20 @@ type ListResult<K extends string, A> = Record<K, ReadonlyArray<A>> & { readonly 
 const fail = (reason: McpClientErrorReason) => new McpClientError({ reason })
 const limitError = (description: string) => fail(new LimitError({ description }))
 
-const encodeDiscoveryDescriptor = Schema.encodeUnknownEffect(Schema.fromJsonString(Schema.Json))
+const resolveDiscoveryLimits = (
+  limits: DiscoveryLimits | undefined,
+  defaults: { readonly maxPages: number; readonly maxItems: number }
+): Effect.Effect<{ readonly maxPages: number; readonly maxItems: number }, McpClientError> => {
+  const maxPages = limits?.maxPages ?? defaults.maxPages
+  const maxItems = limits?.maxItems ?? defaults.maxItems
+  return isLimit(maxPages) && isLimit(maxItems)
+    ? Effect.succeed({ maxPages, maxItems })
+    : Effect.fail(
+      fail(new ConfigurationError({ description: "MCP discovery limits must be nonnegative safe integers" }))
+    )
+}
 
-const discoveryConfigurationError = (cause: Schema.SchemaError) =>
-  fail(new ConfigurationError({ description: "Invalid MCP discovery limits", cause }))
+const isLimit = (n: number) => Number.isSafeInteger(n) && n >= 0
 
 const validationError = (cause: Schema.SchemaError) =>
   fail(new ValidationError({ description: "Invalid MCP payload", cause }))
@@ -1404,6 +1320,45 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 // Internal: Toolkit
 // =============================================================================
 
+const toModelOutput = (result: McpSchema.CallToolResult): Array<Prompt.ToolModelOutputPart> => {
+  const parts: Array<Prompt.ToolModelOutputPart> = []
+  for (const block of result.content) {
+    switch (block.type) {
+      case "text": {
+        parts.push(Prompt.textPart({ text: block.text }))
+        break
+      }
+      case "image":
+      case "audio": {
+        parts.push(Prompt.filePart({ mediaType: block.mimeType, data: block.data }))
+        break
+      }
+      case "resource_link": {
+        parts.push(Prompt.textPart({ text: resourceLinkText(block) }))
+        break
+      }
+      case "resource": {
+        parts.push(
+          "text" in block.resource
+            ? Prompt.textPart({ text: block.resource.text })
+            : Prompt.filePart({
+              mediaType: block.resource.mimeType ?? "application/octet-stream",
+              data: block.resource.blob
+            })
+        )
+        break
+      }
+    }
+  }
+  if (parts.length === 0 && result.structuredContent !== undefined) {
+    parts.push(Prompt.textPart({ text: JSON.stringify(result.structuredContent) }))
+  }
+  return parts
+}
+
+const resourceLinkText = (link: McpSchema.ResourceLink) =>
+  `${link.title ?? link.name}: ${link.uri}${link.description === undefined ? "" : `\n${link.description}`}`
+
 const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClientError> => {
   const unsupported = (content: string) =>
     Effect.fail(
@@ -1417,9 +1372,7 @@ const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClie
         break
       }
       case "resource_link": {
-        parts.push(
-          `${block.title ?? block.name}: ${block.uri}${block.description === undefined ? "" : `\n${block.description}`}`
-        )
+        parts.push(resourceLinkText(block))
         break
       }
       case "resource": {

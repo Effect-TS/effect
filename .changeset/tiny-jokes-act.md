@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add configurable MCP discovery limits and toolkits with approved snapshots, complete results, native failure modes, annotation trust, and Tool customization.
+Add MCP discovery limits and server capabilities to `McpClient`, and `McpClient.toolkit` options for approved tool snapshots, complete results, `"return"` failure mode, annotation trust and tool customization.
