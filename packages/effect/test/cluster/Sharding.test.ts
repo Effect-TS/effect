@@ -4489,6 +4489,121 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       yield* advance(500)
       assert.strictEqual(history.length, 2, "the unhealthy runner should be published immediately")
     }).pipe(Effect.scoped))
+
+  // Runners A (1234) and Z (1240, assigned no shard groups) start together,
+  // then B, C and D join 1.5 seconds apart. Every runner shares membership and
+  // shard locks, and Z routes a volatile request for each of 24 entities.
+  const staggeredCluster = Effect.fnUntraced(function*(options: {
+    // Fail A's next membership read once C has joined, while joins are pending.
+    readonly failRefreshDuringJoins: boolean
+  }) {
+    const cluster = makeSharedCluster()
+    const routes = new Map<string, Array<number>>()
+    const scope = yield* Scope.make()
+    const startRunner = (
+      port: number,
+      config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
+      runners: typeof Runners.layerNoop = Runners.layerNoop
+    ) =>
+      Layer.buildWithScope(
+        Sharding.layer.pipe(
+          Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, makeSharedClusterStorage(cluster, port))),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(runners),
+          Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
+            shardsPerGroup: 24,
+            entityTerminationTimeout: 0,
+            refreshAssignmentsInterval: 100,
+            sendRetryInterval: 100,
+            assignmentSettleWindow: 2000,
+            ...config
+          }))
+        ),
+        scope
+      )
+    yield* startRunner(1234)
+    const observer = yield* startRunner(
+      1240,
+      { assignedShardGroups: [] },
+      Layer.effect(
+        Runners.Runners,
+        Runners.make({
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor,
+          // Records each routing attempt, then fails it so the request retries.
+          send: ({ address, message }) =>
+            Effect.suspend(() => {
+              const entityId = message.envelope.address.entityId
+              const history = routes.get(entityId) ?? []
+              if (history[history.length - 1] !== address.port) history.push(address.port)
+              routes.set(entityId, history)
+              return Effect.fail(new ClusterError.EntityNotAssignedToRunner({ address: message.envelope.address }))
+            }),
+          notify: () => Effect.void,
+          ping: () => Effect.void,
+          onRunnerUnavailable: () => Effect.void
+        })
+      ).pipe(Layer.provide(Snowflake.layerGenerator))
+    )
+    const makeClient = yield* TestEntity.client.pipe(
+      Effect.provideService(Sharding.Sharding, Context.get(observer, Sharding.Sharding))
+    )
+    for (let id = 1; id <= 24; id++) {
+      yield* Effect.forkIn(makeClient(String(id)).GetUserVolatile({ id }), scope)
+    }
+
+    yield* TestClock.adjust(1500)
+    for (const port of [1235, 1236, 1237]) {
+      yield* startRunner(port)
+      if (port === 1236 && options.failRefreshDuringJoins) {
+        yield* TestClock.adjust(200)
+        cluster.failGetRunners.add(1234)
+        yield* TestClock.adjust(1300)
+      } else {
+        yield* TestClock.adjust(1500)
+      }
+    }
+    for (let i = 0; i < 100; i++) {
+      yield* TestClock.adjust(100)
+    }
+
+    // Exclude the handoffs made while shutting down, which waits on the test clock
+    const result = { owners: structuredClone(cluster.owners), routes: structuredClone(routes) }
+    const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+    while (closing.pollUnsafe() === undefined) {
+      yield* TestClock.adjust(100)
+    }
+    return result
+  })
+
+  // Every shard is locked by at most two runners in turn, and Z changes the
+  // runner it routes each entity to at most once.
+  const assertSingleHandoffs = (result: {
+    readonly owners: ReadonlyMap<string, ReadonlyArray<number>>
+    readonly routes: ReadonlyMap<string, ReadonlyArray<number>>
+  }) => {
+    assert.strictEqual(result.owners.size, 24)
+    assert.isTrue([...result.owners.values()].some((owners) => owners.length === 2), "no shard was handed off")
+    for (const [shard, owners] of result.owners) {
+      assert.isAtMost(owners.length, 2, `shard ${shard} was locked by ${owners.join(" -> ")}`)
+    }
+    assert.strictEqual(result.routes.size, 24)
+    assert.isTrue([...result.routes.values()].some((routes) => routes.length === 2), "no entity was rerouted")
+    for (const [entityId, routes] of result.routes) {
+      assert.isAtMost(routes.length, 2, `entity ${entityId} was routed to ${routes.join(" -> ")}`)
+    }
+  }
+
+  it.effect("hands each shard off once across a staggered cluster startup", () =>
+    Effect.gen(function*() {
+      assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: false }))
+    }))
+
+  it.effect("hands each shard off once when membership refresh fails during pending joins", () =>
+    Effect.gen(function*() {
+      assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: true }))
+    }))
 })
 
 // Runner membership the test controls; the local runner joins on registration.
@@ -4507,6 +4622,74 @@ const makeMembershipStorage = (membership: Array<readonly [Runner.Runner, boolea
     release: () => Effect.void,
     releaseAll: () => Effect.void
   })
+
+interface SharedCluster {
+  readonly membership: Array<readonly [Runner.Runner, boolean]>
+  readonly locks: Map<string, RunnerAddress.RunnerAddress>
+  /** The ports of the runners that locked each shard, in order. */
+  readonly owners: Map<string, Array<number>>
+  /** Ports whose next membership read fails. */
+  readonly failGetRunners: Set<number>
+}
+
+const makeSharedCluster = (): SharedCluster => ({
+  membership: [],
+  locks: new Map(),
+  owners: new Map(),
+  failGetRunners: new Set()
+})
+
+// One runner's view of shared membership and exclusive shard locks.
+const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
+  const isOwner = (shardId: ShardId.ShardId, address: RunnerAddress.RunnerAddress) => {
+    const owner = cluster.locks.get(shardId.toString())
+    return owner !== undefined && Equal.equals(owner, address)
+  }
+  return RunnerStorage.RunnerStorage.of({
+    getRunners: Effect.suspend(() =>
+      cluster.failGetRunners.delete(port)
+        ? Effect.fail(new ClusterError.PersistenceError({ cause: "getRunners failed" }))
+        : Effect.succeed(cluster.membership.slice())
+    ),
+    register: (runner) =>
+      Effect.sync(() => {
+        cluster.membership.push([runner, true])
+        return MachineId.make(port)
+      }),
+    unregister: (address) =>
+      Effect.sync(() => {
+        const index = cluster.membership.findIndex(([runner]) => Equal.equals(runner.address, address))
+        if (index >= 0) cluster.membership.splice(index, 1)
+      }),
+    setRunnerHealth: () => Effect.void,
+    acquire: (address, shardIds) =>
+      Effect.sync(() => {
+        const acquired: Array<ShardId.ShardId> = []
+        for (const shardId of shardIds) {
+          const key = shardId.toString()
+          if (cluster.locks.has(key) && !isOwner(shardId, address)) continue
+          cluster.locks.set(key, address)
+          const owners = cluster.owners.get(key) ?? []
+          if (owners[owners.length - 1] !== address.port) owners.push(address.port)
+          cluster.owners.set(key, owners)
+          acquired.push(shardId)
+        }
+        return acquired
+      }),
+    refresh: (address, shardIds) =>
+      Effect.sync(() => globalThis.Array.from(shardIds).filter((shardId) => isOwner(shardId, address))),
+    release: (address, shardId) =>
+      Effect.sync(() => {
+        if (isOwner(shardId, address)) cluster.locks.delete(shardId.toString())
+      }),
+    releaseAll: (address) =>
+      Effect.sync(() => {
+        for (const [key, owner] of cluster.locks) {
+          if (Equal.equals(owner, address)) cluster.locks.delete(key)
+        }
+      })
+  })
+}
 
 interface FailoverStorageState {
   blackholed: boolean
