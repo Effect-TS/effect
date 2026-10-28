@@ -420,6 +420,23 @@ describe("DenoHttpServer", () => {
       assert.strictEqual(response.status, 204)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  it.effect("urlParamsBody preserves a leading BOM after text strips it", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/form",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const text = yield* request.text
+          return HttpServerResponse.jsonUnsafe({ text, params: [...yield* request.urlParamsBody] })
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const response = yield* HttpClient.post("/form", {
+        body: HttpBody.text("\uFEFFname=value", "application/x-www-form-urlencoded")
+      })
+      assert.deepStrictEqual(yield* response.json, { text: "name=value", params: [["\uFEFFname", "value"]] })
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("formData withMaxFileSize", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(

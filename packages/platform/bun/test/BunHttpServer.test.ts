@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpRouter from "effect/http/HttpRouter"
@@ -455,6 +456,23 @@ describe("BunHttpServer", () => {
       assert.strictEqual(unixServer.address._tag === "UnixPathAddress" ? unixServer.address.path : undefined, path)
       assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
+
+  it.effect("urlParamsBody preserves a leading BOM after text strips it", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/form",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const text = yield* request.text
+          return HttpServerResponse.jsonUnsafe({ text, params: [...yield* request.urlParamsBody] })
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const response = yield* HttpClient.post("/form", {
+        body: HttpBody.text("\uFEFFname=value", "application/x-www-form-urlencoded")
+      })
+      assert.deepStrictEqual(yield* response.json, { text: "name=value", params: [["\uFEFFname", "value"]] })
+    }).pipe(Effect.provide(BunHttpServer.layerTest)))
 
   it.effect("answers CONNECT with 501 without running the app", () =>
     Effect.gen(function*() {

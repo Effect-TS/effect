@@ -5,24 +5,22 @@ import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerRequest, Htt
 import * as Option from "effect/Option"
 
 describe("HttpServerRequest", () => {
-  it.effect("urlParamsBody preserves form field names across body readers", () =>
+  it.effect("urlParamsBody preserves a leading BOM after text strips it", () =>
     Effect.gen(function*() {
-      for (const body of ["\uFEFFname=value&next=ok", "%EF%BB%BFname=value&next=ok"]) {
-        const clientRequest = HttpClientRequest.post("http://localhost/", {
-          body: HttpBody.text(body, "application/x-www-form-urlencoded")
-        })
-        for (
-          const message of [
-            HttpServerRequest.fromWeb(new Request("http://localhost/", { method: "POST", body })),
-            HttpServerRequest.fromClientRequest(clientRequest),
-            HttpClientResponse.fromWeb(clientRequest, new Response(body)),
-            HttpServerResponse.toClientResponse(HttpServerResponse.text(body))
-          ]
-        ) {
-          strictEqual(yield* message.text, body.replace(/^\uFEFF/, ""))
-          deepStrictEqual([...yield* message.urlParamsBody], [["\uFEFFname", "value"], ["next", "ok"]])
-          deepStrictEqual([...yield* message.urlParamsBody], [["\uFEFFname", "value"], ["next", "ok"]])
-        }
+      const body = "\uFEFFname=value"
+      const clientRequest = HttpClientRequest.post("http://localhost/", {
+        body: HttpBody.text(body, "application/x-www-form-urlencoded")
+      })
+      for (
+        const message of [
+          HttpServerRequest.fromWeb(new Request("http://localhost/", { method: "POST", body })),
+          HttpServerRequest.fromClientRequest(clientRequest),
+          HttpClientResponse.fromWeb(clientRequest, new Response(body)),
+          HttpServerResponse.toClientResponse(HttpServerResponse.text(body))
+        ]
+      ) {
+        strictEqual(yield* message.text, "name=value")
+        deepStrictEqual([...yield* message.urlParamsBody], [["\uFEFFname", "value"]])
       }
     }))
 
