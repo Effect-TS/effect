@@ -1684,6 +1684,49 @@ describe("McpServer", () => {
         strictEqual(response.status, 405)
       }))
 
+    it.effect("ignores a cancellation, which cannot say whose request it names", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const interrupted = yield* Ref.make(false)
+        const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              server.notifications["notifications/message"]({ level: "error", data: "running" }).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] })),
+                Effect.onInterrupt(() => Ref.set(interrupted, true))
+              )
+          })
+        ))
+        const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+          makeServerLayer({ name: "TestServer", protocols: [McpProtocol.v2025_06_18], sessionless: true })
+        )))
+        const headers = { "mcp-protocol-version": "2025-06-18" }
+
+        const response = yield* harness.post({
+          jsonrpc: "2.0",
+          id: "shared",
+          method: "tools/call",
+          params: { name: "Wait", arguments: {} }
+        }, headers)
+        const stream = makeMcpSseReader(response)
+        yield* Effect.addFinalizer(() => stream.cancel)
+        strictEqual((yield* stream.take()).method, "notifications/message")
+        const cancelled = yield* harness.post({
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: "shared" }
+        }, headers)
+        yield* Deferred.succeed(release, undefined)
+        const result = yield* stream.take()
+
+        strictEqual(cancelled.status, 202)
+        assert.deepStrictEqual(result.result, { content: [{ type: "text", text: "done" }] })
+        strictEqual(yield* Ref.get(interrupted), false)
+      }))
+
     it.effect("still requires a session when sessionless is not set", () =>
       Effect.gen(function*() {
         const harness = yield* makeHttpHarness(

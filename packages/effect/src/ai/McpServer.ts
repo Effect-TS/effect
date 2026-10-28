@@ -1952,7 +1952,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
                     const key = requestKey(cancellation.requestId)
                     let ownerClientId = clientId
                     if (isHttp) {
-                      if (session === undefined) {
+                      // A sessionless binding is shared by every client of its revision, so it cannot say
+                      // whose request an id names.
+                      if (session === undefined || session.sessionless === true) {
                         return
                       }
                       // Each HTTP POST has its own transport ID, but cancellation belongs to the session.
@@ -2055,7 +2057,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
               : undefined
             const waiting = requestId === undefined ? undefined : reverseRequestClients.get(requestId)
             const reverseKey = waiting?.find((key) =>
-              isHttp ? key.profile === session?.negotiatedProfile : key.clientId === clientId
+              isHttp
+                ? session?.sessionless !== true && key.profile === session?.negotiatedProfile
+                : key.clientId === clientId
             )
             if (request._tag === "Exit" && reverseKey === undefined) {
               return Effect.void

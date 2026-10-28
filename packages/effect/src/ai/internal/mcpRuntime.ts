@@ -76,6 +76,11 @@ export interface RequestBinding {
   readonly initializePayload: typeof PublicMcpSchema.Initialize.payloadSchema.Type
   readonly negotiatedProfile: McpCore.NegotiatedProtocolProfile
   readonly protocol: PublicMcpProtocol.AnyProtocolAdapter
+  /**
+   * Set on the binding every sessionless client of a revision shares. It identifies no client, so
+   * nothing scoped to a session, such as cancelling or answering a request, may be matched by it.
+   */
+  readonly sessionless?: true | undefined
 }
 
 /**
@@ -266,7 +271,8 @@ export const make = Effect.fnUntraced(function*(
         clientCapabilities: {},
         clientInfo
       },
-      protocol
+      protocol,
+      sessionless: true
     }
     sessionlessBindings.set(version, binding)
     return binding
