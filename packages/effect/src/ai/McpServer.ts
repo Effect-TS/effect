@@ -191,7 +191,8 @@ const requestServiceKeys = new Set<string>([
   Tracer.ParentSpan.key
 ])
 
-const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
+/** @internal */
+export const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
   const services = new Map<string, any>()
   for (const [key, value] of context.mapUnsafe) {
     if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
@@ -1140,25 +1141,20 @@ export class McpServer extends Context.Service<McpServer, {
       } else {
         tools[existingIndex] = options
       }
-      const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+      const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
       yield* internalCore.tools.register({
         descriptor: new McpTool({
           ...options.tool,
           title: options.tool.title ?? options.tool.annotations?.title
         }),
-        isVisible: (profile) =>
-          enabledWhen === undefined || enabledWhen(
-            {
-              protocolVersion: profile.protocolVersion,
-              capabilities: profile.clientCapabilities,
-              clientInfo: profile.clientInfo
-            }
-          ),
+        visible: visible("tools/list", options.tool.name),
+        isVisible: isEnabled(options.annotations),
         handle: (call, invocation) =>
-          provideInvocationContext(
-            options.handle(call.arguments),
-            invocation
-          ).pipe(
+          invoke(options.handle(call.arguments), invocation, {
+            method: "tools/call",
+            target: call.name,
+            payload: call
+          }).pipe(
             Effect.catchTags({
               InternalError: (error) =>
                 Effect.fail(
@@ -3057,7 +3053,15 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   const services = yield* Effect.context<never>()
   const registrations = yield* makeToolkitRegistrations(built)
   for (const registration of registrations) {
-    yield* registry.addTool({ ...registration, services })
+    yield* registry.addTool({
+      ...registration,
+      services,
+      handle: registration.handle as (payload: unknown) => Effect.Effect<
+        CallToolResult | McpSchema.InputRequired,
+        InternalError | InvalidParams,
+        McpRequestContext
+      >
+    })
   }
 })
 
@@ -3066,8 +3070,6 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<
   Tools extends Record<string, Tool.Any>,
   R
 >(built: Toolkit.WithHandler<Tools, R>) {
-  const services = omitRequestServices(yield* Effect.context<never>())
-  const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
     const failure = Cause.findFail(cause)
@@ -3147,8 +3149,7 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<
           })),
           Effect.catchCause(handleCause)
         ) as Effect.Effect<CallToolResult, InvalidParams, never>
-      },
-      services
+      })
     })
   }
   return registrations
