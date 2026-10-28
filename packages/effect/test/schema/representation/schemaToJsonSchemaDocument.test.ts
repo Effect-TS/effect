@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, type SchemaRepresentation } from "effect"
+import { Schema, SchemaRepresentation } from "effect"
 
 describe("Schema.toJsonSchemaDocument", () => {
   it("uses the encoded side for representations and JSON Schema", () => {
@@ -246,5 +246,24 @@ describe("Schema.toJsonSchemaDocument", () => {
       schema: {},
       definitions: {}
     })
+  })
+
+  it("exports isNot without rejecting values the runtime check accepts", () => {
+    const forbidden = Schema.String.check(Schema.makeFilter((s: string) => s === "bad"))
+    const cases: ReadonlyArray<readonly [Schema.Top, unknown]> = [
+      [Schema.String.check(Schema.isNot(forbidden)), "good"],
+      [Schema.String.check(Schema.isNot(forbidden.annotate({ identifier: "Forbidden" }))), "good"],
+      [Schema.String.check(Schema.isNot(Schema.Number)), "NaN"],
+      [Schema.Null.check(Schema.isNot(Schema.Undefined)), null]
+    ]
+    for (const [schema, value] of cases) {
+      assert.isTrue(Schema.is(schema)(value))
+      const imported = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+      assert.isTrue(Schema.is(imported)(value))
+      assert.isFalse(Schema.is(imported)(1))
+    }
+
+    const union = Schema.Union([cases[0][0], Schema.Number], { mode: "oneOf" })
+    assert.isUndefined(Schema.toJsonSchemaDocument(union).schema.oneOf)
   })
 })

@@ -3553,6 +3553,57 @@ describe("fromJsonSchemaDocument", () => {
         `Cannot import JSON Schema keyword "contains": Effect has no equivalent constraint.\n  at ["schema"]["not"]["contains"]`
       )
     })
+
+    it("rejects a negation that refers back to itself", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $defs: { A: { not: { $ref: "#/$defs/A" } } },
+            $ref: "#/$defs/A"
+          })),
+        `Definition "A" is a circular negation.\n  at ["definitions"]["A"]["not"]["$ref"]`
+      )
+    })
+
+    it("rejects negated additionalProperties next to declared properties", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            properties: { a: { type: "number" } },
+            additionalProperties: { not: { type: "number" } }
+          })),
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
+      )
+    })
+
+    it("keeps equal literal alternatives that differ only by negation", () => {
+      const plain = { const: "a" }
+      const negated = { const: "a", not: { const: "a" } }
+      for (const anyOf of [[plain, negated], [negated, plain]]) {
+        const imported = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [{ enum: ["a", "b"] }, { anyOf }]
+        }))
+        for (const schema of [imported, toSchemaFromJsonSchemaDocument(Schema.toJsonSchemaDocument(imported))]) {
+          assert.isTrue(Schema.is(schema)("a"))
+          assert.isFalse(Schema.is(schema)("b"))
+        }
+      }
+    })
+
+    it("applies a negation with alternatives to each union branch", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        allOf: [
+          { anyOf: [{ type: "object", required: ["a"] }, { type: "object", required: ["b"] }] },
+          { type: "object", not: { anyOf: [{ required: ["x"] }, { required: ["y"] }] } }
+        ]
+      }))
+      assert.isTrue(Schema.is(schema)({ a: 1 }))
+      assert.isTrue(Schema.is(schema)({ b: 1 }))
+      assert.isFalse(Schema.is(schema)({ a: 1, x: 1 }))
+      assert.isFalse(Schema.is(schema)({ b: 1, y: 1 }))
+      assert.isFalse(Schema.is(schema)({}))
+    })
   })
 
   describe("unsupported validation keywords", () => {
