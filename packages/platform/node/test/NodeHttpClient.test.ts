@@ -18,7 +18,8 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-  Multipart
+  Multipart,
+  UrlParams
 } from "effect/http"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
@@ -152,6 +153,16 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       })
     })
   ),
+  HttpRouter.route(
+    "POST",
+    "/question-form",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      return HttpServerResponse.text(`?${UrlParams.toString(yield* request.urlParamsBody)}`, {
+        contentType: "application/x-www-form-urlencoded"
+      })
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
@@ -222,6 +233,15 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
           body: HttpBody.text("\uFEFF{\"a\":1}", "application/json")
         })
         assert.deepStrictEqual(yield* response.json, { a: 1 })
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("request and response urlParamsBody preserve a leading question mark", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.post("/question-form", {
+          body: HttpBody.text("?name=value", "application/x-www-form-urlencoded")
+        })
+        // the server echoes its parsed key behind another raw question mark
+        assert.deepStrictEqual([...yield* response.urlParamsBody], [["??name", "value"]])
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name !== "fetch") {
