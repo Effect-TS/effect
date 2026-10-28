@@ -488,22 +488,27 @@ items:
   - <<: *base
     a: 5
 `
-      assert.deepStrictEqual(Yaml.parse(source), {
+      const result = Yaml.parse(source) as { readonly flow: object }
+      assert.deepStrictEqual(result, {
         base: { a: 1, b: 2 },
         other: { b: 3, c: 4 },
         block: { a: 1, b: 2, c: 5 },
         flow: { b: 3, c: 5 },
         items: [{ a: 5, b: 2 }]
       })
+      assert.deepStrictEqual(Object.keys(result.flow), ["b", "c"])
     })
 
     it("treats quoted merge keys as ordinary keys", () => {
       assert.deepStrictEqual(Yaml.parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
     })
 
-    it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}"])("rejects non-mapping merge value in %j", (source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
-    })
+    it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}", "<<: {a: 1}\n<<: {b: 2}\n"])(
+      "rejects invalid merge usage in %j",
+      (source) => {
+        assert.throws(() => Yaml.parse(source), SyntaxError)
+      }
+    )
   })
 
   describe("anchors and quoted comment boundaries", () => {
