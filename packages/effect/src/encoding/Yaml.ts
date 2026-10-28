@@ -441,10 +441,9 @@ class YamlParser {
         output.push(this.parseNodeValue(item, indent))
       } else {
         // The mapping is indented to its first key, which may sit more than one space after the dash.
-        const mappingIndent = indent + line.text.length - item.length
-        if (line.text.slice(1, mappingIndent - indent).includes("\t")) {
-          this.fail(line, "Tabs cannot be used for YAML indentation")
-        }
+        const keyOffset = line.text.length - item.length
+        if (line.text.slice(1, keyOffset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
+        const mappingIndent = indent + keyOffset
         const mapping: YamlRecord = {}
         this.parseMappingEntry(mapping, item, separator, mappingIndent, line)
         output.push(this.parseMapping(mappingIndent, mapping))
