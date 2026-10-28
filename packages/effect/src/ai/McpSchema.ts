@@ -1387,13 +1387,42 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
 // =============================================================================
 
 /**
+ * Schema for a file of an Agent Skill served under the MCP Skills extension
+ * (SEP-2640), with the digest and size of its content.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export class SkillResource extends Schema.Class<SkillResource>(
+  "@effect/ai/McpSchema/SkillResource"
+)({
+  /**
+   * The resource URI of the file.
+   */
+  uri: Schema.String,
+  /**
+   * The SHA-256 digest of the file's bytes, as `sha256:` followed by 64
+   * lowercase hexadecimal digits.
+   */
+  digest: Schema.String,
+  /**
+   * The length of the file's bytes.
+   */
+  size: Schema.Int
+}) {}
+
+/**
  * Schema for the YAML frontmatter of an Agent Skill's `SKILL.md`, as the
  * Agent Skills specification defines it (https://agentskills.io/specification).
  *
  * **Details**
  *
  * Fields the specification does not define are kept unchanged. `McpServer`
- * checks a skill's frontmatter against this schema before serving it.
+ * checks a skill's frontmatter against this schema before serving it. The
+ * frontmatter of a {@link Skill} received from a server is only checked for
+ * the `name` and `description` that the Skills extension requires; decode it
+ * with this schema for the other fields.
  *
  * @stability unstable
  * @category schemas
@@ -1439,6 +1468,38 @@ export const SkillFrontmatter = Schema.StructWithRest(
  * @since 4.1.0
  */
 export type SkillFrontmatter = typeof SkillFrontmatter.Type
+
+/**
+ * Schema for an Agent Skill served under the MCP Skills extension (SEP-2640),
+ * as `skills/list` and `skills/get` describe it.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export class Skill extends Schema.Class<Skill>(
+  "@effect/ai/McpSchema/Skill"
+)({
+  /**
+   * The resource URI of the skill's `SKILL.md`.
+   */
+  uri: Schema.String,
+  /**
+   * The YAML frontmatter of the skill's `SKILL.md`, as a JSON object, with
+   * every field the author wrote. See {@link SkillFrontmatter} for the fields
+   * the Agent Skills specification defines.
+   */
+  frontmatter: Schema.StructWithRest(
+    Schema.Struct({ name: Schema.String, description: Schema.String }),
+    [UnknownObject]
+  ),
+  /**
+   * Every file of the skill, `SKILL.md` included, or `"dynamic"` when the
+   * server generates the skill's content and publishes no digests.
+   */
+  resources: Schema.Union([Schema.Array(SkillResource), Schema.Literal("dynamic")]),
+  _meta: optional(UnknownObject)
+}) {}
 
 // =============================================================================
 // Prompts

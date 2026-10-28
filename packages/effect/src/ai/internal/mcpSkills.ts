@@ -343,6 +343,12 @@ const isSafeRelativePath = (path: string): boolean =>
   !path.includes("\\") &&
   path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
 
+// The Agent Skills `name` rule: lowercase letters, digits and single hyphens,
+// neither leading nor trailing, at most 64 characters.
+const isSkillName = (name: string): boolean => name.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
+
+const DIGEST = /^sha256:[0-9a-f]{64}$/
+
 const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
 
 /**
@@ -378,6 +384,51 @@ export const jsonEquals = (a: unknown, b: unknown): boolean => {
     keys.every((key) =>
       Object.hasOwn(b, key) && jsonEquals((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
     )
+}
+
+/**
+ * Why a skill entry received from a server breaks the extension's rules, or
+ * `undefined` when it is valid. Hosts must not load an invalid entry.
+ *
+ * @internal
+ */
+export const entryProblem = (entry: McpCore.Skill): string | undefined => {
+  const schemeEnd = entry.uri.indexOf("://")
+  if (schemeEnd <= 0 || !entry.uri.endsWith("/SKILL.md")) return "the URI does not address a SKILL.md"
+  const root = entry.uri.slice(0, -"/SKILL.md".length)
+  const skillPath = root.slice(schemeEnd + 3)
+  if (!isSafeRelativePath(skillPath)) return "the skill path has an empty, '.' or '..' segment"
+  const name = skillPath.split("/").at(-1)!
+  if (entry.frontmatter.name !== name || !isSkillName(name)) {
+    return `the frontmatter name must equal "${name}" and follow the Agent Skills naming rules`
+  }
+  const description = entry.frontmatter.description
+  if (typeof description !== "string" || description === "" || description.length > 1024) {
+    return "the frontmatter description must be a string of 1 to 1024 characters"
+  }
+  if (entry.resources === "dynamic") return undefined
+  const uris = new Set<string>()
+  for (const resource of entry.resources) {
+    if (!resource.uri.startsWith(`${root}/`) || !isSafeRelativePath(resource.uri.slice(root.length + 1))) {
+      return `${resource.uri} is not a file of the skill`
+    }
+    if (uris.has(resource.uri)) return `${resource.uri} is listed twice`
+    if (!DIGEST.test(resource.digest)) return `${resource.uri} has an invalid digest`
+    if (!Number.isSafeInteger(resource.size) || resource.size < 0) return `${resource.uri} has an invalid size`
+    uris.add(resource.uri)
+  }
+  return uris.has(entry.uri) ? undefined : "the manifest does not list SKILL.md"
+}
+
+/**
+ * Whether `child` is a direct child of the directory at `directory`.
+ *
+ * @internal
+ */
+export const isDirectChild = (directory: string, child: string): boolean => {
+  if (!child.startsWith(`${directory}/`)) return false
+  const name = child.slice(directory.length + 1)
+  return name !== "" && name !== "." && name !== ".." && !name.includes("/")
 }
 
 const PLAIN_KEY = /^[A-Za-z_][A-Za-z0-9_-]*$/

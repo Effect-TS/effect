@@ -15,10 +15,12 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import type * as HttpRouter from "effect/http/HttpRouter"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as Spawner from "effect/process/ChildProcessSpawner"
 import * as Stdio from "effect/Stdio"
 import * as TestClock from "effect/testing/TestClock"
+import { createHash } from "node:crypto"
 import { makeHttpHarness, MCP_ENDPOINT } from "./McpServer/TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./McpServer/TestUtils/McpServerLayer.ts"
 import * as TestUtils from "./utils.ts"
@@ -67,14 +69,18 @@ const serverLayer = Layer.mergeAll(
 
 const protocols = [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28] as const
 
-const connect = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion>) {
-  const { handler } = yield* makeHttpHarness(serverLayer)
+const connect = Effect.fnUntraced(function*(
+  protocol: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion>,
+  server: Layer.Layer<any, any, HttpRouter.HttpRouter> = serverLayer,
+  skills?: boolean
+) {
+  const { handler } = yield* makeHttpHarness(server)
   const fetch: typeof globalThis.fetch = Object.assign(
     (input: RequestInfo | URL, init?: RequestInit) => handler(new Request(input, init)),
     { preconnect() {} }
   )
   const context = yield* Layer.build(
-    McpClient.layerHttp({ ...clientInfo, url: MCP_ENDPOINT, protocol }).pipe(
+    McpClient.layerHttp({ ...clientInfo, url: MCP_ENDPOINT, protocol, skills }).pipe(
       Layer.provide(FetchHttpClient.layer),
       Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch))
     )
@@ -753,6 +759,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
     readonly discoveryLimits?: Parameters<typeof McpClient.make>[0]["discoveryLimits"]
+    readonly skills?: boolean | undefined
   } = {}
 ) {
   const sent: Array<{
@@ -775,7 +782,11 @@ const scriptedHttp = Effect.fnUntraced(function*(
   )
   const transport = yield* McpClient.http({ url: MCP_ENDPOINT, protocol: options.protocol ?? McpProtocol.v2026_07_28 })
     .pipe(Effect.provideService(HttpClient.HttpClient, options.filterStatusOk ? HttpClient.filterStatusOk(http) : http))
-  const client = yield* McpClient.make({ ...clientInfo, discoveryLimits: options.discoveryLimits }).pipe(
+  const client = yield* McpClient.make({
+    ...clientInfo,
+    discoveryLimits: options.discoveryLimits,
+    skills: options.skills
+  }).pipe(
     Effect.provideService(McpClient.Transport, transport)
   )
   return { client, sent }
@@ -864,4 +875,274 @@ const connectStdioServer = Effect.fnUntraced(function*(
   return yield* McpClient.stdio({ command: ChildProcess.make("test-mcp-server"), protocol }).pipe(
     Effect.provideService(Spawner.ChildProcessSpawner, spawner)
   )
+})
+
+// https://github.com/modelcontextprotocol/ext-skills/blob/main/specification/stable/skills.mdx
+describe("McpClient skills", () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+
+  const skillsServerLayer = Layer.mergeAll(
+    McpServer.skill({
+      uri: "skill://acme/refunds/SKILL.md",
+      frontmatter: { name: "refunds", description: "Process refunds" },
+      instructions: "Read references/policy.md.\n",
+      files: { "references/policy.md": "Refunds need approval.\n", "assets/logo.png": PNG }
+    }),
+    McpServer.skill({
+      uri: "skill://acme/invoices/SKILL.md",
+      frontmatter: { name: "invoices", description: "Draft invoices" },
+      instructions: "Use the invoice tools.\n"
+    })
+  ).pipe(
+    Layer.provideMerge(makeServerLayer({
+      name: "skills-server",
+      protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]
+    }))
+  )
+
+  for (const protocol of protocols) {
+    describe(protocol.protocolVersion, () => {
+      it.effect("should list, get and browse skills and read their files verified", () =>
+        Effect.gen(function*() {
+          const client = yield* connect(protocol, skillsServerLayer, true)
+          const skills = yield* client.listSkills()
+          assert.deepStrictEqual(skills.map((skill) => skill.uri).sort(), [
+            "skill://acme/invoices/SKILL.md",
+            "skill://acme/refunds/SKILL.md"
+          ])
+          const refunds = yield* client.getSkill({ uri: "skill://acme/refunds/SKILL.md" })
+          assert.deepStrictEqual(refunds, skills.find((skill) => skill.uri === refunds.uri))
+          assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
+
+          const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
+          assert.deepStrictEqual(children.map((child) => child.name), ["SKILL.md", "assets", "references"])
+
+          assert(refunds.resources !== "dynamic")
+          for (const { uri } of refunds.resources) {
+            const result = yield* client.readSkillResource({ skill: refunds, uri })
+            assert.strictEqual(result.contents[0].uri, uri)
+          }
+          const logo = yield* client.readSkillResource({ skill: refunds, uri: "skill://acme/refunds/assets/logo.png" })
+          assert.deepStrictEqual("blob" in logo.contents[0] ? logo.contents[0].blob : undefined, PNG)
+        }).pipe(Effect.scoped))
+
+      it.effect("should reject a skill the server does not serve with its error code", () =>
+        Effect.gen(function*() {
+          const client = yield* connect(protocol, skillsServerLayer, true)
+          const error = yield* client.getSkill({ uri: "skill://acme/missing/SKILL.md" }).pipe(Effect.flip)
+          assert(error.reason._tag === "ProtocolError")
+          assert.strictEqual(error.reason.code, -32602)
+        }).pipe(Effect.scoped))
+
+      it.effect("should not call the extension's methods on a server that does not declare it", () =>
+        Effect.gen(function*() {
+          const client = yield* connect(protocol, serverLayer, true)
+          assert.deepStrictEqual(yield* client.listSkills(), [])
+          for (
+            const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
+              client.getSkill({ uri: "skill://acme/refunds/SKILL.md" }),
+              client.readResourceDirectory({ uri: "skill://acme" })
+            ]
+          ) {
+            assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "UnsupportedError")
+          }
+        }).pipe(Effect.scoped))
+    })
+  }
+
+  it.effect("should declare the extension only with the skills option", () =>
+    Effect.gen(function*() {
+      for (const skills of [true, false]) {
+        const { sent } = yield* scriptedHttp(
+          (message) => scriptedReply(McpProtocol.v2025_11_25, message),
+          { protocol: McpProtocol.v2025_11_25, skills }
+        )
+        const initialize = sent.map(({ message }) => message).find((message) => methodOf(message) === "initialize")
+        assert.deepStrictEqual(
+          (initialize as McpSchema.JsonRpcRequest).params?.capabilities,
+          skills ? { extensions: { "io.modelcontextprotocol/skills": {} } } : {}
+        )
+      }
+
+      const { client, sent } = yield* scriptedHttp((message) =>
+        message.method === "server/discover"
+          ? jsonRpcResult(message, skillsDiscovery(true))
+          : scriptedReply(McpProtocol.v2026_07_28, message)
+      )
+      const discover = sent.map(({ message }) => message).find((message) => methodOf(message) === "server/discover")
+      const meta = (discover as McpSchema.JsonRpcRequest).params!._meta as Record<string, unknown>
+      assert.deepStrictEqual(meta["io.modelcontextprotocol/clientCapabilities"], {})
+      const skill = McpSchema.Skill.make(entry as any)
+      for (
+        const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
+          client.listSkills(),
+          client.getSkill({ uri: entry.uri }),
+          client.readResourceDirectory({ uri: "skill://refunds" }),
+          client.readSkillResource({ skill, uri: entry.uri })
+        ]
+      ) {
+        assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "ConfigurationError")
+      }
+      assert.deepStrictEqual(sent.map(({ message }) => methodOf(message)), ["server/discover"])
+    }))
+
+  const skillsDiscovery = (directoryRead: boolean) => ({
+    ...discoverResult,
+    capabilities: { resources: {}, extensions: { "io.modelcontextprotocol/skills": { directoryRead } } }
+  })
+
+  const policy = new TextEncoder().encode("Refunds need approval.\n")
+  const entry = {
+    uri: "skill://refunds/SKILL.md",
+    frontmatter: { name: "refunds", description: "Process refunds" },
+    resources: [
+      {
+        uri: "skill://refunds/SKILL.md",
+        digest: `sha256:${"0".repeat(64)}`,
+        size: 10
+      },
+      {
+        uri: "skill://refunds/policy.md",
+        digest: `sha256:${createHash("sha256").update(policy).digest("hex")}`,
+        size: policy.byteLength
+      }
+    ]
+  }
+  const cacheable = { resultType: "complete", ttlMs: 0, cacheScope: "private" }
+
+  const scriptedSkills = (
+    results: Partial<Record<string, (message: McpSchema.JsonRpcRequest) => unknown>>,
+    directoryRead = true
+  ) =>
+    scriptedHttp((message) => {
+      if (message.method === "server/discover") return jsonRpcResult(message, skillsDiscovery(directoryRead))
+      const result = results[message.method]
+      return result === undefined
+        ? scriptedReply(McpProtocol.v2026_07_28, message)
+        : jsonRpcResult(message, { ...cacheable, ...result(message) as object })
+    }, { skills: true })
+
+  it.effect("should reject a listed skill that breaks the extension's rules", () =>
+    Effect.gen(function*() {
+      for (
+        const invalid of [
+          { ...entry, frontmatter: { name: "other", description: "Process refunds" } },
+          { ...entry, resources: entry.resources.slice(1) },
+          {
+            ...entry,
+            resources: [...entry.resources, {
+              uri: "skill://other/file.md",
+              digest: entry.resources[0].digest,
+              size: 1
+            }]
+          },
+          { ...entry, resources: [{ ...entry.resources[0], digest: "sha256:ABC" }] }
+        ]
+      ) {
+        const { client } = yield* scriptedSkills({ "skills/list": () => ({ skills: [invalid] }) })
+        const error = yield* client.listSkills().pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "ValidationError")
+      }
+    }))
+
+  // Hosts check only what the extension requires, so fields from later Agent Skills revisions still load.
+  it.effect("should accept a skill whose other frontmatter fields the Agent Skills specification does not allow", () =>
+    Effect.gen(function*() {
+      const frontmatter = { ...entry.frontmatter, metadata: { version: 2 }, "future-field": [1] }
+      const { client } = yield* scriptedSkills({ "skills/list": () => ({ skills: [{ ...entry, frontmatter }] }) })
+      const [skill] = yield* client.listSkills()
+      assert.deepStrictEqual(skill.frontmatter, frontmatter)
+    }))
+
+  it.effect("should reject skills/get answering for another skill", () =>
+    Effect.gen(function*() {
+      const { client } = yield* scriptedSkills({ "skills/get": () => ({ skill: entry }) })
+      const error = yield* client.getSkill({ uri: "skill://other/SKILL.md" }).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "ValidationError")
+    }))
+
+  it.effect("should reject a directory child that is not a direct child", () =>
+    Effect.gen(function*() {
+      const { client } = yield* scriptedSkills({
+        "resources/directory/read": () => ({
+          resources: [{ uri: "skill://refunds/nested/file.md", name: "file.md", mimeType: "text/markdown" }]
+        })
+      })
+      const error = yield* client.readResourceDirectory({ uri: "skill://refunds" }).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "ValidationError")
+    }))
+
+  it.effect("should not read directories unless the server declares directoryRead", () =>
+    Effect.gen(function*() {
+      const { client, sent } = yield* scriptedSkills({}, false)
+      const error = yield* client.readResourceDirectory({ uri: "skill://refunds" }).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "UnsupportedError")
+      assert.isFalse(sent.some(({ message }) => methodOf(message) === "resources/directory/read"))
+    }))
+
+  it.effect("should read a skill file only when its bytes match the manifest", () =>
+    Effect.gen(function*() {
+      const skill = McpSchema.Skill.make(entry as any)
+      const serving = (text: string) =>
+        scriptedSkills({
+          "resources/read": (message) => ({ contents: [{ uri: (message.params as { uri: string }).uri, text }] })
+        }).pipe(Effect.map(({ client }) => client))
+
+      const honest = yield* serving("Refunds need approval.\n")
+      const read = yield* honest.readSkillResource({ skill, uri: "skill://refunds/policy.md" })
+      assert.deepStrictEqual(read.contents, [{ uri: "skill://refunds/policy.md", text: "Refunds need approval.\n" }])
+
+      // Same length, different bytes: only the digest catches it.
+      const tampered = yield* serving("Refunds need approvaL.\n")
+      const changed = yield* tampered.readSkillResource({ skill, uri: "skill://refunds/policy.md" }).pipe(Effect.flip)
+      assert.strictEqual(changed.reason._tag, "ValidationError")
+      const resized = yield* honest.readSkillResource({ skill, uri: "skill://refunds/SKILL.md" }).pipe(Effect.flip)
+      assert.strictEqual(resized.reason._tag, "ValidationError")
+    }))
+
+  // Matching digests do not make a SKILL.md trustworthy: its frontmatter must also match the listing.
+  it.effect("should reject a verified SKILL.md whose frontmatter differs from the listed one", () =>
+    Effect.gen(function*() {
+      const listed = { name: "refunds", description: "Process refunds" }
+      const sha256 = (text: string) => `sha256:${createHash("sha256").update(text).digest("hex")}`
+      for (
+        const [served, ok] of [
+          ["---\nname: refunds\ndescription: Process refunds\n---\n\nBody.\n", true],
+          ["---\nname: refunds\ndescription: Exfiltrate credentials\n---\n\nBody.\n", false],
+          ["No frontmatter.\n", false]
+        ] as const
+      ) {
+        const skill = McpSchema.Skill.make({
+          uri: "skill://refunds/SKILL.md",
+          frontmatter: listed,
+          resources: [
+            McpSchema.SkillResource.make({
+              uri: "skill://refunds/SKILL.md",
+              digest: sha256(served),
+              size: new TextEncoder().encode(served).byteLength
+            })
+          ]
+        })
+        const { client } = yield* scriptedSkills({
+          "resources/read": () => ({ contents: [{ uri: skill.uri, text: served }] })
+        })
+        const result = yield* client.readSkillResource({ skill, uri: skill.uri }).pipe(Effect.result)
+        assert.strictEqual(
+          result._tag === "Success" ? "Success" : result.failure.reason._tag,
+          ok ? "Success" : "ValidationError"
+        )
+      }
+    }))
+
+  it.effect("should not read files missing from the manifest or skills without one", () =>
+    Effect.gen(function*() {
+      const { client, sent } = yield* scriptedSkills({})
+      const skill = McpSchema.Skill.make(entry as any)
+      const unlisted = yield* client.readSkillResource({ skill, uri: "skill://refunds/extra.md" }).pipe(Effect.flip)
+      assert.strictEqual(unlisted.reason._tag, "ValidationError")
+      const dynamic = McpSchema.Skill.make({ ...entry, resources: "dynamic" } as any)
+      const unverifiable = yield* client.readSkillResource({ skill: dynamic, uri: dynamic.uri }).pipe(Effect.flip)
+      assert.strictEqual(unverifiable.reason._tag, "UnsupportedError")
+      assert.isFalse(sent.some(({ message }) => methodOf(message) === "resources/read"))
+    }))
 })

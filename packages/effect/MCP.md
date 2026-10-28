@@ -789,3 +789,40 @@ export const loadContext = (client: McpClient.McpClient) =>
     }
   })
 ```
+
+### Skills
+
+Pass `skills: true` to declare the MCP Skills extension
+([SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension)) and enable the skill
+methods. Without it they fail with a `ConfigurationError`, and the client does not declare the
+extension.
+
+- `listSkills` returns every skill as an `McpSchema.Skill`, or none when the server does not declare
+  the extension. `getSkill` looks a skill up by the URI of its `SKILL.md`, listed or not.
+- `readResourceDirectory` lists the direct children of a directory in a skill namespace, when the
+  server declares `directoryRead`.
+- `readSkillResource` reads a file listed in a skill's manifest and fails with a `ValidationError`
+  unless its bytes match the listed SHA-256 digest and size, and, for `SKILL.md`, unless its YAML
+  frontmatter equals the listed `frontmatter`. Use it rather than `readResource` for skill files. A
+  skill whose `resources` is `"dynamic"` publishes no digests, so it fails with an
+  `UnsupportedError`.
+- Skill entries that break the extension's rules fail with a `ValidationError`. Of the frontmatter,
+  only `name` and `description` are checked, so fields from later Agent Skills revisions still
+  load. Decode `skill.frontmatter` with `McpSchema.SkillFrontmatter` to read the specification's
+  fields.
+- Acting on a skill is left to your application. The extension requires hosts to ignore
+  `allowed-tools`, and any other frontmatter that widens permissions, unless the user approved the
+  grant for that skill.
+
+```ts
+import { Effect } from "effect"
+import type { McpClient } from "effect/ai"
+
+export const loadSkill = (client: McpClient.McpClient, name: string) =>
+  Effect.gen(function*() {
+    const skills = yield* client.listSkills()
+    const skill = skills.find((skill) => skill.frontmatter.name === name)
+    if (skill === undefined) return undefined
+    return yield* client.readSkillResource({ skill, uri: skill.uri })
+  })
+```

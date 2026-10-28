@@ -1,8 +1,8 @@
 /**
  * Connects to MCP servers with scoped Effect clients.
  *
- * Clients discover tools, prompts and resources using the protocol revision selected by
- * their transport. `callTool` returns tool-reported errors as results; supplying a schema
+ * Clients discover tools, prompts, resources and Agent Skills using the protocol revision
+ * selected by their transport. `callTool` returns tool-reported errors as results; supplying a schema
  * turns them into a `ToolError` reason that retains the original result. Transport and
  * protocol failures fail the Effect. Interactive server requests, subscriptions, OAuth
  * and retries are not included.
@@ -13,6 +13,7 @@
 import * as ByteSize from "../ByteSize.ts"
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -32,6 +33,7 @@ import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
+import * as McpSkills from "./internal/mcpSkills.ts"
 import {
   ClosedError,
   ConfigurationError,
@@ -137,6 +139,51 @@ export interface McpClient {
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
+   * Returns every skill page as one snapshot with the same bounds as `listTools`, or none
+   * when the server does not declare the Skills extension. Fails on an invalid entry.
+   * Requires the `skills` option, as do the other skill methods.
+   */
+  readonly listSkills: (
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Skill>, McpClientError>
+  /**
+   * Gets a skill by the URI of its `SKILL.md`, whether or not `listSkills` returns it.
+   * Unbounded unless `timeout` is supplied.
+   */
+  readonly getSkill: (
+    params: { readonly uri: string },
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<McpSchema.Skill, McpClientError>
+  /**
+   * Lists the direct children of a directory in a skill namespace, with the same bounds as
+   * `listTools`. Requires the server's `directoryRead` setting.
+   */
+  readonly readResourceDirectory: (
+    params: { readonly uri: string },
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  /**
+   * Reads a file listed in a skill's manifest and fails with a `ValidationError` unless its
+   * bytes match the listed SHA-256 digest and size, and, for `SKILL.md`, unless its YAML
+   * frontmatter equals the listed frontmatter. Unbounded unless `timeout` is supplied.
+   */
+  readonly readSkillResource: (
+    params: { readonly skill: McpSchema.Skill; readonly uri: string },
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  /**
    * Calls a discovered tool, optionally decoding with a schema. Errors retain the full result.
    * Unbounded unless `timeout` is supplied.
    */
@@ -188,10 +235,19 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  *
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `discoveryLimits` sets the default scan limits of 100
- * pages and 10,000 items. `callTool`, `getPrompt` and `readResource` have no
+ * and bounds initialization and each complete `listTools`, `listPrompts`,
+ * `listResources`, `listSkills` or `readResourceDirectory` scan.
+ * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
+ * items. `callTool`,
+ * `getPrompt`, `readResource`, `getSkill` and `readSkillResource` have no
  * deadline unless their own `timeout` option is supplied.
+ *
+ * `skills: true` declares the Skills extension (SEP-2640) to the server and
+ * enables `listSkills`, `getSkill`, `readResourceDirectory` and
+ * `readSkillResource`; without it they fail with a `ConfigurationError`. They
+ * run only against a server that declares the extension too, and skill
+ * entries are checked against its rules. `readSkillResource` checks digests
+ * with SHA-256 on `crypto.subtle`.
  * Schema decoding requires the schema's services from the caller.
  *
  * @stability experimental
@@ -210,6 +266,7 @@ export const make: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
+  readonly skills?: boolean | undefined
 }) => Effect.Effect<
   McpClient,
   McpClientError,
@@ -242,10 +299,12 @@ export const make: (options: {
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
+  const skillsEnabled = options.skills === true
+  const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
     "io.modelcontextprotocol/clientInfo": clientInfo,
-    "io.modelcontextprotocol/clientCapabilities": {}
+    "io.modelcontextprotocol/clientCapabilities": clientCapabilities
   }
 
   const request = Effect.fnUntraced(function*<A>(
@@ -312,7 +371,7 @@ export const make: (options: {
     if (!modern) {
       return yield* request<InitializeResult>("initialize", {
         protocolVersion: version,
-        capabilities: {},
+        capabilities: clientCapabilities,
         clientInfo
       })
     }
@@ -362,30 +421,151 @@ export const make: (options: {
       ? Effect.fail(fail(new UnsupportedError({ description: `Server does not advertise ${kind}` })))
       : request<A>(method, params, tool)
 
+  const paginate = Effect.fnUntraced(function*<K extends string, A>(
+    label: string,
+    method: string,
+    key: K,
+    params: Record<string, unknown>,
+    limits: typeof DEFAULT_DISCOVERY_LIMITS
+  ) {
+    const items: Array<A> = []
+    const cursors = new Set<string>()
+    let cursor: string | undefined
+    for (let page = 0; page < limits.maxPages; page++) {
+      const result = yield* request<ListResult<K, A>>(method, cursor === undefined ? params : { ...params, cursor })
+      if (items.length + result[key].length > limits.maxItems) {
+        return yield* limitError(`MCP ${label} discovery exceeded its item limit`)
+      }
+      for (const item of result[key]) items.push(item)
+      if (result.nextCursor === undefined) return items
+      if (cursors.has(result.nextCursor)) {
+        return yield* limitError(`MCP ${label} discovery repeated a cursor`)
+      }
+      cursors.add(cursor = result.nextCursor)
+    }
+    return yield* limitError(`MCP ${label} discovery exceeded its page limit`)
+  })
+
   const list = <K extends Capability, A>(kind: K) =>
     Effect.fnUntraced(
       function*(callOptions?: DiscoveryOptions) {
         const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
         if (capabilities[kind] === undefined) return []
-        const items: Array<A> = []
-        const cursors = new Set<string>()
-        let cursor: string | undefined
-        for (let page = 0; page < limits.maxPages; page++) {
-          const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
-          if (items.length + result[kind].length > limits.maxItems) {
-            return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
-          }
-          for (const item of result[kind]) items.push(item)
-          if (result.nextCursor === undefined) return items
-          if (cursors.has(result.nextCursor)) {
-            return yield* limitError(`MCP ${kind} discovery repeated a cursor`)
-          }
-          cursors.add(cursor = result.nextCursor)
-        }
-        return yield* limitError(`MCP ${kind} discovery exceeded its page limit`)
+        return yield* paginate<K, A>(kind, `${kind}/list`, kind, {}, limits)
       },
       (effect, callOptions) => withDeadline(effect, `${kind} discovery`, callOptions?.timeout ?? timeout)
     )
+
+  // Hosts must not call the extension's methods unless the server declares it,
+  // and the extension requires the resources capability.
+  const skillsSettings = capabilities.extensions?.[McpSkills.EXTENSION_ID]
+  const servesSkills = isRecord(skillsSettings) && capabilities.resources !== undefined
+  const servesDirectories = servesSkills && isRecord(skillsSettings) && skillsSettings.directoryRead === true
+  const digest = yield* Effect.provide(Digest.Digest, Digest.layerWebCrypto)
+
+  const invalid = (description: string) => Effect.fail(fail(new ValidationError({ description })))
+  const unsupported = (description: string) => Effect.fail(fail(new UnsupportedError({ description })))
+  const requireSkillsOption = skillsEnabled ? Effect.void : Effect.fail(
+    fail(new ConfigurationError({ description: "MCP skills methods require the client's skills option" }))
+  )
+
+  const decodeSkill = Effect.fnUntraced(function*(entry: unknown) {
+    const skill = yield* decodeUnknown(McpSchema.Skill, entry) as Effect.Effect<McpSchema.Skill, McpClientError>
+    const problem = McpSkills.entryProblem(skill)
+    return problem === undefined ? skill : yield* invalid(`Invalid MCP skill ${skill.uri}: ${problem}`)
+  })
+
+  const listSkills = Effect.fnUntraced(
+    function*(options?: DiscoveryOptions) {
+      yield* requireSkillsOption
+      const limits = yield* resolveDiscoveryLimits(options?.limits, discoveryLimits)
+      if (!servesSkills) return []
+      const entries = yield* paginate<"skills", unknown>("skills", "skills/list", "skills", {}, limits)
+      // A catalog that changes between pages can list a skill twice; the first entry wins.
+      const skills = new Map<string, McpSchema.Skill>()
+      for (const entry of entries) {
+        const skill = yield* decodeSkill(entry)
+        if (!skills.has(skill.uri)) skills.set(skill.uri, skill)
+      }
+      return Array.from(skills.values())
+    },
+    (effect, callOptions) => withDeadline(effect, "skills discovery", callOptions?.timeout ?? timeout)
+  )
+
+  const getSkill = Effect.fnUntraced(
+    function*(params: { readonly uri: string }, _options?: CallOptions) {
+      yield* requireSkillsOption
+      if (!servesSkills) return yield* unsupported("Server does not declare the MCP Skills extension")
+      const result = yield* request<{ readonly skill: unknown }>("skills/get", { uri: params.uri })
+      const skill = yield* decodeSkill(result.skill)
+      return skill.uri === params.uri
+        ? skill
+        : yield* invalid(`MCP server returned skill ${skill.uri} for ${params.uri}`)
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "skills/get", callOptions?.timeout)
+  )
+
+  const readResourceDirectory = Effect.fnUntraced(
+    function*(params: { readonly uri: string }, options?: DiscoveryOptions) {
+      yield* requireSkillsOption
+      const limits = yield* resolveDiscoveryLimits(options?.limits, discoveryLimits)
+      if (!servesDirectories) {
+        return yield* unsupported("Server does not declare directory reads for the MCP Skills extension")
+      }
+      const entries = yield* paginate<"resources", unknown>(
+        "directory",
+        "resources/directory/read",
+        "resources",
+        { uri: params.uri },
+        limits
+      )
+      // A directory that changes between pages can list a child twice; the first entry wins.
+      const children = new Map<string, McpSchema.Resource>()
+      for (const entry of entries) {
+        const child = yield* decodeUnknown(McpSchema.Resource, entry) as Effect.Effect<
+          McpSchema.Resource,
+          McpClientError
+        >
+        if (!McpSkills.isDirectChild(params.uri, child.uri)) {
+          return yield* invalid(`${child.uri} is not a child of the MCP directory ${params.uri}`)
+        }
+        if (!children.has(child.uri)) children.set(child.uri, child)
+      }
+      return Array.from(children.values())
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "directory discovery", callOptions?.timeout ?? timeout)
+  )
+
+  const readSkillResource = Effect.fnUntraced(
+    function*(params: { readonly skill: McpSchema.Skill; readonly uri: string }, _options?: CallOptions) {
+      yield* requireSkillsOption
+      const { skill, uri } = params
+      if (skill.resources === "dynamic") {
+        return yield* unsupported(`MCP skill ${skill.uri} publishes no digests; read it with readResource`)
+      }
+      // A file missing from the manifest is a change to the skill, not a file to trust.
+      const listed = skill.resources.find((resource) => resource.uri === uri)
+      if (listed === undefined) return yield* invalid(`${uri} is not listed by the MCP skill ${skill.uri}`)
+      const result = yield* call<McpSchema.ReadResourceResult>("resources", "resources/read", { uri })
+      const [content, ...rest] = result.contents
+      if (content === undefined || rest.length > 0 || content.uri !== uri) {
+        return yield* invalid(`MCP resources/read returned other contents than ${uri}`)
+      }
+      const bytes = "text" in content ? encoder.encode(content.text) : content.blob
+      const actual = `sha256:${yield* digest.digestHex(Digest.sha256, bytes)}`
+      if (bytes.byteLength !== listed.size || actual !== listed.digest) {
+        return yield* invalid(`${uri} does not match the digest and size listed by the MCP skill ${skill.uri}`)
+      }
+      if (uri !== skill.uri) return result
+      // Verified bytes can still carry other frontmatter than the listing, and
+      // hosts must not load a skill whose two descriptions differ.
+      const frontmatter = McpSkills.parseFrontmatter("text" in content ? content.text : decoder.decode(bytes))
+      return frontmatter !== undefined && McpSkills.jsonEquals(frontmatter, skill.frontmatter)
+        ? result
+        : yield* invalid(`The frontmatter of ${uri} differs from the frontmatter listed for the MCP skill`)
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "resources/read", callOptions?.timeout)
+  )
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
 
@@ -442,6 +622,10 @@ export const make: (options: {
         "resources/read",
         callOptions?.timeout
       ),
+    listSkills,
+    getSkill,
+    readResourceDirectory,
+    readSkillResource,
     callTool: callTool as McpClient["callTool"]
   }
 })
@@ -805,6 +989,7 @@ export const layerStdio: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
+  readonly skills?: boolean | undefined
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly maxMessageBytes?: ByteSize.Input | undefined
@@ -1043,6 +1228,7 @@ export const layerHttp: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
+  readonly skills?: boolean | undefined
   readonly url: string | URL
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly headers?: Readonly<Record<string, string>> | undefined
@@ -1173,7 +1359,8 @@ const isRequest = (message: McpSchema.JsonRpcMessage): message is McpSchema.Json
 
 const isResponse = (message: McpSchema.JsonRpcMessage): message is McpSchema.JsonRpcResponse => !("method" in message)
 
-// The client advertises no capabilities, so it answers pings and declines every other server request.
+// The client advertises no capability that lets a server send it requests, so it answers pings and
+// declines every other server request.
 const replyToServer = (request: McpSchema.JsonRpcRequest): McpSchema.JsonRpcResponse =>
   request.method === "ping"
     ? { jsonrpc: "2.0", id: request.id, result: {} }
