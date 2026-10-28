@@ -20,13 +20,8 @@ import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
-import {
-  AlreadyProcessingMessage,
-  EntityNotAssignedToRunner,
-  MailboxFull,
-  MalformedMessage,
-  type PersistenceError
-} from "../ClusterError.ts"
+import type { PersistenceError } from "../ClusterError.ts"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "../ClusterSchema.ts"
 import * as ClusterSchema from "../ClusterSchema.ts"
@@ -121,8 +116,6 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
-    /** Set when the final reply was not stored because the shard moved on. */
-    fenced?: boolean | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -165,7 +158,7 @@ export const make = Effect.fnUntraced(function*<
      * Whether this runner still owns the shard, checked before storing the
      * final reply of a persisted request.
      */
-    readonly isShardOwned?: ((shardId: ShardId) => Effect.Effect<boolean, PersistenceError>) | undefined
+    readonly isShardOwned: (shardId: ShardId) => Effect.Effect<boolean>
   }
 ) {
   const config = yield* ShardingConfig
@@ -270,6 +263,14 @@ export const make = Effect.fnUntraced(function*<
     // Finalizers run in reverse, so the mailbox series and the resident
     // mailbox are removed only after the drain finalizer below has finished.
     const activeRequests: EntityState["activeRequests"] = new Map()
+    // Drops a request that has left this entity, starting the idle timer when
+    // it was the last one.
+    const removeActiveRequest = (requestId: Snowflake.Snowflake) => {
+      activeRequests.delete(requestId)
+      if (activeRequests.size === 0) {
+        state.lastActiveCheck = clock.currentTimeMillisUnsafe()
+      }
+    }
     let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
@@ -356,7 +357,7 @@ export const make = Effect.fnUntraced(function*<
                   const abandoned = ClusterAbandon.isCause(response.exit.cause) &&
                     (!isActive() || !options.sharding.hasShardId(address.shardId))
                   if (isShuttingDown || request.terminating || abandoned) {
-                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
+                    removeActiveRequest(Snowflake.Snowflake(response.requestId))
                     return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                   }
                   // An uninterruptible request ignores the interrupt and runs again.
@@ -382,22 +383,19 @@ export const make = Effect.fnUntraced(function*<
                 )
                 // A runner that lost the shard must not decide the stored
                 // result. A rejection is not retried.
-                const isShardOwned = options.isShardOwned
-                const save = !persisted || !isShardOwned ? write : Effect.flatMap(
-                  retryRespond(4, isShardOwned(address.shardId)),
+                let fenced = false
+                const save = !persisted ? write : Effect.flatMap(
+                  options.isShardOwned(address.shardId),
                   (owned): Effect.Effect<void, MalformedMessage | PersistenceError | EntityNotAssignedToRunner> => {
                     if (owned) return write
-                    request.fenced = true
+                    fenced = true
                     return Effect.fail(new EntityNotAssignedToRunner({ address }))
                   }
                 )
                 // Leave the request for the shard's owner: release the claim
                 // so its next poll sees it, and let local callers re-route.
                 const abandonFenced = Effect.suspend(() => {
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-                  if (activeRequests.size === 0) {
-                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                  }
+                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
                   return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
                     Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
                     Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))
@@ -407,12 +405,7 @@ export const make = Effect.fnUntraced(function*<
                   if (storageEnabled) {
                     processedRequestIds.add(request.message.envelope.requestId)
                   }
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-
-                  // Start the idle timer when the last request completes.
-                  if (activeRequests.size === 0) {
-                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                  }
+                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
                 })
                 const respond = Effect.andThen(save, complete).pipe(
                   Effect.catchTag("EntityNotAssignedToRunner", () => abandonFenced),
@@ -429,10 +422,12 @@ export const make = Effect.fnUntraced(function*<
                 }
 
                 if (Exit.isSuccess(exit)) {
-                  // A rejected save fails the transaction, rolling back the
-                  // handler's writes, and leaves the request for the owner.
-                  transaction.settle = (outcome) =>
-                    Exit.isSuccess(outcome) ? complete : request.fenced ? abandonFenced : Effect.flatMap(
+                  transaction.settle = (outcome) => {
+                    if (Exit.isSuccess(outcome)) return complete
+                    // A rejected save failed the transaction, rolling back the
+                    // handler's writes; the request is left for the owner.
+                    if (fenced) return abandonFenced
+                    return Effect.flatMap(
                       hasStoredExit(request.message.envelope.requestId),
                       (committed) => {
                         if (!committed) return restartFrom(outcome.cause)
@@ -443,6 +438,7 @@ export const make = Effect.fnUntraced(function*<
                         )
                       }
                     )
+                  }
                   return Effect.orDie(save)
                 }
                 transaction.settle = (outcome) =>

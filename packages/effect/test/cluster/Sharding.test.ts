@@ -2191,6 +2191,7 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
       runnerAddress: RunnerAddress.make("localhost", 1234),
       residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
       abandonUndelivered: () => Effect.void,
+      isShardOwned: () => Effect.succeed(true),
       maxIdleTime: Infinity,
       defectRetryPolicy: Schedule.spaced(1)
     }
@@ -2416,6 +2417,7 @@ describe.concurrent("Sharding defect recovery", () => {
           runnerAddress: RunnerAddress.make("localhost", 1234),
           residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
           abandonUndelivered: () => Effect.void,
+          isShardOwned: () => Effect.succeed(true),
           maxIdleTime: Infinity
         }
       )
@@ -4707,6 +4709,7 @@ const makeMailboxMaxManager = Effect.fnUntraced(function*(type: string, handler:
     runnerAddress: RunnerAddress.make("localhost", 1234),
     residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
     abandonUndelivered: () => Effect.void,
+    isShardOwned: () => Effect.succeed(true),
     maxIdleTime: Infinity
   })
   return Effect.fnUntraced(function*(shardId: ShardId.ShardId) {

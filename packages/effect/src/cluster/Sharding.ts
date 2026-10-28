@@ -15,12 +15,11 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
-import * as Deferred from "../Deferred.ts"
 import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
-import * as Exit from "../Exit.ts"
+import type * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
@@ -43,12 +42,8 @@ import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
-import {
-  AlreadyProcessingMessage,
-  EntityNotAssignedToRunner,
-  type MailboxFull,
-  PersistenceError
-} from "./ClusterError.ts"
+import type { MailboxFull, PersistenceError } from "./ClusterError.ts"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterError.ts"
 import * as ClusterMetrics from "./ClusterMetrics.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -296,16 +291,22 @@ const make = Effect.gen(function*() {
   }
   const activeShardsLatch = yield* Latch.make(false)
 
-  // Moves the refreshed shards that a lock refresh did not return from
+  // Applies the result of a lock refresh: refreshed shards it did not return,
+  // and returned shards no longer assigned to this runner, move from
   // `acquiredShards` to `releasingShards`. Shards acquired during the refresh
   // are absent from its response, so only the refreshed ones are considered.
   const releaseLostShards = (refreshed: ReadonlyArray<ShardId>, acquired: ReadonlyArray<ShardId>) => {
     for (const shardId of refreshed) {
-      if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
+      if (
+        MutableHashSet.has(acquiredShards, shardId) &&
+        (!acquired.includes(shardId) || !MutableHashSet.has(selfShards, shardId))
+      ) {
         MutableHashSet.remove(acquiredShards, shardId)
         MutableHashSet.add(releasingShards, shardId)
       }
     }
+    updateShardGauges()
+    if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
   }
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
@@ -707,21 +708,12 @@ const make = Effect.gen(function*() {
       return Effect.logInfo("Shard lock storage has recovered")
     })
 
-    const refreshShardLocks = Effect.gen(function*() {
+    const refreshShardLocks = Effect.suspend(() => {
       const refreshed = [...acquiredShards, ...releasingShards]
-      const acquired = yield* runnerStorage.refresh(selfAddress, refreshed)
-      releaseLostShards(refreshed, acquired)
-      for (let i = 0; i < acquired.length; i++) {
-        const shardId = acquired[i]
-        if (!MutableHashSet.has(selfShards, shardId)) {
-          MutableHashSet.remove(acquiredShards, shardId)
-          MutableHashSet.add(releasingShards, shardId)
-        }
-      }
-      updateShardGauges()
-      if (MutableHashSet.size(releasingShards) > 0) {
-        yield* activeShardsLatch.open
-      }
+      return Effect.map(
+        runnerStorage.refresh(selfAddress, refreshed),
+        (acquired) => releaseLostShards(refreshed, acquired)
+      )
     }).pipe(
       Effect.retry({
         times: 5,
@@ -1913,44 +1905,36 @@ const make = Effect.gen(function*() {
   // This runner's view of its shards lags lock storage by up to one refresh,
   // or longer while the process is paused. So the final reply of a persisted
   // request is stored only once a refresh of its shard's lock confirms it.
-  // Concurrent writers on a shard share one refresh. Entities draining from a
-  // released shard still hold its lock.
-  const pendingLockChecks = new Map<ShardId, Deferred.Deferred<boolean, PersistenceError>>()
-  const confirmShardLock = (runnerAddress: RunnerAddress, shardId: ShardId): Effect.Effect<boolean, PersistenceError> =>
+  // Anything short of that, including a refresh that failed, timed out, was
+  // interrupted, or never started because shutdown closed the scope, leaves
+  // the reply for the shard's next owner. Concurrent writers on a shard share
+  // one refresh, which outlives an interrupted writer. Entities draining from
+  // a released shard still hold its lock.
+  const pendingLockChecks = new Map<ShardId, Fiber.Fiber<boolean>>()
+  const confirmShardLock = (runnerAddress: RunnerAddress, shardId: ShardId): Effect.Effect<boolean> =>
     Effect.suspend(() => {
       if (!MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)) {
         return Effect.succeed(false)
       }
       const pending = pendingLockChecks.get(shardId)
-      if (pending) return Deferred.await(pending)
-      const result = Deferred.makeUnsafe<boolean, PersistenceError>()
-      pendingLockChecks.set(shardId, result)
-      return runnerStorage.refresh(runnerAddress, [shardId]).pipe(
-        Effect.timeoutOrElse({
-          duration: shardLockInterval,
-          orElse: () => Effect.fail(new PersistenceError({ cause: new Error("Shard lock refresh timed out") }))
-        }),
+      const check = pending ? Effect.succeed(pending) : runnerStorage.refresh(runnerAddress, [shardId]).pipe(
         Effect.map((acquired) => {
           releaseLostShards([shardId], acquired)
-          updateShardGauges()
-          if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
           return acquired.includes(shardId)
         }),
-        // The refresh outlives an interrupted writer, so others can share it.
+        Effect.timeoutOption(shardLockInterval),
+        Effect.map(Option.getOrElse(() => false)),
+        Effect.catch(() => Effect.succeed(false)),
         Effect.forkIn(shardingScope, { startImmediately: true }),
-        Effect.flatMap((fiber) => {
-          // Settles every writer, also when the refresh is interrupted or never
-          // starts because shutdown closed the scope: the reply is then left
-          // for the shard's next owner.
-          fiber.addObserver((exit) => {
-            if (pendingLockChecks.get(shardId) === result) pendingLockChecks.delete(shardId)
-            Deferred.doneUnsafe(
-              result,
-              Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? Exit.succeed(false) : exit
-            )
-          })
-          return Deferred.await(result)
+        Effect.map((fiber) => {
+          pendingLockChecks.set(shardId, fiber)
+          fiber.addObserver(() => pendingLockChecks.delete(shardId))
+          return fiber
         })
+      )
+      return Effect.flatMap(
+        check,
+        (fiber) => Effect.map(Fiber.await(fiber), (exit) => exit._tag === "Success" && exit.value)
       )
     })
 
