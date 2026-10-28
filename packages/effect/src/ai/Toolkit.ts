@@ -14,6 +14,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -485,10 +486,7 @@ const Proto = {
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
           Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
-          Effect.matchCauseEffect({
-            onFailure: (cause) => Queue.failCause(queue, cause),
-            onSuccess: () => Queue.end(queue)
-          }),
+          Effect.onExit((exit) => Exit.isFailure(exit) ? Queue.failCause(queue, exit.cause) : Queue.end(queue)),
           Effect.forkChild
         )
 

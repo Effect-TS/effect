@@ -219,8 +219,10 @@ export const make = Effect.fnUntraced(function*<
         const races = yield* CurrentRaces
         const request = yield* Schema.decodeUnknownEffect(InputRequest)(options.request).pipe(Effect.orDie)
         return yield* Effect.gen(function*() {
+          // Register publication before yielding so sibling inputs can start
+          // before the first durable wait suspends the workflow run.
           yield* Workflow.wrapActivityResult(
-            append({ kind: "input", key: options.key, request, scopes: races }),
+            Effect.andThen(Effect.yieldNow, append({ kind: "input", key: options.key, request, scopes: races })),
             () => false
           ).pipe(Effect.provideContext(current))
           const value = yield* DurableDeferred.raceAll({

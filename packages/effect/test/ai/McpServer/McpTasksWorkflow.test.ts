@@ -74,15 +74,10 @@ const open = Effect.fnUntraced(function*(
     Layer.provide(Layer.succeed(SqlClient.SqlClient, client))
   )).pipe(Scope.provide(scope))
   const engine = wrapEngine(Context.get(context, WorkflowEngine.WorkflowEngine))
-  const resumeToken = yield* Deferred.make<DurableDeferred.Token>()
-  const handler = Effect.gen(function*() {
-    yield* Deferred.succeed(resumeToken, yield* DurableDeferred.token(resume))
-    return yield* run
-  })
   const sharding = Context.get(context, Sharding.Sharding)
   const registration = McpTasks.toolkit(tools, {
     owner: McpSchema.McpRequestContext.use((request) => Effect.succeed(request.clientInfo?.name ?? "anonymous"))
-  }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, { report: () => handler }, { name: "sql-reports" }))).pipe(
+  }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, { report: () => run }, { name: "sql-reports" }))).pipe(
     Layer.provide(Layer.succeed(WorkflowEngine.WorkflowEngine, engine)),
     Layer.provideMerge(makeServerLayer({ name: "SqlTasks", protocols: [McpProtocol.v2026_07_28] }))
   )
@@ -153,12 +148,18 @@ const open = Effect.fnUntraced(function*(
     assert.isTrue(typeof response === "object" && response !== null && "result" in response, JSON.stringify(response))
     return (yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))(response)).result
   })
-  const release = drive(Effect.gen(function*() {
-    const token = yield* Deferred.await(resumeToken)
-    yield* DurableDeferred.succeed(resume, { token, value: undefined }).pipe(
-      Effect.provideService(WorkflowEngine.WorkflowEngine, engine)
-    )
-  }))
+  const release = (taskId: string) =>
+    drive(Effect.gen(function*() {
+      // A reconstructed runner need not replay a suspended handler before an
+      // external caller completes its persisted wait point.
+      const [, identity] = yield* Schema.decodeUnknownEffect(
+        Schema.fromJsonString(Schema.Tuple([Schema.String, DurableDeferred.TokenParsed.FromString]))
+      )(yield* Schema.decodeUnknownEffect(Schema.StringFromBase64Url)(taskId))
+      const token = new DurableDeferred.TokenParsed({ ...identity, deferredName: resume.name }).asToken
+      yield* DurableDeferred.succeed(resume, { token, value: undefined }).pipe(
+        Effect.provideService(WorkflowEngine.WorkflowEngine, engine)
+      )
+    }))
   return {
     start,
     engine,
@@ -217,7 +218,7 @@ it.effect("should preserve original request metadata and completed Activities wh
     yield* first.close
     const second = yield* open(db.second, handler)
     assert.strictEqual((yield* second.get(created.taskId)).status, "working")
-    yield* second.release
+    yield* second.release(created.taskId)
     const completed = yield* second.waitFor(created.taskId, "completed")
     if (completed.status === "completed") {
       assert.strictEqual(completed.result.structuredContent, "acme:acme")
@@ -235,7 +236,7 @@ it.effect("should retain the engine outcome when an acknowledged cancellation is
     yield* first.get(created.taskId)
     const response = yield* first.request("tasks/cancel", { taskId: created.taskId })
     yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.TaskAcknowledgement }))(response)
-    yield* first.release
+    yield* first.release(created.taskId)
     const terminal = yield* first.waitFor(created.taskId, ["completed", "cancelled"])
     yield* first.close
     const second = yield* open(db.second, handler)
@@ -399,7 +400,7 @@ it.effect("should retain working status without client input when the handler wa
     yield* first.close
     const second = yield* open(db.second, handler)
     assert.deepStrictEqual(yield* second.get(created.taskId), working)
-    yield* second.release
+    yield* second.release(created.taskId)
     const completed = yield* second.waitFor(created.taskId, "completed")
     assert.isUndefined(completed.statusMessage)
     yield* second.close
@@ -428,7 +429,7 @@ it.effect("should publish a distinct status after replay skips a cached Activity
     yield* first.waitFor(created.taskId, "working", (task) => task.statusMessage === "Preparing report")
     yield* first.close
     const second = yield* open(db.second, handler)
-    yield* second.release
+    yield* second.release(created.taskId)
     const completed = yield* second.waitFor(created.taskId, "completed")
     assert.strictEqual(completed.statusMessage, "Report ready")
     assert.strictEqual(checkpoints, 1)
@@ -561,7 +562,7 @@ it.effect("should withdraw input when its caller is interrupted during publicati
       (task) => task.statusMessage === "Continuing without input"
     )
     assert.isFalse("inputRequests" in working)
-    yield* runner.release
+    yield* runner.release(created.taskId)
     const completed = yield* runner.waitFor(created.taskId, "completed")
     if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "withdrawn")
   }))
@@ -599,7 +600,7 @@ it.effect("should withdraw a skipped input when replay returns a cached durable 
     const first = yield* open(db.first, handler)
     const created = yield* first.start
     yield* first.waitFor(created.taskId, "input_required")
-    yield* first.release
+    yield* first.release(created.taskId)
     yield* first.drive(Deferred.await(raceFinished))
     yield* first.close
     pauseAfterRace = false
@@ -668,7 +669,7 @@ for (const winner of ["inner", "outer"] as const) {
         "input_required",
         (task) => task.status === "input_required" && Object.keys(task.inputRequests).length === 2
       )
-      yield* first.release
+      yield* first.release(created.taskId)
       yield* first.drive(Deferred.await(finished))
       yield* first.waitFor(
         created.taskId,
