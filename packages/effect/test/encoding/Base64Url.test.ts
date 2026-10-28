@@ -34,7 +34,7 @@ describe("Base64Url", () => {
   })
 
   it("rejects malformed padding", () => {
-    for (const input of ["SGVsbG8_=", "SGVsbG8_==", "AAAA=", "AAAA==", "AAA=="]) {
+    for (const input of ["SGVsbG8_=", "SGVsbG8_==", "AAAA=", "AAAA==", "AAA==", "Zg="]) {
       assert.isTrue(Result.isFailure(Base64Url.decode(input)), input)
     }
   })

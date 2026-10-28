@@ -102,7 +102,7 @@ export const encodePadded: (input: Uint8Array | string) => string = (input) =>
 export const decode = (str: string): Result.Result<Uint8Array, EncodingError> => {
   const stripped = str.replace(/[\n\r]/g, "")
   const length = stripped.length
-  if (length % 4 === 1) {
+  if (length % 4 === 1 || (stripped.endsWith("=") && length % 4 !== 0)) {
     return Result.fail(
       new EncodingError({
         module: "Base64Url",
