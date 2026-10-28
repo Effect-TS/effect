@@ -586,7 +586,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
         url = target.pathname + target.search
         const headers: Http.IncomingHttpHeaders = { ...requestHeaders(source), host: target.host }
-        headersOverride = headers as Headers.Headers
+        headersOverride = Headers.fromInput(headers)
       }
     }
     this.url = url
@@ -678,7 +678,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get headers(): Headers.Headers {
-    this.headersOverride ??= requestHeaders(this.source) as Headers.Headers
+    this.headersOverride ??= Headers.fromInput(requestHeaders(this.source))
     return this.headersOverride
   }
 
