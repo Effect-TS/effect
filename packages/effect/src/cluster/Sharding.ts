@@ -1415,34 +1415,37 @@ const make = Effect.gen(function*() {
     ClusterMetrics.runnersHealthy.updateUnsafe(BigInt(1), Context.empty())
   }
 
-  yield* Effect.gen(function*() {
-    const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
-    let nextRunners = MutableHashMap.empty<Runner, boolean>()
-    const healthyRunners = MutableHashSet.empty<Runner>()
-    const withTimeout = Effect.timeout(Duration.seconds(5))
+  // The sync state lives outside the loop, so it survives the loop restarting
+  // after a storage failure instead of publishing pending joins early.
+  const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
+  let nextRunners = MutableHashMap.empty<Runner, boolean>()
+  const healthyRunners = MutableHashSet.empty<Runner>()
 
-    // Healthy runners that joined after the first assignment are held back
-    // from the hash rings until the healthy set settles, so a burst of joins
-    // moves each shard at most once.
-    const settleWindow = Duration.toMillis(Duration.fromInputUnsafe(config.assignmentSettleWindow))
-    const pendingRunners = MutableHashSet.empty<Runner>()
-    let pendingSince = 0
-    let pendingChangedAt = 0
-    let assignmentsPublished = false
-    // Persists across iterations until the shard assignments are recomputed
-    let changed = false
+  // Healthy runners that joined after the first assignment are held back
+  // from the hash rings until the healthy set settles, so a burst of joins
+  // moves each shard at most once.
+  const settleWindow = Duration.toMillis(Duration.fromInputUnsafe(config.assignmentSettleWindow))
+  const pendingRunners = MutableHashSet.empty<Runner>()
+  let pendingSince = 0
+  let pendingChangedAt = 0
+  let assignmentsPublished = false
+  // Persists across iterations until the shard assignments are recomputed
+  let changed = false
 
-    const addToRings = (runner: Runner) => {
-      for (let i = 0; i < runner.groups.length; i++) {
-        const group = runner.groups[i]
-        let ring = hashRings.get(group)
-        if (!ring) {
-          ring = HashRing.make()
-          hashRings.set(group, ring)
-        }
-        HashRing.add(ring, runner.address, { weight: runner.weight })
+  const addToRings = (runner: Runner) => {
+    for (let i = 0; i < runner.groups.length; i++) {
+      const group = runner.groups[i]
+      let ring = hashRings.get(group)
+      if (!ring) {
+        ring = HashRing.make()
+        hashRings.set(group, ring)
       }
+      HashRing.add(ring, runner.address, { weight: runner.weight })
     }
+  }
+
+  yield* Effect.gen(function*() {
+    const withTimeout = Effect.timeout(Duration.seconds(5))
 
     while (true) {
       // Ensure the current runner is registered
