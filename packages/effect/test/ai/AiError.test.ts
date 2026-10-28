@@ -6,15 +6,41 @@ import { HttpClientError, HttpClientRequest } from "effect/http"
 describe("AiError", () => {
   describe("reason types", () => {
     describe("NetworkError", () => {
-      it("preserves redacted query params from request errors", () => {
-        const request = HttpClientRequest.get("https://example.com").pipe(
-          HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret"))
+      it("keeps only the method and url from request errors", () => {
+        const request = HttpClientRequest.get("https://example.com/models").pipe(
+          HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
+          HttpClientRequest.setHeader("authorization", "Bearer header-secret")
         )
         const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request }))
+        assert.strictEqual(error.method, "GET")
+        assert.strictEqual(error.url, "https://example.com/models")
         const output = JSON.stringify(error)
-        assert.include(output, "remote")
         assert.notInclude(output, "param-secret")
+        assert.notInclude(output, "header-secret")
       })
+
+      it("keeps fromRequestError usable as a callback", () => {
+        const reasons: ReadonlyArray<HttpClientError.RequestError> = [
+          new HttpClientError.TransportError({ request: HttpClientRequest.get("https://example.com/a") }),
+          new HttpClientError.InvalidUrlError({ request: HttpClientRequest.get("https://example.com/b") })
+        ]
+        const errors = reasons.map(AiError.NetworkError.fromRequestError)
+        assert.deepStrictEqual(errors.map((error) => error.cause), [undefined, undefined])
+      })
+
+      it.effect("round-trips an extension method", () =>
+        Effect.gen(function*() {
+          const error = new AiError.NetworkError({
+            reason: "TransportError",
+            method: "PROPFIND",
+            url: "https://api.example.com/resources"
+          })
+          const encoded = yield* Schema.encodeEffect(AiError.NetworkError)(error)
+          assert.strictEqual(encoded.method, "PROPFIND")
+          const decoded = yield* Schema.decodeEffect(AiError.NetworkError)(encoded)
+          assert.strictEqual(decoded.method, "PROPFIND")
+          assert.isUndefined(decoded.cause)
+        }))
     })
 
     describe("RateLimitError", () => {
@@ -222,13 +248,6 @@ describe("AiError", () => {
 
     describe("InvalidResponseError", () => {
       const http = {
-        request: {
-          method: "POST" as const,
-          url: "https://api.example.com/v1/chat",
-          urlParams: [],
-          hash: undefined,
-          headers: {}
-        },
         response: { status: 200, headers: { "x-request-id": "req_123" } },
         body: "{\"choices\":\"none\"}"
       }
@@ -688,13 +707,8 @@ describe("AiError", () => {
       it("should return false for reason types", () => {
         const networkError = new AiError.NetworkError({
           reason: "TransportError",
-          request: {
-            method: "GET",
-            url: "https://example.com",
-            urlParams: [],
-            hash: undefined,
-            headers: {}
-          }
+          method: "GET",
+          url: "https://example.com"
         })
         assert.isFalse(AiError.isAiError(networkError))
       })
@@ -735,13 +749,6 @@ describe("AiError", () => {
       it.effect("should encode and decode roundtrip", () =>
         Effect.gen(function*() {
           const context = {
-            request: {
-              method: "POST" as const,
-              url: "https://api.example.com/v1/chat",
-              urlParams: [["model", "gpt-4"]] as Array<[string, string]>,
-              hash: undefined,
-              headers: { "Content-Type": "application/json" }
-            },
             response: {
               status: 200,
               headers: { "Content-Type": "application/json" }

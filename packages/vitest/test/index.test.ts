@@ -193,6 +193,42 @@ describe("layer", () => {
     })
   })
 
+  describe("release with retried or repeated tests", () => {
+    const resources: Array<{ open: boolean }> = []
+    afterAll(() => {
+      expect(resources.map((resource) => resource.open)).toEqual([false, false])
+    })
+
+    class Resource extends Context.Service<Resource, { readonly open: boolean }>()("Resource") {
+      static layer = Layer.effect(Resource)(
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            const resource = { open: true }
+            resources.push(resource)
+            return resource
+          }),
+          (resource) => Effect.sync(() => resource.open = false)
+        )
+      )
+    }
+
+    const assertOpen = Effect.map(Resource, (resource) => expect(resource.open).toEqual(true))
+
+    it.layer(Resource.layer)((it) => {
+      it.effect("retried", ({ task }) =>
+        Effect.andThen(
+          assertOpen,
+          task.result?.retryCount === 0 ? Effect.die("first attempt fails") : Effect.void
+        ), { retry: 1 })
+      it.effect("after retried", () => assertOpen)
+    })
+
+    it.layer(Resource.layer)((it) => {
+      it.effect("repeated", () => assertOpen, { repeats: 1 })
+      it.effect("after repeated", () => assertOpen)
+    })
+  })
+
   describe("anonymous layer next to a Vitest fixture", () => {
     const withValue = it.extend("value", () => 1)
 

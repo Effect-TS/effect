@@ -708,12 +708,11 @@ export const make = (
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
           const effect = f(request, url, controller.signal, fiber as any)
-          if (scopedController) return effect
+          if (scopedController) return Effect.map(effect, (response) => trackResponse(response, controller, true))
           return Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(effect), {
               onSuccess(response) {
-                responseRegistry.register(response, controller)
-                return Effect.succeed(new InterruptibleResponse(response, controller))
+                return Effect.succeed(trackResponse(response, controller, false))
               },
               onFailure(cause) {
                 if (Cause.hasInterrupts(cause)) {
@@ -754,9 +753,7 @@ export const make = (
                       endSpanWithStatusError(fiber, span, request, response)
                     }
 
-                    if (scopedController) return Effect.succeed(response)
-                    responseRegistry.register(response, controller)
-                    return Effect.succeed(new InterruptibleResponse(response, controller))
+                    return Effect.succeed(trackResponse(response, controller, scopedController !== undefined))
                   },
                   onFailure(cause) {
                     if (!scopedController && Cause.hasInterrupts(cause)) {
@@ -1868,41 +1865,47 @@ export const tapRequest: {
 )
 
 /**
- * Adds a `Ref` of cookies to the client for handling cookies across requests.
+ * Adds a `Ref` of stored cookies to the client for handling cookies across
+ * requests.
  *
  * **When to use**
  *
  * Use to add shared cookie storage to a client so response cookies are retained
- * and sent by later requests.
+ * and sent by later requests to a matching host, path, and scheme.
+ *
+ * **Details**
+ *
+ * Response cookies are merged into the ref with `Cookies.mergeIntoArray` for
+ * the response URL. Before each request, `Cookies.toRequestCookieHeader` selects
+ * the cookies for the request URL and sets them as the `cookie` header. Expiry
+ * uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
 export const withCookiesRef: {
-  (ref: Ref.Ref<Cookies.Cookies>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
-  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<Cookies.Cookies>): HttpClient.With<E, R>
+  (ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): HttpClient.With<E, R>
 } = dual(
   2,
   <E, R>(
     self: HttpClient.With<E, R>,
-    ref: Ref.Ref<Cookies.Cookies>
+    ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>
   ): HttpClient.With<E, R> =>
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
-        Effect.tap(
-          self.postprocess(request),
-          (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
-        ),
+        Effect.tap(self.postprocess(request), (response) => {
+          const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
+          return Ref.update(ref, Cookies.mergeIntoArray(response.url, response.cookies, now))
+        }),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(
-            Ref.get(ref),
-            (cookies) =>
-              Cookies.isEmpty(cookies)
-                ? request
-                : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-          ))
+          Effect.map(Ref.get(ref), (cookies) => {
+            const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
+            const header = Cookies.toRequestCookieHeader(cookies, request.url, now)
+            return header === undefined ? request : HttpClientRequest.setHeader(request, "cookie", header)
+          }))
     )
 )
 
@@ -2006,13 +2009,31 @@ export const followRedirects: {
               ) {
                 nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
                 nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-encoding")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-language")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-location")
               }
               if (url.origin !== new URL(response.request.url).origin) {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
               }
-              return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
+              // Request the Location as sent: setUrl with a URL object would re-encode its query
+              const hash = url.hash === "" ? Option.none() : Option.some(url.hash.slice(1))
+              url.hash = ""
+              nextRequest = HttpClientRequest.makeWith(
+                nextRequest.method,
+                url.href,
+                UrlParams.empty,
+                hash,
+                nextRequest.headers,
+                nextRequest.body
+              )
+              // Abort the discarded response to release its connection without reading the body
+              return Effect.andThen(
+                Effect.sync(() => responseControllers.get(response)?.abort()),
+                loop(Effect.succeed(nextRequest), redirects + 1)
+              )
             }
           )
         })
@@ -2151,6 +2172,21 @@ const responseRegistry = (() => {
 
 const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
 
+const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
+
+const trackResponse = (
+  response: HttpClientResponse.HttpClientResponse,
+  controller: AbortController,
+  scoped: boolean
+): HttpClientResponse.HttpClientResponse => {
+  if (!scoped) {
+    responseRegistry.register(response, controller)
+    response = new InterruptibleResponse(response, controller)
+  }
+  responseControllers.set(response, controller)
+  return response
+}
+
 class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pipeable {
   readonly original: HttpClientResponse.HttpClientResponse
   readonly controller: AbortController
@@ -2259,7 +2295,38 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
   }
 }
 
-const isTransientError = (error: unknown) => Cause.isTimeoutError(error) || isTransientHttpError(error)
+/**
+ * Returns `true` for an error that `retryTransient` retries by default: a
+ * timeout, a transport error, or a status code error with a transient response.
+ *
+ * **When to use**
+ *
+ * Use to classify failures the same way `retryTransient` does, for example in a
+ * custom retry policy or a circuit breaker.
+ *
+ * **Example** (Classifying client errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause } from "effect"
+ * import { HttpClient, HttpClientError, HttpClientRequest } from "effect/http"
+ *
+ * const request = HttpClientRequest.get("https://example.com")
+ * const transportError = new HttpClientError.HttpClientError({
+ *   reason: new HttpClientError.TransportError({ request })
+ * })
+ *
+ * HttpClient.isTransientError(transportError) // => true
+ * HttpClient.isTransientError(new Cause.TimeoutError()) // => true
+ * HttpClient.isTransientError(new Error("boom")) // => false
+ * ```
+ *
+ * @see {@link isTransientResponse} for the response statuses it accepts
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientError = (error: unknown): boolean => Cause.isTimeoutError(error) || isTransientHttpError(error)
 
 const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&
@@ -2293,7 +2360,21 @@ const isTooManyRequestsHttpClientError = (
 ): error is Error.HttpClientError & { readonly reason: Error.StatusCodeError } =>
   Error.isHttpClientError(error) && error.reason._tag === "StatusCodeError" && error.reason.response.status === 429
 
-const isTransientResponse = (response: HttpClientResponse.HttpClientResponse) =>
+/**
+ * Returns `true` for a response whose status `retryTransient` retries by
+ * default: 408, 429, 500, 502, 503 or 504.
+ *
+ * **When to use**
+ *
+ * Use to retry the same responses as `retryTransient` in a custom retry policy.
+ *
+ * @see {@link isTransientError} for the matching error predicate
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientResponse = (response: HttpClientResponse.HttpClientResponse): boolean =>
   response.status === 408 ||
   response.status === 429 ||
   response.status === 500 ||

@@ -129,21 +129,6 @@ const chown = (() => {
   return (path: string, uid: number, gid: number) => nodeChown(path, uid, gid)
 })()
 
-// == glob
-
-const glob = ((): FileSystem.FileSystem["glob"] => {
-  const nodeGlob = effectify(
-    NFS.glob,
-    handleErrnoException("FileSystem", "glob"),
-    handleBadArgument("glob")
-  )
-  return (pattern: string, options) =>
-    nodeGlob(pattern, {
-      cwd: options?.root,
-      exclude: options?.exclude
-    })
-})()
-
 // == link
 
 const link = (() => {
@@ -214,7 +199,7 @@ const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectorySco
   return (options) =>
     Effect.acquireRelease(
       makeDirectory(options),
-      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true }))
+      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true, force: true }))
     )
 })()
 
@@ -514,7 +499,7 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
   return (options) =>
     Effect.acquireRelease(
       makeFile(options),
-      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true }))
+      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true, force: true }))
     )
 })()
 
@@ -525,6 +510,16 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
     try: () => NFS.promises.readdir(path, options),
     catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
   })
+
+const readDirectoryEntries = (path: string) =>
+  Effect.tryPromise({
+    try: () => NFS.promises.readdir(path, { withFileTypes: true }),
+    catch: (err) => handleErrnoException("FileSystem", "readDirectoryEntries")(err as any, [path])
+  }).pipe(
+    Effect.map((entries) =>
+      entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
+    )
+  )
 
 // == readFile
 
@@ -578,27 +573,30 @@ const rename = (() => {
 
 // == stat
 
+const fileType = (stat: NFS.BigIntStats | NFS.Dirent): FileSystem.File.Type =>
+  stat.isFile() ?
+    "File" :
+    stat.isDirectory() ?
+    "Directory" :
+    stat.isSymbolicLink() ?
+    "SymbolicLink" :
+    stat.isBlockDevice() ?
+    "BlockDevice" :
+    stat.isCharacterDevice() ?
+    "CharacterDevice" :
+    stat.isFIFO() ?
+    "FIFO" :
+    stat.isSocket() ?
+    "Socket" :
+    "Unknown"
+
 const makeFileInfo = (
   stat: NFS.BigIntStats,
   method = "stat"
 ): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
   Effect.try({
     try: (): FileSystem.File.Info => ({
-      type: stat.isFile() ?
-        "File" :
-        stat.isDirectory() ?
-        "Directory" :
-        stat.isSymbolicLink() ?
-        "SymbolicLink" :
-        stat.isBlockDevice() ?
-        "BlockDevice" :
-        stat.isCharacterDevice() ?
-        "CharacterDevice" :
-        stat.isFIFO() ?
-        "FIFO" :
-        stat.isSocket() ?
-        "Socket" :
-        "Unknown",
+      type: fileType(stat),
       mtime: Option.fromNullishOr(stat.mtime),
       atime: Option.fromNullishOr(stat.atime),
       birthtime: Option.fromNullishOr(stat.birthtime),
@@ -750,7 +748,6 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     chown,
     copy,
     copyFile,
-    glob,
     link,
     lstat,
     makeDirectory,
@@ -760,6 +757,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     makeTempFileScoped,
     open,
     readDirectory,
+    readDirectoryEntries,
     readFile,
     readLink,
     realPath,

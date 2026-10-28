@@ -6269,6 +6269,9 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  *
  * The `log` option controls whether the failure is logged before the stream
  * terminates.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Gotchas**
  *
@@ -6317,12 +6320,12 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  */
 export const ignore: <
   Arg extends Stream<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends [Stream<infer A, infer _E, infer R>] ? Stream<A, never, R>
   : <A, E, R>(self: Stream<A, E, R>) => Stream<A, never, R> = dual(
@@ -6330,7 +6333,7 @@ export const ignore: <
     <A, E, R>(
       self: Stream<A, E, R>,
       options?: {
-        readonly log?: boolean | Severity | undefined
+        readonly log?: boolean | Severity | "Unhandled" | undefined
       } | undefined
     ): Stream<A, never, R> => fromChannel(Channel.ignore(self.channel, options))
   )
@@ -6342,6 +6345,12 @@ export const ignore: <
  *
  * Use when you need to silently suppress a stream's entire failure cause,
  * including both typed errors and defects, rather than propagate it downstream.
+ *
+ * **Details**
+ *
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Example** (Ignoring stream failure causes)
  *
@@ -6367,19 +6376,19 @@ export const ignore: <
  */
 export const ignoreCause: <
   Arg extends Stream<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 >(
   streamOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends [Stream<infer A, infer _E, infer R>] ? Stream<A, never, R>
   : <A, E, R>(self: Stream<A, E, R>) => Stream<A, never, R> = dual(
     (args) => isStream(args[0]),
     <A, E, R>(
       self: Stream<A, E, R>,
-      options?: { readonly log?: boolean | Severity | undefined } | undefined
+      options?: { readonly log?: boolean | Severity | "Unhandled" | undefined } | undefined
     ): Stream<A, never, R> => fromChannel(Channel.ignoreCause(self.channel, options))
   )
 
@@ -7467,10 +7476,10 @@ export const rechunk: {
       let chunk = Arr.empty<A>() as Arr.NonEmptyArray<A>
       let index = 0
       let current: Arr.NonEmptyReadonlyArray<A> | undefined
-      let done = false
+      let cause: Cause.Cause<E | Cause.Done> | undefined
 
       return Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> {
-        if (done) return Cause.done()
+        if (cause) return Effect.failCause(cause)
         else if (current === undefined) {
           return Effect.flatMap(pull, (arr) => {
             if (chunk.length === 0 && arr.length === target) {
@@ -7497,10 +7506,10 @@ export const rechunk: {
         current = undefined
         return loop()
       }).pipe(
-        Pull.catchDone(() => {
-          if (chunk.length === 0) return Cause.done()
+        Effect.catchCause((cause_) => {
+          if (chunk.length === 0) return Effect.failCause(cause_)
           const result = chunk
-          done = true
+          cause = cause_
           chunk = [] as any
           return Effect.succeed(result)
         })
@@ -8879,7 +8888,12 @@ const groupByImpl = <A, E, R, K, V, E2, R2>(
         body: constant(Effect.flatMap(pull, (arr) => f(arr, queues, queueMap))),
         step: constVoid
       }).pipe(
-        Effect.catchCause((cause) => Queue.failCause(out, cause)),
+        Effect.catchCause((cause) => {
+          for (const [, queue] of queueMap) {
+            Queue.endUnsafe(queue)
+          }
+          return Queue.failCause(out, cause)
+        }),
         Effect.forkIn(scope)
       )
 

@@ -14,6 +14,7 @@ declare const taggedInput:
 declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
+declare const status: "draft" | "review" | "published"
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
 
 describe("Match", () => {
@@ -294,6 +295,112 @@ describe("Match", () => {
         C: () => 1
       })
     )
+  })
+
+  it("literalsExhaustive narrows each literal handler and rejects missing and unknown literals", () => {
+    expect(
+      Match.value(status).pipe(
+        Match.literalsExhaustive({
+          draft: (value) => {
+            expect(value).type.toBe<"draft">()
+            return 0
+          },
+          review: () => "review",
+          published: () => true
+        })
+      )
+    ).type.toBe<number | string | boolean>()
+
+    expect(
+      Match.type<"draft" | 404>().pipe(
+        Match.literalsExhaustive({
+          draft: () => "draft",
+          404: (value) => {
+            expect(value).type.toBe<404>()
+            return value
+          }
+        })
+      )
+    ).type.toBe<(u: "draft" | 404) => string | 404>()
+
+    Match.value(status).pipe(
+      // @ts-expect-error Property 'published' is missing
+      Match.literalsExhaustive({ draft: () => 0, review: () => 1 })
+    )
+
+    Match.value(status).pipe(
+      Match.literalsExhaustive({
+        draft: () => 0,
+        review: () => 1,
+        published: () => 2,
+        // @ts-expect-error Type '() => number' is not assignable to type 'never'
+        archived: () => 3
+      })
+    )
+  })
+
+  it("literals removes only the handled literals from the remaining input", () => {
+    Match.type<"draft" | "review" | 404 | null>().pipe(
+      Match.literals({
+        404: (value) => {
+          expect(value).type.toBe<404>()
+        }
+      }),
+      Match.orElse((value) => {
+        expect(value).type.toBe<"draft" | "review" | null>()
+      })
+    )
+
+    expect(
+      Match.type<"draft" | "review" | null>().pipe(
+        Match.literals({ draft: () => 0 }),
+        Match.when(null, () => 1),
+        Match.literalsExhaustive({ review: () => 2 })
+      )
+    ).type.toBe<(u: "draft" | "review" | null) => number>()
+
+    Match.value(status).pipe(
+      Match.literals({
+        draft: () => 0,
+        // @ts-expect-error Type '() => number' is not assignable to type 'never'
+        archived: () => 1
+      })
+    )
+  })
+
+  it("literal records reject widened, ambiguous and unsupported inputs", () => {
+    // A finite record never proves `string` or `number` exhaustive, and widened
+    // members contribute no literal keys
+    // @ts-expect-error is not assignable to
+    Match.type<string>().pipe(Match.literalsExhaustive({ draft: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<"draft" | number>().pipe(Match.literalsExhaustive({ draft: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<string>().pipe(Match.literals({ draft: () => 0 }))
+
+    // `1` and `"1"` share the runtime key "1", including through widened members
+    // @ts-expect-error is not assignable to
+    Match.type<1 | "1">().pipe(Match.literals({ 1: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<1 | "1">().pipe(Match.literalsExhaustive({ 1: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<string | 1>().pipe(Match.literals({ 1: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "1">().pipe(Match.literals({ "1": () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "NaN">().pipe(Match.literals({ NaN: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "Infinity">().pipe(Match.literals({ Infinity: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "-Infinity">().pipe(Match.literals({ "-Infinity": () => 0 }))
+
+    // an `undefined` handler cannot prove a literal handled
+    // @ts-expect-error is not assignable to
+    Match.type<"draft">().pipe(Match.literals({ draft: undefined }), Match.exhaustive)
+
+    // exhaustive matching cannot leave non-literal members unhandled
+    // @ts-expect-error is not assignable to
+    Match.type<"draft" | null>().pipe(Match.literalsExhaustive({ draft: () => 0 }))
   })
 
   it("valueTags rejects the unknown tag in the Schema union reproduction", () => {

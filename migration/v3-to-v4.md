@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`399ecbe63f68b8698789190ec3e779315e26e35e`)
+Head: `origin/main` (`20e5ba813ca014bc841672325b5e824b8100d976`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -617,7 +617,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/sql-sqlite-react-native/index` -> `@effect/sql-sqlite-react-native`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-react-native package root or import specific modules directly.
 - `@effect/sql-sqlite-wasm/index` -> `@effect/sql-sqlite-wasm`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-wasm package root or import specific modules directly.
 - `@effect/sql/Migrator` -> `effect/sql/Migrator`
-- `@effect/sql/Migrator/FileSystem` -> `effect/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
+- `@effect/sql/Migrator/FileSystem` -> `effect/sql/MigratorFileSystem`: Same `(directory)` signature. Import `fromFileSystem` from there; it is not exported from `effect/sql/Migrator` or the `effect/sql` barrel.
 - `@effect/sql/Model` -> `effect/schema/Model`, `effect/sql/SqlModel`
 - `@effect/sql/SqlClient` -> `effect/sql/SqlClient`
 - `@effect/sql/SqlConnection` -> `effect/sql/SqlConnection`
@@ -4910,7 +4910,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `AiError.AiError` -> `AiError.AiError`: Moved to effect/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
 
-- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
+- `AiError.HttpRequestDetails` -> `none`: Removed. NetworkError carries only the request method and url, and HttpContext and response metadata parts no longer record the request.
 
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
@@ -5054,7 +5054,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Response.reasoningStartPart` -> `Response.makePart("reasoning-start", params)`: The lowercase convenience constructor was removed; construct the retained ReasoningStartPart through Response.makePart.
 
-- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values, and optional HTTP request details were added.
+- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values.
 
 - `Response.textDeltaPart` -> `Response.makePart("text-delta", params)`: The lowercase convenience constructor was removed; construct the retained TextDeltaPart through Response.makePart.
 
@@ -5852,7 +5852,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/SingleRunner`
 
-- `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
+- `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires the `Digest` service from `effect/crypto/Digest` because SQL message storage hashes long deduplication keys.
 
 ### `@effect/cluster/SingletonAddress`
 
@@ -5866,11 +5866,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/SqlMessageStorage`
 
-- `SqlMessageStorage.layer` -> `effect/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a Crypto.Crypto requirement for hashing long deduplication keys.
+- `SqlMessageStorage.layer` -> `effect/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a requirement on the `Digest` service from `effect/crypto/Digest` for hashing long deduplication keys.
 
-- `SqlMessageStorage.layerWith` -> `effect/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.layerWith` -> `effect/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires the `Digest` service from `effect/crypto/Digest`.
 
-- `SqlMessageStorage.make` -> `effect/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.make` -> `effect/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires the `Digest` service from `effect/crypto/Digest`.
 
 ### `@effect/cluster/SqlRunnerStorage`
 
@@ -6298,7 +6298,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-bun/BunContext`
 
-- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, Crypto, FileSystem, Path, Stdio, and Terminal; add BunWorker separately when needed.
+- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `BunCrypto.layer` for every `effect/crypto` family, or the `BunCrypto.layer*` layer for each family you use, and add BunWorker separately when needed.
 
 - `BunContext.layer` -> `BunServices.layer`: Use the renamed aggregate layer; worker services are no longer included.
 
@@ -6410,9 +6410,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-node/NodeContext`
 
-- `NodeContext.NodeContext` -> `NodeServices.NodeServices`: Use the renamed service union; it replaces CommandExecutor with ChildProcessSpawner, adds Crypto and Stdio, and omits WorkerManager.
+- `NodeContext.NodeContext` -> `NodeServices.NodeServices`: Use the renamed service union; it replaces CommandExecutor with ChildProcessSpawner, adds Stdio, and omits WorkerManager. It includes no crypto services.
 
-- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, Crypto, FileSystem, Path, Stdio, and Terminal; add NodeWorker separately when needed.
+- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `NodeCrypto.layer` for every `effect/crypto` family, or the `NodeCrypto.layer*` layer for each family you use, and add NodeWorker separately when needed.
 
 ### `@effect/platform-node/NodeFileSystem/ParcelWatcher`
 
@@ -7356,6 +7356,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpServerRequest`
 
+- `HttpServerRequest.HttpServerRequest` -> `HttpServerRequest.HttpServerRequest`: Custom implementations must also supply upgradeWith({ headers }), which upgrades the connection and sends the given headers on the 101 response; upgrade is equivalent to upgradeWith({}). WebSocket upgrades fail when headers are given.
+
 - `HttpServerRequest.ParsedSearchParams` -> `HttpServerRequest.ParsedSearchParams`: The marker and tag became one Context.Service class.
 
 - `HttpServerRequest.TypeId` -> `typeof HttpServerRequest.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
@@ -8132,11 +8134,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/SqlEventLogServer`
 
-- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module; remove insertBatchSize. entryTablePrefix and remoteIdTable remain, as does the EventLogEncryption requirement. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
+- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module; remove insertBatchSize. entryTablePrefix and remoteIdTable remain. It requires the `Digest` service from `effect/crypto/Digest` instead of EventLogEncryption, which hashed the table names in v3. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
-- `SqlEventLogServer.layerStorageSubtle` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorageSubtle`: Moved to the encrypted server module; remove insertBatchSize. The layer still supplies Web Crypto encryption. Storage now uses encrypted batch tables and entry-id lookup tables; existing per-entry ciphertext tables are not automatically converted.
+- `SqlEventLogServer.layerStorageSubtle` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorageSubtle`: Moved to the encrypted server module; remove insertBatchSize. The layer supplies the Web Crypto `Digest` layer. Storage now uses encrypted batch tables and entry-id lookup tables; existing per-entry ciphertext tables are not automatically converted.
 
-- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module; remove insertBatchSize. SQL, encryption, and scope requirements remain. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
+- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module; remove insertBatchSize. SQL and scope requirements remain; the EventLogEncryption requirement is replaced by the `Digest` service from `effect/crypto/Digest`. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
 ### `@effect/sql/SqlPersistedQueue`
 
@@ -8162,6 +8164,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/Statement`
 
+- `Statement.Constructor` -> `effect/sql/Statement#Constructor`: Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as "data" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them.
+
 - `Statement.Fragment`: TODO: needs guidance
 
 - `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
@@ -8178,7 +8182,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Statement.make` -> `effect/sql/Statement#make`: Moved with the same constructor inputs.
 
-- `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
+- `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks. onRecordUpdate now receives the updateValues alias already escaped with onIdentifier(alias, true); insert it as is.
 
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
@@ -9660,6 +9664,8 @@ Arbitrary.schema(schema)
 
 - `Data.TaggedEnum` -> `Data.TaggedEnum`: Still exported with the same record-to-discriminated-union role.
 
+- `Data.TaggedEnum.Constructor` -> `Data.TaggedEnum.Constructor`: Still the type of the object Data.taggedEnum returns for a non-generic enum, now a named intersection instead of a flattened object type. $match no longer rejects extra case keys at compile time. Annotate constructors for generic enums with Data.TaggedEnum.GenericConstructor.
+
 - `Data.TaggedEnum.GenericMatchers` -> `Data.TaggedEnum.GenericMatchers`: Still exported with $is and $match helpers.
 
 - `Data.array` -> `none`: Use a normal copied array such as [...values]; v4 compares plain arrays structurally.
@@ -9846,9 +9852,9 @@ Arbitrary.schema(schema)
 
 - `Duration.decodeUnknown` -> `Duration.fromInput`: The safe decoder was renamed and accepts Duration.Input, returning Option\<Duration\>.
 
-- `Duration.formatIso` -> `none`: ISO 8601 duration formatting was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; retain a local formatter when this wire format is required.
+- `Duration.formatIso` -> `Duration.formatIso`: Available again from 4.1. The output is balanced into days, hours, minutes and seconds and never contains weeks, months or years; infinite durations return Option.none().
 
-- `Duration.fromIso` -> `none`: ISO 8601 duration parsing was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; use a dedicated ISO parser and pass the resulting parts to Duration.fromInput.
+- `Duration.fromIso` -> `Duration.fromIso`: Available again from 4.1 for exact units only (weeks, days, hours, minutes and seconds). Years and months are rejected instead of approximated. Use Schema.DurationFromIsoString for a Schema codec.
 
 - `Duration.greaterThan` -> `Duration.isGreaterThan`: The comparison was renamed with the is prefix.
 
@@ -9862,7 +9868,7 @@ Arbitrary.schema(schema)
 
 - `Duration.unsafeDivide` -> `Duration.divideUnsafe`: The unsafe prefix moved to the end of the division function name.
 
-- `Duration.unsafeFormatIso` -> `none`: ISO 8601 duration formatting was removed from v4. The v4 Duration exports and migration guides contain no direct unsafe formatter; retain a local formatter if required.
+- `Duration.unsafeFormatIso` -> `none`: There is no throwing variant. Use Duration.formatIso and handle Option.none() for infinite durations.
 
 - `Duration.unsafeToNanos` -> `Duration.toNanosUnsafe`: The unsafe prefix moved to the end of the nanosecond conversion name.
 
@@ -12605,13 +12611,13 @@ Effect.callback<number>((resume) => resume(Effect.succeed(1)))
 
 - `Micro.exitInterrupt` -> `Exit.interrupt`: MicroExit was replaced by the unified effect/Exit module in v4. Takes an optional fiber id.
 
-- `Micro.exitIsDie` -> `Exit.hasDies`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasDies checks the failure cause for Die reasons.
+- `Micro.exitIsDie` -> `Exit.hasDies`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasDies checks the failure cause for Die reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
-- `Micro.exitIsFail` -> `Exit.hasFails`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasFails checks the failure cause for Fail reasons.
+- `Micro.exitIsFail` -> `Exit.hasFails`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasFails checks the failure cause for Fail reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
 - `Micro.exitIsFailure` -> `Exit.isFailure`: Same refinement in the unified effect/Exit module.
 
-- `Micro.exitIsInterrupt` -> `Exit.hasInterrupts`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasInterrupts checks the failure cause for Interrupt reasons.
+- `Micro.exitIsInterrupt` -> `Exit.hasInterrupts`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasInterrupts checks the failure cause for Interrupt reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
 - `Micro.exitIsSuccess` -> `Exit.isSuccess`: Same refinement in the unified effect/Exit module.
 

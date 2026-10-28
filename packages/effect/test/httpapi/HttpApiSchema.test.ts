@@ -113,6 +113,31 @@ describe("HttpApiSchema", () => {
 
       assert.strictEqual(stream.contentType, "application/custom-binary")
     })
+
+    it("stores a list of content types with the first as the default", () => {
+      const stream = HttpApiSchema.StreamUint8Array({
+        contentType: ["application/vnd.docker.raw-stream", "application/vnd.docker.multiplexed-stream"]
+      })
+
+      assert.strictEqual(stream.contentType, "application/vnd.docker.raw-stream")
+      assert.deepStrictEqual(stream.contentTypes, [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ])
+      assert.deepStrictEqual(HttpApiSchema.StreamUint8Array().contentTypes, ["application/octet-stream"])
+    })
+
+    it("rejects empty and duplicate content type lists", () => {
+      assert.throws(() => HttpApiSchema.StreamUint8Array({ contentType: [] }), /content type/i)
+      assert.throws(
+        () =>
+          HttpApiSchema.StreamNdjson({
+            schema: Schema.Number,
+            contentType: ["application/json", "Application/JSON; charset=utf-8"]
+          }),
+        /content type/i
+      )
+    })
   })
 
   describe("WithHeaders", () => {

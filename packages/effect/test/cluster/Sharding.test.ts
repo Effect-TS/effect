@@ -2191,6 +2191,7 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
       runnerAddress: RunnerAddress.make("localhost", 1234),
       residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
       abandonUndelivered: () => Effect.void,
+      isShardOwned: () => Effect.succeed(true),
       maxIdleTime: Infinity,
       defectRetryPolicy: Schedule.spaced(1)
     }
@@ -2416,6 +2417,7 @@ describe.concurrent("Sharding defect recovery", () => {
           runnerAddress: RunnerAddress.make("localhost", 1234),
           residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
           abandonUndelivered: () => Effect.void,
+          isShardOwned: () => Effect.succeed(true),
           maxIdleTime: Infinity
         }
       )
@@ -3473,7 +3475,12 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const after = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
         assert.strictEqual(after.count - before.count, 1)
         assert.strictEqual(after.sum - before.sum, 1050)
-      }).pipe(Effect.provide(layer), Effect.scoped)
+      }).pipe(
+        Effect.provide(layer),
+        Effect.scoped,
+        // Keep fractional samples from other tests out of the duration delta.
+        Effect.provideService(Metric.MetricRegistry, new Map())
+      )
     }))
 
   it.effect("delivers a client interrupt to a request still draining on the lock holder", () =>
@@ -3784,6 +3791,122 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
     }))
 })
 
+describe("Sharding shard fencing", { concurrent: false }, () => {
+  it.effect("abandons a reply once lock storage no longer attributes the shard to this runner", () =>
+    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe, sharding }) {
+      const result = yield* client.Request().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* Queue.take(probe.entered), "Request")
+
+      fence.fenced = true
+      yield* probe.release.open
+      // Past every retry of a failed reply write.
+      yield* TestClock.adjust(1000)
+
+      assert.strictEqual(driver.replyIds.size, 0)
+      // A rejected write is never retried: one lock refresh per handler run,
+      // of the reply's shard only.
+      assert.strictEqual(fence.refreshes.length, 1 + Queue.sizeUnsafe(probe.entered))
+      const shardId = sharding.getShardId(EntityId.make("1"), "default")
+      assert.deepStrictEqual(fence.refreshes, fence.refreshes.map(() => [shardId]))
+      // The caller is not answered with this runner's result.
+      assert.isUndefined(result.pollUnsafe())
+    })))
+
+  it.effect("abandons a fenced transactional reply without restarting the entity", () =>
+    withFencedEntity(Effect.fnUntraced(function*({ client, driver, fence, probe }) {
+      const result = yield* client.Transaction().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* Queue.take(probe.entered), "Transaction")
+
+      fence.fenced = true
+      yield* probe.release.open
+      yield* TestClock.adjust(1000)
+
+      assert.strictEqual(driver.replyIds.size, 0)
+      assert.strictEqual(fence.refreshes.length, 1 + Queue.sizeUnsafe(probe.entered))
+      assert.isUndefined(result.pollUnsafe())
+    })))
+})
+
+const FencedEntity = Entity.make("FencedEntity", [
+  Rpc.make("Request", { success: Schema.Number }),
+  Rpc.make("Transaction", { success: Schema.Number }).annotate(
+    ClusterSchema.Dynamic,
+    Context.add(ClusterSchema.WithTransaction, true)
+  )
+]).annotateRpcs(ClusterSchema.Persisted, true)
+
+interface FencedProbe {
+  readonly entered: Queue.Queue<string>
+  readonly release: Latch.Latch
+}
+
+// Each handler produces its result only after `release` opens.
+const FencedEntityLayer = (probe: FencedProbe) =>
+  FencedEntity.toLayer(FencedEntity.of({
+    Request: () => Effect.andThen(Queue.offer(probe.entered, "Request"), Effect.as(probe.release.await, 1)),
+    Transaction: () => Effect.andThen(Queue.offer(probe.entered, "Transaction"), Effect.as(probe.release.await, 1))
+  }))
+
+interface ShardFence {
+  // once set, lock refreshes no longer return any shard, while the runner's
+  // periodic lock refresh is not due yet
+  fenced: boolean
+  // the shards of each lock refresh made while fenced
+  readonly refreshes: Array<ReadonlyArray<ShardId.ShardId>>
+}
+
+const withFencedEntity = Effect.fnUntraced(function*<E>(
+  body: (options: {
+    readonly client: ReturnType<Effect.Success<typeof FencedEntity.client>>
+    readonly driver: MessageStorage.MemoryDriver["Service"]
+    readonly fence: ShardFence
+    readonly probe: FencedProbe
+    readonly sharding: Sharding.Sharding["Service"]
+  }) => Effect.Effect<void, E>
+) {
+  const restarts: Array<unknown> = []
+  const logger = Logger.make<unknown, void>(({ message }) => {
+    if (globalThis.Array.isArray(message) && message.includes("Defect in entity, restarting")) {
+      restarts.push(message)
+    }
+  })
+  const fence: ShardFence = { fenced: false, refreshes: [] }
+  const probe: FencedProbe = {
+    entered: yield* Queue.make<string>(),
+    release: Latch.makeUnsafe(false)
+  }
+  const runnerStorage = Layer.effect(
+    RunnerStorage.RunnerStorage,
+    Effect.map(RunnerStorage.makeMemory, (storage) =>
+      RunnerStorage.RunnerStorage.of({
+        ...storage,
+        refresh: (address, shardIds) => {
+          const shards = globalThis.Array.from(shardIds)
+          if (!fence.fenced) return storage.refresh(address, shards)
+          if (shards.length > 0) fence.refreshes.push(shards)
+          return Effect.succeed([])
+        }
+      }))
+  )
+  const layer = FencedEntityLayer(probe).pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide([runnerStorage, RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(TestShardingConfig)
+  )
+
+  yield* Effect.gen(function*() {
+    const driver = yield* MessageStorage.MemoryDriver
+    const makeClient = yield* FencedEntity.client
+    yield* TestClock.adjust(1)
+    const sharding = yield* Sharding.Sharding
+    yield* body({ client: makeClient("1"), driver, fence, probe, sharding })
+    assert.deepStrictEqual(restarts, [])
+  }).pipe(Effect.provide(layer), Effect.withLogger(logger))
+})
+
 const terminationRpc = <Tag extends RpcGroup.Rpcs<typeof TestEntity.protocol>["_tag"]>(tag: Tag) =>
   TestEntity.protocol.requests.get(tag)! as Extract<RpcGroup.Rpcs<typeof TestEntity.protocol>, { readonly _tag: Tag }>
 
@@ -3825,6 +3948,10 @@ const waitForTerminationOwnership = Effect.fnUntraced(
     assert.strictEqual(sharding.hasShardId(shardId), owned)
   }
 )
+const PersistedHold = Entity.make("PersistedHold", [
+  Rpc.make("Hold").annotate(ClusterSchema.Persisted, true)
+])
+
 const GatedTeardownEntity = Entity.make("GatedTeardownEntity", [
   Rpc.make("Activate").annotate(ClusterSchema.Persisted, false)
 ])
@@ -4096,6 +4223,49 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
     }).pipe(Effect.scoped))
 
+  it.effect("finishes a persisted reply that completes while shutdown starts", () =>
+    Effect.gen(function*() {
+      // Shutdown unregisters the runner before handing its shards off, with
+      // the sharding scope already closing.
+      const unregisterGate = yield* makeGate
+      const storageState = makeFailoverStorageState({ unregisterGate })
+      // Closed only once the test passes: a stuck handler would block it.
+      const registrationScope = yield* Scope.make()
+      const { context, scope, sharding } = yield* buildSharding(storageState)
+      const gate = yield* makeGate
+      let entered = false
+      yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
+      yield* sharding.registerEntity(
+        PersistedHold,
+        Effect.succeed(PersistedHold.of({
+          Hold: () =>
+            Effect.andThen(
+              Effect.sync(() => {
+                entered = true
+              }),
+              gate.await
+            )
+        }))
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      const makeClient = yield* PersistedHold.client.pipe(Effect.provideContext(context))
+      yield* makeClient("1").Hold(void 0, { discard: true })
+      yield* advanceUntil(() => entered)
+
+      // The handler finishes while the runner unregisters.
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* TestClock.adjust(10)
+      yield* gate.open
+      yield* TestClock.adjust(10)
+      yield* unregisterGate.open
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+      // The entity stopped, so its shard was handed off through the per-shard
+      // release rather than left to the final release of every lock.
+      const shardId = sharding.getShardId(EntityId.make("1"), "default")
+      assert.isTrue(storageState.releaseCalls.some((released) => Equal.equals(released, shardId)))
+      yield* Scope.close(registrationScope, Exit.void)
+    }).pipe(Effect.scoped))
+
   it.effect("does not record a release cancelled when shutdown handoff times out", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
@@ -4226,6 +4396,8 @@ interface FailoverStorageState {
   releaseAllDuration: number
   /** Number of `release` calls that fail before succeeding. */
   releaseFailures: number
+  /** Holds `unregister` until opened, when set. */
+  unregisterGate: Latch.Latch | undefined
   runner: Runner.Runner | undefined
   /** Shards `acquire` does not grant, as if another runner holds them. */
   readonly acquireDenied: Array<ShardId.ShardId>
@@ -4251,6 +4423,7 @@ const makeFailoverStorageState = (
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
   releaseFailures: 0,
+  unregisterGate: undefined,
   runner: undefined,
   acquireDenied: [],
   acquireCalls: [],
@@ -4273,9 +4446,12 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         return MachineId.make(1)
       }),
     unregister: () =>
-      Effect.sync(() => {
-        state.runner = undefined
-      }),
+      Effect.andThen(
+        state.unregisterGate?.await ?? Effect.void,
+        Effect.sync(() => {
+          state.runner = undefined
+        })
+      ),
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
       Effect.sync(() => {
@@ -4538,6 +4714,7 @@ const makeMailboxMaxManager = Effect.fnUntraced(function*(type: string, handler:
     runnerAddress: RunnerAddress.make("localhost", 1234),
     residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
     abandonUndelivered: () => Effect.void,
+    isShardOwned: () => Effect.succeed(true),
     maxIdleTime: Infinity
   })
   return Effect.fnUntraced(function*(shardId: ShardId.ShardId) {

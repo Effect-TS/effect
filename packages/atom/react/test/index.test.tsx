@@ -130,6 +130,47 @@ describe("atom-react", { concurrent: false }, () => {
       expect(screen.getByTestId("value")).toHaveTextContent("20")
     })
 
+    test("initializing an atom that sets another atom does not update other components during render", () => {
+      const count = Atom.make(0)
+      const resource = Atom.make((get) =>
+        Effect.sync(() => {
+          get.set(count, 1)
+          return "ready"
+        })
+      )
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      function Observer() {
+        return <div data-testid="count">{useAtomValue(count)}</div>
+      }
+      function Initializer() {
+        const result = useAtomValue(resource)
+        return <div data-testid="resource">{AsyncResult.getOrElse(result, () => "")}</div>
+      }
+
+      try {
+        const { rerender } = render(
+          <RegistryContext.Provider value={registry}>
+            <Observer />
+          </RegistryContext.Provider>
+        )
+        assert.strictEqual(screen.getByTestId("count").textContent, "0")
+
+        rerender(
+          <RegistryContext.Provider value={registry}>
+            <Observer />
+            <Initializer />
+          </RegistryContext.Provider>
+        )
+
+        assert.strictEqual(screen.getByTestId("count").textContent, "1")
+        assert.strictEqual(screen.getByTestId("resource").textContent, "ready")
+        assert.deepStrictEqual(errors.mock.calls, [])
+      } finally {
+        errors.mockRestore()
+      }
+    })
+
     test("suspense success", () => {
       const atom = Atom.make(Effect.never)
 

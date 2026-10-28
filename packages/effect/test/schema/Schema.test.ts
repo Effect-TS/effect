@@ -5847,6 +5847,27 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(Duration.negativeInfinity, "-Infinity")
   })
 
+  it("DurationFromIsoString", async () => {
+    const schema = Schema.DurationFromIsoString
+    const asserts = new TestSchema.Asserts(schema)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("P1W2D", Duration.days(9))
+    await decoding.succeed("PT1H30M", Duration.minutes(90))
+    await decoding.succeed("-PT1.5S", Duration.millis(-1500))
+    await decoding.succeed("PT0.000000001S", Duration.nanos(1n))
+    await decoding.fail("P1Y", "Expected an ISO 8601 duration without years or months")
+    await decoding.fail("P1M", "Expected an ISO 8601 duration without years or months")
+    await decoding.fail("1 second", "Expected an ISO 8601 duration without years or months")
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(Duration.zero, "PT0S")
+    await encoding.succeed(Duration.weeks(1), "P7D")
+    await encoding.succeed(Duration.nanos(-1n), "-PT0.000000001S")
+    await encoding.fail(Duration.infinity, "Expected a finite Duration")
+    await encoding.fail(Duration.negativeInfinity, "Expected a finite Duration")
+  })
+
   it("DurationFromNanos", async () => {
     const schema = Schema.DurationFromNanos
     const asserts = new TestSchema.Asserts(schema)
@@ -7032,6 +7053,20 @@ Expected a value between -2147483648 and 2147483647`
       assert.strictEqual(constructions, 1)
     })
 
+    it("make preserves constructor defects", () => {
+      const defect = new Error("constructor defect")
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {
+        readonly failure = (() => {
+          throw defect
+        })()
+      }
+
+      throws(() => A.make({ a: "a" }), (error) => {
+        assertTrue(error instanceof Error)
+        assert.deepStrictEqual(error.cause, Cause.die(defect))
+      })
+    })
+
     it("make with void input", () => {
       class A extends Schema.Class<A>("A")({}) {}
       deepStrictEqual(A.make(), new A())
@@ -7689,6 +7724,22 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Error", () => {
+    it("make retains the caller in error stacks", () => {
+      class Untagged extends Schema.Error<Untagged>("Untagged")({ message: Schema.String }) {}
+      class Tagged extends Schema.TaggedError<Tagged>()("Tagged", { message: Schema.String }) {}
+      const limit = Error.stackTraceLimit
+      Error.stackTraceLimit = 10
+      try {
+        for (const ErrorClass of [Untagged, Tagged]) {
+          const makeErrorAtCallsite = () => ErrorClass.make({ message: "failure" })
+          const error = makeErrorAtCallsite()
+          assert.include(error.stack, "makeErrorAtCallsite")
+        }
+      } finally {
+        Error.stackTraceLimit = limit
+      }
+    })
+
     it("make with void input", () => {
       class E extends Schema.Error<E>("E")({}) {}
       deepStrictEqual(E.make(), new E())
@@ -10649,10 +10700,34 @@ describe("Check", () => {
 
     const decoding = asserts.decoding()
     await decoding.succeed("01H4PGGGJVN2DKP2K1H7EH996V")
+    await decoding.succeed("7" + "z".repeat(25))
+    await decoding.fail(
+      "80000000000000000000000000",
+      `Expected a string matching the RegExp ^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$`
+    )
     await decoding.fail(
       "",
-      `Expected a string matching the RegExp ^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$`
+      `Expected a string matching the RegExp ^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$`
     )
+  })
+
+  it("isAscii", async () => {
+    const schema = Schema.String.check(Schema.isAscii())
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+      id: "effect/schema/isAscii",
+      payload: null
+    })
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("")
+    await decoding.succeed("\x00a\x7f")
+    await decoding.fail("a\x80", `Expected an ASCII string`)
   })
 
   it("isBase64", async () => {

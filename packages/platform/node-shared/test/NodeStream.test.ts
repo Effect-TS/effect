@@ -18,6 +18,56 @@ describe("Stream", () => {
     })
   const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
 
+  for (const [chunkSize, expectedSize] of [[undefined, 4096], [2, 2], [Infinity, 10_000]] as const) {
+    it.effect(`fromReadable batches synchronous draining (${chunkSize ?? "default 4096"})`, () =>
+      Effect.gen(function*() {
+        let reads = 0
+        const readable = new Readable({
+          objectMode: true,
+          highWaterMark: 1,
+          read() {
+            reads++
+            this.push(reads > 10_000 ? null : reads)
+          }
+        })
+        const chunks = yield* NodeStream.fromReadable<number>({
+          evaluate: () => readable,
+          ...(chunkSize === undefined ? {} : { chunkSize })
+        }).pipe(Stream.chunks, Stream.take(1), Stream.runCollect)
+
+        assert.strictEqual(chunks.length, 1)
+        assert.strictEqual(chunks[0].length, expectedSize)
+        assert.deepEqual(chunks, [Array.range(1, expectedSize)])
+        // Node may prefetch one object into its own buffer.
+        assert.isAtMost(reads, expectedSize + 1)
+      }))
+  }
+
+  for (
+    const [options, expected] of [
+      [{ chunkSize: 2, readSize: 3 }, [["abc", "def"], ["ghi", "jk"]]],
+      [{ chunkSize: 2 }, [["abcdefghijk"]]],
+      [{ readSize: 3 }, [["abc", "def", "ghi", "jk"]]],
+      [{ chunkSize: Infinity, readSize: 3 }, [["abc", "def", "ghi", "jk"]]]
+    ] as const
+  ) {
+    it.effect(`fromReadable separates read size from batching (chunkSize=${"chunkSize" in options ? options.chunkSize : "default"}, readSize=${"readSize" in options ? options.readSize : "default"})`, () =>
+      Effect.gen(function*() {
+        const readable = new Readable({ read() {} })
+        readable.push(Buffer.from("abcdefghijk"))
+        readable.push(null)
+        const chunks = yield* NodeStream.fromReadable({
+          evaluate: () => readable,
+          ...options
+        }).pipe(Stream.chunks, Stream.runCollect)
+
+        assert.deepEqual(
+          chunks.map((batch) => batch.map((bytes) => Buffer.from(bytes).toString())),
+          expected.map((batch) => [...batch])
+        )
+      }))
+  }
+
   it.effect("fromReadable fails on premature close", () =>
     Effect.gen(function*() {
       const code = yield* NodeStream.fromReadable({ evaluate: destroyedOnRead, onError: errorCode }).pipe(
@@ -131,6 +181,58 @@ describe("Stream", () => {
 
       assert.strictEqual(result, "ABC")
     }))
+
+  for (const adapter of ["fromDuplex", "pipeThroughDuplex"] as const) {
+    it.effect(`${adapter} bounds byte drains and completes in order`, () =>
+      Effect.gen(function*() {
+        const input = Buffer.from("abcdefghijk")
+        let offset = 0
+        let reads = 0
+        const options = {
+          evaluate: () =>
+            new Duplex({
+              highWaterMark: 1,
+              read() {
+                reads++
+                if (offset === input.length) {
+                  this.push(null)
+                } else {
+                  const next = Math.min(offset + 3, input.length)
+                  this.push(input.subarray(offset, next))
+                  offset = next
+                }
+              },
+              write(_chunk, _encoding, callback) {
+                callback()
+              }
+            }),
+          chunkSize: 2,
+          readSize: 3
+        }
+        const stream = adapter === "fromDuplex"
+          ? Stream.empty.pipe(Stream.pipeThroughChannelOrFail(NodeStream.fromDuplex(options)))
+          : Stream.empty.pipe(NodeStream.pipeThroughDuplex(options))
+        let batches = 0
+        const chunks = yield* stream.pipe(
+          Stream.chunks,
+          Stream.tap((batch) =>
+            Effect.sync(() => {
+              assert.isAtMost(batch.length, 2)
+              if (batches++ === 0) {
+                assert.deepEqual(batch.map((bytes) => Buffer.from(bytes).toString()), ["abc", "def"])
+                // Allow one Node-prefetched buffer, but not the entire source.
+                assert.isAtMost(reads, 3)
+              }
+            })
+          ),
+          Stream.runCollect
+        )
+        assert.isAbove(batches, 1)
+        const bytes = chunks.flat()
+        assert.deepEqual(bytes.map((chunk) => chunk.length), [3, 3, 3, 2])
+        assert.strictEqual(Buffer.concat(bytes).toString(), "abcdefghijk")
+      }))
+  }
 
   it.effect("fromDuplex failure", () =>
     Effect.gen(function*() {
@@ -321,6 +423,55 @@ describe("Stream", () => {
 
       assert.strictEqual(error, "maxBytes exceeded")
       assert.isTrue(stream.destroyed)
+    }))
+
+  it.effect("toString limits the bytes read before decoding", () =>
+    Effect.gen(function*() {
+      const latin1 = yield* NodeStream.toString(() => Readable.from([Buffer.from([0xe9])]), {
+        encoding: "latin1",
+        maxBytes: 1
+      })
+      const utf16le = yield* NodeStream.toString(() => Readable.from([Buffer.from("abcd", "utf16le")]), {
+        encoding: "utf16le",
+        maxBytes: 7,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(latin1, "é")
+      assert.instanceOf(utf16le, NodeStream.MaxBytesError)
+    }))
+
+  it.effect("toString decodes characters split across chunks", () =>
+    Effect.gen(function*() {
+      const chunks = [Buffer.from([0xe2, 0x82]), Buffer.from([0xac, 0xe2])]
+      const text = yield* NodeStream.toString(() => Readable.from(chunks), { maxBytes: 4 })
+
+      assert.strictEqual(text, "€\ufffd")
+    }))
+
+  it.effect("toString limits the bytes read by a stream that already decodes", () =>
+    Effect.gen(function*() {
+      const stream = new Readable({
+        read() {
+          this.push(Buffer.from([0xe9]))
+          this.push(null)
+        }
+      })
+      stream.setEncoding("utf8")
+      const text = yield* NodeStream.toString(() => stream, { encoding: "latin1", maxBytes: 1 })
+
+      assert.strictEqual(text, "é")
+    }))
+
+  it.effect("toString limits object-mode strings by their UTF-8 length", () =>
+    Effect.gen(function*() {
+      const error = yield* NodeStream.toString(() => Readable.from(["a", "b", "c", "d"]), {
+        encoding: "hex",
+        maxBytes: 3,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
     }))
 
   it.effect("toArrayBuffer enforces a zero maxBytes limit", () =>

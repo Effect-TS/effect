@@ -10,18 +10,21 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as ByteSize from "../ByteSize.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpStatus from "../http/HttpStatus.ts"
 import type * as Multipart_ from "../http/Multipart.ts"
+import * as ProblemDetails from "../http/ProblemDetails.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
+import * as MediaType from "./internal/mediaType.ts"
 
 declare module "../Schema.ts" {
   namespace Annotations {
@@ -262,6 +265,85 @@ export function asNoContent<S extends Schema.Constraint>(options: {
   }
 }
 
+/**
+ * Schema type returned by `asProblem`, encoding as a problem details body
+ * while decoding to the original schema type.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export interface asProblem<S extends Schema.Constraint> extends
+  Schema.decodeTo<
+    Schema.toType<S>,
+    Schema.Struct<{
+      readonly type: Schema.tag<string>
+      readonly status: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<number>>, never>
+      readonly title: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
+    }>
+  >
+{}
+
+/**
+ * Renders an error class as an RFC 9457 problem.
+ *
+ * **Details**
+ *
+ * The server encodes the error as an `application/problem+json` body carrying
+ * `type`, `title` and the status of the class. Generated clients decode a body
+ * with the same `type` back into an instance by calling `decode`, which
+ * defaults to constructing the class without arguments; a body with a
+ * different `type` is rejected.
+ *
+ * **Example** (A built-in error as a problem)
+ *
+ * ```ts
+ * import { HttpApiEndpoint, HttpApiError, HttpApiSchema } from "effect/http-api"
+ *
+ * const user = HttpApiEndpoint.get("user", "/user", {
+ *   error: HttpApiError.NotFound.pipe(HttpApiSchema.asProblem({ title: "Not Found" }))
+ * })
+ * // A NotFound failure responds with 404 and
+ * // { "type": "about:blank", "title": "Not Found", "status": 404 }
+ * ```
+ *
+ * @see {@link asNoContent} for the empty-body equivalent.
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.0.6
+ */
+export function asProblem<S extends Schema.Constraint & (new() => S["Type"])>(options: {
+  /**
+   * The problem type URI. Defaults to `about:blank`.
+   */
+  readonly type?: string | undefined
+  readonly title: string
+  readonly decode?: LazyArg<S["Type"]> | undefined
+}) {
+  return (self: S): asProblem<S> => {
+    const status = getStatusError(self.ast)
+    const type = options.type ?? ProblemDetails.blankType
+    const body = { type, status, title: options.title }
+    const decode = options.decode ?? (() => new self())
+    const problem = Schema.Struct({
+      type: Schema.tag(type),
+      status: ProblemDetails.fixedMember(status),
+      title: ProblemDetails.fixedMember(options.title)
+    })
+    return problem.pipe(
+      Schema.decodeTo(
+        Schema.toType(self),
+        SchemaTransformation.transform({
+          decode,
+          encode: () => body
+        })
+      ),
+      asJson({ contentType: ProblemDetails.contentType })
+    )
+  }
+}
+
 type StreamMode = "sse" | "uint8array" | "ndjson"
 
 /**
@@ -323,6 +405,7 @@ export interface StreamSse<
   readonly mode: "sse"
   readonly sseMode: StreamSseMode
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly events: Events
   readonly error: Error
   readonly "~Value"?: Value | undefined
@@ -381,6 +464,7 @@ export interface StreamUint8Array extends
   readonly _tag: "StreamUint8Array"
   readonly mode: "uint8array"
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly maxBytes: ByteSize.ByteSize | undefined
 }
 
@@ -432,6 +516,7 @@ export interface StreamNdjson<S extends Schema.Constraint> extends
   readonly _tag: "StreamNdjson"
   readonly mode: "ndjson"
   readonly contentType: string
+  readonly contentTypes: Arr.NonEmptyReadonlyArray<string>
   readonly schema: S
   readonly maxBytes: ByteSize.ByteSize | undefined
   readonly maxElementBytes: ByteSize.ByteSize
@@ -499,7 +584,7 @@ export const StreamSse: {
     _tag: "StreamSse",
     mode: "sse",
     sseMode: options.events === undefined ? "data" : "events",
-    contentType: options.contentType ?? defaultStreamContentType("sse"),
+    ...streamContentTypes(options.contentType, "sse"),
     events,
     error: options.error ?? Schema.Never
   })
@@ -510,22 +595,24 @@ export const StreamSse: {
  *
  * **Details**
  *
- * `contentType` defaults to `application/octet-stream`. `maxBytes` only applies
- * to request payloads and has no default.
+ * `contentType` defaults to `application/octet-stream`. Pass a list when the
+ * same stream is sent under several media types. The first entry is the
+ * default response type, and payloads are accepted under every entry.
+ * `maxBytes` only applies to request payloads and has no default.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const StreamUint8Array = (options?: {
-  readonly contentType?: string | undefined
+  readonly contentType?: string | ReadonlyArray<string> | undefined
   readonly maxBytes?: ByteSize.Input | undefined
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(streamSchema.ast, {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamUint8Array",
     mode: "uint8array",
-    contentType: options?.contentType ?? defaultStreamContentType("uint8array"),
+    ...streamContentTypes(options?.contentType, "uint8array"),
     maxBytes: options?.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes)
   })
 
@@ -535,7 +622,8 @@ export const StreamUint8Array = (options?: {
  * **Details**
  *
  * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
- * MiB. `maxBytes` has no default.
+ * MiB. `maxBytes` has no default. Pass a list of content types to accept
+ * aliases such as `application/jsonl`. The first entry is the default.
  *
  * **Example** (Declaring an NDJSON request payload)
  *
@@ -563,7 +651,7 @@ export const StreamUint8Array = (options?: {
  */
 export const StreamNdjson = <S extends Schema.Constraint>(options: {
   readonly schema: S
-  readonly contentType?: string | undefined
+  readonly contentType?: string | ReadonlyArray<string> | undefined
   readonly maxBytes?: ByteSize.Input | undefined
   readonly maxElementBytes?: ByteSize.Input | undefined
 }): StreamNdjson<S> =>
@@ -571,7 +659,7 @@ export const StreamNdjson = <S extends Schema.Constraint>(options: {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamNdjson",
     mode: "ndjson",
-    contentType: options.contentType ?? defaultStreamContentType("ndjson"),
+    ...streamContentTypes(options.contentType, "ndjson"),
     schema: options.schema,
     maxBytes: options.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes),
     maxElementBytes: options.maxElementBytes === undefined
@@ -644,10 +732,9 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  *
  * **When to use**
  *
- * Use as the only success schema of an endpoint that hands over its
- * connection as a raw byte stream after `101 Switching Protocols`. For
- * WebSocket, upgrade the request with `HttpServerRequest.upgrade` and
- * connect with `Socket.makeWebSocket` instead.
+ * Use when an endpoint hands over its connection as a raw byte stream after
+ * `101 Switching Protocols`. For WebSocket, upgrade the request with
+ * `HttpServerRequest.upgrade` and connect with `Socket.makeWebSocket` instead.
  *
  * **Details**
  *
@@ -664,9 +751,17 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  * The endpoint may declare a buffered payload, which is decoded before the
  * handler runs. Streaming payloads are rejected.
  *
+ * The endpoint may also declare buffered or no-content successes at statuses
+ * other than `101`, for a server that declines the upgrade (RFC 9110 §7.8).
+ * The handler then either calls `upgrade` and returns nothing, or returns one
+ * of those successes without calling it. An endpoint declares at most one
+ * upgrade, and streaming successes cannot be combined with it.
+ *
  * The client sends `Connection: Upgrade` and `Upgrade: protocol`, and returns
  * the response headers with the connection, decoded with `headers` when
- * declared. Other responses are decoded as the endpoint's errors.
+ * declared. Ordinary success responses are decoded as usual, and
+ * `HttpApiClient.isUpgraded` tells the two apart. Other responses are decoded
+ * as the endpoint's errors.
  *
  * **Example** (Declaring an exec start endpoint)
  *
@@ -677,15 +772,19 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  * const start = HttpApiEndpoint.post("start", "/exec/:id/start", {
  *   params: { id: Schema.String },
  *   payload: Schema.Struct({ Detach: Schema.Boolean, Tty: Schema.Boolean }),
- *   success: HttpApiSchema.Upgrade({
- *     protocol: "tcp",
- *     headers: {
- *       "content-type": Schema.Literals([
- *         "application/vnd.docker.raw-stream",
- *         "application/vnd.docker.multiplexed-stream"
- *       ])
- *     }
- *   })
+ *   success: [
+ *     HttpApiSchema.Upgrade({
+ *       protocol: "tcp",
+ *       headers: {
+ *         "content-type": Schema.Literals([
+ *           "application/vnd.docker.raw-stream",
+ *           "application/vnd.docker.multiplexed-stream"
+ *         ])
+ *       }
+ *     }),
+ *     // a detached exec answers with an empty 200 instead
+ *     HttpApiSchema.Empty(200)
+ *   ]
  * })
  * ```
  *
@@ -738,6 +837,26 @@ export const rebuildUpgrade = (protocol: string, headers: Schema.Top | undefined
  * @internal
  */
 export const isUpgrade = (u: unknown): u is Upgrade => Schema.isSchema(u) && Predicate.hasProperty(u, UpgradeTypeId)
+
+function streamContentTypes(
+  contentType: string | ReadonlyArray<string> | undefined,
+  mode: StreamMode
+): { readonly contentType: string; readonly contentTypes: Arr.NonEmptyReadonlyArray<string> } {
+  if (contentType === undefined) contentType = defaultStreamContentType(mode)
+  if (typeof contentType === "string") return { contentType, contentTypes: [contentType] }
+  if (!Arr.isReadonlyArrayNonEmpty(contentType)) {
+    throw new Error("Stream schemas require at least one content type")
+  }
+  const seen = new Set<string>()
+  for (const entry of contentType) {
+    const normalized = MediaType.normalize(entry)
+    if (seen.has(normalized)) {
+      throw new Error(`Duplicate stream content type: ${entry}`)
+    }
+    seen.add(normalized)
+  }
+  return { contentType: contentType[0], contentTypes: contentType }
+}
 
 function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {
@@ -1246,6 +1365,12 @@ export function asJson(options?: {
  * **Details**
  *
  * The schema's encoded side must be a record of strings.
+ *
+ * **Gotchas**
+ *
+ * Fields are flat on the server. A field that encodes to a nested object is
+ * sent as bracket keys that the server does not read back; use an explicit
+ * codec such as `Schema.fromJsonString(...)` for structured values.
  *
  * @stability unstable
  * @category encoding

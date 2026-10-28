@@ -15,12 +15,12 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
 import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
-import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -87,8 +87,7 @@ export interface SqlClient extends Constructor {
    * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
-   * that don't go through `makeWithTransaction`, such as those of
-   * `@effect/sql-sqlite-do`, invalidate immediately.
+   * that don't go through `makeWithTransaction` invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -136,8 +135,8 @@ export interface SqlClient extends Constructor {
    * long-running work.
    * Registering after the transaction has ended is a defect.
    *
-   * Transactions that don't go through `makeWithTransaction`, such as those
-   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   * Transactions that don't go through `makeWithTransaction` run callbacks
+   * immediately.
    */
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
@@ -430,13 +429,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
-  const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) =>
-      restore(semaphore.take(1)).pipe(
-        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-        Effect.andThen(available)
-      ))
-  )
+  const lease = Effect.uninterruptibleMask((restore) => Effect.andThen(restore(semaphore.takeScoped(1)), available))
 
   return {
     acquirer: lease,
@@ -488,14 +481,7 @@ interface AfterCommitBuffer {
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
-  Effect.catchCause(effect, (cause) =>
-    Effect.withFiber((fiber) => {
-      const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
-      if (unhandledLogLevel) {
-        return Effect.logWithLevel(unhandledLogLevel)("Unhandled error in SqlClient.afterCommit callback", cause)
-      }
-      return Effect.void
-    }))
+  Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
 
 const makeAfterCommit =
   (transactionService: Context.Key<any, any>) =>
@@ -524,6 +510,12 @@ const makeAfterCommit =
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
+ *
+ * **Details**
+ *
+ * Transactions started this way are also recognized by `SqlResolver` when the
+ * caller's context has no `SqlClient`, so their requests don't share a batch
+ * with requests outside the transaction.
  *
  * @stability unstable
  * @category transactions
@@ -612,6 +604,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)

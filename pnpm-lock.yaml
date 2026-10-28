@@ -691,9 +691,15 @@ importers:
       '@op-engineering/op-sqlite':
         specifier: ^18.2.5
         version: 18.2.5(react-native@0.83.0(@babel/core@8.0.7)(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2))(react@19.3.1)
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       effect:
         specifier: workspace:^
         version: link:../../effect
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
 
   packages/sql/sqlite-wasm:
     devDependencies:

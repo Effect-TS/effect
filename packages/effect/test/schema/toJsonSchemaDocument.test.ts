@@ -697,6 +697,14 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("DurationFromIsoString", () => {
+      assertJsonSchemaDocument(Schema.DurationFromIsoString, {
+        schema: {
+          "type": "string"
+        }
+      })
+    })
+
     it("Option(String)", () => {
       const schema = Schema.Option(Schema.String)
       assertJsonSchemaDocument(schema, {
@@ -1520,6 +1528,32 @@ describe("toJsonSchemaDocument", () => {
               "type": "string",
               "description": "description",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+            }
+          }
+        )
+      })
+
+      it("isULID", () => {
+        assertJsonSchemaDocument(
+          Schema.String.annotate({ description: "description" }).check(Schema.isULID()),
+          {
+            schema: {
+              "type": "string",
+              "description": "description",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$"
+            }
+          }
+        )
+      })
+
+      it("isAscii", () => {
+        assertJsonSchemaDocument(
+          Schema.String.annotate({ description: "description" }).check(Schema.isAscii()),
+          {
+            schema: {
+              "type": "string",
+              "description": "description",
+              "pattern": "^[\\x00-\\x7F]*$"
             }
           }
         )

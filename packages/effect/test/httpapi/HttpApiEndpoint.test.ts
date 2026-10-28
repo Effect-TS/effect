@@ -86,6 +86,22 @@ describe("HttpApiEndpoint streaming payload schemas", () => {
     )
   })
 
+  it("rejects buffered payloads and successes on any listed stream content type", () => {
+    const stream = HttpApiSchema.StreamNdjson({
+      schema: Schema.Number,
+      contentType: ["application/x-ndjson", "application/json"]
+    })
+
+    assert.throws(
+      () => HttpApiEndpoint.post("upload", "/upload", { payload: [stream, Schema.Struct({ ok: Schema.Boolean })] }),
+      /Cannot combine buffered and streaming payloads for content-type: application\/json/
+    )
+    assert.throws(
+      () => HttpApiEndpoint.get("export", "/export", { success: [stream, Schema.Struct({ ok: Schema.Boolean })] }),
+      /Cannot combine buffered and streaming success responses for status 200 and content-type: application\/json/
+    )
+  })
+
   it("rejects streaming payloads on no-body methods", () => {
     const payload: any = HttpApiSchema.StreamUint8Array()
     assert.throws(() => HttpApiEndpoint.get("upload", "/upload", { payload }), /GET/)
@@ -517,10 +533,35 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
     const upgrade = HttpApiSchema.Upgrade({ protocol: "tcp" })
 
     it.each([
+      { name: "a no-content response", success: HttpApiSchema.Empty(200) },
+      { name: "a buffered response", success: Schema.String }
+    ])("accepts an upgrade with $name", ({ success }) => {
+      const endpoint = HttpApiEndpoint.post("start", "/start", { success: [upgrade, success] })
+
+      assert.deepStrictEqual(Array.from(endpoint.success).map(HttpApiSchema.isUpgrade), [true, false])
+    })
+
+    it.each([
       {
-        name: "with another success",
-        make: () => HttpApiEndpoint.post("attach", "/attach", { success: [upgrade, Schema.String] }),
-        message: "Cannot combine an upgrade with other success responses"
+        name: "with another upgrade",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            success: [upgrade, HttpApiSchema.Upgrade({ protocol: "h2c" })]
+          }),
+        message: "Cannot declare more than one upgrade"
+      },
+      {
+        name: "with a streaming success",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { success: [upgrade, sse()] }),
+        message: "Cannot combine an upgrade with a streaming success response"
+      },
+      {
+        name: "with another success at status 101",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            success: [upgrade, Schema.String.pipe(HttpApiSchema.status(101))]
+          }),
+        message: "Cannot combine an upgrade with another success response for status: 101"
       },
       {
         name: "wrapped in WithHeaders",

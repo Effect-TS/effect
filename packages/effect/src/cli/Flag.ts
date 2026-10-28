@@ -290,6 +290,7 @@ export const Directory = (name: string, options?: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -691,6 +692,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -776,6 +778,11 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
  *
+ * **Gotchas**
+ *
+ * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
+ * the original `MissingOption` error is returned.
+ *
  * **Example** (Falling back to prompts)
  *
  * ```ts import.meta.vitest
@@ -842,6 +849,7 @@ export const map: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -899,6 +907,7 @@ export const mapEffect: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -1158,6 +1167,7 @@ export const orElse: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void

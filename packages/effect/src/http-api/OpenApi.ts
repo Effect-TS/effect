@@ -548,10 +548,13 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }
-        for (const [name, security] of Object.entries(middleware.security)) {
-          processHttpApiSecurity(name, security)
-          op.security.push({ [name]: [] })
+        const names = Object.keys(middleware.security)
+        for (const name of names) {
+          processHttpApiSecurity(name, middleware.security[name])
         }
+        // Stacked middleware must all pass (AND); schemes within one middleware are alternatives (OR).
+        const requirements = op.security.length === 0 ? [{}] : op.security
+        op.security = requirements.flatMap((requirement) => names.map((name) => ({ ...requirement, [name]: [] })))
       })
 
       function processHttpApiSecurity(
@@ -585,7 +588,9 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
           if (HttpApiSchema.isStreamSchema(schema)) {
             // Endpoint construction rejects a buffered payload sharing a streaming payload's media type.
-            schemasByContentType.set(schema.contentType, schema)
+            for (const contentType of schema.contentTypes) {
+              schemasByContentType.set(contentType, schema)
+            }
             continue
           }
           if (HttpApiSchema.isNoContent(schema.ast)) continue
@@ -979,20 +984,14 @@ function extractResponseBodies(
     stream: HttpApiSchema.StreamSchema,
     status: number
   ) {
-    const statusMap = map.get(status)
+    let statusMap = map.get(status)
     if (statusMap === undefined) {
-      map.set(status, {
-        descriptions: new Set(),
-        content: undefined,
-        headers: [],
-        streamContent: new Map([[stream.contentType, stream]])
-      })
-    } else {
-      if (statusMap.streamContent === undefined) {
-        statusMap.streamContent = new Map([[stream.contentType, stream]])
-      } else {
-        statusMap.streamContent.set(stream.contentType, stream)
-      }
+      statusMap = { descriptions: new Set(), content: undefined, headers: [], streamContent: undefined }
+      map.set(status, statusMap)
+    }
+    const streamContent = statusMap.streamContent ??= new Map()
+    for (const contentType of stream.contentTypes) {
+      streamContent.set(contentType, stream)
     }
   }
 }

@@ -12,11 +12,9 @@
 import * as Arr from "../Array.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import { FileSystem } from "../FileSystem.ts"
 import { pipe } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
-import { Path } from "../Path.ts"
 import * as Client from "./SqlClient.ts"
 import type { SqlError } from "./SqlError.ts"
 
@@ -98,7 +96,8 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 /**
  * Creates a migrator that ensures the migrations table exists, runs pending
  * migrations in a transaction, and optionally dumps the schema after successful
- * migrations.
+ * migrations. ClickHouse runs without a transaction and records each migration
+ * only after it succeeds.
  *
  * @stability unstable
  * @category constructors
@@ -173,11 +172,11 @@ ORDER BY migration_id`,
     })
 
     const insertMigrations = (
-      rows: ReadonlyArray<[id: number, name: string]>
+      rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
       sql`INSERT INTO ${sql(table)} ${
         sql.insert(
-          rows.map(([migration_id, name]) => ({ migration_id, name }))
+          Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
         )
       }`.withoutTransform
 
@@ -240,6 +239,12 @@ ORDER BY migration_id`,
 
     // === run
 
+    // BEGIN is still experimental on clickhouse
+    const transactional = sql.onDialectOrElse({
+      clickhouse: () => false,
+      orElse: () => true
+    })
+
     const run = Effect.gen(function*() {
       yield* sql.onDialectOrElse({
         pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
@@ -279,9 +284,10 @@ ORDER BY migration_id`,
         ])
       }
 
-      if (required.length > 0) {
+      // rows recorded up front are only rolled back inside a transaction
+      if (transactional && Arr.isArrayNonEmpty(required)) {
         yield* pipe(
-          insertMigrations(required.map(([id, name]) => [id, name])),
+          insertMigrations(Arr.map(required, ([id, name]) => [id, name])),
           Effect.mapError((error): MigrationError | SqlError =>
             isConstraintConflict(error)
               ? new MigrationError({
@@ -298,6 +304,7 @@ ORDER BY migration_id`,
         ([id, name, effect]) =>
           Effect.logDebug(`Running migration`).pipe(
             Effect.flatMap(() => runMigration(id, name, effect)),
+            Effect.andThen(transactional ? Effect.void : insertMigrations([[id, name]])),
             Effect.annotateLogs("migration_id", String(id)),
             Effect.annotateLogs("migration_name", name),
             Effect.withSpan(`Migrator ${id}_${name}`)
@@ -325,11 +332,7 @@ ORDER BY migration_id`,
     yield* ensureMigrationsTable
 
     const completed = yield* pipe(
-      sql.onDialectOrElse({
-        // BEGIN is still experimental on clickhouse
-        clickhouse: () => run,
-        orElse: () => sql.withTransaction(run)
-      }),
+      transactional ? sql.withTransaction(run) : run,
       Effect.catchTag("MigrationError", (_) =>
         _.kind === "Locked"
           ? Effect.as(Effect.logDebug(_.message), [])
@@ -431,60 +434,3 @@ export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknow
     Arr.sort(migrationOrder),
     Effect.succeed
   )
-
-/**
- * Creates a migration loader that reads a directory with `FileSystem`, imports
- * files named `<id>_<name>.js`, `<id>_<name>.ts`,
- * `<id>_<name>.mjs`, or `<id>_<name>.mts`, and sorts migrations by id.
- *
- * **Details**
- *
- * Requires a `Path` service appropriate for the migration directory's path
- * syntax. On Windows, prefer a platform-aware implementation such as
- * `NodePath.layer`; the core `Path.layer` uses POSIX semantics and does not
- * preserve Windows drive-letter paths.
- *
- * @stability unstable
- * @category loaders
- * @since 4.0.0
- */
-export const fromFileSystem: (directory: string) => Loader<FileSystem | Path> = Effect.fnUntraced(function*(directory) {
-  const Fs = yield* FileSystem
-  const path = yield* Path
-  const files = yield* Effect.mapError(
-    Fs.readDirectory(directory),
-    (cause) =>
-      new MigrationError({
-        kind: "Failed",
-        cause,
-        message: "Failed to read migrations directory"
-      })
-  )
-  return files
-    .map((file) => Option.fromNullishOr(file.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts|mjs|mts)$/)))
-    .flatMap(
-      Option.match({
-        onNone: () => [],
-        onSome: ([basename, id, name]): ReadonlyArray<ResolvedMigration> =>
-          [
-            [
-              Number(id),
-              name,
-              // `import` needs a file URL: on Windows an absolute path such as
-              // `D:\migrations\1_init.ts` is rejected by the ESM loader. `orDie` keeps the
-              // failure a defect so `loadMigration` reports it as an import error.
-              Effect.flatMap(Effect.orDie(path.toFileUrl(path.join(directory, basename))), (url) =>
-                Effect.promise(
-                  () =>
-                    import(
-                      /* @vite-ignore */
-                      /* webpackIgnore: true */
-                      url.href
-                    )
-                ))
-            ]
-          ] as const
-      })
-    )
-    .sort(([a], [b]) => a - b)
-})

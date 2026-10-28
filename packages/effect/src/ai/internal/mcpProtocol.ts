@@ -16,6 +16,7 @@ import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import type * as PublicMcpServer from "../McpServer.ts"
 import * as McpCore from "./mcpCore.ts"
 
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
@@ -94,6 +95,18 @@ export const invocationFromClient = (
   }),
   serverClient: request
 })
+
+/**
+ * Runs a core list operation for the legacy client of the current request.
+ *
+ * @internal
+ */
+export const listForClient = <A>(
+  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
+): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
+  PublicMcpSchema.McpServerClient.use((request) =>
+    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+  )
 
 /**
  * @internal
@@ -212,6 +225,9 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
   static fromTool(
     error: McpCore.ToolError | McpCore.UnsupportedByProtocol
   ): ProtocolError {
+    if (error._tag === "RequestRejected") {
+      return new ProtocolError({ code: error.code, message: error.message, data: error.data })
+    }
     const message = Match.value(error).pipe(
       Match.tag("ToolNotFound", (error) => `Tool '${error.name}' not found`),
       Match.tag(
@@ -428,12 +444,25 @@ export interface HandlerInstallationContext {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
     readonly extensions?: PublicMcpSchema.ServerCapabilities["extensions"] | undefined
+    readonly cacheHints?: CacheHints | undefined
   }
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
   }>
+}
+
+/**
+ * Cache hints normalized to wire values when the server is constructed.
+ *
+ * @internal
+ */
+export type CacheHints = {
+  readonly [Family in keyof PublicMcpServer.CacheHints]?: {
+    readonly ttlMs: number
+    readonly cacheScope: "private"
+  }
 }
 
 /**

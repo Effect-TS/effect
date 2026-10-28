@@ -286,6 +286,57 @@ describe("OpenRouterLanguageModel", () => {
           strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
         }).pipe(Effect.provide(makeTestLayer())))
 
+      const modelOutputCases = [
+        {
+          label: "as text with file placeholders",
+          modelOutput: [
+            Prompt.textPart({ text: "Screenshot" }),
+            Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+          ],
+          content: "Screenshot\n[image/png screenshot.png omitted]"
+        },
+        { label: "as an empty string when it is empty", modelOutput: [], content: "" }
+      ]
+
+      for (const { content, label, modelOutput } of modelOutputCases) {
+        it.effect(`sends tool result model output ${label}`, () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    params: {},
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    result: { output: "APPLICATION_ONLY" },
+                    modelOutput,
+                    isFailure: false,
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+
+            assert.isDefined(toolResult)
+            strictEqual(toolResult.content, content)
+          }).pipe(Effect.provide(makeTestLayer())))
+      }
+
       describe("cache control", () => {
         const ephemeral = { type: "ephemeral" } as const
         const oneHour = { type: "ephemeral", ttl: "1h" } as const
@@ -398,13 +449,9 @@ describe("OpenRouterLanguageModel", () => {
       it.effect("passes raw JSON schema for dynamic tools", () =>
         Effect.gen(function*() {
           const inputSchema = {
-            type: "object",
             properties: {
-              query: { type: "string" },
-              limit: { type: "number" }
-            },
-            required: ["query"],
-            additionalProperties: false
+              query: { type: "string" }
+            }
           } as const
 
           const DynamicTool = Tool.dynamic("DynamicTool", {
@@ -427,6 +474,53 @@ describe("OpenRouterLanguageModel", () => {
           assert.isDefined(tool)
           strictEqual(tool.function.description, "A dynamic tool")
           deepStrictEqual(tool.function.parameters, inputSchema)
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("passes object union parameters through", () =>
+        Effect.gen(function*() {
+          const UnionTool = Tool.make("UnionTool", {
+            parameters: Schema.Union([
+              Schema.Struct({ query: Schema.String }).annotate({ identifier: "Query" }),
+              Schema.Struct({ id: Schema.String })
+            ])
+          })
+
+          yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(UnionTool),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.tools[0].function.parameters, {
+            anyOf: [
+              { $ref: "#/$defs/Query" },
+              { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: true }
+            ],
+            $defs: {
+              Query: {
+                type: "object",
+                properties: { query: { type: "string" } },
+                required: ["query"],
+                additionalProperties: true
+              }
+            }
+          })
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("names the tool when its parameters are not an object schema", () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")), Effect.flip)
+
+          strictEqual(error.reason._tag, "UnsupportedSchemaError")
+          assert.include(error.message, `"NoParams"`)
+          assert.include(error.message, "Tool.EmptyParams")
         }).pipe(Effect.provide(makeTestLayer())))
     })
 
