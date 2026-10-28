@@ -91,24 +91,28 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const isComplete = (result: string | undefined): boolean =>
     result !== undefined && (JSON.parse(result) as { readonly _tag?: unknown })._tag === "Complete"
 
+  const armResumeGuard = Effect.suspend(() => armAlarm(options.alarm, options.now() + resumeGuardMillis))
+
   const resumeParent = (parent: { readonly workflowName: string; readonly executionId: string }) =>
     Effect.promise(() => options.getStub(encodeName(parent.workflowName, parent.executionId)).resume()).pipe(
       Effect.sandbox,
       Effect.retry({ times: 5, schedule: Schedule.exponential(200) })
     )
 
+  const logResumeParentFailure = (cause: Cause.Cause<unknown>) =>
+    Effect.logError("Workflow parent resume failed", cause)
+
   const deliverParentWake = Effect.suspend(() => {
     const row = WorkflowStorage.loadExecution(sql)
     if (row === undefined || !row.resumePending || !isComplete(row.result) || row.parent === undefined) {
       return Effect.void
     }
-    // Re-arm before sending: a crash during delivery or exhausted RPC retries
-    // must leave another autonomous attempt, including after child completion.
-    return armAlarm(options.alarm, options.now() + resumeGuardMillis).pipe(
+    // Re-arm before sending so a crash or exhausted retries leave another attempt.
+    return armResumeGuard.pipe(
       Effect.andThen(
         resumeParent(row.parent).pipe(
           Effect.tap(() => Effect.sync(() => WorkflowStorage.setResumePending(sql, false))),
-          Effect.catchCause((cause) => Effect.logError("Workflow parent resume failed", cause))
+          Effect.catchCause(logResumeParentFailure)
         )
       )
     )
@@ -151,10 +155,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         Effect.gen(function*() {
           const parent = WorkflowStorage.loadExecution(sql)?.parent
           if (result._tag === "Complete" && parent !== undefined) {
-            // The alarm precedes the atomic result/pending update, so
-            // completion can never be persisted without a future delivery wake.
-            yield* armAlarm(options.alarm, options.now() + resumeGuardMillis)
+            // Arm before the atomic result/pending save so a persisted
+            // completion always has a delivery wake.
+            yield* armResumeGuard
           }
+          // Stay in flight until the result is saved so a concurrent resume
+          // queues behind this attempt instead of replaying alongside it.
           WorkflowStorage.saveResult(sql, text, result._tag === "Complete" ? parent !== undefined : resumeRequested)
           inflight = undefined
           if (result._tag === "Complete") {
@@ -191,11 +197,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       WorkflowStorage.setResumePending(sql, false)
       const parent = WorkflowStorage.loadExecution(sql)?.parent
       if (parent !== undefined) {
-        options.waitUntil(Effect.runPromise(
-          resumeParent(parent).pipe(
-            Effect.catchCause((cause) => Effect.logError("Workflow parent resume failed", cause))
-          )
-        ))
+        options.waitUntil(Effect.runPromise(resumeParent(parent).pipe(Effect.catchCause(logResumeParentFailure))))
       }
       return Effect.runPromise(Effect.logError("Workflow execution failed", exit.cause)).then(() =>
         Promise.reject(Cause.squash(exit.cause))
@@ -229,12 +231,10 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     const row = WorkflowStorage.loadExecution(sql)
     if (row === undefined || isComplete(row.result)) return Promise.resolve()
     if (!row.resumePending) WorkflowStorage.setResumePending(sql, true)
-    if (inflight !== undefined) {
-      resumeRequested = true
-    }
-    // A successful native RPC acknowledges durable admission, not merely a
-    // detached RAM fiber. An abort after this acknowledgement is recoverable.
-    return Effect.runPromise(armAlarm(options.alarm, options.now() + resumeGuardMillis)).then(() => {
+    if (inflight !== undefined) resumeRequested = true
+    // Persist and guard the resume before acknowledging it, so an abort after
+    // the RPC returns is still recovered.
+    return Effect.runPromise(armResumeGuard).then(() => {
       const current = WorkflowStorage.loadExecution(sql)
       if (current !== undefined && !isComplete(current.result) && inflight === undefined) detach(startAttempt(current))
     })
@@ -249,9 +249,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     WorkflowStorage.setResumePending(sql, true)
     if (inflight !== undefined) resumeRequested = true
     return Effect.runPromise(
-      armAlarm(options.alarm, options.now() + resumeGuardMillis).pipe(
-        Effect.andThen(deferredState.deferredDone(executionId, deferredName))
-      )
+      armResumeGuard.pipe(Effect.andThen(deferredState.deferredDone(executionId, deferredName)))
     ).then(() => resume())
   }
 
