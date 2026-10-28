@@ -46,6 +46,8 @@ minimumReleaseAgeExclude:
   - '@effect/platform-node@4.0.0-rc.116 || 4.0.0 || 4.0.7'
   - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0 || 4.0.7'
   - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0 || 4.0.7'
+  - '@effect/sql-libsql@4.0.7'
+  - '@effect/vitest@4.0.7'
 
 overrides:
   # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.

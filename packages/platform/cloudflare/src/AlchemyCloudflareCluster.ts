@@ -11,13 +11,13 @@
  * Object classes.
  *
  * The Wrangler path (`CloudflareDurableObjects` + `CloudflareCluster.layer`)
- * never imports this module; `alchemy` is an optional peer dependency needed
- * only here.
+ * never imports this module; `@alchemy.run/cloudflare` is an optional peer
+ * dependency needed only here.
  *
  * **Example** (Declaring a cluster)
  *
  * ```ts
- * import * as Cloudflare from "alchemy/Cloudflare"
+ * import * as Cloudflare from "@alchemy.run/cloudflare"
  * import { Effect, Layer } from "effect"
  * import { make } from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
  *
@@ -40,7 +40,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Cloudflare from "alchemy/Cloudflare"
+import * as Cloudflare from "@alchemy.run/cloudflare"
 import type * as Entity from "effect/cluster/Entity"
 import type { Sharding } from "effect/cluster/Sharding"
 import type * as Duration from "effect/Duration"
@@ -57,6 +57,12 @@ import {
 } from "./CloudflareDurableObjectPrograms.ts"
 import { inertClusterHandle, makeClusterHandle } from "./internal/alchemyCluster.ts"
 import type { Cluster } from "./internal/cluster.ts"
+
+declare global {
+  // Set by Alchemy's bundler in deployed Workers; unset while planning.
+  // Declared by `alchemy/Phase` too, which this module does not import.
+  var __ALCHEMY_RUNTIME__: boolean | undefined
+}
 
 /**
  * The services `make` builds on top of the user layer: the cluster `Sharding`

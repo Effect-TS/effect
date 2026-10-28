@@ -18,5 +18,5 @@ Cron Triggers stay user-declared via
 The new `CloudflareDurableObjectPrograms` module exposes the class-independent
 programs behind the bundled Durable Object classes (entity, workflow, durable
 queue, singleton) so a framework that creates its own native classes can run
-the same behavior. The Wrangler path is unchanged and never imports `alchemy`;
-the `alchemy` peer dependency (`>=2.0.0-beta <3`) is optional.
+the same behavior. The Wrangler path is unchanged and never imports Alchemy;
+the `@alchemy.run/cloudflare` peer dependency (`>=2.0.0-beta.84 <3`) is optional.

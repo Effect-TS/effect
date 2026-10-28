@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
+import * as Cloudflare from "@alchemy.run/cloudflare"
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
-import * as Cloudflare from "alchemy/Cloudflare"
 import { Entity, Singleton } from "effect/cluster"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
