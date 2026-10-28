@@ -2116,7 +2116,11 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     return [""]
   }
 
-  const replaced = bracketPath.replace(/\[(.*?)\]/g, ".$1")
+  // Consume unmatched bracket runs too, avoiding repeated scans for a closing bracket.
+  const replaced = bracketPath.replace(
+    /\[([^\]\r\n\u2028\u2029]*)(\])?/g,
+    (match, content, closing) => closing ? `.${content}` : match
+  )
   const parts = replaced.split(".")
   // if bracket path started with "[...]" we get ".foo" => ["", "foo"]; drop the synthetic first ""
   const start = replaced.startsWith(".") ? 1 : 0
