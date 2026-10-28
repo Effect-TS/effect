@@ -53,6 +53,7 @@ export interface ExecutionRow {
   readonly payload: string
   readonly parent: { readonly workflowName: string; readonly executionId: string } | undefined
   readonly result: string | undefined
+  /** Replay this execution, or notify its parent once complete. */
   readonly resumePending: boolean
 }
 
@@ -131,8 +132,8 @@ export const setParent = (
 }
 
 /** @internal */
-export const saveResult = (sql: SqlStorage, result: string): void => {
-  sql.exec("UPDATE workflow_execution SET result = ? WHERE id = 0", result)
+export const saveResult = (sql: SqlStorage, result: string, resumePending: boolean): void => {
+  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0", result, resumePending ? 1 : 0)
 }
 
 /** @internal */

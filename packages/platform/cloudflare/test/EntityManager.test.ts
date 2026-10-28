@@ -97,6 +97,53 @@ describe("EntityManager", () => {
     unregisterEntity(Mailbox.type, registration)
   })
 
+  for (const outcome of ["success", "failure"] as const) {
+    it.effect(`shares an active unary ${outcome} with concurrent primary-key duplicates`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        let runs = 0
+        const entity = Entity.make(`DuplicateUnary-${outcome}`, [
+          Rpc.make("Add", {
+            payload: { operationId: Schema.String },
+            primaryKey: ({ operationId }) => operationId,
+            success: Schema.Number,
+            error: Schema.String
+          }).annotate(ClusterSchema.Persisted, true)
+        ])
+        const handlers: EntityRegistration = {
+          entity,
+          keepAliveHeartbeat: 30_000,
+          build: Effect.succeed(entity.of({
+            Add: Effect.fnUntraced(function*() {
+              runs++
+              yield* Deferred.succeed(started, undefined)
+              yield* Deferred.await(release)
+              return yield* outcome === "failure" ? Effect.fail("rejected") : Effect.succeed(42)
+            })
+          })),
+          options: undefined,
+          context: Context.empty()
+        }
+        yield* Effect.acquireRelease(
+          Effect.sync(() => registerEntity(entity.type, handlers)),
+          () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+        )
+        const { envelope, exitOf, manager } = yield* makeMailbox("duplicates", entity.type)
+        const first = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
+        yield* Deferred.await(started)
+        const duplicate = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
+        yield* settle
+        yield* Deferred.succeed(release, undefined)
+        const original = yield* Fiber.join(first)
+        assert(original._tag === "Success")
+        assert.strictEqual(original.replies.length, 1)
+        assert.strictEqual(exitOf(original.replies[0])._tag, outcome === "failure" ? "Failure" : "Success")
+        assert.deepStrictEqual(yield* Fiber.join(duplicate), original)
+        assert.strictEqual(runs, 1)
+      }))
+  }
+
   it.effect("completes an interrupted persisted stream instead of replaying it", () =>
     Effect.gen(function*() {
       const { envelope, manager, storage, waitUntilFibers } = yield* makeMailbox("interrupted")

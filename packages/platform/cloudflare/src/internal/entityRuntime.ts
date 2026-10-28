@@ -520,7 +520,21 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const active = sessions.get(requestId)
       if (active !== undefined) {
         const nextReply = persisted ? yield* loadNextReply(sql, requestId) : undefined
-        return Effect.succeed(nextReply === undefined ? [] : [nextReply.reply])
+        if (nextReply !== undefined) return Effect.succeed([nextReply.reply])
+        const fiber = active.fiber
+        if (!persisted || fiber === undefined || RpcSchema.isStreamSchema(rpc.successSchema)) {
+          return Effect.succeed([])
+        }
+        // A unary duplicate waits for the handler outside the entry permit and
+        // then reads its stored reply, which wins even when post-reply handler
+        // cleanup failed.
+        return Effect.gen(function*() {
+          const exit = yield* Fiber.await(fiber)
+          const reply = yield* loadNextReply(sql, requestId)
+          if (reply !== undefined) return [reply.reply]
+          if (Exit.isFailure(exit)) return yield* Effect.failCause(exit.cause)
+          return yield* Effect.die("Persisted unary handler finished without a reply")
+        })
       }
     }
 
