@@ -93,6 +93,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     }
   })
 
+  // In milliseconds, capped to the largest value PostgreSQL accepts.
+  const idleSessionTimeout = Math.min(
+    Math.ceil(Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))),
+    2147483647
+  )
+
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
   const acquireLockConn = singleSession ? undefined : sql.onDialectOrElse({
@@ -101,9 +107,18 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )
+        // Advisory locks belong to the session, so a frozen runner whose
+        // connection stays open would hold them indefinitely. End the session
+        // once it has been idle for shardLockExpiration, which releases them.
+        // Runners holding shards use it at least every shardLockExpiration / 3.
+        // Servers without idle_session_timeout (before PostgreSQL 14) keep the
+        // session open.
         const pid = disableAdvisoryLocks
           ? 0
-          : (yield* conn.executeValues("SELECT pg_backend_pid()", []))[0][0] as number
+          : (yield* conn.executeValues(
+            `SELECT pg_backend_pid(), (SELECT set_config(name, '${idleSessionTimeout}', false) FROM pg_settings WHERE name = 'idle_session_timeout')`,
+            []
+          ))[0][0] as number
         if (!disableAdvisoryLocks) {
           yield* Scope.addFinalizerExit(scope, () =>
             conn.executeRaw("SELECT pg_advisory_unlock_all()", []).pipe(
@@ -632,8 +647,16 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           withTracerDisabled
         ),
 
+    // A runner without shards leaves its lock connection idle, so the server
+    // may have ended the session, and the first operation on it fails and
+    // replaces it. Acquiring does not depend on the previous session, so retry
+    // once on the replacement.
     acquire: (address, shardIds) =>
-      withLockOperationDeadline(acquireLock(address, shardIds)).pipe(
+      withLockOperationDeadline(
+        lockConn
+          ? Effect.catch(acquireLock(address, shardIds), () => acquireLock(address, shardIds))
+          : acquireLock(address, shardIds)
+      ).pipe(
         PersistenceError.refail,
         withTracerDisabled
       ),
