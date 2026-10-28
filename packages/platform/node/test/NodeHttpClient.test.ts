@@ -180,7 +180,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   },
   {
     name: "node:http",
-    layer: NodeClient.layerNodeHttpOptions({ keepAlive: true, maxSockets: 1 })
+    layer: NodeClient.layerNodeHttp
   },
   {
     name: "undici",
@@ -309,7 +309,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         }).pipe(Effect.provide(localServerTestLayer)))
     }
 
-    it.live("local server followRedirects", () =>
+    it.effect("local server followRedirects", () =>
       Effect.gen(function*() {
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
@@ -317,11 +317,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         const response = yield* client.get("/redirect")
         expect(new URL(response.url).pathname).toBe("/redirected")
         expect(yield* response.text).toBe("redirected")
-      }).pipe(
-        Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
-        Effect.timeout("2 seconds"),
-        Effect.provide(localServerTestLayer)
-      ))
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("text stream", () =>
       Effect.gen(function*() {
@@ -420,6 +416,20 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       }).pipe(Effect.provide(localServerTestLayer)))
   })
 })
+
+it.live("followRedirects releases redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
 
 it.live("releases an immediately failing form data stream and connection before layer teardown", () => {
   const server = Http.createServer((request) => {
