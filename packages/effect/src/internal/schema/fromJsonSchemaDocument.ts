@@ -780,11 +780,6 @@ export function fromJsonSchemaMultiDocument(
       : check._tag === "PropertyNames" && hasChoices(check.type)
   }
 
-  function isLiteralSet(union: ImportedUnion): boolean {
-    return (union.options?.mode ?? "anyOf") === "anyOf" &&
-      union.types.every((type) => literalValue(type) !== undefined)
-  }
-
   function makeUnion(
     source: ImportedUnion,
     types: ReadonlyArray<ImportedJsonSchemaRepresentation>
@@ -802,18 +797,20 @@ export function fromJsonSchemaMultiDocument(
     return representation.literal
   }
 
+  function isLiteralSet(union: ImportedUnion): boolean {
+    return (union.options?.mode ?? "anyOf") === "anyOf" &&
+      union.types.every((type) => literalValue(type) !== undefined)
+  }
+
   function intersectLiteralUnions(
     left: ImportedUnion,
     right: ImportedUnion,
     path: Path
   ): ImportedJsonSchemaRepresentation | undefined {
-    if ((left.options?.mode ?? "anyOf") !== "anyOf" || (right.options?.mode ?? "anyOf") !== "anyOf") {
-      return undefined
-    }
-    const rightByValue = new Map<string | number | boolean | null, ImportedJsonSchemaRepresentation>()
+    if (!isLiteralSet(left) || !isLiteralSet(right)) return undefined
+    const rightByValue = new Map<ReturnType<typeof literalValue>, ImportedJsonSchemaRepresentation>()
     for (const representation of right.types) {
       const value = literalValue(representation)
-      if (value === undefined) return undefined
       const previous = rightByValue.get(value)
       rightByValue.set(value, {
         ...representation,
@@ -822,9 +819,7 @@ export function fromJsonSchemaMultiDocument(
     }
     const types: Array<ImportedJsonSchemaRepresentation> = []
     for (const representation of left.types) {
-      const value = literalValue(representation)
-      if (value === undefined) return undefined
-      const match = rightByValue.get(value)
+      const match = rightByValue.get(literalValue(representation))
       if (match !== undefined) types.push(intersect(representation, annotate(match, right), path))
     }
     return makeUnion(left, types)
