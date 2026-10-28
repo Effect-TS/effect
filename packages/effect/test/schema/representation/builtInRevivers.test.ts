@@ -787,6 +787,23 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
+  it("revives isConditional without absent branches", () => {
+    const condition = Schema.String
+    const then = Schema.String.check(Schema.isMinLength(2))
+    assertFilterReviver({
+      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+      schema: Schema.Any.check(Schema.isConditional(condition, { then })),
+      id: "effect/schema/isConditional",
+      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+      payload: { then: true, else: false },
+      schemas: [condition.ast, then.ast],
+      reviver: SchemaRepresentation.isConditionalReviver,
+      dependencies: [SchemaRepresentation.isMinLengthReviver],
+      valid: "ab",
+      invalid: "a"
+    })
+  })
+
   it("persists the encoded key schema for isPropertyNames", () => {
     const names = Schema.String.check(Schema.isPattern(/^[A-Z]/))
     const check = Schema.isPropertyNames(names)

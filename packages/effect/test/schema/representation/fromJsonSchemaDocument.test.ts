@@ -3476,6 +3476,107 @@ describe("fromJsonSchemaDocument", () => {
     })
   })
 
+  describe("conditionals", () => {
+    const condition =
+      `Schema.Union([Schema.Null, Schema.String, Schema.Finite, Schema.Boolean, Schema.StructWithRest(Schema.Struct({ "kind": Schema.optionalKey(Schema.Literal("box")) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))])`
+    const then =
+      `Schema.Union([Schema.Null, Schema.String, Schema.Finite, Schema.Boolean, Schema.StructWithRest(Schema.Struct({ "size": Schema.Json.annotate({ "expected": "JSON value" }) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))])`
+
+    it("applies then when the value satisfies if", async () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+        type: "object",
+        properties: { kind: { type: "string" }, size: { type: "number" } },
+        if: { properties: { kind: { const: "box" } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: { required: ["size"] }
+      }))
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.fail({ kind: "box" }, `Missing key\n  at ["size"]`)
+      await decoding.succeed({ kind: "box", size: 1 })
+      await decoding.succeed({ kind: "other" })
+      await decoding.fail({}, `Missing key\n  at ["size"]`)
+      await decoding.fail({ kind: "box", size: "1" }, `Expected number\n  at ["size"]`)
+      assertCode(schema, {
+        codes: makeCode(
+          `Schema.StructWithRest(Schema.Struct({ "kind": Schema.optionalKey(Schema.String), "size": Schema.optionalKey(Schema.Finite) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).check(Schema.isConditional(${condition}, { then: ${then} }).annotate({ "expected": "a value satisfying the conditional schema" }))`,
+          `{ readonly "kind"?: string, readonly "size"?: number } & { readonly [x: string]: Schema.Json }`
+        )
+      })
+    })
+
+    it("applies else when the value does not satisfy if", async () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        if: { properties: { kind: { const: "box" } } },
+        else: { required: ["name"] }
+      }))
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.fail({ kind: "other" }, `Missing key\n  at ["name"]`)
+      await decoding.succeed({ kind: "other", name: "x" })
+      await decoding.succeed({ kind: "box" })
+    })
+
+    it("selects branches with boolean and empty subschemas", () => {
+      for (
+        const [source, input, expected] of [
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: true, then: false }, "a", false],
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: true, then: false }, 1, false],
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: false, then: false }, "a", true],
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: true, then: {} }, "a", true],
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: { type: "string" }, then: false }, "a", false],
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          [{ if: { type: "string" }, then: false }, 1, true],
+          [{ if: { type: "string" }, else: false }, "a", true],
+          [{ if: { type: "string" }, else: false }, 1, false]
+        ] as const
+      ) {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(source))
+        assert.strictEqual(Schema.is(schema)(input), expected)
+      }
+    })
+
+    it("applies conditionals from allOf members to the host object", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+        type: "object",
+        properties: { kind: { type: "string" } },
+        allOf: [
+          {
+            $comment: "boxes require a size",
+            if: { properties: { kind: { const: "box" } } },
+            // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+            then: { required: ["size"] }
+          },
+          { oneOf: [{ required: ["a"] }, { required: ["b"] }] }
+        ]
+      }))
+      const is = Schema.is(schema)
+      assert.isFalse(is({ kind: "box", a: 1 }))
+      assert.isTrue(is({ kind: "box", a: 1, size: 1 }))
+      assert.isTrue(is({ kind: "other", b: 1 }))
+      assert.isFalse(is({ kind: 1, a: 1 }))
+    })
+
+    it("keeps conditionals when intersecting a primitive with a literal", () => {
+      for (
+        const [condition, expected] of [
+          ["a", false],
+          ["b", true]
+        ] as const
+      ) {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+          allOf: [{ type: "string", if: { const: condition }, then: false }, { const: "a" }]
+        }))
+        assert.strictEqual(Schema.is(schema)("a"), expected)
+      }
+    })
+  })
+
   describe("unsupported validation keywords", () => {
     it("not", () => {
       throws(
@@ -3506,19 +3607,6 @@ describe("fromJsonSchemaDocument", () => {
           `Cannot import JSON Schema keyword "${keyword}": Effect has no equivalent constraint.\n  at ["schema"][${
             JSON.stringify(keyword)
           }]`
-        )
-      })
-    }
-
-    for (const branch of ["then", "else"] as const) {
-      it(`if/${branch}`, () => {
-        throws(
-          () =>
-            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-              if: { type: "string" },
-              [branch]: false
-            })),
-          `Cannot import JSON Schema keyword "if": Effect has no equivalent constraint.\n  at ["schema"]["if"]`
         )
       })
     }

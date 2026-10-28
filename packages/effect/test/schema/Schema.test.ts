@@ -2106,6 +2106,27 @@ Expected a value between -2147483648 and 2147483647`
   at ["a"]`
         )
       })
+
+      it("isConditional", async () => {
+        const schema = Schema.Union([Schema.String, Schema.Finite]).check(
+          Schema.isConditional(Schema.String, {
+            // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+            then: Schema.String.check(Schema.isMinLength(2)),
+            else: Schema.Finite.check(Schema.isGreaterThan(0))
+          })
+        )
+        const decoding = new TestSchema.Asserts(schema).decoding()
+        await decoding.succeed("ab")
+        await decoding.fail("a", `Expected a value with a length of at least 2`)
+        await decoding.succeed(1)
+        await decoding.fail(0, `Expected a value greater than 0`)
+
+        const thenOnly = Schema.Union([Schema.String, Schema.Finite]).check(
+          // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+          Schema.isConditional(Schema.String, { then: Schema.String.check(Schema.isMinLength(2)) })
+        )
+        await new TestSchema.Asserts(thenOnly).decoding().succeed(0)
+      })
     })
 
     describe("Array checks", () => {
