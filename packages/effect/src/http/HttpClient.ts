@@ -2023,7 +2023,7 @@ export const followRedirects: {
                 nextRequest.headers,
                 nextRequest.body
               )
-              // Release the discarded body without waiting for it to finish.
+              // Release the discarded body without reading it
               return Effect.andThen(
                 Effect.scoped(Stream.toPull(response.stream)),
                 loop(Effect.succeed(nextRequest), redirects + 1)
