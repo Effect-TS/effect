@@ -285,6 +285,7 @@ export function fromJsonSchemaMultiDocument(
     }
 
     let schema: Schema.Top
+    const checks: Array<InternalAST.Check<any>> = []
     switch (input._tag) {
       case "Unknown":
         return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
@@ -312,22 +313,26 @@ export function fromJsonSchemaMultiDocument(
         break
       }
       case "Objects": {
-        // Intersections may remove open patterns, so check the normalized object.
-        if (
-          input.indexSignatures[0]?.parameter === string &&
-          input.scopes.some((scope) => scope.patterns.length > 0)
-        ) {
-          throw errorWithPath(
-            "Cannot import open \"patternProperties\": unmatched keys cannot be typed correctly.",
-            input.path
-          )
-        }
         const fields: Record<string, Schema.Top> = {}
         for (const property of input.propertySignatures) {
           const type = finalize(property.type)
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
+        // Intersections may remove open patterns, so derive checks from the normalized object.
+        // Open patterns keep the broad index signature and validate matching keys with checks.
+        if (index?.parameter === string && index.type._tag !== "Never") {
+          for (const scope of input.scopes) {
+            for (const pattern of scope.patterns) {
+              checks.push(
+                Schema.isPatternProperties(
+                  new globalThis.RegExp(pattern.source, jsonSchemaPatternFlags),
+                  finalize(pattern.type)
+                )
+              )
+            }
+          }
+        }
         const record = index === undefined
           ? undefined
           : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
@@ -343,7 +348,7 @@ export function fromJsonSchemaMultiDocument(
         break
     }
     if (annotations !== undefined) schema = schema.annotate(annotations)
-    const checks = input.checks.map(finalizeCheck)
+    for (const check of input.checks) checks.push(finalizeCheck(check))
     return checks.length > 0 ? schema.check(...checks as [InternalAST.Check<any>]) : schema
   }
 

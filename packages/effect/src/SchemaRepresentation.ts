@@ -1557,6 +1557,29 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isPatternProperties` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isPatternProperties}.
+ *
+ * @see {@link Schema.isPatternProperties} for creating the corresponding check
+ *
+ * @stability unstable
+ * @category validation
+ * @since 4.1.0
+ */
+export const isPatternPropertiesReviver: FilterReviver<{
+  readonly source: string
+  readonly flags: string
+}> = makeReviverFilter(
+  "effect/schema/isPatternProperties",
+  IsPatternPayload,
+  ({ annotations, payload, schemas }) =>
+    Schema.isPatternProperties(new globalThis.RegExp(payload.source, payload.flags), schemas[0], annotations)
+)
+
+/**
  * Reviver for persisted `isUnique` checks.
  *
  * **When to use**
