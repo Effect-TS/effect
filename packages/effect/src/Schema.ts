@@ -6890,17 +6890,25 @@ export function isPattern(
   regExp: globalThis.RegExp,
   annotations?: Annotations.Filter
 ): SchemaAST.Filter<string> {
-  const source = regExp.source
-  const flags = regExp.flags
-  const canExport = /^[dg]*uy?$/.test(flags)
-  const runtimeRegExp = flags === ""
-    ? `new globalThis.RegExp(${format(source)})`
-    : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
+  const { pattern, runtime } = jsonSchemaRegExp(regExp)
   return SchemaAST.isPattern(regExp, {
-    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : [{}, true],
-    toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
+    toJsonSchema: () => pattern === undefined ? [{}, true] : { pattern },
+    toCode: () => ({ runtime: `Schema.isPattern(${runtime})` }),
     ...annotations
   })
+}
+// JSON Schema patterns are ECMAScript Unicode patterns, so only `u` RegExps with `d`, `g`, or `y` flags export
+// exactly; sticky ones are anchored at the start. `pattern` is undefined when the RegExp cannot be exported.
+function jsonSchemaRegExp(regExp: globalThis.RegExp) {
+  const source = regExp.source
+  const flags = regExp.flags
+  return {
+    source,
+    pattern: /^[dg]*uy?$/.test(flags) ? flags.endsWith("y") ? `^(?:${source})` : source : undefined,
+    runtime: flags === ""
+      ? `new globalThis.RegExp(${format(source)})`
+      : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
+  }
 }
 /**
  * Validates that a string represents a finite number.
@@ -9150,12 +9158,7 @@ export function isPatternProperties(
   annotations?: Annotations.Filter
 ) {
   const copy = new globalThis.RegExp(regExp)
-  const source = copy.source
-  const flags = copy.flags
-  const canExport = /^[dg]*uy?$/.test(flags)
-  const runtimeRegExp = flags === ""
-    ? `new globalThis.RegExp(${format(source)})`
-    : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
+  const { pattern, runtime, source } = jsonSchemaRegExp(copy)
   const value = toEncoded(valueSchema)
   const parser = SchemaParser._issue(value.ast)
   return makeFilter<object>(
@@ -9180,15 +9183,15 @@ export function isPatternProperties(
       expected: `an object whose properties matching the RegExp ${source} satisfy the schema`,
       representation: {
         id: "effect/schema/isPatternProperties",
-        payload: { source, flags },
+        payload: { source, flags: copy.flags },
         schemas: [value.ast]
       },
       toJsonSchema: ({ schemas, type }) => {
-        if (!canExport) return [{}, true]
-        const patternProperties = { [flags.endsWith("y") ? `^(?:${source})` : source]: schemas[0] }
+        if (pattern === undefined) return [{}, true]
+        const patternProperties = { [pattern]: schemas[0] }
         return type === "object" ? { patternProperties } : [{ patternProperties }, true]
       },
-      toCode: ({ schemas }) => ({ runtime: `Schema.isPatternProperties(${runtimeRegExp}, ${schemas[0].runtime})` }),
+      toCode: ({ schemas }) => ({ runtime: `Schema.isPatternProperties(${runtime}, ${schemas[0].runtime})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       ...annotations
     }
