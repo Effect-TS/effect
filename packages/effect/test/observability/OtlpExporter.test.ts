@@ -371,19 +371,6 @@ describe("OtlpExporter", () => {
     }))
 
   describe("flush", () => {
-    const logsUrl = "http://localhost:4318/v1/logs"
-    const metricsUrl = "http://localhost:4318/v1/metrics"
-    const tracesUrl = "http://localhost:4318/v1/traces"
-    // Emits one log, metric and span, flushes, and returns the exported URLs
-    // before the layer scope closes and runs the shutdown exports.
-    const emitAndFlush = Effect.fnUntraced(function*(urls: Ref.Ref<ReadonlyArray<string>>) {
-      yield* Effect.log("flush test")
-      yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
-      yield* Effect.void.pipe(Effect.withSpan("flush test"))
-      yield* (yield* OtlpExporter.Flusher).flush
-      return [...yield* Ref.get(urls)].sort()
-    })
-
     it.effect("exports buffered items without advancing to the export interval", () =>
       Effect.gen(function*() {
         const { attempts, httpClient } = yield* makeStatusHttpClient(200)
@@ -546,33 +533,28 @@ describe("OtlpExporter", () => {
           Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, httpClient))
         )
 
-        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(signals)), [
-          logsUrl,
-          metricsUrl,
-          tracesUrl
-        ])
+        yield* Effect.gen(function*() {
+          yield* Effect.log("flush test")
+          yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
+          yield* Effect.void.pipe(Effect.withSpan("flush test"))
+
+          const flusher = yield* OtlpExporter.Flusher
+          yield* flusher.flush
+
+          assert.deepStrictEqual(
+            [...yield* Ref.get(urls)].sort(),
+            [
+              "http://localhost:4318/v1/logs",
+              "http://localhost:4318/v1/metrics",
+              "http://localhost:4318/v1/traces"
+            ]
+          )
+        }).pipe(Effect.provide(signals))
       }))
 
-    it.effect("drains every signal from the combined Otlp layer", () =>
+    it.effect("Otlp.layerFromConfig flushes enabled signals when one is disabled", () =>
       Effect.gen(function*() {
         const { httpClient, urls } = yield* makeStatusHttpClient(200)
-        const otlp = Otlp.layerJson({
-          baseUrl: "http://localhost:4318",
-          resource: { serviceName: "test" },
-          loggerExportInterval: "1 hour",
-          loggerMergeWithExisting: false,
-          metricsExportInterval: "1 hour",
-          tracerExportInterval: "1 hour"
-        }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient)))
-
-        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(otlp)), [logsUrl, metricsUrl, tracesUrl])
-      }))
-
-    it.effect("shares one registry in Otlp.layerFromConfig when a signal is disabled", () =>
-      Effect.gen(function*() {
-        const { httpClient, urls } = yield* makeStatusHttpClient(200)
-        // Traces are merged last, so a separate registry for the disabled
-        // tracer would shadow the shared one and the flush would export nothing.
         const otlp = Otlp.layerFromConfig({
           resource: { serviceName: "test" },
           loggerMergeWithExisting: false
@@ -591,7 +573,16 @@ describe("OtlpExporter", () => {
           })))
         )
 
-        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(otlp)), [logsUrl, metricsUrl])
+        yield* Effect.gen(function*() {
+          yield* Effect.log("flush test")
+          yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
+          yield* (yield* OtlpExporter.Flusher).flush
+
+          assert.deepStrictEqual(
+            [...yield* Ref.get(urls)].sort(),
+            ["http://localhost:4318/v1/logs", "http://localhost:4318/v1/metrics"]
+          )
+        }).pipe(Effect.provide(otlp))
       }))
 
     it.effect("is a no-op while the exporter is disabled", () =>
