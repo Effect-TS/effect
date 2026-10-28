@@ -204,7 +204,7 @@ export interface LifecycleRuntime {
     level: PublicMcpSchema.LoggingLevel,
     clientId: number,
     headers: Headers.Headers
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, ProtocolError>
   readonly subscribe: (uri: string, clientId: number, headers: Headers.Headers) => Effect.Effect<void, ProtocolError>
   readonly unsubscribe: (uri: string, clientId: number, headers: Headers.Headers) => Effect.Effect<void, ProtocolError>
   readonly clientNotification: (
