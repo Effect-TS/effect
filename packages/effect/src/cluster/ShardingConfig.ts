@@ -81,6 +81,11 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   readonly shardLockRefreshInterval: Duration.Input
   /**
    * Shard lock expiration duration.
+   *
+   * With PostgreSQL advisory locks (PostgreSQL 14+), this also bounds how long
+   * a runner that stops refreshing, for example because its process is frozen,
+   * keeps its shards: the server ends its idle lock session after this
+   * duration, releasing the locks.
    */
   readonly shardLockExpiration: Duration.Input
   /**
