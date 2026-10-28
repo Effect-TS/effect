@@ -225,6 +225,9 @@ const sendBody = (
 
 const encoder = new TextEncoder()
 
+// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpIncomingMessage.HttpIncomingMessage<E> {
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: globalThis.XMLHttpRequest
@@ -320,7 +323,7 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
     const text = this.source.responseType === "arraybuffer"
-      ? Effect.map(this.arrayBuffer, (buffer) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(buffer))
+      ? Effect.map(this.arrayBuffer, (buffer) => formDecoder.decode(buffer))
       : this.text
     return Effect.flatMap(text, (text) =>
       Effect.try({

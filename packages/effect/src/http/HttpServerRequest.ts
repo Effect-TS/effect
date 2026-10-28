@@ -36,6 +36,7 @@ import { hasBody } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as lazyStream from "./internal/lazyStream.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -636,8 +637,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
     return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () =>
-          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
@@ -879,8 +879,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
     return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () =>
-          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) => requestParseError(this, undefined, cause)
       }))
   }

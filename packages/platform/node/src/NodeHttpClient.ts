@@ -374,6 +374,9 @@ const convertFormData = (formData: FormData, undici: typeof Undici): Undici.Form
 
 function noopErrorHandler(_: any) {}
 
+// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pipeable {
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly [Response.TypeId]: typeof Response.TypeId
@@ -461,8 +464,7 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpClientError> {
     return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () =>
-          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes))),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({
