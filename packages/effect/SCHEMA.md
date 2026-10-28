@@ -6479,7 +6479,8 @@ alternatives or unreachable children is discarded. The resulting schema can have
 retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
 Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
-sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
+sets, which may also be duplicated across branches. Other union intersections, including cases that would duplicate any
+other nested choice, are rejected.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set

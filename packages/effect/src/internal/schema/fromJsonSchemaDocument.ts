@@ -755,8 +755,9 @@ export function fromJsonSchemaMultiDocument(
         return out
       }
       case "Union":
-        return representation.types.length > 1 ||
-          representation.types.some(hasChoices)
+        // Finite primitive literal sets intersect without expansion, so they can be duplicated across branches.
+        return !isLiteralSet(representation) &&
+          (representation.types.length > 1 || representation.types.some(hasChoices))
       case "Arrays":
         return representation.elements.some((element) => hasChoices(element.type)) ||
           representation.rest.some(hasChoices)
@@ -777,6 +778,11 @@ export function fromJsonSchemaMultiDocument(
     return check._tag === "FilterGroup"
       ? check.checks.some(checkHasChoices)
       : check._tag === "PropertyNames" && hasChoices(check.type)
+  }
+
+  function isLiteralSet(union: ImportedUnion): boolean {
+    return (union.options?.mode ?? "anyOf") === "anyOf" &&
+      union.types.every((type) => literalValue(type) !== undefined)
   }
 
   function makeUnion(
