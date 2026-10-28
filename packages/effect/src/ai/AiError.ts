@@ -72,6 +72,10 @@ const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
  * such as network connectivity problems, request encoding issues, or invalid
  * URLs.
  *
+ * When created with `NetworkError.fromHttpClientError`, `cause` holds the
+ * `HttpClientError` the request failed with. It is stored unchanged, so it
+ * carries the runtime's original error text without redaction.
+ *
  * **Example** (Creating a network error)
  *
  * ```ts import.meta.vitest
@@ -98,7 +102,8 @@ export class NetworkError extends Schema.Error<NetworkError>(
   reason: Schema.Literals(["TransportError", "EncodeError", "InvalidUrlError"]),
   method: Schema.String,
   url: Schema.String,
-  description: Schema.optional(Schema.String)
+  description: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect())
 }) {
   /**
    * Marks `NetworkError` as a semantic AI error reason for runtime guards.
@@ -145,6 +150,45 @@ export class NetworkError extends Schema.Error<NetworkError>(
       reason: error._tag,
       method: error.request.method,
       url: error.request.url
+    })
+  }
+
+  /**
+   * Creates a NetworkError from a platform HttpClientError whose reason is a
+   * request error, keeping the HttpClientError as `cause`.
+   *
+   * **Example** (Creating a network error from an HTTP client error)
+   *
+   * ```ts import.meta.vitest
+   * import { AiError } from "effect/ai"
+   * import { HttpClientError, HttpClientRequest } from "effect/http"
+   *
+   * const platformError = new HttpClientError.HttpClientError({
+   *   reason: new HttpClientError.TransportError({
+   *     request: HttpClientRequest.get("https://example.com/models"),
+   *     description: "Connection refused"
+   *   })
+   * })
+   *
+   * const aiError = AiError.NetworkError.fromHttpClientError(
+   *   platformError as HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+   * )
+   * aiError.reason // => "TransportError"
+   * aiError.cause === platformError // => true
+   * ```
+   *
+   * @stability unstable
+   * @since 4.1.0
+   */
+  static fromHttpClientError(
+    error: HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+  ): NetworkError {
+    return new NetworkError({
+      description: error.reason.description,
+      reason: error.reason._tag,
+      method: error.reason.request.method,
+      url: error.reason.request.url,
+      cause: error
     })
   }
 

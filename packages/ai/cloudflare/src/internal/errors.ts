@@ -72,7 +72,9 @@ export const mapHttpClientError = Effect.fnUntraced(
       case "EncodeError":
       case "InvalidUrlError":
         return yield* fail(
-          AiError.NetworkError.fromRequestError(source)
+          AiError.NetworkError.fromHttpClientError(
+            error as HttpClientError.HttpClientError & { readonly reason: typeof source }
+          )
         )
       case "DecodeError":
       case "EmptyBodyError":
