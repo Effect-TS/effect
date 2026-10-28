@@ -498,7 +498,7 @@ export const layerWorkflow = <
             }).pipe(Effect.provideService(TaskContext, taskContext))
           }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine)))
         yield* Effect.updateContext(register, (context: Context.Context<Effect.Services<typeof register>>) =>
-          Context.makeUnsafe(McpServer.omitRequestServices(context).mapUnsafe))
+          Context.add(McpServer.omitRequestServices(context), Scope.Scope, Context.get(context, Scope.Scope)))
 
         operations.set(workflow._tag, {
           get: Effect.fnUntraced(function*(request) {
