@@ -522,6 +522,21 @@ export const make: (options: {
 // =============================================================================
 
 /**
+ * Annotation containing the remote descriptor used to bind an MCP tool.
+ *
+ * **Details**
+ *
+ * Server metadata remains untrusted unless the caller explicitly trusts it.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.1.0
+ */
+export class ToolDescriptor
+  extends Context.Service<ToolDescriptor, McpSchema.Tool>()("effect/ai/McpClient/ToolDescriptor")
+{}
+
+/**
  * Native tool bound to a remote MCP descriptor with configurable results.
  *
  * @stability experimental
@@ -551,6 +566,7 @@ export type RemoteTool<
  * discovery and each tool call.
  * Native `failureMode` defaults to `"error"`; `"return"` captures typed handler
  * failures, including operational errors. Tool errors retain the full result.
+ * Server hints remain untrusted unless `trustAnnotations` is enabled.
  *
  * @stability experimental
  * @category models
@@ -564,6 +580,7 @@ export type ToolkitOptions<
     readonly prefix?: string | undefined
     readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
     readonly timeout?: Duration.Input | undefined
+    readonly trustAnnotations?: boolean | undefined
   }
   & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
   & ("error" extends FailureMode ? { readonly failureMode?: FailureMode | undefined }
@@ -622,7 +639,14 @@ export function toolkit<
         success,
         failure: McpClientError,
         failureMode
-      }).annotate(Tool.Strict, false)
+      }).annotate(Tool.Strict, false).annotate(ToolDescriptor, descriptor)
+      if (config.trustAnnotations && descriptor.annotations !== undefined) {
+        tool = tool.annotate(Tool.Readonly, descriptor.annotations.readOnlyHint)
+          .annotate(Tool.Destructive, descriptor.annotations.destructiveHint)
+          .annotate(Tool.Idempotent, descriptor.annotations.idempotentHint)
+          .annotate(Tool.OpenWorld, descriptor.annotations.openWorldHint)
+        if (descriptor.annotations.title !== undefined) tool = tool.annotate(Tool.Title, descriptor.annotations.title)
+      }
       const name = tool.name
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
         return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))

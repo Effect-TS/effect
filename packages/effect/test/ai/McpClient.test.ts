@@ -338,6 +338,35 @@ describe("McpClient", () => {
         assert(McpClientError.isMcpClientError(output.result) && output.result.reason._tag === "HttpError")
       }))
 
+    it.effect("should use server hints only when annotation trust is enabled", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) => scriptedReply(McpProtocol.v2026_07_28, message))
+        const descriptor = McpSchema.Tool.make({
+          name: "hints",
+          inputSchema: { type: "object" },
+          annotations: McpSchema.ToolAnnotations.make({
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false
+          })
+        })
+        const untrusted = (yield* McpClient.toolkit(client, { tools: [descriptor] })).tools.hints
+        const trusted = (yield* McpClient.toolkit(client, { tools: [descriptor], trustAnnotations: true })).tools.hints
+        assert.isUndefined(trusted.needsApproval)
+        for (
+          const [annotation, expected] of [
+            [Tool.Readonly, true],
+            [Tool.Destructive, false],
+            [Tool.Idempotent, true],
+            [Tool.OpenWorld, false]
+          ] as const
+        ) {
+          assert.strictEqual(Context.get(untrusted.annotations, annotation), !expected)
+          assert.strictEqual(Context.get(trusted.annotations, annotation), expected)
+        }
+      }))
+
     it.effect("should time out a tool call when the toolkit deadline expires", () =>
       Effect.gen(function*() {
         const client = yield* connect(McpProtocol.v2025_11_25)
