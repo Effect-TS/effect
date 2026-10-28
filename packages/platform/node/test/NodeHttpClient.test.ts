@@ -492,6 +492,55 @@ it.live("releases an immediately failing form data stream and connection before 
   )
 })
 
+it.live("streams form data files without buffering the whole body", () => {
+  let receivedUpload: () => void
+  const uploadReceived = new Promise<void>((resolve) => {
+    receivedUpload = resolve
+  })
+  const server = Http.createServer((request, response) => {
+    let body = ""
+    request.setEncoding("utf8")
+    request.on("data", (chunk) => {
+      body += chunk
+      receivedUpload()
+    })
+    request.on("end", () => response.end(body))
+  })
+  const layer = HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+  )
+  return Effect.gen(function*() {
+    const encoder = new TextEncoder()
+    // The rest of the file is only produced once the server has received part
+    // of the upload, so buffering the body before sending it never completes.
+    class SlowFile extends File {
+      override stream() {
+        return new ReadableStream<Uint8Array<ArrayBuffer>>({
+          start(controller) {
+            controller.enqueue(encoder.encode("first"))
+          },
+          async pull(controller) {
+            await uploadReceived
+            controller.enqueue(encoder.encode("second"))
+            controller.close()
+          }
+        })
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new SlowFile(["firstsecond"], "notes.txt", { type: "text/plain" }))
+    const response = yield* HttpClient.post("/", { body: HttpBody.formData(formData) })
+    const body = yield* response.text
+    assert.include(body, "filename=\"notes.txt\"")
+    assert.include(body, "firstsecond")
+  }).pipe(
+    Effect.timeout("2 seconds"),
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(layer)
+  )
+})
+
 it.live.each(["response completion", "response interruption", "upload failure"] as const)(
   "releases an unfinished keep-alive upload after %s before layer teardown",
   (mode) =>
