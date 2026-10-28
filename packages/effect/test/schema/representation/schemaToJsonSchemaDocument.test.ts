@@ -266,4 +266,36 @@ describe("Schema.toJsonSchemaDocument", () => {
     const union = Schema.Union([cases[0][0], Schema.Number], { mode: "oneOf" })
     assert.isUndefined(Schema.toJsonSchemaDocument(union).schema.oneOf)
   })
+
+  it("exports isNot without rejecting JSON whose host decoding changes the checked value", () => {
+    const cases: ReadonlyArray<readonly [Schema.Top, unknown]> = [
+      [Schema.Struct({ n: Schema.Number }).check(Schema.isNot(Schema.Struct({ n: Schema.Literal("NaN") }))), {
+        n: "NaN"
+      }],
+      [Schema.Struct({ n: Schema.NumberFromString }).check(Schema.isNot(Schema.Struct({ n: Schema.Literal("1") }))), {
+        n: "1"
+      }]
+    ]
+    for (const [schema, input] of cases) {
+      assert.strictEqual(Schema.decodeUnknownResult(Schema.toCodecJson(schema))(input)._tag, "Success")
+      const imported = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+      assert.isTrue(Schema.is(imported)(input))
+      assert.isFalse(Schema.is(imported)({ n: true }))
+    }
+
+    const union = Schema.Union([cases[0][0], Schema.String], { mode: "oneOf" })
+    assert.isUndefined(Schema.toJsonSchemaDocument(union).schema.oneOf)
+  })
+
+  it("exports JSON values exactly inside oneOf", () => {
+    for (const json of [Schema.Json, Schema.MutableJson]) {
+      const schema = Schema.Union([json, Schema.String], { mode: "oneOf" })
+      const document = Schema.toJsonSchemaDocument(schema)
+      assert.isDefined(document.schema.oneOf)
+      for (const candidate of [schema, SchemaRepresentation.fromJsonSchemaDocument(document)]) {
+        assert.isTrue(Schema.is(candidate)(1))
+        assert.isFalse(Schema.is(candidate)("x"))
+      }
+    }
+  })
 })
