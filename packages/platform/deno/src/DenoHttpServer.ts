@@ -493,7 +493,6 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
           })
       })
     ))
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }
 
