@@ -488,7 +488,7 @@ items:
   - <<: *base
     a: 5
 `
-      const result = Yaml.parse(source) as { readonly flow: object }
+      const result = Yaml.parse(source)
       assert.deepStrictEqual(result, {
         base: { a: 1, b: 2 },
         other: { b: 3, c: 4 },
@@ -496,7 +496,7 @@ items:
         flow: { b: 3, c: 5 },
         items: [{ a: 5, b: 2 }]
       })
-      assert.deepStrictEqual(Object.keys(result.flow), ["b", "c"])
+      assert.deepStrictEqual(Object.keys((result as { readonly flow: object }).flow), ["b", "c"])
     })
 
     it("treats quoted merge keys as ordinary keys", () => {
