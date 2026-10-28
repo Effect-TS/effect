@@ -2,15 +2,15 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Option } from "effect"
 import { TestClock } from "effect/testing"
 import * as Http from "node:http"
-import { getContainerRuntimeClient } from "testcontainers"
+import { BoundPorts, getContainerRuntimeClient } from "testcontainers"
 import { afterAll, beforeAll, vi } from "vitest"
-import { releasePgContainer } from "./utils.ts"
+import { pgWaitStrategy, releasePgContainer } from "./utils.ts"
 
 // Less than the existing 30s integration hook limit, including all retry attempts.
 const cleanupBudget = "25 seconds"
 const testTimeout = 28_000
 
-describe("PostgreSQL container teardown", () => {
+describe("PostgreSQL container lifecycle", () => {
   const requests = new Map<string, Array<string>>()
   const interruptedResponses = new Map<string, number>()
   const unexpected: Array<string> = []
@@ -26,7 +26,7 @@ describe("PostgreSQL container teardown", () => {
       response.end(JSON.stringify({ ServerVersion: "27.0.0", OperatingSystem: "Docker", OSType: "linux" }))
       return
     }
-    const match = /^\/containers\/([^/]+)(\/wait)?$/.exec(url.pathname)
+    const match = /^\/containers\/([^/]+)(\/wait|\/json|\/exec)?$/.exec(url.pathname)
     if (match === null || !requests.has(match[1])) {
       unexpected.push(request.method + " " + request.url)
       response.writeHead(404).end(JSON.stringify({ message: "Unexpected request" }))
@@ -34,7 +34,15 @@ describe("PostgreSQL container teardown", () => {
     }
     const id = match[1]
     const steps = requests.get(id)!
-    if (request.method === "POST" && match[2] === "/wait") {
+    if (request.method === "GET" && match[2] === "/json") {
+      steps.push("inspect")
+      response.end(
+        JSON.stringify({ Id: id, State: { Status: "running", Running: true, Health: { Status: "healthy" } } })
+      )
+    } else if (request.method === "POST" && match[2] === "/exec") {
+      // An exec that never completes, as observed under Deno in CI.
+      steps.push("exec")
+    } else if (request.method === "POST" && match[2] === "/wait") {
       steps.push("wait")
       assert.strictEqual(url.searchParams.get("condition"), "not-running")
       const attempt = steps.filter((step) => step === "wait").length
@@ -86,6 +94,20 @@ describe("PostgreSQL container teardown", () => {
       server.closeAllConnections()
     })
   })
+
+  it.live("startup readiness does not depend on docker exec completing", () =>
+    Effect.gen(function*() {
+      requests.set("exec-hangs", [])
+      const client = yield* Effect.promise(() => getContainerRuntimeClient())
+      const ports = new BoundPorts()
+      ports.setBinding(5432, (server.address() as { port: number }).port)
+      const result = yield* Effect.promise(() =>
+        pgWaitStrategy().waitUntilReady(client.container.getById("exec-hangs"), ports)
+      ).pipe(Effect.timeoutOption("5 seconds"))
+      assert.isTrue(Option.isSome(result), "readiness waited on a docker exec that never completed")
+      assert.deepStrictEqual(requests.get("exec-hangs"), ["inspect"])
+      assert.deepStrictEqual(unexpected, [])
+    }), testTimeout)
 
   const container = (id: string) => {
     const steps: Array<string> = []
