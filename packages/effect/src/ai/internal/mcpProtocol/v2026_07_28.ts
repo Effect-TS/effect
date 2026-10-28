@@ -202,9 +202,10 @@ const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
   Match.exhaustive
 )
 
-const projectResource = (resource: PublicMcpSchema.Resource) => McpSchema.Resource.make(resource)
+const projectResource = (resource: PublicMcpSchema.Resource) =>
+  McpProtocol.transcode(PublicMcpSchema.Resource, McpSchema.Resource, resource)
 const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTemplate) =>
-  McpSchema.ResourceTemplate.make(resourceTemplate)
+  McpProtocol.transcode(PublicMcpSchema.ResourceTemplate, McpSchema.ResourceTemplate, resourceTemplate)
 
 const projectPrompt = (prompt: PublicMcpSchema.Prompt) =>
   McpProtocol.transcode(PublicMcpSchema.Prompt, McpSchema.Prompt, prompt)
@@ -502,7 +503,7 @@ export const makeHandlers = (
       const resources = yield* core.resources.list(invocation)
       const result = yield* projectCompleteResult({
         ...cacheHint("resources"),
-        resources: resources.map(projectResource)
+        resources: yield* Effect.forEach(resources, projectResource)
       }, context.serverInfo)
       return yield* decodeListResourcesResult(result)
     }, Effect.mapError(projectError)),
@@ -513,7 +514,7 @@ export const makeHandlers = (
       const resourceTemplates = yield* core.resources.listTemplates(invocation)
       const result = yield* projectCompleteResult({
         ...cacheHint("resourceTemplates"),
-        resourceTemplates: resourceTemplates.map(projectResourceTemplate)
+        resourceTemplates: yield* Effect.forEach(resourceTemplates, projectResourceTemplate)
       }, context.serverInfo)
       return yield* decodeListResourceTemplatesResult(result)
     }, Effect.mapError(projectError)),

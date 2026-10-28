@@ -506,6 +506,44 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }
       }))
 
+    // Optional fields given as `undefined` are absent on the wire, not a reason to fail the listing.
+    it.effect("should list resources and templates whose optional fields are given as undefined", () =>
+      Effect.gen(function*() {
+        const registrations = Layer.mergeAll(
+          McpServer.resource({
+            uri: "file:///readme",
+            name: "Readme",
+            description: undefined,
+            mimeType: undefined,
+            audience: undefined,
+            content: Effect.succeed("readme")
+          }),
+          McpServer.resource`file:///notes/${Schema.String}`({
+            name: "Notes",
+            description: undefined,
+            mimeType: undefined,
+            content: () => Effect.succeed("notes")
+          })
+        )
+        const harness = yield* makeHttpHarness(registrations.pipe(Layer.provideMerge(makeServerLayer({
+          name: "UndefinedFieldsServer",
+          protocols: [protocol]
+        }))))
+        const list = Effect.fnUntraced(function*(method: string) {
+          const response = yield* harness.post(request(method, method), headers(method))
+          return Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(
+            yield* readMcpHttpResponse(response)
+          ).result
+        })
+
+        const resources = yield* list("resources/list")
+        assert.deepStrictEqual(resources.resources, [{ uri: "file:///readme", name: "Readme", annotations: {} }])
+        const templates = yield* list("resources/templates/list")
+        assert.deepStrictEqual(templates.resourceTemplates, [
+          { uriTemplate: "file:///notes/{param0}", name: "Notes", annotations: {} }
+        ])
+      }))
+
     // SEP-2549 cache hints are server-advertised freshness; omitted families and resource reads keep the stale default.
     it.effect("should advertise configured cache hints and keep defaults for other results", () =>
       Effect.gen(function*() {
