@@ -4,7 +4,7 @@ import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Layer, Option, Schema } from "effect"
+import { Deferred, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
 import { TestClock } from "effect/testing"
 import {
@@ -267,6 +267,45 @@ describe("CloudflareWorkflowEngine", () => {
         assert.strictEqual(namespace.store(name).alarm.current, 60_000)
         yield* Deferred.succeed(release, undefined)
         yield* pollUntil(Waiting, id, "Complete")
+      }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)), Effect.provide(layer))
+    }))
+
+  it.effect("does not automatically replay an uncaptured defect after native resume", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let attempts = 0
+      const Defecting = Workflow.make("UncapturedResume", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      }).annotate(Workflow.CaptureDefects, false)
+      const layer = Defecting.toLayer(Effect.fnUntraced(function*() {
+        attempts++
+        yield* Deferred.succeed(started, undefined)
+        yield* Deferred.await(release)
+        return yield* Effect.die(new Error("Uncaptured workflow defect"))
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const id = yield* Defecting.executionId({ id: "one" })
+        yield* Defecting.execute({ id: "one" }, { discard: true })
+        yield* Deferred.await(started)
+        const name = encodeName(Defecting._tag, id)
+        const runtime = namespace.getByName(name)
+        yield* Effect.promise(() => runtime.resume())
+        const result = yield* Effect.forkChild(
+          Effect.promise(() => runtime.run(JSON.stringify({ id: "one" }), { discard: false })).pipe(Effect.exit)
+        )
+        yield* Effect.yieldNow
+        yield* Deferred.succeed(release, undefined)
+        assert.isTrue(Exit.isFailure(yield* Fiber.join(result)))
+
+        namespace.now = 60_000
+        namespace.store(name).alarm.current = null
+        yield* Effect.promise(() => runtime.runAlarm())
+        assert.strictEqual(attempts, 1)
+        assert.strictEqual(namespace.store(name).sql.execution?.resume_pending, 0)
       }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)), Effect.provide(layer))
     }))
 

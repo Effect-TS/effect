@@ -188,6 +188,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       // workflow. The next external contact replays from storage.
       inflight = undefined
       resumeRequested = false
+      WorkflowStorage.setResumePending(sql, false)
       const parent = WorkflowStorage.loadExecution(sql)?.parent
       if (parent !== undefined) {
         options.waitUntil(Effect.runPromise(
@@ -227,7 +228,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const resume = (): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
     if (row === undefined || isComplete(row.result)) return Promise.resolve()
-    WorkflowStorage.setResumePending(sql, true)
+    if (!row.resumePending) WorkflowStorage.setResumePending(sql, true)
     if (inflight !== undefined) {
       resumeRequested = true
     }
