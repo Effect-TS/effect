@@ -32,10 +32,15 @@ import * as CliConfig from "./CliConfig.ts"
 import * as CliError from "./CliError.ts"
 import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
-import { checkForDuplicateFlags, makeCommand, makeParser, toImpl, TypeId } from "./internal/command.ts"
+import { checkForDuplicateFlags, makeCommand, makeParser, type Prepare, toImpl, TypeId } from "./internal/command.ts"
 import { mergeConfig, parseConfig } from "./internal/config.ts"
 import { resolveFormatter } from "./internal/formatter.ts"
-import { getGlobalFlagsForCommandPath, getGlobalFlagsForCommandTree, getHelpForCommandPath } from "./internal/help.ts"
+import {
+  getCommandsForCommandPath,
+  getGlobalFlagsForCommandPath,
+  getGlobalFlagsForCommandTree,
+  getHelpForCommandPath
+} from "./internal/help.ts"
 import * as Lexer from "./internal/lexer.ts"
 import * as Parser from "./internal/parser.ts"
 import * as Wizard from "./internal/wizard.ts"
@@ -831,7 +836,7 @@ export const validate: {
   const impl = toImpl(self)
   return makeCommand({
     ...impl,
-    parse: (raw) => Effect.tap(impl.parse(raw), f)
+    prepare: (raw) => Effect.map(impl.prepare(raw), Effect.tap(f))
   }) as any
 })
 
@@ -1014,19 +1019,23 @@ export const withSubcommands: {
   type SubcommandState = { readonly name: string; readonly result: unknown }
   type InternalInput = NextInput & { readonly [SubcommandStateSymbol]?: SubcommandState }
 
-  const parse = Effect.fnUntraced(function*(raw: ParsedTokens) {
+  const prepare = Effect.fnUntraced(function*(raw: ParsedTokens) {
     if (Option.isNone(raw.subcommand)) {
-      return (yield* impl.parse(raw)) as NextInput
+      return (yield* impl.prepare(raw)) as Effect.Effect<NextInput, CliError.CliError, Environment>
     }
 
     const sub = byName.get(raw.subcommand.value.name)
     if (!sub) {
-      return (yield* impl.parse(raw)) as NextInput
+      return (yield* impl.prepare(raw)) as Effect.Effect<NextInput, CliError.CliError, Environment>
     }
 
-    const context = yield* impl.parseContext(raw)
-    const result = yield* sub.parse(raw.subcommand.value.parsedInput)
-    return { ...context, [SubcommandStateSymbol]: { name: sub.name, result } } as NextInput
+    const resolveContext = yield* impl.prepareContext(raw)
+    const resolveResult = yield* sub.prepare(raw.subcommand.value.parsedInput)
+    return Effect.gen(function*() {
+      const context = yield* resolveContext
+      const result = yield* resolveResult
+      return { ...context, [SubcommandStateSymbol]: { name: sub.name, result } } as NextInput
+    })
   })
 
   const handle = Effect.fnUntraced(function*(input: NextInput, path: ReadonlyArray<string>) {
@@ -1056,10 +1065,11 @@ export const withSubcommands: {
     annotations: impl.annotations,
     globalFlags: impl.globalFlags,
     resolveExamples: impl.resolveExamples,
+    beforePrompts: impl.beforePrompts,
     service: impl.service,
     subcommands: normalized.groups,
-    parse,
-    parseContext: impl.parseContext,
+    prepare,
+    prepareContext: impl.prepareContext,
     handle
   }) as any
 })
@@ -1125,21 +1135,18 @@ export const withSharedFlags: {
     type NextInput = Simplify<Input & SharedInput>
     type NextContextInput = Simplify<ContextInput & SharedInput>
 
-    const parseShared = makeParser(sharedConfig, { allowLeftovers: true }) as (
-      input: ParsedTokens
-    ) => Effect.Effect<SharedInput, CliError.CliError, Environment>
+    const prepareShared = makeParser(sharedConfig, { allowLeftovers: true }) as Prepare<SharedInput>
 
-    const parse = Effect.fnUntraced(function*(raw: ParsedTokens) {
-      const base = yield* impl.parse(raw)
-      const shared = yield* parseShared(raw)
-      return { ...(base as object), ...(shared as object) } as NextInput
-    })
-
-    const parseContext = Effect.fnUntraced(function*(raw: ParsedTokens) {
-      const base = yield* impl.parseContext(raw)
-      const shared = yield* parseShared(raw)
-      return { ...(base as object), ...(shared as object) } as NextContextInput
-    })
+    const withShared = <Base, Next>(prepareBase: Prepare<Base>): Prepare<Next> =>
+      Effect.fnUntraced(function*(raw: ParsedTokens) {
+        const resolveBase = yield* prepareBase(raw)
+        const resolveShared = yield* prepareShared(raw)
+        return Effect.gen(function*() {
+          const base = yield* resolveBase
+          const shared = yield* resolveShared
+          return { ...(base as object), ...(shared as object) } as Next
+        })
+      })
 
     const handle = (
       input: NextInput,
@@ -1156,11 +1163,12 @@ export const withSharedFlags: {
       unlisted: impl.unlisted,
       annotations: impl.annotations,
       globalFlags: impl.globalFlags,
+      beforePrompts: impl.beforePrompts,
       resolveExamples: impl.resolveExamples,
       service: impl.service as Context.Key<CommandContext<Name>, NextContextInput>,
       subcommands: impl.subcommands,
-      parse,
-      parseContext,
+      prepare: withShared<Input, NextInput>(impl.prepare),
+      prepareContext: withShared<ContextInput, NextContextInput>(impl.prepareContext),
       handle
     }) as any
   }
@@ -1717,6 +1725,13 @@ export const provideEffect: {
  * Allows for execution of an effect, which optionally depends on command-line
  * input to be created, prior to executing the handler of a command.
  *
+ * **Details**
+ *
+ * The effect runs after fallback prompts, because it can depend on the input
+ * they produce.
+ *
+ * @see {@link beforePrompts} for running an effect before fallback prompts
+ *
  * @stability unstable
  * @category providing services
  * @since 4.0.0
@@ -1736,6 +1751,103 @@ export const provideEffectDiscard: {
   effect: Effect.Effect<_, E2, R2> | ((input: Input) => Effect.Effect<_, E2, R2>)
 ) =>
   mapHandler(self, (handler, input) => Effect.andThen(typeof effect === "function" ? effect(input) : effect, handler)))
+
+/**
+ * Runs an effect once per invocation, after the command line is parsed and
+ * before any fallback prompt is shown.
+ *
+ * **When to use**
+ *
+ * Use to print an introduction or do other setup that should come before
+ * `Flag.withFallbackPrompt` or `Argument.withFallbackPrompt` asks for missing
+ * values.
+ *
+ * **Details**
+ *
+ * The effect runs when the command is invoked, including when every value is
+ * supplied on the command line and no prompt is needed. It does not run for
+ * `--help`, `--version`, other built-in actions, or parse errors. Ordinary
+ * flags and arguments are parsed and checked before it runs. When the
+ * terminal cannot prompt, a missing value with a fallback prompt is a parse
+ * error, so the effect does not run either.
+ *
+ * Hooks are attached to the command they are added to. Hooks on one command
+ * run in the order they were added. When a subcommand is selected, the
+ * parent's hooks run before the subcommand's, and all of them run before any
+ * prompt, including prompts for the parent's shared flags. A failure stops
+ * the invocation before prompts and the handler run.
+ *
+ * The effect cannot read the command input, because prompted values do not
+ * exist yet. `Command.provide*` effects still run after the prompts, right
+ * before the handler.
+ *
+ * **Example** (Printing an introduction before prompts)
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
+ * import { Command, Flag, Prompt } from "effect/cli"
+ * import { ChildProcessSpawner } from "effect/process"
+ * import { TestConsole } from "effect/testing"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   TestConsole.layer,
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
+ *
+ * const demo = Command.make("demo", {
+ *   name: Flag.String("name").pipe(
+ *     Flag.withFallbackPrompt(Prompt.String({ message: "Name?" }))
+ *   )
+ * }, ({ name }) => Console.log(`Hello ${name}`)).pipe(
+ *   // Without --name, this prints before the "Name?" prompt
+ *   Command.beforePrompts(Console.log("Welcome to demo"))
+ * )
+ *
+ * const lines = await Effect.runPromise(
+ *   Effect.gen(function*() {
+ *     yield* Command.runWith(demo, { version: "1.0.0" })(["--name", "Ada"])
+ *     return yield* TestConsole.logLines
+ *   }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * lines // => ["Welcome to demo", "Hello Ada"]
+ * ```
+ *
+ * @see {@link provideEffectDiscard} for running an effect after prompts, with the command input
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const beforePrompts: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <const Name extends string, Input, E, R, ContextInput>(
+    self: Command<Name, Input, ContextInput, E, R>
+  ) => Command<Name, Input, ContextInput, E | E2, R | R2>
+  <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
+    self: Command<Name, Input, ContextInput, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Command<Name, Input, ContextInput, E | E2, R | R2>
+} = dual(2, <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
+  self: Command<Name, Input, ContextInput, E, R>,
+  effect: Effect.Effect<_, E2, R2>
+): Command<Name, Input, ContextInput, E | E2, R | R2> => {
+  const impl = toImpl(self)
+  return makeCommand({ ...impl, beforePrompts: [...impl.beforePrompts, effect] }) as any
+})
 
 /* ========================================================================== */
 /* Execution                                                                  */
@@ -2113,10 +2225,21 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       if (parsedArgs.errors && parsedArgs.errors.length > 0) {
         return yield* new CliError.ShowHelp({ commandPath, errors: parsedArgs.errors })
       }
-      const input = yield* commandImpl.parse(parsedArgs).pipe(toShowHelp)
+      const resolveInput = yield* commandImpl.prepare(parsedArgs).pipe(toShowHelp)
 
-      // 7. Provide setting values
-      let program = commandImpl.handle(input, [command.name])
+      // 7. Run setup hooks, then deferred fallback prompts, then the handler
+      const hooks = getCommandsForCommandPath(command, commandPath).flatMap((current) =>
+        toImpl(current).beforePrompts as ReadonlyArray<Effect.Effect<unknown, E, R>>
+      )
+      let program = Effect.gen(function*() {
+        for (const hook of hooks) {
+          yield* hook
+        }
+        const input = yield* resolveInput.pipe(toShowHelp)
+        yield* commandImpl.handle(input, [command.name])
+      })
+
+      // 8. Provide setting values
       const logLevel = activeFlags.includes(GlobalFlag.LogLevel)
         ? (yield* GlobalFlag.LogLevel.flag.parse(emptyArgs).pipe(toShowHelp))[1]
         : Option.none()
@@ -2127,13 +2250,13 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         program = Effect.provideService(program, flag, value)
       }
 
-      // 8. Apply built-in setting behavior
+      // 9. Apply built-in setting behavior
       const services = Option.match(logLevel, {
         onNone: () => Context.empty(),
         onSome: (level) => Context.make(References.MinimumLogLevel, level)
       })
 
-      // 9. Run command handler with composed context
+      // 10. Run command handler with composed context
       yield* Effect.provideContext(program, services)
     },
     Effect.catchFilter(
