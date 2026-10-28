@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add `McpServer.layerHttp({ sessionMode: "stateless" })` for legacy MCP clients across independent HTTP requests.
+Add `sessionMode: "stateless"` to `McpServer.layerHttp`, serving legacy Streamable HTTP clients without `Mcp-Session-Id` so each request may reach any server instance.

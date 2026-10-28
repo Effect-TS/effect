@@ -2510,12 +2510,15 @@ const mcpStdioSerialization = (
  * surrounding router.
  *
  * Set `sessionMode: "stateless"` to serve legacy Streamable HTTP without
- * issuing session IDs. Later POSTs derive a conservative client profile from
- * `MCP-Protocol-Version`, defaulting to `2025-03-26` when the header is absent.
- * Client capabilities are empty and client info is unknown after initialize.
- * Logging, list-change notifications, resource subscriptions,
- * and cancellation across separate POSTs are unavailable in this mode.
- * The default is `"stateful"`. Modern stateless protocols are unaffected.
+ * session IDs, so consecutive POSTs may reach different processes. Initialize
+ * returns no `Mcp-Session-Id`, and every later POST is served with a
+ * conservative client profile: the protocol version named by
+ * `MCP-Protocol-Version` (`2025-03-26` when absent, which must then be
+ * configured), empty client capabilities, and unknown client info. Logging,
+ * list-change notifications, resource subscriptions, and cancellation of
+ * requests from other POSTs are unavailable, and a request carrying an
+ * `Mcp-Session-Id` returns `404`. The default `"stateful"` mode and
+ * `v2026_07_28` are unaffected.
  *
  * Set `allowSubscriptions: false` to disable `v2026_07_28` subscriptions.
  * Discovery advertises `listChanged: false`, and `subscriptions/listen` returns
