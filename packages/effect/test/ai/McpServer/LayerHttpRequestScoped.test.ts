@@ -493,6 +493,23 @@ describe("McpServer.layerHttpRequestScoped legacy adapters", () => {
       assert.strictEqual((yield* harness.post(legacyCall("Inspect"))).status, 400)
     }))
 
+  it.live("should serve 2024-11-05 clients through the 2025-03-26 fallback", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(registrations.pipe(
+        Layer.provideMerge(makeServerLayer({
+          name: "Legacy2024",
+          protocols: [McpProtocol.v2024_11_05, McpProtocol.v2025_03_26],
+          mode: "request"
+        }))
+      ))
+      const initialized = yield* harness.post(initialize("2024-11-05"))
+      assert.strictEqual(initialized.status, 200)
+      assert.isNull(initialized.headers.get("Mcp-Session-Id"))
+      assert.nestedPropertyVal(yield* readMcpHttpResponse(initialized), "result.protocolVersion", "2024-11-05")
+      // 2024-11-05 clients send no MCP-Protocol-Version header.
+      assert.strictEqual(yield* toolText(yield* harness.post(legacyCall("Inspect"))), "2025-03-26 unknown no-sampling")
+    }))
+
   it.live("should reject session-bound methods and deliver no list-change or log notifications", () =>
     Effect.gen(function*() {
       const harness = yield* makeLegacyHarness()
