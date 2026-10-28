@@ -71,9 +71,10 @@ const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
  * This error is raised when issues arise before receiving an HTTP response,
  * such as network connectivity problems, request encoding issues, or invalid
  * URLs.
- * `cause` holds the `HttpClientError` the request failed with when the error
- * is created with `NetworkError.fromHttpClientError`. It is kept as it was
- * raised.
+ *
+ * When created with `NetworkError.fromHttpClientError`, `cause` holds the
+ * `HttpClientError` the request failed with. It is stored unchanged, so it
+ * carries the runtime's original error text without redaction.
  *
  * **Example** (Creating a network error)
  *
