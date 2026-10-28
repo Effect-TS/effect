@@ -787,6 +787,19 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
+  it("revives isNot", () => {
+    const forbidden = Schema.Literal("forbidden")
+    assertFilterReviver({
+      schema: Schema.String.check(Schema.isNot(forbidden)),
+      id: "effect/schema/isNot",
+      payload: null,
+      schemas: [forbidden.ast],
+      reviver: SchemaRepresentation.isNotReviver,
+      valid: "allowed",
+      invalid: "forbidden"
+    })
+  })
+
   it("persists the encoded key schema for isPropertyNames", () => {
     const names = Schema.String.check(Schema.isPattern(/^[A-Z]/))
     const check = Schema.isPropertyNames(names)
