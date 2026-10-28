@@ -15,11 +15,13 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
 import * as Scope from "effect/Scope"
 import { TestClock } from "effect/testing"
 import * as Activity from "effect/workflow/Activity"
+import * as DurableClock from "effect/workflow/DurableClock"
 import * as DurableDeferred from "effect/workflow/DurableDeferred"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { externalReports, type ReportJob, ReportJobs } from "./TestUtils/McpExternalJobs.ts"
@@ -1203,3 +1205,68 @@ describe("layerMemory input and status", () => {
       }))
   }
 })
+
+it.live("should settle a cancelled Workflow task that is waiting on a durable timer", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const tools = Toolkit.make(Tool.make("wait", { success: Schema.String }))
+    const context = yield* Layer.build(McpTasks.layerWorkflow(tools, {
+      wait: () => DurableClock.sleep({ name: "wait", duration: "1 hour", inMemoryThreshold: 0 }).pipe(Effect.as("done"))
+    }, { name: "cancel-timer" }))
+    const execution = Context.get(context, McpTasks.Execution)
+    const task = yield* execution.create({
+      toolName: "wait",
+      arguments: {},
+      ownerId: "owner",
+      requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+    })
+    yield* execution.cancel({ taskId: task.taskId, ownerId: "owner" })
+    const cancelled = yield* execution.get({ taskId: task.taskId, ownerId: "owner" }).pipe(
+      Effect.repeat({ while: (task) => task.status !== "cancelled", schedule: Schedule.spaced("1 millis") }),
+      Effect.timeout("1 second")
+    )
+    assert.strictEqual(cancelled.status, "cancelled")
+  })).pipe(Effect.provide(WorkflowEngine.layerMemory)))
+
+it.live("should publish concurrent Workflow task inputs before either is answered", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const tools = Toolkit.make(Tool.make("confirm", { success: Schema.String }))
+    const context = yield* Layer.build(McpTasks.layerWorkflow(tools, {
+      confirm: Effect.fnUntraced(function*() {
+        const task = yield* McpTasks.TaskContext
+        yield* Effect.forEach(["left", "right"], (key) =>
+          task.requestInput({
+            key,
+            request: { method: "roots/list" },
+            response: Schema.Struct({ roots: Schema.Array(Schema.String) })
+          }), { concurrency: "unbounded" })
+        return "done"
+      }, Effect.orDie)
+    }, { name: "parallel-input" }))
+    const execution = Context.get(context, McpTasks.Execution)
+    const created = yield* execution.create({
+      toolName: "confirm",
+      arguments: {},
+      ownerId: "owner",
+      requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+    })
+    const request = { taskId: created.taskId, ownerId: "owner" }
+    const waiting = yield* execution.get(request).pipe(
+      Effect.repeat({
+        while: (task) => task.status !== "input_required" || Object.keys(task.inputRequests).length !== 2,
+        schedule: Schedule.spaced("1 millis")
+      }),
+      Effect.timeout("1 second")
+    )
+    if (waiting.status !== "input_required") return assert.fail("Expected both inputs")
+    assert.deepStrictEqual(Object.keys(waiting.inputRequests).sort(), ["left", "right"])
+    yield* execution.update({ ...request, inputResponses: { left: { roots: [] } } })
+    const partial = yield* execution.get(request)
+    if (partial.status !== "input_required") return assert.fail("Expected the unanswered input")
+    assert.deepStrictEqual(Object.keys(partial.inputRequests), ["right"])
+    yield* execution.update({ ...request, inputResponses: { right: { roots: [] } } })
+    const completed = yield* execution.get(request).pipe(
+      Effect.repeat({ while: (task) => task.status !== "completed", schedule: Schedule.spaced("1 millis") }),
+      Effect.timeout("1 second")
+    )
+    assert.strictEqual(completed.status, "completed")
+  })).pipe(Effect.provide(WorkflowEngine.layerMemory)))

@@ -540,10 +540,7 @@ const Proto = {
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
           Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
-          Effect.matchCauseEffect({
-            onFailure: (cause) => Queue.failCause(queue, cause),
-            onSuccess: () => Queue.end(queue)
-          }),
+          Effect.onExit((exit) => Exit.isFailure(exit) ? Queue.failCause(queue, exit.cause) : Queue.end(queue)),
           Effect.forkChild
         )
 
