@@ -230,6 +230,8 @@ function compileJsonSchema(
     { branches: ReadonlyArray<Exactness>; schemas: Array<JsonSchema.JsonSchema> }
   >()
   const fallbackDefinitions = new Map<string, Array<string>>()
+  // Negated operands whose exactness is only known once recursive definitions are compiled.
+  const pendingNegations = new Map<JsonSchema.JsonSchema, Exactness>()
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
@@ -238,6 +240,21 @@ function compileJsonSchema(
     representations,
     (representation, index) => recur(representation, rootPaths[index], [])
   )
+  if (pendingNegations.size > 0) {
+    const seen = new Set<unknown>()
+    const dropApproximateNegations = (value: unknown): void => {
+      if (typeof value !== "object" || value === null || seen.has(value)) return
+      seen.add(value)
+      if (Array.isArray(value)) return value.forEach(dropApproximateNegations)
+      const schema = value as JsonSchema.JsonSchema
+      const operand = pendingNegations.get(schema.not as JsonSchema.JsonSchema)
+      // Negating a looser operand would reject values the runtime accepts.
+      if (operand !== undefined && !isExact(operand)) delete schema.not
+      Object.values(schema).forEach(dropApproximateNegations)
+    }
+    compiledSchemas.forEach(dropApproximateNegations)
+    compiledDefinitions.forEach((definition) => dropApproximateNegations(definition.schema))
+  }
   for (const { branches, schemas } of pendingOneOf.values()) {
     if (!isExact(branches)) {
       for (const schema of schemas) {
@@ -345,10 +362,15 @@ function compileJsonSchema(
     const annotations = check.annotations
     const callback = annotations?.toJsonSchema
     if (callback !== undefined) {
+      const operands: Array<Exactness> = []
+      dependencies.push(operands)
       const schemas = check.representation?.schemas?.map((schema, index) =>
-        recur(schema, [...path, "representation", "schemas", index], dependencies)
+        recur(schema, [...path, "representation", "schemas", index], operands)
       ) ?? []
-      const result = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
+      const output = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
+      const result = check.representation?.id === "effect/schema/isNot" && !isApproximateCheckOutput(output)
+        ? compileNegation(output, check.representation.schemas![0], schemas[0], operands)
+        : output
       const approximate = isApproximateCheckOutput(result)
       if (approximate) {
         dependencies.push(false)
@@ -379,6 +401,64 @@ function compileJsonSchema(
     const ordinary = collectJsonSchemaAnnotations(annotations, options)
     const schema = { allOf: schemas }
     return [ordinary === undefined ? schema : { ...schema, ...ordinary }]
+  }
+
+  function compileNegation(
+    output: JsonSchema.JsonSchema,
+    operand: SchemaRepresentation.Representation,
+    compiled: JsonSchema.JsonSchema,
+    exactness: Exactness
+  ): SchemaRepresentation.ToJsonSchema.CheckOutput {
+    if (!acceptsOnlyRuntimeValues(operand)) return [{}, true]
+    pendingNegations.set(compiled, exactness)
+    return output
+  }
+
+  // Whether the compiled schema accepts only JSON values that the runtime accepts unchanged. JSON encodings such as
+  // non-finite numbers as strings or `undefined` as `null` describe other runtime values, so they cannot be negated.
+  function acceptsOnlyRuntimeValues(
+    representation: SchemaRepresentation.Representation,
+    seen: Set<string> = new Set()
+  ): boolean {
+    switch (representation._tag) {
+      case "Reference":
+        if (seen.has(representation.$ref)) return true
+        seen.add(representation.$ref)
+        return acceptsOnlyRuntimeValues(references[representation.$ref], seen)
+      case "Suspend":
+        return acceptsOnlyRuntimeValues(representation.thunk, seen)
+      case "Undefined":
+      case "Void":
+      case "BigInt":
+      case "Symbol":
+      case "UniqueSymbol":
+        return false
+      case "Declaration":
+        return isJsonDeclaration(representation)
+      case "Literal":
+        return typeof representation.literal !== "bigint"
+      case "Number":
+        return representation.checks.some(isJsonNumberCheck)
+      case "Arrays":
+        return representation.elements.every((element) => acceptsOnlyRuntimeValues(element.type, seen)) &&
+          representation.rest.every((rest) => acceptsOnlyRuntimeValues(rest, seen))
+      case "Objects":
+        return representation.propertySignatures.every((property) => acceptsOnlyRuntimeValues(property.type, seen)) &&
+          representation.indexSignatures.every((signature) => acceptsOnlyRuntimeValues(signature.type, seen))
+      case "Union":
+        return representation.types.every((type) => acceptsOnlyRuntimeValues(type, seen))
+      default:
+        return true
+    }
+  }
+
+  // Whether a check narrows the number encoding to JSON numbers, as `isFinite` does.
+  function isJsonNumberCheck(check: SchemaRepresentation.Check): boolean {
+    if (check._tag === "FilterGroup") return check.checks.some(isJsonNumberCheck)
+    const callback = check.annotations?.toJsonSchema
+    if (callback === undefined || check.representation?.schemas !== undefined) return false
+    const output = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type: "number", schemas: [] })
+    return extractJsonSchemaNumberType(isApproximateCheckOutput(output) ? output[0] : output).type !== undefined
   }
 
   function recur(
@@ -443,7 +523,7 @@ function compileJsonSchema(
           ? { not: {} }
           : { type: "string", enum: [globalThis.String(representation.symbol)] }
       case "Declaration":
-        dependencies.push(false)
+        if (!isJsonDeclaration(representation)) dependencies.push(false)
         return {}
       case "Suspend":
         return recur(representation.thunk, [...path, "thunk"], dependencies)
@@ -744,6 +824,12 @@ function compileJsonSchema(
       }
     }
   }
+}
+
+// JSON values are their own JSON encoding, so `{}` describes them exactly.
+function isJsonDeclaration(representation: SchemaRepresentation.Declaration): boolean {
+  const id = representation.representation?.id
+  return id === "effect/schema/Json" || id === "effect/schema/MutableJson"
 }
 
 function isJsonSchemaType(input: string): input is JsonSchema.Type {
