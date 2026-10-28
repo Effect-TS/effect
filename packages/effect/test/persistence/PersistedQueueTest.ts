@@ -100,36 +100,6 @@ export const suiteWith = <R>(
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 42n })
       }), testOptions)
 
-    it.effect(
-      "cleanup retains failed lone surrogates until the failed TTL releases their custom ids",
-      () =>
-        Effect.gen(function*() {
-          const store = yield* PersistedQueue.PersistedQueueStore
-          const queue = yield* PersistedQueue.make({
-            name: "test-queue-lone-surrogate-failed-id",
-            schema: Schema.Struct({ s: Schema.String }),
-            maxAttempts: 1
-          })
-          const id = "lone-surrogate-failed-custom-id"
-          yield* queue.offer({ s: "😀".slice(0, 1) }, { id })
-          const failed = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip, Effect.forkScoped)
-          assert.strictEqual(yield* awaitDelivery(failed), "boom")
-
-          // An unexpired dead letter must keep its custom id deduplicated.
-          yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: Duration.days(30) })
-          yield* queue.offer({ s: "duplicate" }, { id })
-          const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-          yield* assertNotDelivered(fiber)
-
-          // Expiring that dead letter releases the id even with an opaque surrogate payload.
-          yield* advancePastTtl
-          yield* store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
-          yield* queue.offer({ s: "reoffered" }, { id })
-          assert.deepStrictEqual(yield* awaitDelivery(fiber), { s: "reoffered" })
-        }),
-      testOptions
-    )
-
     it.effect("interrupt", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
@@ -473,6 +443,36 @@ export const suiteWith = <R>(
           const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
           yield* assertNotDelivered(fiber)
         }), testOptions)
+
+      it.effect(
+        "cleanup retains failed lone surrogates until the failed TTL releases their custom ids",
+        () =>
+          Effect.gen(function*() {
+            const store = yield* PersistedQueue.PersistedQueueStore
+            const queue = yield* PersistedQueue.make({
+              name: "test-queue-lone-surrogate-failed-id",
+              schema: Schema.Struct({ s: Schema.String }),
+              maxAttempts: 1
+            })
+            const id = "lone-surrogate-failed-custom-id"
+            yield* queue.offer({ s: "😀".slice(0, 1) }, { id })
+            const failed = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip, Effect.forkScoped)
+            assert.strictEqual(yield* awaitDelivery(failed), "boom")
+
+            // An unexpired dead letter must keep its custom id deduplicated.
+            yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: Duration.days(30) })
+            yield* queue.offer({ s: "duplicate" }, { id })
+            const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+            yield* assertNotDelivered(fiber)
+
+            // Expiring that dead letter releases the id even with an opaque surrogate payload.
+            yield* advancePastTtl
+            yield* store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
+            yield* queue.offer({ s: "reoffered" }, { id })
+            assert.deepStrictEqual(yield* awaitDelivery(fiber), { s: "reoffered" })
+          }),
+        testOptions
+      )
     }
 
     it.effect("processes concurrent elements exactly once with retries", () =>

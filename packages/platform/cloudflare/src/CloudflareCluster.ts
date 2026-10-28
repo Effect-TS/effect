@@ -171,11 +171,13 @@ const requestTargetCapacity = 4096
 // ClusterCron owns this entity inside its layer, so callers cannot include it
 // in LayerOptions.entities. Its reserved shape is the only implicit entity.
 const isClusterCronEntity = (entity: Entity.Entity<any, any>): boolean => {
-  if (!entity.type.startsWith("ClusterCron/") || entity.protocol.requests.size !== 1) return false
+  if (!entity.type.startsWith("ClusterCron/") || entity.protocol.requests.size !== 2) return false
   const run = entity.protocol.requests.get("run")
-  return run !== undefined &&
+  const start = entity.protocol.requests.get("start")
+  return run !== undefined && start !== undefined &&
     Context.get(run.annotations, Persisted) &&
-    Context.get(run.annotations, Uninterruptible) === true
+    Context.get(run.annotations, Uninterruptible) === true &&
+    Context.get(start.annotations, Persisted)
 }
 
 const make = Effect.fnUntraced(function*(options: LayerOptions) {

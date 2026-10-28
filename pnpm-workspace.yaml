@@ -41,11 +41,11 @@ minimumReleaseAgeExclude:
   - '@effect/tsgo@0.51.0'
   - '@alchemy.run/*'
   - alchemy
-  - '@effect/platform-bun@4.0.0-rc.116 || 4.0.0'
-  - '@effect/platform-node-shared@4.0.0-rc.116 || 4.0.0'
-  - '@effect/platform-node@4.0.0-rc.116 || 4.0.0'
-  - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0'
-  - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0'
+  - '@effect/platform-bun@4.0.0-rc.116 || 4.0.0 || 4.0.7'
+  - '@effect/platform-node-shared@4.0.0-rc.116 || 4.0.0 || 4.0.7'
+  - '@effect/platform-node@4.0.0-rc.116 || 4.0.0 || 4.0.7'
+  - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0 || 4.0.7'
+  - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0 || 4.0.7'
 
 overrides:
   # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.

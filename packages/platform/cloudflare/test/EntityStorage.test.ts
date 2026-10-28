@@ -4,19 +4,18 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 
 // The single Durable Object alarm only ever moves earlier.
-const armFrom = (current: number | null, deliverAt: number) =>
-  Effect.gen(function*() {
-    const setCalls: Array<number> = []
-    const alarm = {
-      getAlarm: () => Promise.resolve(current),
-      setAlarm: (scheduledTime: number) => {
-        setCalls.push(scheduledTime)
-        return Promise.resolve()
-      }
-    } as unknown as EntityAlarm
-    yield* armAlarm(alarm, deliverAt)
-    return setCalls
-  })
+const armFrom = Effect.fnUntraced(function*(current: number | null, deliverAt: number) {
+  const setCalls: Array<number> = []
+  const alarm = {
+    getAlarm: () => Promise.resolve(current),
+    setAlarm: (scheduledTime: number) => {
+      setCalls.push(scheduledTime)
+      return Promise.resolve()
+    }
+  } as unknown as EntityAlarm
+  yield* armAlarm(alarm, deliverAt)
+  return setCalls
+})
 
 describe("armAlarm", () => {
   it.effect("keeps an already earlier alarm", () =>
