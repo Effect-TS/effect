@@ -685,6 +685,19 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.strictEqual(receivedType, "integer")
     })
 
+    it("round trips isConditional without absent branches", () => {
+      const output = SchemaRepresentation.toJsonSchemaDocument(
+        SchemaRepresentation.toRepresentation(
+          Schema.Json.check(Schema.isConditional(Schema.String, { else: Schema.Finite })).ast
+        )
+      )
+      assert.deepStrictEqual(output.schema, { if: { type: "string" }, else: { type: "number" } })
+      const restored = SchemaRepresentation.fromJsonSchemaDocument(output)
+      assert.isTrue(Schema.is(restored)("a"))
+      assert.isTrue(Schema.is(restored)(1))
+      assert.isFalse(Schema.is(restored)(true))
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
