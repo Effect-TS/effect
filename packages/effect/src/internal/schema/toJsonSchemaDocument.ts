@@ -107,7 +107,7 @@ function isJsonSchemaNumberEncoding(schema: JsonSchema.JsonSchema): boolean {
 
 // Keep this allowlist closed: applicators and dependent keywords can change meaning when moved across schema objects.
 const inlineableCheckKeywords =
-  "|type|format|pattern|multipleOf|minimum|maximum|exclusiveMinimum|exclusiveMaximum|minLength|maxLength|minItems|maxItems|uniqueItems|minProperties|maxProperties|propertyNames|"
+  "|type|format|pattern|multipleOf|minimum|maximum|exclusiveMinimum|exclusiveMaximum|minLength|maxLength|minItems|maxItems|uniqueItems|minProperties|maxProperties|propertyNames|not|"
 
 function hasOnlyKeywords(schema: JsonSchema.JsonSchema, allowed: string): boolean {
   return Object.keys(schema).every((key) => allowed.includes(`|${key}|`))

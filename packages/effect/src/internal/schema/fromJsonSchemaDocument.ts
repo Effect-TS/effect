@@ -10,7 +10,7 @@ import * as InternalAnnotations from "./annotations.ts"
 import { ReferenceSlot } from "./fromRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
-type Check = Filter | FilterGroup | PropertyNames
+type Check = Filter | FilterGroup | PropertyNames | Not
 
 interface Filter {
   readonly _tag: "Filter"
@@ -20,6 +20,12 @@ interface Filter {
 
 interface PropertyNames {
   readonly _tag: "PropertyNames"
+  readonly type: ImportedJsonSchemaRepresentation
+  readonly annotations?: Schema.Annotations.Filter | undefined
+}
+
+interface Not {
+  readonly _tag: "Not"
   readonly type: ImportedJsonSchemaRepresentation
   readonly annotations?: Schema.Annotations.Filter | undefined
 }
@@ -286,8 +292,12 @@ export function fromJsonSchemaMultiDocument(
 
     let schema: Schema.Top
     switch (input._tag) {
-      case "Unknown":
-        return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+      case "Unknown": {
+        const json = Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+        return input.checks.length > 0
+          ? json.check(...input.checks.map(finalizeCheck) as [InternalAST.Check<any>])
+          : json
+      }
       case "Never":
       case "Null":
       case "String":
@@ -354,7 +364,11 @@ export function fromJsonSchemaMultiDocument(
         check.annotations
       )
     }
-    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalize(check.type)) : check.filter
+    const filter = check._tag === "PropertyNames"
+      ? Schema.isPropertyNames(finalize(check.type))
+      : check._tag === "Not"
+      ? Schema.isNot(finalize(check.type))
+      : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
   }
 
@@ -558,7 +572,20 @@ export function fromJsonSchemaMultiDocument(
     if (check._tag === "FilterGroup") {
       return check.checks.every((check) => satisfiesPrimitiveCheck(check, value))
     }
-    return check._tag === "Filter" && check.filter.run(value, Schema.Unknown.ast, {}) === undefined
+    // Negations are kept on the literal instead of being evaluated here.
+    return check._tag === "Not" ||
+      check._tag === "Filter" && check.filter.run(value, Schema.Unknown.ast, {}) === undefined
+  }
+
+  function hasNot(check: Check): boolean {
+    return check._tag === "Not" || check._tag === "FilterGroup" && check.checks.some(hasNot)
+  }
+
+  function narrowToLiteral(
+    primitive: Checked,
+    literal: ImportedLiteral
+  ): ImportedJsonSchemaRepresentation {
+    return addChecks(literal, primitive.checks.filter(hasNot))
   }
 
   function satisfiesLiteral(
@@ -579,7 +606,7 @@ export function fromJsonSchemaMultiDocument(
     const satisfies = primitive._tag === "Boolean"
       ? typeof literal.literal === "boolean"
       : satisfiesLiteral(primitive, literal)
-    return satisfies ? annotateIntersection(literal, primitive, literal) : never
+    return satisfies ? annotateIntersection(narrowToLiteral(primitive, literal), primitive, literal) : never
   }
 
   function intersectArrays(
@@ -917,6 +944,14 @@ export function fromJsonSchemaMultiDocument(
   ): ImportedJsonSchemaRepresentation {
     if (left._tag === "Never") return left
     if (right._tag === "Never") return right
+    // Only negations attach checks to Unknown and Union nodes. Intersect the
+    // unchecked nodes, then constrain the result.
+    if ((left._tag === "Unknown" || left._tag === "Union") && left.checks.length > 0) {
+      return addChecks(intersect({ ...left, checks: [] }, right, path), left.checks)
+    }
+    if ((right._tag === "Unknown" || right._tag === "Union") && right.checks.length > 0) {
+      return addChecks(intersect(left, { ...right, checks: [] }, path), right.checks)
+    }
     if (left._tag === "Unknown") return annotateIntersection(right, left, right)
     if (right._tag === "Unknown") return annotateIntersection(left, left, right)
     if (left._tag === "Reference") {
@@ -988,7 +1023,7 @@ export function fromJsonSchemaMultiDocument(
           (right._tag === "String" || right._tag === "Number") && satisfiesLiteral(right, left) ||
           right._tag === "Boolean" && typeof left.literal === "boolean"
         ) {
-          return annotateIntersection(left, left, right)
+          return annotateIntersection(narrowToLiteral(right, left), left, right)
         }
         return never
       case "Arrays": {
@@ -1003,6 +1038,17 @@ export function fromJsonSchemaMultiDocument(
         return lowerObject(scopes, intersectChecks(left, right), path)
       }
     }
+  }
+
+  function addChecks(
+    representation: ImportedJsonSchemaRepresentation,
+    checks: ReadonlyArray<Check>
+  ): ImportedJsonSchemaRepresentation {
+    if (checks.length === 0 || representation._tag === "Never") return representation
+    // References carry no checks, so constrain them through a single-member union.
+    return representation._tag === "Reference"
+      ? { _tag: "Union", types: [representation], checks }
+      : { ...representation, checks: [...representation.checks, ...checks] }
   }
 
   function translateSchema(
@@ -1021,8 +1067,9 @@ export function fromJsonSchemaMultiDocument(
       return unknown
     }
     if (
+      schema.not === true ||
       isObject(schema.not) &&
-      Object.keys(schema.not).length === 0
+        Object.keys(schema.not).length === 0
     ) return annotate(never, jsonSchemaAnnotations(schema, options))
     const wasInNestedResource = inNestedResource
     inNestedResource ||= !isRoot && typeof schema.$id === "string"
@@ -1034,7 +1081,6 @@ export function fromJsonSchemaMultiDocument(
         case "contains":
         case "dependentRequired":
         case "dependentSchemas":
-        case "not":
         case "unevaluatedItems":
         case "unevaluatedProperties":
           throw errorWithPath(
@@ -1113,6 +1159,12 @@ export function fromJsonSchemaMultiDocument(
         }
         representation = intersect(union, representation, [...path, mode])
       }
+    }
+
+    if (Object.hasOwn(schema, "not")) {
+      const type = translateSchema(schema.not, [...path, "not"])
+      // Negating Never accepts every value.
+      if (type._tag !== "Never") representation = addChecks(representation, [{ _tag: "Not", type }])
     }
     inNestedResource = wasInNestedResource
     return representation
