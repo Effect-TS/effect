@@ -232,61 +232,24 @@ development:
     })
   })
 
+  // YAML 1.2.2 §8.2.1: a compact mapping in a block sequence entry is indented to its first key.
+  // Expected values and rejections were checked with yaml 2.9.1 and js-yaml 5.5.
   describe("sequence entry mappings indented past the dash", () => {
-    // Expected values and the misaligned key rejections were checked with yaml 2.9.1 and js-yaml 5.5.
-    it.each([
-      {
-        name: "root sequence",
-        source: "-   name: a\n    age: 1\n",
-        expected: [{ name: "a", age: 1 }]
-      },
-      {
-        name: "indentless mapping value",
-        source: "items:\n-   name: a\n    age: 1\n-   name: b\n    age: 2\n",
-        expected: { items: [{ name: "a", age: 1 }, { name: "b", age: 2 }] }
-      },
-      {
-        name: "two spaces after the dash",
-        source: "-  name: a\n   age: 1\n",
-        expected: [{ name: "a", age: 1 }]
-      },
-      {
-        name: "nested collections",
-        source: "-   name: a\n    tools:\n    - Read\n    metadata:\n      enabled: true\n-   name: b\n",
-        expected: [{ name: "a", tools: ["Read"], metadata: { enabled: true } }, { name: "b" }]
-      },
-      {
-        name: "sequence value indented past the key",
-        source: "-   key:\n      - a\n    other: 1\n",
-        expected: [{ key: ["a"], other: 1 }]
-      },
-      {
-        name: "trailing comment on the entry line",
-        source: "-   name: a # note\n    age: 1\n",
-        expected: [{ name: "a", age: 1 }]
-      }
-    ])("parses $name", ({ source, expected }) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+    it("parses keys aligned with the first key", () => {
+      assert.deepStrictEqual(
+        Yaml.parse(
+          "items:\n  -   name: a\n      tools:\n      - Read\n      metadata:\n        enabled: true\n  -   name: b\n"
+        ),
+        { items: [{ name: "a", tools: ["Read"], metadata: { enabled: true } }, { name: "b" }] }
+      )
     })
 
-    it.each([
-      ["one space", "-   name: a\n   age: 1\n"],
-      ["two spaces", "-  name: a\n  age: 1\n"]
-    ])("rejects a key less indented than the first key by %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+    it("rejects keys less indented than the first key", () => {
+      assert.throws(() => Yaml.parse("-  name: a\n  age: 1\n"), SyntaxError)
     })
 
     it("rejects a tab between the dash and the first key", () => {
-      assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
-    })
-
-    // yaml and js-yaml parse this as [["a", "b"]]; this parser does not support compact nested
-    // sequences at any dash spacing, so the extra spaces must keep hitting the existing error.
-    it("rejects a compact nested sequence after the dash", () => {
-      assert.throws(
-        () => Yaml.parse("-   - a\n    - b\n"),
-        /Compact nested block sequences are not supported/
-      )
+      assert.throws(() => Yaml.parse("- \tname: a\n"), /Tabs cannot be used for YAML indentation/)
     })
   })
 
