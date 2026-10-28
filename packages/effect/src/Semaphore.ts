@@ -302,16 +302,10 @@ class SemaphoreImpl implements Semaphore {
 
   takeScoped(n: number): Effect.Effect<void, never, Scope.Scope> {
     return internal.uninterruptibleMask((restore) =>
-      internal.flatMap(internal.scope, (scope) => {
-        const acquire: Effect.Effect<void> = internal.suspend(() => {
-          if (this.free < n) {
-            return internal.flatMap(restore(waitForPermits(this, n, internal.void)), () => acquire)
-          }
-          this.taken += n
-          return internal.scopeAddFinalizer(scope, this.release(n))
-        })
-        return acquire
-      })
+      internal.flatMap(
+        internal.scope,
+        (scope) => takePermits(this, n, () => internal.scopeAddFinalizer(scope, this.release(n)), restore)
+      )
     )
   }
 
