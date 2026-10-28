@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -36,7 +37,6 @@ import type * as Http from "node:http"
 import type * as Https from "node:https"
 import { type Duplex, Readable } from "node:stream"
 import * as Consumers from "node:stream/consumers"
-import { pipeline } from "node:stream/promises"
 import { http, https } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
@@ -771,50 +771,200 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        return Effect.flatMap(loadUndici, (undici) => {
-          const response = new undici.Response(convertFormData(body.formData, undici))
-          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
-
-          return Effect.tryPromise({
-            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-            catch: (cause) =>
-              new Error.HttpClientError({
-                reason: new Error.TransportError({
-                  request,
-                  cause
-                })
-              })
-          })
-        })
+        const encoder = new FormDataEncoder(body.formData)
+        nodeRequest.setHeader("content-type", encoder.contentType)
+        return sendStream(nodeRequest, request, encoder.stream(request))
       }
       case "Stream": {
-        return Stream.run(
+        return sendStream(
+          nodeRequest,
+          request,
           Stream.mapError(body.stream, (cause) =>
             new Error.HttpClientError({
               reason: new Error.EncodeError({
                 request,
                 cause
               })
-            })),
-          NodeSink.fromWritable({
-            evaluate: () => nodeRequest,
-            // The upload fiber owns destruction after observing body failures.
-            endOnDone: false,
-            onError: (cause) =>
-              new Error.HttpClientError({
-                reason: new Error.TransportError({
-                  request,
-                  cause
-                })
-              })
-          })
-        ).pipe(Effect.andThen(() => {
-          nodeRequest.end()
-          return waitForFinish(nodeRequest, request)
-        }))
+            }))
+        )
       }
     }
   })
+
+const sendStream = (
+  nodeRequest: Http.ClientRequest,
+  request: HttpClientRequest,
+  stream: Stream.Stream<Uint8Array, Error.HttpClientError>
+): Effect.Effect<void, Error.HttpClientError> =>
+  Stream.run(
+    stream,
+    NodeSink.fromWritable({
+      evaluate: () => nodeRequest,
+      // The upload fiber owns destruction after observing body failures.
+      endOnDone: false,
+      onError: (cause) =>
+        new Error.HttpClientError({
+          reason: new Error.TransportError({
+            request,
+            cause
+          })
+        })
+    })
+  ).pipe(Effect.andThen(() => {
+    nodeRequest.end()
+    return waitForFinish(nodeRequest, request)
+  }))
+
+/**
+ * Encodes form data as multipart with the global `Response`, so the encoding
+ * comes from the runtime instead of the external undici package.
+ *
+ * Depending on the Node.js version, the runtime encoder either pulls file
+ * contents on demand or eagerly pumps them into the body without reporting
+ * read failures. Every file is therefore wrapped so that its contents are only
+ * read when the upload asks for more data and read failures fail the upload.
+ * The encoded body is never cancelled: an eager encoder throws when it
+ * enqueues into a cancelled body. Closing the encoder instead lets the wrapped
+ * files end without reading their sources, so the runtime encoder runs to
+ * completion and the body is garbage collected.
+ */
+class FormDataEncoder {
+  readonly contentType: string
+  private readonly body: ReadableStream<Uint8Array>
+  private readonly readers = new Set<ReadableStreamDefaultReader<Uint8Array>>()
+  private waiters: Array<() => void> = []
+  private demand = false
+  private closed = false
+  private failure: { readonly cause: unknown } | undefined = undefined
+  private onFailure: ((cause: unknown) => void) | undefined = undefined
+
+  constructor(formData: FormData) {
+    const encoded = new globalThis.FormData()
+    for (const [key, value] of formData) {
+      // Appending without a file name keeps the `File` instance, and with it
+      // the wrapped `stream` method.
+      encoded.append(key, typeof value === "string" ? value : new FormDataEncoderFile(this, value))
+    }
+    const response = new globalThis.Response(encoded)
+    this.contentType = response.headers.get("content-type")!
+    this.body = response.body!
+  }
+
+  stream(request: HttpClientRequest): Stream.Stream<Uint8Array, Error.HttpClientError> {
+    const reader = this.body.getReader()
+    const pull = Effect.callback<Uint8Array, unknown>((resume) => {
+      this.onFailure = (cause) => resume(Effect.fail(cause))
+      this.demand = true
+      this.wake()
+      reader.read().then(
+        (result) => {
+          this.onFailure = undefined
+          resume(
+            this.failure ? Effect.fail(this.failure.cause) : result.done ? Cause.done() : Effect.succeed(result.value)
+          )
+        },
+        (cause) => {
+          this.onFailure = undefined
+          resume(Effect.fail(cause))
+        }
+      )
+      return Effect.sync(() => {
+        this.onFailure = undefined
+      })
+    })
+    return Stream.fromEffectRepeat(pull).pipe(
+      Stream.mapError((cause) =>
+        new Error.HttpClientError({
+          reason: new Error.TransportError({
+            request,
+            cause
+          })
+        })
+      ),
+      Stream.ensuring(Effect.sync(() => {
+        this.close()
+        reader.releaseLock()
+      }))
+    )
+  }
+
+  read(source: Blob): ReadableStream<Uint8Array> {
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+    const release = () => {
+      if (reader) {
+        this.readers.delete(reader)
+        reader.releaseLock()
+        reader = undefined
+      }
+    }
+    return new ReadableStream<Uint8Array>({
+      pull: async (controller) => {
+        while (!this.demand && !this.closed) {
+          await new Promise<void>((resolve) => this.waiters.push(resolve))
+        }
+        this.demand = false
+        if (this.closed) {
+          release()
+          return controller.close()
+        }
+        if (reader === undefined) {
+          reader = source.stream().getReader()
+          this.readers.add(reader)
+        }
+        try {
+          const result = await reader.read()
+          if (this.closed || result.done) {
+            release()
+            controller.close()
+          } else {
+            controller.enqueue(result.value)
+          }
+        } catch (cause) {
+          release()
+          this.failure ??= { cause }
+          this.onFailure?.(cause)
+          this.close()
+          controller.close()
+        }
+      },
+      cancel: (reason) => {
+        const current = reader
+        release()
+        return current?.cancel(reason)
+      }
+    }, { highWaterMark: 0 })
+  }
+
+  private close() {
+    if (this.closed) return
+    this.closed = true
+    for (const reader of this.readers) {
+      reader.cancel().catch(constVoid)
+    }
+    this.wake()
+  }
+
+  private wake() {
+    const waiters = this.waiters
+    this.waiters = []
+    for (const resolve of waiters) {
+      resolve()
+    }
+  }
+}
+
+class FormDataEncoderFile extends File {
+  private readonly encoder: FormDataEncoder
+  private readonly source: File
+  constructor(encoder: FormDataEncoder, source: File) {
+    super([], source.name, { type: source.type, lastModified: source.lastModified })
+    this.encoder = encoder
+    this.source = source
+  }
+  override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+    return this.encoder.read(this.source) as ReadableStream<Uint8Array<ArrayBuffer>>
+  }
+}
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest, signal: AbortSignal) =>
   Effect.callback<readonly [Http.IncomingMessage, Duplex?], Error.HttpClientError>((resume) => {
