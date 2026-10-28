@@ -817,7 +817,10 @@ describe("Socket", { concurrent: false }, () => {
         )
       }))
 
-    it.live("passes headers and a subprotocol to the opening handshake", () =>
+    it.live.each([
+      { name: "layerWebSocketConstructor", layer: NodeSocket.layerWebSocketConstructor },
+      { name: "layerWebSocketConstructorWS", layer: NodeSocket.layerWebSocketConstructorWS }
+    ])("$name passes headers and a subprotocol to the opening handshake", ({ layer }) =>
       Effect.gen(function*() {
         const handshake = yield* Deferred.make<{ authorization: string | undefined; protocol: string }>()
         const server = yield* Effect.acquireRelease(
@@ -854,7 +857,7 @@ describe("Socket", { concurrent: false }, () => {
           authorization: "Bearer test",
           protocol: "graphql-transport-ws"
         })
-      }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
+      }).pipe(Effect.provide(layer)))
 
     it.effect("passes headers to the opening handshake", () =>
       Effect.gen(function*() {
