@@ -96,7 +96,10 @@ const taskMetadata = () => ({
   ttlMs: null
 })
 
+// Owner: McpClient polling and input orchestration, public ToolExecution controls and Toolkit integration.
+// Server state translation belongs to McpServer/McpTasks.test.ts; SQL persistence belongs to McpTasksWorkflow.test.ts.
 describe("McpClient Tasks", () => {
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#polymorphic-results
   it.effect("should return final tool output when execution is immediate or task-backed", () =>
     Effect.gen(function*() {
       const { client, report, inline } = yield* connect(Effect.succeed("report result"))
@@ -140,6 +143,7 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(requests.filter(({ message }) => message.method === "tools/call").length, 1)
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#streamable-http-routing-headers
   it.effect("should route follow-up requests by task ID when execution needs user input", () =>
     Effect.gen(function*() {
       const { client, report, requests } = yield* connect(
@@ -154,6 +158,7 @@ describe("McpClient Tasks", () => {
       const followups = requests.filter(({ message }) => message.method.startsWith("tasks/"))
       assert.isTrue(followups.some(({ message }) => message.method === "tasks/update"))
       for (const { headers, message } of followups) {
+        assert.strictEqual(message.params?.taskId, execution.taskId)
         assert.strictEqual(headers.get("mcp-name"), execution.taskId)
         assert.strictEqual(headers.get("mcp-method"), message.method)
         const meta = message.params?._meta as Record<string, unknown>
@@ -163,6 +168,7 @@ describe("McpClient Tasks", () => {
       }
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should fulfill all input rounds when the task requests concurrent and successive inputs", () =>
     Effect.gen(function*() {
       const seen: Array<string> = []
@@ -200,6 +206,7 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(yield* finish(result), "captured")
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-status
   it.effect("should preserve tool-reported errors when a completed task returns isError", () =>
     Effect.gen(function*() {
       const { client, report } = yield* connect(Effect.fail("denied"))
@@ -220,6 +227,7 @@ describe("McpClient Tasks", () => {
       assert.strictEqual((yield* finish(invalid)).reason._tag, "ValidationError")
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-polling
   it.effect("should preserve JSON-RPC error details when the task fails", () =>
     Effect.gen(function*() {
       const task = taskMetadata()
@@ -244,6 +252,7 @@ describe("McpClient Tasks", () => {
       assert.deepStrictEqual(error.reason.data, { job: 42 })
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-cancellation
   it.effect("should report TaskCancelled when the server confirms remote cancellation", () =>
     Effect.gen(function*() {
       const { client, report, requests, next } = yield* connect(Effect.never)
@@ -257,6 +266,9 @@ describe("McpClient Tasks", () => {
       const cancel = requests.find(({ message }) => message.method === "tasks/cancel")
       assert.isDefined(cancel)
       assert.strictEqual(cancel.headers.get("mcp-name"), execution.taskId)
+      assert.strictEqual(cancel.headers.get("mcp-method"), "tasks/cancel")
+      assert.strictEqual(cancel.message.params?.taskId, execution.taskId)
+      assert.isFalse(requests.some(({ message }) => message.method === "notifications/cancelled"))
     }))
 
   for (const condition of ["interrupted", "timed out"] as const) {
@@ -310,12 +322,22 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(error.reason._tag, "ClosedError")
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#capability-negotiation
   it.effect("should omit task capability when polling is disabled", () =>
     Effect.gen(function*() {
       const { client, report, requests } = yield* connect(Effect.succeed("done"), { tasks: undefined })
       const error = yield* client.callTool({ tool: report }).pipe(Effect.flip)
       assert(error.reason._tag === "ProtocolError")
       assert.strictEqual(error.reason.code, -32021)
+      const call = requests.find(({ message }) => message.method === "tools/call")
+      assert.isDefined(call)
+      const meta = call.message.params?._meta
+      const capabilities = Schema.decodeUnknownSync(Schema.Struct({
+        "io.modelcontextprotocol/clientCapabilities": Schema.Struct({
+          extensions: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown))
+        })
+      }))(meta)["io.modelcontextprotocol/clientCapabilities"]
+      assert.isUndefined(capabilities.extensions?.["io.modelcontextprotocol/tasks"])
       assert.isFalse(requests.some(({ message }) => message.method === "tasks/get"))
     }))
   it.effect("should release prompt resources when cancellation interrupts active user input", () =>
@@ -339,6 +361,7 @@ describe("McpClient Tasks", () => {
       yield* Deferred.await(dismissed)
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-cancellation
   it.effect("should return the result when completion wins a cancellation race", () =>
     Effect.gen(function*() {
       let finished = false
@@ -369,6 +392,7 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(yield* finish(waiting), "won")
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-polling
   it.effect("should poll at the advertised deadlines when the server changes its interval", () =>
     Effect.gen(function*() {
       let polls = 0
@@ -405,6 +429,7 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(yield* execution.awaitResult(), "done")
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should submit an answer once when an acknowledged input remains in a stale snapshot", () =>
     Effect.gen(function*() {
       let prompts = 0
@@ -458,42 +483,45 @@ describe("McpClient Tasks", () => {
       assert.strictEqual(updates, 1)
       assert.strictEqual(prompts, 1)
     }))
-  it.effect("should dispatch roots and sampling when their application handlers are configured", () =>
-    Effect.gen(function*() {
-      const { client, report } = yield* connect(
-        Effect.gen(function*() {
-          const task = yield* McpTasks.TaskContext
-          const roots = yield* task.requestInput({
-            key: "roots",
-            request: { method: "roots/list" },
-            response: McpSchema.ListRootsResult
-          }).pipe(Effect.orDie)
-          const sample = yield* task.requestInput({
-            key: "sample",
-            request: { method: "sampling/createMessage", params: { messages: [], maxTokens: 10 } },
-            response: McpSchema.CreateMessageResult
-          }).pipe(Effect.orDie)
-          return `${roots.roots.length}:${sample.model}`
-        }),
-        {
-          input: {
-            roots: () => Effect.succeed({ roots: [{ uri: "file:///workspace" }] }),
-            sampling: (request) =>
-              Effect.sync(() => {
-                assert.strictEqual(request.maxTokens, 10)
-                return {
-                  role: "assistant" as const,
-                  content: { type: "text" as const, text: "answer" },
-                  model: "test-model"
-                }
-              })
+  for (const kind of ["roots", "sampling"] as const) {
+    // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
+    it.effect(`should dispatch ${kind} input when its application handler is configured`, () =>
+      Effect.gen(function*() {
+        const { client, report } = yield* connect(
+          McpTasks.TaskContext.use((task) =>
+            kind === "roots"
+              ? task.requestInput({
+                key: "roots",
+                request: { method: "roots/list" },
+                response: McpSchema.ListRootsResult
+              }).pipe(Effect.map((result) => String(result.roots.length)))
+              : task.requestInput({
+                key: "sample",
+                request: { method: "sampling/createMessage", params: { messages: [], maxTokens: 10 } },
+                response: McpSchema.CreateMessageResult
+              }).pipe(Effect.map((result) => result.model))
+          ).pipe(Effect.orDie),
+          {
+            input: {
+              roots: () => Effect.succeed({ roots: [{ uri: "file:///workspace" }] }),
+              sampling: (request) =>
+                Effect.sync(() => {
+                  assert.strictEqual(request.maxTokens, 10)
+                  return {
+                    role: "assistant" as const,
+                    content: { type: "text" as const, text: "answer" },
+                    model: "test-model"
+                  }
+                })
+            }
           }
-        }
-      )
-      const waiting = yield* client.callTool({ tool: report, schema: Schema.String }).pipe(Effect.forkChild)
-      assert.strictEqual(yield* finish(waiting), "1:test-model")
-    }))
+        )
+        const waiting = yield* client.callTool({ tool: report, schema: Schema.String }).pipe(Effect.forkChild)
+        assert.strictEqual(yield* finish(waiting), kind === "roots" ? "1" : "test-model")
+      }))
+  }
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should return the server outcome when a user declines input", () =>
     Effect.gen(function*() {
       const { client, report } = yield* connect(
@@ -533,6 +561,7 @@ describe("McpClient Tasks", () => {
       assert.isFalse(results[0].isFailure)
       assert.isFalse(results[0].preliminary)
     }))
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should observe independent completion when a user prompt remains open", () =>
     Effect.gen(function*() {
       const completed = yield* Deferred.make<string>()
@@ -558,6 +587,7 @@ describe("McpClient Tasks", () => {
       assert.isTrue(yield* Deferred.isDone(dismissed))
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should submit ready answers when another concurrent input remains open", () =>
     Effect.gen(function*() {
       const dismissed = yield* Deferred.make<void>()
@@ -579,6 +609,7 @@ describe("McpClient Tasks", () => {
       assert.isTrue(yield* Deferred.isDone(dismissed))
     }))
 
+  // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#task-update-requests
   it.effect("should dismiss withdrawn input when the task continues working", () =>
     Effect.gen(function*() {
       const withdraw = yield* Deferred.make<void>()
