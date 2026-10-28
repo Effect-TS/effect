@@ -142,10 +142,10 @@ describe("HttpCompression", () => {
     assert.strictEqual(text, bigJson)
   })
 
-  it("server preference order picks br over gzip when supported", async () => {
+  it.each(["gzip, br", " , gzip, , br, "])("server order prefers br over gzip (%s)", async (acceptEncoding) => {
     const response = await get(
       makeHandler(bigJsonApp, undefined, negotiationPlatformContext(["gzip", "deflate", "br", "zstd"])),
-      { "accept-encoding": "gzip, br" }
+      { "accept-encoding": acceptEncoding }
     )
     assert.strictEqual(response.headers.get("content-encoding"), "br")
   })

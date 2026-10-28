@@ -162,6 +162,9 @@ export const parseAcceptEncoding = (header: string): ReadonlyMap<string, number>
   const accepted = new Map<string, number>()
   for (const part of trimmed.split(",")) {
     const member = part.trim().toLowerCase().replace(/[ \t]*;[ \t]*/g, ";")
+    if (member === "") {
+      continue
+    }
     const match = acceptMember.exec(member)
     if (match === null) {
       return undefined
