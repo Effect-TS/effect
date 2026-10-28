@@ -9119,6 +9119,83 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   )
 }
 /**
+ * Validates that an object containing a trigger property also contains every
+ * property listed for that trigger.
+ *
+ * **Details**
+ *
+ * Presence is checked with own property membership, so a property whose value
+ * is `undefined` is present. Triggers that are absent impose no requirement.
+ * Each missing property is reported as a missing key at its own path.
+ *
+ * JSON Schema:
+ * This check corresponds to `dependentRequired` in JSON Schema. Effect checks
+ * the decoded object, while JSON Schema checks the original input. Defaults,
+ * excess-property handling, and property transformations can therefore produce
+ * different results.
+ *
+ * **Example** (Requiring a property when another is present)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   creditCard: Schema.optionalKey(Schema.String),
+ *   billingAddress: Schema.optionalKey(Schema.String)
+ * }).check(Schema.isDependentRequired({ creditCard: ["billingAddress"] }))
+ *
+ * Schema.is(schema)({}) // => true
+ * Schema.is(schema)({ creditCard: "4111" }) // => false
+ * Schema.is(schema)({ creditCard: "4111", billingAddress: "Main St" }) // => true
+ * ```
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.1.0
+ */
+export function isDependentRequired(
+  dependentRequired: { readonly [key: string]: ReadonlyArray<string> },
+  annotations?: Annotations.Filter
+) {
+  const entries = Object.entries(dependentRequired).map(([key, required]) => [key, [...required]] as const)
+  // `Object.fromEntries` defines own properties, so a `__proto__` trigger is kept.
+  const payload = Object.fromEntries(entries)
+  return makeFilter<object>(
+    (input, _ast, options) => {
+      const issues: Array<FilterIssue> = []
+      const missing = new Set<string>()
+      for (const [key, required] of entries) {
+        if (!Object.hasOwn(input, key)) continue
+        for (const name of required) {
+          if (Object.hasOwn(input, name) || missing.has(name)) continue
+          missing.add(name)
+          issues.push({ path: [name], issue: new SchemaIssue.MissingKey(undefined) })
+          if (options.errors === "first") return issues
+        }
+      }
+      return issues
+    },
+    {
+      expected: "an object with the properties required by its present properties",
+      representation: {
+        id: "effect/schema/isDependentRequired",
+        payload: { dependentRequired: payload }
+      },
+      toJsonSchema: ({ type }) =>
+        type === "object" ? { dependentRequired: payload } : [{ dependentRequired: payload }, true],
+      toCode: () => ({
+        runtime: `Schema.isDependentRequired({ ${
+          entries.map(([key, required]) =>
+            `${key === "__proto__" ? `[${formatPropertyKey(key)}]` : formatPropertyKey(key)}: ${format(required)}`
+          ).join(", ")
+        } })`
+      }),
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
+      ...annotations
+    }
+  )
+}
+/**
  * Validates that all items in an array are unique according to Effect equality.
  *
  * **Details**

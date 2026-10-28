@@ -160,6 +160,7 @@ const jsonSchemaTypeSpecificKeys = [
   "propertyNames",
   "minProperties",
   "maxProperties",
+  "dependentRequired",
   "items",
   "prefixItems",
   "minItems",
@@ -193,7 +194,6 @@ const jsonSchemaAnnotationExcludedKeys = new Set([
   "contains",
   "minContains",
   "maxContains",
-  "dependentRequired",
   "dependentSchemas",
   "unevaluatedItems",
   "unevaluatedProperties",
@@ -1032,7 +1032,6 @@ export function fromJsonSchemaMultiDocument(
         case "if":
         case "$dynamicRef":
         case "contains":
-        case "dependentRequired":
         case "dependentSchemas":
         case "not":
         case "unevaluatedItems":
@@ -1303,6 +1302,17 @@ export function fromJsonSchemaMultiDocument(
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minProperties, Schema.isMinProperties)
     addNumberCheck(checks, schema.maxProperties, Schema.isMaxProperties)
+    if (isObject(schema.dependentRequired)) {
+      const dependentRequired = Object.fromEntries(
+        Object.entries(schema.dependentRequired).flatMap(([key, required]) => {
+          const names = Array.isArray(required) ? required.filter((name) => typeof name === "string") : []
+          return names.length > 0 ? [[key, names]] : []
+        })
+      )
+      if (Object.keys(dependentRequired).length > 0) {
+        checks.push(makeFilter(Schema.isDependentRequired(dependentRequired)))
+      }
+    }
     if (schema.propertyNames !== undefined) {
       const propertyNamesPath = [...path, "propertyNames"]
       checks.push({
