@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Clock, ConfigProvider, Deferred, type Duration, Effect, Exit, Fiber, Layer, Metric, Ref, Scope } from "effect"
 import { type Headers, HttpBody, HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
-import { OtlpExporter, OtlpLogger, OtlpMetrics, OtlpSerialization, OtlpTracer } from "effect/observability"
+import { Otlp, OtlpExporter, OtlpLogger, OtlpMetrics, OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import * as Version from "effect/Version"
 
@@ -371,6 +371,19 @@ describe("OtlpExporter", () => {
     }))
 
   describe("flush", () => {
+    const logsUrl = "http://localhost:4318/v1/logs"
+    const metricsUrl = "http://localhost:4318/v1/metrics"
+    const tracesUrl = "http://localhost:4318/v1/traces"
+    // Emits one log, metric and span, flushes, and returns the exported URLs
+    // before the layer scope closes and runs the shutdown exports.
+    const emitAndFlush = Effect.fnUntraced(function*(urls: Ref.Ref<ReadonlyArray<string>>) {
+      yield* Effect.log("flush test")
+      yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
+      yield* Effect.void.pipe(Effect.withSpan("flush test"))
+      yield* (yield* OtlpExporter.Flusher).flush
+      return [...yield* Ref.get(urls)].sort()
+    })
+
     it.effect("exports buffered items without advancing to the export interval", () =>
       Effect.gen(function*() {
         const { attempts, httpClient } = yield* makeStatusHttpClient(200)
@@ -533,23 +546,52 @@ describe("OtlpExporter", () => {
           Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, httpClient))
         )
 
-        yield* Effect.gen(function*() {
-          yield* Effect.log("flush test")
-          yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
-          yield* Effect.void.pipe(Effect.withSpan("flush test"))
+        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(signals)), [
+          logsUrl,
+          metricsUrl,
+          tracesUrl
+        ])
+      }))
 
-          const flusher = yield* OtlpExporter.Flusher
-          yield* flusher.flush
+    it.effect("drains every signal from the combined Otlp layer", () =>
+      Effect.gen(function*() {
+        const { httpClient, urls } = yield* makeStatusHttpClient(200)
+        const otlp = Otlp.layerJson({
+          baseUrl: "http://localhost:4318",
+          resource: { serviceName: "test" },
+          loggerExportInterval: "1 hour",
+          loggerMergeWithExisting: false,
+          metricsExportInterval: "1 hour",
+          tracerExportInterval: "1 hour"
+        }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient)))
 
-          assert.deepStrictEqual(
-            [...yield* Ref.get(urls)].sort(),
-            [
-              "http://localhost:4318/v1/logs",
-              "http://localhost:4318/v1/metrics",
-              "http://localhost:4318/v1/traces"
-            ]
-          )
-        }).pipe(Effect.provide(signals))
+        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(otlp)), [logsUrl, metricsUrl, tracesUrl])
+      }))
+
+    it.effect("shares one registry in Otlp.layerFromConfig when a signal is disabled", () =>
+      Effect.gen(function*() {
+        const { httpClient, urls } = yield* makeStatusHttpClient(200)
+        // Traces are merged last, so a separate registry for the disabled
+        // tracer would shadow the shared one and the flush would export nothing.
+        const otlp = Otlp.layerFromConfig({
+          resource: { serviceName: "test" },
+          loggerMergeWithExisting: false
+        }).pipe(
+          Layer.provide(OtlpSerialization.layerJson),
+          Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient)),
+          Layer.provide(ConfigProvider.layer(ConfigProvider.fromEnv({
+            env: {
+              OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318",
+              OTEL_LOGS_EXPORTER: "otlp",
+              OTEL_METRICS_EXPORTER: "otlp",
+              OTEL_TRACES_EXPORTER: "none",
+              OTEL_BLRP_SCHEDULE_DELAY: "3600000",
+              OTEL_METRIC_EXPORT_INTERVAL: "3600000"
+            }
+          })))
+        )
+
+        assert.deepStrictEqual(yield* emitAndFlush(urls).pipe(Effect.provide(otlp)), [logsUrl, metricsUrl])
       }))
 
     it.effect("is a no-op while the exporter is disabled", () =>

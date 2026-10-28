@@ -16,6 +16,7 @@ import type * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as Layer from "../Layer.ts"
 import type * as Tracer from "../Tracer.ts"
+import type * as OtlpExporter from "./OtlpExporter.ts"
 import * as OtlpLogger from "./OtlpLogger.ts"
 import type { AggregationTemporality } from "./OtlpMetrics.ts"
 import * as OtlpMetrics from "./OtlpMetrics.ts"
@@ -29,6 +30,10 @@ import * as OtlpTracer from "./OtlpTracer.ts"
  *
  * The layer sends data to `/v1/logs`, `/v1/metrics`, and `/v1/traces` below
  * `baseUrl` and requires an `OtlpSerialization` implementation.
+ *
+ * The layer also provides the `OtlpExporter.Flusher` shared by all three
+ * signals. One `flush` exports buffered logs, metrics, and traces together,
+ * for example before a serverless instance is suspended.
  *
  * @stability unstable
  * @category layers
@@ -56,7 +61,7 @@ export const layer = (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
+}): Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
   const base = HttpClientRequest.get(options.baseUrl)
   const url = (path: string) => HttpClientRequest.appendUrl(base, path).url
   return Layer.mergeAll(
@@ -97,6 +102,13 @@ export const layer = (options: {
  * Creates a combined OTLP layer for logs, metrics, and traces from
  * OpenTelemetry configuration.
  *
+ * **Details**
+ *
+ * The layer also provides the `OtlpExporter.Flusher` shared by all enabled
+ * signals. One `flush` exports their buffered telemetry together, for example
+ * before a serverless instance is suspended. The Flusher is provided even when
+ * configuration disables every signal; flushing is then a no-op.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -111,7 +123,7 @@ export const layerFromConfig = (options?: {
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> =>
+}): Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> =>
   Layer.mergeAll(
     OtlpLogger.layerFromConfig({
       resource: options?.resource,
@@ -133,6 +145,11 @@ export const layerFromConfig = (options?: {
 /**
  * Creates the combined OTLP logs, metrics, and traces layer using JSON
  * serialization.
+ *
+ * **Details**
+ *
+ * The layer also provides the `OtlpExporter.Flusher` shared by all three
+ * signals, so one `flush` exports their buffered telemetry together.
  *
  * @stability unstable
  * @category layers
@@ -160,11 +177,19 @@ export const layerJson: (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
-}) => Layer.Layer<never, never, HttpClient.HttpClient> = flow(layer, Layer.provide(OtlpSerialization.layerJson))
+}) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
+  layer,
+  Layer.provide(OtlpSerialization.layerJson)
+)
 
 /**
  * Creates the combined OTLP logs, metrics, and traces layer using protobuf
  * serialization.
+ *
+ * **Details**
+ *
+ * The layer also provides the `OtlpExporter.Flusher` shared by all three
+ * signals, so one `flush` exports their buffered telemetry together.
  *
  * @stability unstable
  * @category layers
@@ -192,4 +217,7 @@ export const layerProtobuf: (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
-}) => Layer.Layer<never, never, HttpClient.HttpClient> = flow(layer, Layer.provide(OtlpSerialization.layerProtobuf))
+}) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
+  layer,
+  Layer.provide(OtlpSerialization.layerProtobuf)
+)
