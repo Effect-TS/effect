@@ -37,7 +37,7 @@ import * as Equal from "./Equal.ts"
 import type * as Equivalence from "./Equivalence.ts"
 import * as Exit_ from "./Exit.ts"
 import type { Formatter } from "./Formatter.ts"
-import { format, formatPropertyKey } from "./Formatter.ts"
+import { format, formatObjectLiteralKey, formatPropertyKey } from "./Formatter.ts"
 import { identity } from "./Function.ts"
 import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
@@ -9185,9 +9185,7 @@ export function isDependentRequired(
         type === "object" ? { dependentRequired: payload } : [{ dependentRequired: payload }, true],
       toCode: () => ({
         runtime: `Schema.isDependentRequired({ ${
-          entries.map(([key, required]) =>
-            `${key === "__proto__" ? `[${formatPropertyKey(key)}]` : formatPropertyKey(key)}: ${format(required)}`
-          ).join(", ")
+          entries.map(([key, required]) => `${formatObjectLiteralKey(key)}: ${format(required)}`).join(", ")
         } })`
       }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
