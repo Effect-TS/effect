@@ -19,6 +19,7 @@ interface Options<P extends Protocols> {
   readonly cacheHints?: McpServer.CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
   readonly loggers?: ReadonlyArray<Logger.Logger<unknown, any>> | undefined
 }
 
@@ -58,7 +59,11 @@ export function makeServerLayer(options: Options<Protocols> & { readonly mode?: 
       Layer.provideMerge(loggers)
     )
   }
-  return McpServer.layerHttp({ ...common, allowSessionTermination: options.allowSessionTermination }).pipe(
+  return McpServer.layerHttp({
+    ...common,
+    allowSessionTermination: options.allowSessionTermination,
+    sessionMode: options.sessionMode
+  }).pipe(
     Layer.provideMerge(loggers)
   )
 }
