@@ -256,6 +256,10 @@ development:
     ])("rejects a later key indented by %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
+
+    it("rejects a tab before the first key", () => {
+      assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
+    })
   })
 
   // YAML 1.2.2 §§6.5–6.7 and 7.3.1–7.3.3: flow scalar folding and comments.
