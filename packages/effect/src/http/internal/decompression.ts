@@ -187,9 +187,10 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (text) =>
+    return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(text)),
+        try: () =>
+          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
         catch: (cause) => this.parseError(cause)
       }))
   }

@@ -1335,9 +1335,10 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpClientError.HttpClientError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () =>
+          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
         catch: (cause) =>
           new HttpClientError.HttpClientError({
             reason: new HttpClientError.DecodeError({

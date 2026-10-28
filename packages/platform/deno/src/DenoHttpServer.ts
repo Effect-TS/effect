@@ -441,15 +441,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.text(),
-        catch: (cause) =>
-          new Error.HttpServerError({
-            reason: new Error.RequestParseError({ request: this, cause })
-          })
-      })
-    ))
+    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
   }
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
@@ -462,9 +454,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       }))
   }
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () =>
+          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
         catch: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({ request: this, cause })

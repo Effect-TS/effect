@@ -152,6 +152,20 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       })
     })
   ),
+  HttpRouter.route(
+    "POST",
+    "/form-echo",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const params = yield* request.urlParamsBody
+      return HttpServerResponse.uint8Array(new Uint8Array(yield* request.arrayBuffer), {
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-form-params": encodeURIComponent(JSON.stringify([...params]))
+        }
+      })
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
@@ -222,6 +236,19 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
           body: HttpBody.text("\uFEFF{\"a\":1}", "application/json")
         })
         assert.deepStrictEqual(yield* response.json, { a: 1 })
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("request and response urlParamsBody preserve form field names", () =>
+      Effect.gen(function*() {
+        for (const body of ["\uFEFFname=value&next=ok", "%EF%BB%BFname=value&next=ok"]) {
+          const response = yield* HttpClient.post("/form-echo", {
+            body: HttpBody.text(body, "application/x-www-form-urlencoded")
+          })
+          const expected = [["\uFEFFname", "value"], ["next", "ok"]]
+          assert.deepStrictEqual(JSON.parse(decodeURIComponent(response.headers["x-form-params"]!)), expected)
+          expect([...yield* response.urlParamsBody]).toEqual(expected)
+          assert.strictEqual(yield* response.text, body.replace(/^\uFEFF/, ""))
+        }
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name !== "fetch") {

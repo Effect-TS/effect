@@ -104,9 +104,10 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () =>
+          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
         catch: this.onError
       }))
   }

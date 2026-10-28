@@ -459,9 +459,10 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpClientError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () =>
+          UrlParams.fromInput(new URLSearchParams(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes))),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({

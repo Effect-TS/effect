@@ -122,6 +122,18 @@ describe("BrowserHttpClient", () => {
       }]
     }))))
 
+  it.effect("urlParamsBody preserves a leading BOM in ArrayBuffer mode", () =>
+    Effect.gen(function*() {
+      const response = yield* HttpClient.get("http://localhost/form").pipe(BrowserHttpClient.withXHRArrayBuffer)
+      assert.deepStrictEqual([...yield* response.urlParamsBody], [["\uFEFFname", "value"]])
+      assert.strictEqual(yield* response.text, "name=value")
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost/form", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "\uFEFFname=value"
+      }]
+    }))))
+
   it.effect("decodes an XHR response as FormData", () =>
     Effect.gen(function*() {
       const formData = yield* HttpClient.get("http://localhost/form").pipe(
