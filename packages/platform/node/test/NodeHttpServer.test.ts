@@ -10,6 +10,7 @@ import { constVoid } from "effect/Function"
 import {
   Cookies,
   FetchHttpClient,
+  Headers,
   HttpBody,
   HttpClient,
   HttpClientRequest,
@@ -516,6 +517,29 @@ describe("HttpServer", () => {
       assert.match(result.json, /"url":"http:\/\/[^/"]+\/inspect\?token=REDACTED&sig=sig-visible"/)
       assert.include(result.formatted, "/inspect?token=REDACTED&sig=sig-visible")
       assert.notInclude(result.formatted, "token-secret")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("redacts configured headers when inspecting requests", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/inspect",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          return yield* HttpServerResponse.json({
+            json: JSON.stringify(request.headers),
+            formatted: Formatter.format(request.headers)
+          })
+        }).pipe(Effect.provideService(Headers.CurrentRedactedNames, ["x-secret"]))
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const result = (yield* HttpClient.get("/inspect", { headers: { "x-secret": "header-secret" } }).pipe(
+        Effect.flatMap((response) => response.json)
+      )) as { readonly json: string; readonly formatted: string }
+
+      assert.include(result.json, `"x-secret":"<redacted>"`)
+      assert.notInclude(result.json, "header-secret")
+      assert.notInclude(result.formatted, "header-secret")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("schemaJson applies a JSON reviver", () =>
