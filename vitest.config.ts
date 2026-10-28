@@ -228,6 +228,7 @@ export default defineConfig({
       ...project("@effect/npm-promote", "packages/tools/npm-promote"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),
       ...project("@effect/graphql-generator", "packages/tools/graphql-generator"),
+      ...project("@effect/protobuf-generator", "packages/tools/protobuf-generator"),
       ...project("@effect/utils", "packages/tools/utils", isNode),
       ...project("@effect/oxc", "packages/tools/oxc")
     ]

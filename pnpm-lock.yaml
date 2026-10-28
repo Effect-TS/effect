@@ -991,6 +991,19 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/tools/protobuf-generator:
+    dependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform/node
+    devDependencies:
+      '@bufbuild/buf':
+        specifier: 1.75.0
+        version: 1.75.0
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
   packages/tools/utils:
     dependencies:
       '@effect/platform-node':
@@ -1573,6 +1586,53 @@ packages:
 
   '@bramus/specificity@2.4.3':
     resolution: {integrity: sha512-0GEz8qJWokkUVYQYRukmkSHIFNoBH8QTreeHrAFbvz1XFYc3Y+puhMs8PQ5x8GNugiC2l5jvDBXKLbBIByeSBw==}
+    hasBin: true
+
+  '@bufbuild/buf-darwin-arm64@1.75.0':
+    resolution: {integrity: sha512-QiQYSmtVUcKy9DK/d+zJ3+D4iUQmmiDQ3i8/yBr8cf7Nr28lqKMAIKznJE/uGRsjr90fHaUQO+Xsedec0ArN5g==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@bufbuild/buf-darwin-x64@1.75.0':
+    resolution: {integrity: sha512-U2W+MRE9jJ7Am7x02ZWt87U5lfPrjKMdB1aZDslsuyOHo+fEUvZolupmhoW30v6syNAWBOfkoi0k5TLc2FNGqQ==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@bufbuild/buf-linux-aarch64@1.75.0':
+    resolution: {integrity: sha512-eX+XyokzJDqsNIFo8b1O3DBvbnksOozPJX4QVsNn61JqSUtWspyTNeYqwg8lRDancML+bDqZEDFPABjAsVCQGQ==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@bufbuild/buf-linux-armv7@1.75.0':
+    resolution: {integrity: sha512-2RVhmr3vJ145DazYTk9dWAzeQPtcJ0SiSzY02v1Su/JIfgzhv9lgOm+y3nGuLjyZFF8UfTtmuHfHso5zDBgsCQ==}
+    engines: {node: '>=12'}
+    cpu: [arm]
+    os: [linux]
+
+  '@bufbuild/buf-linux-x64@1.75.0':
+    resolution: {integrity: sha512-YGGJAx0lpMCE7aMWjNOJcfoEaG/e+iYHnTC4SZ0P5eS4IffMryA9Z4/bb1m1wNXAEJ8ATFMEZOAk/5x9VE47ig==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [linux]
+
+  '@bufbuild/buf-win32-arm64@1.75.0':
+    resolution: {integrity: sha512-iRge6Ntta41gt0i7P8/EZFDWe3uLNnCEN86r1tKTWctumWxPET3UJcSzzYPyL4gxvzu1/1VTu+AB3+MYAqHy6Q==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@bufbuild/buf-win32-x64@1.75.0':
+    resolution: {integrity: sha512-/BgLt3VWndocuG4lbMdlBc1i41I+Bap4zm8R1Cnmov6DtoAQp4dy/leRrvT4aDArIUQ1o7W/Y92xTRITedU4ww==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [win32]
+
+  '@bufbuild/buf@1.75.0':
+    resolution: {integrity: sha512-uMuBCULLDax9/3d5Lo9mea38vuPDv4mrRVE4XfSq3qPcD5UUxlg0RJ9hm84lYCzI3A3lIvLeChxrw9c1RUiD2w==}
+    engines: {node: '>=12'}
     hasBin: true
 
   '@bundle-stats/cli-utils@4.22.3':
@@ -2553,18 +2613,21 @@ packages:
   '@opentelemetry/sdk-trace-base@2.12.0':
     resolution: {integrity: sha512-JOERgZCxRM06FEJ5kEWxlSRChah6MmXDx3KwCruqEv/iEyLkTokCSemf2y1w8oIHtfrr8EVTpzebq/31vn2Cpg==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 
   '@opentelemetry/sdk-trace-node@2.12.0':
     resolution: {integrity: sha512-9DufH1IlmQMoKAfot5y/FhTP1RnmhLb5K6eKmJO/bvzPjYwPAazoiAUbTZFdPbqxOXN0FEbhZx/e6SB1Og4jmg==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
   '@opentelemetry/sdk-trace-web@2.12.0':
     resolution: {integrity: sha512-y0hCzbnBHScmioF0drJOyaPk1sQf2wwbIuy3rWlM0Fcx8mLfPDvFsQ7tJ+zMm8yAqI06rSlFKkL7ZpcrFOqAdQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
@@ -7281,6 +7344,37 @@ snapshots:
   '@bramus/specificity@2.4.3':
     dependencies:
       css-tree: 3.2.1
+
+  '@bufbuild/buf-darwin-arm64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-darwin-x64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-linux-aarch64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-linux-armv7@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-linux-x64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-win32-arm64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf-win32-x64@1.75.0':
+    optional: true
+
+  '@bufbuild/buf@1.75.0':
+    optionalDependencies:
+      '@bufbuild/buf-darwin-arm64': 1.75.0
+      '@bufbuild/buf-darwin-x64': 1.75.0
+      '@bufbuild/buf-linux-aarch64': 1.75.0
+      '@bufbuild/buf-linux-armv7': 1.75.0
+      '@bufbuild/buf-linux-x64': 1.75.0
+      '@bufbuild/buf-win32-arm64': 1.75.0
+      '@bufbuild/buf-win32-x64': 1.75.0
 
   '@bundle-stats/cli-utils@4.22.3(core-js@3.47.0)':
     dependencies:
