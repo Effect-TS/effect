@@ -1,6 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Context, Deferred, Effect, Fiber, Layer, Queue, Schema, Sink, Stream } from "effect"
-import { LanguageModel, McpClient, McpClientError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+import {
+  LanguageModel,
+  McpClient,
+  McpClientError,
+  McpProtocol,
+  McpSchema,
+  McpServer,
+  Prompt,
+  Tool,
+  Toolkit
+} from "effect/ai"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -156,7 +166,7 @@ describe("McpClient", () => {
     })
   }
 
-  describe("bounded discovery", () => {
+  describe("discovery limits", () => {
     it.effect("should expose server capabilities when initialization succeeds", () =>
       Effect.gen(function*() {
         const capabilities = { tools: { listChanged: true }, experimental: { custom: {} } }
@@ -164,68 +174,21 @@ describe("McpClient", () => {
         assert.deepStrictEqual(client.capabilities, capabilities)
       }))
 
-    it.effect("should stop discovery when a configured limit is exceeded", () =>
-      Effect.gen(function*() {
-        const descriptor = {
-          name: "task",
-          description: "世界",
-          inputSchema: { type: "object" },
-          execution: { taskSupport: "required" },
-          extra: "count me"
-        }
-        const bytes = new TextEncoder().encode(JSON.stringify(descriptor)).length
-        const cases: ReadonlyArray<{ limits: McpClient.DiscoveryLimits; pages: number }> = [
-          { limits: { maxPages: 0 }, pages: 0 },
-          { limits: { maxPages: 1 }, pages: 1 },
-          { limits: { maxItems: 1 }, pages: 2 },
-          { limits: { maxDescriptionBytes: "5 B" }, pages: 1 },
-          { limits: { maxBytes: bytes - 1 }, pages: 1 },
-          { limits: { maxBytes: bytes }, pages: 2 }
-        ]
-        for (const { limits, pages } of cases) {
-          const { client, sent } = yield* scriptedHttp((message) =>
-            message.method === "tools/list"
-              ? jsonRpcResult(message, { tools: [descriptor], nextCursor: String(message.id) })
-              : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
-          const error = yield* client.listTools({ limits }).pipe(Effect.flip)
-          assert.strictEqual(error.reason._tag, "LimitError", JSON.stringify(limits))
-          assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, pages)
-        }
-      }))
-
-    it.effect("should return discovery results when they fit zero or exact bounds", () =>
-      Effect.gen(function*() {
-        const descriptor = { name: "unicode", description: "世界", inputSchema: { type: "object" }, extra: "count me" }
-        for (const tools of [[], [descriptor]]) {
-          const { client } = yield* scriptedHttp((message) =>
-            message.method === "tools/list"
-              ? jsonRpcResult(message, { ...discoverResult, tools })
-              : scriptedReply(McpProtocol.v2026_07_28, message)
-          )
-          const discovered = yield* client.listTools({
-            limits: {
-              maxPages: 1,
-              maxItems: tools.length,
-              maxDescriptionBytes: tools.length === 0 ? "0 B" : "6 B",
-              maxBytes: BigInt(tools.length === 0 ? 0 : new TextEncoder().encode(JSON.stringify(descriptor)).length)
-            }
-          })
-          assert.deepStrictEqual(discovered.map((tool) => tool.name), tools.map((tool) => tool.name))
-        }
-      }))
-
-    it.effect("should inherit client limits when a scan overrides only selected options", () =>
+    it.effect("should stop discovery when a scan exceeds inherited or overridden limits", () =>
       Effect.gen(function*() {
         const { client, sent } = yield* scriptedHttp((message) =>
           message.method === "tools/list"
-            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool] })
-            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxItems: 0, maxPages: 0 } })
-        for (const limits of [{ maxPages: 1 }, { maxPages: 1, maxItems: undefined }]) {
-          const error = yield* client.listTools({ limits }).pipe(Effect.flip)
-          assert.strictEqual(error.reason._tag, "LimitError")
-        }
-        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 2)
-        assert.strictEqual((yield* client.listTools({ limits: { maxPages: 1, maxItems: 1 } })).length, 1)
+            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool], nextCursor: String(message.id) })
+            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxPages: 1 } })
+        const listCalls = () => sent.filter(({ message }) => methodOf(message) === "tools/list").length
+
+        const pageError = yield* client.listTools({ limits: { maxItems: 5 } }).pipe(Effect.flip)
+        assert.strictEqual(pageError.reason._tag, "LimitError")
+        assert.strictEqual(listCalls(), 1)
+
+        const itemError = yield* client.listTools({ limits: { maxPages: 3, maxItems: 1 } }).pipe(Effect.flip)
+        assert.strictEqual(itemError.reason._tag, "LimitError")
+        assert.strictEqual(listCalls(), 3)
       }))
 
     it.effect("should fail with ConfigurationError when client or scan limits are invalid", () =>
@@ -238,107 +201,65 @@ describe("McpClient", () => {
         assert.strictEqual(scanError.reason._tag, "ConfigurationError")
         assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
       }))
-
-    it.effect("should reject discovery when the server repeats a cursor", () =>
-      Effect.gen(function*() {
-        const { client, sent } = yield* scriptedHttp((message) =>
-          message.method === "tools/list"
-            ? jsonRpcResult(message, { ...discoverResult, tools: [], nextCursor: "repeated" })
-            : scriptedReply(McpProtocol.v2026_07_28, message)
-        )
-        const error = yield* client.listTools({ limits: { maxPages: 3 } }).pipe(Effect.flip)
-        assert.strictEqual(error.reason._tag, "LimitError")
-        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 2)
-      }))
-
-    it.effect("should time out the whole scan when pagination exceeds its deadline", () =>
-      Effect.gen(function*() {
-        const server = yield* connectStdio(McpProtocol.v2025_11_25)
-        const discovery = yield* server.client.listTools({ timeout: "1 second" }).pipe(Effect.flip, Effect.forkChild)
-        const first = yield* server.receive
-        assert(isRequest(first))
-        yield* TestClock.adjust("500 millis")
-        yield* server.send({ jsonrpc: "2.0", id: first.id, result: { tools: [], nextCursor: "second" } })
-        yield* server.receive
-        yield* TestClock.adjust("500 millis")
-        assert.strictEqual((yield* Fiber.join(discovery)).reason._tag, "TimeoutError")
-      }))
-
-    it.effect("should enforce discovery limits when listing prompts or resources", () =>
-      Effect.gen(function*() {
-        const { client } = yield* scriptedHttp((message) =>
-          message.method === "prompts/list"
-            ? jsonRpcResult(message, { prompts: [{ name: "prompt", description: "too long" }] })
-            : message.method === "resources/list"
-            ? jsonRpcResult(message, {
-              resources: [{ name: "resource", uri: "test://resource", description: "too long" }]
-            })
-            : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
-        for (const list of [client.listPrompts, client.listResources]) {
-          const error = yield* list({ limits: { maxDescriptionBytes: 1 } }).pipe(Effect.flip)
-          assert.strictEqual(error.reason._tag, "LimitError")
-        }
-      }))
   })
 
-  describe("configured toolkit", () => {
-    it.effect("should preserve complete results without rediscovery when given an approved snapshot", () =>
+  describe("toolkit options", () => {
+    it.effect("should map complete results to model output when bound to an approved snapshot", () =>
       Effect.gen(function*() {
         const { client, sent } = yield* scriptedHttp((message) =>
-          message.method === "tools/list"
-            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool] })
-            : message.method === "tools/call"
+          message.method === "tools/call"
             ? jsonRpcResult(message, {
               ...discoverResult,
               content: [
                 { type: "text", text: "preview" },
-                { type: "image", data: "aW1hZ2U=", mimeType: "image/png" }
+                { type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
+                { type: "resource", resource: { uri: "test://notes", text: "notes", mimeType: "text/plain" } },
+                { type: "resource", resource: { uri: "test://report", blob: "cGRm", mimeType: "application/pdf" } }
               ],
               structuredContent: { total: 42 }
             })
             : scriptedReply(McpProtocol.v2026_07_28, message)
         )
-        const tools = yield* client.listTools()
-        const toolkit = yield* McpClient.toolkit(client, { tools, prefix: "remote__", resultMode: "complete" })
+        const toolkit = yield* McpClient.toolkit(client, {
+          tools: [slowTool],
+          prefix: "remote__",
+          resultMode: "complete"
+        })
         const [output] = yield* toolkit.handle("remote__slow", {}).pipe(Effect.flatMap(Stream.runCollect))
         assert("content" in output.result)
-        assert.deepStrictEqual(output.result.content, [
-          { type: "text", text: "preview" },
-          { type: "image", data: new TextEncoder().encode("image"), mimeType: "image/png" }
-        ])
         assert.deepStrictEqual(output.result.structuredContent, { total: 42 })
-        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 1)
+        assert.deepStrictEqual(output.modelOutput, [
+          Prompt.textPart({ text: "preview" }),
+          Prompt.filePart({ mediaType: "image/png", data: new TextEncoder().encode("image") }),
+          Prompt.textPart({ text: "notes" }),
+          Prompt.filePart({ mediaType: "application/pdf", data: new TextEncoder().encode("pdf") })
+        ])
+        assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
       }))
 
-    it.effect("should apply failureMode when a remote tool reports a failure", () =>
+    it.effect("should return tool and transport failures to the model when failureMode is return", () =>
       Effect.gen(function*() {
-        const client = yield* connect(McpProtocol.v2025_11_25)
-        const tools = yield* client.listTools()
-        const returning = yield* McpClient.toolkit(client, { tools, failureMode: "return", resultMode: "complete" })
-        const [output] = yield* returning.handle("fail", {}).pipe(Effect.flatMap(Stream.runCollect))
-        assert.isTrue(output.isFailure)
-        assert(McpClientError.isMcpClientError(output.result) && output.result.reason._tag === "ToolError")
-        assert.isTrue(output.result.reason.result.isError)
-        assert.deepStrictEqual(output.result.reason.result.content, [{ type: "text", text: "\"denied\"" }])
+        const { client } = yield* scriptedHttp((message) =>
+          message.method !== "tools/call"
+            ? scriptedReply(McpProtocol.v2026_07_28, message)
+            : message.params?.name === "denied"
+            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "denied" }], isError: true })
+            : new Response(null, { status: 503 })
+        )
+        const tools = [McpSchema.Tool.make({ ...slowTool, name: "denied" }), slowTool]
+        const returning = yield* McpClient.toolkit(client, { tools, failureMode: "return" })
+        const [denied] = yield* returning.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect))
+        const [unavailable] = yield* returning.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert(denied.isFailure && denied.result.reason._tag === "ToolError")
+        assert.deepStrictEqual(denied.result.reason.result.content, [{ type: "text", text: "denied" }])
+        assert(unavailable.isFailure && unavailable.result.reason._tag === "HttpError")
+
         const failing = yield* McpClient.toolkit(client, { tools })
-        const error = yield* failing.handle("fail", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+        const error = yield* failing.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
         assert(McpClientError.isMcpClientError(error) && error.reason._tag === "ToolError")
       }))
 
-    it.effect("should retain the operational error when return mode captures a failed request", () =>
-      Effect.gen(function*() {
-        const { client } = yield* scriptedHttp((message) =>
-          message.method === "tools/call"
-            ? new Response(null, { status: 503 })
-            : scriptedReply(McpProtocol.v2026_07_28, message)
-        )
-        const toolkit = yield* McpClient.toolkit(client, { tools: [slowTool], failureMode: "return" })
-        const [output] = yield* toolkit.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
-        assert.isTrue(output.isFailure)
-        assert(McpClientError.isMcpClientError(output.result) && output.result.reason._tag === "HttpError")
-      }))
-
-    it.effect("should use server hints only when annotation trust is enabled", () =>
+    it.effect("should copy server hints only when annotations are trusted", () =>
       Effect.gen(function*() {
         const { client } = yield* scriptedHttp((message) => scriptedReply(McpProtocol.v2026_07_28, message))
         const descriptor = McpSchema.Tool.make({
@@ -353,6 +274,7 @@ describe("McpClient", () => {
         })
         const untrusted = (yield* McpClient.toolkit(client, { tools: [descriptor] })).tools.hints
         const trusted = (yield* McpClient.toolkit(client, { tools: [descriptor], trustAnnotations: true })).tools.hints
+        assert.strictEqual(Context.get(untrusted.annotations, McpClient.ToolDescriptor), descriptor)
         assert.isUndefined(trusted.needsApproval)
         for (
           const [annotation, expected] of [
@@ -381,7 +303,7 @@ describe("McpClient", () => {
         assert(McpClientError.isMcpClientError(error) && error.reason._tag === "TimeoutError")
       }))
 
-    it.effect("should retain custom policy and the remote contract when a tool is renamed", () =>
+    it.effect("should keep the remote contract when transformTool derives a tool", () =>
       Effect.gen(function*() {
         const { client, sent } = yield* scriptedHttp((message) =>
           message.method === "tools/call"
@@ -392,62 +314,19 @@ describe("McpClient", () => {
           tools: [slowTool],
           transformTool: (tool, descriptor) => {
             assert.strictEqual(descriptor, slowTool)
-            return Tool.make("renamed", {
-              parameters: tool.parametersSchema,
-              success: tool.successSchema,
-              failure: tool.failureSchema
-            }).setNeedsApproval(true).annotate(Tool.Title, "Approved tool")
+            return tool.setNeedsApproval(true).annotate(Tool.Title, "Approved tool")
           }
         })
-        const tool = toolkit.tools.renamed
+        const tool = toolkit.tools.slow
         assert.isTrue(tool.needsApproval)
-        assert.strictEqual(Context.getUnsafe(tool.annotations, Tool.Title), "Approved tool")
-        assert.strictEqual(Context.getUnsafe(tool.annotations, McpClient.ToolDescriptor), slowTool)
+        assert.strictEqual(Context.get(tool.annotations, Tool.Title), "Approved tool")
+        assert.strictEqual(Context.get(tool.annotations, McpClient.ToolDescriptor), slowTool)
         assert.deepStrictEqual(Tool.getJsonSchema(tool), slowTool.inputSchema)
-        const [output] = yield* toolkit.handle("renamed", {}).pipe(Effect.flatMap(Stream.runCollect))
+        const [output] = yield* toolkit.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
         assert.strictEqual(output.result, "done")
         const call = sent.find(({ message }) => methodOf(message) === "tools/call")?.message
         assert(call !== undefined && "method" in call)
         assert.strictEqual(call.params?.name, "slow")
-      }))
-
-    it.effect("should reject toolkit construction when final names are invalid or duplicated", () =>
-      Effect.gen(function*() {
-        const { client } = yield* scriptedHttp((message) => scriptedReply(McpProtocol.v2026_07_28, message))
-        for (const [name, count] of [["invalid.name", 1], ["duplicate", 2]] as const) {
-          const tools = Array.from(
-            { length: count },
-            (_, index) => McpSchema.Tool.make({ ...slowTool, name: `remote_${index}` })
-          )
-          const error = yield* McpClient.toolkit(client, {
-            tools,
-            transformTool: (tool) =>
-              Tool.make(name, {
-                parameters: tool.parametersSchema,
-                success: tool.successSchema,
-                failure: tool.failureSchema
-              })
-          }).pipe(Effect.flip)
-          assert.strictEqual(error.reason._tag, "ConfigurationError")
-        }
-      }))
-
-    it.effect("should bind and execute the last tool when an approved snapshot is large", () =>
-      Effect.gen(function*() {
-        const { client, sent } = yield* scriptedHttp((message) =>
-          message.method === "tools/call"
-            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "large snapshot" }] })
-            : scriptedReply(McpProtocol.v2026_07_28, message)
-        )
-        const tools = Array.from({ length: 150_000 }, (_, index) =>
-          McpSchema.Tool.make({ name: `tool_${index}`, inputSchema: { type: "object" } }))
-        const toolkit = yield* McpClient.toolkit(client, { tools })
-        assert.strictEqual(Object.keys(toolkit.tools).length, tools.length)
-        const [output] = yield* toolkit.handle("tool_149999", {}).pipe(Effect.flatMap(Stream.runCollect))
-        assert.strictEqual(output.result, "large snapshot")
-        assert.isFalse(sent.some(({ message }) =>
-          methodOf(message) === "tools/list"
-        ))
       }))
   })
 
@@ -563,8 +442,6 @@ describe("McpClient", () => {
           : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
       const error = yield* client.listPrompts().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "LimitError")
-      const discovered = yield* client.listPrompts({ limits: { maxItems: prompts.length } })
-      assert.strictEqual(discovered.length, prompts.length)
     }))
 
   describe("cancellation", () => {

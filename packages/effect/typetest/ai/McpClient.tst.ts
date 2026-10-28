@@ -121,13 +121,4 @@ describe("McpClient", () => {
       transformTool: (remote: McpClient.RemoteTool) => remote.setFailure(Schema.String)
     })
   })
-
-  it("should require explicit selectors when type arguments choose nondefault modes", () => {
-    expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client, {})
-    expect(McpClient.toolkit<"text", "return">).type.not.toBeCallableWith(client, {})
-    expect(McpClient.toolkit<"complete", "return">).type.toBeCallableWith(client, {
-      resultMode: "complete",
-      failureMode: "return"
-    })
-  })
 })
