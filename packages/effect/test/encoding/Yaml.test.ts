@@ -232,6 +232,36 @@ development:
     })
   })
 
+  // YAML 1.2.2 §8.2.1: a sequence entry's mapping is indented to its first key.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1 and js-yaml 4.3.2.
+  describe("sequence entry mappings indented past the dash", () => {
+    it.each([
+      {
+        name: "root sequence",
+        source: "-   name: a\n    age: 1\n",
+        expected: [{ name: "a", age: 1 }]
+      },
+      {
+        name: "indentless sequence",
+        source: "items:\n-   name: a\n    age: 1\n-   name: b\n    age: 2\n",
+        expected: { items: [{ name: "a", age: 1 }, { name: "b", age: 2 }] }
+      }
+    ])("parses $name", ({ source, expected }) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["two spaces", "-   name: a\n  age: 1\n"],
+      ["three spaces", "-   name: a\n   age: 1\n"]
+    ])("rejects a later key indented by %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    it("rejects a tab before the first key", () => {
+      assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
+    })
+  })
+
   // YAML 1.2.2 §§6.5–6.7 and 7.3.1–7.3.3: flow scalar folding and comments.
   // Expected values and rejection fixtures were checked with yaml 2.9.1.
   describe("multiline flow scalars", () => {
