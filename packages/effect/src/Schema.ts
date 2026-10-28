@@ -6337,9 +6337,35 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
 type MatchCasesResult<Cases> = {
   [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
 }[keyof Cases]
-type MatchOrElseResult<Cases, OrElse extends (...args: Array<any>) => any> = Unify<
-  MatchCasesResult<Cases> | ReturnType<OrElse>
+type MatchOrElseResult<Cases, OrElse> = Unify<
+  MatchCasesResult<Cases> | (OrElse extends (...args: Array<any>) => infer R ? R : never)
 >
+type TaggedUnionMatch<Cases extends Record<PropertyKey, Constraint>, Value> = {
+  <Handlers extends { [K in keyof Cases]: (value: Cases[K]["Type"]) => any }>(
+    value: Value,
+    cases: Handlers
+  ): Unify<ReturnType<Handlers[keyof Cases]>>
+  <Handlers extends { [K in keyof Cases]: (value: Cases[K]["Type"]) => any }>(
+    cases: Handlers
+  ): (value: Value) => Unify<ReturnType<Handlers[keyof Cases]>>
+}
+type TaggedUnionMatchOrElse<Cases extends Record<PropertyKey, Constraint>, Value, Tag extends PropertyKey> = {
+  <Handlers, OrElse>(
+    value: Value,
+    cases:
+      & Handlers
+      & { [K in keyof Cases]?: (value: Cases[K]["Type"]) => any }
+      & (Exclude<keyof Handlers, keyof Cases> extends never ? unknown : never),
+    orElse: OrElse & ((value: Exclude<Value, { readonly [K in Tag]: keyof Handlers }>) => any)
+  ): MatchOrElseResult<Handlers, OrElse>
+  <Handlers, OrElse>(
+    cases:
+      & Handlers
+      & { [K in keyof Cases]?: (value: Cases[K]["Type"]) => any }
+      & (Exclude<keyof Handlers, keyof Cases> extends never ? unknown : never),
+    orElse: OrElse & ((value: Exclude<Value, { readonly [K in Tag]: keyof Handlers }>) => any)
+  ): (value: Value) => MatchOrElseResult<Handlers, OrElse>
+}
 type TaggedUnionUtils<
   Tag extends PropertyKey,
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>,
@@ -6360,46 +6386,15 @@ type TaggedUnionUtils<
     keys: ReadonlyArray<Keys>
   ) => (value: Members[number]["Type"]) => value is Extract<Members[number]["Type"], { readonly [K in Tag]: Keys }>
   readonly guards: { [M in Flattened[number] as M["Type"][Tag]]: (u: unknown) => u is M["Type"] }
-  readonly match: {
-    <
-      Cases extends { [M in Flattened[number] as M["Type"][Tag]]: (value: M["Type"]) => any }
-    >(
-      value: Members[number]["Type"],
-      cases: Cases
-    ): Cases[keyof Cases] extends (value: any) => infer R ? Unify<R>
-      : never
-    <
-      Cases extends { [M in Flattened[number] as M["Type"][Tag]]: (value: M["Type"]) => any }
-    >(
-      cases: Cases
-    ): (value: Members[number]["Type"]) => Cases[keyof Cases] extends (value: any) => infer R ? Unify<R>
-      : never
-  }
-  readonly matchOrElse: {
-    <
-      Cases extends
-        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
-        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
-      OrElse extends (
-        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
-      ) => any
-    >(
-      value: Members[number]["Type"],
-      cases: Cases,
-      orElse: OrElse
-    ): MatchOrElseResult<Cases, OrElse>
-    <
-      Cases extends
-        & { [M in Flattened[number] as M["Type"][Tag]]+?: (value: M["Type"]) => any }
-        & { [K in Exclude<keyof Cases, Flattened[number]["Type"][Tag]>]: never },
-      OrElse extends (
-        value: Exclude<Members[number]["Type"], { readonly [K in Tag]: keyof Cases }>
-      ) => any
-    >(
-      cases: Cases,
-      orElse: OrElse
-    ): (value: Members[number]["Type"]) => MatchOrElseResult<Cases, OrElse>
-  }
+  readonly match: TaggedUnionMatch<
+    { readonly [M in Flattened[number] as M["Type"][Tag]]: M },
+    Members[number]["Type"]
+  >
+  readonly matchOrElse: TaggedUnionMatchOrElse<
+    { readonly [M in Flattened[number] as M["Type"][Tag]]: M },
+    Members[number]["Type"],
+    Tag
+  >
 }
 /**
  * Type-level representation returned by {@link toTaggedUnion}.
@@ -6549,26 +6544,8 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
     keys: ReadonlyArray<Keys>
   ) => (value: Cases[keyof Cases]["Type"]) => value is Extract<Cases[keyof Cases]["Type"], { _tag: Keys }>
   readonly guards: { [K in keyof Cases]: (u: unknown) => u is Cases[K]["Type"] }
-  readonly match: {
-    <Output>(
-      cases: { [K in keyof Cases]: (value: Cases[K]["Type"]) => Output }
-    ): (value: Cases[keyof Cases]["Type"]) => Output
-    <Output>(
-      value: Cases[keyof Cases]["Type"],
-      cases: { [K in keyof Cases]: (value: Cases[K]["Type"]) => Output }
-    ): Output
-  }
-  readonly matchOrElse: {
-    <Output>(
-      value: Cases[keyof Cases]["Type"],
-      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
-      orElse: (value: Cases[keyof Cases]["Type"]) => Output
-    ): Output
-    <Output>(
-      cases: { [K in keyof Cases]?: (value: Cases[K]["Type"]) => Output },
-      orElse: (value: Cases[keyof Cases]["Type"]) => Output
-    ): (value: Cases[keyof Cases]["Type"]) => Output
-  }
+  readonly match: TaggedUnionMatch<Cases, Cases[keyof Cases]["Type"]>
+  readonly matchOrElse: TaggedUnionMatchOrElse<Cases, Cases[keyof Cases]["Type"], "_tag">
 }
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
