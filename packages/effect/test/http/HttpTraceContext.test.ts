@@ -65,6 +65,16 @@ describe("HttpTraceContext", () => {
       assertNone(HttpTraceContext.fromHeaders(Headers.fromInput({ traceparent })))
     })
 
+    it("validates W3C trace flags", () => {
+      assertSampled({ traceparent: `00-${traceId}-${spanId}-02` }, false)
+      assertSampled({ traceparent: `00-${traceId}-${spanId}-03` }, true)
+      for (const flags of ["", "1", "001", "0g", "FF"]) {
+        assertNone(HttpTraceContext.fromHeaders(Headers.fromInput({
+          traceparent: `00-${traceId}-${spanId}-${flags}`
+        })))
+      }
+    })
+
     it("rejects an all-zero W3C trace-id", () => {
       strictEqual(
         Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
