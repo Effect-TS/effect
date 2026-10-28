@@ -42,7 +42,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkList).
+   * [Engine API: NetworkList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkList).
    * Typical reasons: `BadRequest` for an invalid filter, `ConnectionFailed`.
    */
   readonly list: (options?: {
@@ -53,7 +53,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkInspect).
+   * [Engine API: NetworkInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkInspect).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (
@@ -65,11 +65,9 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkCreate).
-   * `EnableIPv4` requires API 1.48.
-   *
+   * [Engine API: NetworkCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkCreate).
    * Typical reasons: `Conflict` (the name is taken), `Forbidden`, `NotFound`
-   * (no such driver), `ConnectionFailed`, `OptionNotSupported`.
+   * (no such driver), `ConnectionFailed`.
    */
   readonly create: (
     config: DockerSchema.NetworkCreateRequest
@@ -79,7 +77,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkDelete).
+   * [Engine API: NetworkDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkDelete).
    * Typical reasons: `NotFound`, `Forbidden` (a predefined network),
    * `Conflict` (in use), `ConnectionFailed`.
    */
@@ -89,12 +87,8 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkConnect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkConnect).
-   * `EndpointConfig.GwPriority` requires API 1.48, and `EndpointConfig.MacAddress`
-   * 1.54 (older Engines ignored it).
-   *
-   * Typical reasons: `NotFound`, `Forbidden`, `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * [Engine API: NetworkConnect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkConnect).
+   * Typical reasons: `NotFound`, `Forbidden`, `ConnectionFailed`.
    */
   readonly connect: (
     id: string,
@@ -105,7 +99,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkDisconnect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkDisconnect).
+   * [Engine API: NetworkDisconnect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkDisconnect).
    * Typical reasons: `NotFound`, `Forbidden`, `ConnectionFailed`.
    */
   readonly disconnect: (
@@ -117,7 +111,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    *
    * **Details**
    *
-   * [Engine API: NetworkPrune](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Network/operation/NetworkPrune).
+   * [Engine API: NetworkPrune](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Network/operation/NetworkPrune).
    * Typical reasons: `Conflict` (a prune is already running),
    * `ConnectionFailed`.
    */

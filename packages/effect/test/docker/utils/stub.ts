@@ -87,7 +87,6 @@ const toSocket = (connection: Connection): Socket.Socket =>
 export const makeStubEngine = (
   reply: (request: Recorded) => Reply,
   options?: {
-    readonly apiVersion?: string
     /** The rest of the configuration, over `DockerConfig.defaults`. */
     readonly config?: Partial<DockerConfig.ResolvedConfig>
     /** Runs credential helpers; see {@link helpers}. */
@@ -141,7 +140,6 @@ export const makeStubEngine = (
     Effect.provideService(DockerConfig.DockerConfig, {
       ...DockerConfig.defaults,
       endpoint: { _tag: "Unix", path: "/test.sock" },
-      apiVersion: options?.apiVersion,
       ...options?.config
     }),
     Effect.runSync
@@ -159,12 +157,21 @@ export const provideEngine = (
     Layer.succeed(DockerRegistryAuth.DockerRegistryAuth, registryAuth)
   ))))
 
-/** Answers `/_ping` like Docker with API `version`, and everything else with `reply`. */
-export const withPing =
-  (version: string, reply: (request: Recorded) => Reply = () => ({ body: "{}" })) => (request: Recorded): Reply =>
-    request.url.pathname.endsWith("/_ping")
-      ? { headers: { "Api-Version": version, "Ostype": "linux", "Builder-Version": "2" }, body: "OK" }
-      : reply(request)
+/**
+ * Answers the unversioned `/_ping` and `/version` like a Docker Engine whose
+ * API range is `minimum` to `version`, and everything else with `reply`.
+ */
+export const withPing = (
+  version: string,
+  reply: (request: Recorded) => Reply = () => ({ body: "{}" }),
+  minimum = "1.44"
+) =>
+(request: Recorded): Reply =>
+  request.url.pathname === "/_ping"
+    ? { headers: { "Api-Version": version, "Ostype": "linux", "Builder-Version": "2" }, body: "OK" }
+    : request.url.pathname === "/version"
+    ? json({ Version: "29.0.0", ApiVersion: version, MinAPIVersion: minimum, Os: "linux", Arch: "amd64" })
+    : reply(request)
 
 /** A progress stream: one JSON message per line. */
 export const ndjson = (...messages: ReadonlyArray<unknown>): Reply => ({

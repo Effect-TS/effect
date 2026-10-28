@@ -25,8 +25,7 @@
  * import { DockerConfig } from "effect/docker"
  *
  * const ConfigLive = DockerConfig.layer({
- *   endpoint: { _tag: "Tcp", host: "docker.example.com", port: 2376, tls: { verify: true } },
- *   apiVersion: "1.48"
+ *   endpoint: { _tag: "Tcp", host: "docker.example.com", port: 2376, tls: { verify: true } }
  * })
  * ```
  *
@@ -215,9 +214,9 @@ export class UnreadableCertificate extends Data.TaggedError("UnreadableCertifica
 }
 
 /**
- * The configuration is invalid: an Endpoint with a bad host or port, an API
- * version pin that is malformed or below the minimum, 1.44, or a `DOCKER_*`
- * variable that doesn't parse.
+ * The configuration is invalid: an Endpoint with a bad host or port,
+ * `DOCKER_API_VERSION` set to anything but 1.52, the one API version the
+ * client speaks, or another `DOCKER_*` variable that doesn't parse.
  *
  * @stability unstable
  * @category errors
@@ -389,16 +388,6 @@ export const parseHost = (host: string): Result.Result<typeof Endpoint.Type, Doc
  */
 export const ProxyConfig = internal.ProxyConfig
 
-/**
- * An API version pin: `major.minor`, at least 1.44, the oldest version the
- * client speaks.
- *
- * @stability unstable
- * @category schemas
- * @since 4.2.0
- */
-export const ApiVersion = internal.ApiVersion
-
 // -----------------------------------------------------------------------------
 // registry credentials
 // -----------------------------------------------------------------------------
@@ -456,8 +445,6 @@ export const normalizeRegistry = (registry: string): string => {
  * **Details**
  *
  * - `endpoint`: where the Engine is.
- * - `apiVersion`: pins the API version (`major.minor`, at least 1.44) and
- *   turns negotiation off. `undefined` negotiates.
  * - `authConfig`, `auths`, `credsStore`, `credHelpers`: where registry
  *   credentials come from, in the Docker CLI's order: the `auths` of
  *   `DOCKER_AUTH_CONFIG`, then the registry's helper in `credHelpers`, then
@@ -480,7 +467,6 @@ export const normalizeRegistry = (registry: string): string => {
  */
 export const ResolvedConfig = Schema.Struct({
   endpoint: Endpoint,
-  apiVersion: Schema.UndefinedOr(ApiVersion),
   authConfig: Schema.Record(Schema.String, Credential),
   auths: Schema.Record(Schema.String, Credential),
   credsStore: Schema.UndefinedOr(Schema.String),
@@ -517,8 +503,7 @@ export type ResolvedConfig = typeof ResolvedConfig.Type
 export class DockerConfig extends Context.Service<DockerConfig, ResolvedConfig>()("effect/docker/DockerConfig") {}
 
 /**
- * The defaults: {@link defaultEndpoint}, the API version negotiated, no
- * registry credentials, headers, proxy, default platform, builder or detach
+ * The defaults: {@link defaultEndpoint}, no registry credentials, headers, proxy, default platform, builder or detach
  * keys.
  *
  * @stability unstable
@@ -527,7 +512,6 @@ export class DockerConfig extends Context.Service<DockerConfig, ResolvedConfig>(
  */
 export const defaults: ResolvedConfig = {
   endpoint: defaultEndpoint,
-  apiVersion: undefined,
   authConfig: {},
   auths: {},
   credsStore: undefined,
@@ -599,7 +583,6 @@ export const layer = (
  *
  * | Setting | Source |
  * | --- | --- |
- * | `apiVersion` | `DOCKER_API_VERSION` |
  * | `authConfig` | the `auths` of `DOCKER_AUTH_CONFIG` |
  * | `auths`, `credsStore`, `credHelpers` | `config.json` |
  * | `httpHeaders` | `HttpHeaders` in `config.json` |
@@ -615,6 +598,8 @@ export const layer = (
  * skips that file. The variables are always read and validated: one that
  * doesn't parse fails with `InvalidConfig`, even when its setting is
  * overridden. `DOCKER_BUILDKIT` is read as Go's `strconv.ParseBool` does.
+ * `DOCKER_API_VERSION` may only be `1.52`, the one API version the client
+ * speaks: any other value fails rather than being ignored.
  * A malformed `config.json` fails with `InvalidConfigFile`.
  *
  * Environment variables are read through `Config`, so through the current
@@ -817,7 +802,6 @@ export const layerFromEnv = (
 
     return yield* Schema.decodeUnknownEffect(ResolvedConfig)({
       endpoint,
-      apiVersion: given("apiVersion") ? override("apiVersion") : Option.getOrUndefined(variables.apiVersion),
       authConfig,
       auths: given("auths") ? override("auths") : fromAuths((yield* configFile)?.auths),
       credsStore: given("credsStore") ? override("credsStore") : (yield* configFile)?.credsStore || undefined,

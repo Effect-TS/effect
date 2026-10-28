@@ -44,7 +44,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumeList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeList).
+   * [Engine API: VolumeList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumeList).
    * Typical reasons: `BadRequest`, `ConnectionFailed`.
    */
   readonly list: (options?: {
@@ -55,7 +55,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumeCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeCreate).
+   * [Engine API: VolumeCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumeCreate).
    * Typical reasons: `ServerError`, `SwarmUnavailable` (a cluster volume,
    * outside a Swarm manager), `ConnectionFailed`.
    */
@@ -67,7 +67,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumeInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeInspect).
+   * [Engine API: VolumeInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumeInspect).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (name: string) => Effect.Effect<DockerSchema.Volume, DockerError>
@@ -76,7 +76,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumeUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeUpdate).
+   * [Engine API: VolumeUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumeUpdate).
    * `version` is the volume's current object version, from `inspect`.
    *
    * Typical reasons: `NotFound`, `BadRequest`, `SwarmUnavailable` (not a
@@ -92,7 +92,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumeDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeDelete).
+   * [Engine API: VolumeDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumeDelete).
    * Typical reasons: `NotFound`, `Conflict` (in use), `ConnectionFailed`.
    */
   readonly remove: (
@@ -104,7 +104,7 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    *
    * **Details**
    *
-   * [Engine API: VolumePrune](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumePrune).
+   * [Engine API: VolumePrune](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Volume/operation/VolumePrune).
    * Docker removes only anonymous volumes unless the `all: "true"` filter is
    * given.
    *

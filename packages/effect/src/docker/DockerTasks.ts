@@ -46,7 +46,7 @@ export class DockerTasks extends Context.Service<DockerTasks, {
    *
    * **Details**
    *
-   * [Engine API: TaskList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Task/operation/TaskList).
+   * [Engine API: TaskList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Task/operation/TaskList).
    * Filters: `desired-state` (`running`, `shutdown`, `accepted`), `id`,
    * `label`, `name`, `node` and `service`.
    *
@@ -61,7 +61,7 @@ export class DockerTasks extends Context.Service<DockerTasks, {
    *
    * **Details**
    *
-   * [Engine API: TaskInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Task/operation/TaskInspect).
+   * [Engine API: TaskInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Task/operation/TaskInspect).
    * Typical reasons: `NotFound`, `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly inspect: (id: string) => Effect.Effect<DockerSchema.Task, DockerError>
@@ -70,7 +70,7 @@ export class DockerTasks extends Context.Service<DockerTasks, {
    *
    * **Details**
    *
-   * [Engine API: TaskLogs](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Task/operation/TaskLogs).
+   * [Engine API: TaskLogs](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Task/operation/TaskLogs).
    * As `DockerServices`' `logs`, for one task: see its `LogsOptions` and
    * `parseLogLine`.
    *

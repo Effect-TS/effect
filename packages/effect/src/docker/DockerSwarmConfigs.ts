@@ -41,7 +41,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    *
    * **Details**
    *
-   * [Engine API: ConfigList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Config/operation/ConfigList).
+   * [Engine API: ConfigList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Config/operation/ConfigList).
    * Filters: `id`, `label`, `name` and `names`.
    *
    * Typical reasons: `SwarmUnavailable`, `BadRequest` for an invalid filter,
@@ -55,7 +55,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    *
    * **Details**
    *
-   * [Engine API: ConfigInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Config/operation/ConfigInspect).
+   * [Engine API: ConfigInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Config/operation/ConfigInspect).
    * Typical reasons: `NotFound`, `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly inspect: (id: string) => Effect.Effect<DockerApi.Config, DockerError>
@@ -64,7 +64,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    *
    * **Details**
    *
-   * [Engine API: ConfigCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Config/operation/ConfigCreate).
+   * [Engine API: ConfigCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Config/operation/ConfigCreate).
    * `Data` is at most 1000 KB.
    *
    * Typical reasons: `Conflict` (the name is taken), `BadRequest`,
@@ -76,7 +76,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    *
    * **Details**
    *
-   * [Engine API: ConfigUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Config/operation/ConfigUpdate).
+   * [Engine API: ConfigUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Config/operation/ConfigUpdate).
    * Only `Labels` can change: start from `inspect`'s `Spec`, keeping its
    * `Data` or leaving it out. Any other change fails with `BadRequest`.
    * `version` is `inspect`'s `Version.Index`; when the config changed since,
@@ -96,7 +96,7 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    *
    * **Details**
    *
-   * [Engine API: ConfigDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Config/operation/ConfigDelete).
+   * [Engine API: ConfigDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Config/operation/ConfigDelete).
    * Typical reasons: `NotFound`, `BadRequest` (a service uses it),
    * `SwarmUnavailable`, `ConnectionFailed`.
    */

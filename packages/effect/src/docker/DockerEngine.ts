@@ -4,7 +4,7 @@
  *
  * A `DockerEngine` carries the `DockerConfig` it was built from, the
  * `HttpClient` every request goes through (upgraded ones for exec and attach
- * included), and the negotiated API version. Every service of
+ * included), which speaks API 1.52. Every service of
  * `effect/docker` (`DockerSystem`, ...) is built over it, and reads the
  * configuration from it, never from context. Registry credentials are
  * `DockerRegistryAuth`'s, not the engine's.
@@ -16,20 +16,19 @@
  * `HttpClient` of your own, build it with {@link make} and add the services
  * with `Docker.layer` and a `DockerRegistryAuth`.
  *
- * **API versions**
+ * **API version**
  *
- * The client speaks API 1.44 up to 1.56, the version its Schemas are
- * generated from. The first request negotiates, as moby's own client does: it
- * calls the unversioned `/_ping` (`HEAD`, falling back to `GET`), uses
- * `min(1.56, Api-Version)` (1.44 when the Engine sends no `Api-Version`),
- * caches the result for the layer's lifetime, and prefixes every request
- * with `/v{version}`. An Engine that can't serve 1.44 fails with
- * `UnsupportedApiVersion`. A failed negotiation isn't cached. Building the
+ * The client speaks Docker Engine API 1.52, and only 1.52: its Schemas are
+ * generated from that version's document, and every request is sent as
+ * `/v1.52/...`. Nothing is negotiated. Docker Engine 29.0 introduced API 1.52,
+ * and later Engines serve it too.
+ *
+ * Before its first request, the engine checks once, with the unversioned
+ * `/version`, that the Engine's API range includes 1.52. An Engine that
+ * doesn't serve it fails every request with `UnsupportedApiVersion`, before
+ * any versioned request is sent; an older one must be upgraded (upgrading the
+ * Docker CLI alone isn't enough). A failed check isn't cached. Building the
  * layer never contacts the Engine.
- *
- * Pinning a version (`DockerConfig`'s `apiVersion`, or `DOCKER_API_VERSION`)
- * turns negotiation off, and the pin is used as-is. `DockerConfig`'s layers
- * check that it is `major.minor` and at least 1.44.
  *
  * **Example** (Building an engine over an `HttpClient` of your own)
  *
@@ -50,7 +49,7 @@
  *
  * const program = Effect.gen(function*() {
  *   const engine = yield* DockerEngine.DockerEngine
- *   return yield* engine.apiVersion
+ *   return yield* engine.client.get("/info")
  * })
  * ```
  *
@@ -65,7 +64,7 @@ import * as Semaphore from "../Semaphore.ts"
 import { System } from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
 import { DockerError, UnsupportedApiVersion } from "./DockerError.ts"
-import { compareApiVersions, maximumApiVersion, minimumApiVersion, parseApiVersion } from "./internal/config.ts"
+import { apiVersion, compareApiVersions } from "./internal/config.ts"
 import { apiClient, makeClient } from "./internal/engine.ts"
 
 /**
@@ -80,67 +79,36 @@ export class DockerEngine extends Context.Service<DockerEngine, {
   readonly config: DockerConfig.ResolvedConfig
   /**
    * The Engine's `HttpClient`: requests take an unversioned path such as
-   * `/containers/json`. It adds the base URL, the negotiated `/v{version}`
-   * prefix (negotiating on first use) and the config's `httpHeaders`. It
-   * fails with `DockerError` only for `ConnectionFailed` and a failed
-   * negotiation: a response is returned whatever its status.
+   * `/containers/json`. It adds the base URL, the `/v1.52` prefix (checking
+   * on first use that the Engine serves it) and the config's `httpHeaders`.
+   * It fails with `DockerError` only for `ConnectionFailed` and a failed
+   * check: a response is returned whatever its status.
    */
   readonly client: HttpClient.HttpClient.With<DockerError>
-  /** The negotiated (or pinned) API version. Negotiates on first use. */
-  readonly apiVersion: Effect.Effect<string, DockerError>
 }>()("effect/docker/DockerEngine") {}
 
 /**
- * The Engine's maximum API version from the unversioned `/_ping`, through
- * `DockerApi.System`: `HEAD` first, then `GET` if that fails for any reason
- * but the connection. As in moby's client, a connection failure doesn't dial
- * again.
+ * Checks, with the unversioned `/version`, that the Engine's API range
+ * (`MinAPIVersion` to `ApiVersion`) includes the one the client speaks.
  */
-const pingApiVersion = (
+const checkApiVersion = (
   config: DockerConfig.ResolvedConfig,
   httpClient: HttpClient.HttpClient
-): Effect.Effect<Effect.Effect<string | undefined, DockerError>> =>
+): Effect.Effect<Effect.Effect<void, DockerError>> =>
   Effect.map(
-    apiClient(
-      DockerEngine.of({
-        config,
-        client: makeClient(config, httpClient),
-        // a version gate needs the negotiated version, and no endpoint of `/_ping` has one
-        apiVersion: Effect.die(new Error("The unversioned client has no API version"))
-      }),
-      System,
-      "docker.Engine"
-    ),
+    apiClient(DockerEngine.of({ config, client: makeClient(config, httpClient) }), System, "docker.Engine"),
     (system) =>
-      system.pingHead().pipe(
-        Effect.catchIf((error) => error.reason._tag !== "ConnectionFailed", () => system.ping()),
-        Effect.map((ping) => ping.apiVersion)
-      )
+      Effect.flatMap(system.version(), ({ ApiVersion: maximum, MinAPIVersion: minimum }) =>
+        maximum !== undefined && compareApiVersions(maximum, apiVersion) >= 0 &&
+          (minimum === undefined || compareApiVersions(minimum, apiVersion) <= 0)
+          ? Effect.void
+          : Effect.fail(
+            new DockerError({
+              reason: new UnsupportedApiVersion({ minimum, maximum, required: apiVersion }),
+              operation: "docker.Engine.version"
+            })
+          ))
   )
-
-/**
- * Computes the negotiated version from what the Engine reports: the lower of
- * our maximum and the Engine's version. An Engine that reports no version gets
- * the minimum, 1.44, rather than an assumed maximum.
- */
-const negotiate = (engineVersion: string | undefined): Effect.Effect<string, DockerError> => {
-  if (engineVersion === undefined) return Effect.succeed(minimumApiVersion)
-  if (
-    parseApiVersion(engineVersion) === undefined ||
-    compareApiVersions(engineVersion, minimumApiVersion) < 0
-  ) {
-    return Effect.fail(
-      new DockerError({
-        reason: new UnsupportedApiVersion({ engineVersion, minimum: minimumApiVersion })
-      })
-    )
-  }
-  return Effect.succeed(
-    compareApiVersions(engineVersion, maximumApiVersion) < 0
-      ? engineVersion
-      : maximumApiVersion
-  )
-}
 
 /** Runs `effect` once successfully; failures are not cached, as in moby's client. */
 const onceSuccessful = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> => {
@@ -168,11 +136,10 @@ const onceSuccessful = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> 
  * Endpoint. It must not impose timeouts of its own, and must support HTTP/1.1
  * upgrades for exec and attach.
  *
- * Nothing contacts the Engine until the first request. With the config's
- * `apiVersion` set, negotiation is off and the version is used as-is:
- * `DockerConfig`'s layers have checked it. To fail fast when the Engine is
- * unreachable, ping it while building your application's layer, with a
- * timeout of your choice.
+ * Nothing contacts the Engine until the first request, which first checks
+ * that the Engine serves API 1.52. To fail fast when the Engine is
+ * unreachable or too old, ping it while building your application's layer,
+ * with a timeout of your choice.
  *
  * @stability unstable
  * @category constructors
@@ -183,12 +150,6 @@ export const make = (
 ): Effect.Effect<DockerEngine["Service"], never, DockerConfig.DockerConfig> =>
   Effect.gen(function*() {
     const config = yield* DockerConfig.DockerConfig
-    const apiVersion = config.apiVersion !== undefined
-      ? Effect.succeed(config.apiVersion)
-      : onceSuccessful(Effect.flatMap(yield* pingApiVersion(config, httpClient), negotiate))
-    return DockerEngine.of({
-      config,
-      client: makeClient(config, httpClient, apiVersion),
-      apiVersion
-    })
+    const check = onceSuccessful(yield* checkApiVersion(config, httpClient))
+    return DockerEngine.of({ config, client: makeClient(config, httpClient, check) })
   })

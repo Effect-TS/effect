@@ -456,10 +456,8 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageList).
-   * `manifests` requires API 1.47 and `identity` 1.54.
-   *
-   * Typical reasons: `BadRequest`, `ConnectionFailed`, `OptionNotSupported`.
+   * [Engine API: ImageList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageList).
+   * Typical reasons: `BadRequest`, `ConnectionFailed`.
    */
   readonly list: (options?: {
     readonly all?: boolean | undefined
@@ -467,18 +465,16 @@ export class DockerImages extends Context.Service<DockerImages, {
     readonly sharedSize?: boolean | undefined
     readonly digests?: boolean | undefined
     readonly manifests?: boolean | undefined
-    readonly identity?: boolean | undefined
   }) => Effect.Effect<ReadonlyArray<DockerSchema.ImageSummary>, DockerError>
   /**
    * Inspects an image.
    *
    * **Details**
    *
-   * [Engine API: ImageInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageInspect).
-   * `manifests` requires API 1.48 and `platform` 1.49; they are mutually
-   * exclusive.
+   * [Engine API: ImageInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageInspect).
+   * `manifests` and `platform` are mutually exclusive.
    *
-   * Typical reasons: `NotFound`, `ConnectionFailed`, `OptionNotSupported`.
+   * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (
     name: string,
@@ -492,41 +488,19 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageHistory](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageHistory).
-   * `platform` requires API 1.48.
-   *
-   * Typical reasons: `NotFound`, `ConnectionFailed`, `OptionNotSupported`.
+   * [Engine API: ImageHistory](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageHistory).
+   * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly history: (
     name: string,
     options?: { readonly platform?: DockerSchema.OCIPlatform | undefined }
   ) => Effect.Effect<ReadonlyArray<DockerSchema.ImageHistoryResponseItem>, DockerError>
   /**
-   * Lists the in-toto attestation statements attached to an image.
-   *
-   * **Details**
-   *
-   * [Engine API: ImageAttestations](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageAttestations).
-   * The endpoint requires API 1.55. `type` filters by predicate type;
-   * `statement` includes the verbatim statements.
-   *
-   * Typical reasons: `NotFound`, `NotImplemented`, `OptionNotSupported`,
-   * `ConnectionFailed`.
-   */
-  readonly attestations: (
-    name: string,
-    options?: {
-      readonly platform?: DockerSchema.OCIPlatform | undefined
-      readonly type?: ReadonlyArray<string> | undefined
-      readonly statement?: boolean | undefined
-    }
-  ) => Effect.Effect<ReadonlyArray<DockerSchema.AttestationStatement>, DockerError>
-  /**
    * Tags an image.
    *
    * **Details**
    *
-   * [Engine API: ImageTag](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageTag).
+   * [Engine API: ImageTag](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageTag).
    * `target` is the new reference, such as `registry.example.com/app:1.0`; a
    * string is parsed with {@link parseReference}. A target with a digest fails
    * with `InvalidReference`.
@@ -540,11 +514,8 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageDelete).
-   * `platforms` requires API 1.50.
-   *
-   * Typical reasons: `NotFound`, `Conflict` (in use), `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * [Engine API: ImageDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageDelete).
+   * Typical reasons: `NotFound`, `Conflict` (in use), `ConnectionFailed`.
    */
   readonly remove: (
     name: string,
@@ -559,7 +530,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImagePrune](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImagePrune).
+   * [Engine API: ImagePrune](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImagePrune).
    * Only dangling images are removed unless the `dangling: "false"` filter is
    * given.
    *
@@ -574,7 +545,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageSearch](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageSearch).
+   * [Engine API: ImageSearch](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageSearch).
    * The term names a Registry as the Engine reads it: its first `/`-separated
    * part, when that contains `.` or `:` or is `localhost`. The credential for
    * that Registry goes in `X-Registry-Auth`.
@@ -595,7 +566,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageCommit](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageCommit).
+   * [Engine API: ImageCommit](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageCommit).
    * `config` is the image's `ContainerConfig`; `changes` are Dockerfile
    * instructions (`CMD`, `ENV`, …) applied to it, redacted in spans.
    *
@@ -619,7 +590,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: DistributionInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Distribution/operation/DistributionInspect).
+   * [Engine API: DistributionInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Distribution/operation/DistributionInspect).
    * A string reference is parsed with {@link parseReference}.
    *
    * Typical reasons: `Unauthorized`, `NotFound`, `InvalidReference`,
@@ -634,12 +605,12 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageGet](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageGet)
-   * and ImageGetAll for several names. `platform` requires API 1.48, and more
-   * than one platform 1.52. The format is the Engine's: an OCI layout with a
-   * `manifest.json` on Docker's containerd store.
+   * [Engine API: ImageGet](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageGet)
+   * and ImageGetAll for several names. `platform` takes one platform or
+   * several. The format is the Engine's: an OCI layout with a `manifest.json`
+   * on Docker's containerd store.
    *
-   * Typical reasons: `NotFound`, `ConnectionFailed`, `OptionNotSupported`.
+   * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly save: (
     names: string | ReadonlyArray<string>,
@@ -651,13 +622,11 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageLoad](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageLoad).
+   * [Engine API: ImageLoad](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageLoad).
    * The archive may be compressed; it streams to the Engine as
-   * `application/x-tar`. `platform` requires API 1.48, and more than one
-   * platform 1.52.
+   * `application/x-tar`. `platform` takes one platform or several.
    *
-   * Typical reasons: `BadRequest`, `StreamFailed`, `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * Typical reasons: `BadRequest`, `StreamFailed`, `ConnectionFailed`.
    */
   readonly load: (
     archive: Stream.Stream<Uint8Array, DockerError>,
@@ -671,7 +640,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageCreate)
+   * [Engine API: ImageCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageCreate)
    * with `fromImage`. A string reference is parsed with
    * {@link parseReference}. Without a tag or digest, `latest` is pulled. The
    * configured platform applies unless `platform` is set. There is no
@@ -693,19 +662,18 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImagePush](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImagePush).
+   * [Engine API: ImagePush](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImagePush).
    * A string reference is parsed with {@link parseReference}; its tag is
    * pushed, or every tag of the repository without one. A reference with a
    * digest fails with `InvalidReference`. `platform` selects one
-   * manifest of a multi-platform image and requires API 1.46. The pushed
-   * manifest is reported in an `aux` message.
+   * manifest of a multi-platform image. The pushed manifest is reported in an
+   * `aux` message.
    *
    * A Registry on `localhost` over plain HTTP works, as Docker treats it as
    * insecure by default.
    *
    * Typical reasons: `NotFound`, `Unauthorized`, `StreamFailed`,
-   * `InvalidReference`, `CredentialsUnavailable`, `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * `InvalidReference`, `CredentialsUnavailable`, `ConnectionFailed`.
    */
   readonly pushStream: (
     reference: string | ImageReference,
@@ -739,7 +707,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageCreate)
+   * [Engine API: ImageCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageCreate)
    * with `fromSrc`. `source` is the tarball (streamed as `application/x-tar`)
    * or a URL the Engine fetches, redacted in spans. `changes` are Dockerfile
    * instructions applied to the image, redacted in spans. The configured
@@ -763,7 +731,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageBuild).
+   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageBuild).
    * See {@link BuildOptions} and `build`. The stream fails with
    * `StreamFailed` on the build's first error.
    *
@@ -778,7 +746,7 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * **Details**
    *
-   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageBuild).
+   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageBuild).
    * The context is a tar, sent byte for byte: plain, or compressed with gzip,
    * bzip2, xz or zstd (the Engine decompresses it). The client doesn't
    * assemble it and applies no `.dockerignore`. Put the Dockerfile in it, and
@@ -939,7 +907,6 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine | 
       list: (options) => api.list({ query: options ?? {} }),
       inspect: (name, options) => api.inspect({ params: { name }, query: options ?? {} }),
       history: (name, options) => api.history({ params: { name }, query: options ?? {} }),
-      attestations: (name, options) => api.attestations({ params: { name }, query: options ?? {} }),
       tag: (name, target) =>
         Effect.flatMap(
           taggedReferenceOf(target),

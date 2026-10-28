@@ -28,7 +28,6 @@ import * as DockerApi from "./DockerApi.ts"
 import { DockerEngine } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
-import { compareApiVersions } from "./internal/config.ts"
 import { apiClient } from "./internal/engine.ts"
 
 /**
@@ -44,7 +43,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemPing](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemPing).
+   * [Engine API: SystemPing](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemPing).
    * It sends a request every time, which makes it a liveness check.
    *
    * Typical reasons: `ConnectionFailed`, `ServerError`.
@@ -55,7 +54,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemVersion](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemVersion).
+   * [Engine API: SystemVersion](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemVersion).
    * Typical reasons: `ConnectionFailed`.
    */
   readonly version: Effect.Effect<DockerSchema.SystemVersion, DockerError>
@@ -64,7 +63,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemInfo](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemInfo).
+   * [Engine API: SystemInfo](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemInfo).
    * Typical reasons: `ConnectionFailed`.
    */
   readonly info: Effect.Effect<DockerSchema.SystemInfo, DockerError>
@@ -73,7 +72,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemEvents](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemEvents).
+   * [Engine API: SystemEvents](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemEvents).
    * Decoded line by line. Without `until` the stream never ends: use
    * `Stream.take` or interrupt it. `since` and `until` take any
    * `DateTime.Input`.
@@ -91,14 +90,12 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemDataUsage](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemDataUsage).
-   * `type` limits the object types computed. Before API 1.52 the Engine answers
-   * with `LayersSize`, `Images`, `Containers`, `Volumes` and `BuildCache`; from
-   * 1.52 with the `*Usage` fields (`verbose` adds the item lists, and requires
-   * 1.52).
+   * [Engine API: SystemDataUsage](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemDataUsage).
+   * `type` limits the object types computed, and `verbose` adds the item
+   * lists to the `*Usage` fields.
    *
    * Typical reasons: `Conflict` (a usage computation is already running),
-   * `ConnectionFailed`, `OptionNotSupported`.
+   * `ConnectionFailed`.
    */
   readonly df: (options?: {
     readonly type?: ReadonlyArray<"container" | "image" | "volume" | "build-cache"> | undefined
@@ -110,7 +107,7 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: SystemAuth](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/System/operation/SystemAuth).
+   * [Engine API: SystemAuth](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/System/operation/SystemAuth).
    * The password and the identity token are `Redacted`. The client never writes
    * the Docker config. Returns `undefined` when the Engine answers 204.
    *
@@ -124,12 +121,10 @@ export class DockerSystem extends Context.Service<DockerSystem, {
    *
    * **Details**
    *
-   * [Engine API: BuildPrune](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/BuildPrune).
+   * [Engine API: BuildPrune](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/BuildPrune).
    * `reservedSpace`, `maxUsedSpace` and `minFreeSpace` are in bytes.
-   * `maxUsedSpace` and `minFreeSpace` require API 1.48; below it,
-   * `reservedSpace` is sent as `keep-storage`, its name there.
    *
-   * Typical reasons: `ConnectionFailed`, `OptionNotSupported`.
+   * Typical reasons: `ConnectionFailed`.
    */
   readonly pruneBuildCache: (options?: {
     readonly all?: boolean | undefined
@@ -157,14 +152,7 @@ export const make: Effect.Effect<DockerSystem["Service"], never, DockerEngine> =
     events: (options) => api.events({ query: options ?? {} }),
     df: (options) => api.df({ query: options ?? {} }),
     auth: (credentials) => api.auth({ payload: credentials }),
-    pruneBuildCache: (options) =>
-      Effect.flatMap(engine.apiVersion, (negotiated) => {
-        if (options?.reservedSpace === undefined || compareApiVersions(negotiated, "1.48") >= 0) {
-          return api.pruneBuildCache({ query: options ?? {} })
-        }
-        const { reservedSpace, ...query } = options
-        return api.pruneBuildCache({ query: { ...query, keepStorage: reservedSpace } })
-      })
+    pruneBuildCache: (options) => api.pruneBuildCache({ query: options ?? {} })
   })
 })
 

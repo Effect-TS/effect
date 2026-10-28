@@ -6,7 +6,7 @@ import { json, makeStubEngine, ndjson, withPing } from "./utils/stub.ts"
 describe("DockerPlugins", () => {
   it.effect("install removes nothing after a failed pull, whose name can be another install's", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", (request) =>
+      const stub = makeStubEngine(withPing("1.52", (request) =>
         request.url.pathname.endsWith("/privileges")
           ? json([])
           : {
