@@ -1615,6 +1615,87 @@ describe("McpServer", () => {
       assertTrue(response.headers["mcp-session-id"] !== undefined)
     }))
 
+  describe("sessionless", () => {
+    const SessionlessServerLayer = makeServerLayer({
+      name: "TestServer",
+      protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18, McpProtocol.v2025_03_26],
+      allowSessionTermination: true,
+      sessionless: true
+    })
+
+    it.effect("initializes without issuing an MCP session id", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.post({ jsonrpc: "2.0", id: 1, method: "initialize", params: initializePayload })
+
+        strictEqual(response.status, 200)
+        strictEqual(response.headers.get("mcp-session-id"), null)
+        strictEqual(response.headers.get("mcp-protocol-version"), "2025-06-18")
+      }))
+
+    it.effect("serves a request without a session, as the revision its header names", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.post(pingBody, { "mcp-protocol-version": "2025-11-25" })
+
+        strictEqual(response.status, 200)
+        strictEqual(response.headers.get("mcp-protocol-version"), "2025-11-25")
+      }))
+
+    it.effect("serves a request without a protocol header as 2025-03-26", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.post(pingBody)
+
+        strictEqual(response.status, 200)
+        strictEqual(response.headers.get("mcp-protocol-version"), "2025-03-26")
+      }))
+
+    it.effect("ignores an MCP session id the server never issued, such as one from before a restart", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.post(pingBody, {
+          "mcp-protocol-version": "2025-06-18",
+          "mcp-session-id": "issued-by-another-process"
+        })
+
+        strictEqual(response.status, 200)
+      }))
+
+    it.effect("rejects a protocol header naming an unsupported revision", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.post(pingBody, { "mcp-protocol-version": "1999-01-01" })
+
+        strictEqual(response.status, 400)
+      }))
+
+    it.effect("answers DELETE with 405 even when session termination is enabled", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(SessionlessServerLayer)
+
+        const response = yield* harness.delete({ "mcp-session-id": "anything" })
+
+        strictEqual(response.status, 405)
+      }))
+
+    it.effect("still requires a session when sessionless is not set", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(
+          makeServerLayer({ name: "TestServer", protocols: [McpProtocol.v2025_06_18] })
+        )
+
+        const response = yield* harness.post(pingBody, { "mcp-protocol-version": "2025-06-18" })
+
+        strictEqual(response.status, 400)
+      }))
+  })
+
   describe("registerToolkit", () => {
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {

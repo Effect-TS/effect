@@ -1744,8 +1744,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
 
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
-    const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
+    const session = isInitialize ? undefined : runtime.resolveRequest(client.id, headers)
     if (!isInitialize && !session) {
       const fiber = Fiber.getCurrent()!
       appendPreResponseHandlerUnsafe(
@@ -2513,6 +2513,17 @@ const mcpStdioSerialization = (
  * Method not found. Request-scoped progress and logs, legacy protocols, and
  * default subscription behavior are unchanged.
  *
+ * Set `sessionless: true` to serve the revisions before `v2026_07_28` without
+ * sessions, as the Streamable HTTP transport allows: `initialize` returns no
+ * `Mcp-Session-Id`, and any later request, on any replica or after a restart,
+ * is served as the revision its `MCP-Protocol-Version` header names, or
+ * `2025-03-26` without one. An `Mcp-Session-Id` a client still sends is
+ * ignored. Without a session nothing is remembered between requests, so
+ * initialize advertises `listChanged: false`, `logging/setLevel` and resource
+ * subscriptions have no lasting effect, `McpServer.elicit` is unavailable, and
+ * DELETE returns `405`. Use it for servers whose tools need nothing from the
+ * client beyond each request.
+ *
  * The layer runs one long-lived MCP server that every POST shares. For
  * serverless hosts where execution must belong to each request, use
  * `layerHttpRequestScoped` instead.
@@ -2560,6 +2571,7 @@ export const layerHttp = <
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
+  readonly sessionless?: boolean | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols, true>>,
@@ -2568,7 +2580,7 @@ export const layerHttp = <
   | RegistrationServices<RR>
   | HttpRouter.Request.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols, true>>>
 > => {
-  const runtime = McpRuntime.layer(options.protocols)
+  const runtime = McpRuntime.layer(options.protocols, { sessionless: options.sessionless })
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
@@ -2698,6 +2710,7 @@ const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionless?: boolean | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -2716,6 +2729,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
     readonly path: HttpRouter.PathInput
     readonly allowedOrigins?: ReadonlyArray<string> | undefined
     readonly allowSessionTermination?: boolean | undefined
+    readonly sessionless?: boolean | undefined
   },
   httpEffect: Effect.Effect<
     HttpServerResponse.HttpServerResponse,
@@ -2725,7 +2739,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
 ) {
   const runtime = yield* McpRuntime.ServerRuntime
   const router = yield* HttpRouter.HttpRouter
-  const allowSessionTermination = options.allowSessionTermination === true &&
+  const allowSessionTermination = options.allowSessionTermination === true && options.sessionless !== true &&
     runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
   const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
   const withAllowedOrigin = (
