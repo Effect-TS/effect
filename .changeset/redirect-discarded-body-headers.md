@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Remove stale body headers when HttpClient.followRedirects rewrites a request to GET.
+Fix `HttpClient.followRedirects` keeping `Content-Encoding`, `Content-Language` and `Content-Location` headers on redirects that switch the request to GET.
