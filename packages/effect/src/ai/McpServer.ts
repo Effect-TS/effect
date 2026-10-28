@@ -2508,6 +2508,14 @@ const mcpStdioSerialization = (
  * holding a session id can end that session, so authenticate requests in the
  * surrounding router.
  *
+ * Set `sessionMode: "stateless"` to serve legacy Streamable HTTP without
+ * issuing session IDs. Later POSTs derive a conservative client profile from
+ * `MCP-Protocol-Version`, defaulting to `2025-03-26` when the header is absent.
+ * Client capabilities are empty and client info is unknown after initialize.
+ * Persistent logging settings, list-change notifications, resource subscriptions,
+ * and cancellation across separate POSTs are unavailable in this mode.
+ * The default is `"stateful"`. Modern stateless protocols are unaffected.
+ *
  * Set `allowSubscriptions: false` to disable `v2026_07_28` subscriptions.
  * Discovery advertises `listChanged: false`, and `subscriptions/listen` returns
  * Method not found. Request-scoped progress and logs, legacy protocols, and
@@ -2559,6 +2567,7 @@ export const layerHttp = <
   readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2568,7 +2577,7 @@ export const layerHttp = <
   | RegistrationServices<RR>
   | HttpRouter.Request.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols, true>>>
 > => {
-  const runtime = McpRuntime.layer(options.protocols)
+  const runtime = McpRuntime.layer(options.protocols, { sessionMode: options.sessionMode })
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
@@ -2698,6 +2707,7 @@ const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -2716,6 +2726,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
     readonly path: HttpRouter.PathInput
     readonly allowedOrigins?: ReadonlyArray<string> | undefined
     readonly allowSessionTermination?: boolean | undefined
+    readonly sessionMode?: "stateful" | "stateless" | undefined
   },
   httpEffect: Effect.Effect<
     HttpServerResponse.HttpServerResponse,
@@ -2725,7 +2736,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
 ) {
   const runtime = yield* McpRuntime.ServerRuntime
   const router = yield* HttpRouter.HttpRouter
-  const allowSessionTermination = options.allowSessionTermination === true &&
+  const allowSessionTermination = options.sessionMode !== "stateless" && options.allowSessionTermination === true &&
     runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
   const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
   const withAllowedOrigin = (
