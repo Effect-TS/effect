@@ -21,8 +21,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Install latest alchemy@beta
         run: |
-          pnpm --dir packages/platform/cloudflare add --save-dev --config.minimumReleaseAge=0 alchemy@beta
-          pnpm ls --dir packages/platform/cloudflare alchemy
+          pnpm --dir packages/platform/cloudflare add --save-dev --config.minimumReleaseAge=0 alchemy@beta @alchemy.run/cloudflare@beta
+          pnpm ls --dir packages/platform/cloudflare alchemy @alchemy.run/cloudflare
       - name: Typecheck module, example, and typetests
         run: pnpm exec tsc -b packages/platform/cloudflare/tsconfig.alchemy.json
       - name: Run typetests

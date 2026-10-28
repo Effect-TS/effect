@@ -121,11 +121,11 @@ export default {
 ## Deploying with Alchemy
 
 [Alchemy](https://alchemy.run) v2 ("Infrastructure as Effects") is the second
-deployment story, behind the optional `alchemy` peer dependency
-(`>=2.0.0-beta <3`). The Wrangler path above never imports it.
+deployment story, behind the optional `@alchemy.run/cloudflare` peer dependency
+(`>=2.0.0-beta.84 <3`). The Wrangler path above never imports it.
 
 ```sh
-npm install alchemy@beta
+npm install alchemy@beta @alchemy.run/cloudflare@beta
 ```
 
 With Alchemy there is no wrangler config, no class re-exports, and no
@@ -137,8 +137,8 @@ migrations across deploys. Cron Triggers stay user-declared through
 
 ```ts
 // src/worker.ts
+import * as Cloudflare from "@alchemy.run/cloudflare"
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
-import * as Cloudflare from "alchemy/Cloudflare"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
@@ -165,8 +165,8 @@ export default Cloudflare.Worker(
 
 ```ts
 // alchemy.run.ts
+import * as Cloudflare from "@alchemy.run/cloudflare"
 import * as Alchemy from "alchemy"
-import * as Cloudflare from "alchemy/Cloudflare"
 import * as Effect from "effect/Effect"
 import App from "./src/worker.ts"
 
