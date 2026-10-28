@@ -855,11 +855,16 @@ export const compressBody: {
     }
     return Effect.map(
       compression.compressBody(self.body, algorithm, options),
-      (body) =>
-        body === self.body ? self : setHeaders(setBody(self, body), {
-          "content-encoding": algorithm,
-          "content-type": self.headers["content-type"]
-        })
+      (body) => {
+        if (body === self.body) {
+          return self
+        }
+        const contentType = self.headers["content-type"]
+        const request = setHeader(setBody(self, body), "content-encoding", algorithm)
+        return contentType === undefined
+          ? removeHeader(request, "content-type")
+          : setHeader(request, "content-type", contentType)
+      }
     )
   }
 )
