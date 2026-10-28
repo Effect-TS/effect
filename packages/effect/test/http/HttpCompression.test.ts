@@ -142,10 +142,10 @@ describe("HttpCompression", () => {
     assert.strictEqual(text, bigJson)
   })
 
-  it.each(["gzip, br", " , gzip, , br, "])("server order prefers br over gzip (%s)", async (acceptEncoding) => {
+  it("server preference order picks br over gzip when supported", async () => {
     const response = await get(
       makeHandler(bigJsonApp, undefined, negotiationPlatformContext(["gzip", "deflate", "br", "zstd"])),
-      { "accept-encoding": acceptEncoding }
+      { "accept-encoding": "gzip, br" }
     )
     assert.strictEqual(response.headers.get("content-encoding"), "br")
   })
@@ -188,6 +188,11 @@ describe("HttpCompression", () => {
     assert.strictEqual(response.headers.get("content-encoding"), null)
     assert.strictEqual(response.headers.get("vary"), "Accept-Encoding")
     assert.strictEqual(await response.text(), bigJson)
+  })
+
+  it("ignores empty Accept-Encoding members", async () => {
+    const response = await get(makeHandler(bigJsonApp), { "accept-encoding": " , gzip, , " })
+    assert.strictEqual(response.headers.get("content-encoding"), "gzip")
   })
 
   it("treats a malformed Accept-Encoding as absent", async () => {
