@@ -121,6 +121,37 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.isFalse(runtime.includes("callback"))
   })
 
+  it("preserves an own __proto__ annotation in generated code", () => {
+    for (const value of [{ trusted: true }, null, "value"]) {
+      const annotations = { ["__proto__"]: value, description: "description" }
+      const schema = Schema.String.annotate(annotations)
+      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+      const emitted = Schema.resolveAnnotations(generated)!
+      assert.isTrue(Object.hasOwn(emitted, "__proto__"))
+      assert.deepStrictEqual(emitted, annotations)
+      assert.strictEqual(Object.getPrototypeOf(emitted), Object.prototype)
+    }
+  })
+
+  it("preserves __proto__ properties in nested annotation objects and arrays", () => {
+    const value = {
+      ["__proto__"]: { trusted: true },
+      nested: { ["__proto__"]: null },
+      items: [{ ["__proto__"]: "value" }]
+    }
+    const schema = Schema.Unknown.annotate({ default: value })
+    const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+    const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+    const emitted = Schema.resolveAnnotations(generated)!.default as typeof value
+    assert.deepStrictEqual(emitted, value)
+    for (const object of [emitted, emitted.nested, ...emitted.items]) {
+      assert.isTrue(Object.hasOwn(object, "__proto__"))
+      assert.strictEqual(Object.getPrototypeOf(object), Object.prototype)
+      assert.isUndefined(Reflect.get(object, "trusted"))
+    }
+  })
+
   it("preserves fallback identifiers", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [{
