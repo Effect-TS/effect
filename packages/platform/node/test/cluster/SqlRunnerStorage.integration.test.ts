@@ -743,6 +743,25 @@ describe("SqlRunnerStorage", () => {
           Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
         ))
 
+      it.effect("refresh reports a shard lost after it was handed off", () =>
+        Effect.gen(function*() {
+          const storage = yield* SqlRunnerStorage.make({})
+          const other = yield* SqlRunnerStorage.make({})
+          const shards = [ShardId.make("default", 11)]
+
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          yield* storage.release(runnerAddress1, shards[0])
+          expect(yield* other.acquire(runnerAddress2, shards)).toEqual(shards)
+          yield* other.release(runnerAddress2, shards[0])
+
+          // Refreshing must not take back a lock that is no longer held.
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual([])
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
