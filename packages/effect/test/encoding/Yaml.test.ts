@@ -511,6 +511,68 @@ development:
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
 
+    it("merges aliased mappings with explicit keys taking precedence", () => {
+      assert.deepStrictEqual(
+        Yaml.parse("base: &base\n  a: 1\n  b: 2\nbefore:\n  b: 3\n  <<: *base\n  c: 4\nafter:\n  <<: *base\n  b: 3\n"),
+        { base: { a: 1, b: 2 }, before: { a: 1, b: 3, c: 4 }, after: { a: 1, b: 3 } }
+      )
+    })
+
+    it.each([
+      ["aliases", "<<: [*first, *second]"],
+      ["inline mappings", "<<: [{a: 1, shared: first}, {b: 2, shared: second}]"],
+      ["repeated merge keys", "<<: *first\n  <<: *second"],
+      ["block mappings", "<<:\n    - a: 1\n      shared: first\n    - b: 2\n      shared: second"]
+    ])("lets earlier merge sources win over later %s", (_, merge) => {
+      const source =
+        `first: &first {a: 1, shared: first}\nsecond: &second {b: 2, shared: second}\nmerged:\n  ${merge}\n`
+      assert.deepStrictEqual(Yaml.parse(source), {
+        first: { a: 1, shared: "first" },
+        second: { b: 2, shared: "second" },
+        merged: { a: 1, b: 2, shared: "first" }
+      })
+    })
+
+    it("merges inside flow mappings", () => {
+      assert.deepStrictEqual(
+        Yaml.parse("base: &base {a: 1, b: 2}\nflow: {b: 3, <<: [*base, {c: 4}]}\n"),
+        { base: { a: 1, b: 2 }, flow: { a: 1, b: 3, c: 4 } }
+      )
+    })
+
+    it("merges inside sequence item mappings", () => {
+      assert.deepStrictEqual(
+        Yaml.parse(
+          "base: &base {a: 1, b: 2}\nitems:\n  - <<: *base\n    b: 3\n  - b: 4\n    <<: *base\n  - <<: [*base, {c: 5}]\n"
+        ),
+        { base: { a: 1, b: 2 }, items: [{ a: 1, b: 3 }, { a: 1, b: 4 }, { a: 1, b: 2, c: 5 }] }
+      )
+    })
+
+    it("treats quoted merge keys as ordinary keys", () => {
+      assert.deepStrictEqual(
+        Yaml.parse("base: &base {a: 1}\n\"<<\": *base\nflow: {'<<': *base}\n"),
+        { base: { a: 1 }, "<<": { a: 1 }, flow: { "<<": { a: 1 } } }
+      )
+    })
+
+    it.each([
+      ["<<: 1\n", "at line 1"],
+      ["<<:\n", "at line 1"],
+      ["<<: [1]\n", "at line 1"],
+      ["base: &base [1]\n<<: *base\n", "at line 2"],
+      ["base: &base {a: 1}\n<<: [*base, 2]\n", "at line 2"],
+      ["a:\n  b: 1\n  <<: 2\n", "at line 3"],
+      ["{<<: text}", "at flow offset 9"],
+      ["{<<: [{a: 1}, [2]]}", "at flow offset 18"]
+    ])("rejects non-mapping merge values in %j", (source, location) => {
+      assert.throws(
+        () => Yaml.parse(source),
+        SyntaxError,
+        new RegExp(`^Merge key values must be mappings ${location}$`)
+      )
+    })
+
     it("preserves hashes in JSON-style flow strings without colon spacing", () => {
       assert.deepStrictEqual(Yaml.parse("{\"description\":\"Deploy # now\"} # end\n"), { description: "Deploy # now" })
     })
