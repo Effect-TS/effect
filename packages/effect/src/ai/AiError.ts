@@ -71,8 +71,8 @@ const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
  * This error is raised when issues arise before receiving an HTTP response,
  * such as network connectivity problems, request encoding issues, or invalid
  * URLs.
- * `cause` holds the original error from the HTTP client, such as the
- * runtime's `fetch` failure, as it was raised.
+ * `cause` holds the `HttpClientError` the request failed with, when one is
+ * available. It is kept as it was raised.
  *
  * **Example** (Creating a network error)
  *
@@ -124,31 +124,41 @@ export class NetworkError extends Schema.Error<NetworkError>(
   /**
    * Creates a NetworkError from a platform HttpClientError.RequestError.
    *
+   * **Details**
+   *
+   * Pass the `HttpClientError` that carries the request error as `cause` to
+   * keep it on the `NetworkError`.
+   *
    * **Example** (Creating a network error from a request error)
    *
    * ```ts import.meta.vitest
    * import { AiError } from "effect/ai"
    * import { HttpClientError, HttpClientRequest } from "effect/http"
    *
-   * const platformError = new HttpClientError.TransportError({
+   * const reason = new HttpClientError.TransportError({
    *   request: HttpClientRequest.get("https://example.com/models"),
    *   description: "Connection refused"
    * })
+   * const platformError = new HttpClientError.HttpClientError({ reason })
    *
-   * const aiError = AiError.NetworkError.fromRequestError(platformError)
+   * const aiError = AiError.NetworkError.fromRequestError(reason, platformError)
    * aiError.reason // => "TransportError"
+   * aiError.cause === platformError // => true
    * ```
    *
    * @stability unstable
    * @since 4.0.0
    */
-  static fromRequestError(error: HttpClientError.RequestError): NetworkError {
+  static fromRequestError(
+    error: HttpClientError.RequestError,
+    cause?: HttpClientError.HttpClientError
+  ): NetworkError {
     return new NetworkError({
       description: error.description,
       reason: error._tag,
       method: error.request.method,
       url: error.request.url,
-      cause: error.cause
+      cause
     })
   }
 

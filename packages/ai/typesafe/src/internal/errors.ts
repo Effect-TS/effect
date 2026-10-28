@@ -50,7 +50,7 @@ export const mapHttpClientError = Effect.fnUntraced(
       case "TransportError":
       case "EncodeError":
       case "InvalidUrlError":
-        reason = AiError.NetworkError.fromRequestError(source)
+        reason = AiError.NetworkError.fromRequestError(source, error)
         break
       case "DecodeError":
       case "EmptyBodyError":
