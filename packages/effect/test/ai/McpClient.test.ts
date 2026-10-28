@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Context, Deferred, Effect, Fiber, Layer, Queue, Schema, Sink, Stream } from "effect"
-import { LanguageModel, McpClient, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+import { LanguageModel, McpClient, McpClientError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -282,21 +282,64 @@ describe("McpClient", () => {
   })
 
   describe("configured toolkit", () => {
-    it.effect("should bind and execute the last tool when discovery is large", () =>
+    it.effect("should preserve complete results without rediscovery when given an approved snapshot", () =>
       Effect.gen(function*() {
         const { client, sent } = yield* scriptedHttp((message) =>
           message.method === "tools/list"
-            ? jsonRpcResult(message, { ...discoverResult, tools })
+            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool] })
             : message.method === "tools/call"
+            ? jsonRpcResult(message, {
+              ...discoverResult,
+              content: [
+                { type: "text", text: "preview" },
+                { type: "image", data: "aW1hZ2U=", mimeType: "image/png" }
+              ],
+              structuredContent: { total: 42 }
+            })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const tools = yield* client.listTools()
+        const toolkit = yield* McpClient.toolkit(client, { tools, prefix: "remote__", resultMode: "complete" })
+        const [output] = yield* toolkit.handle("remote__slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert("content" in output.result)
+        assert.deepStrictEqual(output.result.content, [
+          { type: "text", text: "preview" },
+          { type: "image", data: new TextEncoder().encode("image"), mimeType: "image/png" }
+        ])
+        assert.deepStrictEqual(output.result.structuredContent, { total: 42 })
+        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 1)
+      }))
+
+    it.effect("should time out a tool call when the toolkit deadline expires", () =>
+      Effect.gen(function*() {
+        const client = yield* connect(McpProtocol.v2025_11_25)
+        const toolkit = yield* McpClient.toolkit(client, { tools: [slowTool], timeout: "1 second" })
+        const call = yield* toolkit.handle("slow", {}).pipe(
+          Effect.flatMap(Stream.runCollect),
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("1 second")
+        const error = yield* Fiber.join(call)
+        assert(McpClientError.isMcpClientError(error) && error.reason._tag === "TimeoutError")
+      }))
+
+    it.effect("should bind and execute the last tool when an approved snapshot is large", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/call"
             ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "large snapshot" }] })
-            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxItems: 150_000 } })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
         const tools = Array.from({ length: 150_000 }, (_, index) =>
           McpSchema.Tool.make({ name: `tool_${index}`, inputSchema: { type: "object" } }))
-        const toolkit = yield* McpClient.toolkit(client)
+        const toolkit = yield* McpClient.toolkit(client, { tools })
         assert.strictEqual(Object.keys(toolkit.tools).length, tools.length)
         const [output] = yield* toolkit.handle("tool_149999", {}).pipe(Effect.flatMap(Stream.runCollect))
         assert.strictEqual(output.result, "large snapshot")
-        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 1)
+        assert.isFalse(sent.some(({ message }) =>
+          methodOf(message) === "tools/list"
+        ))
       }))
   })
 

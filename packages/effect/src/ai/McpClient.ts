@@ -522,78 +522,123 @@ export const make: (options: {
 // =============================================================================
 
 /**
- * Discovers remote tools and binds their handlers using the standard Toolkit implementation.
+ * Native tool bound to a remote MCP descriptor with configurable results.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.0
+ */
+export type RemoteTool<
+  ResultMode extends "text" | "complete" = "text"
+> = Tool.Tool<string, {
+  readonly parameters: typeof Schema.Unknown
+  readonly success: {
+    readonly text: typeof Schema.String
+    readonly complete: typeof McpSchema.CallToolResult
+  }[ResultMode]
+  readonly failure: typeof McpClientError
+  readonly failureMode: "error"
+}>
+
+/**
+ * Configures remote tool discovery and results.
  *
  * **Details**
  *
- * Pass an optional prefix such as `"reports__"` to qualify model tool names.
- * Remote JSON Schemas are advertised without local schema import. Results become
- * text; tool-reported and operational failures fail the Effect. Use `Tool.make`
- * or `Tool.dynamic` with `Toolkit.make` for custom validation, approval or results.
- * Build a new toolkit to discover changes between model turns.
+ * Supply approved `tools` to skip discovery. `resultMode` defaults to `"text"`;
+ * `"complete"` preserves all content and structured data. `timeout` bounds
+ * discovery and each tool call.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.0
+ */
+export type ToolkitOptions<
+  ResultMode extends "text" | "complete" = "text"
+> = {
+  readonly prefix?: string | undefined
+  readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+  readonly timeout?: Duration.Input | undefined
+} & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
+
+/**
+ * Binds remote tools using the standard Toolkit implementation.
+ *
+ * **Details**
+ *
+ * Pass a prefix such as `"reports__"` or an options object. Remote JSON Schemas
+ * are advertised without local schema import. Model names must contain 1–64
+ * ASCII letters, digits, underscores or hyphens.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
-export const toolkit: (client: McpClient, prefix?: string) => Effect.Effect<
-  Toolkit.WithHandler<
-    Record<
-      string,
-      Tool.Tool<string, {
-        readonly parameters: typeof Schema.Unknown
-        readonly success: typeof Schema.String
-        readonly failure: typeof McpClientError
-        readonly failureMode: "error"
-      }>
-    >
-  >,
+export function toolkit(
+  client: McpClient,
+  prefix?: string
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
+export function toolkit<
+  ResultMode extends "text" | "complete" = "text"
+>(
+  client: McpClient,
+  options: ToolkitOptions<ResultMode>
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>, McpClientError>
+export function toolkit<
+  ResultMode extends "text" | "complete" = "text"
+>(client: McpClient, options: string | ToolkitOptions<ResultMode> = ""): Effect.Effect<
+  Toolkit.WithHandler<Record<string, RemoteTool>> | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>,
   McpClientError
-> = Effect.fnUntraced(function*(client: McpClient, prefix = "") {
-  const descriptors = yield* client.listTools()
-  const tools: Array<
-    Tool.Tool<string, {
-      readonly parameters: typeof Schema.Unknown
-      readonly success: typeof Schema.String
-      readonly failure: typeof McpClientError
-      readonly failureMode: "error"
-    }>
-  > = []
-  const handlers: Record<string, (params: unknown) => Effect.Effect<string, McpClientError>> = Object.create(null)
-
-  for (const descriptor of descriptors) {
-    const name = `${prefix}${descriptor.name}`
-    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
-      return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
-    }
-    tools.push(
-      Tool.dynamic(name, {
+> {
+  if (typeof options === "string") return toolkit<"text">(client, { prefix: options })
+  const config = options
+  return Effect.gen(function*() {
+    const descriptors = config.tools ?? (yield* client.listTools({ timeout: config.timeout }))
+    const success = (config.resultMode === "complete" ? McpSchema.CallToolResult : Schema.String) as RemoteTool<
+      ResultMode
+    >["successSchema"]
+    const failureMode = "error" as const
+    const tools: Array<RemoteTool<ResultMode>> = []
+    const handlers: Record<
+      string,
+      (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
+    > = Object.create(null)
+    for (const descriptor of descriptors) {
+      let tool: RemoteTool<ResultMode> = Tool.dynamic(`${config.prefix ?? ""}${descriptor.name}`, {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
-        success: Schema.String,
-        failure: McpClientError
+        success,
+        failure: McpClientError,
+        failureMode
       }).annotate(Tool.Strict, false)
-    )
-    handlers[name] = Effect.fnUntraced(function*(params: unknown) {
-      const args = yield* decodeToolArguments(params).pipe(
-        Effect.mapError((cause) =>
-          fail(new ValidationError({ description: "MCP tool arguments must be a JSON object", cause }))
-        )
-      )
-      const result = yield* client.callTool({ tool: descriptor, arguments: args })
-      if (result.isError === true) {
-        return yield* fail(new ToolError({ result }))
+      const name = tool.name
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
+        return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
       }
-      return yield* toText(result)
-    })
-  }
-
-  let toolkit = Toolkit.make(...tools.slice(0, TOOLKIT_BATCH_SIZE))
-  for (let offset = TOOLKIT_BATCH_SIZE; offset < tools.length; offset += TOOLKIT_BATCH_SIZE) {
-    toolkit = Toolkit.merge(toolkit, Toolkit.make(...tools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
-  }
-  return yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
-})
+      tools.push(tool)
+      handlers[name] = Effect.fnUntraced(function*(params: unknown) {
+        const args = yield* decodeToolArguments(params).pipe(
+          Effect.mapError((cause) =>
+            fail(new ValidationError({ description: "MCP tool arguments must be a JSON object", cause }))
+          )
+        )
+        const result = yield* client.callTool({ tool: descriptor, arguments: args }, { timeout: config.timeout })
+        if (result.isError === true) return yield* fail(new ToolError({ result }))
+        return config.resultMode === "complete" ? result : yield* toText(result)
+      })
+    }
+    const bindingTools: Array<RemoteTool<"text" | "complete">> = tools
+    let native = Toolkit.make(...bindingTools.slice(0, TOOLKIT_BATCH_SIZE))
+    for (let offset = TOOLKIT_BATCH_SIZE; offset < bindingTools.length; offset += TOOLKIT_BATCH_SIZE) {
+      native = Toolkit.merge(native, Toolkit.make(...bindingTools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
+    }
+    const bound = yield* native.pipe(Effect.provideContext(yield* native.toHandlers(handlers)))
+    return {
+      tools: Object.fromEntries(tools.map((tool) => [tool.name, tool] as const)),
+      handle: bound.handle as Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>["handle"]
+    }
+  })
+}
 
 // =============================================================================
 // Transports

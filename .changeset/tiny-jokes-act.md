@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add configurable MCP discovery limits and expose server capabilities.
+Add configurable MCP discovery limits and toolkits with approved snapshots and complete results.
