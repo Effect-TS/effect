@@ -1313,6 +1313,24 @@ describe("toCodeDocument", () => {
       await decoding.fail({ ["__proto__"]: 123 }, `Expected string\n  at ["__proto__"]`)
     })
 
+    it("preserves isDependentRequired with a __proto__ trigger in generated code", async () => {
+      const schema = Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) }).check(
+        Schema.isDependentRequired({ ["__proto__"]: ["a"] })
+      )
+      assertSchema({ schema }, {
+        codes: makeCode(
+          `Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) }).check(Schema.isDependentRequired({ ["__proto__"]: ["a"] }))`,
+          `{ readonly "__proto__"?: string }`
+        )
+      })
+
+      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+      const decoding = new TestSchema.Asserts(generated).decoding()
+      await decoding.succeed({})
+      await decoding.fail({ ["__proto__"]: "value" }, `Missing key\n  at ["a"]`)
+    })
+
     it("preserves an optional __proto__ property in generated code", async () => {
       const schema = Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) })
       assertSchema({ schema }, {

@@ -3540,6 +3540,19 @@ describe("toJsonSchemaDocument", () => {
           }
         )
       })
+
+      it("isDependentRequired", () => {
+        assertJsonSchemaDocument(
+          Schema.Record(Schema.String, Schema.Finite).check(Schema.isDependentRequired({ a: ["b"] })),
+          {
+            schema: {
+              "type": "object",
+              "additionalProperties": { "type": "number" },
+              "allOf": [{ "dependentRequired": { "a": ["b"] } }]
+            }
+          }
+        )
+      })
     })
   })
 

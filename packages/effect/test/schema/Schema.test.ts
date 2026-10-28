@@ -2106,6 +2106,30 @@ Expected a value between -2147483648 and 2147483647`
   at ["a"]`
         )
       })
+
+      it("isDependentRequired", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Finite).check(
+          Schema.isDependentRequired({ a: ["b", "c"] })
+        )
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({})
+        await decoding.succeed({ b: 1 })
+        await decoding.succeed({ a: 1, b: 2, c: 3 })
+        await decoding.fail(
+          { a: 1 },
+          `Missing key
+  at ["b"]
+Missing key
+  at ["c"]`
+        )
+        await asserts.decoding({ parseOptions: { errors: "first" } }).fail(
+          { a: 1 },
+          `Missing key
+  at ["b"]`
+        )
+      })
     })
 
     describe("Array checks", () => {

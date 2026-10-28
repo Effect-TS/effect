@@ -40,6 +40,7 @@ describe("Schema built-in revivers", () => {
       SchemaRepresentation.isMaxPropertiesReviver,
       SchemaRepresentation.isBetweenPropertiesReviver,
       SchemaRepresentation.isPropertyNamesReviver,
+      SchemaRepresentation.isDependentRequiredReviver,
       SchemaRepresentation.isUniqueReviver,
       SchemaRepresentation.isUniqueKeyReviver,
       SchemaRepresentation.OptionReviver,
