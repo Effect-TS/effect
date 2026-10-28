@@ -31,9 +31,9 @@ import * as OtlpTracer from "./OtlpTracer.ts"
  * The layer sends data to `/v1/logs`, `/v1/metrics`, and `/v1/traces` below
  * `baseUrl` and requires an `OtlpSerialization` implementation.
  *
- * The layer also provides the `OtlpExporter.Flusher` shared by all three
- * signals. One `flush` exports buffered logs, metrics, and traces together,
- * for example before a serverless instance is suspended.
+ * The layer provides the `OtlpExporter.Flusher` shared by all three signals,
+ * so one `flush` exports their buffered telemetry, for example before a
+ * serverless instance is suspended.
  *
  * @stability unstable
  * @category layers
@@ -104,10 +104,9 @@ export const layer = (options: {
  *
  * **Details**
  *
- * The layer also provides the `OtlpExporter.Flusher` shared by all enabled
- * signals. One `flush` exports their buffered telemetry together, for example
- * before a serverless instance is suspended. The Flusher is provided even when
- * configuration disables every signal; flushing is then a no-op.
+ * The layer provides the `OtlpExporter.Flusher` shared by all enabled signals.
+ * It is provided even when configuration disables every signal, in which case
+ * `flush` is a no-op.
  *
  * @stability unstable
  * @category layers
@@ -146,11 +145,6 @@ export const layerFromConfig = (options?: {
  * Creates the combined OTLP logs, metrics, and traces layer using JSON
  * serialization.
  *
- * **Details**
- *
- * The layer also provides the `OtlpExporter.Flusher` shared by all three
- * signals, so one `flush` exports their buffered telemetry together.
- *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -185,11 +179,6 @@ export const layerJson: (options: {
 /**
  * Creates the combined OTLP logs, metrics, and traces layer using protobuf
  * serialization.
- *
- * **Details**
- *
- * The layer also provides the `OtlpExporter.Flusher` shared by all three
- * signals, so one `flush` exports their buffered telemetry together.
  *
  * @stability unstable
  * @category layers
