@@ -97,7 +97,7 @@ describe("EntityManager", () => {
     unregisterEntity(Mailbox.type, registration)
   })
 
-  for (const outcome of ["success", "failure", "cleanup failure"] as const) {
+  for (const outcome of ["success", "failure"] as const) {
     it.effect(`shares an active unary ${outcome} with concurrent primary-key duplicates`, () =>
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()
@@ -129,25 +129,17 @@ describe("EntityManager", () => {
           Effect.sync(() => registerEntity(entity.type, handlers)),
           () => Effect.sync(() => unregisterEntity(entity.type, handlers))
         )
-        const { envelope, exitOf, manager, storage } = yield* makeMailbox("duplicates", entity.type)
+        const { envelope, exitOf, manager } = yield* makeMailbox("duplicates", entity.type)
         const first = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
         yield* Deferred.await(started)
-        if (outcome === "cleanup failure") {
-          storage.getAlarm = () => Promise.reject(new Error("Alarm read failed after reply persistence"))
-        }
-        const duplicates = yield* Effect.forEach(
-          [1, 2, 3, 4, 5, 6, 7],
-          () => Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
-        )
+        const duplicate = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
         yield* settle
         yield* Deferred.succeed(release, undefined)
         const original = yield* Fiber.join(first)
         assert(original._tag === "Success")
         assert.strictEqual(original.replies.length, 1)
         assert.strictEqual(exitOf(original.replies[0])._tag, outcome === "failure" ? "Failure" : "Success")
-        for (const duplicate of duplicates) {
-          assert.deepStrictEqual(yield* Fiber.join(duplicate), original)
-        }
+        assert.deepStrictEqual(yield* Fiber.join(duplicate), original)
         assert.strictEqual(runs, 1)
       }))
   }

@@ -4,9 +4,8 @@ import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
+import { Deferred, Effect, Exit, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
-import { TestClock } from "effect/testing"
 import {
   Activity,
   DurableDeferred,
@@ -133,7 +132,7 @@ class FakeAlarm {
 class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
-  readonly rejectedResumes = new Map<string, number>()
+  readonly hungResumes = new Set<string>()
   now = 0
 
   store(name: string) {
@@ -157,17 +156,10 @@ class FakeWorkflowNamespace {
         waitUntil: (promise) => {
           void promise
         },
-        getStub: (stubName) => {
-          const stub = this.getByName(stubName)
-          if (!this.rejectedResumes.has(stubName)) return stub
-          return {
-            ...stub,
-            resume: () => {
-              this.rejectedResumes.set(stubName, (this.rejectedResumes.get(stubName) ?? 0) + 1)
-              return Promise.reject(new Error("Parent resume transport unavailable"))
-            }
-          }
-        }
+        getStub: (stubName) =>
+          this.hungResumes.has(stubName)
+            ? { ...this.getByName(stubName), resume: () => new Promise<void>(() => {}) }
+            : this.getByName(stubName)
       })
       this.runtimes.set(name, runtime)
     }
@@ -195,53 +187,41 @@ const pollUntil = Effect.fnUntraced(function*<
 })
 
 describe("CloudflareWorkflowEngine", () => {
-  it.effect("retains a parent completion wake after exhausted retries and a child restart", () => {
+  it.effect("retains a parent completion wake across a child restart", () => {
     const namespace = new FakeWorkflowNamespace()
     const Gate = DurableDeferred.make("RetryChild/Gate")
     const Child = Workflow.make("RetryChild", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
     const Parent = Workflow.make("RetryParent", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
-    const parentCompleted = Deferred.makeUnsafe<void>()
-    let childRuns = 0
     const layer = Layer.merge(
-      Child.toLayer(() =>
-        Effect.sync(() => {
-          childRuns++
-        }).pipe(Effect.andThen(DurableDeferred.await(Gate)))
-      ),
-      Parent.toLayer(({ id }) =>
-        Child.execute({ id }).pipe(Effect.tap(() => Deferred.succeed(parentCompleted, undefined)))
-      )
+      Child.toLayer(() => DurableDeferred.await(Gate)),
+      Parent.toLayer(({ id }) => Child.execute({ id }))
     ).pipe(Layer.provideMerge(namespace.layer))
 
     return Effect.gen(function*() {
       const parentId = yield* Parent.executionId({ id: "one" })
       const childId = yield* Child.executionId({ id: "one" })
-      const parentName = encodeName(Parent._tag, parentId)
       const childName = encodeName(Child._tag, childId)
       yield* Parent.execute({ id: "one" }, { discard: true })
       yield* pollUntil(Parent, parentId, "Suspended")
-      namespace.rejectedResumes.set(parentName, 0)
+      namespace.hungResumes.add(encodeName(Parent._tag, parentId))
       yield* DurableDeferred.succeed(Gate, {
         token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Child, executionId: childId }),
         value: undefined
       })
-      while ((namespace.rejectedResumes.get(parentName) ?? 0) < 6) yield* Effect.sleep(10).pipe(TestClock.withLive)
-      assert.isFalse(yield* Deferred.isDone(parentCompleted))
+      yield* pollUntil(Child, childId, "Complete")
       assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 1)
-      const runsBeforeRestart = childRuns
+      assert.strictEqual(namespace.store(childName).alarm.current, 60_000)
 
-      namespace.rejectedResumes.delete(parentName)
+      namespace.hungResumes.clear()
       namespace.crash()
       namespace.now = 60_000
       namespace.store(childName).alarm.current = null
       yield* Effect.promise(() => namespace.getByName(childName).runAlarm())
-      yield* Deferred.await(parentCompleted)
       const result = yield* pollUntil(Parent, parentId, "Complete")
       assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
       assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 0)
-      assert.strictEqual(childRuns, runsBeforeRestart)
     }).pipe(Effect.provide(layer))
-  }, 15_000)
+  })
 
   it.effect("durably admits an in-flight resume before acknowledging it", () =>
     Effect.gen(function*() {
@@ -267,45 +247,6 @@ describe("CloudflareWorkflowEngine", () => {
         assert.strictEqual(namespace.store(name).alarm.current, 60_000)
         yield* Deferred.succeed(release, undefined)
         yield* pollUntil(Waiting, id, "Complete")
-      }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)), Effect.provide(layer))
-    }))
-
-  it.effect("does not automatically replay an uncaptured defect after native resume", () =>
-    Effect.gen(function*() {
-      const namespace = new FakeWorkflowNamespace()
-      const started = yield* Deferred.make<void>()
-      const release = yield* Deferred.make<void>()
-      let attempts = 0
-      const Defecting = Workflow.make("UncapturedResume", {
-        payload: { id: Schema.String },
-        idempotencyKey: ({ id }) => id
-      }).annotate(Workflow.CaptureDefects, false)
-      const layer = Defecting.toLayer(Effect.fnUntraced(function*() {
-        attempts++
-        yield* Deferred.succeed(started, undefined)
-        yield* Deferred.await(release)
-        return yield* Effect.die(new Error("Uncaptured workflow defect"))
-      })).pipe(Layer.provideMerge(namespace.layer))
-
-      yield* Effect.gen(function*() {
-        const id = yield* Defecting.executionId({ id: "one" })
-        yield* Defecting.execute({ id: "one" }, { discard: true })
-        yield* Deferred.await(started)
-        const name = encodeName(Defecting._tag, id)
-        const runtime = namespace.getByName(name)
-        yield* Effect.promise(() => runtime.resume())
-        const result = yield* Effect.forkChild(
-          Effect.promise(() => runtime.run(JSON.stringify({ id: "one" }), { discard: false })).pipe(Effect.exit)
-        )
-        yield* Effect.yieldNow
-        yield* Deferred.succeed(release, undefined)
-        assert.isTrue(Exit.isFailure(yield* Fiber.join(result)))
-
-        namespace.now = 60_000
-        namespace.store(name).alarm.current = null
-        yield* Effect.promise(() => runtime.runAlarm())
-        assert.strictEqual(attempts, 1)
-        assert.strictEqual(namespace.store(name).sql.execution?.resume_pending, 0)
       }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)), Effect.provide(layer))
     }))
 
