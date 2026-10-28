@@ -1502,10 +1502,7 @@ export const withFallbackPrompt: {
     const { canPrompt } = yield* TerminalCapabilities.TerminalCapabilities
     if (!canPrompt) return yield* Effect.fail(error)
     const deferral = yield* PromptDeferral
-    if (deferral !== undefined) {
-      deferral.requested = true
-      return yield* Effect.fail(error)
-    }
+    if (deferral !== undefined) yield* deferral.wait
     const built = Prompt.isPrompt(prompt) ? prompt : yield* prompt
     const value = yield* Effect.catchTag(Prompt.run(built), "QuitError", () => Effect.fail(error))
     return [args.arguments, value as A | B] as const

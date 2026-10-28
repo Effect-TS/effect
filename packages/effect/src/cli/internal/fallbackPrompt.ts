@@ -6,13 +6,14 @@
  * fallback prompt is shown. Shared by Param.ts and command.ts.
  */
 import * as Context from "../../Context.ts"
+import type * as Effect from "../../Effect.ts"
 
 /**
- * Marks a param parse as deferring fallback prompts. A fallback prompt that
- * would run sets `requested` and fails with its missing error instead.
+ * Pauses a param parse at its fallback prompt. The parse continues from the
+ * same point once the command resumes deferred prompts.
  */
 export interface PromptDeferral {
-  requested: boolean
+  readonly wait: Effect.Effect<void>
 }
 
 /**

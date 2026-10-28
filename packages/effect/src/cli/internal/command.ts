@@ -7,11 +7,13 @@
  */
 import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
+import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
 import * as Effectable from "../../Effectable.ts"
-import * as Exit from "../../Exit.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
+import type * as Scope from "../../Scope.ts"
 import * as CliError from "../CliError.ts"
 import type * as GlobalFlag from "../GlobalFlag.ts"
 import type { ArgDoc, ExampleDoc, FlagDoc, HelpDoc, SubcommandGroupDoc } from "../HelpDoc.ts"
@@ -32,7 +34,7 @@ import type { Command, CommandContext, Environment, ParsedTokens } from "../Comm
  */
 export type Prepare<A> = (
   input: ParsedTokens
-) => Effect.Effect<Effect.Effect<A, CliError.CliError, Environment>, CliError.CliError, Environment>
+) => Effect.Effect<Effect.Effect<A, CliError.CliError, Environment>, CliError.CliError, Environment | Scope.Scope>
 
 interface SubcommandGroup {
   readonly group: string | undefined
@@ -141,7 +143,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   const prepare: Prepare<Input> = options.prepare ?? makeParser(config) as Prepare<Input>
   const prepareContext: Prepare<ContextInput> = options.prepareContext ??
     makeParser(contextConfig, { allowLeftovers: true }) as Prepare<ContextInput>
-  const parse = (input: ParsedTokens) => Effect.flatten(prepare(input))
+  const parse = (input: ParsedTokens) => Effect.scoped(Effect.flatten(prepare(input)))
 
   const buildHelpDoc = (commandPath: ReadonlyArray<string>): HelpDoc => {
     const args: Array<ArgDoc> = []
@@ -299,75 +301,73 @@ export const makeParser = (
   } | undefined
 ) =>
   Effect.fnUntraced(function*(input: ParsedTokens) {
-    const parsedArgs: Param.ParsedArgs = { flags: input.flags, arguments: input.arguments }
-    const [remainingArguments, values, deferred] = yield* parseParams(parsedArgs, cfg.orderedParams)
-    if (options?.allowLeftovers !== true && remainingArguments.length > 0) {
-      return yield* new CliError.UnexpectedArgument({ arguments: remainingArguments })
+    const resolvers: Array<Effect.Effect<unknown, CliError.CliError, Environment>> = []
+    let currentArguments = input.arguments
+    for (const param of cfg.orderedParams) {
+      const prepared = yield* prepareParam(param, { flags: input.flags, arguments: currentArguments })
+      resolvers.push(prepared.resolve)
+      currentArguments = prepared.remainingArguments
     }
-    if (deferred.length === 0) {
-      return Effect.succeed(reconstructTree(cfg.tree, values))
+    if (options?.allowLeftovers !== true && currentArguments.length > 0) {
+      return yield* new CliError.UnexpectedArgument({ arguments: currentArguments })
     }
-    return Effect.gen(function*() {
-      const resolved = values.slice()
-      // Parse each deferred param again, this time letting its fallback prompt run
-      for (const { arguments: args, index, param } of deferred) {
-        const [, value] = yield* param.parse({ flags: parsedArgs.flags, arguments: args })
-        resolved[index] = value
-      }
-      return reconstructTree(cfg.tree, resolved)
-    })
+    return Effect.map(Effect.all(resolvers), (values) => reconstructTree(cfg.tree, values))
   })
 
-interface DeferredParam {
-  readonly index: number
-  readonly param: Param.Any
-  readonly arguments: ReadonlyArray<string>
+/**
+ * A param parsed up to its fallback prompt.
+ */
+export interface PreparedParam<A> {
+  readonly remainingArguments: ReadonlyArray<string>
+  /**
+   * Whether parsing paused at a fallback prompt.
+   */
+  readonly deferred: boolean
+  /**
+   * Shows the deferred fallback prompt, if any, and returns the value.
+   */
+  readonly resolve: Effect.Effect<A, CliError.CliError, Environment>
 }
 
 /**
- * Parses param values from parsed command arguments into their typed
- * representations.
+ * Parses a param with its fallback prompt deferred.
  *
- * Params that request a fallback prompt are returned as deferred instead of
- * prompting, so later params are still parsed and validated first.
+ * The parse runs in a fiber tied to the current scope. When it reaches a
+ * fallback prompt it pauses there, so outer combinators such as
+ * `withDefault` or `orElse` only see the prompt's outcome, and work done
+ * before the prompt is not repeated. A paused param leaves the positional
+ * arguments untouched, because a fallback prompt only runs when the value is
+ * missing.
  */
-const parseParams: (parsedArgs: Param.ParsedArgs, params: ReadonlyArray<Param.Any>) => Effect.Effect<
-  readonly [
-    remainingArguments: ReadonlyArray<string>,
-    values: ReadonlyArray<unknown>,
-    deferred: ReadonlyArray<DeferredParam>
-  ],
-  CliError.CliError,
-  Environment
-> = Effect.fnUntraced(function*(parsedArgs, params) {
-  const results: Array<unknown> = []
-  const deferred: Array<DeferredParam> = []
-  let currentArguments = parsedArgs.arguments
-
-  for (const param of params) {
-    const deferral: PromptDeferral = { requested: false }
-    const exit = yield* param.parse({
-      flags: parsedArgs.flags,
-      arguments: currentArguments
-    }).pipe(
-      Effect.provideService(PromptDeferral, deferral),
-      Effect.exit
-    )
-    if (deferral.requested) {
-      deferred.push({ index: results.length, param, arguments: currentArguments })
-      results.push(undefined)
-      if (Exit.isSuccess(exit)) {
-        currentArguments = exit.value[0]
-      }
-      continue
+export const prepareParam = <A>(
+  param: Param.Param<Param.ParamKind, A>,
+  args: Param.ParsedArgs
+): Effect.Effect<PreparedParam<A>, CliError.CliError, Environment | Scope.Scope> =>
+  Effect.gen(function*() {
+    // Completed with `true` when the parse pauses at a prompt, `false` when it ends
+    const paused = Deferred.makeUnsafe<boolean>()
+    const resume = Deferred.makeUnsafe<void>()
+    const deferral: PromptDeferral = {
+      wait: Effect.andThen(Deferred.succeed(paused, true), Deferred.await(resume))
     }
-    const [remainingArguments, parsed] = yield* exit
-    results.push(parsed)
-    currentArguments = remainingArguments
-  }
-
-  return [currentArguments, results, deferred] as const
-})
+    const fiber = yield* param.parse(args).pipe(
+      Effect.provideService(PromptDeferral, deferral),
+      Effect.ensuring(Deferred.succeed(paused, false)),
+      Effect.forkScoped
+    )
+    if (yield* Deferred.await(paused)) {
+      return {
+        remainingArguments: args.arguments,
+        deferred: true,
+        resolve: Effect.andThen(
+          Deferred.succeed(resume, undefined),
+          Effect.map(Fiber.join(fiber), ([, value]) => value)
+        )
+      }
+    }
+    const [remainingArguments, value] = yield* Fiber.join(fiber)
+    return { remainingArguments, deferred: false, resolve: Effect.succeed(value) }
+  })
 
 /**
  * Checks that inherited parent context flags do not reuse names declared by

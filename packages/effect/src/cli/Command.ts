@@ -18,6 +18,7 @@ import * as Effect from "../Effect.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import { dual } from "../Function.ts"
 import type * as Layer from "../Layer.ts"
+import type * as LogLevel from "../LogLevel.ts"
 import * as Option from "../Option.ts"
 import type * as Path from "../Path.ts"
 import * as Predicate from "../Predicate.ts"
@@ -32,7 +33,16 @@ import * as CliConfig from "./CliConfig.ts"
 import * as CliError from "./CliError.ts"
 import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
-import { checkForDuplicateFlags, makeCommand, makeParser, type Prepare, toImpl, TypeId } from "./internal/command.ts"
+import {
+  checkForDuplicateFlags,
+  makeCommand,
+  makeParser,
+  type Prepare,
+  type PreparedParam,
+  prepareParam,
+  toImpl,
+  TypeId
+} from "./internal/command.ts"
 import { mergeConfig, parseConfig } from "./internal/config.ts"
 import { resolveFormatter } from "./internal/formatter.ts"
 import {
@@ -53,6 +63,11 @@ import * as Prompt from "./Prompt.ts"
 
 /**
  * Represents a CLI command with its configuration, handler, and metadata.
+ *
+ * `E` and `R` are the errors and requirements of the whole command. The last
+ * two type parameters record the part of them that comes from
+ * `Command.beforePrompts` hooks, so `withHandler` and the `provide*`
+ * combinators keep it. They do not affect assignability.
  *
  * **Details**
  *
@@ -126,13 +141,20 @@ import * as Prompt from "./Prompt.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Command<in out Name extends string, in Input, out ContextInput = {}, out E = never, out R = never>
-  extends
-    Effect.Effect<
-      ContextInput,
-      never,
-      CommandContext<Name>
-    >
+export interface Command<
+  in out Name extends string,
+  in Input,
+  out ContextInput = {},
+  out E = never,
+  out R = never,
+  _HookE = never,
+  _HookR = never
+> extends
+  Effect.Effect<
+    ContextInput,
+    never,
+    CommandContext<Name>
+  >
 {
   readonly [TypeId]: Command.Variance<Input, E, R>
 
@@ -732,13 +754,13 @@ export const make: {
 export const withHandler: {
   <A, R, E>(
     handler: (value: A) => Effect.Effect<void, E, R>
-  ): <Name extends string, XR, XE, ContextInput>(
-    self: Command<Name, A, ContextInput, XE, XR>
-  ) => Command<Name, A, ContextInput, E, Exclude<R, BuiltInSettingContext>>
-  <Name extends string, A, XR, XE, R, E, ContextInput>(
-    self: Command<Name, A, ContextInput, XE, XR>,
+  ): <Name extends string, XR, XE, ContextInput, HookE, HookR>(
+    self: Command<Name, A, ContextInput, XE, XR, HookE, HookR>
+  ) => Command<Name, A, ContextInput, E | HookE, Exclude<R, BuiltInSettingContext> | HookR, HookE, HookR>
+  <Name extends string, A, XR, XE, R, E, ContextInput, HookE, HookR>(
+    self: Command<Name, A, ContextInput, XE, XR, HookE, HookR>,
     handler: (value: A) => Effect.Effect<void, E, R>
-  ): Command<Name, A, ContextInput, E, Exclude<R, BuiltInSettingContext>>
+  ): Command<Name, A, ContextInput, E | HookE, Exclude<R, BuiltInSettingContext> | HookR, HookE, HookR>
 } = dual(2, <Name extends string, A, XR, XE, R, E, ContextInput>(
   self: Command<Name, A, ContextInput, XE, XR>,
   handler: (value: A) => Effect.Effect<void, E, R>
@@ -822,13 +844,13 @@ export const withHandler: {
 export const validate: {
   <Input>(
     f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
-  ): <Name extends string, ContextInput, E, R>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <Name extends string, Input, ContextInput, E, R>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <Name extends string, ContextInput, E, R, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <Name extends string, Input, ContextInput, E, R, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <Name extends string, Input, ContextInput, E, R>(
   self: Command<Name, Input, ContextInput, E, R>,
   f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
@@ -965,14 +987,18 @@ const normalizeSubcommandEntries = (
 export const withSubcommands: {
   <const Subcommands extends ReadonlyArray<Command.SubcommandEntry>>(
     subcommands: Subcommands
-  ): <Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
+  ): <Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
   ) => Command<
     Name,
     Simplify<Input | ContextInput>,
     ContextInput,
     E | ExtractSubcommandErrors<Subcommands>,
-    R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>
+    | R
+    | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>
+    | ExtractSubcommandHookContext<Subcommands>,
+    HookE | ExtractSubcommandHookErrors<Subcommands>,
+    HookR | ExtractSubcommandHookContext<Subcommands>
   >
   <
     Name extends string,
@@ -980,16 +1006,22 @@ export const withSubcommands: {
     E,
     R,
     ContextInput,
+    HookE,
+    HookR,
     const Subcommands extends ReadonlyArray<Command.SubcommandEntry>
   >(
-    self: Command<Name, Input, ContextInput, E, R>,
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     subcommands: Subcommands
   ): Command<
     Name,
     Simplify<Input | ContextInput>,
     ContextInput,
     E | ExtractSubcommandErrors<Subcommands>,
-    R | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>
+    | R
+    | Exclude<ExtractSubcommandContext<Subcommands>, CommandContext<Name>>
+    | ExtractSubcommandHookContext<Subcommands>,
+    HookE | ExtractSubcommandHookErrors<Subcommands>,
+    HookR | ExtractSubcommandHookContext<Subcommands>
   >
 } = dual(2, <
   Name extends string,
@@ -1090,24 +1122,28 @@ export const withSubcommands: {
 export const withSharedFlags: {
   <const SharedFlags extends Command.FlagConfig>(
     sharedFlags: SharedFlags
-  ): <Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
+  ): <Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
   ) => Command<
     Name,
     Simplify<Input & Command.Config.Infer<SharedFlags>>,
     Simplify<ContextInput & Command.Config.Infer<SharedFlags>>,
     E,
-    R
+    R,
+    HookE,
+    HookR
   >
-  <Name extends string, Input, E, R, ContextInput, const SharedFlags extends Command.FlagConfig>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  <Name extends string, Input, E, R, ContextInput, HookE, HookR, const SharedFlags extends Command.FlagConfig>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     sharedFlags: SharedFlags
   ): Command<
     Name,
     Simplify<Input & Command.Config.Infer<SharedFlags>>,
     Simplify<ContextInput & Command.Config.Infer<SharedFlags>>,
     E,
-    R
+    R,
+    HookE,
+    HookR
   >
 } = dual(
   2,
@@ -1188,20 +1224,38 @@ export const withSharedFlags: {
 export const withGlobalFlags: {
   <const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>>(
     globalFlags: GlobalFlags
-  ): <Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>>
+  ): <Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<
+    Name,
+    Input,
+    ContextInput,
+    E,
+    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>,
+    HookE,
+    Exclude<HookR, ExtractGlobalFlagContext<GlobalFlags>>
+  >
   <
     Name extends string,
     Input,
     E,
     R,
     ContextInput,
+    HookE,
+    HookR,
     const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>
   >(
-    self: Command<Name, Input, ContextInput, E, R>,
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     globalFlags: GlobalFlags
-  ): Command<Name, Input, ContextInput, E, Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>>
+  ): Command<
+    Name,
+    Input,
+    ContextInput,
+    E,
+    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>,
+    HookE,
+    Exclude<HookR, ExtractGlobalFlagContext<GlobalFlags>>
+  >
 } = dual(
   2,
   <
@@ -1232,6 +1286,18 @@ type ExtractSubcommand<T> = T extends Command<infer _Name, infer _Input, infer _
   : never
 type ExtractSubcommandErrors<T extends ReadonlyArray<Command.SubcommandEntry>> = Error<ExtractSubcommand<T[number]>>
 type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> = Services<ExtractSubcommand<T[number]>>
+type HookErrors<C> = C extends
+  Command<infer _Name, infer _Input, infer _CI, infer _E, infer _R, infer HookE, infer _HookR> ? HookE
+  : never
+type HookServices<C> = C extends
+  Command<infer _Name, infer _Input, infer _CI, infer _E, infer _R, infer _HookE, infer HookR> ? HookR
+  : never
+type ExtractSubcommandHookErrors<T extends ReadonlyArray<Command.SubcommandEntry>> = HookErrors<
+  ExtractSubcommand<T[number]>
+>
+type ExtractSubcommandHookContext<T extends ReadonlyArray<Command.SubcommandEntry>> = HookServices<
+  ExtractSubcommand<T[number]>
+>
 
 /**
  * Sets the description for a command.
@@ -1287,13 +1353,13 @@ type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> 
  * @since 4.0.0
  */
 export const withDescription: {
-  (description: string): <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  (description: string): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     description: string
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
   description: string
@@ -1313,13 +1379,13 @@ export const withDescription: {
  * @since 4.0.0
  */
 export const withShortDescription: {
-  (shortDescription: string): <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  (shortDescription: string): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     shortDescription: string
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
   shortDescription: string
@@ -1338,13 +1404,13 @@ export const withShortDescription: {
  * @since 4.0.0
  */
 export const withAlias: {
-  (alias: string): <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  (alias: string): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     alias: string
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
   alias: string
@@ -1381,10 +1447,10 @@ export const withAlias: {
  * @category combinators
  * @since 4.0.0
  */
-export const unlisted = <const Name extends string, Input, E, R, ContextInput>(
-  self: Command<Name, Input, ContextInput, E, R>
-): Command<Name, Input, ContextInput, E, R> =>
-  makeCommand({ ...toImpl(self), unlisted: true }) as Command<Name, Input, ContextInput, E, R>
+export const unlisted = <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+  self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+): Command<Name, Input, ContextInput, E, R, HookE, HookR> =>
+  makeCommand({ ...toImpl(self), unlisted: true }) as Command<Name, Input, ContextInput, E, R, HookE, HookR>
 
 /**
  * Adds a custom annotation to a command.
@@ -1413,14 +1479,14 @@ export const annotate: {
   <I, S>(
     service: Context.Key<I, S>,
     value: NoInfer<S>
-  ): <Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <Name extends string, Input, E, R, ContextInput, I, S>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <Name extends string, Input, E, R, ContextInput, HookE, HookR, I, S>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     service: Context.Key<I, S>,
     value: NoInfer<S>
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(3, <Name extends string, Input, E, R, ContextInput, I, S>(
   self: Command<Name, Input, ContextInput, E, R>,
   service: Context.Key<I, S>,
@@ -1457,13 +1523,13 @@ export const annotate: {
 export const annotateMerge: {
   <I>(
     annotations: Context.Context<I>
-  ): <Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <Name extends string, Input, E, R, ContextInput, I>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <Name extends string, Input, E, R, ContextInput, HookE, HookR, I>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     annotations: Context.Context<I>
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <Name extends string, Input, E, R, ContextInput, I>(
   self: Command<Name, Input, ContextInput, E, R>,
   annotations: Context.Context<I>
@@ -1522,15 +1588,15 @@ export const withExamples: {
     examples:
       | ReadonlyArray<Command.Example>
       | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
-  ): <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, R>
-  <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     examples:
       | ReadonlyArray<Command.Example>
       | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
-  ): Command<Name, Input, ContextInput, E, R>
+  ): Command<Name, Input, ContextInput, E, R, HookE, HookR>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
   examples:
@@ -1624,16 +1690,16 @@ export const provide: {
     options?: {
       readonly local?: boolean | undefined
     } | undefined
-  ): <const Name extends string, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E | LE, Exclude<R, LA> | LR>
-  <const Name extends string, Input, E, R, ContextInput, LA, LE, LR>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E | LE, Exclude<R, LA> | LR | HookR, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR, LA, LE, LR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     layer: Layer.Layer<LA, LE, LR> | ((input: Input) => Layer.Layer<LA, LE, LR>),
     options?: {
       readonly local?: boolean | undefined
     } | undefined
-  ): Command<Name, Input, ContextInput, E | LE, Exclude<R, LA> | LR>
+  ): Command<Name, Input, ContextInput, E | LE, Exclude<R, LA> | LR | HookR, HookE, HookR>
 } = dual((args) => isCommand(args[0]), <const Name extends string, Input, E, R, ContextInput, LA, LE, LR>(
   self: Command<Name, Input, ContextInput, E, R>,
   layer: Layer.Layer<LA, LE, LR> | ((input: Input) => Layer.Layer<LA, LE, LR>),
@@ -1661,14 +1727,14 @@ export const provideSync: {
   <I, S, Input>(
     service: Context.Key<I, S>,
     implementation: S | ((input: Input) => S)
-  ): <const Name extends string, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E, Exclude<R, I>>
-  <const Name extends string, Input, E, R, ContextInput, I, S>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E, Exclude<R, I> | HookR, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR, I, S>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     service: Context.Key<I, S>,
     implementation: S | ((input: Input) => S)
-  ): Command<Name, Input, ContextInput, E, Exclude<R, I>>
+  ): Command<Name, Input, ContextInput, E, Exclude<R, I> | HookR, HookE, HookR>
 } = dual(3, <const Name extends string, Input, E, R, ContextInput, I, S>(
   self: Command<Name, Input, ContextInput, E, R>,
   service: Context.Key<I, S>,
@@ -1702,14 +1768,14 @@ export const provideEffect: {
   <I, S, Input, R2, E2>(
     service: Context.Key<I, S>,
     effect: Effect.Effect<S, E2, R2> | ((input: Input) => Effect.Effect<S, E2, R2>)
-  ): <const Name extends string, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E | E2, Exclude<R, I> | R2>
-  <const Name extends string, Input, E, R, ContextInput, I, S, R2, E2>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E | E2, Exclude<R, I> | R2 | HookR, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR, I, S, R2, E2>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     service: Context.Key<I, S>,
     effect: Effect.Effect<S, E2, R2> | ((input: Input) => Effect.Effect<S, E2, R2>)
-  ): Command<Name, Input, ContextInput, E | E2, Exclude<R, I> | R2>
+  ): Command<Name, Input, ContextInput, E | E2, Exclude<R, I> | R2 | HookR, HookE, HookR>
 } = dual(3, <const Name extends string, Input, E, R, ContextInput, I, S, R2, E2>(
   self: Command<Name, Input, ContextInput, E, R>,
   service: Context.Key<I, S>,
@@ -1739,13 +1805,13 @@ export const provideEffect: {
 export const provideEffectDiscard: {
   <_, Input, E2, R2>(
     effect: Effect.Effect<_, E2, R2> | ((input: Input) => Effect.Effect<_, E2, R2>)
-  ): <const Name extends string, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E | E2, R | R2>
-  <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E | E2, R | R2, HookE, HookR>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR, _, E2, R2>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     effect: Effect.Effect<_, E2, R2> | ((input: Input) => Effect.Effect<_, E2, R2>)
-  ): Command<Name, Input, ContextInput, E | E2, R | R2>
+  ): Command<Name, Input, ContextInput, E | E2, R | R2, HookE, HookR>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
   self: Command<Name, Input, ContextInput, E, R>,
   effect: Effect.Effect<_, E2, R2> | ((input: Input) => Effect.Effect<_, E2, R2>)
@@ -1774,12 +1840,20 @@ export const provideEffectDiscard: {
  * Hooks are attached to the command they are added to. Hooks on one command
  * run in the order they were added. When a subcommand is selected, the
  * parent's hooks run before the subcommand's, and all of them run before any
- * prompt, including prompts for the parent's shared flags. A failure stops
- * the invocation before prompts and the handler run.
+ * prompt, including prompts for the parent's shared flags and for global
+ * settings. A failure or interruption stops the invocation before prompts and
+ * the handler run.
  *
  * The effect cannot read the command input, because prompted values do not
  * exist yet. `Command.provide*` effects still run after the prompts, right
- * before the handler.
+ * before the handler, so they do not provide services to hooks. The hook's
+ * errors and requirements stay in the command type through `withHandler` and
+ * the `provide*` combinators.
+ *
+ * **Gotchas**
+ *
+ * Hooks can read global settings, except a setting whose value comes from a
+ * fallback prompt, which is only known after the hooks have run.
  *
  * **Example** (Printing an introduction before prompts)
  *
@@ -1834,13 +1908,13 @@ export const provideEffectDiscard: {
 export const beforePrompts: {
   <_, E2, R2>(
     effect: Effect.Effect<_, E2, R2>
-  ): <const Name extends string, Input, E, R, ContextInput>(
-    self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E | E2, R | R2>
-  <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
-    self: Command<Name, Input, ContextInput, E, R>,
+  ): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+  ) => Command<Name, Input, ContextInput, E | E2, R | R2, HookE | E2, HookR | R2>
+  <const Name extends string, Input, E, R, ContextInput, HookE, HookR, _, E2, R2>(
+    self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     effect: Effect.Effect<_, E2, R2>
-  ): Command<Name, Input, ContextInput, E | E2, R | R2>
+  ): Command<Name, Input, ContextInput, E | E2, R | R2, HookE | E2, HookR | R2>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
   self: Command<Name, Input, ContextInput, E, R>,
   effect: Effect.Effect<_, E2, R2>
@@ -2227,38 +2301,44 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       }
       const resolveInput = yield* commandImpl.prepare(parsedArgs).pipe(toShowHelp)
 
-      // 7. Run setup hooks, then deferred fallback prompts, then the handler
+      // 7. Parse setting values, deferring their fallback prompts too
+      const settings: Array<readonly [GlobalFlag.Setting<string, any>, PreparedParam<unknown>]> = []
+      for (const flag of activeFlags) {
+        if (flag._tag !== "Setting") continue
+        settings.push([flag, yield* prepareParam(flag.flag, emptyArgs).pipe(toShowHelp)])
+      }
+      const resolveSettings = Effect.fnUntraced(function*(options: { readonly deferred: boolean }) {
+        let context = Context.make(GlobalFlag.LogLevel, Option.none<LogLevel.LogLevel>())
+        for (const [flag, prepared] of settings) {
+          if (prepared.deferred && !options.deferred) continue
+          const value = yield* prepared.resolve.pipe(toShowHelp)
+          context = Context.add(context, flag, value)
+          // Apply built-in setting behavior
+          const level = flag === GlobalFlag.LogLevel ? value as Option.Option<LogLevel.LogLevel> : Option.none()
+          if (Option.isSome(level)) {
+            context = Context.add(context, References.MinimumLogLevel, level.value)
+          }
+        }
+        return context
+      })
+
+      // 8. Run setup hooks with the settings known so far
       const hooks = getCommandsForCommandPath(command, commandPath).flatMap((current) =>
         toImpl(current).beforePrompts as ReadonlyArray<Effect.Effect<unknown, E, R>>
       )
-      let program = Effect.gen(function*() {
+      if (hooks.length > 0) {
+        const context = yield* resolveSettings({ deferred: false })
         for (const hook of hooks) {
-          yield* hook
+          yield* Effect.provideContext(hook, context)
         }
-        const input = yield* resolveInput.pipe(toShowHelp)
-        yield* commandImpl.handle(input, [command.name])
-      })
-
-      // 8. Provide setting values
-      const logLevel = activeFlags.includes(GlobalFlag.LogLevel)
-        ? (yield* GlobalFlag.LogLevel.flag.parse(emptyArgs).pipe(toShowHelp))[1]
-        : Option.none()
-      program = Effect.provideService(program, GlobalFlag.LogLevel, logLevel)
-      for (const flag of activeFlags) {
-        if (flag._tag !== "Setting" || flag === GlobalFlag.LogLevel) continue
-        const [, value] = yield* flag.flag.parse(emptyArgs).pipe(toShowHelp)
-        program = Effect.provideService(program, flag, value)
       }
 
-      // 9. Apply built-in setting behavior
-      const services = Option.match(logLevel, {
-        onNone: () => Context.empty(),
-        onSome: (level) => Context.make(References.MinimumLogLevel, level)
-      })
-
-      // 10. Run command handler with composed context
-      yield* Effect.provideContext(program, services)
+      // 9. Show deferred fallback prompts, then run the handler
+      const input = yield* resolveInput.pipe(toShowHelp)
+      const context = yield* resolveSettings({ deferred: true })
+      yield* Effect.provideContext(commandImpl.handle(input, [command.name]), context)
     },
+    Effect.scoped,
     Effect.catchFilter(
       (error) =>
         CliError.isCliError(error) && error._tag === "ShowHelp"
