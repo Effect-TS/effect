@@ -310,6 +310,34 @@ describe("McpClient", () => {
         assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 1)
       }))
 
+    it.effect("should apply failureMode when a remote tool reports a failure", () =>
+      Effect.gen(function*() {
+        const client = yield* connect(McpProtocol.v2025_11_25)
+        const tools = yield* client.listTools()
+        const returning = yield* McpClient.toolkit(client, { tools, failureMode: "return", resultMode: "complete" })
+        const [output] = yield* returning.handle("fail", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.isTrue(output.isFailure)
+        assert(McpClientError.isMcpClientError(output.result) && output.result.reason._tag === "ToolError")
+        assert.isTrue(output.result.reason.result.isError)
+        assert.deepStrictEqual(output.result.reason.result.content, [{ type: "text", text: "\"denied\"" }])
+        const failing = yield* McpClient.toolkit(client, { tools })
+        const error = yield* failing.handle("fail", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+        assert(McpClientError.isMcpClientError(error) && error.reason._tag === "ToolError")
+      }))
+
+    it.effect("should retain the operational error when return mode captures a failed request", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) =>
+          message.method === "tools/call"
+            ? new Response(null, { status: 503 })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const toolkit = yield* McpClient.toolkit(client, { tools: [slowTool], failureMode: "return" })
+        const [output] = yield* toolkit.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.isTrue(output.isFailure)
+        assert(McpClientError.isMcpClientError(output.result) && output.result.reason._tag === "HttpError")
+      }))
+
     it.effect("should time out a tool call when the toolkit deadline expires", () =>
       Effect.gen(function*() {
         const client = yield* connect(McpProtocol.v2025_11_25)

@@ -75,18 +75,30 @@ describe("McpClient", () => {
     expect<typeof McpProtocol.v2025_06_18>().type.not.toBeAssignableTo<Protocol>()
   })
 
-  it("should infer result and error types when toolkit result modes are selected or omitted", () => {
+  it("should infer result and error types when toolkit modes are selected or omitted", () => {
     const plain = McpClient.toolkit(client)
     const prefixed = McpClient.toolkit(client, "remote__")
     const complete = McpClient.toolkit(client, { resultMode: "complete" })
+    const returned = McpClient.toolkit(client, { resultMode: "complete", failureMode: "return" })
+    const text = McpClient.toolkit(client, { failureMode: "return" })
+
     expect<Tool.Success<BoundTool<typeof plain>>>().type.toBe<string>()
     expect<Tool.Success<BoundTool<typeof prefixed>>>().type.toBe<string>()
     expect<Tool.Success<BoundTool<typeof complete>>>().type.toBe<McpSchema.CallToolResult>()
+    expect<Tool.Success<BoundTool<typeof returned>>>().type.toBe<McpSchema.CallToolResult>()
+    expect<Tool.Success<BoundTool<typeof text>>>().type.toBe<string>()
+    expect<Tool.HandlerError<BoundTool<typeof plain>>>().type.toBe<McpClientError | AiError>()
     expect<Tool.HandlerError<BoundTool<typeof complete>>>().type.toBe<McpClientError | AiError>()
+    expect<Tool.HandlerError<BoundTool<typeof returned>>>().type.toBe<never>()
+    expect<Tool.HandlerError<BoundTool<typeof text>>>().type.toBe<never>()
   })
 
   it("should require explicit selectors when type arguments choose nondefault modes", () => {
     expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client, {})
-    expect(McpClient.toolkit<"complete">).type.toBeCallableWith(client, { resultMode: "complete" })
+    expect(McpClient.toolkit<"text", "return">).type.not.toBeCallableWith(client, {})
+    expect(McpClient.toolkit<"complete", "return">).type.toBeCallableWith(client, {
+      resultMode: "complete",
+      failureMode: "return"
+    })
   })
 })

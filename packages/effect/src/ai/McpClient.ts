@@ -529,7 +529,8 @@ export const make: (options: {
  * @since 4.1.0
  */
 export type RemoteTool<
-  ResultMode extends "text" | "complete" = "text"
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error"
 > = Tool.Tool<string, {
   readonly parameters: typeof Schema.Unknown
   readonly success: {
@@ -537,7 +538,7 @@ export type RemoteTool<
     readonly complete: typeof McpSchema.CallToolResult
   }[ResultMode]
   readonly failure: typeof McpClientError
-  readonly failureMode: "error"
+  readonly failureMode: FailureMode
 }>
 
 /**
@@ -548,18 +549,25 @@ export type RemoteTool<
  * Supply approved `tools` to skip discovery. `resultMode` defaults to `"text"`;
  * `"complete"` preserves all content and structured data. `timeout` bounds
  * discovery and each tool call.
+ * Native `failureMode` defaults to `"error"`; `"return"` captures typed handler
+ * failures, including operational errors. Tool errors retain the full result.
  *
  * @stability experimental
  * @category models
  * @since 4.1.0
  */
 export type ToolkitOptions<
-  ResultMode extends "text" | "complete" = "text"
-> = {
-  readonly prefix?: string | undefined
-  readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
-  readonly timeout?: Duration.Input | undefined
-} & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error"
+> =
+  & {
+    readonly prefix?: string | undefined
+    readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+    readonly timeout?: Duration.Input | undefined
+  }
+  & ("text" extends ResultMode ? { readonly resultMode?: ResultMode | undefined } : { readonly resultMode: ResultMode })
+  & ("error" extends FailureMode ? { readonly failureMode?: FailureMode | undefined }
+    : { readonly failureMode: FailureMode })
 
 /**
  * Binds remote tools using the standard Toolkit implementation.
@@ -579,32 +587,36 @@ export function toolkit(
   prefix?: string
 ): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
 export function toolkit<
-  ResultMode extends "text" | "complete" = "text"
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error"
 >(
   client: McpClient,
-  options: ToolkitOptions<ResultMode>
-): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>, McpClientError>
+  options: ToolkitOptions<ResultMode, FailureMode>
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>, McpClientError>
 export function toolkit<
-  ResultMode extends "text" | "complete" = "text"
->(client: McpClient, options: string | ToolkitOptions<ResultMode> = ""): Effect.Effect<
-  Toolkit.WithHandler<Record<string, RemoteTool>> | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>,
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error"
+>(client: McpClient, options: string | ToolkitOptions<ResultMode, FailureMode> = ""): Effect.Effect<
+  | Toolkit.WithHandler<Record<string, RemoteTool>>
+  | Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>,
   McpClientError
 > {
-  if (typeof options === "string") return toolkit<"text">(client, { prefix: options })
+  if (typeof options === "string") return toolkit<"text", "error">(client, { prefix: options })
   const config = options
   return Effect.gen(function*() {
     const descriptors = config.tools ?? (yield* client.listTools({ timeout: config.timeout }))
     const success = (config.resultMode === "complete" ? McpSchema.CallToolResult : Schema.String) as RemoteTool<
-      ResultMode
+      ResultMode,
+      FailureMode
     >["successSchema"]
-    const failureMode = "error" as const
-    const tools: Array<RemoteTool<ResultMode>> = []
+    const failureMode = (config.failureMode ?? "error") as FailureMode
+    const tools: Array<RemoteTool<ResultMode, FailureMode>> = []
     const handlers: Record<
       string,
       (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
     > = Object.create(null)
     for (const descriptor of descriptors) {
-      let tool: RemoteTool<ResultMode> = Tool.dynamic(`${config.prefix ?? ""}${descriptor.name}`, {
+      let tool: RemoteTool<ResultMode, FailureMode> = Tool.dynamic(`${config.prefix ?? ""}${descriptor.name}`, {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
         success,
@@ -627,7 +639,7 @@ export function toolkit<
         return config.resultMode === "complete" ? result : yield* toText(result)
       })
     }
-    const bindingTools: Array<RemoteTool<"text" | "complete">> = tools
+    const bindingTools: Array<RemoteTool<"text" | "complete", Tool.FailureMode>> = tools
     let native = Toolkit.make(...bindingTools.slice(0, TOOLKIT_BATCH_SIZE))
     for (let offset = TOOLKIT_BATCH_SIZE; offset < bindingTools.length; offset += TOOLKIT_BATCH_SIZE) {
       native = Toolkit.merge(native, Toolkit.make(...bindingTools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
@@ -635,7 +647,7 @@ export function toolkit<
     const bound = yield* native.pipe(Effect.provideContext(yield* native.toHandlers(handlers)))
     return {
       tools: Object.fromEntries(tools.map((tool) => [tool.name, tool] as const)),
-      handle: bound.handle as Toolkit.WithHandler<Record<string, RemoteTool<ResultMode>>>["handle"]
+      handle: bound.handle as Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode>>>["handle"]
     }
   })
 }
