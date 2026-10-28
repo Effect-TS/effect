@@ -1,52 +1,66 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
-import { DockerError, DockerSystem } from "effect/docker"
+import { type DockerError, DockerSystem } from "effect/docker"
 import { HttpClientRequest } from "effect/http"
 import { inspect } from "node:util"
-import { json, makeStubEngine, withPing } from "./utils/stub.ts"
+import { json, makeStubEngine, type Recorded, withPing } from "./utils/stub.ts"
 
 describe("DockerEngine", () => {
-  it.effect("negotiates within the supported API range", () =>
+  it.effect("sends every request at API 1.52, after checking once that the Engine serves it", () =>
     Effect.gen(function*() {
-      const cases: ReadonlyArray<[string | undefined, string]> = [
-        ["1.50", "1.50"],
-        // compared numerically
-        ["1.100", "1.56"],
-        // no Api-Version header: the minimum
-        [undefined, "1.44"]
-      ]
-      for (const [engineVersion, expected] of cases) {
-        const stub = makeStubEngine(engineVersion === undefined ? () => ({ body: "OK" }) : withPing(engineVersion))
-        assert.strictEqual(yield* stub.engine.apiVersion, expected, engineVersion)
-      }
-      const error = yield* Effect.flip(makeStubEngine(withPing("1.43")).engine.apiVersion)
-      assert.deepStrictEqual(
-        error.reason,
-        new DockerError.UnsupportedApiVersion({ engineVersion: "1.43", minimum: "1.44" })
-      )
+      // a current Engine serves 1.44 through 1.56; nothing is negotiated down or up
+      const stub = makeStubEngine(withPing("1.56", () => json({})))
+      yield* DockerSystem.DockerSystem.use((system) => Effect.andThen(system.info, system.info)).pipe(stub.provide)
+      const versioned = stub.requests.filter((request) => /^\/v\d/.test(request.url.pathname))
+      assert.deepStrictEqual(versioned.map((request) => request.url.pathname), ["/v1.52/info", "/v1.52/info"])
+      // the check runs once, before the first versioned request
+      const first = stub.requests.indexOf(versioned[0])
+      assert.isAbove(first, 0)
+      assert.isTrue(stub.requests.slice(first).every((request) => request.url.pathname.startsWith("/v1.52/")))
     }))
 
-  it.effect("prefixes requests with the negotiated version after one unversioned ping, or the pinned one", () =>
+  it.effect("fails with UnsupportedApiVersion when the Engine can't serve API 1.52, before any versioned request", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.50", () => json({})))
-      yield* DockerSystem.DockerSystem.use((system) => Effect.andThen(system.info, system.info)).pipe(stub.provide)
-      assert.deepStrictEqual(stub.requests.map((request) => `${request.method} ${request.url.pathname}`), [
-        "HEAD /_ping",
-        "GET /v1.50/info",
-        "GET /v1.50/info"
-      ])
-      // a pinned version is used as-is, without negotiating
-      const pinned = makeStubEngine(withPing("1.50", () => json({})), { apiVersion: "1.60" })
-      yield* DockerSystem.DockerSystem.use((system) => system.info).pipe(pinned.provide)
-      assert.deepStrictEqual(pinned.requests.map((request) => request.url.pathname), ["/v1.60/info"])
+      // the daemon answers a version outside its range as it does
+      const outOfRange = (message: string) => (request: Recorded) =>
+        /^\/v\d/.test(request.url.pathname) ? json({ message }, 400) : json({})
+      const engines = [
+        // Docker Engine 28: API 1.51 at most, so the Engine must be upgraded, not just the CLI
+        withPing("1.51", outOfRange("client version 1.52 is too new. Maximum supported API version is 1.51")),
+        // a future Engine that dropped 1.52
+        withPing(
+          "1.60",
+          outOfRange("client version 1.52 is too old. Minimum supported API version is 1.53"),
+          "1.53"
+        )
+      ]
+      const [old, future] = yield* Effect.forEach(engines, (engine) => {
+        const stub = makeStubEngine(engine)
+        return DockerSystem.DockerSystem.use((system) => system.info).pipe(
+          stub.provide,
+          Effect.flip,
+          Effect.tap(() =>
+            Effect.sync(() => assert.isFalse(stub.requests.some((request) => /^\/v\d/.test(request.url.pathname))))
+          )
+        )
+      })
+      for (const error of [old, future]) {
+        assert.strictEqual(error.reason._tag, "UnsupportedApiVersion")
+        assert.include(error.message, "1.52")
+      }
+      // the CLI may be current while the daemon isn't
+      assert.match(old.message, /upgrade the Docker Engine/i)
     }))
 
   it.effect("reports a retryable connection failure without exposing request secrets", () =>
     Effect.gen(function*() {
+      // the version check succeeds; the request carrying secrets is the one that can't connect
       const stub = makeStubEngine(
-        () => ({ fail: true, cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) }),
+        withPing(
+          "1.52",
+          () => ({ fail: true, cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) })
+        ),
         {
-          apiVersion: "1.44",
           config: {
             endpoint: {
               _tag: "Tcp",
@@ -83,7 +97,7 @@ describe("DockerEngine", () => {
 describe("DockerError", () => {
   const classify = (status: number, body: string) =>
     DockerSystem.DockerSystem.use((system) => system.info).pipe(
-      makeStubEngine(withPing("1.44", () => ({ status, body }))).provide,
+      makeStubEngine(withPing("1.52", () => ({ status, body }))).provide,
       Effect.flip
     )
 

@@ -72,7 +72,7 @@ describe("DockerConfig", () => {
       const config = yield* Effect.gen(function*() {
         return yield* DockerConfig.DockerConfig
       }).pipe(
-        Effect.provide(DockerConfig.layer({ apiVersion: "1.44" })),
+        Effect.provide(DockerConfig.layer({ httpHeaders: { "X-Explicit": "1" } })),
         Effect.provideService(
           ConfigProvider.ConfigProvider,
           ConfigProvider.fromEnv({
@@ -81,7 +81,17 @@ describe("DockerConfig", () => {
         )
       )
       assert.deepStrictEqual(config.endpoint, DockerConfig.defaultEndpoint)
-      assert.strictEqual(config.apiVersion, "1.44")
+      assert.deepStrictEqual(config.httpHeaders, { "X-Explicit": "1" })
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("accepts DOCKER_API_VERSION only as the one API version the client speaks, 1.52", () =>
+    Effect.gen(function*() {
+      const { dir } = yield* configDir
+      yield* discover({ DOCKER_CONFIG: dir, DOCKER_API_VERSION: "1.52" })
+      for (const version of ["1.44", "1.56"]) {
+        const error = yield* discover({ DOCKER_CONFIG: dir, DOCKER_API_VERSION: version }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "InvalidConfig", version)
+      }
     }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("on Windows, finds the config in USERPROFILE and falls back to the default pipe", () =>

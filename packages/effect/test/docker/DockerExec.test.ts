@@ -8,7 +8,7 @@ const bytes = (text: string) => new TextEncoder().encode(text)
 /** An Engine with one exec `e` that has exited with `exitCode`, starting over `upgrade`. */
 const execEngine = (upgrade: Connection, exitCode = 0) =>
   makeStubEngine(
-    withPing("1.44", (request) =>
+    withPing("1.52", (request) =>
       request.url.pathname.endsWith("/exec")
         ? json({ Id: "e" }, 201)
         : request.url.pathname.endsWith("/start")

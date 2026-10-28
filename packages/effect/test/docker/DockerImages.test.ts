@@ -7,7 +7,7 @@ import { makeStubEngine, ndjson, recordSpans, withPing } from "./utils/stub.ts"
 describe("DockerImages", () => {
   it.effect("emits pull progress before failing on an in-band error", () =>
     Effect.gen(function*() {
-      const stub = makeStubEngine(withPing("1.44", () =>
+      const stub = makeStubEngine(withPing("1.52", () =>
         ndjson(
           { status: "Downloading", progressDetail: { current: 1, total: 2 } },
           { errorDetail: { message: "manifest unknown" }, error: "manifest unknown" }
@@ -27,7 +27,7 @@ describe("DockerImages", () => {
     Effect.gen(function*() {
       const secret = "registry-password"
       const { attributes, tracer } = recordSpans()
-      const stub = makeStubEngine(withPing("1.44", () => ({ fail: true })))
+      const stub = makeStubEngine(withPing("1.52", () => ({ fail: true })))
       const error = yield* DockerImages.DockerImages.use((images) =>
         Stream.runDrain(
           images.pull("ghcr.io/org/app:1", { auth: { username: "user", password: Redacted.make(secret) } })
@@ -42,7 +42,7 @@ describe("DockerImages", () => {
   it.effect("rejects a digest as a push reference or tag target, before sending anything", () =>
     Effect.gen(function*() {
       const digest = `sha256:${"ab".repeat(32)}`
-      const stub = makeStubEngine(withPing("1.44"))
+      const stub = makeStubEngine(withPing("1.52"))
       const errors = yield* DockerImages.DockerImages.use((images) =>
         Effect.all([
           // the Engine would push every tag of the repository, or tag `latest`

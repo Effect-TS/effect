@@ -241,7 +241,7 @@ const fieldDifferences = (): Record<string, ReadonlyArray<string>> => {
 
 describe("DockerApi", () => {
   it("declares the pinned API document's operations, except where the Engine differs from it", () => {
-    assert.strictEqual(manifest.apiVersion, "1.56")
+    assert.strictEqual(manifest.apiVersion, "1.52")
     assert.deepStrictEqual(differences(), {
       // HttpApi can't declare a WebSocket endpoint; `attach` upgrades to the same streams
       ContainerAttachWebsocket: ["not declared"],
@@ -258,8 +258,6 @@ describe("DockerApi", () => {
       ImageSearch: ["header x-registry-auth not in the document"],
       GetPluginPrivileges: ["header x-registry-auth not in the document"],
       PluginPush: ["header x-registry-auth not in the document"],
-      // Engines before API 1.48 read only `keep-storage`, which the document dropped
-      BuildPrune: ["query keep-storage not in the document"],
       // the Engine answers 400 without a container, verified live
       ImageCommit: ["query container required"],
       // without a repository, the Engine does nothing and answers 200, verified live
@@ -289,14 +287,6 @@ describe("DockerApi", () => {
       // the Engine answers `{ "ID" }` (moby's `SecretCreateResponse` and `ConfigCreateResponse`), verified live
       SecretCreate: ["response Id not declared", "response ID not in the document"],
       ConfigCreate: ["response Id not declared", "response ID not in the document"],
-      // Engines before API 1.52 answer these too, down to 1.44, which the client decodes
-      SystemDataUsage: [
-        "response BuildCache not in the document",
-        "response Containers not in the document",
-        "response Images not in the document",
-        "response LayersSize not in the document",
-        "response Volumes not in the document"
-      ],
       // the Engine's AuthConfig has `identitytoken`, which the document leaves out
       SystemAuth: ["request identitytoken not in the document"]
     })

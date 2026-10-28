@@ -1,7 +1,7 @@
 import { NodeDocker, NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Queue, Redacted } from "effect"
-import { DockerConfig, DockerEngine, DockerExec } from "effect/docker"
+import { DockerConfig, DockerEngine, DockerExec, DockerSystem } from "effect/docker"
 import { HttpClientRequest } from "effect/http"
 import * as Fs from "node:fs"
 import * as Http from "node:http"
@@ -20,9 +20,25 @@ interface Connection {
   readonly clientCertificate: boolean
 }
 
+/** Answers the unversioned `/_ping` and `/version` like an Engine that serves API 1.52, or returns `false`. */
+const answerVersion = (request: Http.IncomingMessage, response: Http.ServerResponse): boolean => {
+  const path = (request.url ?? "").split("?")[0]
+  if (path === "/_ping") {
+    response.writeHead(200, { "Api-Version": "1.52", "Ostype": "linux" }).end("OK")
+    return true
+  }
+  if (path === "/version") {
+    response.writeHead(200, { "Content-Type": "application/json" })
+      .end(JSON.stringify({ Version: "29.0.0", ApiVersion: "1.52", MinAPIVersion: "1.44" }))
+    return true
+  }
+  return false
+}
+
 /**
- * An Engine stand-in: answers `/_ping`, switches upgrade requests to `tcp`
- * and writes `hello` on the upgraded connection, and reports each connection.
+ * An Engine stand-in: answers the version check, any other request with
+ * `{}`, switches upgrade requests to `tcp` and writes `hello` on the upgraded
+ * connection, and reports each connection.
  */
 const makeEngine = <S extends Http.Server>(
   makeServer: () => S,
@@ -33,8 +49,10 @@ const makeEngine = <S extends Http.Server>(
     Effect.acquireRelease(
       Effect.callback<{ readonly server: S; readonly connections: Queue.Dequeue<Connection> }>((resume) => {
         const server = makeServer()
-        server.on("request", (_, response: Http.ServerResponse) => {
-          response.writeHead(200, { "Api-Version": "1.50", "Ostype": "linux" }).end("OK")
+        server.on("request", (request: Http.IncomingMessage, response: Http.ServerResponse) => {
+          if (!answerVersion(request, response)) {
+            response.writeHead(200, { "Content-Type": "application/json" }).end("{}")
+          }
         })
         server.on("upgrade", (_, socket: Net.Socket) => {
           socket.end("HTTP/1.1 101 UPGRADED\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\nhello")
@@ -67,7 +85,8 @@ const makeFailingUpgradeEngine = Effect.flatMap(Queue.unbounded<Net.Socket>(), (
   const sockets: Array<Net.Socket> = []
   return Effect.acquireRelease(
     Effect.callback<Http.Server>((resume) => {
-      const server = Http.createServer((_, response) => {
+      const server = Http.createServer((request, response) => {
+        if (answerVersion(request, response)) return
         response.writeHead(200, { "Content-Type": "application/json" })
           .end(JSON.stringify({ ID: "e", Running: true, OpenStdin: false, ProcessConfig: { tty: false } }))
       })
@@ -86,8 +105,7 @@ const makeFailingUpgradeEngine = Effect.flatMap(Queue.unbounded<Net.Socket>(), (
   ).pipe(
     Effect.flatMap((server) =>
       Layer.build(NodeDocker.layer.pipe(Layer.provide(DockerConfig.layer({
-        endpoint: { _tag: "Tcp", host: "127.0.0.1", port: (server.address() as Net.AddressInfo).port },
-        apiVersion: "1.50"
+        endpoint: { _tag: "Tcp", host: "127.0.0.1", port: (server.address() as Net.AddressInfo).port }
       }))))
     ),
     Effect.map((services) => ({ upgraded, services }))
@@ -106,13 +124,13 @@ const closed = (socket: Net.Socket) =>
   }).pipe(Effect.timeout("2 seconds"))
 
 /**
- * Negotiates through `NodeDocker.layer` (a request), then sends an upgrade
- * request and reads the upgraded connection until it closes.
+ * Sends a request through `NodeDocker.layer`, after its version check, then
+ * an upgrade request, and reads the upgraded connection until it closes.
  */
 const connect = (endpoint: typeof DockerConfig.Endpoint.Type) =>
   Effect.gen(function*() {
     const engine = yield* DockerEngine.DockerEngine
-    assert.strictEqual(yield* engine.apiVersion, "1.50")
+    yield* DockerSystem.DockerSystem.use((system) => system.info)
     const response = yield* engine.client.execute(
       HttpClientRequest.post("/containers/x/attach").pipe(HttpClientRequest.upgrade("tcp"))
     )
@@ -159,7 +177,8 @@ describe("NodeDocker", () => {
         () => ({ servername: false, clientCertificate: false })
       )
       assert.strictEqual(yield* connect({ _tag: "Unix", path: socketPath }), "hello")
-      assert.strictEqual((yield* Queue.takeAll(connections)).length, 2)
+      // the version check and the request, and the upgrade
+      assert.isAtLeast((yield* Queue.takeAll(connections)).length, 2)
     }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("fails with a permanent ConnectionFailed when the Engine's certificate can't be verified", () =>
