@@ -169,14 +169,21 @@ describe("Command", () => {
   describe("beforePrompts", () => {
     class Setup extends Context.Service<Setup, string>()("Setup") {}
     const setup = Effect.void as Effect.Effect<void, "setup-err", Setup>
+    type Hooked<Name extends string> = Command.Command<Name, {}, {}, "setup-err", Setup, "setup-err", Setup>
+
+    it("rejects annotations that drop hook types", () => {
+      const command = Command.make("demo").pipe(Command.beforePrompts(setup))
+
+      expect(command).type.not.toBeAssignableTo<Command.Command<"demo", {}, {}, "setup-err", Setup>>()
+    })
 
     it("keeps hook errors and requirements when the handler is replaced", () => {
-      const command = Command.make("demo").pipe(
+      const annotated: Hooked<"demo"> = Command.make("demo").pipe(
         Command.beforePrompts(setup),
-        Command.withHandler(() => Effect.void)
+        Command.withDescription("Demo")
       )
 
-      expect(command).type.toBe<Command.Command<"demo", {}, {}, "setup-err", Setup>>()
+      expect(Command.withHandler(annotated, () => Effect.void)).type.toBe<Hooked<"demo">>()
     })
 
     it("keeps hook requirements that a handler provider satisfies", () => {
@@ -185,7 +192,28 @@ describe("Command", () => {
         Command.provideSync(Setup, "value")
       )
 
-      expect(command).type.toBe<Command.Command<"demo", {}, {}, "setup-err", Setup>>()
+      expect(command).type.toBe<Hooked<"demo">>()
+    })
+
+    it("keeps subcommand hook requirements that a parent provider satisfies", () => {
+      const child = Command.make("child", {}, () => Effect.void).pipe(Command.beforePrompts(setup))
+      const root = Command.make("root").pipe(
+        Command.withSubcommands([child]),
+        Command.provideSync(Setup, "value")
+      )
+
+      expect(root).type.toBe<Hooked<"root">>()
+    })
+
+    it("keeps hook requirements on global settings", () => {
+      type RegionId = GlobalFlag.Setting.Identifier<"region">
+      const Region = GlobalFlag.Setting("region")({ flag: Flag.String("region") })
+      const command = Command.make("demo", {}, () => Effect.void).pipe(
+        Command.beforePrompts(Effect.void as Effect.Effect<void, never, RegionId>),
+        Command.withGlobalFlags([Region])
+      )
+
+      expect(command).type.toBe<Command.Command<"demo", {}, {}, never, RegionId, never, RegionId>>()
     })
   })
 

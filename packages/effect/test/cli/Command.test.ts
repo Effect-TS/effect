@@ -1349,6 +1349,40 @@ describe("Command", () => {
         Effect.provide(TestLayer)
       ))
 
+    it.effect("does not give hooks global setting values from the command line", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const Region = GlobalFlag.Setting("region")({ flag: ask("region") })
+        const demo = Command.make("demo", {}, () =>
+          Effect.gen(function*() {
+            yield* record(`handler ${yield* Region}`)
+          })).pipe(
+            Command.beforePrompts(Effect.gen(function*() {
+              yield* record(`setup ${yield* Region}`)
+            })),
+            Command.withGlobalFlags([Region])
+          )
+        // Hooks keep their requirement on the setting, so the caller provides it
+        const run = (args: ReadonlyArray<string>) =>
+          Command.runWith(demo, { version: "1.0.0" })(args).pipe(Effect.provideService(Region, "caller"))
+
+        yield* run(["--region", "us"])
+        yield* MockTerminal.inputText("eu")
+        yield* MockTerminal.inputKey("enter")
+        yield* run([])
+
+        assert.deepStrictEqual(events, [
+          "setup caller",
+          "handler us",
+          "setup caller",
+          "prompt region",
+          "handler eu"
+        ])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
     it.effect("stops before later hooks, prompts, providers and the handler when a hook fails or is interrupted", () =>
       Effect.gen(function*() {
         const failure = new CliError.UserError({ cause: "setup failed" })
