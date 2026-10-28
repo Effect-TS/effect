@@ -789,14 +789,12 @@ describe("SchemaRepresentation built-in object revivers", () => {
 
   it("revives isConditional without absent branches", () => {
     const condition = Schema.String
-    const then = Schema.String.check(Schema.isMinLength(2))
+    const onTrue = Schema.String.check(Schema.isMinLength(2))
     assertFilterReviver({
-      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-      schema: Schema.Any.check(Schema.isConditional(condition, { then })),
+      schema: Schema.Any.check(Schema.isConditional(condition, { onTrue })),
       id: "effect/schema/isConditional",
-      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-      payload: { then: true, else: false },
-      schemas: [condition.ast, then.ast],
+      payload: ["onTrue"],
+      schemas: [condition.ast, onTrue.ast],
       reviver: SchemaRepresentation.isConditionalReviver,
       dependencies: [SchemaRepresentation.isMinLengthReviver],
       valid: "ab",

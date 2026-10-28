@@ -3498,7 +3498,7 @@ describe("fromJsonSchemaDocument", () => {
       await decoding.fail({ kind: "box", size: "1" }, `Expected number\n  at ["size"]`)
       assertCode(schema, {
         codes: makeCode(
-          `Schema.StructWithRest(Schema.Struct({ "kind": Schema.optionalKey(Schema.String), "size": Schema.optionalKey(Schema.Finite) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).check(Schema.isConditional(${condition}, { then: ${then} }).annotate({ "expected": "a value satisfying the conditional schema" }))`,
+          `Schema.StructWithRest(Schema.Struct({ "kind": Schema.optionalKey(Schema.String), "size": Schema.optionalKey(Schema.Finite) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).check(Schema.isConditional(${condition}, { onTrue: ${then} }).annotate({ "expected": "a value satisfying the conditional schema" }))`,
           `{ readonly "kind"?: string, readonly "size"?: number } & { readonly [x: string]: Schema.Json }`
         )
       })
