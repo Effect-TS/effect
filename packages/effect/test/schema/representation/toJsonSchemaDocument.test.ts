@@ -698,6 +698,18 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.isFalse(Schema.is(restored)(true))
     })
 
+    it("keeps values valid when an isConditional condition exports approximately", () => {
+      const pattern = Schema.String.check(Schema.isPattern(/^a$/i))
+      for (const condition of [pattern, pattern.annotate({ identifier: "A" })]) {
+        const schema = Schema.Json.check(Schema.isConditional(condition, { onTrue: Schema.Never }))
+        assert.isFalse(Schema.is(schema)("a"))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(
+          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast))
+        )
+        assert.isTrue(Schema.is(restored)("b"))
+      }
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
