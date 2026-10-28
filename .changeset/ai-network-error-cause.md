@@ -8,4 +8,4 @@
 "@effect/ai-typesafe": patch
 ---
 
-Add an optional `cause` to the AI `NetworkError`. It holds the `HttpClientError` the request failed with, so the reason a request failed is no longer lost. `NetworkError.fromRequestError` accepts it as an optional second argument, and all AI providers now pass it.
+Add an optional `cause` to the AI `NetworkError`. It holds the `HttpClientError` the request failed with, so the reason a request failed is no longer lost. The new `NetworkError.fromHttpClientError` sets it, and all AI providers now use it. `NetworkError.fromRequestError` is unchanged.

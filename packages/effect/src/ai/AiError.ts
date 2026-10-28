@@ -71,8 +71,9 @@ const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
  * This error is raised when issues arise before receiving an HTTP response,
  * such as network connectivity problems, request encoding issues, or invalid
  * URLs.
- * `cause` holds the `HttpClientError` the request failed with, when one is
- * available. It is kept as it was raised.
+ * `cause` holds the `HttpClientError` the request failed with when the error
+ * is created with `NetworkError.fromHttpClientError`. It is kept as it was
+ * raised.
  *
  * **Example** (Creating a network error)
  *
@@ -124,41 +125,69 @@ export class NetworkError extends Schema.Error<NetworkError>(
   /**
    * Creates a NetworkError from a platform HttpClientError.RequestError.
    *
-   * **Details**
-   *
-   * Pass the `HttpClientError` that carries the request error as `cause` to
-   * keep it on the `NetworkError`.
-   *
    * **Example** (Creating a network error from a request error)
    *
    * ```ts import.meta.vitest
    * import { AiError } from "effect/ai"
    * import { HttpClientError, HttpClientRequest } from "effect/http"
    *
-   * const reason = new HttpClientError.TransportError({
+   * const platformError = new HttpClientError.TransportError({
    *   request: HttpClientRequest.get("https://example.com/models"),
    *   description: "Connection refused"
    * })
-   * const platformError = new HttpClientError.HttpClientError({ reason })
    *
-   * const aiError = AiError.NetworkError.fromRequestError(reason, platformError)
+   * const aiError = AiError.NetworkError.fromRequestError(platformError)
    * aiError.reason // => "TransportError"
-   * aiError.cause === platformError // => true
    * ```
    *
    * @stability unstable
    * @since 4.0.0
    */
-  static fromRequestError(
-    error: HttpClientError.RequestError,
-    cause?: HttpClientError.HttpClientError
-  ): NetworkError {
+  static fromRequestError(error: HttpClientError.RequestError): NetworkError {
     return new NetworkError({
       description: error.description,
       reason: error._tag,
       method: error.request.method,
-      url: error.request.url,
-      cause
+      url: error.request.url
+    })
+  }
+
+  /**
+   * Creates a NetworkError from a platform HttpClientError whose reason is a
+   * request error, keeping the HttpClientError as `cause`.
+   *
+   * **Example** (Creating a network error from an HTTP client error)
+   *
+   * ```ts import.meta.vitest
+   * import { AiError } from "effect/ai"
+   * import { HttpClientError, HttpClientRequest } from "effect/http"
+   *
+   * const platformError = new HttpClientError.HttpClientError({
+   *   reason: new HttpClientError.TransportError({
+   *     request: HttpClientRequest.get("https://example.com/models"),
+   *     description: "Connection refused"
+   *   })
+   * })
+   *
+   * const aiError = AiError.NetworkError.fromHttpClientError(
+   *   platformError as HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+   * )
+   * aiError.reason // => "TransportError"
+   * aiError.cause === platformError // => true
+   * ```
+   *
+   * @stability unstable
+   * @since 4.1.0
+   */
+  static fromHttpClientError(
+    error: HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+  ): NetworkError {
+    return new NetworkError({
+      description: error.reason.description,
+      reason: error.reason._tag,
+      method: error.reason.request.method,
+      url: error.reason.request.url,
+      cause: error
     })
   }
 

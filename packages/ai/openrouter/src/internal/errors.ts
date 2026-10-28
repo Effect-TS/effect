@@ -111,7 +111,9 @@ export const mapHttpClientError = dual<
       return Effect.fail(AiError.make({
         module: "OpenRouterClient",
         method,
-        reason: AiError.NetworkError.fromRequestError(reason, error)
+        reason: AiError.NetworkError.fromHttpClientError(
+          error as HttpClientError.HttpClientError & { readonly reason: typeof reason }
+        )
       }))
     }
     case "StatusCodeError": {
