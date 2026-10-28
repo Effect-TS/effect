@@ -218,7 +218,7 @@ interface HttpOptions {
   readonly sessionMode?: "stateful" | "stateless" | undefined
 }
 
-// A session without a session id cannot keep log levels, subscriptions or list-change state.
+// A per-POST session keeps no log level, subscriptions, or list-change state.
 const sessionlessRegistration = (
   protocol: PublicMcpProtocol.AnyProtocolAdapter,
   initializePayload: typeof PublicMcpSchema.Initialize.payloadSchema.Type,
@@ -237,9 +237,9 @@ const sessionlessRegistration = (
  */
 export const make = Effect.fnUntraced(function*(
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>,
-  httpOptions: HttpOptions = {}
+  httpOptions?: HttpOptions
 ) {
-  const statelessHttp = httpOptions.sessionMode === "stateless"
+  const statelessHttp = httpOptions?.sessionMode === "stateless"
   const statefulProtocol = protocols.find((protocol) => protocol.runtime._tag === "Stateful")
   const stateful = statefulProtocol === undefined ? undefined : McpStatefulRuntime.make()
   const protocolVersions = protocols.map((protocol) => protocol.protocolVersion)
@@ -629,20 +629,23 @@ export const make = Effect.fnUntraced(function*(
                   logLevel: options.defaultLogLevel,
                   listChangeRevision: options.getListChangeRevision?.() ?? 0
                 }
-              if (httpRequest !== undefined) {
-                const sessionId = sessionless ? undefined : SecureRandom.uuidV4Unsafe()
-                if (sessionId === undefined) stateful.registerConnection(clientId, registration)
-                else stateful.registerHttp(sessionId, registration)
+              if (httpRequest === undefined) {
+                stateful.registerConnection(clientId, registration)
+              } else {
+                const responseHeaders: Record<string, string> = {
+                  [MCP_PROTOCOL_VERSION_HEADER]: protocol.protocolVersion
+                }
+                if (sessionless) {
+                  stateful.registerConnection(clientId, registration)
+                } else {
+                  const sessionId = SecureRandom.uuidV4Unsafe()
+                  stateful.registerHttp(sessionId, registration)
+                  responseHeaders[MCP_SESSION_ID_HEADER] = sessionId
+                }
                 appendPreResponseHandlerUnsafe(
                   fiber.context,
-                  (_request, response) =>
-                    Effect.succeed(HttpServerResponse.setHeaders(response, {
-                      ...(sessionId === undefined ? {} : { [MCP_SESSION_ID_HEADER]: sessionId }),
-                      [MCP_PROTOCOL_VERSION_HEADER]: protocol.protocolVersion
-                    }))
+                  (_request, response) => Effect.succeed(HttpServerResponse.setHeaders(response, responseHeaders))
                 )
-              } else {
-                stateful.registerConnection(clientId, registration)
               }
               return Effect.succeed({
                 capabilities,
@@ -678,5 +681,5 @@ export const make = Effect.fnUntraced(function*(
  */
 export const layer = (
   protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>,
-  httpOptions: HttpOptions = {}
+  httpOptions?: HttpOptions
 ): Layer.Layer<ServerRuntime, Cause.IllegalArgumentError> => Layer.effect(ServerRuntime)(make(protocols, httpOptions))
