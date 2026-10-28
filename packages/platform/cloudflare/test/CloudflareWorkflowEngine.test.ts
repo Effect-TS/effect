@@ -4,7 +4,7 @@ import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Option, Schema } from "effect"
+import { Deferred, Effect, Exit, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
 import {
   Activity,
@@ -52,7 +52,10 @@ class FakeSql {
       return []
     }
     if (query.includes("UPDATE workflow_execution")) {
-      if (this.execution !== undefined) this.execution.result = bindings[0]
+      if (this.execution !== undefined) {
+        this.execution.result = bindings[0]
+        if (query.includes("resume_pending")) this.execution.resume_pending = bindings[1]
+      }
       return []
     }
     if (query.includes("FROM workflow_execution")) {
@@ -129,6 +132,7 @@ class FakeAlarm {
 class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
+  readonly hungResumes = new Set<string>()
   now = 0
 
   store(name: string) {
@@ -152,7 +156,10 @@ class FakeWorkflowNamespace {
         waitUntil: (promise) => {
           void promise
         },
-        getStub: (stubName) => this.getByName(stubName)
+        getStub: (stubName) =>
+          this.hungResumes.has(stubName)
+            ? { ...this.getByName(stubName), resume: () => new Promise<void>(() => {}) }
+            : this.getByName(stubName)
       })
       this.runtimes.set(name, runtime)
     }
@@ -180,6 +187,69 @@ const pollUntil = Effect.fnUntraced(function*<
 })
 
 describe("CloudflareWorkflowEngine", () => {
+  it.effect("retains a parent completion wake across a child restart", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Gate = DurableDeferred.make("RetryChild/Gate")
+    const Child = Workflow.make("RetryChild", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
+    const Parent = Workflow.make("RetryParent", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
+    const layer = Layer.merge(
+      Child.toLayer(() => DurableDeferred.await(Gate)),
+      Parent.toLayer(({ id }) => Child.execute({ id }))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const parentId = yield* Parent.executionId({ id: "one" })
+      const childId = yield* Child.executionId({ id: "one" })
+      const childName = encodeName(Child._tag, childId)
+      yield* Parent.execute({ id: "one" }, { discard: true })
+      yield* pollUntil(Parent, parentId, "Suspended")
+      namespace.hungResumes.add(encodeName(Parent._tag, parentId))
+      yield* DurableDeferred.succeed(Gate, {
+        token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Child, executionId: childId }),
+        value: undefined
+      })
+      yield* pollUntil(Child, childId, "Complete")
+      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 1)
+      assert.strictEqual(namespace.store(childName).alarm.current, 60_000)
+
+      namespace.hungResumes.clear()
+      namespace.crash()
+      namespace.now = 60_000
+      namespace.store(childName).alarm.current = null
+      yield* Effect.promise(() => namespace.getByName(childName).runAlarm())
+      const result = yield* pollUntil(Parent, parentId, "Complete")
+      assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
+      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 0)
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("durably admits an in-flight resume before acknowledging it", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const Waiting = Workflow.make("AdmittedResume", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Waiting.toLayer(() =>
+        Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Deferred.await(release))
+        )
+      ).pipe(Layer.provideMerge(namespace.layer))
+      yield* Effect.gen(function*() {
+        const id = yield* Waiting.executionId({ id: "one" })
+        yield* Waiting.execute({ id: "one" }, { discard: true })
+        yield* Deferred.await(started)
+        const name = encodeName(Waiting._tag, id)
+        yield* Effect.promise(() => namespace.getByName(name).resume())
+        assert.strictEqual(namespace.store(name).sql.execution?.resume_pending, 1)
+        assert.strictEqual(namespace.store(name).alarm.current, 60_000)
+        yield* Deferred.succeed(release, undefined)
+        yield* pollUntil(Waiting, id, "Complete")
+      }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)), Effect.provide(layer))
+    }))
+
   it.effect("routes generated workflow proxy handlers through the encoded Durable Object name", () => {
     const namespace = new FakeWorkflowNamespace()
     const Proxied = Workflow.make("Proxied", {
