@@ -434,17 +434,15 @@ class YamlParser {
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) return output
       this.index++
-      const item = line.text.slice(1).trimStart()
+      const [, separation, item] = /^-(\s*)(.*)$/.exec(line.text)!
       if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
       const separator = mappingSeparator(item)
       if (separator === -1) {
         output.push(this.parseNodeValue(item, indent))
       } else {
-        // The mapping is indented to its first key, which may sit more than one space after the dash.
-        const mappingIndent = indent + line.text.length - item.length
-        if (line.text.slice(1, mappingIndent - indent).includes("\t")) {
-          this.fail(line, "Tabs cannot be used for YAML indentation")
-        }
+        // YAML 1.2.2 §8.2.1: a compact mapping is indented to its first key.
+        if (separation.includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
+        const mappingIndent = indent + 1 + separation.length
         const mapping: YamlRecord = {}
         this.parseMappingEntry(mapping, item, separator, mappingIndent, line)
         output.push(this.parseMapping(mappingIndent, mapping))
