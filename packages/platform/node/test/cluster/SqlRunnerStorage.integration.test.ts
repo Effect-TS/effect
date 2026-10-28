@@ -537,6 +537,66 @@ describe("SqlRunnerStorage", () => {
       )
     }, 60_000)
 
+    it.effect("reports a shard lost when a failed acquisition replaces the lock session holding it", () => {
+      const partitioned = makePartitionState()
+      return Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" }).pipe(
+          Effect.provide(wrapReservedConnections(partitioned, true))
+        )
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const held = ShardId.make("default", 1)
+        const other = ShardId.make("default", 2)
+
+        expect(yield* storageA.acquire(runnerAddress1, [held])).toEqual([held])
+        // the connection is lost while acquiring another shard, taking the
+        // session's lock on the held shard with it
+        partitioned.failNextQueries = 1
+        yield* storageA.acquire(runnerAddress1, [other]).pipe(Effect.exit)
+
+        yield* acquireHandoff(storageB, held, lockOperationInterval * 10)
+        expect(yield* refreshLikeSharding(storageA, held)).toEqual([])
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer(partitionConfig)),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    for (const acquireFirst of [true, false]) {
+      it.effect(
+        `a resumed frozen runner reports a shard lost after it was handed off (${
+          acquireFirst ? "acquire" : "refresh"
+        } first)`,
+        () => {
+          const shardLockExpiration = lockOperationInterval * 3
+          return Effect.gen(function*() {
+            const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const held = ShardId.make("default", 1)
+            const other = ShardId.make("default", 2)
+
+            expect(yield* storageA.acquire(runnerAddress1, [held])).toEqual([held])
+            // storageA freezes until the shard has passed through storageB
+            yield* acquireHandoff(storageB, held, shardLockExpiration * 3)
+
+            if (acquireFirst) {
+              yield* storageA.acquire(runnerAddress1, [other]).pipe(Effect.exit)
+            }
+            expect(yield* refreshLikeSharding(storageA, held)).toEqual([])
+          }).pipe(
+            // Release the advisory-lock connections before the PostgreSQL layer.
+            Effect.scoped,
+            Effect.provide(PgContainer.layerClientDatabase),
+            Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+            TestClock.withLive
+          )
+        },
+        60_000
+      )
+    }
+
     it.effect(
       "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
       () =>
@@ -791,6 +851,32 @@ const partitionDiagnostics = (partitioned: PartitionState) =>
     `usable=${partitioned.usableConnections}`
   ].join(", ")
 
+// Another runner takes the shard once it becomes free and hands it off again,
+// so it is free when the previous owner next checks it.
+const acquireHandoff = Effect.fnUntraced(function*(
+  storage: RunnerStorage.RunnerStorage["Service"],
+  shard: ShardId.ShardId,
+  timeout: number
+) {
+  yield* storage.acquire(runnerAddress2, [shard]).pipe(
+    Effect.repeat({
+      until: (acquired) => acquired.length > 0,
+      schedule: Schedule.spaced(100)
+    }),
+    Effect.timeoutOrElse({
+      duration: timeout,
+      orElse: () => Effect.die("the previous owner still holds the shard lock")
+    })
+  )
+  yield* storage.release(runnerAddress2, shard)
+})
+
+// Sharding retries a failed refresh before acting on its result.
+const refreshLikeSharding = (storage: RunnerStorage.RunnerStorage["Service"], shard: ShardId.ShardId) =>
+  storage.refresh(runnerAddress1, [shard]).pipe(
+    Effect.retry({ times: 5, schedule: Schedule.spaced(50) })
+  )
+
 const waitUntil = Effect.fnUntraced(
   function*(predicate: () => boolean) {
     while (!predicate()) {
@@ -804,6 +890,10 @@ const waitUntil = Effect.fnUntraced(
 )
 
 const blackholeReservedConnection = (partitioned: PartitionState, resumePending: boolean) =>
+  wrapReservedConnections(partitioned, resumePending).pipe(Layer.provide(PgContainer.layerClientDatabase))
+
+// Wraps the reserved connections of the SqlClient in context.
+const wrapReservedConnections = (partitioned: PartitionState, resumePending: boolean) =>
   Layer.effect(
     SqlClient.SqlClient,
     Effect.gen(function*() {
@@ -881,7 +971,7 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       })
       return client
     })
-  ).pipe(Layer.provide(PgContainer.layerClientDatabase))
+  )
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
