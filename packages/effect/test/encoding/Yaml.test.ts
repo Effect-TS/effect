@@ -233,7 +233,7 @@ development:
   })
 
   describe("sequence entry mappings indented past the dash", () => {
-    // Expected values were checked with yaml 2.9.1.
+    // Expected values and the misaligned key rejections were checked with yaml 2.9.1 and js-yaml 5.5.
     it.each([
       {
         name: "root sequence",
@@ -280,8 +280,13 @@ development:
       assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
     })
 
+    // yaml and js-yaml parse this as [["a", "b"]]; this parser does not support compact nested
+    // sequences at any dash spacing, so the extra spaces must keep hitting the existing error.
     it("rejects a compact nested sequence after the dash", () => {
-      assert.throws(() => Yaml.parse("-   - a\n    - b\n"), SyntaxError)
+      assert.throws(
+        () => Yaml.parse("-   - a\n    - b\n"),
+        /Compact nested block sequences are not supported/
+      )
     })
   })
 
