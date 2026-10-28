@@ -434,7 +434,7 @@ class YamlParser {
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) return output
       this.index++
-      const [, separation, item] = /^-(\s*)(.*)$/.exec(line.text)!
+      const [, separation, item] = /^-(\s*)(.*)$/s.exec(line.text)!
       if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
       const separator = mappingSeparator(item)
       if (separator === -1) {
