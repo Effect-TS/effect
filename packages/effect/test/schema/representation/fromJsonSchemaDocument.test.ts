@@ -3317,6 +3317,39 @@ describe("fromJsonSchemaDocument", () => {
       })
     })
 
+    it("imports open patterns with unknown unmatched values (#10048)", async () => {
+      const document = JsonSchema.fromSchemaDraft07({
+        type: "object",
+        properties: { name: { type: "string" } },
+        patternProperties: { "^x-": { type: "string" } }
+      })
+      const imported = toSchemaFromJsonSchemaDocument(document)
+      assertCode(imported, {
+        codes: makeCode(
+          `Schema.StructWithRest(Schema.Struct({ "name": Schema.optionalKey(Schema.String) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).check(Schema.isPatternProperties(new globalThis.RegExp("^x-", "u"), Schema.String).annotate({ "expected": "an object whose properties matching the RegExp ^x- satisfy the schema" }))`,
+          `{ readonly "name"?: string } & { readonly [x: string]: Schema.Json }`
+        )
+      })
+      const asserts = new TestSchema.Asserts(imported as unknown as Schema.ConstraintDecoder<unknown>)
+      const decoding = asserts.decoding()
+      const strictDecoding = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+      const valid = { name: "build", "x-note": "ok", extra: 42 }
+      await decoding.succeed(valid)
+      await strictDecoding.succeed(valid)
+      await decoding.fail({ "x-note": 42 }, `Expected string\n  at ["x-note"]`)
+    })
+
+    it("applies every overlapping open pattern to a matching key", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        patternProperties: { "^a": { type: "string" }, "a$": { minLength: 2 } }
+      }))
+      const is = Schema.is(schema)
+      assert.isTrue(is({ aa: "ok", b: 1 }))
+      assert.isFalse(is({ aa: 1 }))
+      assert.isFalse(is({ aa: "x" }))
+    })
+
     it("rejects open pattern scopes", () => {
       for (const additional of [{}, { additionalProperties: true }, { additionalProperties: {} }] as const) {
         const schema = {
