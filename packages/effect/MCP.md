@@ -135,6 +135,43 @@ function defines how the resource's data is generated at runtime—in this case,
 string containing the provided `id`. The `mimeType` specifies the format of the resource, while the
 `audience` property determines who can access it (either `"assistant"` and/or `"user"`).
 
+## Skills
+
+Skills publish [Agent Skills](https://agentskills.io/) under the MCP Skills extension
+([SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension)). `McpServer.skill` takes
+the URI of the skill's `SKILL.md`, its frontmatter, and its instructions and supporting files:
+
+```typescript
+import { McpServer } from "effect/ai"
+
+const RefundsSkill = McpServer.skill({
+  uri: "skill://billing/refunds/SKILL.md",
+  frontmatter: {
+    name: "refunds",
+    description: "Process refunds using the billing tools"
+  },
+  instructions: "Read references/policy.md before issuing a refund.\n",
+  files: {
+    "references/policy.md": "Refunds above CHF 500 require manager approval.\n"
+  }
+})
+```
+
+- Each file is served as a resource under the skill's URI, and `SKILL.md` is rendered from the
+  frontmatter and instructions. To serve a `SKILL.md` you already have, put it in `files` and leave
+  out `instructions`. Its YAML frontmatter is then listed as the skill's, and `frontmatter` may be
+  left out; when given, it must equal the file's.
+- Clients list skills with `skills/list`, look one up with `skills/get`, and browse directories with
+  `resources/directory/read`. Each entry lists every file with the SHA-256 digest and size of the
+  bytes served.
+- The server declares the `io.modelcontextprotocol/skills` extension once a skill is registered, on
+  every protocol revision. Under `v2026_07_28` the `skills` cache hint applies to these results.
+- Building the layer fails with `IllegalArgumentError` when the skill breaks the extension's rules:
+  a name other than the last URI segment, frontmatter that is not valid
+  `McpSchema.SkillFrontmatter` (the Agent Skills specification's fields, such as string-only
+  `metadata` values), a `SKILL.md` without frontmatter or with other frontmatter than given, a file
+  outside the skill, or more than 512 files or 16 MiB.
+
 ## Prompts
 
 Prompts define reusable templates that an MCP client can invoke with parameters. They serve as
@@ -376,8 +413,9 @@ const ServerLayer = McpServer.layerHttp({
 })
 ```
 
-- The entries are `discover`, `tools`, `resources`, `resourceTemplates` and `prompts`. Omitted
-  entries and `resources/read` keep the default. Earlier protocol revisions ignore the option.
+- The entries are `discover`, `tools`, `resources`, `resourceTemplates`, `prompts` and `skills`.
+  Omitted entries and `resources/read` keep the default. Earlier protocol revisions ignore the
+  option.
 - `ttl` accepts any `Duration.Input` and is sent as whole milliseconds, rounded down. It must be
   finite and nonnegative, and only `"private"` scope is supported. Otherwise building the layer
   fails with `IllegalArgumentError`.

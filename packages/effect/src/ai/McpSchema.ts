@@ -1383,6 +1383,64 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
 }) {}
 
 // =============================================================================
+// Skills
+// =============================================================================
+
+/**
+ * Schema for the YAML frontmatter of an Agent Skill's `SKILL.md`, as the
+ * Agent Skills specification defines it (https://agentskills.io/specification).
+ *
+ * **Details**
+ *
+ * Fields the specification does not define are kept unchanged. `McpServer`
+ * checks a skill's frontmatter against this schema before serving it.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const SkillFrontmatter = Schema.StructWithRest(
+  Schema.Struct({
+    /**
+     * 1 to 64 lowercase letters, digits and hyphens, with no leading, trailing
+     * or consecutive hyphen. It names the directory holding `SKILL.md`.
+     */
+    name: Schema.String.check(Schema.isMaxLength(64), Schema.isPattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
+    /**
+     * What the skill does and when to use it, in 1 to 1024 characters.
+     */
+    description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(1024)),
+    /**
+     * The skill's license, or the name of a bundled license file.
+     */
+    license: Schema.optionalKey(Schema.String),
+    /**
+     * Environment requirements, in 1 to 500 characters.
+     */
+    compatibility: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(500))),
+    /**
+     * Additional properties not defined by the specification.
+     */
+    metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+    /**
+     * Space-separated tools the skill asks to run without approval. Hosts must
+     * ignore it for a skill served over MCP unless the user approved the grant.
+     */
+    "allowed-tools": Schema.optionalKey(Schema.String)
+  }),
+  [UnknownObject]
+)
+
+/**
+ * The YAML frontmatter of an Agent Skill's `SKILL.md`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type SkillFrontmatter = typeof SkillFrontmatter.Type
+
+// =============================================================================
 // Prompts
 // =============================================================================
 

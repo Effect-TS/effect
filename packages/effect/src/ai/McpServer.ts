@@ -14,6 +14,7 @@
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
@@ -53,6 +54,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import * as McpSkills from "./internal/mcpSkills.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -1467,7 +1469,9 @@ export interface CacheHint {
  *
  * Each entry sets the freshness and `cacheScope` of one result kind:
  * `server/discover`, `tools/list`, `resources/list`,
- * `resources/templates/list` and `prompts/list`. Omitted entries, and
+ * `resources/templates/list` and `prompts/list`. `skills` covers the Skills
+ * extension's `skills/list`, `skills/get` and `resources/directory/read`.
+ * Omitted entries, and
  * `resources/read` results, keep `{ ttlMs: 0, cacheScope: "private" }`.
  * Earlier protocol revisions have no cache hints and ignore this option.
  *
@@ -1491,6 +1495,7 @@ export interface CacheHints {
   readonly resources?: CacheHint | undefined
   readonly resourceTemplates?: CacheHint | undefined
   readonly prompts?: CacheHint | undefined
+  readonly skills?: CacheHint | undefined
 }
 
 // Converts each hint to the wire's nonnegative integer `ttlMs` once, when the server is built.
@@ -3540,6 +3545,196 @@ export const resource: {
   const register = registerResource(...(arguments as any as [any, any]))
   return (options: any) => Layer.effectDiscard(register(options))
 } as any
+
+/**
+ * A file of a skill: its text, its bytes, or either with an explicit MIME
+ * type. Without one, the MIME type is inferred from the file extension.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type SkillFile = string | Uint8Array | {
+  readonly content: string | Uint8Array
+  readonly mimeType?: string | undefined
+}
+
+/**
+ * Options for {@link registerSkill} and {@link skill}.
+ *
+ * **Details**
+ *
+ * `uri` addresses the skill's `SKILL.md`, as
+ * `skill://<skill-path>/SKILL.md`. Its last path segment is the skill's name,
+ * which must equal the frontmatter's `name`. Other schemes work the same way.
+ *
+ * `files` maps paths relative to the skill root to supporting files. Give
+ * `frontmatter` and `instructions` to have `SKILL.md` rendered from them.
+ * Otherwise give `SKILL.md` in `files`, and it is served verbatim; its
+ * frontmatter is listed as the skill's, or, when `frontmatter` is also given,
+ * must match it, since clients compare the two and reject the skill on a
+ * mismatch.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type SkillOptions =
+  & {
+    readonly uri: string
+    readonly files?: Readonly<Record<string, SkillFile>> | undefined
+    readonly annotations?: Context.Context<never> | undefined
+  }
+  & (
+    | { readonly frontmatter: McpSchema.SkillFrontmatter; readonly instructions: string }
+    | {
+      readonly frontmatter?: McpSchema.SkillFrontmatter | undefined
+      readonly instructions?: undefined
+      readonly files: { readonly "SKILL.md": SkillFile } & Readonly<Record<string, SkillFile>>
+    }
+  )
+
+const skillFileEncoder = new TextEncoder()
+
+const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile =>
+  typeof file === "string"
+    ? { path, content: skillFileEncoder.encode(file) }
+    : file instanceof Uint8Array
+    ? { path, content: file }
+    : {
+      path,
+      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : file.content,
+      mimeType: file.mimeType
+    }
+
+/**
+ * Registers an Agent Skill under the MCP Skills extension (SEP-2640).
+ *
+ * **Details**
+ *
+ * Each file is registered as a resource, and the skill is listed by
+ * `skills/list` and `skills/get` with a manifest of every file's SHA-256
+ * digest and size, computed from the bytes served. Every directory of the
+ * skill namespace is readable with `resources/directory/read`. The server
+ * declares the extension once any skill is registered.
+ *
+ * Fails when the skill breaks the extension's rules: a name that does not
+ * match the URI, frontmatter that is not valid
+ * {@link McpSchema.SkillFrontmatter}, a `SKILL.md` without YAML frontmatter or
+ * whose frontmatter differs from the given one, a file path that leaves the
+ * skill, or more than 512 files or 16 MiB in all.
+ * A nested skill must serve the same bytes for each file it shares with the
+ * skill enclosing it.
+ *
+ * SHA-256 runs on `crypto.subtle`.
+ *
+ * @see {@link skill} for the layer-based skill registration wrapper
+ *
+ * @stability unstable
+ * @category handlers
+ * @since 4.1.0
+ */
+export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause.IllegalArgumentError, McpServer> =
+  Effect.fnUntraced(function*(options: SkillOptions) {
+    const files = Object.entries(options.files ?? {}).map(([path, file]) => toSkillSourceFile(path, file))
+    if (options.instructions !== undefined) {
+      if (options.files?.["SKILL.md"] !== undefined) {
+        return yield* new Cause.IllegalArgumentError(
+          `Skill ${options.uri}: give SKILL.md as instructions or as a file, not both`
+        )
+      }
+      files.push({
+        path: "SKILL.md",
+        content: skillFileEncoder.encode(McpSkills.renderSkillMd(options.frontmatter, options.instructions)),
+        mimeType: "text/markdown"
+      })
+    }
+    const skill = yield* McpSkills.makeStaticSkill({
+      uri: options.uri,
+      frontmatter: options.frontmatter,
+      files
+    }).pipe(Effect.provide(Digest.layerWebCrypto))
+
+    const registry = yield* McpServer
+    const { core } = internalState.get(registry)!
+    for (const file of skill.files) {
+      const digest = core.skills.fileDigest(file.uri, options.uri)
+      if (digest !== undefined && digest !== file.digest) {
+        return yield* new Cause.IllegalArgumentError(
+          `Skill ${options.uri}: ${file.uri} has different bytes than in another skill that contains it`
+        )
+      }
+    }
+
+    const services = yield* Effect.context<never>()
+    const annotations = options.annotations ?? Context.empty()
+    for (const file of skill.files) {
+      yield* registry.addResource({
+        resource: new Resource({
+          uri: file.uri,
+          name: file.name,
+          description: file.description,
+          mimeType: file.mimeType,
+          size: file.content.byteLength
+        }),
+        annotations,
+        services,
+        handle: Effect.succeed({
+          contents: [
+            file.text === undefined
+              ? { uri: file.uri, mimeType: file.mimeType, blob: file.content }
+              : { uri: file.uri, mimeType: file.mimeType, text: file.text }
+          ]
+        })
+      })
+    }
+    yield* core.skills.register({
+      entry: skill.entry,
+      isVisible: isEnabled(annotations),
+      readDirectory: (uri) => Effect.succeed(skill.directories.get(uri))
+    })
+  })
+
+/**
+ * Creates a layer that registers an Agent Skill under the MCP Skills extension
+ * (SEP-2640).
+ *
+ * **Example** (Publishing a skill with a supporting file)
+ *
+ * ```ts
+ * import { Layer } from "effect"
+ * import { McpProtocol, McpServer } from "effect/ai"
+ *
+ * const RefundsSkill = McpServer.skill({
+ *   uri: "skill://billing/refunds/SKILL.md",
+ *   frontmatter: {
+ *     name: "refunds",
+ *     description: "Process refunds using the billing tools"
+ *   },
+ *   instructions: "Read references/policy.md before issuing a refund.\n",
+ *   files: {
+ *     "references/policy.md": "Refunds above CHF 500 require manager approval.\n"
+ *   }
+ * })
+ *
+ * const ServerLayer = RefundsSkill.pipe(
+ *   Layer.provide(McpServer.layerHttp({
+ *     name: "billing",
+ *     version: "1.0.0",
+ *     path: "/mcp",
+ *     protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]
+ *   }))
+ * )
+ * ```
+ *
+ * @see {@link registerSkill} for the Effect-level skill registration API
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const skill = (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer> =>
+  Layer.effectDiscard(registerSkill(options))
 
 /**
  * Registers an MCP prompt from an Effect program.

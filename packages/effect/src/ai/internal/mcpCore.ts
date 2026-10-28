@@ -265,6 +265,87 @@ export interface Resources {
 }
 
 /**
+ * A file of a skill, with the digest and size of the bytes it is served as.
+ *
+ * @internal
+ */
+export interface SkillResource {
+  readonly uri: string
+  readonly digest: string
+  readonly size: number
+}
+
+/**
+ * A `skills/list` and `skills/get` entry. `resources` is `"dynamic"` for a
+ * skill whose content cannot carry stable digests.
+ *
+ * @internal
+ */
+export interface Skill {
+  readonly uri: string
+  readonly frontmatter: Readonly<Record<string, unknown>>
+  readonly resources: ReadonlyArray<SkillResource> | "dynamic"
+}
+
+/**
+ * A `resources/directory/read` child: a file, or a subdirectory with the
+ * `inode/directory` MIME type.
+ *
+ * @internal
+ */
+export interface DirectoryChild {
+  readonly uri: string
+  readonly name: string
+  readonly mimeType: string
+}
+
+/**
+ * @internal
+ */
+export class SkillNotFound extends Data.TaggedError("SkillNotFound")<{
+  readonly uri: string
+}> {}
+
+/**
+ * @internal
+ */
+export class DirectoryNotFound extends Data.TaggedError("DirectoryNotFound")<{
+  readonly uri: string
+}> {}
+
+/**
+ * @internal
+ */
+export interface SkillRegistration {
+  readonly entry: Skill
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  // `undefined` when this skill has no directory at `uri`. Directories shared
+  // by several skills, such as a common path prefix, list the union of what
+  // each skill returns.
+  readonly readDirectory: (
+    uri: string,
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<DirectoryChild> | undefined>
+}
+
+/**
+ * @internal
+ */
+export interface Skills {
+  readonly register: (registration: SkillRegistration) => Effect.Effect<void>
+  // The digest a registered skill other than `skillUri` serves `uri` with,
+  // whatever its visibility, so a nested skill cannot serve different bytes
+  // than the skill that encloses it.
+  readonly fileDigest: (uri: string, skillUri: string) => string | undefined
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<Skill>>
+  readonly get: (uri: string, invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound>
+  readonly readDirectory: (
+    uri: string,
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<DirectoryChild>, DirectoryNotFound>
+}
+
+/**
  * @internal
  */
 export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
@@ -423,10 +504,12 @@ export interface McpCore {
   readonly resources: Resources
   readonly prompts: Prompts
   readonly completions: Completions
+  readonly skills: Skills
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
+    readonly skills: boolean
   }>
 }
 
@@ -446,6 +529,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
+  const skillRegistrations = new Map<string, SkillRegistration>()
   const completionRegistrations = new Map<
     string,
     (
@@ -569,11 +653,54 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  const skills: Skills = {
+    register: (registration) =>
+      Effect.sync(() => {
+        skillRegistrations.set(registration.entry.uri, registration)
+      }),
+    fileDigest: (uri, skillUri) => {
+      for (const { entry } of skillRegistrations.values()) {
+        if (entry.uri === skillUri || entry.resources === "dynamic") continue
+        const file = entry.resources.find((resource) => resource.uri === uri)
+        if (file !== undefined) return file.digest
+      }
+      return undefined
+    },
+    list: (invocation) =>
+      Effect.sync(() =>
+        Arr.filter(skillRegistrations.values(), (registration) => registration.isVisible(invocation.protocol))
+          .map((registration) => registration.entry)
+      ),
+    get: (uri, invocation) =>
+      Effect.suspend(() => {
+        const registration = skillRegistrations.get(uri)
+        return registration !== undefined && registration.isVisible(invocation.protocol)
+          ? Effect.succeed(registration.entry)
+          : Effect.fail(new SkillNotFound({ uri }))
+      }),
+    readDirectory: Effect.fnUntraced(function*(uri, invocation) {
+      const children = new Map<string, DirectoryChild>()
+      let found = false
+      for (const registration of skillRegistrations.values()) {
+        if (!registration.isVisible(invocation.protocol)) continue
+        const own = yield* registration.readDirectory(uri, invocation)
+        if (own === undefined) continue
+        found = true
+        for (const child of own) children.set(child.uri, child)
+      }
+      if (!found) {
+        return yield* new DirectoryNotFound({ uri })
+      }
+      return Array.from(children.values()).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+    })
+  }
+
   const registrationPresence = Effect.sync(() => ({
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
-    prompts: promptRegistrations.size > 0
+    prompts: promptRegistrations.size > 0,
+    skills: skillRegistrations.size > 0
   }))
 
-  return { tools, resources, prompts, completions, registrationPresence }
+  return { tools, resources, prompts, completions, skills, registrationPresence }
 })

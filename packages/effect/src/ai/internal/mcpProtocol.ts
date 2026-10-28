@@ -257,6 +257,20 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
           message: `Prompt '${error.name}' not found`
         })
       }
+      if (error._tag === "SkillNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
+        return new ProtocolError({
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: `Skill '${error.uri}' not found`
+        })
+      }
+      if (
+        error._tag === "DirectoryNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)
+      ) {
+        return new ProtocolError({
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: `Directory '${error.uri}' not found`
+        })
+      }
       if (error._tag === "ResourceNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
         return new ProtocolError({
           code: LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE,
@@ -450,6 +464,7 @@ export interface HandlerInstallationContext {
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
+    readonly skills: boolean
   }>
 }
 
