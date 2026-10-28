@@ -1424,7 +1424,7 @@ const make = Effect.gen(function*() {
   // Healthy runners that joined after the first assignment are held back
   // from the hash rings until the healthy set settles, so a burst of joins
   // moves each shard at most once.
-  const settleWindow = Duration.toMillis(Duration.fromInputUnsafe(config.assignmentSettleWindow))
+  const joinDebounce = Duration.toMillis(Duration.fromInputUnsafe(config.runnerJoinDebounce))
   const pendingRunners = MutableHashSet.empty<Runner>()
   let pendingSince = 0
   let pendingChangedAt = 0
@@ -1473,7 +1473,7 @@ const make = Effect.gen(function*() {
         }
         MutableHashSet.add(healthyRunners, runner)
         MutableHashMap.remove(allRunners, runner)
-        if (settleWindow > 0 && assignmentsPublished) {
+        if (joinDebounce > 0 && assignmentsPublished) {
           if (MutableHashSet.size(pendingRunners) === 0) {
             pendingSince = now
           }
@@ -1505,7 +1505,7 @@ const make = Effect.gen(function*() {
       // changing for too long, or the assignments are recomputed anyway.
       if (
         MutableHashSet.size(pendingRunners) > 0 &&
-        (changed || now - pendingChangedAt >= settleWindow || now - pendingSince >= settleWindow * 4)
+        (changed || now - pendingChangedAt >= joinDebounce || now - pendingSince >= joinDebounce * 4)
       ) {
         changed = true
         for (const runner of pendingRunners) {
