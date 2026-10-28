@@ -1421,6 +1421,29 @@ const make = Effect.gen(function*() {
     const healthyRunners = MutableHashSet.empty<Runner>()
     const withTimeout = Effect.timeout(Duration.seconds(5))
 
+    // Healthy runners that joined after the first assignment are held back
+    // from the hash rings until the healthy set settles, so a burst of joins
+    // moves each shard at most once.
+    const settleWindow = Duration.toMillis(Duration.fromInputUnsafe(config.assignmentSettleWindow))
+    const pendingRunners = MutableHashSet.empty<Runner>()
+    let pendingSince = 0
+    let pendingChangedAt = 0
+    let assignmentsPublished = false
+    // Persists across iterations until the shard assignments are recomputed
+    let changed = false
+
+    const addToRings = (runner: Runner) => {
+      for (let i = 0; i < runner.groups.length; i++) {
+        const group = runner.groups[i]
+        let ring = hashRings.get(group)
+        if (!ring) {
+          ring = HashRing.make()
+          hashRings.set(group, ring)
+        }
+        HashRing.add(ring, runner.address, { weight: runner.weight })
+      }
+    }
+
     while (true) {
       // Ensure the current runner is registered
       if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
@@ -1433,7 +1456,7 @@ const make = Effect.gen(function*() {
       }
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
-      let changed = false
+      const now = clock.currentTimeMillisUnsafe()
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
         MutableHashMap.set(nextRunners, runner, healthy)
@@ -1445,30 +1468,48 @@ const make = Effect.gen(function*() {
           }
           continue
         }
-        changed = true
         MutableHashSet.add(healthyRunners, runner)
         MutableHashMap.remove(allRunners, runner)
-        for (let j = 0; j < runner.groups.length; j++) {
-          const group = runner.groups[j]
-          let ring = hashRings.get(group)
-          if (!ring) {
-            ring = HashRing.make()
-            hashRings.set(group, ring)
+        if (settleWindow > 0 && assignmentsPublished) {
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            pendingSince = now
           }
-          HashRing.add(ring, runner.address, { weight: runner.weight })
+          pendingChangedAt = now
+          MutableHashSet.add(pendingRunners, runner)
+          continue
         }
+        changed = true
+        addToRings(runner)
       }
 
       // Remove runners that are no longer present or healthy
       MutableHashMap.forEach(allRunners, (_, runner) => {
-        changed = true
         MutableHashMap.remove(allRunners, runner)
         MutableHashSet.remove(healthyRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
+        if (MutableHashSet.has(pendingRunners, runner)) {
+          MutableHashSet.remove(pendingRunners, runner)
+          pendingChangedAt = now
+          return
+        }
+        changed = true
         for (let i = 0; i < runner.groups.length; i++) {
           HashRing.remove(hashRings.get(runner.groups[i])!, runner.address)
         }
       })
+
+      // Add the pending runners once the healthy set has settled, has been
+      // changing for too long, or the assignments are recomputed anyway.
+      if (
+        MutableHashSet.size(pendingRunners) > 0 &&
+        (changed || now - pendingChangedAt >= settleWindow || now - pendingSince >= settleWindow * 4)
+      ) {
+        changed = true
+        for (const runner of pendingRunners) {
+          addToRings(runner)
+        }
+        MutableHashSet.clear(pendingRunners)
+      }
 
       // swap allRunners and nextRunners
       const prevRunners = allRunners
@@ -1483,6 +1524,8 @@ const make = Effect.gen(function*() {
 
       // Recompute shard assignments if the set of healthy runners has changed.
       if (changed) {
+        changed = false
+        assignmentsPublished = true
         MutableHashSet.clear(selfShards)
         hashRings.forEach((ring, group) => {
           const newAssignments = HashRing.getShards(ring, config.shardsPerGroup)

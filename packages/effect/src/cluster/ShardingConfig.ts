@@ -166,6 +166,22 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly refreshAssignmentsInterval: Duration.Input
   /**
+   * How long the set of healthy runners must stay unchanged before runners
+   * joining the cluster are included in shard assignments.
+   *
+   * Use this to reduce shard handoffs when runners join one after another,
+   * such as during a rolling deployment. A burst of joins is published as a
+   * single assignment instead of one assignment per join.
+   *
+   * Assignments are published at most four windows after the first pending
+   * join, even if runners keep joining. Runners leaving or becoming unhealthy,
+   * and the initial assignment, are published immediately along with any
+   * pending joins. The window is checked every `refreshAssignmentsInterval`.
+   *
+   * Defaults to `0`, which publishes every change immediately.
+   */
+  readonly assignmentSettleWindow: Duration.Input
+  /**
    * The interval to retry a send if EntityNotAssignedToRunner is returned.
    */
   readonly sendRetryInterval: Duration.Input
@@ -213,6 +229,7 @@ export const defaults: ShardingConfig["Service"] = {
   entityReplyPollInterval: Duration.millis(200),
   sendRetryInterval: Duration.millis(100),
   refreshAssignmentsInterval: Duration.seconds(3),
+  assignmentSettleWindow: Duration.zero,
   runnerHealthCheckInterval: Duration.minutes(1),
   simulateRemoteSerialization: true
 }
@@ -370,6 +387,10 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   refreshAssignmentsInterval: Config.Duration("refreshAssignmentsInterval").pipe(
     Config.withDefault(defaults.refreshAssignmentsInterval)
     // Config.withDescription("The interval at which to refresh shard assignments.")
+  ),
+  assignmentSettleWindow: Config.Duration("assignmentSettleWindow").pipe(
+    Config.withDefault(defaults.assignmentSettleWindow)
+    // Config.withDescription("How long the healthy runners must stay unchanged before joining runners are assigned shards.")
   ),
   runnerHealthCheckInterval: Config.Duration("runnerHealthCheckInterval").pipe(
     Config.withDefault(defaults.runnerHealthCheckInterval)
