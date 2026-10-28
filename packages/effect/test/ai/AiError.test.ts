@@ -14,6 +14,7 @@ describe("AiError", () => {
         const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request }))
         assert.strictEqual(error.method, "GET")
         assert.strictEqual(error.url, "https://example.com/models")
+        assert.isUndefined(error.cause)
         const output = JSON.stringify(error)
         assert.notInclude(output, "param-secret")
         assert.notInclude(output, "header-secret")
@@ -34,82 +35,16 @@ describe("AiError", () => {
     })
 
     describe("NetworkError.fromRequestError", () => {
-      it("describes request errors from their cause chain", () => {
-        const request = HttpClientRequest.get("http://localhost:11434")
-        const cause = new TypeError("fetch failed", {
-          cause: new AggregateError([
-            new Error("connect ECONNREFUSED ::1:11434"),
-            new Error("connect ECONNREFUSED 127.0.0.1:11434"),
-            Object.create(null)
-          ])
-        })
-        const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
-        assert.strictEqual(
-          error.description,
-          "fetch failed: connect ECONNREFUSED ::1:11434, connect ECONNREFUSED 127.0.0.1:11434"
+      it("keeps the original cause without copying it into the description", () => {
+        const url = "http://user:pass-secret@127.0.0.1:65531/v1?api_key=query-secret"
+        const cause = new TypeError(
+          `error sending request for url (${url}): client error (Connect): tcp connect error: Connection refused (os error 111)`
         )
-      })
-
-      it("replaces a rejected header value with fixed text", () => {
-        const request = HttpClientRequest.get("http://localhost:11434")
-        // Node, Deno and Bun wordings
-        for (
-          const message of [
-            "Headers.append: \"Bearer sk-default\u0000x\" is an invalid header value.",
-            "Invalid header value: \"Bearer sk-default\u0000x\"",
-            "Header '14' has invalid value: 'Bearer sk-default\u0000x'"
-          ]
-        ) {
-          const cause = new TypeError(message)
-          const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request, cause }))
-          assert.strictEqual(error.description, "Invalid HTTP header value")
-        }
-      })
-
-      it("omits URLs embedded in the cause", () => {
-        for (
-          const [url, message, expected, Reason = HttpClientError.TransportError] of [
-            // Node
-            [
-              "http://user:pass-secret@127.0.0.1:65531/v1?api_key=query-secret",
-              (url: string) => `Request cannot be constructed from a URL that includes credentials: ${url}`,
-              "Request cannot be constructed from a URL that includes credentials: <url>"
-            ],
-            // Deno
-            [
-              "http://127.0.0.1:65531/v1?q=a%20b)c&api_key=query-secret",
-              (url: string) =>
-                `error sending request for url (${url}): client error (Connect): tcp connect error: Connection refused (os error 111)`,
-              "error sending request for url (<url>): client error (Connect): tcp connect error: Connection refused (os error 111)"
-            ],
-            // Deno, quoting a malformed input that contains raw spaces
-            [
-              "http://user name:pass-secret@localhost:invalid/path?q=a b&api_key=query-secret",
-              (url: string) => `Invalid URL: '${url}'`,
-              "Invalid URL"
-            ],
-            // Node, printing a malformed scheme-relative input
-            [
-              "//user:pass-secret@localhost:invalid/path?api_key=query-secret",
-              (url: string) => `Failed to parse URL from ${url}`,
-              "Invalid URL"
-            ],
-            // Firefox, as an `InvalidUrlError` from a browser client
-            [
-              "http://user name:pass-secret@localhost:invalid/path?api_key=query-secret",
-              (url: string) => `URL constructor: ${url} is not a valid URL.`,
-              "Invalid URL",
-              HttpClientError.InvalidUrlError
-            ]
-          ] as const
-        ) {
-          const request = HttpClientRequest.get(url)
-          const cause = new TypeError(message(url))
-          const error = AiError.NetworkError.fromRequestError(new Reason({ request, cause }))
-          assert.strictEqual(error.description, expected)
-          assert.notInclude(error.description, "pass-secret")
-          assert.notInclude(error.description, "query-secret")
-        }
+        const error = AiError.NetworkError.fromRequestError(
+          new HttpClientError.TransportError({ request: HttpClientRequest.get(url), cause })
+        )
+        assert.strictEqual(error.cause, cause)
+        assert.isUndefined(error.description)
       })
     })
 

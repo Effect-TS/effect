@@ -8,7 +8,6 @@ import * as OpenAiLanguageModel from "@effect/ai-openai/OpenAiLanguageModel"
 import { assert, describe, it } from "@effect/vitest"
 import { Config, ConfigProvider, Context, Duration, Effect, Layer, Redacted, Schema, Stream } from "effect"
 import { Chat } from "effect/ai"
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -265,21 +264,7 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.module, "OpenAiClient")
         assert.strictEqual(result.method, "createResponse")
         assert.strictEqual(result.reason._tag, "NetworkError")
-        assert.include(result.message, "Connection refused")
       }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, makeTransportErrorHttpClient()))))
-
-    it.effect("does not expose a rejected default header value", () =>
-      Effect.gen(function*() {
-        const client = yield* OpenAiClient.make({ apiUrl: "http://localhost:1/v1" })
-        const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(Effect.flip)
-
-        assert.strictEqual(result.reason._tag, "NetworkError")
-        assert.notInclude(result.message, "sk-default")
-        assert.notInclude(JSON.stringify(result), "sk-default")
-      }).pipe(
-        Effect.provide(FetchHttpClient.layer),
-        Effect.provideService(FetchHttpClient.RequestInit, { headers: { authorization: "Bearer sk-default\u0000x" } })
-      ))
 
     it.effect("maps 400 status to InvalidRequestError reason", () =>
       Effect.gen(function*() {

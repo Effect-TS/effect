@@ -304,7 +304,6 @@ describe("TypeSafeClient", () => {
         assert.strictEqual(result.module, "TypeSafeClient")
         assert.strictEqual(result.method, "systemOne")
         assert.strictEqual(result.reason._tag, "NetworkError")
-        assert.include(result.message, "Connection refused")
       }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, makeTransportErrorHttpClient()))))
 
     it.effect("maps 400 status to InvalidRequestError reason", () =>
