@@ -4446,7 +4446,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       const immediate = yield* staggeredJoins({})
       assert.deepStrictEqual(immediate.map(({ at }) => Math.floor(at / 1500)), [0, 1, 2, 3])
 
-      const settled = yield* staggeredJoins({ assignmentSettleWindow: 2000 })
+      const settled = yield* staggeredJoins({ runnerJoinDebounce: 2000 })
       assert.deepStrictEqual(settled.map(({ owned }) => owned), [immediate[0].owned, immediate[3].owned])
       // the initial assignment does not wait for the window
       assert.isBelow(settled[0].at, 1500)
@@ -4458,7 +4458,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
   it.effect("publishes continuous joins within four settle windows", () =>
     Effect.gen(function*() {
       const membership: Array<readonly [Runner.Runner, boolean]> = []
-      const { advance, history } = yield* buildRunner(membership, { assignmentSettleWindow: 2000 })
+      const { advance, history } = yield* buildRunner(membership, { runnerJoinDebounce: 2000 })
       yield* advance(1000)
       // joins every 1000ms never leave membership quiet for the window
       for (let port = 5001; port <= 5012; port++) {
@@ -4475,7 +4475,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
     Effect.gen(function*() {
       const existing = joiner(5001)
       const membership: Array<readonly [Runner.Runner, boolean]> = [[existing, true]]
-      const { advance, history } = yield* buildRunner(membership, { assignmentSettleWindow: 2000 })
+      const { advance, history } = yield* buildRunner(membership, { runnerJoinDebounce: 2000 })
       yield* advance(1000)
       // a runner starting in an existing cluster takes its share without waiting
       assert.strictEqual(history.length, 1)
@@ -4517,7 +4517,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
             entityTerminationTimeout: 0,
             refreshAssignmentsInterval: 100,
             sendRetryInterval: 100,
-            assignmentSettleWindow: 2000,
+            runnerJoinDebounce: 2000,
             ...config
           }))
         ),
