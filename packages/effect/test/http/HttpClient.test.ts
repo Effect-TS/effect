@@ -776,6 +776,11 @@ Missing key
         const { client, requests } = yield* makeRedirectClient(303, "/destination")
         yield* HttpClientRequest.post("https://origin.test/start").pipe(
           HttpClientRequest.bodyText("payload"),
+          HttpClientRequest.setHeaders({
+            "content-encoding": "identity",
+            "content-language": "en",
+            "content-location": "/original"
+          }),
           client.execute
         )
 
@@ -784,6 +789,9 @@ Missing key
         assert.strictEqual(redirected.body._tag, "Empty")
         assert.isUndefined(redirected.headers["content-type"])
         assert.isUndefined(redirected.headers["content-length"])
+        assert.isUndefined(redirected.headers["content-encoding"])
+        assert.isUndefined(redirected.headers["content-language"])
+        assert.isUndefined(redirected.headers["content-location"])
       }))
 
     it.effect.each([301, 302])("switches POST to GET on %s redirects", (status) =>

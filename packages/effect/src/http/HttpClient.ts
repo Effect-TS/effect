@@ -2006,6 +2006,9 @@ export const followRedirects: {
               ) {
                 nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
                 nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-encoding")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-language")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-location")
               }
               if (url.origin !== new URL(response.request.url).origin) {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
