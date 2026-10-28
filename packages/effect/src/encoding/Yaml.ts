@@ -59,20 +59,31 @@ const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
 const isMapping = (value: unknown): value is YamlRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-// A merge key (`<<`) value is a mapping or a sequence of mappings.
-const mergeSources = (value: unknown, fail: (message: string) => never): ReadonlyArray<YamlRecord> => {
-  const sources = Array.isArray(value) ? value : [value]
-  return sources.map((source) => isMapping(source) ? source : fail("Merge key values must be mappings"))
-}
+// Collects mapping entries and applies a merge key (`<<`) where it appears.
+// Explicit keys take precedence over merged keys, and earlier merge sources
+// over later ones.
+class MappingBuilder {
+  readonly output: YamlRecord = {}
+  // Keys added by the merge that an explicit key may still override.
+  private merged: Set<string> | undefined
 
-// Explicit keys take precedence over merged keys, and earlier merge sources over later ones.
-const applyMerges = (output: YamlRecord, sources: ReadonlyArray<YamlRecord>): YamlRecord => {
-  for (const source of sources) {
-    for (const key of Object.keys(source)) {
-      if (!hasOwn.call(output, key)) setProperty(output, key, source[key])
+  set(key: string, value: unknown, fail: (message: string) => never): void {
+    if (hasOwn.call(this.output, key) && !this.merged?.delete(key)) fail(`Duplicate key '${key}'`)
+    setProperty(this.output, key, value)
+  }
+
+  merge(value: unknown, fail: (message: string) => never): void {
+    if (this.merged !== undefined) fail("Duplicate key '<<'")
+    const merged = this.merged = new Set()
+    for (const source of Array.isArray(value) ? value : [value]) {
+      if (!isMapping(source)) fail("Merge key values must be mappings")
+      for (const key of Object.keys(source)) {
+        if (hasOwn.call(this.output, key)) continue
+        setProperty(this.output, key, source[key])
+        merged.add(key)
+      }
     }
   }
-  return output
 }
 
 const closingQuote = (input: string, quote: string, start: number): number => {
@@ -313,12 +324,12 @@ class FlowParser {
 
   private parseMapping(): YamlRecord {
     this.expect("{")
-    const output: YamlRecord = {}
-    const merges: Array<YamlRecord> = []
+    const mapping = new MappingBuilder()
+    const fail = (message: string) => this.fail(message)
     this.skipWhitespace()
     if (this.peek() === "}") {
       this.index++
-      return output
+      return mapping.output
     }
     while (true) {
       this.skipWhitespace()
@@ -326,22 +337,18 @@ class FlowParser {
       const key = this.parseKey()
       this.skipWhitespace()
       this.expect(":")
-      if (!quoted && key === "<<") {
-        merges.push(...mergeSources(this.parseValue(), (message) => this.fail(message)))
-      } else {
-        if (hasOwn.call(output, key)) this.fail(`Duplicate key '${key}'`)
-        setProperty(output, key, this.parseValue())
-      }
+      if (!quoted && key === "<<") mapping.merge(this.parseValue(), fail)
+      else mapping.set(key, this.parseValue(), fail)
       this.skipWhitespace()
       if (this.peek() === "}") {
         this.index++
-        return applyMerges(output, merges)
+        return mapping.output
       }
       this.expect(",")
       this.skipWhitespace()
       if (this.peek() === "}") {
         this.index++
-        return applyMerges(output, merges)
+        return mapping.output
       }
     }
   }
@@ -425,22 +432,21 @@ class YamlParser {
     return this.parseNodeValue(line.text, parentIndent)
   }
 
-  private parseMapping(indent: number, output: YamlRecord = {}, merges: Array<YamlRecord> = []): YamlRecord {
+  private parseMapping(indent: number, mapping = new MappingBuilder()): YamlRecord {
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent) return applyMerges(output, merges)
+      if (line === undefined || line.indent < indent) return mapping.output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       const separator = mappingSeparator(line.text)
-      if (separator === -1) return applyMerges(output, merges)
+      if (separator === -1) return mapping.output
       this.index++
-      this.parseMappingEntry(output, merges, line.text, separator, indent, line)
+      this.parseMappingEntry(mapping, line.text, separator, indent, line)
     }
   }
 
   private parseMappingEntry(
-    output: YamlRecord,
-    merges: Array<YamlRecord>,
+    mapping: MappingBuilder,
     text: string,
     separator: number,
     indent: number,
@@ -448,15 +454,10 @@ class YamlParser {
   ): void {
     const rawKey = text.slice(0, separator).trim()
     const rawValue = text.slice(separator + 1).trimStart()
-    if (rawKey === "<<") {
-      const value = this.parseNodeValue(rawValue, indent, true)
-      merges.push(...mergeSources(value, (message) => this.fail(line, message)))
-      return
-    }
-    const key = parseKey(rawKey)
     const value = this.parseNodeValue(rawValue, indent, true)
-    if (hasOwn.call(output, key)) this.fail(line, `Duplicate key '${key}'`)
-    setProperty(output, key, value)
+    const fail = (message: string) => this.fail(line, message)
+    if (rawKey === "<<") mapping.merge(value, fail)
+    else mapping.set(parseKey(rawKey), value, fail)
   }
 
   private parseSequence(indent: number): Array<unknown> {
@@ -478,10 +479,9 @@ class YamlParser {
         const keyOffset = line.text.length - item.length
         if (line.text.slice(1, keyOffset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
         const mappingIndent = indent + keyOffset
-        const mapping: YamlRecord = {}
-        const merges: Array<YamlRecord> = []
-        this.parseMappingEntry(mapping, merges, item, separator, mappingIndent, line)
-        output.push(this.parseMapping(mappingIndent, mapping, merges))
+        const mapping = new MappingBuilder()
+        this.parseMappingEntry(mapping, item, separator, mappingIndent, line)
+        output.push(this.parseMapping(mappingIndent, mapping))
       }
     }
   }
@@ -706,6 +706,12 @@ class YamlParser {
  *
  * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
  * decoded while date-like values remain strings.
+ *
+ * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
+ * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
+ * keys take precedence over merged keys, earlier merge sources take precedence
+ * over later ones, and a mapping may contain only one merge key. Quote the key
+ * (`"<<"`) to keep it as an ordinary key.
  *
  * @stability unstable
  * @category decoding
