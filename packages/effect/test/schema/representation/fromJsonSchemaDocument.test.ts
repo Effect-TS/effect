@@ -301,6 +301,25 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
+  it("anyOf with siblings redeclaring an enum property (#10047)", () => {
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+      type: "object",
+      properties: { name: { type: "string" }, kind: { enum: ["direct", "all"] } },
+      anyOf: [
+        { properties: { name: { type: "string" } }, required: ["name"] },
+        { properties: { kind: { enum: ["direct", "all"] } }, required: ["kind"] }
+      ]
+    }))
+    const is = Schema.is(schema)
+    assert.isTrue(is({ name: "a" }))
+    assert.isTrue(is({ kind: "direct" }))
+    assert.isTrue(is({ name: "a", kind: "all" }))
+    assert.isFalse(is({}))
+    assert.isFalse(is({ kind: "other" }))
+    assert.isFalse(is({ name: 1 }))
+    assert.isFalse(is({ name: "a", kind: "other" }))
+  })
+
   it("oneOf", () => {
     assertFromJsonSchema(
       { schema: { oneOf: [{ const: "a" }, { enum: [1, 2] }] } },
