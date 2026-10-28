@@ -3188,7 +3188,9 @@ describe("McpServer", () => {
             yield* server.notifications["notifications/tools/list_changed"]({})
             yield* server.notifications["notifications/resources/list_changed"]({})
             yield* server.notifications["notifications/prompts/list_changed"]({})
-            return new McpSchema.CallToolResult({ content: [] })
+            yield* server.notifications["notifications/message"]({ level: "error", data: "log" })
+            const level = yield* References.CurrentLogLevel
+            return new McpSchema.CallToolResult({ content: [{ type: "text", text: level }] })
           })
         })
       ))
@@ -3205,12 +3207,20 @@ describe("McpServer", () => {
       readonly sessionMode?: "stateful" | "stateless" | undefined
       readonly allowSessionTermination?: boolean | undefined
     }) =>
-      makeHttpHarness(registrations.pipe(Layer.provideMerge(makeServerLayer({
-        name: "Stateless",
-        protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18, McpProtocol.v2025_03_26, McpProtocol.v2026_07_28],
-        sessionMode: "stateless",
-        ...options
-      }))))
+      makeHttpHarness(registrations.pipe(
+        Layer.provideMerge(makeServerLayer({
+          name: "Stateless",
+          protocols: [
+            McpProtocol.v2025_11_25,
+            McpProtocol.v2025_06_18,
+            McpProtocol.v2025_03_26,
+            McpProtocol.v2026_07_28
+          ],
+          sessionMode: "stateless",
+          ...options
+        })),
+        Layer.provide(Layer.succeed(References.CurrentLogLevel, "Debug"))
+      ))
     const initialize = (protocolVersion: string) => ({
       jsonrpc: "2.0",
       id: 1,
@@ -3306,7 +3316,7 @@ describe("McpServer", () => {
         })
       }))
 
-    it.effect("rejects session-bound methods and suppresses list-change notifications", () =>
+    it.effect("rejects session-bound methods and suppresses list-change and log notifications", () =>
       Effect.gen(function*() {
         const harness = yield* makeStatelessHarness()
         const headers = { "Mcp-Protocol-Version": "2025-11-25" }
@@ -3325,8 +3335,9 @@ describe("McpServer", () => {
         }
         const response = yield* harness.post(callTool("Broadcast"), headers)
         const body = yield* Effect.promise(() => response.text())
-        assert.notInclude(body, "list_changed")
-        assert.include(body, "\"id\":2")
+        assert.notInclude(body, "notifications/")
+        // The handler sees the server's default log level, not a session level.
+        assert.include(body, "\"text\":\"Debug\"")
       }))
 
     it.effect("keeps session ids by default and DELETE disabled when stateless", () =>
