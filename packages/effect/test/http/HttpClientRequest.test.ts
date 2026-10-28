@@ -89,19 +89,33 @@ describe("HttpClientRequest", () => {
         HttpClientRequest.bodyStream(Stream.make(source.subarray(0, 2), source.subarray(2)), {
           contentType: "text/plain",
           contentLength
-        }),
-        HttpClientRequest.setHeader("content-type", "application/custom")
+        })
       )
       const request = await Effect.runPromise(original.pipe(HttpClientRequest.compressBody("gzip")))
       strictEqual(request.body._tag, "Stream")
       strictEqual(request.headers["content-length"], undefined)
       strictEqual(request.headers["content-encoding"], "gzip")
-      strictEqual(request.headers["content-type"], "application/custom")
+      strictEqual(request.headers["content-type"], "text/plain")
       if (request.body._tag === "Stream") {
         strictEqual(request.body.contentLength, undefined)
         const compressed = await Effect.runPromise(Stream.mkUint8Array(request.body.stream))
         strictEqual(gunzipSync(compressed).toString(), text)
       }
+    })
+
+    it.each([
+      { name: "bytes", body: HttpBody.uint8Array(bytes, "text/plain") },
+      { name: "stream", body: HttpBody.stream(Stream.make(bytes), "text/plain") }
+    ])("preserves an explicit Content-Type when compressing $name", async ({ body }) => {
+      const request = await Effect.runPromise(
+        HttpClientRequest.post(url).pipe(
+          HttpClientRequest.setBody(body),
+          HttpClientRequest.setHeader("content-type", "application/json"),
+          HttpClientRequest.compressBody("gzip")
+        )
+      )
+      strictEqual(request.headers["content-encoding"], "gzip")
+      strictEqual(request.headers["content-type"], "application/json")
     })
   })
 
