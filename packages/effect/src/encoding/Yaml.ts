@@ -59,12 +59,10 @@ const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
 const isMapping = (value: unknown): value is YamlRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-// Collects mapping entries and applies a merge key (`<<`) where it appears.
-// Explicit keys take precedence over merged keys, and earlier merge sources
-// over later ones.
+// Explicit keys take precedence over merged keys, and earlier merge sources over later ones.
 class MappingBuilder {
   readonly output: YamlRecord = {}
-  // Keys added by the merge that an explicit key may still override.
+  // Keys added by the merge key, which an explicit key may still override.
   private merged: Set<string> | undefined
 
   set(key: string, value: unknown, fail: (message: string) => never): void {
@@ -74,13 +72,13 @@ class MappingBuilder {
 
   merge(value: unknown, fail: (message: string) => never): void {
     if (this.merged !== undefined) fail("Duplicate key '<<'")
-    const merged = this.merged = new Set()
+    this.merged = new Set()
     for (const source of Array.isArray(value) ? value : [value]) {
       if (!isMapping(source)) fail("Merge key values must be mappings")
       for (const key of Object.keys(source)) {
         if (hasOwn.call(this.output, key)) continue
         setProperty(this.output, key, source[key])
-        merged.add(key)
+        this.merged.add(key)
       }
     }
   }
@@ -709,9 +707,9 @@ class YamlParser {
  *
  * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
- * keys take precedence over merged keys, earlier merge sources take precedence
- * over later ones, and a mapping may contain only one merge key. Quote the key
- * (`"<<"`) to keep it as an ordinary key.
+ * keys take precedence over merged keys, earlier merge sources over later
+ * ones, and a mapping may contain only one merge key. Quote the key (`"<<"`)
+ * to keep it as an ordinary key.
  *
  * @stability unstable
  * @category decoding
