@@ -156,6 +156,150 @@ describe("McpClient", () => {
     })
   }
 
+  describe("bounded discovery", () => {
+    it.effect("should expose server capabilities when initialization succeeds", () =>
+      Effect.gen(function*() {
+        const capabilities = { tools: { listChanged: true }, experimental: { custom: {} } }
+        const { client } = yield* scriptedHttp((message) => jsonRpcResult(message, { ...discoverResult, capabilities }))
+        assert.deepStrictEqual(client.capabilities, capabilities)
+      }))
+
+    it.effect("should stop discovery when a configured limit is exceeded", () =>
+      Effect.gen(function*() {
+        const descriptor = {
+          name: "task",
+          description: "世界",
+          inputSchema: { type: "object" },
+          execution: { taskSupport: "required" },
+          extra: "count me"
+        }
+        const bytes = new TextEncoder().encode(JSON.stringify(descriptor)).length
+        const cases: ReadonlyArray<{ limits: McpClient.DiscoveryLimits; pages: number }> = [
+          { limits: { maxPages: 0 }, pages: 0 },
+          { limits: { maxPages: 1 }, pages: 1 },
+          { limits: { maxItems: 1 }, pages: 2 },
+          { limits: { maxDescriptionBytes: "5 B" }, pages: 1 },
+          { limits: { maxBytes: bytes - 1 }, pages: 1 },
+          { limits: { maxBytes: bytes }, pages: 2 }
+        ]
+        for (const { limits, pages } of cases) {
+          const { client, sent } = yield* scriptedHttp((message) =>
+            message.method === "tools/list"
+              ? jsonRpcResult(message, { tools: [descriptor], nextCursor: String(message.id) })
+              : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
+          const error = yield* client.listTools({ limits }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "LimitError", JSON.stringify(limits))
+          assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, pages)
+        }
+      }))
+
+    it.effect("should return discovery results when they fit zero or exact bounds", () =>
+      Effect.gen(function*() {
+        const descriptor = { name: "unicode", description: "世界", inputSchema: { type: "object" }, extra: "count me" }
+        for (const tools of [[], [descriptor]]) {
+          const { client } = yield* scriptedHttp((message) =>
+            message.method === "tools/list"
+              ? jsonRpcResult(message, { ...discoverResult, tools })
+              : scriptedReply(McpProtocol.v2026_07_28, message)
+          )
+          const discovered = yield* client.listTools({
+            limits: {
+              maxPages: 1,
+              maxItems: tools.length,
+              maxDescriptionBytes: tools.length === 0 ? "0 B" : "6 B",
+              maxBytes: BigInt(tools.length === 0 ? 0 : new TextEncoder().encode(JSON.stringify(descriptor)).length)
+            }
+          })
+          assert.deepStrictEqual(discovered.map((tool) => tool.name), tools.map((tool) => tool.name))
+        }
+      }))
+
+    it.effect("should inherit client limits when a scan overrides only selected options", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/list"
+            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool] })
+            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxItems: 0, maxPages: 0 } })
+        for (const limits of [{ maxPages: 1 }, { maxPages: 1, maxItems: undefined }]) {
+          const error = yield* client.listTools({ limits }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "LimitError")
+        }
+        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 2)
+        assert.strictEqual((yield* client.listTools({ limits: { maxPages: 1, maxItems: 1 } })).length, 1)
+      }))
+
+    it.effect("should fail with ConfigurationError when client or scan limits are invalid", () =>
+      Effect.gen(function*() {
+        const reply = (message: McpSchema.JsonRpcRequest) => scriptedReply(McpProtocol.v2026_07_28, message)
+        const clientError = yield* scriptedHttp(reply, { discoveryLimits: { maxItems: -1 } }).pipe(Effect.flip)
+        const { client, sent } = yield* scriptedHttp(reply)
+        const scanError = yield* client.listTools({ limits: { maxPages: 0.5 } }).pipe(Effect.flip)
+        assert.strictEqual(clientError.reason._tag, "ConfigurationError")
+        assert.strictEqual(scanError.reason._tag, "ConfigurationError")
+        assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
+      }))
+
+    it.effect("should reject discovery when the server repeats a cursor", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/list"
+            ? jsonRpcResult(message, { ...discoverResult, tools: [], nextCursor: "repeated" })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const error = yield* client.listTools({ limits: { maxPages: 3 } }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "LimitError")
+        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 2)
+      }))
+
+    it.effect("should time out the whole scan when pagination exceeds its deadline", () =>
+      Effect.gen(function*() {
+        const server = yield* connectStdio(McpProtocol.v2025_11_25)
+        const discovery = yield* server.client.listTools({ timeout: "1 second" }).pipe(Effect.flip, Effect.forkChild)
+        const first = yield* server.receive
+        assert(isRequest(first))
+        yield* TestClock.adjust("500 millis")
+        yield* server.send({ jsonrpc: "2.0", id: first.id, result: { tools: [], nextCursor: "second" } })
+        yield* server.receive
+        yield* TestClock.adjust("500 millis")
+        assert.strictEqual((yield* Fiber.join(discovery)).reason._tag, "TimeoutError")
+      }))
+
+    it.effect("should enforce discovery limits when listing prompts or resources", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) =>
+          message.method === "prompts/list"
+            ? jsonRpcResult(message, { prompts: [{ name: "prompt", description: "too long" }] })
+            : message.method === "resources/list"
+            ? jsonRpcResult(message, {
+              resources: [{ name: "resource", uri: "test://resource", description: "too long" }]
+            })
+            : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
+        for (const list of [client.listPrompts, client.listResources]) {
+          const error = yield* list({ limits: { maxDescriptionBytes: 1 } }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "LimitError")
+        }
+      }))
+  })
+
+  describe("configured toolkit", () => {
+    it.effect("should bind and execute the last tool when discovery is large", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/list"
+            ? jsonRpcResult(message, { ...discoverResult, tools })
+            : message.method === "tools/call"
+            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "large snapshot" }] })
+            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxItems: 150_000 } })
+        const tools = Array.from({ length: 150_000 }, (_, index) =>
+          McpSchema.Tool.make({ name: `tool_${index}`, inputSchema: { type: "object" } }))
+        const toolkit = yield* McpClient.toolkit(client)
+        assert.strictEqual(Object.keys(toolkit.tools).length, tools.length)
+        const [output] = yield* toolkit.handle("tool_149999", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.strictEqual(output.result, "large snapshot")
+        assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, 1)
+      }))
+  })
+
   // Both supported revisions allow error responses without an ID, e.g. HTTP 400 version rejections.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
   it.effect("should retry discovery when an unsupported-version error omits its ID", () =>
@@ -268,6 +412,8 @@ describe("McpClient", () => {
           : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
       const error = yield* client.listPrompts().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "LimitError")
+      const discovered = yield* client.listPrompts({ limits: { maxItems: prompts.length } })
+      assert.strictEqual(discovered.length, prompts.length)
     }))
 
   describe("cancellation", () => {
@@ -578,6 +724,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
   options: {
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
+    readonly discoveryLimits?: McpClient.DiscoveryLimits | undefined
   } = {}
 ) {
   const sent: Array<{
@@ -600,7 +747,9 @@ const scriptedHttp = Effect.fnUntraced(function*(
   )
   const transport = yield* McpClient.http({ url: MCP_ENDPOINT, protocol: options.protocol ?? McpProtocol.v2026_07_28 })
     .pipe(Effect.provideService(HttpClient.HttpClient, options.filterStatusOk ? HttpClient.filterStatusOk(http) : http))
-  const client = yield* McpClient.make(clientInfo).pipe(Effect.provideService(McpClient.Transport, transport))
+  const client = yield* McpClient.make({ ...clientInfo, discoveryLimits: options.discoveryLimits }).pipe(
+    Effect.provideService(McpClient.Transport, transport)
+  )
   return { client, sent }
 })
 

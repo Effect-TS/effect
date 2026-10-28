@@ -75,6 +75,56 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
 export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<McpClient>("effect/ai/McpClient")
 
 /**
+ * Schema for tools, prompts and resources discovery limits.
+ *
+ * **Details**
+ *
+ * Defaults to 100 pages and 10,000 items, with no byte limits. Page and item
+ * limits are nonnegative safe integers. Byte limits accept byte counts or
+ * strings such as `"1 MiB"`. Zero pages prevents requests; other
+ * zero limits allow empty values.
+ *
+ * Description bytes count UTF-8 text. Total bytes count UTF-8 descriptor JSON,
+ * including unknown fields and filtered tools, without page envelopes or array
+ * separators. Transport message limits still apply.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.0
+ */
+export const DiscoveryLimits = Schema.Struct({
+  maxPages: Schema.Natural.pipe(Schema.withDecodingDefault(Effect.sync(() => DEFAULT_DISCOVERY_PAGES))),
+  maxItems: Schema.Natural.pipe(Schema.withDecodingDefault(Effect.sync(() => DEFAULT_DISCOVERY_ITEMS))),
+  maxDescriptionBytes: Schema.optional(
+    Schema.Union([Schema.ByteSize, Schema.ByteSizeFromBigInt, Schema.ByteSizeFromNumber, Schema.ByteSizeFromString])
+  ),
+  maxBytes: Schema.optional(
+    Schema.Union([Schema.ByteSize, Schema.ByteSizeFromBigInt, Schema.ByteSizeFromNumber, Schema.ByteSizeFromString])
+  )
+})
+
+/**
+ * Caller-supplied limits for one discovery scan.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.0
+ */
+export type DiscoveryLimits = typeof DiscoveryLimits.Encoded
+
+/**
+ * Options for one discovery scan, inheriting unspecified client limits.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.0
+ */
+export interface DiscoveryOptions {
+  readonly timeout?: Duration.Input | undefined
+  readonly limits?: DiscoveryLimits | undefined
+}
+
+/**
  * A scoped connection to one MCP server.
  *
  * @stability experimental
@@ -84,18 +134,20 @@ export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<
 export interface McpClient {
   readonly [TypeId]: typeof TypeId
   readonly protocolVersion: ProtocolVersion
+  /** Features advertised by the remote server. */
+  readonly capabilities: McpSchema.ServerCapabilities
   readonly serverInfo: McpSchema.Implementation | undefined
   readonly instructions?: string | undefined
   /**
-   * Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools.
-   * `timeout` overrides the client's discovery deadline.
+   * Returns every tool page as one snapshot within the client's discovery limits.
+   * `timeout` and individual `limits` override the client's discovery settings.
    */
   readonly listTools: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: DiscoveryOptions
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /** Returns every prompt page as one snapshot with the same bounds as `listTools`. */
   readonly listPrompts: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: DiscoveryOptions
   ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   /** Gets the messages for a discovered prompt. Unbounded unless `timeout` is supplied. */
   readonly getPrompt: (
@@ -107,7 +159,7 @@ export interface McpClient {
   ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   /** Returns every resource page as one snapshot with the same bounds as `listTools`. */
   readonly listResources: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: DiscoveryOptions
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   /** Reads the complete contents of a resource URI. Unbounded unless `timeout` is supplied. */
   readonly readResource: (
@@ -183,6 +235,7 @@ export const make: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: DiscoveryLimits | undefined
 }) => Effect.Effect<
   McpClient,
   McpClientError,
@@ -197,6 +250,15 @@ export const make: (options: {
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
+  const decodeDiscoveryLimits = Schema.decodeUnknownEffect(DiscoveryLimits.mapFields((fields) => ({
+    maxPages: fields.maxPages.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxPages))),
+    maxItems: fields.maxItems.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxItems))),
+    maxDescriptionBytes: fields.maxDescriptionBytes.pipe(
+      Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxDescriptionBytes))
+    ),
+    maxBytes: fields.maxBytes.pipe(Schema.withDecodingDefault(Effect.succeed(options.discoveryLimits?.maxBytes)))
+  })))
+  yield* decodeDiscoveryLimits({}).pipe(Effect.mapError(discoveryConfigurationError))
   const closed = yield* Deferred.make<never, McpClientError>()
   yield* Effect.addFinalizer(() =>
     Deferred.fail(closed, fail(new ClosedError({ description: "MCP client scope closed" })))
@@ -223,7 +285,11 @@ export const make: (options: {
   const request = Effect.fnUntraced(function*<A>(
     method: string,
     params: Record<string, unknown>,
-    tool?: McpSchema.Tool
+    tool?: McpSchema.Tool,
+    discovery?: {
+      readonly kind: Capability
+      readonly check: (items: ReadonlyArray<unknown>) => Effect.Effect<void, McpClientError>
+    }
   ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
@@ -251,6 +317,10 @@ export const make: (options: {
     }
 
     let result: unknown = response.result
+    if (discovery !== undefined && isRecord(result)) {
+      const items = result[discovery.kind]
+      if (Array.isArray(items)) yield* discovery.check(items)
+    }
     // Older modern peers may omit the complete discriminator.
     if (modern && isRecord(result) && result.resultType === undefined) result = { ...result, resultType: "complete" }
     if (method === "tools/list" && isRecord(result) && Array.isArray(result.tools)) {
@@ -336,17 +406,47 @@ export const make: (options: {
 
   const list = <K extends Capability, A>(kind: K) =>
     Effect.fnUntraced(
-      function*(_options?: CallOptions) {
+      function*(callOptions?: DiscoveryOptions) {
+        const limits = yield* decodeDiscoveryLimits(callOptions?.limits ?? {}).pipe(
+          Effect.mapError(discoveryConfigurationError)
+        )
         if (capabilities[kind] === undefined) return []
         const items: Array<A> = []
         const cursors = new Set<string>()
-        let cursor: string | undefined
-        for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
-          const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
-          if (items.length + result[kind].length > MAX_DISCOVERY_ITEMS) {
+        let totals = { items: 0, bytes: BigInt(0) }
+        const check = Effect.fnUntraced(function*(page: ReadonlyArray<unknown>) {
+          if (page.length > limits.maxItems - totals.items) {
             return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
           }
-          items.push(...result[kind])
+          const bytes = yield* Effect.reduce(page, () => totals.bytes, (bytes, item) =>
+            Effect.gen(function*() {
+              if (
+                limits.maxDescriptionBytes !== undefined && isRecord(item) && typeof item.description === "string" &&
+                BigInt(encoder.encode(item.description).byteLength) > limits.maxDescriptionBytes
+              ) return yield* limitError(`MCP ${kind} discovery exceeded its description byte limit`)
+              if (limits.maxBytes === undefined) return bytes
+              const json = yield* encodeDiscoveryDescriptor(item).pipe(
+                Effect.mapError((cause) =>
+                  fail(new ProtocolError({ description: "Invalid MCP discovery descriptor", cause }))
+                )
+              )
+              const size = BigInt(encoder.encode(json).byteLength)
+              if (size > limits.maxBytes - bytes) {
+                return yield* limitError(`MCP ${kind} discovery exceeded its byte limit`)
+              }
+              return bytes + size
+            }))
+          totals = { items: totals.items + page.length, bytes }
+        })
+        let cursor: string | undefined
+        for (let page = 0; page < limits.maxPages; page++) {
+          const result = yield* request<ListResult<K, A>>(
+            `${kind}/list`,
+            cursor === undefined ? {} : { cursor },
+            undefined,
+            { kind, check }
+          )
+          for (const item of result[kind]) items.push(item)
           if (result.nextCursor === undefined) return items
           if (cursors.has(result.nextCursor)) {
             return yield* limitError(`MCP ${kind} discovery repeated a cursor`)
@@ -391,6 +491,7 @@ export const make: (options: {
   return {
     [TypeId]: TypeId,
     protocolVersion: version,
+    capabilities,
     serverInfo,
     instructions,
     listTools: (callOptions) =>
@@ -487,7 +588,10 @@ export const toolkit: (client: McpClient, prefix?: string) => Effect.Effect<
     })
   }
 
-  const toolkit = Toolkit.make(...tools)
+  let toolkit = Toolkit.make(...tools.slice(0, TOOLKIT_BATCH_SIZE))
+  for (let offset = TOOLKIT_BATCH_SIZE; offset < tools.length; offset += TOOLKIT_BATCH_SIZE) {
+    toolkit = Toolkit.merge(toolkit, Toolkit.make(...tools.slice(offset, offset + TOOLKIT_BATCH_SIZE)))
+  }
   return yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
 })
 
@@ -687,6 +791,7 @@ export const layerStdio: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: DiscoveryLimits | undefined
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly maxMessageBytes?: ByteSize.Input | undefined
@@ -921,6 +1026,7 @@ export const layerHttp: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: DiscoveryLimits | undefined
   readonly url: string | URL
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly headers?: Readonly<Record<string, string>> | undefined
@@ -940,8 +1046,9 @@ const TransportTypeId = "~effect/ai/McpClient/Transport" as const
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 const CLOSE_TIMEOUT = Duration.seconds(5)
-const MAX_DISCOVERY_PAGES = 100
-const MAX_DISCOVERY_ITEMS = 10_000
+const DEFAULT_DISCOVERY_PAGES = 100
+const DEFAULT_DISCOVERY_ITEMS = 10_000
+const TOOLKIT_BATCH_SIZE = 10_000
 const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -968,6 +1075,11 @@ interface InitializeResult {
 type ListResult<K extends string, A> = Record<K, ReadonlyArray<A>> & { readonly nextCursor?: string }
 const fail = (reason: McpClientErrorReason) => new McpClientError({ reason })
 const limitError = (description: string) => fail(new LimitError({ description }))
+
+const encodeDiscoveryDescriptor = Schema.encodeUnknownEffect(Schema.fromJsonString(Schema.Json))
+
+const discoveryConfigurationError = (cause: Schema.SchemaError) =>
+  fail(new ConfigurationError({ description: "Invalid MCP discovery limits", cause }))
 
 const validationError = (cause: Schema.SchemaError) =>
   fail(new ValidationError({ description: "Invalid MCP payload", cause }))
