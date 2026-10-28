@@ -1,5 +1,20 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Schema, Stdio } from "effect"
+import {
+  Config,
+  ConfigProvider,
+  Context,
+  Effect,
+  Exit,
+  Fiber,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  Redacted,
+  Runtime,
+  Schema,
+  Stdio
+} from "effect"
 import {
   Argument,
   CliConfig,
@@ -1237,6 +1252,127 @@ describe("Command", () => {
         assert.deepStrictEqual(events, [])
       }).pipe(
         Effect.provideService(TerminalCapabilities.TerminalCapabilities, NonInteractive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("does not run fallback branches before a deferred prompt resolves", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const demo = Command.make("demo", {
+          region: ask("region").pipe(Flag.withDefault(Effect.as(record("default region"), "us"))),
+          tag: ask("tag").pipe(
+            Flag.optional,
+            Flag.mapEffect((tag) => Effect.as(record(`map tag ${Option.getOrElse(tag, () => "none")}`), tag))
+          ),
+          env: ask("env").pipe(
+            Flag.orElse(() =>
+              Flag.String("environment").pipe(Flag.mapEffect((env) => Effect.as(record("alternative env"), env)))
+            )
+          )
+        }, ({ env, region, tag }) => record(`handler ${region} ${Option.getOrElse(tag, () => "none")} ${env}`)).pipe(
+          Command.beforePrompts(record("setup"))
+        )
+
+        for (const answer of ["eu", "v1", "prod"]) {
+          yield* MockTerminal.inputText(answer)
+          yield* MockTerminal.inputKey("enter")
+        }
+        yield* Command.runWith(demo, { version: "1.0.0" })(["--environment", "staging"])
+
+        assert.deepStrictEqual(events, [
+          "setup",
+          "prompt region",
+          "prompt tag",
+          "map tag v1",
+          "prompt env",
+          "handler eu v1 prod"
+        ])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("reads config fallbacks once, before setup", () => {
+      const env: Record<string, string> = {}
+      let lookups = 0
+      const provider = ConfigProvider.make((path) =>
+        Effect.sync(() => {
+          lookups++
+          const value = env[path.join("_")]
+          return value === undefined ? undefined : ConfigProvider.makeValue(value)
+        })
+      )
+
+      return Effect.gen(function*() {
+        const { events, record } = recorder()
+        const demo = Command.make("demo", {
+          name: Flag.String("name").pipe(
+            Flag.withFallbackConfig(Config.String("NAME")),
+            Flag.withFallbackPrompt(Effect.as(record("prompt name"), Prompt.String({ message: "name" })))
+          )
+        }, ({ name }) => record(`handler ${name}`)).pipe(
+          Command.beforePrompts(Effect.andThen(record("setup"), Effect.sync(() => env.NAME = "from-setup")))
+        )
+
+        yield* MockTerminal.inputText("Ada")
+        yield* MockTerminal.inputKey("enter")
+        yield* Command.runWith(demo, { version: "1.0.0" })([])
+
+        assert.deepStrictEqual(events, ["setup", "prompt name", "handler Ada"])
+        assert.strictEqual(lookups, 1)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, provider),
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      )
+    })
+
+    it.effect("runs setup before global setting fallback prompts", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const Region = GlobalFlag.Setting("region")({ flag: ask("region") })
+        const demo = Command.make("demo", {}, () =>
+          Effect.gen(function*() {
+            yield* record(`handler ${yield* Region}`)
+          })).pipe(
+            Command.withGlobalFlags([Region]),
+            Command.beforePrompts(record("setup"))
+          )
+
+        yield* MockTerminal.inputText("eu")
+        yield* MockTerminal.inputKey("enter")
+        yield* Command.runWith(demo, { version: "1.0.0" })([])
+
+        assert.deepStrictEqual(events, ["setup", "prompt region", "handler eu"])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("stops before later hooks, prompts, providers and the handler when a hook fails or is interrupted", () =>
+      Effect.gen(function*() {
+        const failure = new CliError.UserError({ cause: "setup failed" })
+        const run = Effect.fnUntraced(function*(stop: Effect.Effect<void, CliError.UserError>) {
+          const { ask, events, record } = recorder()
+          const Region = GlobalFlag.Setting("region")({ flag: ask("region") })
+          const demo = Command.make("demo", { name: ask("name") }, () => record("handler")).pipe(
+            Command.withGlobalFlags([Region]),
+            Command.provideEffectDiscard(record("provide")),
+            Command.beforePrompts(Effect.andThen(record("setup"), stop)),
+            Command.beforePrompts(record("later setup"))
+          )
+          const exit = yield* Effect.exit(Command.runWith(demo, { version: "1.0.0" })([]))
+          assert.deepStrictEqual(events, ["setup"])
+          return exit
+        })
+
+        // Ends terminal input so a prompt that runs anyway quits instead of waiting
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+
+        assert.deepStrictEqual(yield* run(Effect.fail(failure)), Exit.fail(failure))
+        assert.isTrue(Exit.hasInterrupts(yield* run(Effect.interrupt)))
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
         Effect.provide(TestLayer)
       ))
   })

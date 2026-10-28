@@ -166,6 +166,29 @@ describe("Command", () => {
     })
   })
 
+  describe("beforePrompts", () => {
+    class Setup extends Context.Service<Setup, string>()("Setup") {}
+    const setup = Effect.void as Effect.Effect<void, "setup-err", Setup>
+
+    it("keeps hook errors and requirements when the handler is replaced", () => {
+      const command = Command.make("demo").pipe(
+        Command.beforePrompts(setup),
+        Command.withHandler(() => Effect.void)
+      )
+
+      expect(command).type.toBe<Command.Command<"demo", {}, {}, "setup-err", Setup>>()
+    })
+
+    it("keeps hook requirements that a handler provider satisfies", () => {
+      const command = Command.make("demo", {}, () => Effect.void).pipe(
+        Command.beforePrompts(setup),
+        Command.provideSync(Setup, "value")
+      )
+
+      expect(command).type.toBe<Command.Command<"demo", {}, {}, "setup-err", Setup>>()
+    })
+  })
+
   describe("built-in global flags", () => {
     it("strips built-in setting context from Command.make handlers", () => {
       const command = Command.make("example", {}, () =>
