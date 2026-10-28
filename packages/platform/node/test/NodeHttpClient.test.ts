@@ -431,6 +431,21 @@ it.live("followRedirects releases redirect response bodies with a single socket"
     ))
   ))
 
+it.live("followRedirects releases scoped redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.withScope, HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.scoped,
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
+
 it.live("releases an immediately failing form data stream and connection before layer teardown", () => {
   const server = Http.createServer((request) => {
     request.on("error", () => {})
