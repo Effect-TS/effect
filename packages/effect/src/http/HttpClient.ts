@@ -708,12 +708,11 @@ export const make = (
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
           const effect = f(request, url, controller.signal, fiber as any)
-          if (scopedController) return effect
+          if (scopedController) return Effect.map(effect, (response) => trackResponse(response, controller, true))
           return Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(effect), {
               onSuccess(response) {
-                responseRegistry.register(response, controller)
-                return Effect.succeed(new InterruptibleResponse(response, controller))
+                return Effect.succeed(trackResponse(response, controller, false))
               },
               onFailure(cause) {
                 if (Cause.hasInterrupts(cause)) {
@@ -754,9 +753,7 @@ export const make = (
                       endSpanWithStatusError(fiber, span, request, response)
                     }
 
-                    if (scopedController) return Effect.succeed(response)
-                    responseRegistry.register(response, controller)
-                    return Effect.succeed(new InterruptibleResponse(response, controller))
+                    return Effect.succeed(trackResponse(response, controller, scopedController !== undefined))
                   },
                   onFailure(cause) {
                     if (!scopedController && Cause.hasInterrupts(cause)) {
@@ -2026,7 +2023,11 @@ export const followRedirects: {
                 nextRequest.headers,
                 nextRequest.body
               )
-              return loop(Effect.succeed(nextRequest), redirects + 1)
+              // Abort the discarded response to release its connection without reading the body
+              return Effect.andThen(
+                Effect.sync(() => responseControllers.get(response)?.abort()),
+                loop(Effect.succeed(nextRequest), redirects + 1)
+              )
             }
           )
         })
@@ -2164,6 +2165,21 @@ const responseRegistry = (() => {
 })()
 
 const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
+
+const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
+
+const trackResponse = (
+  response: HttpClientResponse.HttpClientResponse,
+  controller: AbortController,
+  scoped: boolean
+): HttpClientResponse.HttpClientResponse => {
+  if (!scoped) {
+    responseRegistry.register(response, controller)
+    response = new InterruptibleResponse(response, controller)
+  }
+  responseControllers.set(response, controller)
+  return response
+}
 
 class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pipeable {
   readonly original: HttpClientResponse.HttpClientResponse
