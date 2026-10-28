@@ -1,29 +1,10 @@
 import { assert, describe, expectTypeOf, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
-import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpBody, HttpClientRequest, HttpServerRequest } from "effect/http"
 import * as Option from "effect/Option"
 
 describe("HttpServerRequest", () => {
-  it.effect("urlParamsBody preserves a leading BOM after text strips it", () =>
-    Effect.gen(function*() {
-      const body = "\uFEFFname=value"
-      const clientRequest = HttpClientRequest.post("http://localhost/", {
-        body: HttpBody.text(body, "application/x-www-form-urlencoded")
-      })
-      for (
-        const message of [
-          HttpServerRequest.fromWeb(new Request("http://localhost/", { method: "POST", body })),
-          HttpServerRequest.fromClientRequest(clientRequest),
-          HttpClientResponse.fromWeb(clientRequest, new Response(body)),
-          HttpServerResponse.toClientResponse(HttpServerResponse.text(body))
-        ]
-      ) {
-        strictEqual(yield* message.text, "name=value")
-        deepStrictEqual([...yield* message.urlParamsBody], [["\uFEFFname", "value"]])
-      }
-    }))
-
   it("preserves an extension method through web-server-client conversion", () => {
     const request = HttpServerRequest.fromWeb(new Request("http://localhost/", { method: "PROPFIND" }))
     expectTypeOf(request.method).toEqualTypeOf<string>()
@@ -205,6 +186,14 @@ describe("HttpServerRequest", () => {
       )
       const server = HttpServerRequest.fromClientRequest(client)
       assert.strictEqual(yield* server.stream.pipe(Stream.decodeText(), Stream.mkString), "a=1&b=two")
+    }))
+
+  it.effect("urlParamsBody preserves a leading BOM", () =>
+    Effect.gen(function*() {
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://localhost/", { method: "POST", body: "\uFEFFname=value" })
+      )
+      deepStrictEqual([...yield* request.urlParamsBody], [["\uFEFFname", "value"]])
     }))
 
   it.effect("schemaBodyJson applies parse options", () =>

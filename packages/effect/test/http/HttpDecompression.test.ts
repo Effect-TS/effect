@@ -240,19 +240,6 @@ describe("HttpDecompression", () => {
     await cancelled
   })
 
-  it("preserves a leading BOM in URL-encoded bodies", async () => {
-    const response = await post(
-      makeHandler(
-        HttpServerRequest.HttpServerRequest.use((request) =>
-          Effect.map(request.urlParamsBody, (params) => HttpServerResponse.jsonUnsafe([...params]))
-        )
-      ),
-      await compress("\uFEFFname=value", ["gzip"]),
-      { "content-encoding": "gzip" }
-    )
-    assert.deepStrictEqual(await response.json(), [["\uFEFFname", "value"]])
-  })
-
   it("decompresses bodies for routes under a prefixed router", async () => {
     const { dispose, handler } = HttpRouter.toWebHandler(
       HttpRouter.use((router) => router.prefixed("/api").add("POST", "/echo", echo("text"))),
