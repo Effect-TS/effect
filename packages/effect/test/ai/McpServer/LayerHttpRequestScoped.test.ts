@@ -2,10 +2,13 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as Tool from "effect/ai/Tool"
+import * as Toolkit from "effect/ai/Toolkit"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -361,4 +364,240 @@ describe("McpServer.layerHttpRequestScoped", () => {
         ], path)
       }
     }).pipe(Effect.timeout("2 seconds")))
+})
+
+describe("McpServer.layerHttpRequestScoped legacy adapters", () => {
+  const Inspect = Toolkit.make(Tool.make("Inspect", {
+    success: Schema.String,
+    dependencies: [McpSchema.McpRequestContext]
+  }))
+  const registrations = Layer.mergeAll(
+    McpServer.toolkit(Inspect),
+    McpServer.resource({ uri: "test://legacy", name: "legacy", content: Effect.succeed("legacy") }),
+    toolRegistration("Broadcast", (server) =>
+      Effect.gen(function*() {
+        yield* server.notifications["notifications/tools/list_changed"]({})
+        yield* server.notifications["notifications/message"]({ level: "error", data: "log" })
+        return new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] })
+      }))
+  ).pipe(Layer.provide(Inspect.toLayer({
+    Inspect: () =>
+      Effect.map(McpSchema.McpRequestContext, (context) =>
+        [
+          context.protocolVersion,
+          context.clientInfo?.name,
+          context.clientCapabilities.sampling === undefined ? "no-sampling" : "sampling"
+        ].join(" "))
+  })))
+  const makeLegacyHarness = () =>
+    makeHttpHarness(registrations.pipe(
+      Layer.provideMerge(makeServerLayer({
+        name: "Legacy",
+        protocols: [
+          McpProtocol.v2026_07_28,
+          McpProtocol.v2025_11_25,
+          McpProtocol.v2025_06_18,
+          McpProtocol.v2025_03_26
+        ],
+        mode: "request"
+      }))
+    ))
+  const legacyToolLayer = (
+    name: string,
+    handle: (server: McpServer.McpServer["Service"], args: any) => Effect.Effect<McpSchema.CallToolResult>
+  ) =>
+    toolRegistration(name, handle).pipe(
+      Layer.provideMerge(makeServerLayer({ name: "Legacy", protocols: [McpProtocol.v2025_11_25], mode: "request" }))
+    )
+  const initialize = (protocolVersion: string) => ({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion,
+      capabilities: { sampling: {} },
+      clientInfo: { name: "original-client", version: "1.0.0" }
+    }
+  })
+  const legacyCall = (name: string, id = 2, _meta?: Record<string, unknown>) => ({
+    jsonrpc: "2.0",
+    id,
+    method: "tools/call",
+    params: { name, arguments: {}, ...(_meta === undefined ? {} : { _meta }) }
+  })
+  const legacyRequest = (name: string, id: number, signal?: AbortSignal) =>
+    new Request(MCP_ENDPOINT, {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        "content-type": "application/json",
+        "MCP-Protocol-Version": "2025-11-25"
+      },
+      body: JSON.stringify(legacyCall(name, id, { progressToken })),
+      signal: signal ?? null
+    })
+  const toolText = (response: Response) =>
+    Effect.map(readMcpHttpResponse(response), (message: any) => message.result.content[0].text)
+
+  it.live("should initialize without a session id and advertise no session-bound capabilities", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeLegacyHarness()
+      const response = yield* harness.post(initialize("2025-11-25"))
+      assert.strictEqual(response.status, 200)
+      assert.isNull(response.headers.get("Mcp-Session-Id"))
+      assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+      const capabilities = ((yield* readMcpHttpResponse(response)) as any).result.capabilities
+      assert.notProperty(capabilities, "logging")
+      assert.deepStrictEqual(capabilities.tools, { listChanged: false })
+      assert.deepStrictEqual(capabilities.resources, { listChanged: false, subscribe: false })
+    }))
+
+  for (const version of ["2025-03-26", "2025-06-18", "2025-11-25"]) {
+    it.live(`should serve ${version} POSTs with a conservative client profile`, () =>
+      Effect.gen(function*() {
+        const harness = yield* makeLegacyHarness()
+        yield* readMcpHttpResponse(yield* harness.post(initialize(version)))
+        const called = yield* harness.post(legacyCall("Inspect"), { "MCP-Protocol-Version": version })
+        assert.isNull(called.headers.get("Mcp-Session-Id"))
+        assert.strictEqual(yield* toolText(called), `${version} unknown no-sampling`)
+      }))
+  }
+
+  it.live("should default a missing protocol header and reject unsupported versions and session ids", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeLegacyHarness()
+      assert.strictEqual(yield* toolText(yield* harness.post(legacyCall("Inspect"))), "2025-03-26 unknown no-sampling")
+      for (const version of ["2024-11-05", "9999-12-31"]) {
+        const response = yield* harness.post(legacyCall("Inspect"), { "MCP-Protocol-Version": version })
+        assert.strictEqual(response.status, 400, version)
+      }
+      const withSession = yield* harness.post(legacyCall("Inspect"), {
+        "MCP-Protocol-Version": "2025-11-25",
+        "Mcp-Session-Id": "unknown-session"
+      })
+      assert.strictEqual(withSession.status, 404)
+    }))
+
+  it.live("should serve a layer with only legacy adapters", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(registrations.pipe(
+        Layer.provideMerge(makeServerLayer({
+          name: "LegacyOnly",
+          protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18],
+          mode: "request"
+        }))
+      ))
+      const called = yield* harness.post(legacyCall("Inspect"), { "MCP-Protocol-Version": "2025-06-18" })
+      assert.strictEqual(yield* toolText(called), "2025-06-18 unknown no-sampling")
+      // `2025-03-26` is the assumed version when the header is absent, and it is not configured.
+      assert.strictEqual((yield* harness.post(legacyCall("Inspect"))).status, 400)
+    }))
+
+  it.live("should reject session-bound methods and deliver no list-change or log notifications", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeLegacyHarness()
+      const headers = { "MCP-Protocol-Version": "2025-11-25" }
+      for (
+        const [method, params] of [
+          ["logging/setLevel", { level: "debug" }],
+          ["resources/subscribe", { uri: "test://legacy" }]
+        ] as const
+      ) {
+        const response = yield* harness.post({ jsonrpc: "2.0", id: 1, method, params }, headers)
+        assert.nestedPropertyVal(
+          yield* readMcpHttpResponse(response),
+          "error.code",
+          McpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+          method
+        )
+      }
+      const response = yield* harness.post(legacyCall("Broadcast"), headers)
+      const body = yield* Effect.promise(() => response.text())
+      assert.notInclude(body, "notifications/")
+      assert.include(body, "\"text\":\"done\"")
+    }))
+
+  it.live("should resolve HTTP middleware services and visibility for every legacy POST", () =>
+    Effect.gen(function*() {
+      class CurrentUser extends Context.Service<CurrentUser, string>()("test/RequestScoped/CurrentUser") {}
+      const HttpAuth = HttpRouter.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.flatMap(
+          HttpServerRequest.HttpServerRequest,
+          (request) => Effect.provideService(effect, CurrentUser, request.headers["x-user"] ?? "guest")
+        )
+      )
+      const Identity = Toolkit.make(Tool.make("Identity", { success: Schema.String, dependencies: [CurrentUser] }))
+      const harness = yield* makeHttpHarness(
+        McpServer.layerHttpRequestScoped({
+          name: "LegacyAuth",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [McpProtocol.v2025_11_25],
+          registrations: McpServer.toolkit(Identity).pipe(
+            Layer.provide(McpServer.visibility(() => Effect.map(CurrentUser, (user) => user === "admin")).layer),
+            Layer.provide(Identity.toLayer({ Identity: () => Effect.service(CurrentUser) }))
+          )
+        }).pipe(Layer.provide(HttpAuth.layer))
+      )
+      const headers = { "MCP-Protocol-Version": "2025-11-25" }
+      const listed = yield* harness.post({ jsonrpc: "2.0", id: 1, method: "tools/list" }, headers)
+      assert.deepStrictEqual(((yield* readMcpHttpResponse(listed)) as any).result.tools, [])
+      const allowed = yield* harness.post(legacyCall("Identity"), { ...headers, "x-user": "admin" })
+      assert.strictEqual(yield* toolText(allowed), "admin")
+      const denied = yield* harness.post(legacyCall("Identity"), headers)
+      assert.deepStrictEqual(((yield* readMcpHttpResponse(denied)) as any).error, {
+        code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+        message: "Tool 'Identity' not found"
+      })
+    }))
+
+  it.live("should keep 2026-07-28 requests unchanged alongside legacy adapters", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeLegacyHarness()
+      const { body, headers } = callTool("Inspect", 1)
+      assert.nestedPropertyVal(yield* readMcpHttpResponse(yield* harness.post(body, headers)), "result.isError", false)
+      const { _meta: _, ...params } = body.params
+      assert.strictEqual((yield* harness.post({ ...body, params }, headers)).status, 400)
+    }))
+
+  it.live("should serve each legacy POST when timers from completed requests never fire", () =>
+    Effect.gen(function*() {
+      const worker = yield* makeWorkerdHarness(legacyToolLayer("ReportProgress", reportProgress))
+      // The first request builds the server and completes without serving MCP.
+      const first = yield* worker.request(new Request(MCP_ENDPOINT, { method: "GET" }))
+      assert.strictEqual(first.status, 405)
+
+      for (const id of [1, 2]) {
+        const response = yield* worker.request(legacyRequest("ReportProgress", id)).pipe(Effect.timeoutOrElse({
+          duration: "1 second",
+          orElse: () => Effect.die(`POST ${id} stalled`)
+        }))
+        assert.deepStrictEqual(sseMessages(response.body).map((message) => message.method ?? message.id), [
+          "notifications/progress",
+          id
+        ])
+      }
+    }))
+
+  it.live("should interrupt a legacy handler when the client aborts its POST", () =>
+    Effect.gen(function*() {
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const { dispose, handler } = HttpRouter.toWebHandler(
+        legacyToolLayer("Block", () =>
+          Deferred.succeed(entered, undefined).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+          )),
+        { disableLogger: true }
+      )
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const abort = new AbortController()
+      const response = handler(legacyRequest("Block", 1, abort.signal))
+      response.catch(() => undefined)
+
+      yield* Deferred.await(entered)
+      abort.abort()
+      yield* Deferred.await(interrupted).pipe(Effect.timeout("1 second"))
+    }))
 })
