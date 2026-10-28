@@ -2,7 +2,21 @@ import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { PgClient } from "@effect/sql-pg"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Latch, Layer, Redacted, Result, Schedule } from "effect"
+import {
+  Cause,
+  Clock,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  FileSystem,
+  Latch,
+  Layer,
+  Logger,
+  Redacted,
+  Result,
+  Schedule
+} from "effect"
 import {
   ClusterError,
   MessageStorage,
@@ -448,6 +462,80 @@ describe("SqlRunnerStorage", () => {
         Effect.provide(PgContainer.layerClientDatabase),
         Effect.provide(ShardingConfig.layer())
       ), 60_000)
+
+    it.effect("releases a frozen runner's advisory shard locks after shardLockExpiration", () => {
+      const shardLockExpiration = lockOperationInterval * 3
+      return Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const shard = ShardId.make("default", 1)
+
+        expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+        // storageA freezes: it stops refreshing, but its lock session stays open
+        const frozenAt = yield* Clock.currentTimeMillis
+        expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+
+        yield* storageB.acquire(runnerAddress2, [shard]).pipe(
+          Effect.repeat({
+            until: (acquired) => acquired.length > 0,
+            schedule: Schedule.spaced(100)
+          }),
+          Effect.timeoutOrElse({
+            duration: shardLockExpiration * 3,
+            orElse: () => Effect.die("the frozen runner still holds its advisory shard lock")
+          })
+        )
+        const elapsed = (yield* Clock.currentTimeMillis) - frozenAt
+        assert.isAtLeast(elapsed, shardLockExpiration * 0.9)
+        assert.isBelow(elapsed, shardLockExpiration * 2)
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect("acquires cleanly after a runner without shards leaves its lock connection idle", () => {
+      const shardLockExpiration = lockOperationInterval * 3
+      const logs: Array<string> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel !== "Debug" && options.logLevel !== "Trace") {
+          logs.push(Logger.formatJson.log(options))
+        }
+      })
+      return Effect.gen(function*() {
+        const storage = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shard = ShardId.make("default", 1)
+
+        yield* storage.register(runner, true)
+        // Without shards, only the liveness probe runs, and it uses the shared
+        // pool, so the lock connection stays idle past shardLockExpiration.
+        const idleUntil = (yield* Clock.currentTimeMillis) + shardLockExpiration * 1.5
+        while ((yield* Clock.currentTimeMillis) < idleUntil) {
+          expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
+          yield* Effect.sleep(lockOperationInterval)
+        }
+
+        expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+        expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
+        yield* storage.release(runnerAddress1, shard)
+        expect(logs).toEqual([])
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+        Effect.provide(Logger.layer([logger])),
+        TestClock.withLive
+      )
+    }, 60_000)
 
     it.effect(
       "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
