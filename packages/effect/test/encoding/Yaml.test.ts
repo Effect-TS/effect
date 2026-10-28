@@ -251,6 +251,11 @@ development:
     it("rejects a tab between the dash and the first key", () => {
       assert.throws(() => Yaml.parse("- \tname: a\n"), /Tabs cannot be used for YAML indentation/)
     })
+
+    // YAML 1.2.2 §5.4: U+2028 and U+2029 are content characters, not line breaks.
+    it("preserves Unicode line separators in the entry", () => {
+      assert.deepStrictEqual(Yaml.parse("-   name: left\u2029right\n"), [{ name: "left\u2029right" }])
+    })
   })
 
   // YAML 1.2.2 §§6.5–6.7 and 7.3.1–7.3.3: flow scalar folding and comments.
