@@ -51,6 +51,7 @@ class FakeState {
       id: { name: this.name },
       storage: {
         sql,
+        transactionSync: <A>(f: () => A) => f(),
         getAlarm: () => Promise.resolve(null),
         setAlarm: (scheduledTime: number) => {
           if (this.alarmError !== undefined) return Promise.reject(this.alarmError)

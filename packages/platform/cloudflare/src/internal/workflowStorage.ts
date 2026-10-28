@@ -31,6 +31,9 @@ const ddl = [
     deferred_name TEXT NOT NULL,
     wake_up INTEGER NOT NULL,
     fired INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS workflow_parent_wake (
+    id INTEGER PRIMARY KEY CHECK (id = 0)
   )`
 ]
 
@@ -138,6 +141,19 @@ export const saveResult = (sql: SqlStorage, result: string): void => {
 /** @internal */
 export const setResumePending = (sql: SqlStorage, pending: boolean): void => {
   sql.exec("UPDATE workflow_execution SET resume_pending = ? WHERE id = 0", pending ? 1 : 0)
+}
+
+/** @internal */
+export const hasParentWake = (sql: SqlStorage): boolean =>
+  sql.exec("SELECT id FROM workflow_parent_wake WHERE id = 0").toArray().length > 0
+
+/** @internal */
+export const setParentWake = (sql: SqlStorage, pending: boolean): void => {
+  sql.exec(
+    pending
+      ? "INSERT OR IGNORE INTO workflow_parent_wake (id) VALUES (0)"
+      : "DELETE FROM workflow_parent_wake WHERE id = 0"
+  )
 }
 
 /** @internal */
