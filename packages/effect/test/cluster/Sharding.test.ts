@@ -4384,6 +4384,130 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
     }).pipe(Effect.scoped))
 })
 
+describe("Sharding assignment settling", { concurrent: false }, () => {
+  const shards = globalThis.Array.from({ length: 24 }, (_, i) => ShardId.make("default", i + 1))
+  const joiner = (port: number) =>
+    Runner.make({ address: RunnerAddress.make("localhost", port), groups: ["default"], weight: 1 })
+
+  // Builds the local runner over `membership`, recording each change to the
+  // shards it owns with the time since the runner started.
+  const buildRunner = Effect.fnUntraced(function*(
+    membership: Array<readonly [Runner.Runner, boolean]>,
+    config?: Partial<ShardingConfig.ShardingConfig["Service"]>
+  ) {
+    const context = yield* Layer.build(
+      Sharding.layer.pipe(
+        Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, makeMembershipStorage(membership))),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: shards.length,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 100,
+          ...config
+        }))
+      )
+    )
+    const sharding = Context.get(context, Sharding.Sharding)
+    const clock = yield* Clock.Clock
+    const startedAt = clock.currentTimeMillisUnsafe()
+    const history: Array<{ readonly at: number; readonly owned: string }> = []
+    let current = ""
+    const advance = Effect.fnUntraced(function*(millis: number) {
+      for (let elapsed = 0; elapsed < millis; elapsed += 10) {
+        yield* TestClock.adjust(10)
+        const owned = shards.filter((shardId) => sharding.hasShardId(shardId)).join()
+        if (owned === current) continue
+        current = owned
+        history.push({ at: clock.currentTimeMillisUnsafe() - startedAt, owned })
+      }
+    })
+    return { history, advance }
+  })
+
+  // One runner, then three more joining 1.5 seconds apart.
+  const staggeredJoins = Effect.fnUntraced(function*(config: Partial<ShardingConfig.ShardingConfig["Service"]>) {
+    const membership: Array<readonly [Runner.Runner, boolean]> = []
+    const { advance, history } = yield* buildRunner(membership, config)
+    yield* advance(1500)
+    for (const port of [5001, 5002, 5003]) {
+      membership.push([joiner(port), true])
+      yield* advance(1500)
+    }
+    yield* advance(10_000)
+    return history
+  }, Effect.scoped)
+
+  it.effect("hands each shard off once for a bounded burst of staggered joins", () =>
+    Effect.gen(function*() {
+      // By default, each join publishes a new assignment within its interval.
+      const immediate = yield* staggeredJoins({})
+      assert.deepStrictEqual(immediate.map(({ at }) => Math.floor(at / 1500)), [0, 1, 2, 3])
+
+      const settled = yield* staggeredJoins({ assignmentSettleWindow: 2000 })
+      assert.deepStrictEqual(settled.map(({ owned }) => owned), [immediate[0].owned, immediate[3].owned])
+      // the initial assignment does not wait for the window
+      assert.isBelow(settled[0].at, 1500)
+      // the last join at 4500ms is published once membership is quiet for the window
+      assert.isAtLeast(settled[1].at, 6500)
+      assert.isBelow(settled[1].at, 7000)
+    }))
+
+  it.effect("publishes continuous joins within four settle windows", () =>
+    Effect.gen(function*() {
+      const membership: Array<readonly [Runner.Runner, boolean]> = []
+      const { advance, history } = yield* buildRunner(membership, { assignmentSettleWindow: 2000 })
+      yield* advance(1000)
+      // joins every 1000ms never leave membership quiet for the window
+      for (let port = 5001; port <= 5012; port++) {
+        membership.push([joiner(port), true])
+        yield* advance(1000)
+      }
+      assert.isAtLeast(history.length, 2)
+      // the first join at 1000ms is published by 1000 + 4 * 2000ms
+      assert.isAtLeast(history[1].at, 9000)
+      assert.isBelow(history[1].at, 9500)
+    }).pipe(Effect.scoped))
+
+  it.effect("publishes unhealthy runners immediately while joins are settling", () =>
+    Effect.gen(function*() {
+      const existing = joiner(5001)
+      const membership: Array<readonly [Runner.Runner, boolean]> = [[existing, true]]
+      const { advance, history } = yield* buildRunner(membership, { assignmentSettleWindow: 2000 })
+      yield* advance(1000)
+      // a runner starting in an existing cluster takes its share without waiting
+      assert.strictEqual(history.length, 1)
+      assert.notStrictEqual(history[0].owned, shards.join())
+
+      membership.push([joiner(5002), true])
+      yield* advance(1000)
+      assert.strictEqual(history.length, 1, "the join should still be settling")
+
+      membership[0] = [existing, false]
+      yield* advance(500)
+      assert.strictEqual(history.length, 2, "the unhealthy runner should be published immediately")
+    }).pipe(Effect.scoped))
+})
+
+// Runner membership the test controls; the local runner joins on registration.
+const makeMembershipStorage = (membership: Array<readonly [Runner.Runner, boolean]>) =>
+  RunnerStorage.RunnerStorage.of({
+    getRunners: Effect.sync(() => membership.slice()),
+    register: (runner) =>
+      Effect.sync(() => {
+        membership.push([runner, true])
+        return MachineId.make(1)
+      }),
+    unregister: () => Effect.void,
+    setRunnerHealth: () => Effect.void,
+    acquire: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
+    refresh: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
+    release: () => Effect.void,
+    releaseAll: () => Effect.void
+  })
+
 interface FailoverStorageState {
   blackholed: boolean
   /** Hang only non-empty refreshes, so the empty liveness probe can succeed. */
