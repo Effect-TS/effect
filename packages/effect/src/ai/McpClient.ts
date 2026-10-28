@@ -140,8 +140,10 @@ export interface McpClient {
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
    * Returns every skill page as one snapshot with the same bounds as `listTools`, or none
-   * when the server does not declare the Skills extension. Fails on an invalid entry.
-   * Requires the `skills` option, as do the other skill methods.
+   * when the server does not declare the Skills extension. Fails on an invalid entry, unless
+   * `skipInvalidSkills` is set: invalid entries are then left out, and each is passed to
+   * `onInvalidSkill` when supplied, which also implies skipping. Requires the `skills`
+   * option, as do the other skill methods.
    */
   readonly listSkills: (
     options?: {
@@ -150,6 +152,10 @@ export interface McpClient {
         readonly maxPages?: number | undefined
         readonly maxItems?: number | undefined
       } | undefined
+      readonly skipInvalidSkills?: boolean | undefined
+      readonly onInvalidSkill?:
+        | ((invalid: { readonly entry: unknown; readonly error: McpClientError }) => Effect.Effect<void>)
+        | undefined
     }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Skill>, McpClientError>
   /**
@@ -476,7 +482,7 @@ export const make: (options: {
   })
 
   const listSkills = Effect.fnUntraced(
-    function*(options?: DiscoveryOptions) {
+    function*(options?: Parameters<McpClient["listSkills"]>[0]) {
       yield* requireSkillsOption
       const limits = yield* resolveDiscoveryLimits(options?.limits, discoveryLimits)
       if (!servesSkills) return []
@@ -484,8 +490,15 @@ export const make: (options: {
       // A catalog that changes between pages can list a skill twice; the first entry wins.
       const skills = new Map<string, McpSchema.Skill>()
       for (const entry of entries) {
-        const skill = yield* decodeSkill(entry)
-        if (!skills.has(skill.uri)) skills.set(skill.uri, skill)
+        const decoded = yield* Effect.result(decodeSkill(entry))
+        if (decoded._tag === "Failure") {
+          if (options?.skipInvalidSkills !== true && options?.onInvalidSkill === undefined) {
+            return yield* Effect.fail(decoded.failure)
+          }
+          if (options.onInvalidSkill !== undefined) yield* options.onInvalidSkill({ entry, error: decoded.failure })
+          continue
+        }
+        if (!skills.has(decoded.success.uri)) skills.set(decoded.success.uri, decoded.success)
       }
       return Array.from(skills.values())
     },

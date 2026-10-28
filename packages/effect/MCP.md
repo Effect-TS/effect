@@ -798,7 +798,10 @@ methods. Without it they fail with a `ConfigurationError`, and the client does n
 extension.
 
 - `listSkills` returns every skill as an `McpSchema.Skill`, or none when the server does not declare
-  the extension. `getSkill` looks a skill up by the URI of its `SKILL.md`, listed or not.
+  the extension. An invalid entry fails the whole listing unless you pass `skipInvalidSkills: true`,
+  which leaves invalid entries out. Pass `onInvalidSkill` as well, or instead, to receive each
+  entry that was left out. `getSkill` looks a skill up by the
+  URI of its `SKILL.md`, listed or not.
 - `readResourceDirectory` lists the direct children of a directory in a skill namespace, when the
   server declares `directoryRead`.
 - `readSkillResource` reads a file listed in a skill's manifest and fails with a `ValidationError`

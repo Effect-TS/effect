@@ -1054,6 +1054,25 @@ describe("McpClient skills", () => {
       assert.deepStrictEqual(skill.frontmatter, frontmatter)
     }))
 
+  it.effect("should skip invalid skills when asked and report them to onInvalidSkill", () =>
+    Effect.gen(function*() {
+      const invalid = { ...entry, uri: "skill://other/SKILL.md" }
+      const { client } = yield* scriptedSkills({ "skills/list": () => ({ skills: [invalid, entry, { uri: 1 }] }) })
+      assert.strictEqual((yield* client.listSkills().pipe(Effect.flip)).reason._tag, "ValidationError")
+      const skipped = yield* client.listSkills({ skipInvalidSkills: true })
+      assert.deepStrictEqual(skipped.map((skill) => skill.uri), [entry.uri])
+
+      const reported: Array<{ readonly entry: unknown; readonly tag: string }> = []
+      const skills = yield* client.listSkills({
+        onInvalidSkill: ({ entry, error }) => Effect.sync(() => reported.push({ entry, tag: error.reason._tag }))
+      })
+      assert.deepStrictEqual(skills.map((skill) => skill.uri), [entry.uri])
+      assert.deepStrictEqual(reported, [
+        { entry: invalid, tag: "ValidationError" },
+        { entry: { uri: 1 }, tag: "ValidationError" }
+      ])
+    }))
+
   it.effect("should reject skills/get answering for another skill", () =>
     Effect.gen(function*() {
       const { client } = yield* scriptedSkills({ "skills/get": () => ({ skill: entry }) })

@@ -66,6 +66,10 @@ const Skill = Schema.Struct({
   resources: Schema.Union([Schema.Array(SkillResource), Schema.Literal("dynamic")])
 })
 
+// Listed entries are checked one at a time, so that a client can leave out an
+// invalid entry instead of rejecting the whole page.
+const ListedSkills = Schema.Array(Schema.Unknown)
+
 const DirectoryChild = Schema.Struct({
   uri: Schema.String,
   name: Schema.String,
@@ -76,7 +80,7 @@ const DirectoryChild = Schema.Struct({
  * @internal
  */
 export class LegacyListSkills extends Rpc.make("skills/list", {
-  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, skills: Schema.Array(Skill) }),
+  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, skills: ListedSkills }),
   error: Legacy.McpError,
   payload: Schema.UndefinedOr(Legacy.PaginatedRequest)
 }) {}
@@ -111,7 +115,7 @@ export class LegacyRpcs extends RpcGroup.make(LegacyListSkills, LegacyGetSkill, 
  * @internal
  */
 export const ListSkillsResult = Schema.StructWithRest(
-  Schema.Struct({ ...Stateless.PaginatedResult, ...Stateless.CacheableResult, skills: Schema.Array(Skill) }),
+  Schema.Struct({ ...Stateless.PaginatedResult, ...Stateless.CacheableResult, skills: ListedSkills }),
   [Stateless.UnknownObject]
 )
 
