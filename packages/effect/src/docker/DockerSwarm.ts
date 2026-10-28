@@ -52,7 +52,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmInspect).
+   * [Engine API: SwarmInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmInspect).
    * `Version.Index` is the version `update` takes. Only a manager answers.
    *
    * Typical reasons: `SwarmUnavailable`, `ConnectionFailed`.
@@ -64,7 +64,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmInit](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmInit).
+   * [Engine API: SwarmInit](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmInit).
    * The Engine requires `ListenAddr` (`docker swarm init` sends
    * `0.0.0.0:2377`). `Spec.Name` must be empty or `default`.
    *
@@ -77,7 +77,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmJoin](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmJoin).
+   * [Engine API: SwarmJoin](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmJoin).
    * The join token decides whether the node joins as a worker or a manager.
    * When the join takes too long, the Engine fails with `SwarmUnavailable`
    * and goes on joining in the background.
@@ -91,7 +91,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmLeave](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmLeave).
+   * [Engine API: SwarmLeave](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmLeave).
    * A manager needs `force`, which can break the Swarm's quorum.
    *
    * Typical reasons: `SwarmUnavailable` (not in a Swarm), `ServerError`,
@@ -103,7 +103,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmUpdate).
+   * [Engine API: SwarmUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmUpdate).
    * The spec replaces the current one: start from `inspect`'s `Spec`.
    * `version` is `inspect`'s `Version.Index`; when the Swarm changed since,
    * the Engine fails with `ServerError` and the message `update out of
@@ -127,7 +127,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmUnlockkey](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmUnlockkey).
+   * [Engine API: SwarmUnlockkey](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmUnlockkey).
    * Autolock is `Spec.EncryptionConfig.AutoLockManagers`.
    *
    * Typical reasons: `SwarmUnavailable`, `ConnectionFailed`.
@@ -138,7 +138,7 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    *
    * **Details**
    *
-   * [Engine API: SwarmUnlock](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Swarm/operation/SwarmUnlock).
+   * [Engine API: SwarmUnlock](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Swarm/operation/SwarmUnlock).
    * An autolocked manager is locked after its Engine restarts.
    *
    * Typical reasons: `Unauthorized` (the wrong key), `BadRequest` (not an

@@ -65,7 +65,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginList).
+   * [Engine API: PluginList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginList).
    * Filters: `capability` and `enable` (`true`, `false`).
    *
    * Typical reasons: `BadRequest` for an invalid filter, `ConnectionFailed`.
@@ -78,7 +78,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginInspect).
+   * [Engine API: PluginInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginInspect).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (name: string) => Effect.Effect<DockerSchema.Plugin, DockerError>
@@ -88,7 +88,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: GetPluginPrivileges](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/GetPluginPrivileges).
+   * [Engine API: GetPluginPrivileges](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/GetPluginPrivileges).
    * A Registry that refuses the credential fails with `ServerError`, not
    * `Unauthorized`.
    *
@@ -105,7 +105,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginPull](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginPull).
+   * [Engine API: PluginPull](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginPull).
    * `privileges` are the ones granted: all of those `privileges` returns, or
    * the stream fails with `StreamFailed` (`incorrect privileges`) once the
    * download is done, and nothing is installed. `name` is the local name, by
@@ -166,7 +166,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginUpgrade](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginUpgrade).
+   * [Engine API: PluginUpgrade](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginUpgrade).
    * `privileges` are as `pull`'s, for `remote`. The Engine doesn't check
    * that `remote` is the same plugin: an unrelated one replaces it, and its
    * settings reset to the new defaults.
@@ -188,7 +188,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginEnable](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginEnable).
+   * [Engine API: PluginEnable](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginEnable).
    * `timeout` (seconds, default 0) is the Engine's timeout for each request
    * to the plugin while activating it, not a deadline for the call: a plugin
    * that never answers fails after about 30 seconds whatever it is. Bound the
@@ -206,7 +206,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginDisable](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginDisable).
+   * [Engine API: PluginDisable](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginDisable).
    * `force` disables it while something uses it.
    *
    * Typical reasons: `Conflict` (already disabled), `NotFound`,
@@ -221,7 +221,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginSet](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginSet).
+   * [Engine API: PluginSet](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginSet).
    * A setting can be an env variable, `source` of a mount
    * (`<mount>.source=…`), `path` of a device or the args, as the plugin
    * declares them settable. A setting can be `Redacted`, and is sent
@@ -240,7 +240,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginCreate).
+   * [Engine API: PluginCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginCreate).
    * The tar holds `config.json` (the plugin's config, see the Engine's
    * plugin docs) and `rootfs/`. `name` is the plugin's reference, with a tag.
    *
@@ -256,7 +256,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginPush](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginPush).
+   * [Engine API: PluginPush](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginPush).
    * A Registry that refuses the credential fails the stream with
    * `StreamFailed`.
    *
@@ -285,7 +285,7 @@ export class DockerPlugins extends Context.Service<DockerPlugins, {
    *
    * **Details**
    *
-   * [Engine API: PluginDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Plugin/operation/PluginDelete).
+   * [Engine API: PluginDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Plugin/operation/PluginDelete).
    * An enabled plugin needs `force`.
    *
    * Typical reasons: `Conflict` (enabled), `NotFound`, `ConnectionFailed`.

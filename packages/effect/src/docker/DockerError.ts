@@ -4,7 +4,7 @@
  * Every operation fails with a {@link DockerError} whose `reason` says what
  * went wrong: an Engine response mapped by its status (following moby's own
  * table), a connection failure, a response that failed to decode, or a
- * client-side check such as {@link OptionNotSupported}.
+ * client-side check such as {@link UnsupportedApiVersion}.
  * Function types are never narrowed per operation; each function's
  * documentation lists the reasons it typically produces instead.
  *
@@ -31,6 +31,7 @@ import * as Data from "../Data.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as SchemaIssue from "../SchemaIssue.ts"
+import { compareApiVersions } from "./internal/config.ts"
 
 const TypeId = "~effect/docker/DockerError"
 
@@ -569,16 +570,19 @@ export class InvalidResponse extends Data.TaggedError("InvalidResponse")<{
 }
 
 /**
- * The Engine can't serve the minimum API version, 1.44. (A pinned version
- * below it fails `DockerConfig`'s layers instead.)
+ * The Engine doesn't serve API 1.52, the one API version the client speaks:
+ * its range, `minimum` to `maximum` as `/version` reports it, doesn't
+ * include `required`. An older Engine must be upgraded; upgrading the Docker
+ * CLI alone isn't enough.
  *
  * @stability unstable
  * @category errors
  * @since 4.0.7
  */
 export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersion")<{
-  readonly engineVersion: string
-  readonly minimum: string
+  readonly minimum: string | undefined
+  readonly maximum: string | undefined
+  readonly required: string
 }> {
   /**
    * Whether retrying may succeed: never for this reason.
@@ -590,34 +594,13 @@ export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersi
     return false
   }
   override get message() {
-    return `The Engine serves API ${this.engineVersion}, but at least ${this.minimum} is required`
-  }
-}
-
-/**
- * A request option or body field, or the operation itself, is newer than
- * the negotiated API version. The request was not sent.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.7
- */
-export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
-  readonly option: string
-  readonly requiredVersion: string
-  readonly negotiatedVersion: string
-}> {
-  /**
-   * Whether retrying may succeed: never for this reason.
-   *
-   * @stability unstable
-   * @since 4.0.7
-   */
-  get isRetryable(): boolean {
-    return false
-  }
-  override get message() {
-    return `${this.option} requires API ${this.requiredVersion}, but the negotiated version is ${this.negotiatedVersion}`
+    const range = `${this.minimum ?? "?"} to ${this.maximum ?? "?"}`
+    // an Engine new enough for `required` that has dropped it
+    return this.maximum !== undefined && compareApiVersions(this.maximum, this.required) >= 0
+      ? `The Docker Engine serves API ${range}, which no longer includes ${this.required}, the API version ` +
+        `effect/docker speaks`
+      : `The Docker Engine serves API ${range}, but effect/docker needs API ${this.required} ` +
+        `(Docker Engine 29.0 or later): upgrade the Docker Engine, not just the Docker CLI`
   }
 }
 
@@ -745,7 +728,6 @@ export type DockerErrorReason =
   | ConnectionFailed
   | InvalidResponse
   | UnsupportedApiVersion
-  | OptionNotSupported
   | InvalidReference
   | StreamFailed
   | StdinNotAttached

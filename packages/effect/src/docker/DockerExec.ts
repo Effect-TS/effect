@@ -158,7 +158,7 @@ export class DockerExec extends Context.Service<DockerExec, {
    *
    * **Details**
    *
-   * [Engine API: ContainerExec](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Exec/operation/ContainerExec).
+   * [Engine API: ContainerExec](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Exec/operation/ContainerExec).
    * Set `AttachStdin`, `AttachStdout` and `AttachStderr` for what `start`
    * should connect. Without `DetachKeys`, the configured detach keys apply.
    * `Env` entries can be `Redacted`, and are sent unwrapped.
@@ -175,7 +175,7 @@ export class DockerExec extends Context.Service<DockerExec, {
    *
    * **Details**
    *
-   * [Engine API: ExecInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Exec/operation/ExecInspect).
+   * [Engine API: ExecInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Exec/operation/ExecInspect).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (id: string) => Effect.Effect<DockerSchema.ExecInspectResponse, DockerError>
@@ -184,7 +184,7 @@ export class DockerExec extends Context.Service<DockerExec, {
    *
    * **Details**
    *
-   * [Engine API: ExecResize](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Exec/operation/ExecResize).
+   * [Engine API: ExecResize](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Exec/operation/ExecResize).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly resize: (id: string, size: DockerApi.TtySize) => Effect.Effect<void, DockerError>
@@ -193,7 +193,7 @@ export class DockerExec extends Context.Service<DockerExec, {
    *
    * **Details**
    *
-   * [Engine API: ExecStart](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Exec/operation/ExecStart).
+   * [Engine API: ExecStart](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Exec/operation/ExecStart).
    * The exec is inspected first, for its TTY and stdin settings. The framing of
    * the output follows the response's content type, or the exec's TTY when the
    * Engine sends none. There are no timeouts: close the scope to stop.

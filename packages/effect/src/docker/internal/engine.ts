@@ -10,28 +10,16 @@ import * as HttpClient from "../../http/HttpClient.ts"
 import * as HttpClientError from "../../http/HttpClientError.ts"
 import * as HttpClientRequest from "../../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../../http/HttpClientResponse.ts"
+import type { HttpMethod } from "../../http/HttpMethod.ts"
 import * as UrlParams from "../../http/UrlParams.ts"
 import * as Schema from "../../Schema.ts"
 import * as Stream from "../../Stream.ts"
-import {
-  ApiVersions,
-  type ErrorResponse,
-  ErrorResponses,
-  type SwarmErrorResponse,
-  SwarmErrorResponses
-} from "../DockerApi.ts"
+import { type ErrorResponse, ErrorResponses, type SwarmErrorResponse, SwarmErrorResponses } from "../DockerApi.ts"
 import type * as DockerConfig from "../DockerConfig.ts"
 import type { DockerEngine } from "../DockerEngine.ts"
-import {
-  ConnectionFailed,
-  DockerError,
-  InvalidResponse,
-  isDockerError,
-  OptionNotSupported,
-  UnexpectedStatus
-} from "../DockerError.ts"
+import { ConnectionFailed, DockerError, InvalidResponse, isDockerError, UnexpectedStatus } from "../DockerError.ts"
 import { errorMessage } from "./api.ts"
-import { compareApiVersions, formatHost, hostAndPort } from "./config.ts"
+import { apiVersion, formatHost, hostAndPort } from "./config.ts"
 
 // -----------------------------------------------------------------------------
 // requests
@@ -108,7 +96,7 @@ const sanitizeCause = (cause: unknown): unknown => {
   if (!HttpClientError.isHttpClientError(cause)) return cause
   const reason = cause.reason
   const fields = {
-    request: HttpClientRequest.make(reason.request.method)(reason.request.url),
+    request: HttpClientRequest.make(reason.request.method as HttpMethod)(reason.request.url),
     ...(reason.cause !== undefined ? { cause: reason.cause } : {}),
     ...(reason.description !== undefined ? { description: reason.description } : {})
   }
@@ -219,13 +207,6 @@ export const filterStatus = (operation: string) =>
     : Effect.flatMap(errorBodyText(response), (body) => Effect.fail(statusError(response.status, body, operation)))
 
 /**
- * The negotiated version (negotiating on first use), recorded on the current
- * span as `docker.api_version`.
- */
-const negotiatedVersion = (apiVersion: Effect.Effect<string, DockerError>): Effect.Effect<string, DockerError> =>
-  Effect.tap(apiVersion, (negotiated) => Effect.annotateCurrentSpan("docker.api_version", negotiated))
-
-/**
  * The configured headers a request doesn't set itself.
  */
 const defaultHeaders = (
@@ -258,9 +239,9 @@ const withRedactedNames = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effe
   )
 
 /**
- * The Engine's `HttpClient`: the runtime's client with the negotiated
- * `/v{version}` prefix (when `apiVersion` is given; `/_ping` has none), the
- * Endpoint's base URL, the configured headers, registry headers and secret
+ * The Engine's `HttpClient`: the runtime's client with the `/v1.52` prefix,
+ * once `check` has succeeded (without `check`, unversioned), the Endpoint's
+ * base URL, the configured headers, registry headers and secret
  * query parameters redacted, error bodies read up to 1 MiB, and transport
  * failures as `ConnectionFailed`.
  * Statuses are left to `DockerApi`'s error responses, or {@link filterStatus}.
@@ -270,17 +251,16 @@ const withRedactedNames = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effe
 export const makeClient = (
   config: DockerConfig.ResolvedConfig,
   httpClient: HttpClient.HttpClient,
-  apiVersion?: Effect.Effect<string, DockerError> | undefined
+  check?: Effect.Effect<void, DockerError> | undefined
 ): HttpClient.HttpClient.With<DockerError> => {
   const { endpoint } = config
   // mapRequest steps run in order: the version prefix goes on before the base URL
   const prefixed = HttpClient.mapRequestEffect(
     httpClient,
     (request) =>
-      apiVersion === undefined ? Effect.succeed(request) : Effect.map(
-        negotiatedVersion(apiVersion),
-        (negotiated) => HttpClientRequest.prependUrl(request, `/v${negotiated}`)
-      )
+      check === undefined
+        ? Effect.succeed(request)
+        : Effect.as(check, HttpClientRequest.prependUrl(request, `/v${apiVersion}`))
   )
   return prefixed.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl(baseUrl(endpoint))),
@@ -434,60 +414,6 @@ export const modifyWith = <S extends object, A>(
     )
 
 // -----------------------------------------------------------------------------
-// API version gates
-// -----------------------------------------------------------------------------
-
-/** A request field the caller set, and the API version it arrived in. */
-interface Gate {
-  readonly option: string
-  readonly since: string
-}
-
-/** Whether `value` has a value at `path`; a `*` key matches any element or entry. */
-const isSetAt = (value: unknown, path: ReadonlyArray<string>): boolean => {
-  if (path.length === 0) return value !== undefined
-  if (typeof value !== "object" || value === null) return false
-  const [key, ...rest] = path
-  return key === "*"
-    ? Object.values(value).some((child) => isSetAt(child, rest))
-    : isSetAt((value as Record<string, unknown>)[key], rest)
-}
-
-/** The gates of {@link ApiVersions} that apply to `request`: the endpoint's, and the fields it sets. */
-const gatesOf = (
-  versions: ApiVersions["Service"] | undefined,
-  operation: string,
-  request: unknown
-): ReadonlyArray<Gate> => {
-  if (versions === undefined) return []
-  const gates: Array<Gate> = versions.endpoint === undefined ? [] : [{ option: operation, since: versions.endpoint }]
-  for (const part of ["query", "payload"] as const) {
-    for (const [option, since] of Object.entries(versions[part] ?? {})) {
-      if (isSetAt(request, [part, ...option.split(".")])) gates.push({ option, since })
-    }
-  }
-  return gates
-}
-
-/** Fails with `OptionNotSupported` for the first gate newer than the negotiated version. */
-const checkGates = (negotiated: string, gates: ReadonlyArray<Gate>): Effect.Effect<void, DockerError> => {
-  for (const gate of gates) {
-    if (compareApiVersions(negotiated, gate.since) < 0) {
-      return Effect.fail(
-        new DockerError({
-          reason: new OptionNotSupported({
-            option: gate.option,
-            requiredVersion: gate.since,
-            negotiatedVersion: negotiated
-          })
-        })
-      )
-    }
-  }
-  return Effect.void
-}
-
-// -----------------------------------------------------------------------------
 // HttpApi
 // -----------------------------------------------------------------------------
 
@@ -536,7 +462,7 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
 
 /**
  * The client of an endpoint group over the engine's `HttpClient`. Each method
- * checks the endpoint's {@link ApiVersions}, runs in a span named
+ * runs in a span named
  * `<operations>.<endpoint>` (e.g. `docker.System.info`) with the `id` or
  * `name` path parameter as `docker.resource_id`, and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
@@ -567,7 +493,6 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
           const method = client[id]
           const name = `${operations}.${id}`
           const mapError = toDockerError(engine, name)
-          const versions = Context.getOrUndefined(endpoint.annotations, ApiVersions)
           const streamed = Array.from(endpoint.success).some(HttpApiSchema.isStreamSchema)
           // an error status `DockerApi` doesn't declare, with the message of its body
           const send = (request: ClientRequest | undefined) =>
@@ -577,11 +502,7 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
               (error) => filterStatus(name)((error as UnexpectedStatusError).reason.response)
             )
           return [id, (request: ClientRequest | undefined) => {
-            const gates = gatesOf(versions, name, request)
-            const response = (gates.length === 0 ? send(request) : Effect.andThen(
-              Effect.flatMap(engine.apiVersion, (negotiated) => checkGates(negotiated, gates)),
-              send(request)
-            )).pipe(
+            const response = send(request).pipe(
               Effect.map((value) =>
                 Stream.isStream(value)
                   ? Stream.mapError(value as Stream.Stream<unknown, MethodError>, mapError)

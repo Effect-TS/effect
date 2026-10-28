@@ -45,7 +45,7 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    *
    * **Details**
    *
-   * [Engine API: SecretList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Secret/operation/SecretList).
+   * [Engine API: SecretList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Secret/operation/SecretList).
    * Filters: `id`, `label`, `name` and `names`.
    *
    * Typical reasons: `SwarmUnavailable`, `BadRequest` for an invalid filter,
@@ -59,7 +59,7 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    *
    * **Details**
    *
-   * [Engine API: SecretInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Secret/operation/SecretInspect).
+   * [Engine API: SecretInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Secret/operation/SecretInspect).
    * Typical reasons: `NotFound`, `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly inspect: (id: string) => Effect.Effect<DockerApi.Secret, DockerError>
@@ -68,7 +68,7 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    *
    * **Details**
    *
-   * [Engine API: SecretCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Secret/operation/SecretCreate).
+   * [Engine API: SecretCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Secret/operation/SecretCreate).
    * `Data` is at most 500 KB. A secret with a `Driver` takes its data from
    * that driver instead.
    *
@@ -81,7 +81,7 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    *
    * **Details**
    *
-   * [Engine API: SecretUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Secret/operation/SecretUpdate).
+   * [Engine API: SecretUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Secret/operation/SecretUpdate).
    * Only `Labels` can change: start from `inspect`'s `Spec`, and leave `Data`
    * out. Any other change fails with `BadRequest`. `version` is `inspect`'s
    * `Version.Index`; when the secret changed since, the Engine fails with
@@ -100,7 +100,7 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    *
    * **Details**
    *
-   * [Engine API: SecretDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Secret/operation/SecretDelete).
+   * [Engine API: SecretDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Secret/operation/SecretDelete).
    * Typical reasons: `NotFound`, `BadRequest` (a service uses it),
    * `SwarmUnavailable`, `ConnectionFailed`.
    */

@@ -7,56 +7,42 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import type { Endpoint, ResolvedConfig } from "../DockerConfig.ts"
 
 // -----------------------------------------------------------------------------
-// API versions
+// API version
 // -----------------------------------------------------------------------------
 
 /**
- * The oldest API version the client speaks.
+ * The one API version the client speaks: every request is sent at it, and an
+ * Engine must serve it. Changing it is a compatibility decision.
  *
  * @internal
  */
-export const minimumApiVersion = "1.44"
+export const apiVersion = "1.52"
 
 /**
- * The newest API version the client speaks: the version of the pinned spec
- * that `DockerSchema` is generated from.
- *
- * @internal
- */
-export const maximumApiVersion = "1.56"
-
-/**
- * Parses `major.minor`; `undefined` when malformed.
- *
- * @internal
- */
-export const parseApiVersion = (apiVersion: string): readonly [number, number] | undefined => {
-  const match = /^(\d+)\.(\d+)$/.exec(apiVersion.trim())
-  return match === null ? undefined : [Number(match[1]), Number(match[2])]
-}
-
-/**
- * Compares two `major.minor` versions; malformed versions sort lowest.
+ * Compares two `major.minor` API versions; a malformed one sorts lowest.
  *
  * @internal
  */
 export const compareApiVersions = (a: string, b: string): number => {
-  const [majorA, minorA] = parseApiVersion(a) ?? [0, 0]
-  const [majorB, minorB] = parseApiVersion(b) ?? [0, 0]
+  const parse = (version: string) => {
+    const match = /^(\d+)\.(\d+)$/.exec(version.trim())
+    return match === null ? [0, 0] : [Number(match[1]), Number(match[2])]
+  }
+  const [majorA, minorA] = parse(a)
+  const [majorB, minorB] = parse(b)
   return majorA !== majorB ? majorA - majorB : minorA - minorB
 }
 
 /**
- * An API version pin: `major.minor`, at least {@link minimumApiVersion}.
+ * `DOCKER_API_VERSION`, which may only name {@link apiVersion}: the client
+ * selects no other contract.
  *
  * @internal
  */
-export const ApiVersion = Schema.String.check(
-  Schema.makeFilter((apiVersion: string) =>
-    parseApiVersion(apiVersion) === undefined
-      ? `Expected an API version major.minor, got ${JSON.stringify(apiVersion)}`
-      : compareApiVersions(apiVersion, minimumApiVersion) >= 0 ||
-        `The API version ${apiVersion} is below the minimum, ${minimumApiVersion}`
+export const ApiVersionVariable = Schema.String.check(
+  Schema.makeFilter((version: string) =>
+    version.trim() === apiVersion ||
+    `effect/docker speaks Docker Engine API ${apiVersion} only, got ${JSON.stringify(version)}`
   )
 )
 
@@ -169,7 +155,7 @@ export const EnvironmentVariables = Config.all({
   tlsVerify: Config.option(Config.String("DOCKER_TLS_VERIFY")),
   tls: Config.option(Config.String("DOCKER_TLS")),
   certPath: Config.option(Config.String("DOCKER_CERT_PATH")),
-  apiVersion: Config.option(Config.schema(ApiVersion, "DOCKER_API_VERSION")),
+  apiVersion: Config.option(Config.schema(ApiVersionVariable, "DOCKER_API_VERSION")),
   defaultPlatform: Config.option(Config.String("DOCKER_DEFAULT_PLATFORM")),
   buildKit: Config.option(Config.schema(
     Schema.Literals([...parseBoolTrue, "0", "f", "F", "FALSE", "false", "False"]).pipe(

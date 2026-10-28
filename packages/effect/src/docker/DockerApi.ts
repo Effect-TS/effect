@@ -9,7 +9,8 @@
  * the Engine answers them:
  *
  * - Paths have no `/v1.xx` prefix: the `DockerEngine`'s `HttpClient` adds
- *   the negotiated version.
+ *   `/v1.52`, the one API version the client speaks. The schemas are API
+ *   1.52's.
  * - Every endpoint declares the Engine's {@link ErrorResponses} with
  *   {@link EngineErrors}, or {@link SwarmErrorResponses} with
  *   {@link SwarmErrors} when Swarm serves it. They decode to the
@@ -21,7 +22,7 @@
  *
  * The services are clients of these groups. For what they don't cover, make
  * a client of a group over the `DockerEngine`'s `HttpClient`, which adds the
- * negotiated version and the configuration.
+ * API version and the configuration.
  *
  * **Example** (A client of the volume endpoints)
  *
@@ -43,7 +44,6 @@
  * @stability unstable
  * @since 4.0.7
  */
-import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as HttpApi from "../http-api/HttpApi.ts"
@@ -58,48 +58,6 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as DockerError from "./DockerError.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 import { BuildMessage, errorMessage, Progress } from "./internal/api.ts"
-
-// -----------------------------------------------------------------------------
-// annotations
-// -----------------------------------------------------------------------------
-
-/**
- * An endpoint annotation: the API version the endpoint arrived in when it is
- * newer than 1.44, and the request fields newer than 1.44, each with the
- * version it arrived in.
- *
- * **Details**
- *
- * A key names a field of the request's `query` or `payload` as the caller
- * passes it, a dotted key (`HostConfig.Init`) a nested one, and a `*` key any
- * element of an array or entry of a map
- * (`HostConfig.Mounts.*.VolumeOptions.Subpath`). The services of
- * `effect/docker` fail a request that sets one with `OptionNotSupported`
- * when the negotiated version is older, before anything is sent. An Engine
- * that predates a field ignores it or rejects the request, so a client of
- * {@link DockerApi} of your own can check them the same way.
- *
- * **Example** (Reading the version an endpoint arrived in)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- * import { DockerApi } from "effect/docker"
- *
- * const endpoint = DockerApi.Images.endpoints.attestations
- * const versions = Context.getOrUndefined(endpoint.annotations, DockerApi.ApiVersions)
- * console.log(versions?.endpoint) // "1.55"
- * ```
- *
- * @stability unstable
- * @category annotations
- * @since 4.0.7
- */
-export class ApiVersions extends Context.Service<ApiVersions, {
-  /** The version the endpoint itself arrived in. */
-  readonly endpoint?: string | undefined
-  readonly query?: Readonly<Record<string, string>> | undefined
-  readonly payload?: Readonly<Record<string, string>> | undefined
-}>()("effect/docker/DockerApi/ApiVersions") {}
 
 // -----------------------------------------------------------------------------
 // errors
@@ -332,7 +290,7 @@ const tar = HttpApiSchema.StreamUint8Array({ contentType: "application/x-tar" })
  * **Details**
  *
  * `apiVersion` is the Engine's maximum API version (`Api-Version`), not the
- * negotiated one. `builderVersion` is the default Builder the Engine
+ * one the client speaks. `builderVersion` is the default Builder the Engine
  * advertises; it never changes which Builder a build uses. `experimental` is
  * whether the Engine runs with experimental features (`Docker-Experimental`).
  *
@@ -477,10 +435,10 @@ export const System = HttpApiGroup.make("system").add(
   HttpApiEndpoint.get("info", "/info", { success: Schema.toCodecGoJson(DockerSchema.SystemInfo) }),
   HttpApiEndpoint.get("events", "/events", {
     query: { since: Schema.optional(UnixSeconds), until: Schema.optional(UnixSeconds), filters },
-    // one message per line, as `application/jsonl`; before API 1.52 the Engine answers `application/json`
+    // one message per line
     success: HttpApiSchema.StreamNdjson({
       schema: Schema.toCodecGoJson(DockerSchema.EventMessage),
-      contentType: "application/jsonl"
+      contentType: "application/x-ndjson"
     })
   }),
   HttpApiEndpoint.get("df", "/system/df", {
@@ -489,7 +447,7 @@ export const System = HttpApiGroup.make("system").add(
       verbose: Schema.optional(Schema.Boolean)
     },
     success: Schema.toCodecGoJson(DockerSchema.SystemDataUsageResponse)
-  }).annotate(ApiVersions, { query: { verbose: "1.52" } }),
+  }),
   HttpApiEndpoint.post("auth", "/auth", {
     payload: AuthConfig,
     success: [
@@ -505,17 +463,15 @@ export const System = HttpApiGroup.make("system").add(
       all: Schema.optional(Schema.Boolean),
       filters,
       reservedSpace: Schema.optional(Schema.Number),
-      keepStorage: Schema.optional(Schema.Number),
       maxUsedSpace: Schema.optional(Schema.Number),
       minFreeSpace: Schema.optional(Schema.Number)
     }).pipe(Schema.encodeKeys({
       reservedSpace: "reserved-space",
-      keepStorage: "keep-storage",
       maxUsedSpace: "max-used-space",
       minFreeSpace: "min-free-space"
     })),
     success: Schema.toCodecGoJson(DockerSchema.BuildPruneResponse)
-  }).annotate(ApiVersions, { query: { reservedSpace: "1.48", maxUsedSpace: "1.48", minFreeSpace: "1.48" } })
+  })
 ).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
@@ -627,19 +583,11 @@ export const Containers = HttpApiGroup.make("containers").add(
       filters
     },
     success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ContainerSummary))
-  }).annotate(ApiVersions, { query: { "filters.annotation": "1.56" } }),
+  }),
   HttpApiEndpoint.post("create", "/containers/create", {
     query: { name: Schema.optional(Schema.String), platform: Schema.optional(Schema.String) },
     payload: ContainerCreateRequest,
     success: Schema.toCodecGoJson(DockerSchema.ContainerCreateResponse).pipe(HttpApiSchema.status(201))
-  }).annotate(ApiVersions, {
-    payload: {
-      "HostConfig.Umask": "1.56",
-      "HostConfig.Mounts.*.VolumeOptions.Subpath": "1.45",
-      "HostConfig.Mounts.*.TmpfsOptions.Options": "1.46",
-      "HostConfig.Mounts.*.ImageOptions": "1.48",
-      "NetworkingConfig.EndpointsConfig.*.GwPriority": "1.48"
-    }
   }),
   HttpApiEndpoint.get("inspect", "/containers/:id/json", {
     params: id,
@@ -691,15 +639,6 @@ export const Containers = HttpApiGroup.make("containers").add(
     params: id,
     payload: DockerSchema.ContainerUpdateRequest,
     success: Schema.toCodecGoJson(DockerSchema.ContainerUpdateResponse)
-  }).annotate(ApiVersions, {
-    // older Engines accepted and ignored them
-    payload: {
-      BlkioWeightDevice: "1.55",
-      BlkioDeviceReadBps: "1.55",
-      BlkioDeviceWriteBps: "1.55",
-      BlkioDeviceReadIOps: "1.55",
-      BlkioDeviceWriteIOps: "1.55"
-    }
   }),
   HttpApiEndpoint.post("wait", "/containers/:id/wait", {
     params: id,
@@ -893,7 +832,7 @@ export const Networks = HttpApiGroup.make("networks").add(
   HttpApiEndpoint.post("create", "/networks/create", {
     payload: DockerSchema.NetworkCreateRequest,
     success: Schema.toCodecGoJson(DockerSchema.NetworkCreateResponse).pipe(HttpApiSchema.status(201))
-  }).annotate(ApiVersions, { payload: { EnableIPv4: "1.48" } }),
+  }),
   HttpApiEndpoint.delete("remove", "/networks/:id", {
     params: id,
     success: HttpApiSchema.NoContent
@@ -902,9 +841,6 @@ export const Networks = HttpApiGroup.make("networks").add(
     params: id,
     payload: DockerSchema.NetworkConnectRequest,
     success: HttpApiSchema.Empty(200)
-  }).annotate(ApiVersions, {
-    // older Engines ignored a MAC address here
-    payload: { "EndpointConfig.GwPriority": "1.48", "EndpointConfig.MacAddress": "1.54" }
   }),
   HttpApiEndpoint.post("disconnect", "/networks/:id/disconnect", {
     params: id,
@@ -1091,30 +1027,20 @@ export const Images = HttpApiGroup.make("images").add(
       filters,
       sharedSize: Schema.optional(Schema.Boolean),
       digests: Schema.optional(Schema.Boolean),
-      manifests: Schema.optional(Schema.Boolean),
-      identity: Schema.optional(Schema.Boolean)
+      manifests: Schema.optional(Schema.Boolean)
     }).pipe(Schema.encodeKeys({ sharedSize: "shared-size" })),
     success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageSummary))
-  }).annotate(ApiVersions, { query: { manifests: "1.47", identity: "1.54" } }),
+  }),
   HttpApiEndpoint.get("inspect", "/images/:name/json", {
     params: name,
     query: { manifests: Schema.optional(Schema.Boolean), platform: Schema.optional(Platform) },
     success: Schema.toCodecGoJson(DockerSchema.ImageInspect)
-  }).annotate(ApiVersions, { query: { manifests: "1.48", platform: "1.49" } }),
+  }),
   HttpApiEndpoint.get("history", "/images/:name/history", {
     params: name,
     query: { platform: Schema.optional(Platform) },
     success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageHistoryResponseItem))
-  }).annotate(ApiVersions, { query: { platform: "1.48" } }),
-  HttpApiEndpoint.get("attestations", "/images/:name/attestations", {
-    params: name,
-    query: {
-      platform: Schema.optional(Platform),
-      type: Schema.optional(Schema.Array(Schema.String)),
-      statement: Schema.optional(Schema.Boolean)
-    },
-    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.AttestationStatement))
-  }).annotate(ApiVersions, { endpoint: "1.55" }),
+  }),
   HttpApiEndpoint.post("tag", "/images/:name/tag", {
     params: name,
     query: { repo: Schema.optional(Schema.String), tag: Schema.optional(Schema.String) },
@@ -1129,7 +1055,7 @@ export const Images = HttpApiGroup.make("images").add(
       platforms: Schema.optional(Schema.Array(Platform))
     }).pipe(Schema.encodeKeys({ noPrune: "noprune" })),
     success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageDeleteResponseItem))
-  }).annotate(ApiVersions, { query: { platforms: "1.50" } }),
+  }),
   HttpApiEndpoint.post("prune", "/images/prune", {
     query: { filters },
     success: Schema.toCodecGoJson(DockerSchema.ImagePruneResponse)
@@ -1161,17 +1087,17 @@ export const Images = HttpApiGroup.make("images").add(
     params: name,
     query: { platform: Schema.optional(Platforms) },
     success: tar
-  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  }),
   HttpApiEndpoint.get("saveAll", "/images/get", {
     // without names, an archive of no images
     query: { names: Schema.optional(Schema.Array(Schema.String)), platform: Schema.optional(Platforms) },
     success: tar
-  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  }),
   HttpApiEndpoint.post("load", "/images/load", {
     query: { quiet: Schema.optional(Schema.Boolean), platform: Schema.optional(Platforms) },
     payload: tar,
     success: progress
-  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  }),
   HttpApiEndpoint.post("pull", "/images/create", {
     // `tag` is a tag or a digest; without one, the Engine pulls every tag
     query: { fromImage: Schema.String, tag: Schema.optional(Schema.String), platform: Schema.optional(Schema.String) },
@@ -1203,7 +1129,7 @@ export const Images = HttpApiGroup.make("images").add(
     query: { tag: Schema.optional(Schema.String), platform: Schema.optional(Platform) },
     headers: { "x-registry-auth": RegistryAuth },
     success: progress
-  }).annotate(ApiVersions, { query: { platform: "1.46" } })
+  })
 ).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
@@ -1349,16 +1275,6 @@ const LogsQuery = {
   tail: Schema.optional(Schema.Union([Schema.Number, Schema.Literal("all")]))
 }
 
-/** The fields of a service spec that are newer than API 1.44. */
-const serviceSpecVersions = {
-  payload: {
-    "TaskTemplate.ContainerSpec.OomScoreAdj": "1.46",
-    "TaskTemplate.ContainerSpec.Mounts.*.TmpfsOptions.Options": "1.46",
-    "TaskTemplate.Resources.SwapBytes": "1.52",
-    "TaskTemplate.Resources.MemorySwappiness": "1.52"
-  }
-}
-
 /**
  * A task's container, as the Engine's `TaskSpec.ContainerSpec`, whose `Env` entries can be `Redacted`.
  *
@@ -1443,7 +1359,7 @@ export const Services = HttpApiGroup.make("services").add(
     headers: optionalRegistryAuth,
     payload: ServiceSpec,
     success: Schema.toCodecGoJson(DockerSchema.ServiceCreateResponse).pipe(HttpApiSchema.status(201))
-  }).annotate(ApiVersions, serviceSpecVersions),
+  }),
   HttpApiEndpoint.post("update", "/services/:id/update", {
     params: id,
     query: {
@@ -1454,7 +1370,7 @@ export const Services = HttpApiGroup.make("services").add(
     headers: optionalRegistryAuth,
     payload: ServiceSpec,
     success: Schema.toCodecGoJson(DockerSchema.ServiceUpdateResponse)
-  }).annotate(ApiVersions, serviceSpecVersions),
+  }),
   HttpApiEndpoint.delete("remove", "/services/:id", { params: id, success: HttpApiSchema.Empty(200) }),
   HttpApiEndpoint.get("logs", "/services/:id/logs", {
     params: id,

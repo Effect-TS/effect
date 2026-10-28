@@ -192,7 +192,7 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceList).
+   * [Engine API: ServiceList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceList).
    * Filters: `id`, `label`, `mode` (`replicated`, `global`) and `name`.
    * `status` adds each service's `ServiceStatus` (running and desired
    * tasks).
@@ -209,7 +209,7 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceInspect).
+   * [Engine API: ServiceInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceInspect).
    * `insertDefaults` fills in the spec's unset fields with the Engine's
    * defaults.
    *
@@ -224,15 +224,13 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceCreate).
+   * [Engine API: ServiceCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceCreate).
    * See {@link ImageOptions}. The Engine accepts an image it can't pull: its
-   * tasks fail instead. `ContainerSpec.OomScoreAdj` and
-   * `ContainerSpec.Mounts.TmpfsOptions.Options` require API 1.46, and
-   * `Resources.SwapBytes` and `Resources.MemorySwappiness` 1.52.
+   * tasks fail instead.
    *
    * Typical reasons: `Conflict` (the name is taken), `BadRequest`,
    * `Forbidden`, `InvalidReference`, `CredentialsUnavailable`,
-   * `SwarmUnavailable`, `ConnectionFailed`, `OptionNotSupported`.
+   * `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly create: (
     spec: DockerApi.ServiceSpec,
@@ -243,18 +241,17 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceUpdate).
+   * [Engine API: ServiceUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceUpdate).
    * The spec replaces the current one: start from `inspect`'s `Spec`.
    * `version` is `inspect`'s `Version.Index`; when the service changed
    * since, the Engine fails with `ServerError` and the message `update out of
    * sequence`, and the update needs a fresh `inspect`. Without a credential
    * (see {@link ImageOptions}), `registryAuthFrom` picks the one stored with
-   * the current (`spec`, the default) or the previous spec. The gates are
-   * `create`'s.
+   * the current (`spec`, the default) or the previous spec.
    *
    * Typical reasons: `NotFound`, `BadRequest`, `ServerError` (out of
    * sequence), `InvalidReference`, `CredentialsUnavailable`,
-   * `SwarmUnavailable`, `ConnectionFailed`, `OptionNotSupported`.
+   * `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly update: (
     id: string,
@@ -270,7 +267,7 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceUpdate)
+   * [Engine API: ServiceUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceUpdate)
    * with `rollback=previous`. It inspects the service and sends its current
    * spec and version, as `docker service rollback` does: the Engine checks
    * the spec but rolls back to `PreviousSpec`.
@@ -313,7 +310,7 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceDelete).
+   * [Engine API: ServiceDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceDelete).
    * Typical reasons: `NotFound`, `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly remove: (id: string) => Effect.Effect<void, DockerError>
@@ -322,7 +319,7 @@ export class DockerServices extends Context.Service<DockerServices, {
    *
    * **Details**
    *
-   * [Engine API: ServiceLogs](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Service/operation/ServiceLogs).
+   * [Engine API: ServiceLogs](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Service/operation/ServiceLogs).
    * See {@link LogsOptions}. Only some log drivers can be read (`json-file`
    * and `journald`, for example). The framing follows the response's
    * content type, which follows the service's TTY: with a TTY every frame is

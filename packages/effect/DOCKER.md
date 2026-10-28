@@ -1,11 +1,11 @@
 ## Introduction
 
-`effect/docker` is a client for the [Docker Engine API](https://docs.docker.com/reference/api/engine/): containers, exec, images and builds, networks, volumes, Swarm, and plugins, as Effect services. It speaks API 1.44 up to 1.56, the version its schemas are generated from, and negotiates with the Engine as the Docker CLI does.
+`effect/docker` is a client for the [Docker Engine API](https://docs.docker.com/reference/api/engine/): containers, exec, images and builds, networks, volumes, Swarm, and plugins, as Effect services. It speaks Docker Engine API 1.52 and only 1.52: its schemas are generated from that version's document, and every request is sent at it. Docker Engine 29.0 and later serve it.
 
 The client is built in layers:
 
 - `DockerConfig`: where the Engine is and how to talk to it, as plain data.
-- `DockerEngine`: the connection, an `HttpClient` that negotiates the API version.
+- `DockerEngine`: the connection, an `HttpClient` that speaks API 1.52.
 - `DockerApi`: the Engine API as an `HttpApi`, the contract every service is a client of.
 - The services (`DockerContainers`, `DockerImages`, …), one per area of the API.
 - `NodeDocker` in `@effect/platform-node`, which provides all of it on Node.js.
@@ -34,7 +34,7 @@ const program = Effect.gen(function*() {
 program.pipe(Effect.provide(NodeDocker.layerFromEnv()), NodeRuntime.runMain)
 ```
 
-Building the layer never contacts the Engine. The first request negotiates the API version.
+Building the layer never contacts the Engine. The first request checks that the Engine serves API 1.52.
 
 ## Configuration
 
@@ -125,11 +125,13 @@ const RegistryAuthLive = Layer.succeed(
 )
 ```
 
-## API versions
+## API version
 
-The first request negotiates, as moby's client does: it asks the unversioned `/_ping` for the Engine's version, uses the lower of that and 1.56, and prefixes every request with `/v{version}`. An Engine that can't serve 1.44 fails with `UnsupportedApiVersion`. A pinned `apiVersion` (or `DOCKER_API_VERSION`) turns negotiation off.
+The client supports exactly one Engine API contract, 1.52, which Docker Engine 29.0 introduced and current 29.x Engines still serve. Every request is sent as `/v1.52/...`; nothing is negotiated, and the schemas, endpoints and options are API 1.52's, so newer ones (such as image attestations) aren't there.
 
-Endpoints and request fields newer than 1.44 are annotated with the version they arrived in (`DockerApi.ApiVersions`). A request that uses one with an older Engine fails with `OptionNotSupported` before anything is sent, instead of being ignored or rejected by the Engine.
+Before its first request, the client asks the unversioned `/version` for the Engine's API range. An Engine whose range doesn't include 1.52 fails every request with `UnsupportedApiVersion`, before any versioned request is sent. An older Engine has to be upgraded: upgrading the Docker CLI alone isn't enough. `DOCKER_API_VERSION` may only be `1.52`; any other value fails `layerFromEnv` with `InvalidConfig`, rather than being ignored.
+
+Moving to another API version is a deliberate compatibility decision, made in a release, never a silent update to the latest version.
 
 ## Errors
 
@@ -138,7 +140,7 @@ Every operation fails with `DockerError`. Its `reason` says what went wrong, and
 - An Engine response by its status, as moby maps its errors: `BadRequest`, `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `PreconditionFailed`, `TooManyRequests`, `ServerError`, `NotImplemented`, `Unavailable`, and `UnexpectedStatus` for any other. A Swarm endpoint's `503` is `SwarmUnavailable`: the node isn't a manager, or not in a Swarm.
 - `ConnectionFailed`, with a hint for the common causes (no socket, permission denied, TLS mismatch).
 - `InvalidResponse` for a response that doesn't decode, `StreamFailed` for a failure inside a stream.
-- Client-side checks: `OptionNotSupported`, `UnsupportedApiVersion`, `InvalidReference`, `StdinNotAttached`, `CredentialsUnavailable`.
+- Client-side checks: `UnsupportedApiVersion`, `InvalidReference`, `StdinNotAttached`, `CredentialsUnavailable`.
 
 ```ts
 import { Effect } from "effect"
@@ -155,13 +157,13 @@ const exists = (id: string) =>
 
 ## Tracing
 
-Every operation runs in a span named `docker.<Service>.<operation>`, with the resource it acts on as `docker.resource_id` and the negotiated version as `docker.api_version`. A streaming operation's span lasts until its stream ends. Registry credentials and the query parameters that can carry secrets (build args, `changes`, import sources, remote build contexts) are redacted.
+Every operation runs in a span named `docker.<Service>.<operation>`, with the resource it acts on as `docker.resource_id`. A streaming operation's span lasts until its stream ends. Registry credentials and the query parameters that can carry secrets (build args, `changes`, import sources, remote build contexts) are redacted.
 
 ## The contract: `DockerApi`
 
 `DockerApi` declares the Engine API as `HttpApi` endpoint groups, one per area, with every status the Engine answers: its error responses decode to the `DockerError` reason classes (`EngineErrors`, or `SwarmErrors` where Swarm serves the endpoint). A test checks it against the pinned API document. Where it differs from the document, the Engine does too.
 
-Use it for what the services don't cover. A raw client over the engine's `HttpClient` gets the negotiated version and the configuration, and fails with the declared errors:
+Use it for what the services don't cover. A raw client over the engine's `HttpClient` gets the API version and the configuration, and fails with the declared errors:
 
 ```ts
 import { Effect } from "effect"
@@ -181,7 +183,7 @@ A server can be built from it with `HttpApiBuilder`, such as a fake Engine for t
 
 ## Testing your own code
 
-Provide the services over a fake Engine: `DockerApi` groups served by your handlers with `HttpApiBuilder`, reached in memory through `FetchHttpClient`. Pin the API version, so the fake needn't answer `/_ping`. The Engine also serves unversioned paths, so drop the `/v1.xx` prefix:
+Provide the services over a fake Engine: `DockerApi` groups served by your handlers with `HttpApiBuilder`, reached in memory through `FetchHttpClient`. The fake answers the client's version check at `/version`, and, as the Engine also serves unversioned paths, the `/v1.52` prefix is dropped:
 
 ```ts
 import { Effect, FileSystem, Layer, Path } from "effect"
@@ -225,6 +227,10 @@ const FakeDocker = Layer.unwrap(Effect.gen(function*() {
   const fetch: typeof globalThis.fetch = Object.assign((input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init)
     const url = new URL(request.url)
+    // the client's check that the Engine serves API 1.52
+    if (url.pathname === "/version") {
+      return Promise.resolve(Response.json({ ApiVersion: "1.52", MinAPIVersion: "1.44" }))
+    }
     url.pathname = url.pathname.replace(/^\/v\d+\.\d+\//, "/")
     return handler(new Request(url, request))
   }, { preconnect() {} })
@@ -234,7 +240,7 @@ const FakeDocker = Layer.unwrap(Effect.gen(function*() {
   )
   return Docker.layer.pipe(Layer.provideMerge(Layer.mergeAll(
     Layer.effect(DockerEngine.DockerEngine, DockerEngine.make(httpClient)).pipe(
-      Layer.provide(DockerConfig.layer({ apiVersion: "1.56" }))
+      Layer.provide(DockerConfig.layer())
     ),
     Layer.succeed(DockerRegistryAuth.DockerRegistryAuth, { credential: () => Effect.succeed(undefined) })
   )))
@@ -251,16 +257,22 @@ import { Docker, DockerConfig, DockerEngine, DockerRegistryAuth } from "effect/d
 import { HttpClient, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const requests: Array<HttpClientRequest.HttpClientRequest> = []
-const httpClient = HttpClient.make((request) => {
+const httpClient = HttpClient.make((request, url) => {
   requests.push(request)
-  return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ Volumes: [], Warnings: [] })))
+  return Effect.succeed(HttpClientResponse.fromWeb(
+    request,
+    // the client's check that the Engine serves API 1.52, then the answer to every request
+    url.pathname === "/version"
+      ? Response.json({ ApiVersion: "1.52", MinAPIVersion: "1.44" })
+      : Response.json({ Volumes: [], Warnings: [] })
+  ))
 })
 
 const StubDocker = Docker.layer.pipe(Layer.provideMerge(Layer.mergeAll(
   Layer.effect(DockerEngine.DockerEngine, DockerEngine.make(httpClient)).pipe(
-    Layer.provide(DockerConfig.layer({ apiVersion: "1.56" }))
+    Layer.provide(DockerConfig.layer())
   ),
   Layer.succeed(DockerRegistryAuth.DockerRegistryAuth, { credential: () => Effect.succeed(undefined) })
 )))
-// after `volumes.list()`, `requests` holds `GET http://localhost/v1.56/volumes`
+// after `volumes.list()`, `requests` holds `GET http://localhost/version`, then `GET http://localhost/v1.52/volumes`
 ```

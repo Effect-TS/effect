@@ -114,7 +114,11 @@ export const run = Effect.gen(function*() {
   let patched = document
   for (const [i, input] of config.patches.entries()) {
     const patch = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(OpenApiPatch.JsonPatchDocument))(input)
-    patched = applyPatch(patched, `codegen.yaml patches[${i}]`, patch)
+    const operations = patch.filter((operation): operation is JsonPatch.JsonPatchOperation => operation.op !== "move")
+    if (operations.length !== patch.length) {
+      return yield* Effect.die(new Error(`codegen.yaml patches[${i}]: move operations aren't supported`))
+    }
+    patched = applyPatch(patched, `codegen.yaml patches[${i}]`, operations)
   }
   for (const family of Patches.standing) {
     const patch = family.make(patched)

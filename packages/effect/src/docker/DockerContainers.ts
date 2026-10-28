@@ -87,12 +87,10 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerList).
-   * Only running containers are listed unless `all` is set. The `annotation`
-   * filter requires API 1.56.
+   * [Engine API: ContainerList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerList).
+   * Only running containers are listed unless `all` is set.
    *
-   * Typical reasons: `BadRequest` (an invalid filter), `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * Typical reasons: `BadRequest` (an invalid filter), `ConnectionFailed`.
    */
   readonly list: (options?: {
     readonly all?: boolean | undefined
@@ -105,20 +103,15 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerCreate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerCreate).
+   * [Engine API: ContainerCreate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerCreate).
    * The body is the Engine's `ContainerCreateRequest` (`ContainerConfig` plus
    * `HostConfig` and `NetworkingConfig`). As `docker create` does, the
    * configured proxy is added to `Env` (unless the container sets the same
    * variables), and the configured platform applies unless `platform` is set.
    * `Env` entries can be `Redacted`, and are sent unwrapped.
    *
-   * Body fields newer than the negotiated version fail with
-   * `OptionNotSupported`: `HostConfig.Umask` (1.56), mount
-   * `VolumeOptions.Subpath` (1.45), `TmpfsOptions.Options` (1.46),
-   * `ImageOptions` and `EndpointsConfig.*.GwPriority` (1.48).
-   *
    * Typical reasons: `NotFound` (no such image: pull it first), `Conflict` (the
-   * name is taken), `BadRequest`, `ConnectionFailed`, `OptionNotSupported`.
+   * name is taken), `BadRequest`, `ConnectionFailed`.
    */
   readonly create: (
     config: DockerApi.ContainerCreateRequest,
@@ -132,7 +125,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerInspect).
+   * [Engine API: ContainerInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerInspect).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly inspect: (
@@ -144,7 +137,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerTop](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerTop).
+   * [Engine API: ContainerTop](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerTop).
    * `psArgs` are the arguments to `ps` (default `-ef`).
    *
    * Typical reasons: `NotFound`, `Conflict` (not running), `ConnectionFailed`.
@@ -158,7 +151,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerChanges](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerChanges).
+   * [Engine API: ContainerChanges](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerChanges).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly changes: (
@@ -170,7 +163,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerStart](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerStart).
+   * [Engine API: ContainerStart](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerStart).
    * Typical reasons: `NotFound`, `ServerError` (for example "port is already
    * allocated"), `ConnectionFailed`.
    */
@@ -184,7 +177,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerStop](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerStop).
+   * [Engine API: ContainerStop](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerStop).
    * `timeout` is the grace period before the container is killed, rounded up to
    * whole seconds (an infinite duration waits forever); `signal` replaces the
    * stop signal.
@@ -200,7 +193,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerRestart](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerRestart).
+   * [Engine API: ContainerRestart](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerRestart).
    * `timeout` and `signal` are as for `stop`.
    *
    * Typical reasons: `NotFound`, `ConnectionFailed`.
@@ -214,7 +207,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerKill](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerKill).
+   * [Engine API: ContainerKill](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerKill).
    * Typical reasons: `NotFound`, `Conflict` (not running), `ConnectionFailed`.
    */
   readonly kill: (
@@ -226,7 +219,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerPause](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerPause).
+   * [Engine API: ContainerPause](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerPause).
    * Typical reasons: `NotFound`, `Conflict`, `ConnectionFailed`.
    */
   readonly pause: (id: string) => Effect.Effect<void, DockerError>
@@ -235,7 +228,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerUnpause](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerUnpause).
+   * [Engine API: ContainerUnpause](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerUnpause).
    * Typical reasons: `NotFound`, `Conflict`, `ConnectionFailed`.
    */
   readonly unpause: (id: string) => Effect.Effect<void, DockerError>
@@ -244,7 +237,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerRename](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerRename).
+   * [Engine API: ContainerRename](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerRename).
    * Typical reasons: `NotFound`, `Conflict` (the name is taken), `ConnectionFailed`.
    */
   readonly rename: (id: string, name: string) => Effect.Effect<void, DockerError>
@@ -253,7 +246,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerResize](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerResize).
+   * [Engine API: ContainerResize](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerResize).
    * Typical reasons: `NotFound`, `ConnectionFailed`.
    */
   readonly resize: (id: string, size: DockerApi.TtySize) => Effect.Effect<void, DockerError>
@@ -262,12 +255,8 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerUpdate).
-   * The per-device blkio fields require API 1.55 (older Engines accepted and
-   * ignored them).
-   *
-   * Typical reasons: `NotFound`, `BadRequest`, `ConnectionFailed`,
-   * `OptionNotSupported`.
+   * [Engine API: ContainerUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerUpdate).
+   * Typical reasons: `NotFound`, `BadRequest`, `ConnectionFailed`.
    */
   readonly update: (
     id: string,
@@ -278,7 +267,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerWait](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerWait).
+   * [Engine API: ContainerWait](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerWait).
    * `condition` is `not-running` (default), `next-exit` or `removed`. There is
    * no timeout: add `Effect.timeout` if needed.
    *
@@ -293,7 +282,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerDelete).
+   * [Engine API: ContainerDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerDelete).
    * `force` kills a running container first; `volumes` removes its anonymous
    * volumes; `link` removes a legacy link instead.
    *
@@ -313,7 +302,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerPrune](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerPrune).
+   * [Engine API: ContainerPrune](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerPrune).
    * Typical reasons: `BadRequest`, `Conflict` (a prune is already running),
    * `ConnectionFailed`.
    */
@@ -325,7 +314,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerLogs](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerLogs).
+   * [Engine API: ContainerLogs](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerLogs).
    * Both `stdout` and `stderr` are included by default: an unset one is
    * included unless the other is `true`. With `follow`
    * the stream continues until the container stops, or until it is interrupted;
@@ -370,7 +359,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerStats](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerStats).
+   * [Engine API: ContainerStats](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerStats).
    * `oneShot` skips the wait for a second sample, so CPU percentages can't be
    * computed from `precpu_stats`.
    *
@@ -385,7 +374,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerStats](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerStats).
+   * [Engine API: ContainerStats](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerStats).
    * The stream doesn't end while the container runs: use `Stream.take` or
    * interrupt it.
    *
@@ -399,7 +388,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerExport](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerExport).
+   * [Engine API: ContainerExport](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerExport).
    * The bytes stream as the Engine sends them; decode them with
    * `Tar.decode()`.
    *
@@ -411,7 +400,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerAttach](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerAttach).
+   * [Engine API: ContainerAttach](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerAttach).
    * `stdout` and `stderr` default to `true`; `stdin` must be requested, and the
    * container must have been created with `OpenStdin`. `logs` replays the
    * output so far. Without `detachKeys`, the configured detach keys apply.
@@ -456,7 +445,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerArchiveInfo](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerArchiveInfo).
+   * [Engine API: ContainerArchiveInfo](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerArchiveInfo).
    * Typical reasons: `NotFound` (no such container or path), `BadRequest`,
    * `ConnectionFailed`.
    */
@@ -466,7 +455,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: ContainerArchive](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/ContainerArchive).
+   * [Engine API: ContainerArchive](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/ContainerArchive).
    * The archive holds the path itself as its first entry (a directory's
    * contents are below it). Read `bytes` before the response is abandoned; it
    * streams from the open request.
@@ -485,7 +474,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    *
    * **Details**
    *
-   * [Engine API: PutContainerArchive](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Container/operation/PutContainerArchive).
+   * [Engine API: PutContainerArchive](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Container/operation/PutContainerArchive).
    * `containerPath` must be an existing directory. The bytes stream to the
    * Engine as `application/x-tar`; a failure of `bytes` fails the request with
    * that error. `noOverwriteDirNonDir` refuses to replace a directory with a

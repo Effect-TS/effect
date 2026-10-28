@@ -43,7 +43,7 @@ export class DockerNodes extends Context.Service<DockerNodes, {
    *
    * **Details**
    *
-   * [Engine API: NodeList](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Node/operation/NodeList).
+   * [Engine API: NodeList](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Node/operation/NodeList).
    * Filters: `id`, `label` (an Engine label), `membership`
    * (`accepted`, `pending`), `name`, `node.label` and `role` (`manager`,
    * `worker`).
@@ -59,7 +59,7 @@ export class DockerNodes extends Context.Service<DockerNodes, {
    *
    * **Details**
    *
-   * [Engine API: NodeInspect](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Node/operation/NodeInspect).
+   * [Engine API: NodeInspect](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Node/operation/NodeInspect).
    * Typical reasons: `NotFound`, `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly inspect: (id: string) => Effect.Effect<DockerSchema.Node, DockerError>
@@ -68,7 +68,7 @@ export class DockerNodes extends Context.Service<DockerNodes, {
    *
    * **Details**
    *
-   * [Engine API: NodeUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Node/operation/NodeUpdate).
+   * [Engine API: NodeUpdate](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Node/operation/NodeUpdate).
    * The spec replaces the current one: start from `inspect`'s `Spec`.
    * `version` is `inspect`'s `Version.Index`; when the node changed since,
    * the Engine fails with `ServerError` and the message `update out of
@@ -87,7 +87,7 @@ export class DockerNodes extends Context.Service<DockerNodes, {
    *
    * **Details**
    *
-   * [Engine API: NodeDelete](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Node/operation/NodeDelete).
+   * [Engine API: NodeDelete](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Node/operation/NodeDelete).
    * A node that is still up needs `force`.
    *
    * Typical reasons: `NotFound`, `BadRequest` (still up, or a manager),
