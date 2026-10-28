@@ -2094,6 +2094,21 @@ Expected a value between -2147483648 and 2147483647`
         )
       })
 
+      it("isPatternProperties", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Unknown).check(
+          Schema.isPatternProperties(/^a/g, Schema.Finite)
+        )
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ a1: 1, a2: 2, b: "x" })
+        await decoding.fail(
+          { a1: 1, a2: "x" },
+          `Expected number
+  at ["a2"]`
+        )
+      })
+
       it("isPropertyNames with Never", async () => {
         const schema = Schema.Record(Schema.String, Schema.Finite).check(Schema.isPropertyNames(Schema.Never))
         const asserts = new TestSchema.Asserts(schema)

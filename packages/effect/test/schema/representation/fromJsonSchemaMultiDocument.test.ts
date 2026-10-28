@@ -26,26 +26,24 @@ function assertCode(schemas: readonly [Schema.Top, ...Array<Schema.Top>], expect
 }
 
 describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
-  it("rejects open pattern scopes in roots and shared definitions", () => {
-    const open = { type: "object", patternProperties: { "^a": { type: "number" } } } as const
-    throws(
-      () =>
-        SchemaRepresentation.fromJsonSchemaMultiDocument({
-          dialect: "draft-2020-12",
-          schemas: [{ type: "string" }, { type: "array", items: open }],
-          definitions: {}
-        }, { patterns: "apply" }),
-      `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schemas"][1]["items"]`
-    )
-    throws(
-      () =>
-        SchemaRepresentation.fromJsonSchemaMultiDocument({
-          dialect: "draft-2020-12",
-          schemas: [{ $ref: "#/$defs/Values" }, { type: "array", items: { $ref: "#/$defs/Values" } }],
-          definitions: { Values: open }
-        }, { patterns: "apply" }),
-      `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["definitions"]["Values"]`
-    )
+  it("imports open pattern scopes in shared definitions", () => {
+    const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument({
+      dialect: "draft-2020-12",
+      schemas: [{ $ref: "#/$defs/Values" }, { type: "array", items: { $ref: "#/$defs/Values" } }],
+      definitions: { Values: { type: "object", patternProperties: { "^a": { type: "number" } } } }
+    }, { patterns: "apply" })
+    assertCode(schemas, {
+      codes: [makeCode(`Values`, `Values`), makeCode(`Schema.Array(Values)`, `ReadonlyArray<Values>`)],
+      references: {
+        nonRecursives: [{
+          $ref: `Values`,
+          code: makeCode(
+            `Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isPatternProperties(new globalThis.RegExp("^a", "u"), Schema.Finite).annotate({ "expected": "an object whose properties matching the RegExp ^a satisfy the schema", "identifier": "Values" }))`,
+            `{ readonly [x: string]: Schema.Json }`
+          )
+        }]
+      }
+    })
   })
 
   it("imports closed patterned Records through shared definitions", async () => {
