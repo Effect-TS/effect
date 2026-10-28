@@ -227,14 +227,13 @@ const BlockerLayer = Blocker.toLayer(
           ])
           return increment(entityId)
         }),
-      Hold: (request) =>
-        Effect.gen(function*() {
-          const key = `${request.address.entityId}/${request.payload.op}`
-          bump(counts.entered, key)
-          yield* gateFor(key).await
-          bump(counts.completed, key)
-          return increment(request.address.entityId)
-        }),
+      Hold: Effect.fnUntraced(function*(request) {
+        const key = `${request.address.entityId}/${request.payload.op}`
+        bump(counts.entered, key)
+        yield* gateFor(key).await
+        bump(counts.completed, key)
+        return increment(request.address.entityId)
+      }),
       Get: (request) => Effect.sync(() => counts.values.get(request.address.entityId) ?? 0),
       Open: (request) =>
         Effect.sync(() => {
@@ -257,24 +256,22 @@ const Serial = Entity.make("Serial", [
 ])
 
 const SerialLayer = Serial.toLayer({
-  HoldVolatile: (request) =>
-    Effect.gen(function*() {
-      const key = request.payload.key
-      bump(counts.entered, key)
-      yield* gateFor(key).await.pipe(
-        Effect.onInterrupt(() => Effect.sync(() => bump(counts.interrupted, key)))
-      )
-      bump(counts.completed, key)
-      return "done"
-    }),
-  HoldUninterruptible: (request) =>
-    Effect.gen(function*() {
-      const key = request.payload.key
-      bump(counts.entered, key)
-      yield* gateFor(key).await
-      bump(counts.completed, key)
-      return "done"
-    }),
+  HoldVolatile: Effect.fnUntraced(function*(request) {
+    const key = request.payload.key
+    bump(counts.entered, key)
+    yield* gateFor(key).await.pipe(
+      Effect.onInterrupt(() => Effect.sync(() => bump(counts.interrupted, key)))
+    )
+    bump(counts.completed, key)
+    return "done"
+  }),
+  HoldUninterruptible: Effect.fnUntraced(function*(request) {
+    const key = request.payload.key
+    bump(counts.entered, key)
+    yield* gateFor(key).await
+    bump(counts.completed, key)
+    return "done"
+  }),
   Quick: () => Effect.succeed("ok")
 })
 
@@ -428,12 +425,11 @@ const CoordinatedLayer = Coordinated.toLayer(
     const sql = yield* CloudflareCluster.DurableObjectSqlClient.orDie
     yield* sql`CREATE TABLE IF NOT EXISTS coordinated (entry TEXT NOT NULL)`
     return Coordinated.of({
-      Wait: (request) =>
-        Effect.gen(function*() {
-          bump(counts.entered, `coordinated/${request.address.entityId}`)
-          yield* Deferred.await(releaseFor(request.address.entityId))
-          return "released"
-        }),
+      Wait: Effect.fnUntraced(function*(request) {
+        bump(counts.entered, `coordinated/${request.address.entityId}`)
+        yield* Deferred.await(releaseFor(request.address.entityId))
+        return "released"
+      }),
       ReleaseThenFail: (request) =>
         sql.withTransaction(Effect.gen(function*() {
           yield* sql`INSERT INTO coordinated (entry) VALUES ('rolled back')`
