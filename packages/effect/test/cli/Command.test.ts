@@ -1119,6 +1119,128 @@ describe("Command", () => {
       }).pipe(Effect.provide(TestLayer)))
   })
 
+  describe("beforePrompts", () => {
+    const Interactive = { canColor: false, canAnimate: false, canPrompt: true }
+    const NonInteractive = { canColor: false, canAnimate: false, canPrompt: false }
+
+    const recorder = () => {
+      const events: Array<string> = []
+      const record = (event: string) => Effect.sync(() => events.push(event))
+      const ask = (name: string) =>
+        Flag.String(name).pipe(
+          Flag.withFallbackPrompt(Effect.as(record(`prompt ${name}`), Prompt.String({ message: name })))
+        )
+      return { events, record, ask }
+    }
+
+    it.effect("runs setup hooks once before ordered fallback prompts and providers", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const demo = Command.make(
+          "demo",
+          { name: ask("name"), dir: ask("dir") },
+          ({ dir, name }) => record(`handler ${name} ${dir}`)
+        ).pipe(
+          Command.provideEffectDiscard(record("provide")),
+          Command.beforePrompts(record("setup a")),
+          Command.beforePrompts(record("setup b"))
+        )
+        const run = Command.runWith(demo, { version: "1.0.0" })
+
+        yield* MockTerminal.inputText("Ada")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("src")
+        yield* MockTerminal.inputKey("enter")
+        yield* run([])
+        assert.deepStrictEqual(events, [
+          "setup a",
+          "setup b",
+          "prompt name",
+          "prompt dir",
+          "provide",
+          "handler Ada src"
+        ])
+
+        events.length = 0
+        yield* run(["--name", "Bo", "--dir", "lib"])
+        assert.deepStrictEqual(events, ["setup a", "setup b", "provide", "handler Bo lib"])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("runs parent then subcommand setup before shared and subcommand fallback prompts", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const deploy = Command.make(
+          "deploy",
+          { target: ask("target") },
+          ({ target }) => record(`deploy ${target}`)
+        ).pipe(Command.beforePrompts(record("deploy setup")))
+        const tool = Command.make("tool").pipe(
+          Command.withSharedFlags({ profile: ask("profile") }),
+          Command.beforePrompts(record("tool setup")),
+          Command.withSubcommands([deploy])
+        )
+
+        yield* MockTerminal.inputText("prod")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("eu")
+        yield* MockTerminal.inputKey("enter")
+        yield* Command.runWith(tool, { version: "1.0.0" })(["deploy"])
+
+        assert.deepStrictEqual(events, [
+          "tool setup",
+          "deploy setup",
+          "prompt profile",
+          "prompt target",
+          "deploy eu"
+        ])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("does not run setup or prompts for help, version, or parse errors", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const demo = Command.make("demo", { name: ask("name"), count: Flag.Int("count") }).pipe(
+          Command.beforePrompts(record("setup"))
+        )
+        const run = Command.runWith(demo, { version: "1.0.0" })
+        // Ends terminal input so a prompt that runs anyway quits instead of waiting
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+
+        yield* run(["--help"])
+        yield* run(["--version"])
+        const error = yield* Effect.flip(run(["--count", "nope"]))
+
+        assert.instanceOf(error, CliError.ShowHelp)
+        assert.instanceOf(error.errors[0], CliError.InvalidValue)
+        assert.deepStrictEqual(events, [])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, Interactive),
+        Effect.provide(TestLayer)
+      ))
+
+    it.effect("does not run setup when missing values cannot be prompted for", () =>
+      Effect.gen(function*() {
+        const { ask, events, record } = recorder()
+        const demo = Command.make("demo", { name: ask("name") }).pipe(
+          Command.beforePrompts(record("setup"))
+        )
+
+        const error = yield* Effect.flip(Command.runWith(demo, { version: "1.0.0" })([]))
+
+        assert.instanceOf(error, CliError.ShowHelp)
+        assert.instanceOf(error.errors[0], CliError.MissingOption)
+        assert.deepStrictEqual(events, [])
+      }).pipe(
+        Effect.provideService(TerminalCapabilities.TerminalCapabilities, NonInteractive),
+        Effect.provide(TestLayer)
+      ))
+  })
+
   describe("validate", () => {
     it.effect("rejects the parsed input with help before the handler runs", () =>
       Effect.gen(function*() {
