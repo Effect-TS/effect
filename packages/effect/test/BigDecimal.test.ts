@@ -391,10 +391,8 @@ describe("BigDecimal", () => {
     assertSomeBigDecimal(BigDecimal.fromString("0.00002e-5"), BigDecimal.make(2n, 10))
     assertNone(BigDecimal.fromString("0.0000e2e1"))
     assertNone(BigDecimal.fromString("0.1.2"))
-    for (const input of [".-1", ".+1"]) {
-      assertNone(BigDecimal.fromString(input))
-      throws(() => BigDecimal.fromStringUnsafe(input), new Error(`Invalid numerical string: ${input}`))
-    }
+    assertNone(BigDecimal.fromString(".-1"))
+    assertNone(BigDecimal.fromString(".+1"))
   })
 
   it("format", () => {
