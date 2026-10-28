@@ -583,24 +583,23 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
-    const respond = (reply: Reply.Reply<any>) =>
-      Effect.gen(function*() {
-        const encoded = yield* encodeReplyFor(registration, rpc, reply)
-        if (persisted) {
-          yield* Effect.orDie(write(saveReply(sql, encoded)))
-        }
-        if (reply._tag === "Chunk") {
-          const acknowledged = Deferred.makeUnsafe<void>()
-          session.ack = { replyId: String(reply.id), deferred: acknowledged }
-          // A false offer means the session was interrupted and the queue
-          // ended; awaiting the acknowledgement would then never resume.
-          const offered = yield* Queue.offer(queue, { text: encoded, terminal: false })
-          if (offered) yield* permit.pause(Deferred.await(acknowledged))
-          else session.ack = undefined
-        } else {
-          yield* Queue.offer(queue, { text: encoded, terminal: true })
-        }
-      })
+    const respond = Effect.fnUntraced(function*(reply: Reply.Reply<any>) {
+      const encoded = yield* encodeReplyFor(registration, rpc, reply)
+      if (persisted) {
+        yield* Effect.orDie(write(saveReply(sql, encoded)))
+      }
+      if (reply._tag === "Chunk") {
+        const acknowledged = Deferred.makeUnsafe<void>()
+        session.ack = { replyId: String(reply.id), deferred: acknowledged }
+        // A false offer means the session was interrupted and the queue
+        // ended; awaiting the acknowledgement would then never resume.
+        const offered = yield* Queue.offer(queue, { text: encoded, terminal: false })
+        if (offered) yield* permit.pause(Deferred.await(acknowledged))
+        else session.ack = undefined
+      } else {
+        yield* Queue.offer(queue, { text: encoded, terminal: true })
+      }
+    })
     session.fiber = yield* Effect.forkDetach(
       permit.acquire(entityRuntime.run(envelope, lastSentChunk, discard, respond)).pipe(
         Effect.onExit((exit) => {
