@@ -19,6 +19,15 @@ describe("AiError", () => {
         assert.notInclude(output, "header-secret")
       })
 
+      it("keeps fromRequestError usable as a callback", () => {
+        const reasons: ReadonlyArray<HttpClientError.RequestError> = [
+          new HttpClientError.TransportError({ request: HttpClientRequest.get("https://example.com/a") }),
+          new HttpClientError.InvalidUrlError({ request: HttpClientRequest.get("https://example.com/b") })
+        ]
+        const errors = reasons.map(AiError.NetworkError.fromRequestError)
+        assert.deepStrictEqual(errors.map((error) => error.cause), [undefined, undefined])
+      })
+
       it.effect("round-trips an extension method", () =>
         Effect.gen(function*() {
           const error = new AiError.NetworkError({
@@ -30,6 +39,7 @@ describe("AiError", () => {
           assert.strictEqual(encoded.method, "PROPFIND")
           const decoded = yield* Schema.decodeEffect(AiError.NetworkError)(encoded)
           assert.strictEqual(decoded.method, "PROPFIND")
+          assert.isUndefined(decoded.cause)
         }))
     })
 

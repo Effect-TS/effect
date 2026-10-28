@@ -251,8 +251,9 @@ describe("OpenAiClient", () => {
   })
 
   describe("error mapping", () => {
-    it.effect("maps TransportError to NetworkError reason", () =>
-      Effect.gen(function*() {
+    it.effect("maps TransportError to NetworkError reason", () => {
+      const failures: Array<HttpClientError.HttpClientError> = []
+      return Effect.gen(function*() {
         const client = yield* OpenAiClient.make({
           apiKey: Redacted.make("test-key")
         })
@@ -264,7 +265,26 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.module, "OpenAiClient")
         assert.strictEqual(result.method, "createResponse")
         assert.strictEqual(result.reason._tag, "NetworkError")
-      }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, makeTransportErrorHttpClient()))))
+        if (result.reason._tag !== "NetworkError") return
+        assert.strictEqual(result.reason.cause, failures[0])
+        assert.isUndefined(result.reason.description)
+      }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, makeTransportErrorHttpClient(failures))))
+    })
+
+    it.effect("keeps the HttpClientError as the NetworkError cause when it has no cause", () => {
+      const failures: Array<HttpClientError.HttpClientError> = []
+      return Effect.gen(function*() {
+        const client = yield* OpenAiClient.make({
+          apiKey: Redacted.make("test-key")
+        })
+        const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(
+          Effect.flip
+        )
+
+        assert.isUndefined(failures[0].cause)
+        assert.strictEqual(result.reason._tag === "NetworkError" && result.reason.cause, failures[0])
+      }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, makeTransportErrorHttpClient(failures, {}))))
+    })
 
     it.effect("maps 400 status to InvalidRequestError reason", () =>
       Effect.gen(function*() {
@@ -1281,18 +1301,19 @@ const makeConfigTestLayer = (configProvider: ConfigProvider.ConfigProvider) =>
     Layer.provide(ConfigProvider.layer(configProvider))
   )
 
-const makeTransportErrorHttpClient = (): HttpClient.HttpClient =>
+const makeTransportErrorHttpClient = (
+  failures: Array<HttpClientError.HttpClientError> = [],
+  reason: { readonly cause?: unknown } = { cause: new Error("Connection refused") }
+): HttpClient.HttpClient =>
   HttpClient.makeWith<HttpClientError.HttpClientError, never, HttpClientError.HttpClientError, never>(
     (requestEffect) =>
-      Effect.flatMap(requestEffect, (request) =>
-        Effect.fail(
-          new HttpClientError.HttpClientError({
-            reason: new HttpClientError.TransportError({
-              request,
-              cause: new Error("Connection refused")
-            })
-          })
-        )),
+      Effect.flatMap(requestEffect, (request) => {
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request, ...reason })
+        })
+        failures.push(error)
+        return Effect.fail(error)
+      }),
     Effect.succeed
   )
 

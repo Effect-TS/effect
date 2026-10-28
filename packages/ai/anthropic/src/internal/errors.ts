@@ -110,7 +110,9 @@ export const mapHttpClientError = dual<
       return Effect.fail(AiError.make({
         module: "AnthropicClient",
         method,
-        reason: AiError.NetworkError.fromRequestError(reason)
+        reason: AiError.NetworkError.fromHttpClientError(
+          error as HttpClientError.HttpClientError & { readonly reason: typeof reason }
+        )
       }))
     }
     case "StatusCodeError": {
