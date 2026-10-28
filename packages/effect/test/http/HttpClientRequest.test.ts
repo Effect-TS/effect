@@ -117,6 +117,18 @@ describe("HttpClientRequest", () => {
       strictEqual(request.headers["content-encoding"], "gzip")
       strictEqual(request.headers["content-type"], "application/json")
     })
+
+    it("does not add a Content-Type when compressing a request without one", async () => {
+      const request = await Effect.runPromise(
+        HttpClientRequest.post(url).pipe(
+          HttpClientRequest.bodyText(text),
+          HttpClientRequest.removeHeader("content-type"),
+          HttpClientRequest.compressBody("gzip")
+        )
+      )
+      strictEqual(request.headers["content-encoding"], "gzip")
+      strictEqual(request.headers["content-type"], undefined)
+    })
   })
 
   describe("bodyFile", () => {
