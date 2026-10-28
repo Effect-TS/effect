@@ -374,7 +374,6 @@ const convertFormData = (formData: FormData, undici: typeof Undici): Undici.Form
 
 function noopErrorHandler(_: any) {}
 
-// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pipeable {

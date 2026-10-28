@@ -327,7 +327,6 @@ export const layerConfig = (
     layerHttpServices
   )
 
-// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {

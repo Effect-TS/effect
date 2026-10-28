@@ -6,4 +6,4 @@
 "@effect/platform-browser": patch
 ---
 
-Preserve a leading UTF-8 BOM as form data when decoding URL-encoded bodies from bytes.
+Preserve a leading UTF-8 BOM in URL-encoded body field names.

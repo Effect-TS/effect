@@ -26,7 +26,6 @@ import * as NodeStream from "./NodeStream.ts"
 
 const textDecoder = new TextDecoder()
 
-// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 /**

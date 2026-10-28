@@ -449,7 +449,6 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
   this.buffer.push(_)
 }
 
-// Unlike text bodies, URL-encoded bodies keep a leading U+FEFF as form data.
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
