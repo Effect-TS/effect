@@ -9119,6 +9119,97 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   )
 }
 /**
+ * Validates a value against `then` when it satisfies `condition`, and against
+ * `else` otherwise. An absent branch imposes no constraint.
+ *
+ * **Details**
+ *
+ * The condition and branches run against the type side of their schemas with
+ * the caller's parse options. Their outputs are discarded, so each branch sees
+ * the same value the filter received. A failing condition is never reported;
+ * a failing branch reports its own issue.
+ *
+ * JSON Schema:
+ * This check corresponds to `if`, `then`, and `else` in JSON Schema. Effect
+ * checks the decoded value, while JSON Schema checks the original input. A
+ * closed struct strips excess properties before its checks run, so the
+ * condition and branches cannot see them.
+ *
+ * **Example** (Requiring a size for boxes)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   kind: Schema.String,
+ *   size: Schema.optionalKey(Schema.Finite)
+ * }).check(
+ *   Schema.isConditional(Schema.Struct({ kind: Schema.Literal("box") }), {
+ *     // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+ *     then: Schema.Struct({ size: Schema.Finite })
+ *   })
+ * )
+ *
+ * Schema.is(schema)({ kind: "box" }) // false
+ * Schema.is(schema)({ kind: "box", size: 1 }) // true
+ * Schema.is(schema)({ kind: "other" }) // true
+ * ```
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export function isConditional(
+  condition: Constraint,
+  branches: { readonly then?: Constraint | undefined; readonly else?: Constraint | undefined },
+  annotations?: Annotations.Filter
+) {
+  const conditionAST = toType(condition).ast
+  const thenAST = branches.then === undefined ? undefined : toType(branches.then).ast
+  const elseAST = branches.else === undefined ? undefined : toType(branches.else).ast
+  const hasThen = thenAST !== undefined
+  const hasElse = elseAST !== undefined
+  const conditionParser = SchemaParser._issue(conditionAST)
+  const thenParser = hasThen ? SchemaParser._issue(thenAST) : undefined
+  const elseParser = hasElse ? SchemaParser._issue(elseAST) : undefined
+  return makeFilter<unknown>(
+    (input, _ast, options) => {
+      const parser = conditionParser(input, options) === undefined ? thenParser : elseParser
+      return parser?.(input, options) ?? true
+    },
+    {
+      expected: "a value satisfying the conditional schema",
+      representation: {
+        id: "effect/schema/isConditional",
+        // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+        payload: { then: hasThen, else: hasElse },
+        schemas: [conditionAST, ...(hasThen ? [thenAST] : []), ...(hasElse ? [elseAST] : [])]
+      },
+      toJsonSchema: ({ schemas }) => conditionalBranches(schemas, hasThen, hasElse),
+      toCode: ({ schemas }) => {
+        const { if: condition, ...branches } = conditionalBranches(schemas, hasThen, hasElse)
+        const entries = Object.entries(branches).map(([key, code]) => `${key}: ${code.runtime}`)
+        return { runtime: `Schema.isConditional(${condition.runtime}, { ${entries.join(", ")} })` }
+      },
+      ...annotations
+    }
+  )
+}
+
+function conditionalBranches<A>(
+  schemas: ReadonlyArray<A>,
+  hasThen: boolean,
+  hasElse: boolean
+): { readonly if: A; readonly then?: A; readonly else?: A } {
+  return {
+    if: schemas[0],
+    // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+    ...(hasThen ? { then: schemas[1] } : undefined),
+    ...(hasElse ? { else: schemas[hasThen ? 2 : 1] } : undefined)
+  }
+}
+
+/**
  * Validates that all items in an array are unique according to Effect equality.
  *
  * **Details**
