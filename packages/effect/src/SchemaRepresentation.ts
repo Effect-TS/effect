@@ -1557,6 +1557,34 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isConditional` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isConditional}.
+ *
+ * @see {@link Schema.isConditional} for creating the corresponding check
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isConditionalReviver: FilterReviver<{
+  readonly then: boolean
+  readonly else: boolean
+}> = makeReviverFilter(
+  "effect/schema/isConditional",
+  // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+  Schema.Struct({ then: Schema.Boolean, else: Schema.Boolean }),
+  ({ annotations, payload, schemas }) =>
+    Schema.isConditional(schemas[0], {
+      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
+      then: payload.then ? schemas[1] : undefined,
+      else: payload.else ? schemas[payload.then ? 2 : 1] : undefined
+    }, annotations)
+)
+
+/**
  * Reviver for persisted `isUnique` checks.
  *
  * **When to use**
