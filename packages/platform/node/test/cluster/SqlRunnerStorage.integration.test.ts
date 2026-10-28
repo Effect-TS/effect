@@ -177,8 +177,9 @@ describe("SqlRunnerStorage", () => {
 
         const expectRecovery = Effect.fnUntraced(function*() {
           restoreConnection(partitioned)
+          // the replacement session lost the previous session's lock, so recovery reacquires it
           expect(
-            yield* storage.refresh(runnerAddress1, shards).pipe(
+            yield* storage.acquire(runnerAddress1, shards).pipe(
               Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
             )
           ).toEqual(shards)
@@ -249,8 +250,9 @@ describe("SqlRunnerStorage", () => {
         expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
 
         restoreConnection(partitioned)
+        // the replacement session lost the previous session's lock, so recovery reacquires it
         expect(
-          yield* storage.refresh(runnerAddress1, shards).pipe(
+          yield* storage.acquire(runnerAddress1, shards).pipe(
             Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
           )
         ).toEqual(shards)
@@ -338,8 +340,9 @@ describe("SqlRunnerStorage", () => {
         restoreConnection(partitioned)
         yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
+        // the replacement session lost the previous session's lock, so recovery reacquires it
         expect(
-          yield* storage.refresh(runnerAddress1, shards).pipe(
+          yield* storage.acquire(runnerAddress1, shards).pipe(
             Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
           )
         ).toEqual(shards)

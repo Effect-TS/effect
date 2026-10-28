@@ -300,6 +300,40 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     return useLockConn((conn) => conn.executeValues(query, params))
   }
 
+  // Splits shardIds into the advisory locks held by the lock session and the rest.
+  const pgHeldLocks = Effect.fnUntraced(function*(conn: Connection, pid: number, shardIds: ReadonlyArray<string>) {
+    const held: Array<string> = []
+    const notHeld = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
+    const takenLocks = yield* conn.executeValues(
+      `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} ORDER BY objid`,
+      []
+    )
+    for (let i = 0; i < takenLocks.length; i++) {
+      const lockNum = takenLocks[i][0] as number
+      const shardId = notHeld.get(lockNum)
+      if (shardId === undefined) continue
+      held.push(shardId)
+      notHeld.delete(lockNum)
+    }
+    return [held, notHeld] as const
+  })
+
+  const mysqlHeldLocks = Effect.fnUntraced(function*(conn: Connection, pid: number, shardIds: ReadonlyArray<string>) {
+    const takenLocks = (yield* conn.executeValues(`SELECT ${allMySqlTakenLocks}`, []))[0] as Array<number | null>
+    const held: Array<string> = []
+    const notHeld: Array<string> = []
+    for (let i = 0; i < shardIds.length; i++) {
+      const shardId = shardIds[i]
+      const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
+      if (lockTakenBy !== null && Number(lockTakenBy) === pid) {
+        held.push(shardId)
+      } else {
+        notHeld.push(shardId)
+      }
+    }
+    return [held, notHeld] as const
+  })
+
   const acquireLock = sql.onDialectOrElse({
     pg: () => {
       if (disableAdvisoryLocks) {
@@ -323,19 +357,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       }
       return (_address: string, shardIds: ReadonlyArray<string>) =>
         useLockConn(Effect.fnUntraced(function*(conn, pid) {
-          const acquiredShardIds: Array<string> = []
-          const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
-          const takenLocks = yield* conn.executeValues(
-            `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} ORDER BY objid`,
-            []
-          )
-          for (let i = 0; i < takenLocks.length; i++) {
-            const lockNum = takenLocks[i][0] as number
-            const shardId = toAcquire.get(lockNum)
-            if (shardId === undefined) continue
-            acquiredShardIds.push(shardId)
-            toAcquire.delete(lockNum)
-          }
+          const [acquiredShardIds, toAcquire] = yield* pgHeldLocks(conn, pid, shardIds)
           if (toAcquire.size === 0) {
             return acquiredShardIds
           }
@@ -369,18 +391,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       }
       return (_address: string, shardIds: ReadonlyArray<string>) =>
         useLockConn(Effect.fnUntraced(function*(conn, pid) {
-          const takenLocks = (yield* conn.executeValues(`SELECT ${allMySqlTakenLocks}`, []))[0] as Array<number | null>
-          const acquiredShardIds: Array<string> = []
-          const toAcquire: Array<string> = []
-          for (let i = 0; i < shardIds.length; i++) {
-            const shardId = shardIds[i]
-            const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
-            if (lockTakenBy !== null && Number(lockTakenBy) === pid) {
-              acquiredShardIds.push(shardId)
-            } else if (shardIds.includes(shardId)) {
-              toAcquire.push(shardId)
-            }
-          }
+          const [acquiredShardIds, toAcquire] = yield* mysqlHeldLocks(conn, pid, shardIds)
           if (toAcquire.length === 0) {
             return acquiredShardIds
           }
@@ -493,9 +504,15 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
   const stringLiteralArr = (arr: ReadonlyArray<string>) => sql.literal(`(${arr.map(wrapString).join(",")})`)
 
+  // An advisory lock refresh only confirms the locks the current lock session
+  // holds. A replaced session has lost its predecessor's locks, possibly to
+  // another runner in between, so reacquiring them here would hide the loss.
   const refreshShards = sql.onDialectOrElse({
     pg: () => {
-      if (!disableAdvisoryLocks) return acquireLock
+      if (!disableAdvisoryLocks) {
+        return (_address: string, shardIds: ReadonlyArray<string>) =>
+          useLockConn((conn, pid) => Effect.map(pgHeldLocks(conn, pid, shardIds), ([held]) => held))
+      }
       return (address: string, shardIds: ReadonlyArray<string>) =>
         sql`
           WITH locked AS (
@@ -513,7 +530,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         )
     },
     mysql: () => {
-      if (!disableAdvisoryLocks) return acquireLock
+      if (!disableAdvisoryLocks) {
+        return (_address: string, shardIds: ReadonlyArray<string>) =>
+          useLockConn((conn, pid) => Effect.map(mysqlHeldLocks(conn, pid, shardIds), ([held]) => held))
+      }
       return (address: string, shardIds: ReadonlyArray<string>) => {
         const shardIdsStr = stringLiteralArr(shardIds)
         return sql<Array<{ shard_id: string }>>`
