@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Keep the cause of a failed HTTP request in the AI `NetworkError` description. An unknown host now reads `TransportError: fetch failed: getaddrinfo ENOTFOUND example.invalid` instead of `TransportError: A network error occurred.`. URLs embedded in the cause and rejected header values are left out of the description.
+Add an optional `cause` to the AI `NetworkError`, holding the original error from the HTTP client, such as the runtime's `fetch` failure. `NetworkError.fromRequestError` now keeps it, so the reason a request failed is no longer lost.
