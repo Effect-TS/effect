@@ -855,7 +855,15 @@ export const compressBody: {
     }
     return Effect.map(
       compression.compressBody(self.body, algorithm, options),
-      (body) => body === self.body ? self : setHeader(setBody(self, body), "content-encoding", algorithm)
+      (body) =>
+        body === self.body ? self : makeWith(
+          self.method,
+          self.url,
+          self.urlParams,
+          self.hash,
+          Headers.set(bodyInternal.updateContentLength(self.headers, body), "content-encoding", algorithm),
+          body
+        )
     )
   }
 )
