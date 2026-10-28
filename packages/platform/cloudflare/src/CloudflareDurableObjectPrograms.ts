@@ -292,7 +292,6 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
     runtime = makeWorkflowRuntime({
       name,
       sql,
-      transactionSync: (f) => state.storage.transactionSync(f),
       alarm: state.storage,
       now: () => clock.currentTimeMillisUnsafe(),
       waitUntil: (promise) => state.waitUntil(promise),

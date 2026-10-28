@@ -18,7 +18,6 @@ import {
 
 class FakeSql {
   execution: Record<string, unknown> | undefined
-  parentWake = false
   readonly activities = new Map<string, string>()
   readonly deferreds = new Map<string, string>()
   readonly clocks = new Map<string, { deferredName: string; wakeUp: number; fired: boolean }>()
@@ -30,15 +29,6 @@ class FakeSql {
 
   private run(query: string, bindings: Array<unknown>): Array<Record<string, unknown>> {
     if (query.startsWith("CREATE TABLE")) return []
-    if (query.includes("INSERT OR IGNORE INTO workflow_parent_wake")) {
-      this.parentWake = true
-      return []
-    }
-    if (query.includes("DELETE FROM workflow_parent_wake")) {
-      this.parentWake = false
-      return []
-    }
-    if (query.includes("FROM workflow_parent_wake")) return this.parentWake ? [{ id: 0 }] : []
     if (query.includes("INSERT OR IGNORE INTO workflow_execution")) {
       this.execution ??= {
         workflow_name: bindings[0],
@@ -63,7 +53,10 @@ class FakeSql {
       return []
     }
     if (query.includes("UPDATE workflow_execution")) {
-      if (this.execution !== undefined) this.execution.result = bindings[0]
+      if (this.execution !== undefined) {
+        this.execution.result = bindings[0]
+        if (query.includes("resume_pending")) this.execution.resume_pending = bindings[1]
+      }
       return []
     }
     if (query.includes("FROM workflow_execution")) {
@@ -159,7 +152,6 @@ class FakeWorkflowNamespace {
       runtime = makeWorkflowRuntime({
         name,
         sql: store.sql.sql,
-        transactionSync: (f) => f(),
         alarm: store.alarm.alarm,
         now: () => this.now,
         waitUntil: (promise) => {
@@ -209,8 +201,13 @@ describe("CloudflareWorkflowEngine", () => {
     const Child = Workflow.make("RetryChild", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
     const Parent = Workflow.make("RetryParent", { payload: { id: Schema.String }, idempotencyKey: ({ id }) => id })
     const parentCompleted = Deferred.makeUnsafe<void>()
+    let childRuns = 0
     const layer = Layer.merge(
-      Child.toLayer(() => DurableDeferred.await(Gate)),
+      Child.toLayer(() =>
+        Effect.sync(() => {
+          childRuns++
+        }).pipe(Effect.andThen(DurableDeferred.await(Gate)))
+      ),
       Parent.toLayer(({ id }) =>
         Child.execute({ id }).pipe(Effect.tap(() => Deferred.succeed(parentCompleted, undefined)))
       )
@@ -230,7 +227,8 @@ describe("CloudflareWorkflowEngine", () => {
       })
       while ((namespace.rejectedResumes.get(parentName) ?? 0) < 6) yield* Effect.sleep(10).pipe(TestClock.withLive)
       assert.isFalse(yield* Deferred.isDone(parentCompleted))
-      assert.isTrue(namespace.store(childName).sql.parentWake)
+      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 1)
+      const runsBeforeRestart = childRuns
 
       namespace.rejectedResumes.delete(parentName)
       namespace.crash()
@@ -240,7 +238,8 @@ describe("CloudflareWorkflowEngine", () => {
       yield* Deferred.await(parentCompleted)
       const result = yield* pollUntil(Parent, parentId, "Complete")
       assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
-      assert.isFalse(namespace.store(childName).sql.parentWake)
+      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 0)
+      assert.strictEqual(childRuns, runsBeforeRestart)
     }).pipe(Effect.provide(layer))
   }, 15_000)
 

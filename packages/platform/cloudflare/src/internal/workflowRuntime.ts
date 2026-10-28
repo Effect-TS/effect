@@ -8,7 +8,7 @@
  *
  * @internal
  */
-import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import type { SqlStorage } from "@cloudflare/workers-types"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -45,7 +45,6 @@ const voidExitText = (): Promise<
 export interface WorkflowRuntimeOptions {
   readonly name: string
   readonly sql: SqlStorage
-  readonly transactionSync: DurableObjectStorage["transactionSync"]
   readonly alarm: EntityAlarm
   readonly now: () => number
   readonly waitUntil: (promise: Promise<unknown>) => void
@@ -99,15 +98,16 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     )
 
   const deliverParentWake = Effect.suspend(() => {
-    if (!WorkflowStorage.hasParentWake(sql)) return Effect.void
-    const parent = WorkflowStorage.loadExecution(sql)?.parent
-    if (parent === undefined) return Effect.void
+    const row = WorkflowStorage.loadExecution(sql)
+    if (row === undefined || !row.resumePending || !isComplete(row.result) || row.parent === undefined) {
+      return Effect.void
+    }
     // Re-arm before sending: a crash during delivery or exhausted RPC retries
     // must leave another autonomous attempt, including after child completion.
     return armAlarm(options.alarm, options.now() + resumeGuardMillis).pipe(
       Effect.andThen(
-        resumeParent(parent).pipe(
-          Effect.tap(() => Effect.sync(() => WorkflowStorage.setParentWake(sql, false))),
+        resumeParent(row.parent).pipe(
+          Effect.tap(() => Effect.sync(() => WorkflowStorage.setResumePending(sql, false))),
           Effect.catchCause((cause) => Effect.logError("Workflow parent resume failed", cause))
         )
       )
@@ -151,17 +151,11 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         Effect.gen(function*() {
           const parent = WorkflowStorage.loadExecution(sql)?.parent
           if (result._tag === "Complete" && parent !== undefined) {
-            // The alarm precedes the synchronous result/outbox write batch, so
+            // The alarm precedes the atomic result/pending update, so
             // completion can never be persisted without a future delivery wake.
             yield* armAlarm(options.alarm, options.now() + resumeGuardMillis)
           }
-          options.transactionSync(() => {
-            WorkflowStorage.saveResult(sql, text)
-            if (result._tag === "Complete") {
-              if (parent !== undefined) WorkflowStorage.setParentWake(sql, true)
-              WorkflowStorage.setResumePending(sql, false)
-            }
-          })
+          WorkflowStorage.saveResult(sql, text, result._tag === "Complete" ? parent !== undefined : resumeRequested)
           inflight = undefined
           if (result._tag === "Complete") {
             resumeRequested = false
@@ -169,10 +163,6 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           } else if (resumeRequested) {
             resumeRequested = false
             detach(startAttempt(row))
-          } else {
-            // This attempt observed every persisted deferred and still suspended,
-            // so the pending resume (if any) has been serviced.
-            WorkflowStorage.setResumePending(sql, false)
           }
           return text
         }).pipe(Effect.tapCause(() =>

@@ -31,9 +31,6 @@ const ddl = [
     deferred_name TEXT NOT NULL,
     wake_up INTEGER NOT NULL,
     fired INTEGER NOT NULL DEFAULT 0
-  )`,
-  `CREATE TABLE IF NOT EXISTS workflow_parent_wake (
-    id INTEGER PRIMARY KEY CHECK (id = 0)
   )`
 ]
 
@@ -56,6 +53,7 @@ export interface ExecutionRow {
   readonly payload: string
   readonly parent: { readonly workflowName: string; readonly executionId: string } | undefined
   readonly result: string | undefined
+  /** Replay this execution, or notify its parent once complete. */
   readonly resumePending: boolean
 }
 
@@ -134,26 +132,13 @@ export const setParent = (
 }
 
 /** @internal */
-export const saveResult = (sql: SqlStorage, result: string): void => {
-  sql.exec("UPDATE workflow_execution SET result = ? WHERE id = 0", result)
+export const saveResult = (sql: SqlStorage, result: string, resumePending: boolean): void => {
+  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0", result, resumePending ? 1 : 0)
 }
 
 /** @internal */
 export const setResumePending = (sql: SqlStorage, pending: boolean): void => {
   sql.exec("UPDATE workflow_execution SET resume_pending = ? WHERE id = 0", pending ? 1 : 0)
-}
-
-/** @internal */
-export const hasParentWake = (sql: SqlStorage): boolean =>
-  sql.exec("SELECT id FROM workflow_parent_wake WHERE id = 0").toArray().length > 0
-
-/** @internal */
-export const setParentWake = (sql: SqlStorage, pending: boolean): void => {
-  sql.exec(
-    pending
-      ? "INSERT OR IGNORE INTO workflow_parent_wake (id) VALUES (0)"
-      : "DELETE FROM workflow_parent_wake WHERE id = 0"
-  )
 }
 
 /** @internal */

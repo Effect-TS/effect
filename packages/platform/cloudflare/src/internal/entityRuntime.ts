@@ -245,7 +245,6 @@ interface SessionReply {
 
 interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
-  readonly terminalReply: Deferred.Deferred<ReadonlyArray<string>>
   readonly completeInterrupt: Effect.Effect<void>
   cancelling: boolean
   ack: {
@@ -521,10 +520,22 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const active = sessions.get(requestId)
       if (active !== undefined) {
         const nextReply = persisted ? yield* loadNextReply(sql, requestId) : undefined
-        // Unary duplicates share the result, not the single-consumer queue.
-        // Returning [] leaves an ordinary Worker RPC client waiting forever.
-        if (nextReply === undefined && !RpcSchema.isStreamSchema(rpc.successSchema)) {
-          return Deferred.await(active.terminalReply)
+        if (
+          nextReply === undefined && persisted && !RpcSchema.isStreamSchema(rpc.successSchema) &&
+          active.fiber !== undefined
+        ) {
+          // Await outside the entry permit. A stored reply wins even when
+          // post-reply handler cleanup fails.
+          return Effect.flatMap(Fiber.await(active.fiber), (exit) =>
+            Effect.flatMap(
+              loadNextReply(sql, requestId),
+              (reply) =>
+                reply !== undefined ?
+                  Effect.succeed([reply.reply])
+                  : Exit.isFailure(exit) ?
+                  Effect.failCause(exit.cause)
+                  : Effect.die("Persisted unary handler finished without a reply")
+            ))
         }
         return Effect.succeed(nextReply === undefined ? [] : [nextReply.reply])
       }
@@ -585,15 +596,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       : Effect.void
-    const terminalReply = Deferred.makeUnsafe<ReadonlyArray<string>>()
-    const session: Session = {
-      queue,
-      terminalReply,
-      completeInterrupt,
-      cancelling: false,
-      ack: undefined,
-      fiber: undefined
-    }
+    const session: Session = { queue, completeInterrupt, cancelling: false, ack: undefined, fiber: undefined }
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
@@ -611,7 +614,6 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         if (offered) yield* permit.pause(Deferred.await(acknowledged))
         else session.ack = undefined
       } else {
-        Deferred.doneUnsafe(terminalReply, Effect.succeed([encoded]))
         yield* Queue.offer(queue, { text: encoded, terminal: true })
       }
     })
@@ -620,10 +622,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         Effect.onExit((exit) => {
           const cleanup = Effect.sync(() => {
             if (Exit.isSuccess(exit)) Queue.endUnsafe(queue)
-            else {
-              Deferred.doneUnsafe(terminalReply, Effect.failCause(exit.cause))
-              Queue.failCauseUnsafe(queue, exit.cause)
-            }
+            else Queue.failCauseUnsafe(queue, exit.cause)
             if (Queue.sizeUnsafe(queue) === 0 && session.ack === undefined) {
               removeSession(requestId, session)
             }
