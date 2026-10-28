@@ -102,13 +102,16 @@ export const encodePadded: (input: Uint8Array | string) => string = (input) =>
 export const decode = (str: string): Result.Result<Uint8Array, EncodingError> => {
   const stripped = str.replace(/[\n\r]/g, "")
   const length = stripped.length
-  if (length % 4 === 1) {
+  const padded = stripped.endsWith("=")
+  if (padded ? length % 4 !== 0 : length % 4 === 1) {
     return Result.fail(
       new EncodingError({
         module: "Base64Url",
         kind: "Decode",
         input: stripped,
-        message: `Length should be a multiple of 4, but is ${length}`
+        message: padded
+          ? `Padded length should be a multiple of 4, but is ${length}`
+          : `Unpadded length should not be 1 more than a multiple of 4, but is ${length}`
       })
     )
   }
