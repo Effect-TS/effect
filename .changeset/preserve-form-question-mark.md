@@ -6,4 +6,4 @@
 "@effect/platform-browser": patch
 ---
 
-Preserve a literal leading question mark in URL-encoded form field names.
+Preserve a leading `?` in URL-encoded form field names. `urlParamsBody` previously dropped it as a query-string prefix, so `?name=value` decoded to `name`.
