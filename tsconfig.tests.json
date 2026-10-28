@@ -20,7 +20,10 @@
     "./packages/platform/deno/**",
     // Declares `Reactivity.Keys`, which would make reactivity keys strict for every test in this program.
     // TSTyche still checks it in its own program.
-    "./packages/effect/typetest/reactivity/ReactivityKeys.tst.ts"
+    "./packages/effect/typetest/reactivity/ReactivityKeys.tst.ts",
+    // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
+    // graph loads bun globals that clash with this project's node globals.
+    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts"
   ],
   "compilerOptions": {
     "rootDir": ".",
@@ -60,6 +63,8 @@
       "@effect/platform-browser/*": ["./packages/platform/browser/src/*.ts"],
       "@effect/platform-bun": ["./packages/platform/bun/src/index.ts"],
       "@effect/platform-bun/*": ["./packages/platform/bun/src/*.ts"],
+      "@effect/platform-cloudflare": ["./packages/platform/cloudflare/src/index.ts"],
+      "@effect/platform-cloudflare/*": ["./packages/platform/cloudflare/src/*.ts"],
       "@effect/platform-node": ["./packages/platform/node/src/index.ts"],
       "@effect/platform-node/*": ["./packages/platform/node/src/*.ts"],
       "@effect/platform-node-shared": ["./packages/platform/node-shared/src/index.ts"],
