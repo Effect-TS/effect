@@ -34,8 +34,9 @@ describe("Toolkit", () => {
   })
 })
 
+// Owner: public compiler behavior; runtime protocol conformance is covered by the MCP runtime suites.
 describe("bound Toolkit handlers", () => {
-  it("does not treat widened handler service requirements as service-free", () => {
+  it("should retain unknown services when handler requirements are widened", () => {
     const tools = Toolkit.make(Tool.make("Read", { success: Schema.Number }))
     // Deliberately widen the services to exercise the unsafe input boundary.
     const handlers: Toolkit.HandlersFrom<typeof tools.tools, any> = { Read: () => Database }
@@ -47,16 +48,19 @@ describe("bound Toolkit handlers", () => {
     expect(Effect.runPromise).type.not.toBeCallableWith(run)
   })
 
-  it("rejects incorrect handler results and failures when allowing extra services", () => {
+  it("should reject incorrect handler results when allowing extra services", () => {
     expect(toolkit.withHandlers).type.not.toBeCallableWith({ Decode: () => Effect.succeed("wrong") })
+  })
+
+  it("should reject incorrect handler failures when allowing extra services", () => {
     expect(toolkit.withHandlers).type.not.toBeCallableWith({ Decode: () => Effect.fail("wrong") })
   })
 
-  it("keeps an empty toolkit free of inferred handler services", () => {
+  it("should require no handler services when binding an empty toolkit", () => {
     expect(Toolkit.empty.withHandlers({})).type.toBe<Effect.Effect<Toolkit.WithHandler<{}>>>()
   })
 
-  it("keeps handler services on both decoding and the result stream", () => {
+  it("should retain handler services when decoding and consuming the result stream", () => {
     const bound = toolkit.withHandlers({
       Decode: ({ n }) => Effect.map(Database, (value) => n + value)
     })
@@ -75,7 +79,7 @@ describe("bound Toolkit handlers", () => {
     expect<Toolkit.WithHandlerTools<Effect.Success<typeof bound>>>().type.toBe<typeof toolkit.tools>()
   })
 
-  it("separates handler construction services and errors from invocation services", () => {
+  it("should separate construction requirements when handlers use invocation services", () => {
     const bound = toolkit.withHandlers(Effect.gen(function*() {
       const configuration = yield* Configuration
       if (configuration === "invalid") return yield* Effect.fail("invalid" as const)

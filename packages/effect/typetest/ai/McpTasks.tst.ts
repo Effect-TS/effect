@@ -17,6 +17,7 @@ class Configuration extends Context.Service<Configuration, string>()("test/McpTa
 class Decoder extends Context.Service<Decoder, number>()("test/McpTasks/Decoder") {}
 class Principal extends Context.Service<Principal, string>()("test/McpTasks/Principal") {}
 
+// Owner: public compiler behavior; runtime protocol conformance is covered by the MCP runtime suites.
 const Failure = Schema.TaggedStruct("ReportFailure", { message: Schema.String })
 const reports = Toolkit.make(Tool.make("report", {
   parameters: Schema.Struct({ rows: Schema.NumberFromString }),
@@ -199,7 +200,7 @@ it("should reject a callback when its layer does not provide Execution", () => {
   )
 })
 
-it("should preserve unknown requirements for widened task handler records", () => {
+it("should preserve unknown requirements when task handler records are widened", () => {
   // Deliberately erase the known Database requirement rather than inferring it.
   const handlers: Toolkit.HandlersFrom<typeof reports.tools, any> = {
     report: () => Database.useSync(() => "report")
