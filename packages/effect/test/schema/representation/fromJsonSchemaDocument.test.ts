@@ -1046,6 +1046,23 @@ describe("fromJsonSchemaDocument", () => {
           }
         )
       })
+
+      it("dependentRequired (#10046)", async () => {
+        const object = { type: "object", properties: { a: { type: "string" }, b: { type: "string" } } } as const
+        for (
+          const document of [
+            JsonSchema.fromSchemaDraft07({ ...object, dependencies: { a: ["b"] } }),
+            JsonSchema.fromSchemaDraft2020_12({ ...object, dependentRequired: { a: ["b"] } })
+          ]
+        ) {
+          const schema = toSchemaFromJsonSchemaDocument(document)
+          const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+          await decoding.succeed({})
+          await decoding.succeed({ b: "y" })
+          await decoding.succeed({ a: "x", b: "y" })
+          await decoding.fail({ a: "x" }, `Missing key\n  at ["b"]`)
+        }
+      })
     })
 
     describe("propertyNames", () => {
@@ -3494,7 +3511,6 @@ describe("fromJsonSchemaDocument", () => {
       const [keyword, value] of [
         ["$dynamicRef", "#node"],
         ["contains", { type: "string" }],
-        ["dependentRequired", { a: ["b"] }],
         ["dependentSchemas", { a: { required: ["b"] } }],
         ["unevaluatedItems", false],
         ["unevaluatedProperties", false]
