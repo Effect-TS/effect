@@ -1889,15 +1889,16 @@ const runWithRuntime = Effect.fnUntraced(function*(
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
             return Effect.gen(function*() {
-              const prepared = yield* prepare
-              const clientState = clientStates.get(clientId)
-              if (isHttp && clientState === undefined) {
+              if (isHttp && !clientStates.has(clientId)) {
                 // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
+                // Register before preparing so a stateless registration cannot outlive an aborted POST.
                 yield* Scope.addFinalizer(
                   Context.getUnsafe(fiber.context, Scope.Scope),
                   Effect.sync(() => disconnectClient(clientId))
                 )
               }
+              const prepared = yield* prepare
+              const clientState = clientStates.get(clientId)
               const session = prepared.binding
               const selectedProtocol = prepared.protocol
               // Select before dated payload decoding: legacy requests use
@@ -2512,7 +2513,7 @@ const mcpStdioSerialization = (
  * issuing session IDs. Later POSTs derive a conservative client profile from
  * `MCP-Protocol-Version`, defaulting to `2025-03-26` when the header is absent.
  * Client capabilities are empty and client info is unknown after initialize.
- * Persistent logging settings, list-change notifications, resource subscriptions,
+ * Logging, list-change notifications, resource subscriptions,
  * and cancellation across separate POSTs are unavailable in this mode.
  * The default is `"stateful"`. Modern stateless protocols are unaffected.
  *

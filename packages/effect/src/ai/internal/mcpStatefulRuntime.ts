@@ -28,8 +28,8 @@ export interface Binding {
 
 interface Session extends Binding {
   readonly resourceSubscriptions: Set<string> | undefined
-  readonly listChangeRevision: number
-  logLevel: SessionLogLevel
+  readonly listChangeRevision: number | undefined
+  logLevel: SessionLogLevel | undefined
 }
 
 /**
@@ -37,12 +37,17 @@ interface Session extends Binding {
  */
 export interface Registration extends Binding {
   readonly supportsResourceSubscriptions: boolean
-  readonly logLevel: LogLevel.LogLevel
+  /**
+   * The initial log level, or `undefined` when the session receives no log
+   * notifications and cannot change its log level.
+   */
+  readonly logLevel: LogLevel.LogLevel | undefined
   /**
    * The server's list-change revision when the session initialized. Changes
    * up to this revision are already reflected in what the client lists next.
+   * `undefined` when the session receives no list-change notifications.
    */
-  readonly listChangeRevision: number
+  readonly listChangeRevision: number | undefined
 }
 
 /**
@@ -58,7 +63,7 @@ export interface StatefulRuntime {
     level: PublicMcpSchema.LoggingLevel,
     clientId: number,
     headers: Headers.Headers
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, McpProtocol.ProtocolError>
   readonly subscribe: (
     uri: string,
     clientId: number,
@@ -92,7 +97,7 @@ const makeSession = (registration: Registration): Session => ({
   protocol: registration.protocol,
   resourceSubscriptions: registration.supportsResourceSubscriptions ? new Set() : undefined,
   listChangeRevision: registration.listChangeRevision,
-  logLevel: { _tag: "Effect", level: registration.logLevel }
+  logLevel: registration.logLevel === undefined ? undefined : { _tag: "Effect", level: registration.logLevel }
 })
 
 /**
@@ -114,9 +119,9 @@ export const make = (): StatefulRuntime => {
     fallback: LogLevel.LogLevel
   ): LogLevel.LogLevel => {
     const session = resolveSession(clientId, headers)
-    return session?.logLevel._tag === "Mcp"
+    return session?.logLevel?._tag === "Mcp"
       ? McpProtocol.mcpLogLevels[session.logLevel.level].effect
-      : session?.logLevel.level ?? fallback
+      : session?.logLevel?.level ?? fallback
   }
 
   return {
@@ -134,11 +139,21 @@ export const make = (): StatefulRuntime => {
     resolveSessionId: (sessionId) => bySessionId.get(sessionId),
     terminateSession: (sessionId) => bySessionId.delete(sessionId),
     setLogLevel: (level, clientId, headers) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
         const session = resolveSession(clientId, headers)
-        if (session !== undefined) {
-          session.logLevel = { _tag: "Mcp", level }
+        if (session === undefined) {
+          return Effect.void
         }
+        if (session.logLevel === undefined) {
+          return Effect.fail(
+            new McpProtocol.ProtocolError({
+              code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+              message: "Logging is not supported"
+            })
+          )
+        }
+        session.logLevel = { _tag: "Mcp", level }
+        return Effect.void
       }),
     subscribe: (uri, clientId, headers) => {
       const subscriptions = resolveSession(clientId, headers)?.resourceSubscriptions
@@ -169,9 +184,12 @@ export const make = (): StatefulRuntime => {
       const session = resolveSession(clientId, headers)
       if (listChangeRevision !== undefined) {
         // A client without a session on this channel has not initialized.
-        return session !== undefined && listChangeRevision > session.listChangeRevision
+        return session?.listChangeRevision !== undefined && listChangeRevision > session.listChangeRevision
       }
       if (notification._tag === "LoggingMessage") {
+        if (session !== undefined && session.logLevel === undefined) {
+          return false
+        }
         const minimum = session?.logLevel
         return minimum?._tag === "Mcp"
           ? McpProtocol.mcpLogLevels[notification.level].order >= McpProtocol.mcpLogLevels[minimum.level].order
