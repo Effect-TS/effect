@@ -202,6 +202,21 @@ jobs:
           path: ${{ runner.temp }}/pg-lifecycle
           if-no-files-found: warn
 
+  test-node-minimum:
+    name: Test (Node 22.19.0 minimum)
+    runs-on: namespace-profile-linux-default
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+        with:
+          node-version: 22.19.0
+      - name: Test
+        run: pnpm vitest run --project @effect/platform-node --project @effect/bundle --max-concurrency=10
+
   doctest:
     name: Test (Documentation)
     runs-on: namespace-profile-linux-small
