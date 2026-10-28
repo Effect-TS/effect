@@ -319,6 +319,10 @@ export class DirectoryNotFound extends Data.TaggedError("DirectoryNotFound")<{
 export interface SkillRegistration {
   readonly entry: Skill
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
+  // Hides the skill's directories on `resources/directory/read`.
+  readonly visibleInDirectories?: Visible | undefined
+  readonly get: (invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound | RequestRejected>
   // `undefined` when this skill has no directory at `uri`. Directories shared
   // by several skills, such as a common path prefix, list the union of what
   // each skill returns.
@@ -337,12 +341,12 @@ export interface Skills {
   // whatever its visibility, so a nested skill cannot serve different bytes
   // than the skill that encloses it.
   readonly fileDigest: (uri: string, skillUri: string) => string | undefined
-  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<Skill>>
-  readonly get: (uri: string, invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound>
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<Skill>, RequestRejected>
+  readonly get: (uri: string, invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound | RequestRejected>
   readonly readDirectory: (
     uri: string,
     invocation: McpInvocation
-  ) => Effect.Effect<ReadonlyArray<DirectoryChild>, DirectoryNotFound>
+  ) => Effect.Effect<ReadonlyArray<DirectoryChild>, DirectoryNotFound | RequestRejected>
 }
 
 /**
@@ -667,15 +671,19 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       return undefined
     },
     list: (invocation) =>
-      Effect.sync(() =>
-        Arr.filter(skillRegistrations.values(), (registration) => registration.isVisible(invocation.protocol))
-          .map((registration) => registration.entry)
+      filterList(
+        Array.from(skillRegistrations.values(), (registration) => ({
+          descriptor: registration.entry,
+          isVisible: registration.isVisible,
+          visible: registration.visible
+        })),
+        invocation
       ),
     get: (uri, invocation) =>
       Effect.suspend(() => {
         const registration = skillRegistrations.get(uri)
         return registration !== undefined && registration.isVisible(invocation.protocol)
-          ? Effect.succeed(registration.entry)
+          ? registration.get(invocation)
           : Effect.fail(new SkillNotFound({ uri }))
       }),
     readDirectory: Effect.fnUntraced(function*(uri, invocation) {
@@ -685,6 +693,10 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         if (!registration.isVisible(invocation.protocol)) continue
         const own = yield* registration.readDirectory(uri, invocation)
         if (own === undefined) continue
+        if (
+          registration.visibleInDirectories !== undefined &&
+          !(yield* registration.visibleInDirectories(invocation))
+        ) continue
         found = true
         for (const child of own) children.set(child.uri, child)
       }

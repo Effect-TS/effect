@@ -387,6 +387,10 @@ const Registrations = Layer.mergeAll(
 - A failure of that middleware or of a check fails the whole list request rather than hiding
   anything. A global visibility makes global middleware such as authentication run on every list
   request, so make it succeed for anonymous clients if they should still see public registrations.
+- A hidden skill is left out of `skills/list` and directory reads, and `skills/get` fails as if it
+  was not registered. Its checks receive the skill's `SKILL.md` URI as `target`, and its files are
+  checked as resources under their own URIs. `resources/directory/read` counts as a list request,
+  run once for each skill that has the directory.
 - Middleware sees requests for hidden registrations. `EnabledWhen` remains the way to hide
   registrations by client capabilities without running middleware.
 - `list_changed` notifications are not sent when visibility changes; clients see the change on

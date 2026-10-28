@@ -316,6 +316,9 @@ export type MiddlewareMethod =
   | "resources/list"
   | "resources/templates/list"
   | "prompts/list"
+  | "skills/list"
+  | "skills/get"
+  | "resources/directory/read"
 
 /**
  * Request metadata passed to MCP middleware.
@@ -324,12 +327,17 @@ export type MiddlewareMethod =
  *
  * `target` is the tool name, the requested resource URI, or the prompt name.
  * For `completion/complete` it is the prompt name, or the URI template of the
- * resource template being completed. `payload` holds the request parameters.
+ * resource template being completed. For `skills/get` it is the URI of the
+ * skill's `SKILL.md`. `payload` holds the request parameters.
  *
  * On list requests, middleware runs only when it wraps a {@link visibility},
  * once for each registration it wraps. `target` is then the tool name, the
  * resource URI, the URI template or the prompt name of that registration, and
- * `payload` is `undefined`.
+ * `payload` is `undefined`. `skills/list` and `resources/directory/read` are
+ * list requests whose `target` is the `SKILL.md` URI of each skill; a
+ * directory read checks only the skills that have the directory. A skill's
+ * files are resources, checked as `resources/list` and `resources/read` with
+ * their own URIs.
  *
  * `headers` are the HTTP request headers. They are empty on stdio, on custom
  * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
@@ -761,7 +769,7 @@ const internalError = new InternalError({ message: "Internal error" })
 const rejectWith = (error: McpErrorBase) =>
   Effect.fail(new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error }))
 
-type CallMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
+type CallMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete" | "skills/get"
 
 type ListMethod = Exclude<MiddlewareMethod, CallMethod>
 
@@ -770,6 +778,7 @@ interface NotFoundErrors {
   readonly "resources/read": McpCore.ResourceNotFound
   readonly "prompts/get": McpCore.PromptNotFound
   readonly "completion/complete": InvalidParams
+  readonly "skills/get": McpCore.SkillNotFound
 }
 
 const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod] => {
@@ -782,6 +791,8 @@ const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod
       return new McpCore.PromptNotFound({ name: target })
     case "completion/complete":
       return new InvalidParams({ message: "Unknown completion reference or argument" })
+    case "skills/get":
+      return new McpCore.SkillNotFound({ uri: target })
   }
 }
 
@@ -3656,7 +3667,7 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
     }).pipe(Effect.provide(Digest.layerWebCrypto))
 
     const registry = yield* McpServer
-    const { core } = internalState.get(registry)!
+    const { core, globalMiddleware } = internalState.get(registry)!
     for (const file of skill.files) {
       const digest = core.skills.fileDigest(file.uri, options.uri)
       if (digest !== undefined && digest !== file.digest) {
@@ -3688,9 +3699,18 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
         })
       })
     }
+    const { invoke, visible } = makeInvoke(services, globalMiddleware)
     yield* core.skills.register({
       entry: skill.entry,
       isVisible: isEnabled(annotations),
+      visible: visible("skills/list", options.uri),
+      visibleInDirectories: visible("resources/directory/read", options.uri),
+      get: (invocation) =>
+        invoke(Effect.succeed(skill.entry), invocation, {
+          method: "skills/get",
+          target: options.uri,
+          payload: { uri: options.uri }
+        }),
       readDirectory: (uri) => Effect.succeed(skill.directories.get(uri))
     })
   })

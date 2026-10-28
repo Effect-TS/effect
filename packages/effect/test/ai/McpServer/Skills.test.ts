@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpServer from "effect/ai/McpServer"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -66,10 +67,11 @@ const modernHarness = (registrations: Layer.Layer<never, unknown, McpServer.McpS
 const call = Effect.fnUntraced(function*(
   harness: Effect.Success<ReturnType<typeof makeHttpHarness>>,
   method: string,
-  params?: Record<string, unknown>
+  params?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
 ) {
   const { body, headers } = modernRequest(method, params)
-  const response = yield* harness.post(body, headers)
+  const response = yield* harness.post(body, { ...headers, ...extraHeaders })
   return { status: response.status, message: (yield* readMcpHttpResponse(response)) as any }
 })
 
@@ -332,6 +334,104 @@ describe("McpServer skills", () => {
           })
         }))
     }
+  })
+
+  describe("visibility", () => {
+    class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
+
+    const makeFixture = () => {
+      const calls: Array<string> = []
+      const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, { headers, method, target }) => {
+        calls.push(`${method} ${target}`)
+        return Effect.provideService(effect, CurrentUser, headers["x-user"] ?? "guest")
+      })
+      const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user === "admin"))
+      const registrations = Layer.mergeAll(
+        McpServer.skill({
+          uri: "skill://acme/public/SKILL.md",
+          frontmatter: { name: "public", description: "Public skill" },
+          instructions: "Public.\n"
+        }),
+        McpServer.skill({
+          uri: "skill://acme/admin/SKILL.md",
+          frontmatter: { name: "admin", description: "Admin skill" },
+          instructions: "Admin.\n",
+          files: { "notes/secret.md": "Secret.\n" }
+        }).pipe(Layer.provide(AdminOnly.combine(Auth).layer))
+      )
+      return { calls, registrations }
+    }
+
+    const admin = { "x-user": "admin" }
+
+    it.effect("hides a skill from skills/list, skills/get and directory reads", () =>
+      Effect.gen(function*() {
+        const { registrations } = makeFixture()
+        const harness = yield* modernHarness(registrations)
+        const uris = (message: any) => message.result.skills.map((skill: any) => skill.uri)
+
+        assert.deepStrictEqual(uris((yield* call(harness, "skills/list")).message), ["skill://acme/public/SKILL.md"])
+        assert.deepStrictEqual(uris((yield* call(harness, "skills/list", {}, admin)).message), [
+          "skill://acme/public/SKILL.md",
+          "skill://acme/admin/SKILL.md"
+        ])
+
+        const hidden = yield* call(harness, "skills/get", { uri: "skill://acme/admin/SKILL.md" })
+        assert.strictEqual(hidden.message.error.code, -32602)
+        const shown = yield* call(harness, "skills/get", { uri: "skill://acme/admin/SKILL.md" }, admin)
+        assert.strictEqual(shown.message.result.skill.frontmatter.name, "admin")
+
+        const names = (message: any) => message.result.resources.map((child: any) => child.name)
+        assert.deepStrictEqual(
+          names((yield* call(harness, "resources/directory/read", { uri: "skill://acme" })).message),
+          ["public"]
+        )
+        assert.deepStrictEqual(
+          names((yield* call(harness, "resources/directory/read", { uri: "skill://acme" }, admin)).message),
+          ["admin", "public"]
+        )
+        for (const uri of ["skill://acme/admin", "skill://acme/admin/notes"]) {
+          const { message } = yield* call(harness, "resources/directory/read", { uri })
+          assert.strictEqual(message.error.code, -32602, uri)
+        }
+
+        const read = yield* call(harness, "resources/read", { uri: "skill://acme/admin/notes/secret.md" })
+        assert.strictEqual(read.message.error.code, -32602)
+      }))
+
+    it.effect("passes the SKILL.md URI as the target, checking only skills that have the directory", () =>
+      Effect.gen(function*() {
+        const { calls, registrations } = makeFixture()
+        const harness = yield* modernHarness(registrations)
+        yield* call(harness, "skills/list")
+        yield* call(harness, "skills/get", { uri: "skill://acme/admin/SKILL.md" })
+        yield* call(harness, "resources/directory/read", { uri: "skill://acme/public" })
+        yield* call(harness, "resources/directory/read", { uri: "skill://acme/admin/notes" })
+        assert.deepStrictEqual(calls, [
+          "skills/list skill://acme/admin/SKILL.md",
+          "skills/get skill://acme/admin/SKILL.md",
+          "resources/directory/read skill://acme/admin/SKILL.md"
+        ])
+      }))
+
+    it.effect("hides a skill on sessionful revisions", () =>
+      Effect.gen(function*() {
+        const { registrations } = makeFixture()
+        const protocol = McpProtocol.v2025_11_25
+        const harness = yield* makeHttpHarness(
+          registrations.pipe(Layer.provideMerge(makeServerLayer({ name: "SkillsServer", protocols: [protocol] })))
+        )
+        const headers = yield* initializeHttpSession(harness, protocol)
+        const post = (method: string, params: Record<string, unknown>) =>
+          harness.post({ jsonrpc: "2.0", id: 2, method, params }, headers).pipe(
+            Effect.flatMap(readMcpHttpResponse),
+            Effect.map((message) => message as any)
+          )
+        const list = yield* post("skills/list", {})
+        assert.deepStrictEqual(list.result.skills.map((skill: any) => skill.uri), ["skill://acme/public/SKILL.md"])
+        const get = yield* post("skills/get", { uri: "skill://acme/admin/SKILL.md" })
+        assert.strictEqual(get.error.code, -32602)
+      }))
   })
 
   describe("registration", () => {

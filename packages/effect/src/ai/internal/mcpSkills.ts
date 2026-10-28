@@ -212,8 +212,7 @@ export const legacyHandlers = (core: McpCore.McpCore) => ({
   "skills/list": Effect.fnUntraced(function*(request: typeof LegacyListSkills.payloadSchema.Type) {
     yield* requireSkills(core, "skills/list")
     yield* rejectCursor(request?.cursor)
-    const client = yield* PublicMcpSchema.McpServerClient
-    const skills = yield* core.skills.list(McpProtocol.invocationFromClient(client))
+    const skills = yield* McpProtocol.listForClient(core.skills.list)
     return { skills }
   }),
   "skills/get": Effect.fnUntraced(function*(request: typeof LegacyGetSkill.payloadSchema.Type) {
