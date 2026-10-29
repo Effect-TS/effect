@@ -447,7 +447,7 @@ class ConnectionImpl implements Connection {
     sql: string,
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
-  ) {
+  ): Effect.Effect<ReadonlyArray<any>, SqlError> {
     const rows = Effect.map(this.connection.queryWithPrelude(prelude, sql, params), (result) => result.rows)
     return transformRows ? Effect.map(rows, transformRows) : rows
   }
@@ -465,7 +465,6 @@ class ConnectionImpl implements Connection {
   }
 }
 
-/** PostgreSQL returns `ROLLBACK` for `COMMIT` when a transaction is aborted. */
 const compilePrelude = (statement: Statement.Statement<unknown>): PgConnection.PreludeStatement => {
   const [sql, params] = statement.compile()
   return { sql, params }
@@ -481,10 +480,7 @@ const withPrelude: PgClient["withPrelude"] = dual(
       "executeWithPrelude",
       (connection, sql, params, transformRows) =>
         connection instanceof ConnectionImpl
-          ? connection.executeWithPrelude(prelude.map(compilePrelude), sql, params, transformRows) as Effect.Effect<
-            ReadonlyArray<A>,
-            SqlError
-          >
+          ? connection.executeWithPrelude(prelude.map(compilePrelude), sql, params, transformRows)
           : Effect.fail(
             new SqlError({
               reason: new UnknownError({
@@ -497,6 +493,7 @@ const withPrelude: PgClient["withPrelude"] = dual(
     )
 )
 
+/** PostgreSQL returns `ROLLBACK` for `COMMIT` when a transaction is aborted. */
 const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
   Effect.flatMap(
     conn.executeRaw("COMMIT", []) as Effect.Effect<PgConnection.Result, SqlError>,

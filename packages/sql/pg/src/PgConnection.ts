@@ -1055,19 +1055,23 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
 }
 
 /**
- * Joins the parts of a frame into the buffer that goes on the wire.
+ * Joins the parts of a frame into the buffer that goes on the wire. Optional
+ * parts such as queued `Close` messages or a prelude are passed as `undefined`
+ * when absent and skipped.
  *
  * The buffer comes from Node's pool and can be passed directly to
  * `socket.write`. Every byte is initialized before the buffer is returned.
  */
-const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
+const concat = (chunks: ReadonlyArray<Uint8Array | undefined>): Uint8Array => {
   let length = 0
-  for (let index = 0; index < chunks.length; index++) length += chunks[index].length
+  for (let index = 0; index < chunks.length; index++) length += chunks[index]?.length ?? 0
   const output = Buffer.allocUnsafe(length)
   let offset = 0
   for (let index = 0; index < chunks.length; index++) {
-    output.set(chunks[index], offset)
-    offset += chunks[index].length
+    const chunk = chunks[index]
+    if (chunk === undefined) continue
+    output.set(chunk, offset)
+    offset += chunk.length
   }
   return output
 }
@@ -1143,18 +1147,16 @@ const encodeUnnamed = (
   parameters: ReadonlyArray<PgTypes.Parameter>,
   parameterTypes: ReadonlyArray<number>,
   encodeBind: BindEncoder,
-  prelude: EncodedPrelude | undefined
+  prelude: EncodedPrelude
 ): Plan => {
   const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
   if (EffectResult.isFailure(parse)) throw parse.failure
   const bind = encodeBind({ portal: "", statement: "", parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
   return {
-    frame: prelude === undefined
-      ? concat([parse.success, bind.success, describeExecuteSync])
-      : concat([prelude.frames, parse.success, bind.success, describeExecuteSync]),
+    frame: concat([prelude.frames, parse.success, bind.success, describeExecuteSync]),
     closes: 0,
-    preludes: prelude?.count ?? 0,
+    preludes: prelude.count,
     parses: true,
     describes: true,
     prepared: undefined,
@@ -1163,10 +1165,13 @@ const encodeUnnamed = (
   }
 }
 
+/** Prelude statements as frames; `frames` is absent when there are none. */
 interface EncodedPrelude {
-  readonly frames: Uint8Array
+  readonly frames: Uint8Array | undefined
   readonly count: number
 }
+
+const noPrelude: EncodedPrelude = { frames: undefined, count: 0 }
 
 const inferParameters = (
   params: ReadonlyArray<unknown>,
@@ -1191,8 +1196,8 @@ const encodePrelude = (
   prelude: ReadonlyArray<PreludeStatement>,
   registry: PgTypes.Registry | undefined,
   encodeBind: BindEncoder
-): EncodedPrelude | undefined => {
-  if (prelude.length === 0) return undefined
+): EncodedPrelude => {
+  if (prelude.length === 0) return noPrelude
   const chunks: Array<Uint8Array> = []
   for (const statement of prelude) {
     const { parameterTypes, parameters } = inferParameters(statement.params ?? emptyParams, registry)
@@ -1242,19 +1247,12 @@ const encodeQuery = (
   const parse = prepared.ready ? undefined : PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
   if (parse !== undefined && EffectResult.isFailure(parse)) throw parse.failure
   const closeFrames = cache.takeCloses()
-  const head = closeFrames === undefined
-    ? prelude?.frames
-    : prelude === undefined
-    ? closeFrames.frames
-    : concat([closeFrames.frames, prelude.frames])
 
   if (parse === undefined) {
     return {
-      frame: head === undefined
-        ? concat([bind.success, executeSync])
-        : concat([head, bind.success, executeSync]),
+      frame: concat([closeFrames?.frames, prelude.frames, bind.success, executeSync]),
       closes: closeFrames?.count ?? 0,
-      preludes: prelude?.count ?? 0,
+      preludes: prelude.count,
       parses: false,
       describes: false,
       prepared,
@@ -1265,11 +1263,9 @@ const encodeQuery = (
 
   prepared.parsing = true
   return {
-    frame: head === undefined
-      ? concat([parse.success, bind.success, describeExecuteSync])
-      : concat([head, parse.success, bind.success, describeExecuteSync]),
+    frame: concat([closeFrames?.frames, prelude.frames, parse.success, bind.success, describeExecuteSync]),
     closes: closeFrames?.count ?? 0,
-    preludes: prelude?.count ?? 0,
+    preludes: prelude.count,
     parses: true,
     describes: true,
     prepared,
