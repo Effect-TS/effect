@@ -206,6 +206,11 @@ function isExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>(
   return exactness.every((dependency) => isExact(dependency, seen))
 }
 
+function isJsonDeclaration(representation: SchemaRepresentation.Declaration): boolean {
+  const id = representation.representation?.id
+  return id === "effect/schema/Json" || id === "effect/schema/MutableJson"
+}
+
 function isApproximateCheckOutput(
   output: SchemaRepresentation.ToJsonSchema.CheckOutput
 ): output is readonly [schema: JsonSchema.JsonSchema, approximate: true] {
@@ -230,6 +235,8 @@ function compileJsonSchema(
     { branches: ReadonlyArray<Exactness>; schemas: Array<JsonSchema.JsonSchema> }
   >()
   const fallbackDefinitions = new Map<string, Array<string>>()
+  // Definitions still being compiled may gain approximate dependencies later.
+  const pendingDependencies = new Set<ReadonlyArray<Exactness>>()
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
@@ -271,6 +278,14 @@ function compileJsonSchema(
   }
   return { dialect: "draft-2020-12", schemas, definitions }
 
+  function isSettledExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>()): boolean {
+    if (typeof exactness === "boolean") return exactness
+    if (pendingDependencies.has(exactness)) return false
+    if (seen.has(exactness)) return true
+    seen.add(exactness)
+    return exactness.every((dependency) => isSettledExact(dependency, seen))
+  }
+
   function registerPendingOneOf(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
     if (Array.isArray(schema.oneOf)) pendingOneOf.get(schema.oneOf)?.schemas.push(schema)
     return schema
@@ -296,7 +311,9 @@ function compileJsonSchema(
     // Register the dependency cell before compiling so recursive references share it.
     const result: CompiledJsonSchema = { schema: {}, dependencies: [] }
     compiledDefinitions.set(key, result)
+    pendingDependencies.add(result.dependencies)
     result.schema = recur(references[key], ["references", key], result.dependencies)
+    pendingDependencies.delete(result.dependencies)
     return result
   }
 
@@ -345,10 +362,15 @@ function compileJsonSchema(
     const annotations = check.annotations
     const callback = annotations?.toJsonSchema
     if (callback !== undefined) {
-      const schemas = check.representation?.schemas?.map((schema, index) =>
-        recur(schema, [...path, "representation", "schemas", index], dependencies)
-      ) ?? []
-      const result = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
+      const exact: Array<boolean> = []
+      const schemas = check.representation?.schemas?.map((schema, index) => {
+        const local: Array<Exactness> = []
+        dependencies.push(local)
+        const compiled = recur(schema, [...path, "representation", "schemas", index], local)
+        exact.push(isSettledExact(local))
+        return compiled
+      }) ?? []
+      const result = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas, exact })
       const approximate = isApproximateCheckOutput(result)
       if (approximate) {
         dependencies.push(false)
@@ -443,7 +465,8 @@ function compileJsonSchema(
           ? { not: {} }
           : { type: "string", enum: [globalThis.String(representation.symbol)] }
       case "Declaration":
-        dependencies.push(false)
+        // Every JSON instance is a JSON value, so `{}` is exact for Json.
+        if (!isJsonDeclaration(representation)) dependencies.push(false)
         return {}
       case "Suspend":
         return recur(representation.thunk, [...path, "thunk"], dependencies)
