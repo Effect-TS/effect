@@ -82,10 +82,12 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * Shard lock expiration duration.
    *
-   * With PostgreSQL advisory locks (PostgreSQL 14+), this also bounds how long
-   * a runner that stops refreshing, for example because its process is frozen,
+   * With PostgreSQL (14+) or MySQL advisory locks, this also bounds how long a
+   * runner that stops refreshing, for example because its process is frozen,
    * keeps its shards: the server ends its idle lock session after this
-   * duration, releasing the locks.
+   * duration, releasing the locks. On MySQL it is rounded up to whole
+   * seconds. Vitess ignores the MySQL session timeout, so behind Vitess the
+   * locks stay held until the runner's connection closes.
    */
   readonly shardLockExpiration: Duration.Input
   /**

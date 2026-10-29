@@ -98,6 +98,9 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     Math.ceil(Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))),
     2147483647
   )
+  const shardLockExpirationSeconds = Math.ceil(Duration.toSeconds(config.shardLockExpiration))
+  // Between the smallest and largest values MySQL accepts.
+  const waitTimeout = Math.min(Math.max(1, shardLockExpirationSeconds), 31536000)
 
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
@@ -138,17 +141,25 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           Scope.provide(scope)
         )
         if (disableAdvisoryLocks) return [conn, { pid: 0, pinLock: undefined }] as const
+        // The connection goes back to the shared pool, so leave it as it was
+        // borrowed, even if setup fails below.
+        const borrowedWaitTimeout = Number((yield* conn.executeValues("SELECT @@SESSION.wait_timeout", []))[0][0])
+        yield* Scope.addFinalizerExit(scope, () =>
+          conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", []).pipe(
+            Effect.andThen(conn.executeRaw(`SET SESSION wait_timeout = ${borrowedWaitTimeout}`, [])),
+            Effect.timeout(lockOperationInterval),
+            Effect.interruptible,
+            Effect.ignoreCause
+          ))
+        // Named locks belong to the connection, so a frozen runner whose
+        // connection stays open would hold them indefinitely. Have the server
+        // close the connection once it has been idle for shardLockExpiration,
+        // which releases them. vtgate accepts but ignores wait_timeout, so
+        // behind Vitess the locks stay held until the connection closes.
+        yield* conn.executeRaw(`SET SESSION wait_timeout = ${waitTimeout}`, [])
         // we need to get the connection id using IS_USED_LOCK to properly
         // support vitess
         const session: LockSession = yield* pinLockSession(conn)
-        if (!disableAdvisoryLocks) {
-          yield* Scope.addFinalizerExit(scope, () =>
-            conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", []).pipe(
-              Effect.timeout(lockOperationInterval),
-              Effect.interruptible,
-              Effect.ignoreCause
-            ))
-        }
         return [conn, session] as const
       }, Effect.orDie),
     orElse: () => undefined
@@ -214,11 +225,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   // avoid deadlocks between acquisition, refresh and bulk release.
   const pgLockOrder = sql.literal(`ORDER BY shard_id COLLATE "C"`)
 
-  const expiresSeconds = sql.literal(
-    Math.ceil(Duration.toSeconds(
-      Duration.fromInputUnsafe(config.shardLockExpiration)
-    )).toString()
-  )
+  const expiresSeconds = sql.literal(shardLockExpirationSeconds.toString())
   const lockExpiresAt = sql.onDialectOrElse({
     pg: () => sql`${sqlNow} - INTERVAL '${expiresSeconds} seconds'`,
     mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${expiresSeconds} SECOND)`,
