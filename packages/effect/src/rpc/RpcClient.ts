@@ -604,8 +604,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         if (!entry || entry._tag !== "Queue") return Effect.void
         return Queue.offerAll(entry.queue, message.values).pipe(
           supportsAck
-            ? Effect.flatMap(() =>
-              options.onFromClient({
+            ? Effect.flatMap((dropped) =>
+              // values are dropped when the queue was shutdown by an interrupted
+              // consumer, so the server should not be asked for more
+              dropped.length > 0 ? Effect.void : options.onFromClient({
                 message: { _tag: "Ack", requestId: message.requestId },
                 context: entry.context
               })
