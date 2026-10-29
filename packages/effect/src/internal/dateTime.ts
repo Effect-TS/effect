@@ -38,7 +38,6 @@ const Proto = {
 const ProtoUtc = {
   ...Proto,
   _tag: "Utc",
-  partsUtc: undefined,
   [Hash.symbol](this: DateTime.Utc) {
     return Hash.number(this.epochMilliseconds)
   },
@@ -53,9 +52,6 @@ const ProtoUtc = {
 const ProtoZoned = {
   ...Proto,
   _tag: "Zoned",
-  partsUtc: undefined,
-  adjustedEpochMilliseconds: undefined,
-  partsAdjusted: undefined,
   [Hash.symbol](this: DateTime.Zoned) {
     return Hash.combine(Hash.number(this.epochMilliseconds))(Hash.hash(this.zone))
   },
