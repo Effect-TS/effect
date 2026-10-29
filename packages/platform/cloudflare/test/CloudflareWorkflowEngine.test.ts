@@ -390,7 +390,7 @@ describe("CloudflareWorkflowEngine", () => {
     }).pipe(Effect.provide(layer))
   })
 
-  // Characterization probes for the retention proposal. Clearing a store below
+  // Characterization probes for retention questions. Clearing a store below
   // deliberately simulates unsafe GC; it is not an engine cleanup API.
   describe("retention characterization", () => {
     it.effect("repeats an activity if completed execution storage is removed before a retry", () => {

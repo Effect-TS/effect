@@ -1,42 +1,48 @@
-# Proposal: result retention for Effect Workflows on Durable Objects
+# Retention questions for Effect Workflows on Durable Objects
 
-The Effect Workflow engine backed by Cloudflare Durable Objects currently retains
-completed executions and their journals. This is Effect's DO engine, not the
-Cloudflare Workflows product. This draft proposes opt-in collection without losing retry safety or
-the results that callers still need for replay. It does not implement GC or add
-a public API.
+What is the intended lifecycle of completed executions in Effect's Durable
+Object engine? In the reviewed Cloudflare branch, I could not find an automatic
+cleanup path. This concerns Effect Workflows hosted in Durable Objects, not the
+Cloudflare Workflows product.
 
-## The problem in one example
+These observations are intended to clarify the current behavior and ask about
+its intended use. They do not propose a retention API or GC implementation.
 
-An Activity provisions a server. Retrying the same execution returns the stored
-result while the execution is retained:
+## What the probes show
+
+A Workflow's stored result currently lets repeated calls reuse its outcome:
 
 ```ts
-const first = yield * Provision.execute({ requestId: "create-1" })
-const retry = yield * Provision.execute({ requestId: "create-1" })
-// One server is created; both calls return its ID.
+yield * Provision.execute({ requestId: "1" }) // creates a server
+yield * Provision.execute({ requestId: "1" }) // returns the same server
 ```
 
-`Provision` represents a registered Workflow whose idempotency key is `requestId`.
-If a cleanup job removes all of that execution's storage, the same call can
-create another server. Removing only the Activity cache is also unsafe while a
-caller can replay an unfinished Workflow. A result TTL therefore needs an
-explicit duplicate-start policy, not just SQL DELETE statements.
+Here, `Provision` represents a registered Workflow whose idempotency key is
+`requestId`. If its stored execution is manually removed and the same call is
+retried, its Activity can execute again.
 
-The included executable probes use the existing Workflow runtime fixture:
+A parent may also replay a completed child call:
 
-| Probe                                                                                                        | Current observation                                        |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Remove a completed execution's store, restart, and retry the same payload                                    | The Activity executes a second time                        |
-| Deliver a child's completion wake, suspend its parent on another Deferred, remove child storage, and restart | Parent replay executes the child Activity again            |
-| Send a new Deferred completion to an already completed execution                                             | A Deferred row is stored and a resume guard alarm is armed |
+```ts
+const server = yield * Provision.execute({ requestId: "1" })
+yield * DurableDeferred.await(Continue)
+// After a restart, this parent replays from the top.
+```
 
-The first two probes deliberately simulate an unsafe cleanup operation. They do
-not claim that the engine currently deletes data or exposes a cleanup method.
-The third observes existing late-delivery behavior. None is a physical-storage,
-Cloudflare billing, or automatic-retention measurement.
+The probes in `CloudflareWorkflowEngine.test.ts` observe:
 
-Run the probes from the repository root:
+- Removing a completed execution's store, restarting, and retrying repeats its
+  Activity.
+- Removing a child's store after its completion notification was delivered,
+  then replaying its suspended parent, repeats child work.
+- Sending a new Deferred completion to an already completed execution persists
+  a Deferred row and arms the resume guard alarm.
+
+The first two deliberately remove data through the test fixture. They do not
+show data loss or automatic deletion by the engine. All three use the existing
+in-process SQL/runtime fixture, not physical workerd or billing measurements.
+
+Run them from the repository root:
 
 ```sh
 bun --bun vitest run --project @effect/platform-cloudflare \
@@ -44,62 +50,13 @@ bun --bun vitest run --project @effect/platform-cloudflare \
   -t 'retention characterization'
 ```
 
-These are passing characterizations of the current engine, not a completed
-retention implementation or regression tests proving safe collection. They
-should be replaced or adapted once the intended retention contract is agreed.
+## Questions
 
-## Proposed behavior
+- Is there an intended cleanup mechanism or application pattern I missed?
+- What should callers expect when old execution data is no longer available,
+  particularly retries and parent replay?
+- Is late delivery after completion intentional?
 
-Keep today's behavior by default. For opted-in executions:
-
-1. Persist the policy with the execution. Count result retention from terminal
-   completion, including required cleanup, rather than from the request date.
-2. Collect only terminal executions. Preserve suspended/running work and
-   outstanding parent notification. Notification delivery alone is insufficient:
-   an awaiting parent must durably retain the child's result, or have another
-   durable way to observe expiry without silently rerunning the child.
-3. Coordinate collection through the existing alarm. Remove replay data
-   transactionally and preserve the duplicate-start decision after its removal.
-   Ignore late deliveries that could recreate collected data.
-
-No separate scheduler or new table is inherently required. Adding metadata to
-the existing execution row and using the parent's Activity store are candidate
-implementation choices, not a settled storage design.
-
-## Decisions before implementation
-
-- **Where is policy defined?** A Core annotation could make result retention
-  portable. An adapter-local option avoids silently promising retention on
-  engines without support. A shared annotation needs explicit unsupported-engine
-  behavior; declaring it in Core alone cannot implement collection.
-- **What happens after expiry?** Choose the result of `poll` and an identical
-  `execute`, the duration of duplicate rejection, and whether IDs can ever be
-  reused. A permanent tombstone avoids accidental re-execution but leaves a
-  storage record. Bounded tombstones require a separate trustworthy admission
-  boundary. An arbitrary caller-supplied deadline is not enough.
-- **Who still owns the result?** Native parents, persisted Entity handlers, and
-  external clients have different replay needs. Parent wake acknowledgement is
-  not durable result acknowledgement. Caller loss/closure also needs a policy
-  so a result does not remain pinned forever.
-- **What survives changes and restores?** Persist admitted policy; do not infer
-  completion times for old rows. Define behavior when an old caller is restored
-  after its child's result has expired. This proposal does not provide coordinated
-  multi-object restore or Workflow-code version pinning.
-
-Request expiry and execution-ID derivation should stay separate from the first
-result-retention API. Entry byte limits are another independent constraint:
-they do not bound the total journal of a long-running execution or provide
-ContinueAsNew/history compaction.
-
-Deleting SQL rows also does not establish physical SQLite reclamation, deletion
-of the Durable Object itself, or reduced storage billing. Those require separate
-Cloudflare-specific verification.
-
-## Suggested implementation sequence
-
-Agree on the result/duplicate/caller contract first, then add the smallest Core
-policy if it is shared across engines. Implement the DO adapter with focused
-tests for terminal cleanup, pending parent delivery, caller replay after child
-collection, duplicate starts, late Deferred/clock delivery, migration, and
-restart during collection. A Core annotation or an isolated TTL DELETE would
-not complete that behavior.
+The passing probes document the reviewed behavior; they do not establish a
+future retention contract. They can be adapted or removed once the intended
+lifecycle is clarified. No production behavior or public API is changed.
