@@ -608,13 +608,25 @@ describe("DateTime", () => {
       deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
     })
 
-    it("do not prevent reading or clearing parts of non-extensible instances", () => {
+    it("work on non-extensible instances", () => {
       const utc = Object.preventExtensions(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
       const zoned = Object.seal(DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", { timeZone: "Europe/London" }))
+      const frozen = Object.freeze(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      const written = DateTime.toPartsUtc(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
       utc.partsUtc = undefined
+      zoned.partsUtc = written
       const parts = { millisecond: 0, second: 0, minute: 0, day: 1, weekDay: 1, month: 7, year: 2024 }
       deepStrictEqual(DateTime.toPartsUtc(utc), { ...parts, hour: 12 })
+      deepStrictEqual(DateTime.toPartsUtc(frozen), { ...parts, hour: 12 })
       deepStrictEqual(DateTime.toParts(zoned), { ...parts, hour: 13 })
+      strictEqual(DateTime.toParts(zoned), DateTime.toParts(zoned))
+      strictEqual(DateTime.toPartsUtc(zoned), written)
+    })
+
+    it("carry populated UTC parts over when zoned", () => {
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const parts = DateTime.toPartsUtc(utc)
+      strictEqual(DateTime.toPartsUtc(DateTime.setZone(utc, DateTime.zoneMakeNamedUnsafe("Europe/London"))), parts)
     })
 
     it("do not affect equality with a fresh instance", () => {
