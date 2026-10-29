@@ -93,6 +93,12 @@ describe("McpClient", () => {
     expect<Tool.HandlerError<BoundTool<typeof text>>>().type.toBe<never>()
   })
 
+  it("should require mode selectors when typed options choose nondefault modes", () => {
+    type Snapshot = { readonly tools: ReadonlyArray<McpSchema.Tool> }
+    expect<Snapshot>().type.not.toBeAssignableTo<McpClient.ToolkitOptions<"complete">>()
+    expect<Snapshot>().type.not.toBeAssignableTo<McpClient.ToolkitOptions<"text", "return">>()
+  })
+
   it("should retain customization dependencies when the bound handler is invoked", () => {
     const customized = McpClient.toolkit(client, {
       resultMode: "complete",
