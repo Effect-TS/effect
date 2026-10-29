@@ -304,7 +304,7 @@ const checkModulus = (key: Signature.PublicKey | Signature.PrivateKey): Effect.E
     : Effect.void
 
 // KeyFormat handles only key members; JOSE metadata is handled here.
-const jsonWebKey = (jwk: object): JsonWebKey => jwk
+const jsonWebKey = (jwk: object): KeyFormat.JsonWebKey => jwk
 
 const isPublicJwk = Schema.is(PublicJwk)
 const isPrivateJwk = Schema.is(PrivateJwk)
