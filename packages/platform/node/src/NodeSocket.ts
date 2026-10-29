@@ -3,8 +3,7 @@
  *
  * This module re-exports the shared Node socket support for TCP connections,
  * Unix domain socket connections, and Node `Duplex` streams. It also provides
- * WebSocket client layers backed by Node's global `WebSocket`. A client backed
- * by the `ws` package is available from `NodeWS`.
+ * WebSocket client layers backed by Node's global `WebSocket`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -26,20 +25,18 @@ export * from "@effect/platform-node-shared/NodeSocket"
  *
  * **Details**
  *
- * Client options objects are passed to the constructor as Node's
- * `WebSocketInit`, so handshake headers and subprotocols can be supplied
- * together.
+ * Handshake headers and subprotocols in client options objects are passed to
+ * the constructor as Node's `WebSocketInit`.
  *
  * **Gotchas**
  *
- * Use `NodeWS.layerWebSocketConstructor` when any of these matter:
+ * Use `NodeWS.layerWebSocketConstructor` if any of these matter:
  *
- * - Node's `WebSocket` cannot pause reads. `Socket.fromWebSocket` buffers
- *   incoming frames without limit, or fails with a `SocketReadError` once a
- *   configured `highWaterMark` is exceeded.
- * - A `Host` header is ignored; the handshake always sends the URL's host.
- * - Outgoing messages are not compressed, even when the server accepts
- *   `permessage-deflate`.
+ * - Reads cannot be paused, so incoming frames are buffered without limit, or
+ *   fail the socket with a `SocketReadError` once a configured
+ *   `highWaterMark` is exceeded.
+ * - A custom `Host` header is ignored.
+ * - Outgoing messages are not compressed.
  *
  * @stability unstable
  * @category layers
@@ -57,7 +54,7 @@ export const layerWebSocketConstructor: Layer.Layer<
   return new (globalThis.WebSocket as unknown as NodeWebSocketConstructor)(url, init)
 })
 
-// Node's `WebSocketInit`, which the DOM `WebSocket` constructor type omits.
+// Node's `WebSocketInit`, missing from the DOM `WebSocket` constructor type.
 interface WebSocketInit {
   protocols?: string | Array<string>
   headers?: Readonly<Record<string, string>>

@@ -1,9 +1,6 @@
 /**
- * Re-exports the `ws` package.
- *
- * `ws` provides the WebSocket servers behind `NodeSocketServer` and HTTP
- * upgrades. Client sockets use Node's global `WebSocket` instead, so this
- * module is kept separate: importing only client APIs does not load `ws`.
+ * Re-exports the `ws` package, used for WebSocket servers and HTTP upgrades.
+ * It is kept out of `NodeSocket` so client-only imports do not load `ws`.
  *
  * @stability unstable
  * @since 4.1.0
