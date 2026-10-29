@@ -23,15 +23,18 @@ const assertParts = (result: unknown, epoch: number, offsetMillis = 0) => {
   })
 }
 
-const assertFreshParts = (result: unknown, self: DateTime.DateTime) =>
-  assert.deepEqual(
-    result,
-    DateTime.toParts(
-      DateTime.isZoned(self)
-        ? DateTime.makeZonedUnsafe(self.epochMilliseconds, { timeZone: self.zone })
-        : DateTime.makeUnsafe(self.epochMilliseconds)
-    )
-  )
+// Europe/London is UTC+1 from 01:00 UTC on the last Sunday of March until
+// 01:00 UTC on the last Sunday of October, so expected parts do not depend on
+// Intl or DateTime.
+const lastSundayAt1Utc = (year: number, month: number) => {
+  const date = new Date(Date.UTC(year, month + 1, 0, 1))
+  return date.setUTCDate(date.getUTCDate() - date.getUTCDay())
+}
+
+const londonOffset = (epoch: number) => {
+  const year = new Date(epoch).getUTCFullYear()
+  return epoch >= lastSundayAt1Utc(year, 2) && epoch < lastSundayAt1Utc(year, 9) ? 60 * 60 * 1000 : 0
+}
 
 const assertUtc = (result: unknown, epoch: number) => {
   assert.ok(DateTime.isDateTime(result) && DateTime.isUtc(result))
@@ -121,8 +124,10 @@ export const partsNamedFirst = () => {
       DateTime.toDate(zoned)
       return DateTime.toParts(zoned)
     },
-    validate: (result: unknown) =>
-      assertFreshParts(result, DateTime.makeZonedUnsafe(epochs[(i - 1) & mask], { timeZone: named }))
+    validate: (result: unknown) => {
+      const epoch = epochs[(i - 1) & mask]
+      assertParts(result, epoch, londonOffset(epoch))
+    }
   }
 }
 
@@ -159,7 +164,10 @@ export const partsNamedCached = () => {
       DateTime.toDate(self)
       return DateTime.toParts(self)
     },
-    validate: (result: unknown) => assertFreshParts(result, zoned[(i - 1) & mask])
+    validate: (result: unknown) => {
+      const epoch = epochs[(i - 1) & mask]
+      assertParts(result, epoch, londonOffset(epoch))
+    }
   }
 }
 
@@ -180,6 +188,10 @@ export const partsMixedCached = () => {
       DateTime.toPartsUtc(self)
       return DateTime.toParts(self)
     },
-    validate: (result: unknown) => assertFreshParts(result, values[(i - 1) & mask])
+    validate: (result: unknown) => {
+      const index = (i - 1) & mask
+      const epoch = epochs[index]
+      assertParts(result, epoch, index % 4 === 0 ? 0 : index % 2 === 0 ? londonOffset(epoch) : offset.offset)
+    }
   }
 }
