@@ -216,10 +216,8 @@ export declare namespace SqlClient {
      * because several databases refuse to prepare transaction control at all;
      * a driver has to say that its own does not.
      *
-     * Rollbacks and savepoint releases always run unprepared. A prepared
-     * statement the backend has lost cannot be parsed again inside a
-     * transaction, so cleanup that depended on one could leave the
-     * transaction open.
+     * Rollbacks and savepoint releases always run unprepared, so a prepared
+     * statement the backend has dropped cannot stop cleanup.
      */
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined

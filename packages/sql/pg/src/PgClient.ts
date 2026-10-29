@@ -431,11 +431,10 @@ const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
   )
 
 /**
- * A `COMMIT` the backend rejects before running it, such as a prepared one a
- * transaction pooler has lost, leaves the transaction open. Outside a
- * transaction `ROLLBACK` only warns. Its own failure is ignored so the `COMMIT`
- * error stays the one reported; a session the failed `ROLLBACK` leaves aborted
- * is closed when its pin is released rather than reused.
+ * Rolls back a transaction left open by a `COMMIT` the backend rejected before
+ * running it. Outside a transaction `ROLLBACK` only warns. Its own failure is
+ * ignored so the `COMMIT` error is the one reported; a session it leaves
+ * aborted is closed on pin release.
  */
 const onCommitFailure = (conn: Connection): Effect.Effect<void> =>
   Effect.ignore(conn.executeUnprepared("ROLLBACK", [], undefined))
