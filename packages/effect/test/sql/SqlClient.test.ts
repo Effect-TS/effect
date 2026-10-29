@@ -237,6 +237,47 @@ describe("SqlClient", () => {
       ])
     }))
 
+  it.effect("replays the whole transaction when Effect.retry recovers a serialization failure at COMMIT", () =>
+    Effect.gen(function*() {
+      let commits = 0
+      const { after, calls, record, sql } = yield* makeClient({
+        commit: Effect.suspend(() =>
+          commits++ === 0
+            ? Effect.fail(
+              new SqlError.SqlError({
+                reason: new SqlError.SerializationError({ cause: new Error("40001"), message: "serialization failure" })
+              })
+            )
+            : Effect.void
+        )
+      })
+
+      const result = yield* sql.withTransaction(
+        Effect.andThen(record("body"), Effect.as(after("1"), "body"))
+      ).pipe(
+        Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE"),
+        Effect.retry({
+          while: (error) =>
+            SqlError.isSqlError(error) &&
+            (error.reason._tag === "SerializationError" || error.reason._tag === "DeadlockError"),
+          times: 5
+        })
+      )
+
+      assert.strictEqual(result, "body")
+      assert.deepStrictEqual(calls, [
+        "BEGIN ISOLATION LEVEL SERIALIZABLE",
+        "body",
+        "COMMIT",
+        "release",
+        "BEGIN ISOLATION LEVEL SERIALIZABLE",
+        "body",
+        "COMMIT",
+        "release",
+        "after(1)"
+      ])
+    }))
+
   describe("makeWithTransaction", () => {
     it.effect("recovers a failed commit with catchTag after successful cleanup", () =>
       Effect.gen(function*() {
