@@ -14,7 +14,8 @@ import {
   Schedule,
   Schema,
   Stream,
-  String
+  String,
+  Tracer
 } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Model } from "effect/schema"
@@ -415,6 +416,15 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
 
       assert.deepStrictEqual(seen, [{ count: 1 }])
     }))
+
+  it.effect("withPrelude applies the current statement transformer", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const rows = yield* sql.withPrelude(sql`SELECT 1 AS value`, []).pipe(
+        Effect.provideService(Statement.CurrentTransformer, (_, sql) => Effect.succeed(sql`SELECT 2 AS value`))
+      )
+      assert.deepStrictEqual(rows, [{ value: 2 }])
+    }))
 })
 
 it.layer(PgContainer.layerMakeClientUnprepared, { timeout: "30 seconds" })(
@@ -645,6 +655,17 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       assert.deepStrictEqual(inTransaction, [{ orgName: "globex" }])
     }))
 
+  it.effect("withPrelude follows withoutTransforms", () =>
+    Effect.gen(function*() {
+      const raw = (yield* PgClient.PgClient).withoutTransforms()
+      yield* raw`CREATE TABLE prelude_untransformed (${raw("mixedCase")} int4)`
+      const rows = yield* raw.withPrelude(
+        raw`SELECT ${raw("mixedCase")} AS org_name FROM prelude_untransformed`,
+        [raw`INSERT INTO prelude_untransformed (${raw("mixedCase")}) VALUES (1)`]
+      )
+      assert.deepStrictEqual(rows, [{ org_name: 1 }])
+    }))
+
   it.effect("retains the supplied config", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -797,5 +818,40 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
       yield* sql`SELECT 1`
 
       assert.strictEqual(finalized, 2)
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
+
+  it.effect("withPrelude propagates its span like a statement", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const sql = yield* PgClient.make({
+        url: Redacted.make(container.getConnectionUri()),
+        onAcquire: Effect.withSpan(Effect.void, "acquire hook")
+      })
+      // The span the hook runs under, and whether it recorded the connection wait.
+      const hookParent = Effect.fnUntraced(function*(statement: Effect.Effect<unknown, SqlError.SqlError>) {
+        spans.length = 0
+        yield* statement.pipe(Effect.withSpan("caller"))
+        const hook = spans.find((span) => span.name === "acquire hook")!
+        const parent = spans.find((span) => span.spanId === Option.getOrThrow(hook.parent).spanId)!
+        return [parent.name === "caller", parent.attributes.has("db.client.connection.wait_time_ms")]
+      })
+
+      for (const propagate of [false, true]) {
+        const traced = <A, E>(effect: Effect.Effect<A, E>) =>
+          effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
+        assert.deepStrictEqual(
+          yield* traced(hookParent(sql.withPrelude(sql`SELECT 1`, []))),
+          yield* traced(hookParent(sql`SELECT 1`)),
+          `propagate: ${propagate}`
+        )
+      }
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 })
