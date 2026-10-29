@@ -7,7 +7,7 @@ import * as Predicate from "../Predicate.ts"
 
 /** @internal */
 export type Token =
-  | { readonly _tag: "Char"; readonly value: string }
+  | { readonly _tag: "Char"; readonly code: number }
   | { readonly _tag: "Any" }
   | { readonly _tag: "Star" }
   /** `ranges` holds inclusive code point pairs: `[from0, to0, from1, to1, ...]`. */
@@ -17,7 +17,13 @@ export type Token =
 export type Node =
   | { readonly _tag: "Globstar" }
   | { readonly _tag: "Literal"; readonly value: string }
-  | { readonly _tag: "Wildcard"; readonly tokens: ReadonlyArray<Token>; readonly leadingDot: boolean }
+  | {
+    readonly _tag: "Wildcard"
+    readonly tokens: ReadonlyArray<Token>
+    readonly leadingDot: boolean
+    /** Set when the segment is `prefix*suffix`, which needs no backtracking. */
+    readonly affixes: { readonly prefix: string; readonly suffix: string } | undefined
+  }
   /** Ends one expanded pattern. */
   | { readonly _tag: "End"; readonly directoryOnly: boolean }
 
@@ -33,6 +39,23 @@ export interface Compiled {
   readonly nodes: ReadonlyArray<Node>
   readonly initial: States
   readonly dot: boolean
+  /** The same automaton as bitmasks for `match`, when `nodes` fits in 32 bits. */
+  readonly masks: Masks | undefined
+}
+
+/**
+ * Node sets where bit `i` stands for `nodes[i]`.
+ *
+ * @internal
+ */
+export interface Masks {
+  readonly initial: number
+  readonly globstar: number
+  /** `Literal` and `Wildcard` nodes. */
+  readonly segment: number
+  readonly end: number
+  /** `End` nodes that also accept files. */
+  readonly endFile: number
 }
 
 // -----------------------------------------------------------------------------
@@ -56,7 +79,34 @@ export const compile = (patterns: ReadonlyArray<string>, dot: boolean): Compiled
       }
     }
   }
-  return { nodes, initial: closure(nodes, starts), dot }
+  const initial = closure(nodes, starts)
+  return { nodes, initial, dot, masks: nodes.length <= 32 ? compileMasks(nodes, initial) : undefined }
+}
+
+const compileMasks = (nodes: ReadonlyArray<Node>, initial: States): Masks => {
+  let start = 0
+  for (const state of initial) {
+    start |= 1 << state
+  }
+  let globstar = 0
+  let segment = 0
+  let end = 0
+  let endFile = 0
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]
+    const bit = 1 << i
+    if (node._tag === "Globstar") {
+      globstar |= bit
+    } else if (node._tag !== "End") {
+      segment |= bit
+    } else {
+      end |= bit
+      if (!node.directoryOnly) {
+        endFile |= bit
+      }
+    }
+  }
+  return { initial: start, globstar, segment, end, endFile }
 }
 
 // Reject UNC paths rather than collapsing them into local absolute paths.
@@ -150,7 +200,7 @@ const compileSegment = (chars: ReadonlyArray<string>): Node => {
     const char = chars[i]
     if (char === "\\" && i + 1 < chars.length) {
       literal += chars[++i]
-      tokens.push({ _tag: "Char", value: chars[i] })
+      tokens.push({ _tag: "Char", code: chars[i].codePointAt(0)! })
     } else if (char === "*") {
       magic = true
       if (tokens[tokens.length - 1]?._tag !== "Star") {
@@ -164,7 +214,7 @@ const compileSegment = (chars: ReadonlyArray<string>): Node => {
       if (parsed === undefined) {
         classes = false
         literal += char
-        tokens.push({ _tag: "Char", value: char })
+        tokens.push({ _tag: "Char", code: char.codePointAt(0)! })
       } else {
         magic = true
         tokens.push(parsed.token)
@@ -172,14 +222,43 @@ const compileSegment = (chars: ReadonlyArray<string>): Node => {
       }
     } else {
       literal += char
-      tokens.push({ _tag: "Char", value: char })
+      tokens.push({ _tag: "Char", code: char.codePointAt(0)! })
     }
   }
   if (!magic) {
     return { _tag: "Literal", value: literal }
   }
   const first = tokens[0]
-  return { _tag: "Wildcard", tokens, leadingDot: first._tag === "Char" && first.value === "." }
+  return {
+    _tag: "Wildcard",
+    tokens,
+    leadingDot: first._tag === "Char" && first.code === 0x2e,
+    affixes: compileAffixes(tokens)
+  }
+}
+
+// Lone surrogates stay on the token path: `startsWith` would match them
+// against half of a surrogate pair.
+const compileAffixes = (
+  tokens: ReadonlyArray<Token>
+): { readonly prefix: string; readonly suffix: string } | undefined => {
+  let prefix = ""
+  let suffix: string | undefined
+  for (const token of tokens) {
+    if (token._tag === "Star" && suffix === undefined) {
+      suffix = ""
+    } else if (token._tag === "Char" && (token.code < 0xd800 || token.code > 0xdfff)) {
+      const char = String.fromCodePoint(token.code)
+      if (suffix === undefined) {
+        prefix += char
+      } else {
+        suffix += char
+      }
+    } else {
+      return undefined
+    }
+  }
+  return suffix === undefined ? undefined : { prefix, suffix }
 }
 
 const range = (from: string, to: string): Array<number> => [from.codePointAt(0)!, to.codePointAt(0)!]
@@ -392,16 +471,15 @@ const expandSequence = (sequence: BraceSequence): Array<string> => {
 // matching
 // -----------------------------------------------------------------------------
 
-const matchToken = (token: Token, char: string): boolean => {
+const matchToken = (token: Token, code: number): boolean => {
   switch (token._tag) {
     case "Char":
-      return token.value === char
+      return token.code === code
     case "Any":
       return true
     case "Star":
       return false
     case "Class": {
-      const code = char.codePointAt(0)!
       let found = false
       for (let i = 0; i < token.ranges.length && !found; i += 2) {
         found = code >= token.ranges[i] && code <= token.ranges[i + 1]
@@ -411,31 +489,41 @@ const matchToken = (token: Token, char: string): boolean => {
   }
 }
 
+// UTF-16 length of the code point
+const width = (code: number): number => code > 0xffff ? 2 : 1
+
 // Backtrack only to the last `*`, bounding retries by tokens × characters.
 const matchWildcard = (
   node: Extract<Node, { _tag: "Wildcard" }>,
   name: string,
-  chars: ReadonlyArray<string>,
   dot: boolean
 ): boolean => {
   if (name === "." || name === ".." || (name.startsWith(".") && !dot && !node.leadingDot)) {
     return false
+  }
+  if (node.affixes !== undefined) {
+    const { prefix, suffix } = node.affixes
+    return name.length >= prefix.length + suffix.length && name.startsWith(prefix) && name.endsWith(suffix)
   }
   const { tokens } = node
   let t = 0
   let c = 0
   let star = -1
   let resume = 0
-  while (c < chars.length) {
+  while (c < name.length) {
     if (tokens[t]?._tag === "Star") {
       star = t++
       resume = c
-    } else if (t < tokens.length && matchToken(tokens[t], chars[c])) {
+      continue
+    }
+    const code = name.codePointAt(c)!
+    if (t < tokens.length && matchToken(tokens[t], code)) {
       t++
-      c++
+      c += width(code)
     } else if (star !== -1) {
       t = star + 1
-      c = ++resume
+      resume += width(name.codePointAt(resume)!)
+      c = resume
     } else {
       return false
     }
@@ -468,7 +556,6 @@ const step = (compiled: Compiled, states: States, name: string): Step => {
   const viaGlobstar = new Set<number>()
   // only a literal segment can name the root of an absolute path
   const root = isRoot(name)
-  let chars: ReadonlyArray<string> | undefined
   for (const state of states) {
     const node = compiled.nodes[state]
     switch (node._tag) {
@@ -485,7 +572,7 @@ const step = (compiled: Compiled, states: States, name: string): Step => {
         break
       }
       case "Wildcard": {
-        if (!root && matchWildcard(node, name, chars ??= Array.from(name), compiled.dot)) {
+        if (!root && matchWildcard(node, name, compiled.dot)) {
           explicit.add(state + 1)
         }
         break
@@ -535,20 +622,77 @@ const needsDirectory = (compiled: Compiled, states: States): boolean => {
   return false
 }
 
+// `step` and `union` over bitmasks; a `**` node's successor is the next bit
+const stepMasks = (compiled: Compiled, masks: Masks, states: number, name: string, root: boolean): number => {
+  let next = !root && name !== "." && name !== ".." && (compiled.dot || !name.startsWith("."))
+    ? states & masks.globstar
+    : 0
+  let segments = states & masks.segment
+  while (segments !== 0) {
+    const bit = segments & -segments
+    segments ^= bit
+    const node = compiled.nodes[31 - Math.clz32(bit)]
+    if (
+      node._tag === "Literal"
+        ? node.value === name
+        : node._tag === "Wildcard" && !root && matchWildcard(node, name, compiled.dot)
+    ) {
+      next |= bit << 1
+    }
+  }
+  return next | ((next & masks.globstar) << 1)
+}
+
 /** @internal */
 export const match = (compiled: Compiled, path: string): boolean => {
   if (path === "" || isUnc(path)) {
     return false
   }
-  const { directory, segments } = normalize(path.split("/"))
-  let states = compiled.initial
-  for (const name of segments) {
-    states = union(step(compiled, states, name))
-    if (states.size === 0) {
-      return false
+  const { masks } = compiled
+  if (masks === undefined) {
+    const { directory, segments } = normalize(path.split("/"))
+    let states = compiled.initial
+    for (const name of segments) {
+      states = union(step(compiled, states, name))
+      if (states.size === 0) {
+        return false
+      }
     }
+    return accepts(compiled, states, directory)
   }
-  return accepts(compiled, states, directory)
+  // The same segments as `normalize(path.split("/"))`, without the arrays
+  let states = masks.initial
+  let stepped = false
+  let start = 0
+  let end = path.indexOf("/")
+  if (end === 0 || (end === 2 && drive.test(path))) {
+    states = stepMasks(compiled, masks, states, path.slice(0, end === 0 ? 0 : 3), true)
+    stepped = true
+    start = end + 1
+    end = path.indexOf("/", start)
+  }
+  let directory = false
+  let dotted = false
+  while (states !== 0) {
+    const name = end === -1 ? path.slice(start) : path.slice(start, end)
+    if (name === "" || name === ".") {
+      dotted ||= name === "."
+      directory = end === -1 && stepped
+    } else {
+      states = stepMasks(compiled, masks, states, name, false)
+      stepped = true
+      directory = false
+    }
+    if (end === -1) {
+      break
+    }
+    start = end + 1
+    end = path.indexOf("/", start)
+  }
+  if (!stepped && dotted) {
+    states = stepMasks(compiled, masks, states, ".", false)
+  }
+  return (states & (directory ? masks.end : masks.endFile)) !== 0
 }
 
 // -----------------------------------------------------------------------------
