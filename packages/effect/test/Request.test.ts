@@ -905,38 +905,42 @@ describe("Request", { concurrent: false }, () => {
       assert.deepStrictEqual(batches, [[1]])
     }))
 
-  it.effect("pooled batches do not retain completed requests", () =>
-    Effect.gen(function*() {
-      // Hold every pooled batch so the next request constructs a new batch.
-      const release = yield* Deferred.make<void>()
-      let blockedBatches = 0
-      const blocking = Resolver.make<GetNameById>((entries) => {
-        blockedBatches++
-        return Effect.andThen(
-          Deferred.await(release),
-          Effect.sync(() => entries.forEach((entry) => entry.completeUnsafe(Exit.succeed(""))))
-        )
-      }).pipe(Resolver.batchN(1))
-      const blocked = yield* Effect.forEach(
-        Array.range(1, 128),
-        (id) => Effect.request(new GetNameById({ id }), blocking),
-        { concurrency: "unbounded" }
-      ).pipe(Effect.forkChild)
-      yield* Effect.yieldNow.pipe(Effect.repeat({ until: () => blockedBatches === 128 }))
+  // Bun does not expose `gc` through V8 flags.
+  it.effect.skipIf(process.versions.bun !== undefined)(
+    "pooled batches do not retain completed requests",
+    () =>
+      Effect.gen(function*() {
+        // Hold every pooled batch so the next request constructs a new batch.
+        const release = yield* Deferred.make<void>()
+        let blockedBatches = 0
+        const blocking = Resolver.make<GetNameById>((entries) => {
+          blockedBatches++
+          return Effect.andThen(
+            Deferred.await(release),
+            Effect.sync(() => entries.forEach((entry) => entry.completeUnsafe(Exit.succeed(""))))
+          )
+        }).pipe(Resolver.batchN(1))
+        const blocked = yield* Effect.forEach(
+          Array.range(1, 128),
+          (id) => Effect.request(new GetNameById({ id }), blocking),
+          { concurrency: "unbounded" }
+        ).pipe(Effect.forkChild)
+        yield* Effect.yieldNow.pipe(Effect.repeat({ until: () => blockedBatches === 128 }))
 
-      let reference!: WeakRef<GetNameById>
-      yield* Effect.request(
-        new GetNameById({ id: 0 }),
-        Resolver.make<GetNameById>((entries) =>
-          Effect.sync(() => {
-            reference = new WeakRef(entries[0].request)
-            entries[0].completeUnsafe(Exit.succeed(""))
-          })
+        let reference!: WeakRef<GetNameById>
+        yield* Effect.request(
+          new GetNameById({ id: 0 }),
+          Resolver.make<GetNameById>((entries) =>
+            Effect.sync(() => {
+              reference = new WeakRef(entries[0].request)
+              entries[0].completeUnsafe(Exit.succeed(""))
+            })
+          )
         )
-      )
-      yield* collectGarbage
-      assert.isUndefined(reference.deref())
-      yield* Deferred.succeed(release, void 0)
-      yield* Fiber.join(blocked)
-    }))
+        yield* collectGarbage
+        assert.isUndefined(reference.deref())
+        yield* Deferred.succeed(release, void 0)
+        yield* Fiber.join(blocked)
+      })
+  )
 })
