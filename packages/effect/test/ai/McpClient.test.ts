@@ -191,14 +191,64 @@ describe("McpClient", () => {
         assert.strictEqual(listCalls(), 3)
       }))
 
+    it.effect("should enforce inherited description and cumulative raw descriptor byte limits before another page", () =>
+      Effect.gen(function*() {
+        const descriptor = {
+          ...slowTool,
+          description: "世界",
+          extra: "count me",
+          execution: { taskSupport: "required" }
+        }
+        const size = new TextEncoder().encode(JSON.stringify(descriptor)).byteLength
+        const cases: ReadonlyArray<{ limits: McpClient.DiscoveryLimits; pages: number }> = [
+          { limits: {}, pages: 1 },
+          { limits: { maxDescriptionBytes: "6 B", maxBytes: size - 1 }, pages: 1 },
+          { limits: { maxDescriptionBytes: "6 B", maxBytes: BigInt(size) }, pages: 2 }
+        ]
+        for (const { limits, pages } of cases) {
+          const { client, sent } = yield* scriptedHttp((message) =>
+            message.method === "tools/list"
+              ? jsonRpcResult(message, { ...discoverResult, tools: [descriptor], nextCursor: String(message.id) })
+              : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxDescriptionBytes: "5 B" } })
+          const error = yield* client.listTools({ limits }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "LimitError")
+          assert.strictEqual(sent.filter(({ message }) => methodOf(message) === "tools/list").length, pages)
+        }
+      }))
+
+    it.effect("should accept empty and exact byte limits", () =>
+      Effect.gen(function*() {
+        const descriptor = { ...slowTool, description: "世界" }
+        for (const tools of [[], [descriptor]]) {
+          const { client } = yield* scriptedHttp((message) =>
+            message.method === "tools/list"
+              ? jsonRpcResult(message, { ...discoverResult, tools })
+              : scriptedReply(McpProtocol.v2026_07_28, message)
+          )
+          const result = yield* client.listTools({
+            limits: {
+              maxDescriptionBytes: tools.length === 0 ? "0 B" : "6 B",
+              maxBytes: BigInt(tools.length === 0 ? 0 : new TextEncoder().encode(JSON.stringify(descriptor)).byteLength)
+            }
+          })
+          assert.deepStrictEqual(result.map((tool) => tool.name), tools.map((tool) => tool.name))
+        }
+      }))
+
     it.effect("should fail with ConfigurationError when client or scan limits are invalid", () =>
       Effect.gen(function*() {
         const reply = (message: McpSchema.JsonRpcRequest) => scriptedReply(McpProtocol.v2026_07_28, message)
         const clientError = yield* scriptedHttp(reply, { discoveryLimits: { maxItems: -1 } }).pipe(Effect.flip)
         const { client, sent } = yield* scriptedHttp(reply)
         const scanError = yield* client.listTools({ limits: { maxPages: 0.5 } }).pipe(Effect.flip)
+        const byteError = yield* client.listTools({ limits: { maxBytes: -1 } }).pipe(Effect.flip)
+        const descriptionError = yield* scriptedHttp(reply, { discoveryLimits: { maxDescriptionBytes: -1 } }).pipe(
+          Effect.flip
+        )
         assert.strictEqual(clientError.reason._tag, "ConfigurationError")
         assert.strictEqual(scanError.reason._tag, "ConfigurationError")
+        assert.strictEqual(byteError.reason._tag, "ConfigurationError")
+        assert.strictEqual(descriptionError.reason._tag, "ConfigurationError")
         assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
       }))
   })
