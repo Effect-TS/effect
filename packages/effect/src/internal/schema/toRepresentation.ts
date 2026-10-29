@@ -57,6 +57,7 @@ function isExactChain(ast: SchemaAST.AST, visited: Set<SchemaAST.AST>): boolean 
     if (
       !SchemaAST.isTotal(link) ||
       (decoded.checks !== undefined && decoded.checks !== link.to.checks) ||
+      // An intermediate target with its own encoding is not followed.
       (decoded !== ast && decoded.encoding !== undefined) ||
       !getChildren(decoded).every((child) => isExactCodec(child, visited))
     ) {
@@ -77,29 +78,21 @@ function isExactCodec(ast: SchemaAST.AST, visited: Set<SchemaAST.AST>): boolean 
 
 function getChildren(ast: SchemaAST.AST): ReadonlyArray<SchemaAST.AST> {
   switch (ast._tag) {
-    case "Declaration":
-      return ast.typeParameters
-    case "Union":
-      return ast.types
     case "TemplateLiteral":
       return ast.parts
-    case "Arrays":
-      return [...ast.elements, ...ast.rest]
-    case "Objects":
-      return [
-        ...ast.propertySignatures.map((property) => property.type),
-        ...ast.indexSignatures.flatMap((index) => [index.parameter, index.type])
-      ]
     case "Suspend":
       return [ast.thunk()]
+    default: {
+      const children: Array<SchemaAST.AST> = []
+      if ("recur" in ast) {
+        ast.recur((child) => {
+          children.push(child)
+          return child
+        })
+      }
+      return children
+    }
   }
-  return []
-}
-
-function withApproximateJson(
-  annotations: Schema.Annotations.Annotations | undefined
-): Schema.Annotations.Annotations {
-  return { ...annotations, [InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY]: true }
 }
 
 /** @internal */
@@ -292,7 +285,9 @@ export function toRepresentations(
     content: Content | undefined,
     approximate = false
   ): SchemaRepresentation.Representation {
-    const annotations = approximate ? withApproximateJson(ast.annotations) : ast.annotations
+    const annotations = approximate
+      ? { ...ast.annotations, [InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY]: true }
+      : ast.annotations
     const common = {
       checks: ast.checks?.map(fromCheck) ?? [],
       ...(ast._tag === "Declaration" ? fromAnnotations(annotations) : annotationsField(annotations))

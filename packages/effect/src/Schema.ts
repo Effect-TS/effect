@@ -6014,7 +6014,8 @@ function toIssueEffect<A, R>(
  *
  * The key uses `optionalKey` on the encoded side, so it may be absent from the
  * input object but **not** `undefined`. The default value is specified in terms
- * of the `Encoded` type (before any decoding transformations).
+ * of the `Encoded` type (before any decoding transformations). The default
+ * value is returned as is on every decode and must not be mutated.
  *
  * Options:
  *
@@ -6124,7 +6125,8 @@ export interface withDecodingDefault<S extends Constraint, R = never> extends de
  * **Details**
  *
  * The default value is specified in terms of the `Encoded` type (before any
- * decoding transformations).
+ * decoding transformations). The default value is returned as is on every
+ * decode and must not be mutated.
  *
  * Options:
  *
