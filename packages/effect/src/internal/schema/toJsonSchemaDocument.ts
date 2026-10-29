@@ -3,7 +3,6 @@ import * as Equal from "../../Equal.ts"
 import { decodeUriFragment, formatUriFragmentToken, unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { rewriteRefs } from "../../JsonSchema.ts"
-import * as Order from "../../Order.ts"
 import * as RegEx from "../../RegExp.ts"
 import type * as Schema from "../../Schema.ts"
 import * as InternalAST from "../../SchemaAST.ts"
@@ -251,23 +250,19 @@ function compileJsonSchema(
   }
   // Alias definitions that share an identifier and compile to the same schema. Members of a group start out
   // equivalent and are split by their schemas, with references rewritten to each class representative, until no
-  // class splits; this also merges equivalent recursive definitions. Definitions keyed by their own name come first,
-  // so they stay canonical over suffixed keys.
+  // class splits; this also merges equivalent recursive definitions. The definition keyed by its own name leads its
+  // group, so it stays canonical over suffixed keys.
   const aliasGroups = new Map<string, Array<string>>()
-  const aliasCandidates = Arr.sort(
-    referenceKeys,
-    Order.mapInput(Order.Boolean, (key: string) => {
-      const representation = references[key]
-      return (InternalToRepresentation.getReferenceIdentifier(representation) ??
-        InternalToRepresentation.getGeneratedReference(representation)) !== key
-    })
-  )
-  for (const key of aliasCandidates) {
-    const group = getAliasGroup(references[key])
+  for (const key of referenceKeys) {
+    const representation = references[key]
+    const group = getAliasGroup(representation)
     if (group === undefined) continue
-    const members = aliasGroups.get(group)
-    if (members === undefined) aliasGroups.set(group, [key])
+    const members = aliasGroups.get(group) ?? []
+    const name = InternalToRepresentation.getReferenceIdentifier(representation) ??
+      InternalToRepresentation.getGeneratedReference(representation)
+    if (name === key) members.unshift(key)
     else members.push(key)
+    aliasGroups.set(group, members)
   }
   let classes = Array.from(aliasGroups.values()).filter((members) => members.length > 1)
   let split = true
@@ -364,8 +359,7 @@ function compileJsonSchema(
     if (
       InternalToRepresentation.getGeneratedReference(representation) !== undefined &&
       representation._tag === "Suspend" &&
-      representation.thunk._tag === "Reference" &&
-      Object.hasOwn(references, representation.thunk.$ref)
+      representation.thunk._tag === "Reference"
     ) {
       const target = references[representation.thunk.$ref]
       if (InternalToRepresentation.getGeneratedReference(target) !== undefined) return undefined
