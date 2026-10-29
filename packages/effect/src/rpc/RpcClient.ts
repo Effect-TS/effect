@@ -319,11 +319,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   const entries = new Map<RequestId, ClientEntry>()
 
   let isShutdown = false
+  // Interrupts the calls that are not tracked in `entries` when the client closes.
+  const shutdown = Deferred.makeUnsafe<never>()
   yield* Scope.addFinalizer(
     scope,
     Effect.withFiber((parent) => {
       isShutdown = true
-      return clearEntries(Exit.interrupt(parent.id))
+      const exit = Exit.interrupt(parent.id)
+      Deferred.doneUnsafe(shutdown, exit)
+      return clearEntries(exit)
     })
   )
 
@@ -424,7 +428,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         // nothing will acknowledge the call, so it completes with its send
         return send.pipe(
           span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
-          Effect.asVoid
+          Effect.asVoid,
+          Effect.raceFirst(Deferred.await(shutdown))
         )
       }
       let fiber: Fiber.Fiber<any, any>
