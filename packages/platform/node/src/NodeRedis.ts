@@ -19,7 +19,7 @@ import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redis from "effect/persistence/Redis"
-import { createClient, SocketTimeoutError } from "redis"
+import { createClient } from "redis"
 
 type NodeRedisClient = ReturnType<typeof createClient>
 type NodeRedisClientOptions = NonNullable<Parameters<typeof createClient>[0]>
@@ -53,7 +53,9 @@ const makeSocket = (
     signal: callerSignal ? AbortSignal.any([callerSignal, signal]) : signal,
     reconnectStrategy: socket?.reconnectStrategy ?? ((retries, cause) => {
       if (!isReady()) return cause
-      if (cause instanceof SocketTimeoutError) return false
+      // `SocketTimeoutError` is matched by name because redis 5.0.x does not
+      // export it, and a named import fails to load there under native ESM.
+      if (cause?.name === "SocketTimeoutError") return false
       const jitter = Math.floor(Math.random() * 200)
       const delay = Math.min(2 ** retries * 50, 2000)
       return delay + jitter
