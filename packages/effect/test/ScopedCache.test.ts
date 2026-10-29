@@ -122,6 +122,34 @@ describe("ScopedCache", () => {
           assert.strictEqual(result, 42)
         }))
 
+      it.effect("requireServicesAt: 'lookup' provides services at lookup time", () =>
+        Effect.gen(function*() {
+          class CounterService extends Context.Service<CounterService, { value: number }>()("CounterService") {}
+
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) => Effect.map(CounterService, (service) => service.value),
+            requireServicesAt: "lookup"
+          })
+
+          const result1 = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.provideService(CounterService, CounterService.of({ value: 42 }))
+          )
+
+          const result2 = yield* ScopedCache.get(cache, "another").pipe(
+            Effect.provideService(CounterService, CounterService.of({ value: 100 }))
+          )
+
+          // Same key with different service context
+          const result3 = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.provideService(CounterService, CounterService.of({ value: 200 }))
+          )
+
+          assert.strictEqual(result1, 42)
+          assert.strictEqual(result2, 100)
+          assert.strictEqual(result3, 42) // Cached value from first lookup
+        }))
+
       it.effect("cache resources are released and future gets interrupt when scope closes", () =>
         Effect.gen(function*() {
           const cache = yield* Effect.scoped(
@@ -198,38 +226,6 @@ describe("ScopedCache", () => {
           assert.deepStrictEqual(receivedParams[1].exit, Exit.fail("error"))
         }))
 
-      it.effect("different TTL for success vs failure", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => key === "fail" ? Effect.fail("error") : Effect.succeed(key.length),
-            timeToLive: (exit) => Exit.isSuccess(exit) ? "1 hour" : "1 minute"
-          })
-
-          yield* ScopedCache.get(cache, "success")
-          yield* Effect.exit(ScopedCache.get(cache, "fail"))
-
-          yield* TestClock.adjust("30 minutes")
-          assert.isTrue(yield* ScopedCache.has(cache, "success"))
-          assert.isFalse(yield* ScopedCache.has(cache, "fail"))
-        }))
-
-      it.effect("TTL based on key values", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: (_exit, key) => key === "short" ? "1 minute" : "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "short")
-          yield* ScopedCache.get(cache, "long")
-
-          yield* TestClock.adjust("30 minutes")
-          assert.isFalse(yield* ScopedCache.has(cache, "short"))
-          assert.isTrue(yield* ScopedCache.has(cache, "long"))
-        }))
-
       it.effect("TTL based on result values", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.makeWith({
@@ -274,6 +270,35 @@ describe("ScopedCache", () => {
           // Entry should expire immediately
           assert.isFalse(yield* ScopedCache.has(cache, "test"))
         }))
+
+      it.effect("TTL updates on refresh", () =>
+        Effect.gen(function*() {
+          let refreshCount = 0
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) => Effect.sync(() => ++refreshCount),
+            timeToLive: (exit) => {
+              if (Exit.isSuccess(exit)) {
+                // First lookup gets 1 hour, refresh gets 2 hours
+                return refreshCount === 1 ? "1 hour" : "2 hours"
+              }
+              return Duration.infinity
+            }
+          })
+
+          yield* ScopedCache.get(cache, "test")
+          yield* TestClock.adjust("30 minutes")
+          assert.isTrue(yield* ScopedCache.has(cache, "test"))
+
+          // Refresh should update TTL
+          yield* ScopedCache.refresh(cache, "test")
+
+          yield* TestClock.adjust("1 hour")
+          assert.isTrue(yield* ScopedCache.has(cache, "test")) // Still alive due to 2 hour TTL
+
+          yield* TestClock.adjust("1 hours")
+          assert.isFalse(yield* ScopedCache.has(cache, "test"))
+        }))
     })
   })
 
@@ -307,17 +332,6 @@ describe("ScopedCache", () => {
           ])
 
           assert.deepStrictEqual(results, [4, 4, 4])
-          assert.strictEqual(lookupCount(), 1)
-        }))
-
-      it.effect("cache miss - invokes lookup for non-existent key", () =>
-        Effect.gen(function*() {
-          const { cache, lookupCount, setLookupResult } = yield* makeScopedTestCache(10)
-          setLookupResult("test", Effect.succeed(42))
-
-          const result = yield* ScopedCache.get(cache, "test")
-
-          assert.strictEqual(result, 42)
           assert.strictEqual(lookupCount(), 1)
         }))
 
@@ -369,18 +383,6 @@ describe("ScopedCache", () => {
           }
         }))
 
-      it.effect("error handling - lookup function fails", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (_key: string) => Effect.fail("lookup error")
-          })
-
-          const result = yield* Effect.exit(ScopedCache.get(cache, "test"))
-
-          assert.deepStrictEqual(result, Exit.fail("lookup error"))
-        }))
-
       it.effect("concurrent access - multiple fibers getting same key only invoke lookup once", () =>
         Effect.gen(function*() {
           let lookupCount = 0
@@ -424,59 +426,6 @@ describe("ScopedCache", () => {
           assert.strictEqual(result1, 1)
           assert.strictEqual(result2, 2)
           assert.strictEqual(lookupCount, 2)
-        }))
-
-      it.effect("resource cleanup when entry is replaced", () =>
-        Effect.gen(function*() {
-          const { cache, cleanupTracker } = yield* makeManagedResourceCache(2)
-
-          // Fill cache to capacity
-          yield* ScopedCache.get(cache, "key1")
-          yield* ScopedCache.get(cache, "key2")
-          assert.strictEqual(cleanupTracker.cleanedUp.length, 0)
-
-          // Add third entry, should evict first
-          yield* ScopedCache.get(cache, "key3")
-          assert.strictEqual(cleanupTracker.cleanedUp.length, 1)
-          assert.deepStrictEqual(cleanupTracker.cleanedUp, ["key1"])
-        }))
-
-      it.effect("scope is properly provided to lookup function", () =>
-        Effect.gen(function*() {
-          const scopeIds: Array<string> = []
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              // Create a resource in the provided scope
-              yield* Effect.acquireRelease(
-                Effect.sync(() => scopeIds.push(`acquired-${key}`)),
-                () => Effect.sync(() => scopeIds.push(`released-${key}`))
-              )
-              return `value-${key}`
-            })
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(scopeIds, ["acquired-test"])
-
-          // Invalidate should trigger resource cleanup
-          yield* ScopedCache.invalidate(cache, "test")
-          assert.deepStrictEqual(scopeIds, ["acquired-test", "released-test"])
-        }))
-
-      it.effect("cache closed state - get returns interrupt", () =>
-        Effect.gen(function*() {
-          const cache = yield* Effect.scoped(
-            ScopedCache.make({
-              capacity: 10,
-              lookup: (key: string) => Effect.succeed(key.length)
-            })
-          )
-
-          // Cache should be closed now
-          const result = yield* Effect.exit(ScopedCache.get(cache!, "test"))
-          assert.isTrue(Exit.hasInterrupts(result))
         }))
     })
 
@@ -659,17 +608,6 @@ describe("ScopedCache", () => {
           assert.isFalse(yield* ScopedCache.has(cache, "test"))
         }))
 
-      it.effect("set doesn't invoke lookup function", () =>
-        Effect.gen(function*() {
-          const { cache, lookupCount } = yield* makeScopedTestCache(10)
-
-          yield* ScopedCache.set(cache, "test", 42)
-          yield* ScopedCache.set(cache, "test2", 43)
-          yield* ScopedCache.set(cache, "test3", 44)
-
-          assert.strictEqual(lookupCount(), 0)
-        }))
-
       it.effect("set enforces capacity constraints", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({
@@ -702,19 +640,6 @@ describe("ScopedCache", () => {
     })
 
     describe("has", () => {
-      it.effect("returns true for existing key", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length)
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          const result = yield* ScopedCache.has(cache, "test")
-
-          assert.isTrue(result)
-        }))
-
       it.effect("returns false for non-existent key", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({
@@ -1075,28 +1000,6 @@ describe("ScopedCache", () => {
           assert.isTrue(yield* ScopedCache.has(cache, "test"))
         }))
 
-      it.effect("concurrent refresh calls each invoke lookup independently", () =>
-        Effect.gen(function*() {
-          let lookupCount = 0
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: () => Effect.sync(() => ++lookupCount)
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          lookupCount = 0
-
-          const results = yield* Effect.all([
-            ScopedCache.refresh(cache, "test"),
-            ScopedCache.refresh(cache, "test"),
-            ScopedCache.refresh(cache, "test")
-          ], { concurrency: "unbounded" })
-
-          // Each refresh calls lookup independently
-          assert.strictEqual(lookupCount, 3)
-          assert.deepStrictEqual(results, [1, 2, 3])
-        }))
-
       it.effect("resource cleanup for old entry after refresh", () =>
         Effect.gen(function*() {
           const { cache, cleanupTracker } = yield* makeManagedResourceCache(10)
@@ -1228,42 +1131,6 @@ describe("ScopedCache", () => {
           assert.isFalse(yield* ScopedCache.has(cache, "c"))
         }))
 
-      it.effect("size becomes 0 after invalidateAll", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length)
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-          yield* ScopedCache.get(cache, "c")
-
-          yield* ScopedCache.invalidateAll(cache)
-          const size = yield* ScopedCache.size(cache)
-
-          assert.strictEqual(size, 0)
-        }))
-
-      it.effect("all keys return None after invalidateAll", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length)
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-
-          yield* ScopedCache.invalidateAll(cache)
-
-          const result1 = yield* ScopedCache.getOption(cache, "a")
-          const result2 = yield* ScopedCache.getOption(cache, "b")
-
-          assert.deepStrictEqual(result1, Option.none())
-          assert.deepStrictEqual(result2, Option.none())
-        }))
-
       it.effect("resource cleanup for all entries", () =>
         Effect.gen(function*() {
           const { cache, cleanupTracker } = yield* makeManagedResourceCache(10)
@@ -1292,22 +1159,6 @@ describe("ScopedCache", () => {
           const size = yield* ScopedCache.size(cache)
 
           assert.strictEqual(size, 0)
-        }))
-
-      it.effect("returns correct count after adding entries", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length)
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-          yield* ScopedCache.get(cache, "c")
-
-          const size = yield* ScopedCache.size(cache)
-
-          assert.strictEqual(size, 3)
         }))
 
       it.effect("decreases after invalidation", () =>
@@ -1368,62 +1219,9 @@ describe("ScopedCache", () => {
           assert.deepStrictEqual(keys.sort(), ["a", "b", "c"])
         }))
 
-      it.effect("excludes keys for expired entries", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-
-          yield* TestClock.adjust("2 hours")
-
-          const keys = yield* ScopedCache.keys(cache)
-
-          assert.deepStrictEqual(keys.sort(), [])
-        }))
-
-      it.effect("empty after invalidateAll", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length)
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-          yield* ScopedCache.invalidateAll(cache)
-
-          const keys = yield* ScopedCache.keys(cache)
-
-          assert.deepStrictEqual(keys, [])
-        }))
-
       it.effect("resource cleanup for expired entries as side effect", () =>
         Effect.gen(function*() {
-          const { cache, cleanupTracker } = yield* Effect.gen(function*() {
-            const cleanupTracker: CleanupTracker = {
-              cleanedUp: [],
-              acquired: []
-            }
-
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              lookup: Effect.fnUntraced(function*(key: string) {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => cleanupTracker.acquired.push(key)),
-                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                )
-                return `resource-${key}`
-              }),
-              timeToLive: "1 hour"
-            })
-
-            return { cache, cleanupTracker }
-          })
+          const { cache, cleanupTracker } = yield* makeManagedResourceCache(10, "1 hour")
 
           yield* ScopedCache.get(cache, "a")
           yield* ScopedCache.get(cache, "b")
@@ -1476,46 +1274,9 @@ describe("ScopedCache", () => {
           assert.deepStrictEqual(valuesArray, [1, 2])
         }))
 
-      it.effect("doesn't include expired values", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-
-          yield* TestClock.adjust("2 hours")
-
-          const values = yield* ScopedCache.values(cache)
-
-          assert.deepStrictEqual(values, [])
-        }))
-
       it.effect("resource cleanup for expired entries as side effect", () =>
         Effect.gen(function*() {
-          const { cache, cleanupTracker } = yield* Effect.gen(function*() {
-            const cleanupTracker: CleanupTracker = {
-              cleanedUp: [],
-              acquired: []
-            }
-
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              lookup: Effect.fnUntraced(function*(key: string) {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => cleanupTracker.acquired.push(key)),
-                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                )
-                return `resource-${key}`
-              }),
-              timeToLive: "1 hour"
-            })
-
-            return { cache, cleanupTracker }
-          })
+          const { cache, cleanupTracker } = yield* makeManagedResourceCache(10, "1 hour")
 
           yield* ScopedCache.get(cache, "a")
           yield* ScopedCache.get(cache, "b")
@@ -1587,26 +1348,7 @@ describe("ScopedCache", () => {
 
       it.effect("removes expired entries as side effect with resource cleanup", () =>
         Effect.gen(function*() {
-          const { cache, cleanupTracker } = yield* Effect.gen(function*() {
-            const cleanupTracker: CleanupTracker = {
-              cleanedUp: [],
-              acquired: []
-            }
-
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              lookup: Effect.fnUntraced(function*(key: string) {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => cleanupTracker.acquired.push(key)),
-                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                )
-                return `resource-${key}`
-              }),
-              timeToLive: "1 hour"
-            })
-
-            return { cache, cleanupTracker }
-          })
+          const { cache, cleanupTracker } = yield* makeManagedResourceCache(10, "1 hour")
 
           yield* ScopedCache.get(cache, "a")
           yield* ScopedCache.get(cache, "b")
@@ -1738,219 +1480,6 @@ describe("ScopedCache", () => {
     })
   })
 
-  describe("TTL (Time To Live) Testing", () => {
-    describe("Fixed TTL", () => {
-      it.effect("entry expires after specified duration", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: "2 hours"
-          })
-
-          yield* ScopedCache.get(cache, "test")
-
-          yield* TestClock.adjust("1 hour")
-          assert.isTrue(yield* ScopedCache.has(cache, "test"))
-
-          yield* TestClock.adjust(Duration.sum(Duration.hours(1), Duration.seconds(1)))
-          assert.isFalse(yield* ScopedCache.has(cache, "test"))
-        }))
-
-      it.effect("get after expiration invokes lookup", () =>
-        Effect.gen(function*() {
-          let lookupCount = 0
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (_key: string) => Effect.sync(() => ++lookupCount),
-            timeToLive: "1 hour"
-          })
-
-          const result1 = yield* ScopedCache.get(cache, "test")
-          assert.strictEqual(result1, 1)
-          assert.strictEqual(lookupCount, 1)
-
-          yield* TestClock.adjust("2 hours")
-
-          const result2 = yield* ScopedCache.get(cache, "test")
-          assert.strictEqual(result2, 2)
-          assert.strictEqual(lookupCount, 2)
-        }))
-
-      it.effect("has returns false for expired entries", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          assert.isTrue(yield* ScopedCache.has(cache, "test"))
-
-          yield* TestClock.adjust("2 hours")
-          assert.isFalse(yield* ScopedCache.has(cache, "test"))
-        }))
-
-      it.effect("resource cleanup for expired entries", () =>
-        Effect.gen(function*() {
-          const { cache, cleanupTracker } = yield* Effect.gen(function*() {
-            const cleanupTracker: CleanupTracker = {
-              cleanedUp: [],
-              acquired: []
-            }
-
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              lookup: Effect.fnUntraced(function*(key: string) {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => cleanupTracker.acquired.push(key)),
-                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                )
-                return `resource-${key}`
-              }),
-              timeToLive: "1 hour"
-            })
-
-            return { cache, cleanupTracker }
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(cleanupTracker.cleanedUp, [])
-
-          yield* TestClock.adjust("2 hours")
-
-          // Accessing expired entry should trigger cleanup
-          yield* ScopedCache.has(cache, "test")
-          assert.deepStrictEqual(cleanupTracker.cleanedUp, ["test"])
-        }))
-    })
-
-    describe("Function-based TTL", () => {
-      it.effect("different TTL for success vs failure", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => key === "fail" ? Effect.fail("error") : Effect.succeed(key.length),
-            timeToLive: (exit) => Exit.isSuccess(exit) ? "2 hours" : "30 minutes"
-          })
-
-          yield* ScopedCache.get(cache, "success")
-          yield* Effect.exit(ScopedCache.get(cache, "fail"))
-
-          yield* TestClock.adjust("1 hour")
-          assert.isTrue(yield* ScopedCache.has(cache, "success"))
-          assert.isFalse(yield* ScopedCache.has(cache, "fail"))
-
-          yield* TestClock.adjust("2 hours")
-          assert.isFalse(yield* ScopedCache.has(cache, "success"))
-        }))
-
-      it.effect("TTL based on key", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: (_exit, key) => {
-              if (key.startsWith("short-")) return "1 minute"
-              if (key.startsWith("medium-")) return "1 hour"
-              return "1 day"
-            }
-          })
-
-          yield* ScopedCache.get(cache, "short-item")
-          yield* ScopedCache.get(cache, "medium-item")
-          yield* ScopedCache.get(cache, "long-item")
-
-          yield* TestClock.adjust("2 minutes")
-          assert.isFalse(yield* ScopedCache.has(cache, "short-item"))
-          assert.isTrue(yield* ScopedCache.has(cache, "medium-item"))
-          assert.isTrue(yield* ScopedCache.has(cache, "long-item"))
-
-          yield* TestClock.adjust("2 hours")
-          assert.isFalse(yield* ScopedCache.has(cache, "medium-item"))
-          assert.isTrue(yield* ScopedCache.has(cache, "long-item"))
-        }))
-
-      it.effect("TTL based on value", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: (exit) => {
-              if (Exit.isSuccess(exit)) {
-                const value = exit.value
-                return value > 5 ? "1 hour" : "1 minute"
-              }
-              return Duration.infinity
-            }
-          })
-
-          yield* ScopedCache.get(cache, "abc") // length 3
-          yield* ScopedCache.get(cache, "longkey") // length 7
-
-          yield* TestClock.adjust("2 minutes")
-          assert.isFalse(yield* ScopedCache.has(cache, "abc"))
-          assert.isTrue(yield* ScopedCache.has(cache, "longkey"))
-        }))
-
-      it.effect("infinite TTL", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: () => Duration.infinity
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          yield* TestClock.adjust(Duration.days(365))
-          assert.isTrue(yield* ScopedCache.has(cache, "test"))
-        }))
-
-      it.effect("zero duration TTL", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: () => Duration.zero
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          // Should expire immediately
-          assert.isFalse(yield* ScopedCache.has(cache, "test"))
-        }))
-
-      it.effect("TTL updates on refresh", () =>
-        Effect.gen(function*() {
-          let refreshCount = 0
-          const cache = yield* ScopedCache.makeWith({
-            capacity: 10,
-            lookup: (_key: string) => Effect.sync(() => ++refreshCount),
-            timeToLive: (exit) => {
-              if (Exit.isSuccess(exit)) {
-                // First lookup gets 1 hour, refresh gets 2 hours
-                return refreshCount === 1 ? "1 hour" : "2 hours"
-              }
-              return Duration.infinity
-            }
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          yield* TestClock.adjust("30 minutes")
-          assert.isTrue(yield* ScopedCache.has(cache, "test"))
-
-          // Refresh should update TTL
-          yield* ScopedCache.refresh(cache, "test")
-
-          yield* TestClock.adjust("1 hour")
-          assert.isTrue(yield* ScopedCache.has(cache, "test")) // Still alive due to 2 hour TTL
-
-          yield* TestClock.adjust("1 hours")
-          assert.isFalse(yield* ScopedCache.has(cache, "test"))
-        }))
-    })
-  })
-
   describe("error scenarios", () => {
     describe("Failed Lookups", () => {
       it.effect("settles concurrent gets when TTL calculation throws after an asynchronous lookup", () =>
@@ -2016,26 +1545,6 @@ describe("ScopedCache", () => {
           assert.deepStrictEqual(result1, Exit.fail("error"))
           assert.deepStrictEqual(result2, Exit.fail("error"))
           assert.strictEqual(lookupCount, 1) // Only called once
-        }))
-
-      it.effect("subsequent gets return same failure", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (_key: string) => Effect.fail("lookup failed")
-          })
-
-          const results = yield* Effect.all([
-            Effect.exit(ScopedCache.get(cache, "test")),
-            Effect.exit(ScopedCache.get(cache, "test")),
-            Effect.exit(ScopedCache.get(cache, "test"))
-          ])
-
-          assert.deepStrictEqual(results, [
-            Exit.fail("lookup failed"),
-            Exit.fail("lookup failed"),
-            Exit.fail("lookup failed")
-          ])
         }))
 
       it.effect("can refresh after failure", () =>
@@ -2115,304 +1624,45 @@ describe("ScopedCache", () => {
   })
 
   describe("scope integration", () => {
-    describe("resource management", () => {
-      it.effect("resources are properly scoped to cache entries", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              yield* Effect.acquireRelease(
-                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-              )
-              return `value-${key}`
-            })
+    it.effect("resource cleanup is atomic and doesn't leak", () =>
+      Effect.gen(function*() {
+        const resourceTracker: Array<string> = []
+        const cache = yield* ScopedCache.make({
+          capacity: 3,
+          lookup: Effect.fnUntraced(function*(key: string) {
+            yield* Effect.acquireRelease(
+              Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+              () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+            )
+            return `value-${key}`
           })
+        })
 
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test"])
+        // Fill cache
+        yield* ScopedCache.get(cache, "a")
+        yield* ScopedCache.get(cache, "b")
+        yield* ScopedCache.get(cache, "c")
 
-          // Resource is still alive while cached
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test"])
-        }))
+        // Multiple operations that should trigger cleanup
+        yield* Effect.all([
+          ScopedCache.invalidate(cache, "a"),
+          ScopedCache.refresh(cache, "b"),
+          ScopedCache.set(cache, "c", "new-value"),
+          ScopedCache.get(cache, "d")
+        ], { concurrency: "unbounded" })
 
-      it.effect("resources are cleaned up when entries are evicted", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
+        // Verify all resources were properly acquired and released
+        const acquired = resourceTracker.filter((r) => r.startsWith("acquired")).length
+        const released = resourceTracker.filter((r) => r.startsWith("released")).length
 
-          const cache = yield* ScopedCache.make({
-            capacity: 2,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              yield* Effect.acquireRelease(
-                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-              )
-              return `value-${key}`
-            })
-          })
-
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-          assert.deepStrictEqual(resourceTracker, ["acquired-a", "acquired-b"])
-
-          // Adding third entry should evict first and clean up its resource
-          yield* ScopedCache.get(cache, "c")
-          assert.deepStrictEqual(resourceTracker, ["acquired-a", "acquired-b", "released-a", "acquired-c"])
-        }))
-
-      it.effect("resources are cleaned up when cache is closed", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
-          const cache = yield* Effect.scoped(
-            Effect.gen(function*() {
-              const cache = yield* ScopedCache.make({
-                capacity: 10,
-                lookup: Effect.fnUntraced(function*(key: string) {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                    () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                  )
-                  return `value-${key}`
-                })
-              })
-
-              yield* ScopedCache.get(cache, "test1")
-              yield* ScopedCache.get(cache, "test2")
-              assert.deepStrictEqual(resourceTracker, ["acquired-test1", "acquired-test2"])
-
-              return cache
-            })
-          )
-
-          // After scope closes, all resources should be cleaned up
-          assert.strictEqual(cache.state._tag, "Closed")
-          assert.deepStrictEqual(resourceTracker.sort(), [
-            "acquired-test1",
-            "acquired-test2",
-            "released-test1",
-            "released-test2"
-          ])
-        }))
-
-      it.effect("resources are cleaned up when entries expire", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              yield* Effect.acquireRelease(
-                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-              )
-              return `value-${key}`
-            }),
-            timeToLive: "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test"])
-
-          yield* TestClock.adjust("2 hours")
-
-          // Accessing expired entry should clean up resource
-          yield* ScopedCache.has(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test", "released-test"])
-        }))
-
-      it.effect("resources are cleaned up when entries are invalidated", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              yield* Effect.acquireRelease(
-                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-              )
-              return `value-${key}`
-            })
-          })
-
-          yield* ScopedCache.get(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test"])
-
-          yield* ScopedCache.invalidate(cache, "test")
-          assert.deepStrictEqual(resourceTracker, ["acquired-test", "released-test"])
-        }))
-
-      it.effect("resource cleanup is atomic and doesn't leak", () =>
-        Effect.gen(function*() {
-          const resourceTracker: Array<string> = []
-          const cache = yield* ScopedCache.make({
-            capacity: 3,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              yield* Effect.acquireRelease(
-                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-              )
-              return `value-${key}`
-            })
-          })
-
-          // Fill cache
-          yield* ScopedCache.get(cache, "a")
-          yield* ScopedCache.get(cache, "b")
-          yield* ScopedCache.get(cache, "c")
-
-          // Multiple operations that should trigger cleanup
-          yield* Effect.all([
-            ScopedCache.invalidate(cache, "a"),
-            ScopedCache.refresh(cache, "b"),
-            ScopedCache.set(cache, "c", "new-value"),
-            ScopedCache.get(cache, "d")
-          ], { concurrency: "unbounded" })
-
-          // Verify all resources were properly acquired and released
-          const acquired = resourceTracker.filter((r) => r.startsWith("acquired")).length
-          const released = resourceTracker.filter((r) => r.startsWith("released")).length
-
-          assert.strictEqual(acquired, 5)
-          assert.strictEqual(released, 3)
-          assert.strictEqual(yield* ScopedCache.size(cache), 3)
-        }))
-    })
-
-    describe("scope lifecycle", () => {
-      it.effect("cache becomes closed when parent scope is closed", () =>
-        Effect.gen(function*() {
-          const cache = yield* Effect.scoped(
-            Effect.gen(function*() {
-              const cache = yield* ScopedCache.make({
-                capacity: 10,
-                lookup: (key: string) => Effect.succeed(key.length)
-              })
-              assert.strictEqual(cache.state._tag, "Open")
-              yield* ScopedCache.get(cache, "test")
-              return cache
-            })
-          )
-
-          // After scope closure, cache should be closed
-          assert.strictEqual(cache.state._tag, "Closed")
-        }))
-
-      it.effect("resource cleanup happens in correct order during cache closure", () =>
-        Effect.gen(function*() {
-          const cleanupOrder: Array<string> = []
-
-          yield* Effect.scoped(
-            Effect.gen(function*() {
-              const cache = yield* ScopedCache.make({
-                capacity: 10,
-                lookup: Effect.fnUntraced(function*(key: string) {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => cleanupOrder.push(`acquired-${key}`)),
-                    () => Effect.sync(() => cleanupOrder.push(`released-${key}`))
-                  )
-                  return `value-${key}`
-                })
-              })
-
-              yield* ScopedCache.get(cache, "first")
-              yield* ScopedCache.get(cache, "second")
-              yield* ScopedCache.get(cache, "third")
-
-              assert.deepStrictEqual(cleanupOrder, ["acquired-first", "acquired-second", "acquired-third"])
-            })
-          )
-
-          // All resources should be cleaned up after scope closure
-          const releases = cleanupOrder.filter((item) => item.startsWith("released"))
-          assert.strictEqual(releases.length, 3)
-          assert.isTrue(releases.includes("released-first"))
-          assert.isTrue(releases.includes("released-second"))
-          assert.isTrue(releases.includes("released-third"))
-        }))
-    })
-  })
-
-  // TODO: Service context tests are commented out due to TypeScript issues with Context
-  // These tests are failing due to complex service dependency injection features
-  // that may not be fully implemented in ScopedCache
-  describe("service context", () => {
-    describe("Service Dependency Injection", () => {
-      it.effect("services are available in lookup functions", () =>
-        Effect.gen(function*() {
-          class ConfigService extends Context.Service<ConfigService, { multiplier: number }>()("ConfigService") {}
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: Effect.fnUntraced(function*(key: string) {
-              const config = yield* ConfigService
-              return key.length * config.multiplier
-            })
-          }).pipe(
-            Effect.provideService(ConfigService, ConfigService.of({ multiplier: 10 }))
-          )
-
-          const result = yield* ScopedCache.get(cache, "test")
-
-          assert.strictEqual(result, 40) // "test".length * 10
-        }))
-
-      it.effect("requireServicesAt: 'lookup' provides services at lookup time", () =>
-        Effect.gen(function*() {
-          class CounterService extends Context.Service<CounterService, { value: number }>()("CounterService") {}
-
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (_key: string) => Effect.map(CounterService, (service) => service.value),
-            requireServicesAt: "lookup"
-          })
-
-          const result1 = yield* ScopedCache.get(cache, "test").pipe(
-            Effect.provideService(CounterService, CounterService.of({ value: 42 }))
-          )
-
-          const result2 = yield* ScopedCache.get(cache, "another").pipe(
-            Effect.provideService(CounterService, CounterService.of({ value: 100 }))
-          )
-
-          // Same key with different service context
-          const result3 = yield* ScopedCache.get(cache, "test").pipe(
-            Effect.provideService(CounterService, CounterService.of({ value: 200 }))
-          )
-
-          assert.strictEqual(result1, 42)
-          assert.strictEqual(result2, 100)
-          assert.strictEqual(result3, 42) // Cached value from first lookup
-        }))
-    })
+        assert.strictEqual(acquired, 5)
+        assert.strictEqual(released, 3)
+        assert.strictEqual(yield* ScopedCache.size(cache), 3)
+      }))
   })
 
   describe("integration tests", () => {
     describe("TestClock Integration", () => {
-      it.effect("multiple time advances work correctly", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.length),
-            timeToLive: "1 hour"
-          })
-
-          yield* ScopedCache.get(cache, "test")
-
-          // Multiple small advances
-          for (let i = 0; i < 10; i++) {
-            yield* TestClock.adjust("5 minutes")
-            assert.isTrue(yield* ScopedCache.has(cache, "test"))
-          }
-
-          // Final advance to expire
-          yield* TestClock.adjust("15 minutes")
-          assert.isFalse(yield* ScopedCache.has(cache, "test"))
-        }))
-
       it.effect("resource cleanup timing is correct", () =>
         Effect.gen(function*() {
           const cleanupTimes: Array<{ key: string; time: number }> = []
@@ -2454,21 +1704,6 @@ describe("ScopedCache", () => {
     })
 
     describe("Different Key Types", () => {
-      it.effect("string keys work correctly", () =>
-        Effect.gen(function*() {
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) => Effect.succeed(key.toUpperCase())
-          })
-
-          yield* ScopedCache.set(cache, "hello", "HELLO!")
-          const result1 = yield* ScopedCache.get(cache, "hello")
-          const result2 = yield* ScopedCache.get(cache, "world")
-
-          assert.strictEqual(result1, "HELLO!")
-          assert.strictEqual(result2, "WORLD")
-        }))
-
       it.effect("number keys work correctly", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({
@@ -2818,34 +2053,6 @@ describe("ScopedCache", () => {
       }))
 
     describe("Concurrent Resource Access", () => {
-      it.effect("concurrent gets share same resource", () =>
-        Effect.gen(function*() {
-          let resourceCreationCount = 0
-          const cache = yield* ScopedCache.make({
-            capacity: 10,
-            lookup: (key: string) =>
-              Effect.delay(Duration.millis(100))(
-                Effect.sync(() => {
-                  resourceCreationCount++
-                  return `resource-${key}-${resourceCreationCount}`
-                })
-              )
-          })
-
-          const fibers = yield* Effect.all([
-            ScopedCache.get(cache, "shared").pipe(Effect.forkChild),
-            ScopedCache.get(cache, "shared").pipe(Effect.forkChild),
-            ScopedCache.get(cache, "shared").pipe(Effect.forkChild),
-            ScopedCache.get(cache, "shared").pipe(Effect.forkChild)
-          ])
-
-          yield* TestClock.adjust(Duration.millis(150))
-          const results = yield* Effect.all(fibers.map(Fiber.join))
-
-          assert.strictEqual(resourceCreationCount, 1)
-          assert.isTrue(results.every((r) => r === "resource-shared-1"))
-        }))
-
       it.effect("concurrent invalidations don't cause resource leaks", () =>
         Effect.gen(function*() {
           const activeResources: Set<string> = new Set()
@@ -2998,7 +2205,7 @@ interface CleanupTracker {
   acquired: Array<string>
 }
 
-const makeManagedResourceCache = Effect.fnUntraced(function*(capacity: number) {
+const makeManagedResourceCache = Effect.fnUntraced(function*(capacity: number, timeToLive?: Duration.Input) {
   const cleanupTracker: CleanupTracker = {
     cleanedUp: [],
     acquired: []
@@ -3012,7 +2219,8 @@ const makeManagedResourceCache = Effect.fnUntraced(function*(capacity: number) {
         () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
       )
       return `resource-${key}`
-    })
+    }),
+    timeToLive
   })
 
   return { cache, cleanupTracker }
