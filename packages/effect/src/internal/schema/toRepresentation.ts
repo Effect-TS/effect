@@ -21,6 +21,7 @@ interface ReferenceCandidate {
   visiting?: boolean | undefined
   isRecursive?: boolean | undefined
   reference?: string | undefined
+  generatedReference?: string | undefined
   emitted?: boolean | undefined
 }
 
@@ -31,10 +32,17 @@ interface Content {
 
 // Explicit identifiers of emitted references, kept even when the reference key is suffixed.
 const referenceIdentifiers = new WeakMap<SchemaRepresentation.Representation, string>()
+// Generated names of emitted anonymous recursive references, before suffixing.
+const generatedReferences = new WeakMap<SchemaRepresentation.Representation, string>()
 
 /** @internal */
 export function getReferenceIdentifier(representation: SchemaRepresentation.Representation): string | undefined {
   return referenceIdentifiers.get(representation)
+}
+
+/** @internal */
+export function getGeneratedReference(representation: SchemaRepresentation.Representation): string | undefined {
+  return generatedReferences.get(representation)
 }
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
@@ -76,7 +84,8 @@ export function toRepresentations(
           : ""
         candidate.reference = getReference(requestedReference, separator)
       } else if (candidate.isRecursive) {
-        candidate.reference = getReference(`${candidate.ast._tag}_`, "")
+        candidate.generatedReference = `${candidate.ast._tag}_`
+        candidate.reference = getReference(candidate.generatedReference, "")
       }
     }
   }
@@ -215,6 +224,8 @@ export function toRepresentations(
         const representation = on(annotated, candidate.content)
         if (candidate.identifier !== undefined && candidate.fallback === undefined) {
           referenceIdentifiers.set(representation, candidate.identifier)
+        } else if (candidate.generatedReference !== undefined) {
+          generatedReferences.set(representation, candidate.generatedReference)
         }
         InternalRecord.assignProperty(references, reference, representation)
       }

@@ -251,28 +251,25 @@ function compileJsonSchema(
   }
   // Alias definitions that share an identifier and compile to the same schema. Members of a group start out
   // equivalent and are split by their schemas, with references rewritten to each class representative, until no
-  // class splits; this also merges equivalent recursive definitions. Definitions keyed by their own identifier come
-  // first, so they stay canonical over suffixed keys.
-  const fallbackGroups = new Map<string, Array<string>>()
-  const identifierGroups = new Map<string, Array<string>>()
+  // class splits; this also merges equivalent recursive definitions. Definitions keyed by their own name come first,
+  // so they stay canonical over suffixed keys.
+  const aliasGroups = new Map<string, Array<string>>()
   const aliasCandidates = Arr.sort(
     referenceKeys,
-    Order.mapInput(
-      Order.Boolean,
-      (key: string) => InternalToRepresentation.getReferenceIdentifier(references[key]) !== key
-    )
+    Order.mapInput(Order.Boolean, (key: string) => {
+      const representation = references[key]
+      return (InternalToRepresentation.getReferenceIdentifier(representation) ??
+        InternalToRepresentation.getGeneratedReference(representation)) !== key
+    })
   )
   for (const key of aliasCandidates) {
-    const representation = references[key]
-    const fallback = getIdentifierFallback(representation)
-    const identifier = fallback ?? InternalToRepresentation.getReferenceIdentifier(representation)
-    if (identifier === undefined) continue
-    const groups = fallback === undefined ? identifierGroups : fallbackGroups
-    const members = groups.get(identifier)
-    if (members === undefined) groups.set(identifier, [key])
+    const group = getAliasGroup(references[key])
+    if (group === undefined) continue
+    const members = aliasGroups.get(group)
+    if (members === undefined) aliasGroups.set(group, [key])
     else members.push(key)
   }
-  let classes = [...fallbackGroups.values(), ...identifierGroups.values()].filter((members) => members.length > 1)
+  let classes = Array.from(aliasGroups.values()).filter((members) => members.length > 1)
   let split = true
   while (split) {
     split = false
@@ -355,6 +352,27 @@ function compileJsonSchema(
         formatDefinitionReference(canonical)
       )
     })
+  }
+
+  function getAliasGroup(representation: SchemaRepresentation.Representation): string | undefined {
+    const fallback = getIdentifierFallback(representation)
+    if (fallback !== undefined) return `fallback:${fallback}`
+    const identifier = InternalToRepresentation.getReferenceIdentifier(representation)
+    if (identifier !== undefined) return `identifier:${identifier}`
+    // A generated recursive reference that only forwards to a named definition shares that definition's group.
+    // Other anonymous definitions have no shared name, so they are never aliased.
+    if (
+      InternalToRepresentation.getGeneratedReference(representation) !== undefined &&
+      representation._tag === "Suspend" &&
+      representation.thunk._tag === "Reference" &&
+      Object.hasOwn(references, representation.thunk.$ref)
+    ) {
+      const target = references[representation.thunk.$ref]
+      if (InternalToRepresentation.getGeneratedReference(target) !== undefined) return undefined
+      const group = getAliasGroup(target)
+      return group === undefined ? undefined : `forward:${group}`
+    }
+    return undefined
   }
 
   function getIdentifierFallback(
