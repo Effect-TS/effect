@@ -46,7 +46,7 @@ const makeSocket = (
   socket: NodeRedisClientOptions["socket"],
   signal: AbortSignal,
   isReady: () => boolean
-): NonNullable<NodeRedisClientOptions["socket"]> & { readonly signal: AbortSignal } => {
+) => {
   // node-redis' TLS option type omits `signal`, which `tls.connect` accepts.
   const callerSignal = socket && "signal" in socket ? socket.signal : undefined
   return {
@@ -62,6 +62,8 @@ const makeSocket = (
   }
 }
 
+// Destroying first leaves the abort only an untracked, still-connecting socket
+// to close, so it raises no client error.
 const destroy = (client: NodeRedisClient, abort: AbortController) => {
   client.destroy()
   abort.abort()
