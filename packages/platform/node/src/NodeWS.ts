@@ -1,9 +1,6 @@
 /**
- * The `ws` package and a WebSocket client layer backed by it.
- *
- * This module re-exports `ws` for WebSocket servers and HTTP upgrades. Client
- * sockets from `NodeSocket` use Node's global `WebSocket` and do not load
- * `ws`; import this module only when `ws` is needed.
+ * Re-exports the `ws` package and provides a WebSocket client layer backed by
+ * it. `NodeSocket` clients use Node's global `WebSocket` and do not load `ws`.
  *
  * @stability unstable
  * @since 4.1.0
@@ -22,9 +19,9 @@ export * from "@effect/platform-node-shared/NodeWS"
  *
  * **Details**
  *
- * Supports handshake headers alongside subprotocols in client options objects.
- * `ws` sockets can pause reads, so `Socket.fromWebSocket` stops reading once
- * buffered frames reach its `highWaterMark` (64 KiB by default).
+ * Supports handshake headers alongside subprotocols, and pauses reads once
+ * buffered frames reach the `Socket.fromWebSocket` `highWaterMark` (64 KiB by
+ * default).
  *
  * @stability unstable
  * @category layers
