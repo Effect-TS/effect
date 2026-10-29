@@ -32,6 +32,8 @@ const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
 const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
+// Streamable HTTP servers assume this revision when MCP-Protocol-Version is absent.
+const DEFAULT_HTTP_PROTOCOL_VERSION = "2025-03-26"
 
 const asRecord = (input: unknown): Record<string, unknown> | undefined =>
   typeof input === "object" && input !== null ? input as Record<string, unknown> : undefined
@@ -212,13 +214,34 @@ export const selectStatefulProtocol = <Protocol extends PublicMcpProtocol.AnyPro
   protocols.find((protocol) => protocol.runtime._tag === "Stateful" && protocol.protocolVersion === offeredVersion) ??
     protocols.find((protocol) => protocol.runtime._tag === "Stateful")
 
+interface HttpOptions {
+  readonly sessionMode?: "stateful" | "stateless" | undefined
+}
+
+// A per-POST session keeps no log level, subscriptions, or list-change state.
+const sessionlessRegistration = (
+  protocol: PublicMcpProtocol.AnyProtocolAdapter,
+  initializePayload: typeof PublicMcpSchema.Initialize.payloadSchema.Type,
+  negotiatedProfile: McpCore.NegotiatedProtocolProfile
+): McpStatefulRuntime.Registration => ({
+  initializePayload,
+  negotiatedProfile,
+  protocol: protocol as PublicMcpProtocol.ProtocolAdapter,
+  supportsResourceSubscriptions: false,
+  logLevel: undefined,
+  listChangeRevision: undefined
+})
+
 /**
  * @internal
  */
 export const make = Effect.fnUntraced(function*(
-  protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
+  protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>,
+  httpOptions?: HttpOptions
 ) {
   const statefulProtocol = protocols.find((protocol) => protocol.runtime._tag === "Stateful")
+  // Stateless mode only changes how legacy protocols are served.
+  const statelessHttp = httpOptions?.sessionMode === "stateless" && statefulProtocol !== undefined
   const stateful = statefulProtocol === undefined ? undefined : McpStatefulRuntime.make()
   const protocolVersions = protocols.map((protocol) => protocol.protocolVersion)
   let statelessDescriptor: PublicMcpProtocol.StatelessRuntimeDescriptor | undefined
@@ -242,10 +265,36 @@ export const make = Effect.fnUntraced(function*(
     message: `Unsupported protocol version '${requested}'`,
     data: { supported: protocolVersions, requested }
   })
+  // Legacy POSTs repeat neither client capabilities nor client info after initialize.
+  const statelessHttpRegistrations = new Map<string, McpStatefulRuntime.Registration>()
+  if (statelessHttp) {
+    for (const protocol of registry.protocols) {
+      if (protocol.runtime._tag !== "Stateful") continue
+      const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
+        protocolVersion: protocol.protocolVersion,
+        capabilities: {},
+        clientInfo: { name: "unknown", version: "unknown" }
+      })
+      statelessHttpRegistrations.set(
+        protocol.protocolVersion,
+        sessionlessRegistration(protocol, initializePayload, {
+          protocolVersion: protocol.protocolVersion as PublicMcpProtocol.StatefulProtocolVersion,
+          clientCapabilities: initializePayload.capabilities,
+          clientInfo: initializePayload.clientInfo
+        })
+      )
+    }
+  }
+  const statelessHttpRegistration = (headers: Headers.Headers) =>
+    statelessHttpRegistrations.get(headers[MCP_PROTOCOL_VERSION_HEADER] ?? DEFAULT_HTTP_PROTOCOL_VERSION)
   const selectHttpSession = (headers: Headers.Headers, isInitialize: boolean): HttpProtocolSelection => {
     const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const sessionId = headers[MCP_SESSION_ID_HEADER]
-    const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
+    const binding = sessionId !== undefined
+      ? stateful?.resolveSessionId(sessionId)
+      : isInitialize
+      ? undefined
+      : statelessHttpRegistration(headers)
     if (sessionId !== undefined && binding === undefined) {
       return { _tag: "Rejected", status: 404 }
     }
@@ -260,6 +309,13 @@ export const make = Effect.fnUntraced(function*(
         return headerMismatch(
           `MCP-Protocol-Version header '${protocolVersion}' does not match negotiated protocol version '${binding.protocol.protocolVersion}'`
         )
+      }
+    }
+    if (binding === undefined && !isInitialize && statelessHttp) {
+      return {
+        _tag: "Rejected",
+        status: 400,
+        error: unsupportedProtocolVersion(protocolVersion ?? DEFAULT_HTTP_PROTOCOL_VERSION)
       }
     }
     return { _tag: "Accepted", binding, protocol: binding?.protocol }
@@ -335,7 +391,12 @@ export const make = Effect.fnUntraced(function*(
       const metadata = asRecord(request.payload)?._meta
       const claim = protocolVersionClaim(metadata)
       const requestedVersion = typeof claim.value === "string" ? claim.value : undefined
-      const binding = claim.present ? undefined : stateful?.resolve(clientId, headers)
+      let binding = claim.present ? undefined : stateful?.resolve(clientId, headers)
+      if (binding === undefined && !claim.present && request.tag !== "initialize") {
+        // Each stateless POST gets its own client id; `disconnect` removes the registration.
+        const registration = statelessHttpRegistration(headers)
+        if (registration !== undefined) binding = stateful?.registerConnection(clientId, registration)
+      }
       let protocol: PublicMcpProtocol.AnyProtocolAdapter
       if (claim.present) {
         protocol = registry.protocols.find((protocol) => protocol.protocolVersion === requestedVersion) ??
@@ -455,7 +516,7 @@ export const make = Effect.fnUntraced(function*(
           id
         )
       }
-      if (!isInitialize && !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
+      if (!isInitialize && admission.protocol === undefined) {
         return reject(
           400,
           stateful === undefined ? undefined : new PublicMcpSchema.InvalidRequest({
@@ -542,14 +603,15 @@ export const make = Effect.fnUntraced(function*(
             const presence = yield* options.core.registrationPresence
             return yield* Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
+              const sessionless = statelessHttp && httpRequest !== undefined
               const capabilities: McpCore.CanonicalServerCapabilities = {
                 completions: true,
-                logging: true,
-                ...(presence.tools ? { tools: { listChanged: true } } : {}),
+                ...(sessionless ? {} : { logging: true }),
+                ...(presence.tools ? { tools: { listChanged: !sessionless } } : {}),
                 ...(presence.resources
-                  ? { resources: { listChanged: true, subscribe: httpRequest === undefined } }
+                  ? { resources: { listChanged: !sessionless, subscribe: httpRequest === undefined } }
                   : {}),
-                ...(presence.prompts ? { prompts: { listChanged: true } } : {}),
+                ...(presence.prompts ? { prompts: { listChanged: !sessionless } } : {}),
                 ...(options.serverInfo.extensions ? { extensions: options.serverInfo.extensions } : {})
               }
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
@@ -558,28 +620,33 @@ export const make = Effect.fnUntraced(function*(
                 clientInfo: profile.clientInfo!,
                 _meta: profile.requestMetadata
               })
-              const registration: McpStatefulRuntime.Registration = {
-                initializePayload,
-                negotiatedProfile: profile,
-                protocol: protocol as PublicMcpProtocol.ProtocolAdapter,
-                supportsResourceSubscriptions: httpRequest === undefined &&
-                  capabilities.resources?.subscribe === true,
-                logLevel: options.defaultLogLevel,
-                listChangeRevision: options.getListChangeRevision?.() ?? 0
-              }
-              if (httpRequest !== undefined) {
-                const sessionId = SecureRandom.uuidV4Unsafe()
-                stateful.registerHttp(sessionId, registration)
+              const registration: McpStatefulRuntime.Registration = sessionless
+                ? sessionlessRegistration(protocol, initializePayload, profile)
+                : {
+                  initializePayload,
+                  negotiatedProfile: profile,
+                  protocol: protocol as PublicMcpProtocol.ProtocolAdapter,
+                  supportsResourceSubscriptions: capabilities.resources?.subscribe === true,
+                  logLevel: options.defaultLogLevel,
+                  listChangeRevision: options.getListChangeRevision?.() ?? 0
+                }
+              if (httpRequest === undefined) {
+                stateful.registerConnection(clientId, registration)
+              } else {
+                const responseHeaders: Record<string, string> = {
+                  [MCP_PROTOCOL_VERSION_HEADER]: protocol.protocolVersion
+                }
+                if (sessionless) {
+                  stateful.registerConnection(clientId, registration)
+                } else {
+                  const sessionId = SecureRandom.uuidV4Unsafe()
+                  stateful.registerHttp(sessionId, registration)
+                  responseHeaders[MCP_SESSION_ID_HEADER] = sessionId
+                }
                 appendPreResponseHandlerUnsafe(
                   fiber.context,
-                  (_request, response) =>
-                    Effect.succeed(HttpServerResponse.setHeaders(response, {
-                      [MCP_SESSION_ID_HEADER]: sessionId,
-                      [MCP_PROTOCOL_VERSION_HEADER]: protocol.protocolVersion
-                    }))
+                  (_request, response) => Effect.succeed(HttpServerResponse.setHeaders(response, responseHeaders))
                 )
-              } else {
-                stateful.registerConnection(clientId, registration)
               }
               return Effect.succeed({
                 capabilities,
@@ -614,5 +681,6 @@ export const make = Effect.fnUntraced(function*(
  * @internal
  */
 export const layer = (
-  protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
-): Layer.Layer<ServerRuntime, Cause.IllegalArgumentError> => Layer.effect(ServerRuntime)(make(protocols))
+  protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>,
+  httpOptions?: HttpOptions
+): Layer.Layer<ServerRuntime, Cause.IllegalArgumentError> => Layer.effect(ServerRuntime)(make(protocols, httpOptions))

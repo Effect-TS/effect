@@ -1889,15 +1889,16 @@ const runWithRuntime = Effect.fnUntraced(function*(
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
             return Effect.gen(function*() {
-              const prepared = yield* prepare
-              const clientState = clientStates.get(clientId)
-              if (isHttp && clientState === undefined) {
+              if (isHttp && !clientStates.has(clientId)) {
                 // HTTP EOF only ends the request body; handlers and streamed replies may still be running.
+                // Register before preparing so a stateless registration cannot outlive an aborted POST.
                 yield* Scope.addFinalizer(
                   Context.getUnsafe(fiber.context, Scope.Scope),
                   Effect.sync(() => disconnectClient(clientId))
                 )
               }
+              const prepared = yield* prepare
+              const clientState = clientStates.get(clientId)
               const session = prepared.binding
               const selectedProtocol = prepared.protocol
               // Select before dated payload decoding: legacy requests use
@@ -2508,6 +2509,17 @@ const mcpStdioSerialization = (
  * holding a session id can end that session, so authenticate requests in the
  * surrounding router.
  *
+ * Set `sessionMode: "stateless"` to serve legacy Streamable HTTP without
+ * session IDs, so consecutive POSTs may reach different processes. Initialize
+ * returns no `Mcp-Session-Id`, and every later POST is served with a
+ * conservative client profile: the protocol version named by
+ * `MCP-Protocol-Version` (`2025-03-26` when absent, which must then be
+ * configured), empty client capabilities, and unknown client info. Logging,
+ * list-change notifications, resource subscriptions, and cancellation of
+ * requests from other POSTs are unavailable, and a request carrying an
+ * `Mcp-Session-Id` returns `404`. The default `"stateful"` mode and
+ * `v2026_07_28` are unaffected.
+ *
  * Set `allowSubscriptions: false` to disable `v2026_07_28` subscriptions.
  * Discovery advertises `listChanged: false`, and `subscriptions/listen` returns
  * Method not found. Request-scoped progress and logs, legacy protocols, and
@@ -2559,6 +2571,7 @@ export const layerHttp = <
   readonly cacheHints?: CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2568,7 +2581,7 @@ export const layerHttp = <
   | RegistrationServices<RR>
   | HttpRouter.Request.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols, true>>>
 > => {
-  const runtime = McpRuntime.layer(options.protocols)
+  const runtime = McpRuntime.layer(options.protocols, { sessionMode: options.sessionMode })
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
@@ -2588,10 +2601,18 @@ export const layerHttp = <
  *
  * Each POST runs its own server in the request scope, with no background
  * fiber, timer, or queue consumer left after the response body completes.
- * Only sessionless protocols such as `v2026_07_28` are accepted. Tools,
- * resources, prompts, completions, multi round-trip input requests, and the
- * request's own progress and log notifications are supported. Legacy reverse
- * requests through `McpServer.elicit` are not available.
+ * Tools, resources, prompts, completions, multi round-trip input requests, and
+ * the request's own progress and log notifications are supported. Legacy
+ * reverse requests through `McpServer.elicit` are not available.
+ *
+ * Legacy protocols are served stateless, as with `layerHttp` and
+ * `sessionMode: "stateless"`. Initialize returns no `Mcp-Session-Id`, and
+ * every later POST is served with a conservative client profile: the protocol
+ * version named by `MCP-Protocol-Version` (`2025-03-26` when absent, which
+ * must then be configured), empty client capabilities, and unknown client
+ * info. Logging, log notifications, and resource subscriptions are
+ * unavailable to legacy clients, and a request carrying an `Mcp-Session-Id`
+ * returns `404`.
  *
  * Discovery advertises `listChanged: false`, `subscriptions/listen` returns
  * Method not found, and DELETE returns `405`. Request-scoped clients receive
@@ -2601,8 +2622,6 @@ export const layerHttp = <
  * subscriptions, or legacy reverse requests.
  *
  * HTTP admission, origin checks, and JSON-RPC errors follow `layerHttp`.
- * Configuring a sessionful protocol through an untyped caller fails layer
- * construction with `IllegalArgumentError`.
  *
  * Registrations passed as `registrations` are built once, before the routes
  * are added, and shared by every POST. Remaining `McpRequest` markers become
@@ -2615,9 +2634,7 @@ export const layerHttp = <
  * @since 4.0.0
  */
 export const layerHttpRequestScoped = <
-  const Protocols extends Arr.NonEmptyReadonlyArray<
-    McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
-  >,
+  const Protocols extends Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>,
   RA = never,
   RE = never,
   RR = never
@@ -2643,12 +2660,6 @@ export const layerHttpRequestScoped = <
 > =>
   Layer.effectDiscard(Effect.gen(function*() {
     const runtime = yield* McpRuntime.ServerRuntime
-    const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
-    if (stateful !== undefined) {
-      return yield* new Cause.IllegalArgumentError(
-        `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
-      )
-    }
     const serverOptions = { ...options, cacheHints: yield* normalizeCacheHints(options.cacheHints) }
     const server = yield* McpServer
     const { core, notificationDelivery } = internalState.get(server)!
@@ -2691,13 +2702,15 @@ export const layerHttpRequestScoped = <
   })).pipe(
     Layer.provide(options.registrations ?? Layer.empty),
     Layer.provideMerge(McpServer.layer),
-    Layer.provide(McpRuntime.layer(options.protocols))
+    // Nothing outlives the request, so legacy protocols can only be served stateless.
+    Layer.provide(McpRuntime.layer(options.protocols, { sessionMode: "stateless" }))
   ) as any
 
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -2716,6 +2729,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
     readonly path: HttpRouter.PathInput
     readonly allowedOrigins?: ReadonlyArray<string> | undefined
     readonly allowSessionTermination?: boolean | undefined
+    readonly sessionMode?: "stateful" | "stateless" | undefined
   },
   httpEffect: Effect.Effect<
     HttpServerResponse.HttpServerResponse,
@@ -2725,7 +2739,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
 ) {
   const runtime = yield* McpRuntime.ServerRuntime
   const router = yield* HttpRouter.HttpRouter
-  const allowSessionTermination = options.allowSessionTermination === true &&
+  const allowSessionTermination = options.sessionMode !== "stateless" && options.allowSessionTermination === true &&
     runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
   const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
   const withAllowedOrigin = (

@@ -8,8 +8,6 @@ import type * as Schema from "effect/Schema"
 
 const noopLogger = Logger.make(constVoid)
 type Protocols = readonly [McpProtocol.ProtocolAdapter, ...Array<McpProtocol.ProtocolAdapter>]
-type StatelessAdapter = McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
-type StatelessProtocols = readonly [StatelessAdapter, ...Array<StatelessAdapter>]
 interface Options<P extends Protocols> {
   readonly name: string
   readonly version?: string | undefined
@@ -19,6 +17,7 @@ interface Options<P extends Protocols> {
   readonly cacheHints?: McpServer.CacheHints | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
   readonly loggers?: ReadonlyArray<Logger.Logger<unknown, any>> | undefined
 }
 
@@ -26,14 +25,14 @@ interface Options<P extends Protocols> {
 export function makeServerLayer<const P extends Protocols = readonly [typeof McpProtocol.v2025_06_18]>(
   options: Options<P> & { readonly mode?: "server" | undefined }
 ): ReturnType<typeof McpServer.layerHttp<P>>
-export function makeServerLayer<const P extends StatelessProtocols>(
+export function makeServerLayer<const P extends Protocols>(
   options: Options<P> & { readonly protocols: P; readonly mode: "request" }
 ): ReturnType<typeof McpServer.layerHttpRequestScoped<P>>
 export function makeServerLayer(
   options: Options<Protocols> & { readonly mode?: "server" | "request" | undefined }
 ):
   | ReturnType<typeof McpServer.layerHttp<Protocols>>
-  | ReturnType<typeof McpServer.layerHttpRequestScoped<StatelessProtocols>>
+  | ReturnType<typeof McpServer.layerHttpRequestScoped<Protocols>>
 export function makeServerLayer(options: Options<Protocols> & { readonly mode?: "server" | "request" | undefined }) {
   const common = {
     name: options.name,
@@ -47,18 +46,13 @@ export function makeServerLayer(options: Options<Protocols> & { readonly mode?: 
   }
   const loggers = Layer.succeed(References.CurrentLoggers, new Set(options.loggers ?? [noopLogger]))
   if (options.mode === "request") {
-    const protocols = common.protocols.filter((protocol): protocol is StatelessAdapter =>
-      protocol.runtime._tag === "Stateless"
-    )
-    const first = protocols[0]
-    if (first === undefined || protocols.length !== common.protocols.length) {
-      throw new Error("Request-mode test servers require only stateless protocols")
-    }
-    return McpServer.layerHttpRequestScoped({ ...common, protocols: [first, ...protocols.slice(1)] }).pipe(
-      Layer.provideMerge(loggers)
-    )
+    return McpServer.layerHttpRequestScoped(common).pipe(Layer.provideMerge(loggers))
   }
-  return McpServer.layerHttp({ ...common, allowSessionTermination: options.allowSessionTermination }).pipe(
+  return McpServer.layerHttp({
+    ...common,
+    allowSessionTermination: options.allowSessionTermination,
+    sessionMode: options.sessionMode
+  }).pipe(
     Layer.provideMerge(loggers)
   )
 }

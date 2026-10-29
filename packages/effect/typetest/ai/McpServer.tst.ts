@@ -55,7 +55,7 @@ describe("McpServer", () => {
   })
 
   describe("protocol configuration", () => {
-    it("should restrict request-scoped HTTP to stateless protocols without session options", () => {
+    it("should accept any protocols on request-scoped HTTP without session options", () => {
       const options = {
         name: "TestServer",
         version: "1.0.0",
@@ -64,13 +64,17 @@ describe("McpServer", () => {
       } as const
 
       expect(McpServer.layerHttpRequestScoped).type.toBeCallableWith(options)
-      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+      expect(McpServer.layerHttpRequestScoped).type.toBeCallableWith({
         ...options,
         protocols: [McpProtocol.v2025_11_25] as const
       })
-      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+      expect(McpServer.layerHttpRequestScoped).type.toBeCallableWith({
         ...options,
         protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        sessionMode: "stateless"
       })
       expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
         ...options,

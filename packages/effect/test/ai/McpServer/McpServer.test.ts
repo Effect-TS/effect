@@ -21,6 +21,7 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
@@ -3167,6 +3168,206 @@ describe("McpServer", () => {
         })
         const afterReconnect = yield* nextResponse(1, 31)
         assert.strictEqual(afterReconnect.exit._tag, "Failure")
+      }))
+  })
+
+  describe("layerHttp sessionMode stateless", () => {
+    const Inspect = Toolkit.make(Tool.make("Inspect", {
+      success: Schema.String,
+      dependencies: [McpSchema.McpRequestContext]
+    }))
+    const registrations = Layer.mergeAll(
+      McpServer.toolkit(Inspect),
+      McpServer.resource({ uri: "test://stateless", name: "stateless", content: Effect.succeed("stateless") }),
+      McpServer.prompt({ name: "stateless", content: () => Effect.succeed("stateless") }),
+      Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: new McpSchema.Tool({ name: "Broadcast", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: Effect.fnUntraced(function*() {
+            yield* server.notifications["notifications/tools/list_changed"]({})
+            yield* server.notifications["notifications/resources/list_changed"]({})
+            yield* server.notifications["notifications/prompts/list_changed"]({})
+            yield* server.notifications["notifications/message"]({ level: "error", data: "log" })
+            const level = yield* References.CurrentLogLevel
+            return new McpSchema.CallToolResult({ content: [{ type: "text", text: level }] })
+          })
+        })
+      ))
+    ).pipe(Layer.provide(Inspect.toLayer({
+      Inspect: () =>
+        Effect.map(McpSchema.McpRequestContext, (context) =>
+          [
+            context.protocolVersion,
+            context.clientInfo?.name,
+            context.clientCapabilities.sampling === undefined ? "no-sampling" : "sampling"
+          ].join(" "))
+    })))
+    const makeStatelessHarness = (options?: {
+      readonly sessionMode?: "stateful" | "stateless" | undefined
+      readonly allowSessionTermination?: boolean | undefined
+    }) =>
+      makeHttpHarness(registrations.pipe(
+        Layer.provideMerge(makeServerLayer({
+          name: "Stateless",
+          protocols: [
+            McpProtocol.v2025_11_25,
+            McpProtocol.v2025_06_18,
+            McpProtocol.v2025_03_26,
+            McpProtocol.v2026_07_28
+          ],
+          sessionMode: "stateless",
+          ...options
+        })),
+        Layer.provide(Layer.succeed(References.CurrentLogLevel, "Debug"))
+      ))
+    const initialize = (protocolVersion: string) => ({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion,
+        capabilities: { sampling: {} },
+        clientInfo: { name: "original-client", version: "1.0.0" }
+      }
+    })
+    const callTool = (name: string) => ({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name } })
+    const toolText = (response: Response) =>
+      Effect.map(readMcpHttpResponse(response), (message: any) => message.result.content[0].text)
+
+    it.effect("initializes without a session id and advertises no session-bound capabilities", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeStatelessHarness()
+        const response = yield* harness.post(initialize("2025-11-25"))
+        strictEqual(response.status, 200)
+        assert.isNull(response.headers.get("Mcp-Session-Id"))
+        strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+        const capabilities = ((yield* readMcpHttpResponse(response)) as any).result.capabilities
+        assert.notProperty(capabilities, "logging")
+        assert.deepStrictEqual(capabilities.tools, { listChanged: false })
+        assert.deepStrictEqual(capabilities.resources, { listChanged: false, subscribe: false })
+        assert.deepStrictEqual(capabilities.prompts, { listChanged: false })
+      }))
+
+    for (const version of ["2025-03-26", "2025-06-18", "2025-11-25"]) {
+      it.effect(`serves ${version} requests on a server that did not handle initialize`, () =>
+        Effect.gen(function*() {
+          const original = yield* makeStatelessHarness()
+          yield* readMcpHttpResponse(yield* original.post(initialize(version)))
+          const replacement = yield* makeStatelessHarness()
+          const headers = { "Mcp-Protocol-Version": version }
+          const listed = yield* replacement.post({ jsonrpc: "2.0", id: 2, method: "tools/list" }, headers)
+          strictEqual(listed.status, 200)
+          assert.includeMembers(
+            ((yield* readMcpHttpResponse(listed)) as any).result.tools.map((tool: McpSchema.Tool) => tool.name),
+            ["Inspect"]
+          )
+          const called = yield* replacement.post(callTool("Inspect"), headers)
+          assert.isNull(called.headers.get("Mcp-Session-Id"))
+          strictEqual(yield* toolText(called), `${version} unknown no-sampling`)
+        }))
+    }
+
+    it.effect("defaults a missing protocol header and rejects unsupported versions and session ids", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeStatelessHarness()
+        strictEqual(yield* toolText(yield* harness.post(callTool("Inspect"))), "2025-03-26 unknown no-sampling")
+        strictEqual((yield* harness.post(callTool("Inspect"), { "Mcp-Protocol-Version": "2024-11-05" })).status, 400)
+        strictEqual((yield* harness.post(callTool("Inspect"), { "Mcp-Protocol-Version": "9999-12-31" })).status, 400)
+        const withSession = yield* harness.post(callTool("Inspect"), {
+          "Mcp-Protocol-Version": "2025-11-25",
+          "Mcp-Session-Id": "retired-session"
+        })
+        strictEqual(withSession.status, 404)
+      }))
+
+    it.effect("resolves HTTP middleware services and visibility for every POST", () =>
+      Effect.gen(function*() {
+        class CurrentUser extends Context.Service<CurrentUser, string>()("test/stateless/CurrentUser") {}
+        const HttpAuth = HttpRouter.middleware<{ provides: CurrentUser }>()((effect) =>
+          Effect.flatMap(
+            HttpServerRequest.HttpServerRequest,
+            (request) => Effect.provideService(effect, CurrentUser, request.headers["x-user"] ?? "guest")
+          )
+        )
+        const Identity = Toolkit.make(Tool.make("Identity", { success: Schema.String, dependencies: [CurrentUser] }))
+        const harness = yield* makeHttpHarness(
+          McpServer.layerHttp({
+            name: "StatelessAuth",
+            version: "1.0.0",
+            path: "/mcp",
+            protocols: [McpProtocol.v2025_11_25],
+            sessionMode: "stateless",
+            registrations: McpServer.toolkit(Identity).pipe(
+              Layer.provide(McpServer.visibility(() => Effect.map(CurrentUser, (user) => user === "admin")).layer),
+              Layer.provide(Identity.toLayer({ Identity: () => Effect.service(CurrentUser) }))
+            )
+          }).pipe(Layer.provide(HttpAuth.layer))
+        )
+        const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+        const listed = yield* harness.post({ jsonrpc: "2.0", id: 1, method: "tools/list" }, headers)
+        assert.deepStrictEqual(((yield* readMcpHttpResponse(listed)) as any).result.tools, [])
+        const allowed = yield* harness.post(callTool("Identity"), { ...headers, "x-user": "admin" })
+        strictEqual(yield* toolText(allowed), "admin")
+        const denied = yield* harness.post(callTool("Identity"), headers)
+        assert.deepStrictEqual(((yield* readMcpHttpResponse(denied)) as any).error, {
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: "Tool 'Identity' not found"
+        })
+      }))
+
+    it.effect("rejects session-bound methods and suppresses list-change and log notifications", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeStatelessHarness()
+        const headers = { "Mcp-Protocol-Version": "2025-11-25" }
+        for (
+          const [method, params] of [
+            ["logging/setLevel", { level: "debug" }],
+            ["resources/subscribe", { uri: "test://stateless" }]
+          ] as const
+        ) {
+          const response = yield* harness.post({ jsonrpc: "2.0", id: 1, method, params }, headers)
+          assert.nestedPropertyVal(
+            yield* readMcpHttpResponse(response),
+            "error.code",
+            McpSchema.METHOD_NOT_FOUND_ERROR_CODE
+          )
+        }
+        const response = yield* harness.post(callTool("Broadcast"), headers)
+        const body = yield* Effect.promise(() => response.text())
+        assert.notInclude(body, "notifications/")
+        // The handler sees the server's default log level, not a session level.
+        assert.include(body, "\"text\":\"Debug\"")
+      }))
+
+    it.effect("keeps session ids by default and DELETE disabled when stateless", () =>
+      Effect.gen(function*() {
+        const stateful = yield* makeStatelessHarness({ sessionMode: undefined })
+        const initialized = yield* stateful.post(initialize("2025-11-25"))
+        assert.isNotNull(initialized.headers.get("Mcp-Session-Id"))
+        const stateless = yield* makeStatelessHarness({ allowSessionTermination: true })
+        const deleted = yield* stateless.delete({ "Mcp-Session-Id": "unused" })
+        strictEqual(deleted.status, 405)
+        strictEqual(deleted.headers.get("Allow"), "POST")
+      }))
+
+    it.effect("keeps 2026-07-28 metadata validation and tool calls alongside stateless legacy adapters", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeStatelessHarness()
+        const request = callTool("Inspect")
+        const headers = { "Mcp-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "Inspect" }
+        const called = yield* harness.post({
+          ...request,
+          params: {
+            ...request.params,
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }, headers)
+        assert.nestedPropertyVal(yield* readMcpHttpResponse(called), "result.isError", false)
+        strictEqual((yield* harness.post(request, headers)).status, 400)
       }))
   })
 
