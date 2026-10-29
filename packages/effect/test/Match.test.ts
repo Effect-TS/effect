@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Filter, Match, Option, pipe } from "effect"
-import { assertFalse, assertTrue, strictEqual } from "./utils/assert.ts"
+import { assertFalse, assertTrue, strictEqual, throws } from "./utils/assert.ts"
 
 describe("Match", () => {
   it("fn keeps the selector arguments", () => {
@@ -138,9 +138,15 @@ describe("Match", () => {
   })
 
   it("whenFilter cases keep the guard and evaluate contract of Case", () => {
+    let calls = 0
+    let fail = false
     const [_case] = Match.type<string>().pipe(
       Match.whenFilter(
-        Filter.fromPredicateOption((s: string) => s === "" ? Option.none() : Option.some(s.length)),
+        Filter.fromPredicateOption((s: string) => {
+          calls++
+          if (fail) throw new Error("boom")
+          return s === "" ? Option.none() : Option.some(s.length)
+        }),
         (n) => n * 10
       )
     ).cases
@@ -148,5 +154,13 @@ describe("Match", () => {
     assertTrue(_case.guard("abc"))
     strictEqual(_case.evaluate("abc"), 30)
     assertFalse(_case.guard(""))
+
+    // a throwing guard must not leave an earlier extraction behind
+    assertTrue(_case.guard("abc"))
+    fail = true
+    throws(() => _case.guard("abc"))
+    fail = false
+    strictEqual(_case.evaluate("abc"), 30)
+    strictEqual(calls, 5)
   })
 })
