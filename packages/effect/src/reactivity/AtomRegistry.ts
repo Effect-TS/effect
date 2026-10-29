@@ -440,14 +440,14 @@ class RegistryImpl implements AtomRegistry {
     const node = this.ensureNode(atom)
     if (options?.immediate) {
       f(node.value())
-    } else if (node.state === NodeState.stale) {
-      // a listener hears the next change, which only reaches an up-to-date node
-      node.value()
-    } else if (node.state === NodeState.uninitialized) {
+    } else if ((node.state & NodeFlags.waitingForValue) !== 0) {
+      // a listener hears the next change, which only reaches an up-to-date
+      // node. A failed build is left for the next read to report, so that the
+      // listener is still added and hears the recovery.
       try {
         node.value()
       } catch {
-        // a throwing subscribe would leave no listener to hear the recovery; the next read reports the failure
+        // reported by the next read
       }
     }
     const remove = node.subscribe(function() {
