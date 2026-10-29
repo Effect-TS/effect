@@ -1,8 +1,11 @@
 import { Context, Effect, Schema, SchemaGetter } from "effect"
-import type * as McpClient from "effect/ai/McpClient"
+import * as McpClient from "effect/ai/McpClient"
 import type { McpClientError } from "effect/ai/McpClientError"
 import type * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
+import type * as HttpClient from "effect/http/HttpClient"
+import type * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
 
 const client = {} as McpClient.McpClient
@@ -32,6 +35,42 @@ describe("McpClient", () => {
     const schema = {} as typeof Schema.String | undefined
     expect(client.callTool({ tool, schema })).type.toBe<
       Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
+    >()
+  })
+
+  it("should require decoder services when an execution is awaited", () => {
+    expect(client.startTool({ tool, schema: Length })).type.toBe<
+      Effect.Effect<McpClient.ToolExecution<number, Policy>, McpClientError>
+    >()
+    const execution = {} as McpClient.ToolExecution<number, Policy>
+    expect(execution.awaitResult()).type.toBe<Effect.Effect<number, McpClientError, Policy>>()
+    expect(execution.cancel()).type.toBe<Effect.Effect<void, McpClientError>>()
+    expect(client.startTool({ tool })).type.toBe<
+      Effect.Effect<McpClient.ToolExecution<McpSchema.CallToolResult>, McpClientError>
+    >()
+    const schema = {} as typeof Schema.String | undefined
+    expect(client.startTool({ tool, schema })).type.toBe<
+      Effect.Effect<McpClient.ToolExecution<string | McpSchema.CallToolResult>, McpClientError>
+    >()
+  })
+
+  it("should require input handler services when the client is constructed", () => {
+    const input = { elicitation: () => Policy.pipe(Effect.as({ action: "decline" as const })) }
+    expect(McpClient.make({ name: "app", version: "1", input })).type.toBe<
+      Effect.Effect<McpClient.McpClient, McpClientError, Scope.Scope | McpClient.Transport | Policy>
+    >()
+    expect(McpClient.layerHttp({
+      name: "app",
+      version: "1",
+      input,
+      url: "http://localhost/mcp",
+      protocol: {} as typeof McpProtocol.v2026_07_28
+    })).type.toBe<
+      Layer.Layer<
+        McpClient.McpClient,
+        McpClientError,
+        HttpClient.HttpClient | Policy
+      >
     >()
   })
 

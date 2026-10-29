@@ -3,6 +3,7 @@
  *
  * @internal
  */
+import * as DateTime from "../../../DateTime.ts"
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Base64 from "../../../encoding/Base64.ts"
@@ -25,8 +26,24 @@ import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
+import * as TasksBinding from "../mcpTasksBinding.ts"
 
 const InputResponses = Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Unknown))
+const decodeInputResponses = Schema.decodeUnknownEffect(InputResponses)
+const decodeDiscoverResult = Schema.decodeUnknownEffect(McpSchema.DiscoverResult)
+const decodeListResourcesResult = Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)
+const decodeListResourceTemplatesResult = Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)
+const decodeReadResourceResult = Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)
+const decodeListPromptsResult = Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)
+const decodeGetPromptResult = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
+const decodePromptOutcome = Schema.decodeUnknownEffect(Schema.Union([
+  McpSchema.GetPromptResult,
+  McpSchema.InputRequiredResult
+]))
+const decodeCompleteResult = Schema.decodeUnknownEffect(McpSchema.CompleteResult)
+const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
+const decodeTaskAcknowledgement = Schema.decodeUnknownEffect(McpSchema.TaskAcknowledgement)
+const decodeGetTaskResult = Schema.decodeUnknownEffect(McpSchema.GetTaskResult)
 const decodeRequestMetadata = Schema.decodeUnknownEffect(McpSchema.RequestMetaObject)
 const decodeCancellation = Schema.decodeUnknownEffect(McpSchema.CancelledNotification.payloadSchema)
 const isJson = Schema.is(Schema.Json)
@@ -114,8 +131,28 @@ const projectInputRequired = (
 
 const decodeCallToolOutcome = Schema.decodeUnknownEffect(Schema.Union([
   McpSchema.CallToolResult,
-  McpSchema.InputRequiredResult
+  McpSchema.InputRequiredResult,
+  McpSchema.CreateTaskResult
 ]))
+
+const projectTask = (task: TasksBinding.TaskRecord) =>
+  omitUndefined({
+    taskId: task.taskId,
+    status: task.status,
+    createdAt: DateTime.formatIso(task.createdAt),
+    lastUpdatedAt: DateTime.formatIso(task.lastUpdatedAt),
+    ttlMs: task.ttlMs,
+    pollIntervalMs: task.pollIntervalMs,
+    statusMessage: task.statusMessage
+  })
+
+const projectDetailedTask = (task: TasksBinding.TaskRecord, result?: unknown) =>
+  omitUndefined({
+    ...projectTask(task),
+    inputRequests: task.status === "input_required" ? task.inputRequests : undefined,
+    result,
+    error: task.status === "failed" ? task.error : undefined
+  })
 
 /**
  * @internal
@@ -232,6 +269,7 @@ type ProtocolError =
   | McpCore.ResourceNotFound
   | McpCore.PromptNotFound
   | McpCore.ToolError
+  | TasksBinding.TaskError
   | McpCore.UnsupportedByProtocol
   | McpProtocol.ProtocolError
   | PublicMcpSchema.McpError
@@ -251,6 +289,10 @@ const matchedProtocolError = Match.type<ProtocolError>().pipe(
     "ToolExecutionError",
     "UnsupportedByProtocol",
     McpProtocol.ProtocolError.fromTool
+  ),
+  Match.tag(
+    "TaskError",
+    (error) => new McpProtocol.ProtocolError({ code: error.code, message: error.message, data: error.data })
   ),
   Match.orElse(McpProtocol.ProtocolError.fromFeature)
 )
@@ -307,19 +349,13 @@ export const makeHandlers = (
   _lifecycle: McpProtocol.LifecycleRuntime | undefined,
   context: McpProtocol.HandlerInstallationContext
 ) => {
-  const decodeInputResponses = Schema.decodeUnknownEffect(InputResponses)
-  const decodeDiscoverResult = Schema.decodeUnknownEffect(McpSchema.DiscoverResult)
-  const decodeListResourcesResult = Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)
-  const decodeListResourceTemplatesResult = Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)
-  const decodeReadResourceResult = Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)
-  const decodeListPromptsResult = Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)
-  const decodeGetPromptResult = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
-  const decodePromptOutcome = Schema.decodeUnknownEffect(Schema.Union([
-    McpSchema.GetPromptResult,
-    McpSchema.InputRequiredResult
-  ]))
-  const decodeCompleteResult = Schema.decodeUnknownEffect(McpSchema.CompleteResult)
-  const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
+  const tasks = TasksBinding.get(core)
+  const acknowledgeTask = Effect.fnUntraced(function*() {
+    return yield* decodeTaskAcknowledgement({
+      resultType: "complete",
+      _meta: { "io.modelcontextprotocol/serverInfo": yield* encodeImplementation(context.serverInfo) }
+    })
+  })
   const sendNotification = context.sendNotification
   const supportsSubscriptions = sendNotification !== undefined
   // Older adapters accept arbitrary JSON; this binding requires extension settings objects.
@@ -332,16 +368,24 @@ export const makeHandlers = (
     const hint = context.serverInfo.cacheHints?.[family]
     return hint === undefined ? privateStaleCache : { ttlMs: hint.ttlMs, cacheScope: hint.cacheScope }
   }
-  const getDiscovery = Effect.map(context.registrationPresence, (presence) => {
-    const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
-    if (extensions !== undefined) capabilities.extensions = extensions
-    if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
-    if (presence.resources) {
-      capabilities.resources = { listChanged: supportsSubscriptions, subscribe: supportsSubscriptions }
+  const getDiscovery = Effect.map(
+    Effect.all([context.registrationPresence, Effect.sync(() => tasks.enabled)]),
+    ([presence, tasksEnabled]) => {
+      const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
+      const extensionCapabilities = { ...extensions }
+      delete extensionCapabilities["io.modelcontextprotocol/tasks"]
+      if (tasksEnabled) extensionCapabilities["io.modelcontextprotocol/tasks"] = {}
+      if (Object.keys(extensionCapabilities).length > 0) {
+        capabilities.extensions = extensionCapabilities
+      }
+      if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
+      if (presence.resources) {
+        capabilities.resources = { listChanged: supportsSubscriptions, subscribe: supportsSubscriptions }
+      }
+      if (presence.prompts) capabilities.prompts = { listChanged: supportsSubscriptions }
+      return { supportedVersions: context.supportedVersions, capabilities, serverInfo: context.serverInfo }
     }
-    if (presence.prompts) capabilities.prompts = { listChanged: supportsSubscriptions }
-    return { supportedVersions: context.supportedVersions, capabilities, serverInfo: context.serverInfo }
-  })
+  )
   const getInvocation = PublicMcpSchema.McpRequestContext.useSync(
     McpProtocol.invocationFromRequestContext
   )
@@ -381,6 +425,18 @@ export const makeHandlers = (
       request: typeof McpSchema.SubscriptionsListen.payloadSchema.Type,
       { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
     ) {
+      if (
+        request.notifications.taskIds !== undefined &&
+        !Predicate.isReadonlyObject(
+          request._meta["io.modelcontextprotocol/clientCapabilities"].extensions?.["io.modelcontextprotocol/tasks"]
+        )
+      ) {
+        return yield* new McpProtocol.ProtocolError({
+          code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
+          message: "Client does not support the Tasks extension",
+          data: { requiredCapabilities: { extensions: { "io.modelcontextprotocol/tasks": {} } } }
+        })
+      }
       if (sendNotification === undefined) {
         return yield* new McpProtocol.ProtocolError({
           code: McpSchema.METHOD_NOT_FOUND,
@@ -646,17 +702,33 @@ export const makeHandlers = (
         }
       }
 
-      const outcome = yield* core.tools.call({ name: request.name, arguments: request.arguments ?? {} }, invocation)
+      const selected = yield* tasks.call(
+        { name: request.name, arguments: request.arguments ?? {} },
+        invocation
+      )
         .pipe(
           Effect.catchTag(
             ["ToolExecutionError", "InvalidToolInput"],
             (error) =>
-              Effect.succeed(McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
-                content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
-                isError: true
-              })))
+              Effect.succeed({
+                _tag: "Inline" as const,
+                outcome: McpCore.OperationOutcome.Complete(PublicMcpSchema.CallToolResult.make({
+                  content: [PublicMcpSchema.TextContent.make({ type: "text", text: error.message })],
+                  isError: true
+                }))
+              })
           )
         )
+      if (selected._tag === "Task") {
+        yield* TasksBinding.requireTasks(invocation)
+        const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
+        return yield* decodeCallToolOutcome({
+          ...projectTask(selected.task),
+          resultType: "task",
+          _meta: { "io.modelcontextprotocol/serverInfo": encodedServerInfo }
+        })
+      }
+      const outcome = selected.outcome
       if (outcome._tag === "InputRequired") {
         yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
         return yield* projectCallToolOutcome(outcome, context.serverInfo)
@@ -672,6 +744,59 @@ export const makeHandlers = (
         }),
         context.serverInfo
       )
+    }, Effect.mapError(projectError)),
+    "tasks/get": Effect.fnUntraced(function*(request: typeof McpSchema.GetTask.payloadSchema.Type) {
+      const invocation = yield* getInvocation
+      if (!tasks.enabled) {
+        return yield* new McpProtocol.ProtocolError({
+          code: McpSchema.METHOD_NOT_FOUND,
+          message: "Tasks are not enabled"
+        })
+      }
+      yield* TasksBinding.requireTasks(invocation)
+      const task = yield* tasks.get(request.taskId, invocation)
+      if (task.status === "input_required") {
+        yield* validateInputRequestCapabilities(task, invocation.protocol.clientCapabilities)
+      }
+      const result = task.status !== "completed" ? undefined : yield* projectCallToolOutcome(
+        McpCore.OperationOutcome.Complete({
+          content: task.result.content.map(projectContent),
+          structuredContent: task.result.structuredContent,
+          isError: task.result.isError,
+          _meta: task.result._meta
+        }),
+        context.serverInfo
+      )
+      return yield* decodeGetTaskResult({
+        ...projectDetailedTask(task, result),
+        resultType: "complete",
+        _meta: { "io.modelcontextprotocol/serverInfo": yield* encodeImplementation(context.serverInfo) }
+      })
+    }, Effect.mapError(projectError)),
+    "tasks/update": Effect.fnUntraced(function*(request: typeof McpSchema.UpdateTask.payloadSchema.Type) {
+      const invocation = yield* getInvocation
+      if (!tasks.enabled) {
+        return yield* new McpProtocol.ProtocolError({
+          code: McpSchema.METHOD_NOT_FOUND,
+          message: "Tasks are not enabled"
+        })
+      }
+      yield* TasksBinding.requireTasks(invocation)
+      const inputResponses = yield* decodeInputResponses(request.inputResponses).pipe(Effect.orDie)
+      yield* tasks.update(request.taskId, inputResponses, invocation)
+      return yield* acknowledgeTask()
+    }, Effect.mapError(projectError)),
+    "tasks/cancel": Effect.fnUntraced(function*(request: typeof McpSchema.CancelTask.payloadSchema.Type) {
+      const invocation = yield* getInvocation
+      if (!tasks.enabled) {
+        return yield* new McpProtocol.ProtocolError({
+          code: McpSchema.METHOD_NOT_FOUND,
+          message: "Tasks are not enabled"
+        })
+      }
+      yield* TasksBinding.requireTasks(invocation)
+      yield* tasks.cancel(request.taskId, invocation)
+      return yield* acknowledgeTask()
     }, Effect.mapError(projectError)),
     "notifications/cancelled": Effect.fnUntraced(function*(
       _request: typeof McpSchema.CancelledNotification.payloadSchema.Type
@@ -701,6 +826,8 @@ export const protocol = McpProtocol.make({
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
   serverNotificationRpcs: McpSchema.ServerNotificationRpcs,
   handlerRpcs,
+  isMethodAvailable: (core, method) =>
+    !["tasks/get", "tasks/update", "tasks/cancel"].includes(method) || TasksBinding.get(core).enabled,
   makeHandlers,
   toReverseClient: () => ({
     listRoots: () => Effect.fail(unsupported("roots/list")),

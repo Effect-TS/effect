@@ -14,6 +14,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -94,6 +95,11 @@ export interface Toolkit<in out Tools extends Record<string, Tool.Any>> extends
   toHandlers<Handlers extends HandlersFrom<Tools>, EX = never, RX = never>(
     build: Handlers | Effect.Effect<Handlers, EX, RX>
   ): Effect.Effect<Context.Context<Tool.HandlersFor<Tools>>, EX, RX>
+
+  /** @internal */
+  withHandlers<Handlers extends HandlersFrom<Tools, unknown>, EX = never, RX = never>(
+    build: Handlers | Effect.Effect<Handlers, EX, RX>
+  ): Effect.Effect<WithHandler<Tools, HandlerServices<Handlers[keyof Handlers]>>, EX, RX>
 
   /**
    * Converts a toolkit into a `Layer` containing handlers for each tool in the
@@ -178,14 +184,14 @@ export type ToolsByName<Tools> = Tools extends Record<string, Tool.Any> ?
  * @category utility types
  * @since 4.0.0
  */
-export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
+export type HandlersFrom<Tools extends Record<string, Tool.Any>, R = never> = {
   readonly [Name in keyof Tools as Tool.RequiresHandler<Tools[Name]> extends true ? Name : never]: (
     params: Tool.Parameters<Tools[Name]>,
     context: HandlerContext<Tools[Name]>
   ) => Effect.Effect<
     Tool.Success<Tools[Name]>,
     Tool.Failure<Tools[Name]> | AiError.AiError | AiError.AiErrorReason,
-    Tool.HandlerServices<Tools[Name]>
+    Tool.HandlerServices<Tools[Name]> | R
   >
 }
 
@@ -196,7 +202,7 @@ export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
  * @category models
  * @since 4.0.0
  */
-export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
+export interface WithHandler<in out Tools extends Record<string, Tool.Any>, out R = never> {
   /**
    * The tools available in this toolkit instance.
    */
@@ -232,10 +238,10 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     Stream.Stream<
       Tool.HandlerResult<Tools[Name]>,
       Tool.HandlerError<Tools[Name]> | AiError.AiError,
-      Tool.HandlerServices<Tools[Name]>
+      Tool.HandlerServices<Tools[Name]> | R
     >,
     AiError.AiError,
-    Tool.HandlerServices<Tools[Name]>
+    Tool.HandlerServices<Tools[Name]> | R
   >
 }
 
@@ -247,7 +253,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
  * @category utility types
  * @since 4.0.0
  */
-export type WithHandlerTools<T> = T extends WithHandler<infer Tools> ? Tools : never
+export type WithHandlerTools<T> = T extends WithHandler<infer Tools, unknown> ? Tools : never
 
 /**
  * Cause annotation identifying the phase of a typed `Toolkit.handle` failure.
@@ -350,6 +356,10 @@ const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
 
 const failureOrigin = (error: unknown): Tool.FailureOrigin => Schema.isSchemaError(error) ? "result" : "handler"
+
+type HandlerServices<H> = H extends (...args: Array<never>) => Effect.Effect<unknown, unknown, infer R>
+  ? 0 extends (1 & R) ? unknown : R
+  : never
 
 const Proto = {
   ...Effectable.Prototype({
@@ -476,10 +486,7 @@ const Proto = {
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
           Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
-          Effect.matchCauseEffect({
-            onFailure: (cause) => Queue.failCause(queue, cause),
-            onSuccess: () => Queue.end(queue)
-          }),
+          Effect.onExit((exit) => Exit.isFailure(exit) ? Queue.failCause(queue, exit.cause) : Queue.end(queue)),
           Effect.forkChild
         )
 
@@ -558,6 +565,15 @@ const Proto = {
       }
       return Context.makeUnsafe(context)
     })
+  },
+  // Parameter types vary by tool and are checked by the generic interface above.
+  withHandlers(
+    this: Toolkit<Record<string, Tool.Any>>,
+    build:
+      | Record<string, (params: any) => Effect.Effect<unknown, unknown, unknown>>
+      | Effect.Effect<Record<string, (params: any) => Effect.Effect<unknown, unknown, unknown>>>
+  ) {
+    return Effect.flatMap(this.toHandlers(build), (context) => Effect.provideContext(this, context))
   },
   toLayer(
     this: Toolkit<Record<string, Tool.Any>>,
