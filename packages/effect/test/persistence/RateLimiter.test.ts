@@ -60,7 +60,7 @@ describe(`RateLimiter`, () => {
           assert.strictEqual(result.remaining, 0)
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
 
-      it.effect("admits nothing with a zero limit", () =>
+      it.effect("rejects positive token requests with a zero limit", () =>
         Effect.gen(function*() {
           const limiter = yield* RateLimiter.make
           const options = { algorithm, key: "zero-limit", limit: 0, window: "1 minute" } as const
@@ -72,6 +72,11 @@ describe(`RateLimiter`, () => {
 
           const result = yield* limiter.consume({ ...options, onExceeded: "delay" })
           assert.deepStrictEqual(result.delay, Duration.infinity)
+          assert.deepStrictEqual(result.resetAfter, Duration.infinity)
+
+          const query = yield* limiter.consume({ ...options, onExceeded: "delay", tokens: 0 })
+          assert.deepStrictEqual(query.delay, Duration.zero)
+          assert.deepStrictEqual(query.resetAfter, Duration.zero)
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
     })
   }
