@@ -20,6 +20,7 @@ import {
 import { KeyValueStore } from "effect/persistence"
 import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
+import { AsyncLocalStorage } from "node:async_hooks"
 import { collectGarbage, getGc } from "../utils/gc.ts"
 
 declare const global: any
@@ -2424,6 +2425,25 @@ describe("Atom", { concurrent: false }, () => {
       assert(AsyncResult.isSuccess(result))
       assert.strictEqual(result.value, expected)
       assert.strictEqual(runs, expected)
+    } finally {
+      r.dispose()
+    }
+  })
+
+  test(`swr revalidates in the async context it was mounted in`, async () => {
+    const storage = new AsyncLocalStorage<string>()
+    const stores: Array<string | undefined> = []
+    const atom = Atom.make(Effect.sync(() => stores.push(storage.getStore()))).pipe(Atom.swr({ staleTime: 1_000 }))
+    const seed = AsyncResult.success(0, { timestamp: 0 })
+    const r = storage.run("registry", () =>
+      AtomRegistry.make({
+        initialValues: [Atom.initialValue(atom, seed, { skipInitialRun: true })]
+      }))
+    try {
+      storage.run("request", () => r.mount(atom))
+      await Effect.runPromise(Effect.yieldNow)
+
+      assert.deepStrictEqual(stores, ["request"])
     } finally {
       r.dispose()
     }

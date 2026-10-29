@@ -94,6 +94,58 @@ describe("Scheduler", () => {
     assert.deepStrictEqual(order, ["throws", "p0", "p1"])
   })
 
+  it("MixedScheduler re-arms its timer when a task throws", () => {
+    const callbacks: Array<() => void> = []
+    const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation((f: any) => {
+      callbacks.push(f)
+      return {} as any
+    })
+    try {
+      const scheduler = new Scheduler.MixedScheduler().makeDispatcher()
+      const order: Array<string> = []
+
+      scheduler.scheduleTask(() => {
+        throw new Error("boom")
+      }, 0)
+      scheduler.scheduleTask(() => order.push("tail"), 0)
+
+      assert.throws(() => callbacks[0](), "boom")
+      assert.strictEqual(callbacks.length, 2)
+      callbacks[1]()
+
+      assert.deepStrictEqual(order, ["tail"])
+    } finally {
+      setImmediate.mockRestore()
+    }
+  })
+
+  it("on Cloudflare Workers a dropped timer does not stall other dispatchers", async () => {
+    vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" })
+    // A separate module instance reads the user agent when it loads
+    const { MixedScheduler } = await import("../src/Scheduler.ts?workers")
+    vi.unstubAllGlobals()
+    const callbacks: Array<() => void> = []
+    const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation((f: any) => {
+      callbacks.push(f)
+      return {} as any
+    })
+    try {
+      const scheduler = new MixedScheduler()
+      let ran = false
+
+      scheduler.makeDispatcher().scheduleTask(() => {}, 0)
+      scheduler.makeDispatcher().scheduleTask(() => {
+        ran = true
+      }, 0)
+      // The first request's timer is dropped
+      callbacks.slice(1).forEach((f) => f())
+
+      assert.isTrue(ran)
+    } finally {
+      setImmediate.mockRestore()
+    }
+  })
+
   it.effect("orders yielded tasks by priority across fibers", () =>
     Effect.gen(function*() {
       const order: Array<string> = []
