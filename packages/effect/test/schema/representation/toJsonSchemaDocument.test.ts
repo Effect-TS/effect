@@ -750,6 +750,48 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.isTrue(Schema.is(restored)("a"))
     })
 
+    it("keeps values valid when an isConditional branch is an exclusive union of encodings", () => {
+      const branch = Schema.Union([Schema.BigInt, Schema.String], { mode: "oneOf" })
+      for (
+        const schema of [
+          Schema.Json.check(Schema.isConditional(Schema.String, { onTrue: branch })),
+          Schema.Json.check(
+            Schema.isConditional(Schema.String.check(Schema.isPattern(/^a$/i)), {
+              onTrue: Schema.Never,
+              onFalse: branch
+            })
+          )
+        ]
+      ) {
+        assert.isTrue(Schema.is(schema)("1"))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(
+          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)),
+          { patterns: "apply" }
+        )
+        assert.isTrue(Schema.is(restored)("1"))
+      }
+    })
+
+    it("keeps checked Unknown and ObjectKeyword approximate when JSON drops their checks", () => {
+      for (
+        const check of [
+          Schema.isConditional(Schema.String, { onTrue: Schema.Never }),
+          Schema.makeFilter((u: unknown) => typeof u !== "string")
+        ]
+      ) {
+        const schema = Schema.Union([Schema.Unknown.check(check), Schema.Literal("a")], { mode: "oneOf" })
+        assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+        assert.isTrue(Schema.is(restored)("a"))
+      }
+      const objects = Schema.Union([
+        Schema.ObjectKeyword.check(Schema.makeFilter((u: object) => Array.isArray(u))),
+        Schema.Struct({})
+      ], { mode: "oneOf" })
+      assert.isTrue(Schema.is(Schema.toCodecJson(objects))({}))
+      assert.isUndefined(Schema.toJsonSchemaDocument(objects).schema.oneOf)
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
