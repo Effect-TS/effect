@@ -538,7 +538,9 @@ export const make: (options: {
             const error = Cause.findErrorOption(admitted.cause)
             if (error._tag === "None") return yield* Effect.failCause(admitted.cause)
             if (error.value.reason._tag !== "CircuitBreakerStoreError") {
-              return onRejection === "allow" ? yield* restore(self) : yield* Effect.failCause(admitted.cause)
+              return onRejection === "allow" && !Cause.hasDies(admitted.cause)
+                ? yield* restore(self)
+                : yield* Effect.failCause(admitted.cause)
             }
             if (onStoreError === "fail") return yield* Effect.failCause(admitted.cause)
             yield* reportUnhandled("CircuitBreaker store unavailable, running the call unrecorded", admitted.cause)
