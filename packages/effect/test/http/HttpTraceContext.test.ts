@@ -67,10 +67,10 @@ describe("HttpTraceContext", () => {
 
     it("reads the sampled bit from W3C trace flags", () => {
       assertSampled({ traceparent: `00-${traceId}-${spanId}-02` }, false)
-      assertSampled({ traceparent: `00-${traceId}-${spanId}-FF` }, true)
+      assertSampled({ traceparent: `00-${traceId}-${spanId}-ff` }, true)
     })
 
-    it.each(["1", "001", "0g"])("rejects malformed W3C trace flags: %j", (flags) => {
+    it.each(["1", "001", "0g", "FF"])("rejects malformed W3C trace flags: %j", (flags) => {
       assertNone(HttpTraceContext.fromHeaders(Headers.fromInput({ traceparent: `00-${traceId}-${spanId}-${flags}` })))
     })
 
