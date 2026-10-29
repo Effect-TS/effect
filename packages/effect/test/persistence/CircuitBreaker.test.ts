@@ -104,6 +104,29 @@ describe("CircuitBreaker", () => {
       }))))
   })
 
+  describe("onRejection", () => {
+    it.effect("allow: a rejection alongside an admit defect still dies without running the call", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        let ran = false
+        const exit = yield* Effect.sync(() => {
+          ran = true
+        }).pipe(breaker.execute({ key: "admit-defect", onRejection: "allow" }), Effect.exit)
+
+        assert.isFalse(ran)
+        assert.isTrue(causeOf(exit).reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "bug"))
+      }).pipe(Effect.provide(memoryStoreWith({
+        admit: (key) =>
+          Effect.failCause(Cause.combine(
+            Cause.fail(new CircuitBreaker.CircuitBreakerError({ reason: new CircuitBreaker.CircuitHalfOpen({ key }) })),
+            Cause.die("bug")
+          ))
+      }))))
+  })
+
   describe("classify", () => {
     it.effect("a classifier defect records Ignored and the call dies with the combined cause", () =>
       Effect.gen(function*() {
