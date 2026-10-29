@@ -112,6 +112,7 @@ const hostError = (input: unknown, message: string): Result.Result<never, NetAdd
   Result.fail(new NetAddress.NetAddressError({ input, message }))
 
 const asciiName = /^[a-z0-9_.-]*$/i
+const nonAscii = /[\u0080-\uffff]/g
 const labelPattern = /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$/
 const numericLabel = /^(?:\d+|0x[0-9a-f]*)$/
 
@@ -136,11 +137,9 @@ const validateDomainName = (name: string): string | undefined => {
 
 const toAsciiDomainName = (input: string): string | undefined => {
   if (asciiName.test(input)) return input.toLowerCase()
-  // Check the composed form, so that a decomposed character such as `=\u0338`
-  // is read as `≠`
-  for (const character of input.normalize("NFC")) {
-    if (character.charCodeAt(0) < 0x80 && !asciiName.test(character)) return undefined
-  }
+  // Check the ASCII characters of the composed form, so that a decomposed
+  // character such as `=\u0338` is read as `≠`
+  if (!asciiName.test(input.normalize("NFC").replace(nonAscii, ""))) return undefined
   try {
     return new URL(`http://${input}`).hostname
   } catch {
