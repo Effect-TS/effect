@@ -291,8 +291,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     spanAttributes: options.spanAttributes,
     acquireConnection: (restore) => restore(transactionAcquirer!),
     // Unlike the client's own, a provided statement isn't fixed, so it isn't prepared.
-    begin: (conn, statement) =>
-      statement === undefined ? control(conn, beginTransaction) : conn.executeUnprepared(statement, [], undefined),
+    begin: (conn, statement) => statement === undefined ? control(conn, beginTransaction) : unprepared(conn, statement),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => cleanup(conn, releaseSavepoint(`effect_sql_${id}`))
