@@ -1,4 +1,6 @@
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import type * as FileSystem from "../FileSystem.ts"
@@ -725,6 +727,19 @@ const walk = Effect.fnUntraced(function*(
   const release = Effect.sync(() => {
     slots++
   })
+  // Fails the whole walk as soon as any forked walk fails, even while its
+  // parent is still walking another subdirectory inline
+  const failed = Deferred.makeUnsafe<never, PlatformError>()
+  const fork = (walk: Effect.Effect<void, PlatformError>) =>
+    Effect.forkChild(Effect.ensuring(
+      Effect.onError(walk, (cause) =>
+        Effect.sync(() => {
+          if (!Cause.hasInterruptsOnly(cause)) {
+            Deferred.doneUnsafe(failed, Effect.failCause(cause))
+          }
+        })),
+      release
+    ))
   const directory = Effect.fnUntraced(function*(
     relative: string,
     states: States,
@@ -760,7 +775,7 @@ const walk = Effect.fnUntraced(function*(
         const walk = directory(child.relative, child.next, child.excluded, listing.named, childOut)
         if (slots > 0) {
           slots--
-          fibers.push(yield* Effect.forkChild(Effect.ensuring(walk, release)))
+          fibers.push(yield* fork(walk))
         } else {
           yield* walk
         }
@@ -786,6 +801,7 @@ const walk = Effect.fnUntraced(function*(
   })
 
   const out: Array<string> = []
-  yield* directory("", compiled.initial, excludes.initial, true, out)
+  // The losing walk is interrupted along with every fiber it forked
+  yield* Effect.raceFirst(directory("", compiled.initial, excludes.initial, true, out), Deferred.await(failed))
   return out
 })
