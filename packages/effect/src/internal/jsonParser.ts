@@ -40,10 +40,10 @@ type Frame =
   | { readonly object: false; readonly value: Array<unknown>; first: boolean }
 
 const set = (object: Record<string, unknown>, key: string, value: unknown): void => {
-  // Assignment would set the prototype, so `__proto__` is defined as own data like
-  // JSON.parse does. Unlike JSON.parse, assignment runs any other accessor added to
-  // Object.prototype; json5 makes the same trade for speed.
-  if (key === "__proto__") {
+  // Members are own data properties, as with JSON.parse. Assignment creates one unless
+  // the key is inherited (`__proto__`, `constructor`, added accessors, ...), where it
+  // could run a setter or throw, so inherited keys are defined directly.
+  if (key in Object.prototype) {
     Object.defineProperty(object, key, { value, writable: true, enumerable: true, configurable: true })
   } else object[key] = value
 }
