@@ -4,7 +4,7 @@
  * This module opens `node:net` or `node:tls` connections, or wraps existing
  * Node `Duplex` streams, and presents them as `Socket.Socket` values, socket
  * channels, or layers. It also exposes the `NetSocket` service tag for the
- * underlying Node socket. The `ws` package is re-exported from `NodeWS`.
+ * underlying Node socket.
  *
  * @stability unstable
  * @since 4.0.0
