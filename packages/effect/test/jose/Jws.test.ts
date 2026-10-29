@@ -88,20 +88,39 @@ it.effect("preserves extension headers when signing, verifying, and resolving a 
 
 it.effect("interoperates with jose for every supported algorithm and carries the key id", () =>
   Effect.gen(function*() {
-    for (const algorithm of ["HS256", "RS256", "PS256", "ES256", "EdDSA"] as const) {
+    for (
+      const algorithm of [
+        "HS256",
+        "HS384",
+        "HS512",
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EdDSA"
+      ] as const
+    ) {
       let signingKey: Jwk.SigningKey
       let verificationKey: Jwk.VerificationKey
       let theirKey: Awaited<ReturnType<typeof jose.importJWK>>
-      if (algorithm === "HS256") {
-        const k = new Uint8Array(32).fill(1)
-        const jwk = Redacted.make({ kty: "oct", k: jose.base64url.encode(k), kid: "k1" } satisfies Jwk.SecretJwk)
-        signingKey = verificationKey = yield* Jwk.importSecret(jwk, "HS256")
-        theirKey = k
+      let theirSigningKey: Awaited<ReturnType<typeof jose.importJWK>>
+      if (algorithm === "HS256" || algorithm === "HS384" || algorithm === "HS512") {
+        const jwk = yield* Jwk.generateSecret(algorithm, { kid: "k1" })
+        signingKey = verificationKey = yield* Jwk.importSecret(jwk, algorithm)
+        theirSigningKey = theirKey = jose.base64url.decode(Redacted.value(jwk).k)
       } else {
         const pair = yield* Jwk.generateKeyPair({ algorithm, kid: "k1" })
         signingKey = yield* Jwk.importPrivate(pair.privateKey, algorithm)
         verificationKey = yield* Jwk.importPublic(pair.publicKey, algorithm)
         theirKey = yield* Effect.promise(() => jose.importJWK(pair.publicKey as unknown as jose.JWK, algorithm))
+        theirSigningKey = yield* Effect.promise(() =>
+          jose.importJWK(Redacted.value(pair.privateKey) as unknown as jose.JWK, algorithm)
+        )
       }
 
       const ours = yield* Jws.sign(utf8("hello"), signingKey, { typ: "JOSE" })
@@ -110,9 +129,19 @@ it.effect("interoperates with jose for every supported algorithm and carries the
       // `kid` comes from the key, `alg` from its algorithm.
       assert.deepStrictEqual(theirs.protectedHeader, { alg: algorithm, kid: "k1", typ: "JOSE" })
 
-      const verified = yield* Jws.verify(ours, verificationKey)
+      const theirToken = yield* Effect.promise(() =>
+        new jose.CompactSign(utf8("hello")).setProtectedHeader({ alg: algorithm, kid: "k1" }).sign(theirSigningKey)
+      )
+      const verified = yield* Jws.verify(theirToken, verificationKey)
       assert.strictEqual(text(verified.payload), "hello")
       assert.strictEqual(verified.protectedHeader.kid, "k1")
+      if (verificationKey._tag === "PublicKey") {
+        const resolved = yield* Jws.verifyWithKeySet(theirToken, { algorithms: [verificationKey.algorithm] }).pipe(
+          Effect.provide(Jwks.layerLocal({ keys: [verificationKey.jwk] }))
+        )
+        assert.deepStrictEqual(resolved.payload, verified.payload)
+        assert.strictEqual(resolved.key.algorithm, algorithm)
+      }
     }
   }).pipe(Effect.provide(layer)))
 
@@ -185,12 +214,16 @@ it.effect("resolves the verification key from the Jwks service by algorithm and 
       "AlgorithmNotAllowed"
     )
     // Symmetric tokens never resolve through a public key set.
-    const hmac = yield* Jwk.importSecret(Redacted.make(rfc7515.hs256.jwk), "HS256")
-    const symmetric = yield* Jws.sign(utf8("payload"), hmac)
-    assertReason(
-      yield* Jws.verifyWithKeySet(symmetric, { algorithms: ["ES256"] }).pipe(Effect.provide(keySet), Effect.flip),
-      "AlgorithmNotAllowed"
-    )
+    for (const algorithm of ["HS256", "HS384", "HS512"] as const) {
+      const hmac = yield* Jwk.importSecret(Redacted.make(rfc7515.hs256.jwk), algorithm)
+      const symmetric = yield* Jws.sign(utf8("payload"), hmac)
+      assertReason(
+        yield* Jws.verifyWithKeySet(symmetric, {
+          algorithms: [algorithm] as unknown as ReadonlyArray<Jwk.AsymmetricAlgorithm>
+        }).pipe(Effect.provide(keySet), Effect.flip),
+        "AlgorithmNotAllowed"
+      )
+    }
   }).pipe(Effect.provide(layer)))
 
 it.effect("never exposes crypto backend diagnostics", () =>

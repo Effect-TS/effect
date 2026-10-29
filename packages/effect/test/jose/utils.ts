@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { Aead, Mac, SecureRandom, Signature } from "effect/crypto"
+import { Aead, Digest, Mac, SecureRandom, Signature } from "effect/crypto"
 import * as Base64Url from "effect/encoding/Base64Url"
 import type { Jwk } from "effect/jose"
 import * as JoseError from "effect/jose/JoseError"
@@ -9,6 +9,7 @@ import type * as Schema from "effect/Schema"
 
 export const layer = Layer.mergeAll(
   Aead.layerWebCrypto,
+  Digest.layerWebCrypto,
   Mac.layerWebCrypto,
   Signature.layerWebCrypto
 ).pipe(Layer.provideMerge(SecureRandom.layerWebCrypto))

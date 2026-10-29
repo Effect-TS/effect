@@ -7,7 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import { Jwks } from "effect/jose"
+import { Jwk, Jwks } from "effect/jose"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -20,20 +20,29 @@ const url = "https://issuer.example/keys"
 
 it.effect("selects a unique local key by algorithm, kid, and metadata", () =>
   Effect.gen(function*() {
+    const { publicKey: p384 } = yield* Jwk.generateKeyPair({ algorithm: "ES384", kid: "ec" })
+    const { publicKey: p521 } = yield* Jwk.generateKeyPair({ algorithm: "ES512", kid: "ec" })
+    const { alg: _alg384, ...ec384 } = p384
+    const { alg: _alg512, ...ec512 } = p521
     const keySet: Jwks.KeySet = {
       keys: [
         ec,
+        ec384,
+        ec512,
         rsa,
         // Unsupported families and curves are tolerated but never selected.
-        { kty: "EC", crv: "P-384", x: "x", y: "y", kid: "ec" },
+        { kty: "EC", crv: "P-224", x: "x", y: "y", kid: "ec" },
         { kty: "OKP", crv: "X25519", x: "x" }
       ]
     }
+    assert.isTrue(Schema.is(Jwks.KeySet)(keySet))
     const resolver = yield* Jwks.makeLocal(keySet)
 
     const key = yield* resolver.resolve({ algorithm: "ES256", kid: "ec" })
     assert.strictEqual(key.kid, "ec")
     assert.deepStrictEqual(key.jwk, ec)
+    assert.deepStrictEqual((yield* resolver.resolve({ algorithm: "ES384", kid: "ec" })).jwk, ec384)
+    assert.deepStrictEqual((yield* resolver.resolve({ algorithm: "ES512", kid: "ec" })).jwk, ec512)
     assert.strictEqual((yield* resolver.resolve({ algorithm: "RS256" })).kid, "rsa")
 
     // Declared `alg` excludes the key from other algorithms of its family.
@@ -48,7 +57,7 @@ it.effect("selects a unique local key by algorithm, kid, and metadata", () =>
     // Private or symmetric material is never a public key set.
     assert.isFalse(Schema.is(Jwks.KeySet)({ keys: [rfc7515.es256.jwk] }))
     assert.isFalse(Schema.is(Jwks.KeySet)({ keys: [rfc7515.hs256.jwk] }))
-  }))
+  }).pipe(Effect.provide(layer)))
 
 const serve = (handler: () => Effect.Effect<Response>) =>
   Layer.succeed(

@@ -34,6 +34,7 @@ import * as JoseError from "./JoseError.ts"
 import {
   Algorithm,
   type AsymmetricAlgorithm,
+  type HmacAlgorithm,
   type PublicKey,
   type SecretKey,
   type SigningKey,
@@ -123,14 +124,14 @@ export type Requirements = Mac.Mac | Signature.Signature
 
 /**
  * Services required to sign or verify with a key of type `K`: `Mac` for
- * HS256 keys and `Signature` for asymmetric keys. A union of key types
+ * HMAC keys and `Signature` for asymmetric keys. A union of key types
  * requires both.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export type KeyRequirements<K extends SigningKey | VerificationKey> = K extends SecretKey<"HS256"> ? Mac.Mac
+export type KeyRequirements<K extends SigningKey | VerificationKey> = K extends SecretKey<HmacAlgorithm> ? Mac.Mac
   : Signature.Signature
 
 interface Parsed {
@@ -284,7 +285,7 @@ function* verifyGenerator(
  * **Details**
  *
  * The token's `alg` must be in `algorithms`, which is checked before any key
- * lookup. The resolved key's algorithm must match the token's. HS256 tokens
+ * lookup. The resolved key's algorithm must match the token's. HMAC tokens
  * are always rejected.
  *
  * @see {@link verify} for verifying with a known key
@@ -300,7 +301,9 @@ export const verifyWithKeySet = Effect.fnUntraced(function*(
   if (options.algorithms.length === 0) return yield* invalidArgument("algorithms must not be empty")
   const parsed = yield* parse(token)
   const { alg, kid } = parsed.protectedHeader
-  if (alg === "HS256" || !options.algorithms.includes(alg)) return yield* algorithmNotAllowed
+  if (alg === "HS256" || alg === "HS384" || alg === "HS512" || !options.algorithms.includes(alg)) {
+    return yield* algorithmNotAllowed
+  }
   const jwks = yield* Jwks
   const key = yield* jwks.resolve({ algorithm: alg, kid, protectedHeader: parsed.protectedHeader })
   if (key.algorithm !== alg) return yield* algorithmNotAllowed

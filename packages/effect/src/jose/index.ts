@@ -5,9 +5,12 @@
  * Key Sets. `Jws`, `Jwe`, and `Jwt` handle JSON Web Signatures, JSON Web
  * Encryption, and JSON Web Tokens respectively.
  *
- * The supported profile is compact serialization with HS256, RS256, PS256,
- * ES256 (P-256), and EdDSA (Ed25519) signatures, and `dir`/A256GCM encryption.
+ * The supported profile is compact serialization with HS256/384/512,
+ * RS256/384/512, PS256/384/512, ES256/384/512 (P-256/P-384/P-521), and EdDSA
+ * (Ed25519) signatures, and `dir`/A256GCM encryption.
  * Other algorithms and JSON serializations are outside this profile.
+ * `Jwk` also generates symmetric keys, computes JWK thumbprints, and imports
+ * and exports SPKI and PKCS#8 keys in DER or PEM form.
  *
  * Apply an application-specific token-length limit before verification,
  * decryption, or unverified decoding.

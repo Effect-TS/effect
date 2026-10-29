@@ -1,13 +1,17 @@
 import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter, type Scope } from "effect"
-import type { Aead, CryptoError, Mac, SecureRandom, Signature } from "effect/crypto"
+import type { Aead, CryptoError, Digest, Mac, SecureRandom, Signature } from "effect/crypto"
 import type { HttpClient } from "effect/http"
 import { type JoseError, Jwe, Jwk, Jwks, Jws, Jwt } from "effect/jose"
 import { describe, expect, it } from "tstyche"
 
 declare const hmac: Jwk.SecretKey<"HS256">
+declare const hmac384: Jwk.SecretKey<"HS384">
+declare const hmac512: Jwk.SecretKey<"HS512">
 declare const dir: Jwk.SecretKey<"dir">
 declare const privateKey: Jwk.PrivateKey
 declare const publicKey: Jwk.PublicKey
+declare const privateJwk: Jwk.PrivateJwk
+declare const secretJwk: Jwk.SecretJwk
 declare const signingKey: Jwk.SigningKey
 declare const verificationKey: Jwk.VerificationKey
 declare const token: Redacted.Redacted<string>
@@ -44,11 +48,17 @@ describe("Jwk", () => {
     expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "HS256")).type.toBe<
       Effect.Effect<Jwk.SecretKey<"HS256">, JoseError.JoseError>
     >()
+    expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "HS384")).type.toBe<
+      Effect.Effect<Jwk.SecretKey<"HS384">, JoseError.JoseError>
+    >()
+    expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "HS512")).type.toBe<
+      Effect.Effect<Jwk.SecretKey<"HS512">, JoseError.JoseError>
+    >()
     expect(Jwk.importSecret(Redacted.make({ kty: "oct", k: "" }), "dir")).type.toBe<
       Effect.Effect<Jwk.SecretKey<"dir">, JoseError.JoseError>
     >()
-    expect<Jwk.SigningKey>().type.toBe<Jwk.PrivateKey | Jwk.SecretKey<"HS256">>()
-    expect<Jwk.VerificationKey>().type.toBe<Jwk.PublicKey | Jwk.SecretKey<"HS256">>()
+    expect<Jwk.SigningKey>().type.toBe<Jwk.PrivateKey | Jwk.SecretKey<Jwk.HmacAlgorithm>>()
+    expect<Jwk.VerificationKey>().type.toBe<Jwk.PublicKey | Jwk.SecretKey<Jwk.HmacAlgorithm>>()
   })
 
   it("imports and exports without services and never exposes CryptoError", () => {
@@ -66,14 +76,53 @@ describe("Jwk", () => {
     expect(Jwk.generateKeyPair({ algorithm: "ES256" })).type.toBe<
       Effect.Effect<Jwk.KeyPair, JoseError.JoseError, Signature.Signature>
     >()
+    expect(Jwk.generateSecret("HS384")).type.toBe<
+      Effect.Effect<Redacted.Redacted<Jwk.SecretJwk>, never, SecureRandom.SecureRandom>
+    >()
     expect<Extract<JoseError.JoseError, CryptoError.CryptoError>>().type.toBe<never>()
     expect(Jwk.importPublic).type.not.toBeCallableWith({ kty: "EC", crv: "P-256", x: "", y: "" }, "HS256")
+  })
+
+  it("preserves the selected encoding and private-key redaction", () => {
+    expect(Jwk.importSpki("public pem", "ES384")).type.toBe<Effect.Effect<Jwk.PublicKey, JoseError.JoseError>>()
+    expect(Jwk.importPkcs8(Redacted.make("private pem"), "ES384")).type.toBe<
+      Effect.Effect<Jwk.PrivateKey, JoseError.JoseError>
+    >()
+    expect(Jwk.importPkcs8).type.not.toBeCallableWith("private pem", "ES384")
+    expect(Jwk.importPkcs8).type.not.toBeCallableWith(payload, "ES384")
+    expect(Jwk.exportSpki(publicKey)).type.toBe<Effect.Effect<Uint8Array, JoseError.JoseError>>()
+    expect(Jwk.exportSpki(publicKey, { format: "pem" })).type.toBe<Effect.Effect<string, JoseError.JoseError>>()
+    expect(Jwk.exportPkcs8(privateKey)).type.toBe<
+      Effect.Effect<Redacted.Redacted<Uint8Array>, JoseError.JoseError>
+    >()
+    expect(Jwk.exportPkcs8(privateKey, { format: "pem" })).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError>
+    >()
+    const options: { readonly format?: "der" | "pem" | undefined } = {}
+    expect(Jwk.exportSpki(publicKey, options)).type.toBe<Effect.Effect<Uint8Array | string, JoseError.JoseError>>()
+    expect(Jwk.exportPkcs8(privateKey, options)).type.toBe<
+      Effect.Effect<Redacted.Redacted<Uint8Array | string>, JoseError.JoseError>
+    >()
+    expect(Jwk.exportSpki).type.not.toBeCallableWith(privateKey)
+    expect(Jwk.exportPkcs8).type.not.toBeCallableWith(publicKey)
+  })
+
+  it("requires redaction for private and secret JWK thumbprint inputs", () => {
+    expect(Jwk.thumbprint(publicKey)).type.toBe<Effect.Effect<string, JoseError.JoseError, Digest.Digest>>()
+    expect(Jwk.thumbprint).type.toBeCallableWith(privateKey)
+    expect(Jwk.thumbprint).type.toBeCallableWith(hmac512)
+    expect(Jwk.thumbprint).type.toBeCallableWith(Redacted.make(privateJwk))
+    expect(Jwk.thumbprint).type.toBeCallableWith(Redacted.make(secretJwk))
+    expect(Jwk.thumbprint).type.not.toBeCallableWith(privateJwk)
+    expect(Jwk.thumbprint).type.not.toBeCallableWith(secretJwk)
   })
 
   it("exposes the crypto key object", () => {
     expect(publicKey.key).type.toBe<Signature.PublicKey>()
     expect(privateKey.key).type.toBe<Signature.PrivateKey>()
     expect(hmac.key).type.toBe<Mac.Key>()
+    expect(hmac384.key).type.toBe<Mac.Key>()
+    expect(hmac512.key).type.toBe<Mac.Key>()
     expect(dir.key).type.toBe<Aead.Key>()
     expect(publicKey.kid).type.toBe<string | undefined>()
   })
@@ -119,6 +168,10 @@ describe("Jws and Jwe", () => {
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Signature.Signature>
     >()
     expect(Jws.verify(token, hmac)).type.toBe<Effect.Effect<Jws.Verified, JoseError.JoseError, Mac.Mac>>()
+    expect(Jws.sign(payload, hmac384)).type.toBe<
+      Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Mac.Mac>
+    >()
+    expect(Jws.verify(token, hmac512)).type.toBe<Effect.Effect<Jws.Verified, JoseError.JoseError, Mac.Mac>>()
     expect(Jws.sign(payload, signingKey)).type.toBe<
       Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, Jws.Requirements>
     >()
@@ -141,6 +194,8 @@ describe("Jws and Jwe", () => {
       >
     >()
     expect(Jws.verifyWithKeySet).type.not.toBeCallableWith(token, { algorithms: ["HS256"] })
+    expect(Jws.verifyWithKeySet).type.not.toBeCallableWith(token, { algorithms: ["HS384", "HS512"] })
+    expect(Jwe.encrypt).type.not.toBeCallableWith(payload, hmac512)
     expect(Jwe.decrypt(token, dir)).type.toBe<Effect.Effect<Jwe.Decrypted, JoseError.JoseError, Aead.Aead>>()
     expect<Jws.Verified["payload"]>().type.toBe<Uint8Array>()
     expect<Jws.Verified["protectedHeader"]>().type.toBe<Jws.ProtectedHeader>()

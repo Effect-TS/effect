@@ -61,7 +61,7 @@ In v4, functionality that previously lived in separate packages ships inside `ef
 
 ## JOSE
 
-`effect/jose` provides unstable APIs for algorithm-bound JWKs, compact JWS and JWE, schema-typed signed and encrypted JWTs, and local or remote JWKS resolution, built on `effect/crypto`. Signatures use HS256, RS256, PS256, ES256, or EdDSA (Ed25519); encryption uses `dir` with `A256GCM`.
+`effect/jose` provides unstable APIs for algorithm-bound JWKs, compact JWS and JWE, schema-typed signed and encrypted JWTs, and local or remote JWKS resolution, built on `effect/crypto`. Signatures use HS256/384/512, RS256/384/512, PS256/384/512, ES256/384/512 (P-256/P-384/P-521), or EdDSA (Ed25519); encryption uses `dir` with `A256GCM`. `Jwk` also generates symmetric keys, computes JWK thumbprints and thumbprint URIs, and imports and exports SPKI and PKCS#8 keys in DER or PEM form.
 
 Apply an application-specific limit to untrusted token lengths before verification, decryption, or unverified decoding. These APIs decode tokens in memory and do not impose a global token-size limit.
 

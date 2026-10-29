@@ -41,7 +41,8 @@ const UnsupportedJwk = Schema.StructWithRest(
   [Schema.Record(Schema.String, Schema.Unknown)]
 ).check(Schema.makeFilter((jwk) =>
   jwk.kty !== "oct" && jwk.kty !== "RSA" &&
-  (jwk.kty !== "EC" || (jwk.crv !== undefined && jwk.crv !== "P-256")) &&
+  (jwk.kty !== "EC" ||
+    (jwk.crv !== undefined && jwk.crv !== "P-256" && jwk.crv !== "P-384" && jwk.crv !== "P-521")) &&
   (jwk.kty !== "OKP" || (jwk.crv !== undefined && jwk.crv !== "Ed25519"))
 ))
 
@@ -102,8 +103,14 @@ const isPublicJwk = Schema.is(PublicJwk)
 
 const keyTypes: Record<AsymmetricAlgorithm, { readonly kty: string; readonly crv?: string }> = {
   RS256: { kty: "RSA" },
+  RS384: { kty: "RSA" },
+  RS512: { kty: "RSA" },
   PS256: { kty: "RSA" },
+  PS384: { kty: "RSA" },
+  PS512: { kty: "RSA" },
   ES256: { kty: "EC", crv: "P-256" },
+  ES384: { kty: "EC", crv: "P-384" },
+  ES512: { kty: "EC", crv: "P-521" },
   EdDSA: { kty: "OKP", crv: "Ed25519" }
 }
 
