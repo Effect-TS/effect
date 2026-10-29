@@ -346,7 +346,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const [name, structuredContent] of [
                 ["VoidFieldTool", { reply: null, version: 1 }],
                 ["DateFieldTool", { at: "1970-01-01T00:00:00.000Z" }],
-                ["OptionalFieldTool", { note: null }]
+                ["OptionalFieldTool", { note: null }],
+                ["NaNFieldTool", { value: "NaN" }]
               ] as const
             ) {
               it.effect(`should return JSON structured content when ${name} encodes a non-JSON value`, () =>

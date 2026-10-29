@@ -72,6 +72,11 @@ const OptionalFieldTool = Tool.make("OptionalFieldTool", {
   success: Schema.Struct({ note: Schema.optional(Schema.String) })
 })
 
+const NaNFieldTool = Tool.make("NaNFieldTool", {
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ value: Schema.Number })
+})
+
 const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersion: string) => {
   const TestToolkit = Toolkit.make(
     TestTool,
@@ -80,7 +85,8 @@ const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersi
     RequestMetadataTool,
     VoidFieldTool,
     DateFieldTool,
-    OptionalFieldTool
+    OptionalFieldTool,
+    NaNFieldTool
   )
   return McpServer.toolkit(TestToolkit).pipe(
     Layer.provide(TestToolkit.toLayer({
@@ -95,7 +101,8 @@ const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersi
         McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata)),
       VoidFieldTool: () => Effect.succeed({ reply: undefined, version: 1 }),
       DateFieldTool: () => Effect.succeed({ at: new Date(0) }),
-      OptionalFieldTool: () => Effect.succeed({ note: undefined })
+      OptionalFieldTool: () => Effect.succeed({ note: undefined }),
+      NaNFieldTool: () => Effect.succeed({ value: NaN })
     }))
   )
 }
