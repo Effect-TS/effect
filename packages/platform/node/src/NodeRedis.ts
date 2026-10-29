@@ -39,18 +39,21 @@ export class NodeRedis extends Context.Service<NodeRedis, {
   readonly use: <A>(f: (client: NodeRedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
 }>()("@effect/platform-node/NodeRedis") {}
 
-// node-redis cannot destroy a socket that is still connecting, so clients that
-// reconnect get a socket signal that `destroy` aborts.
+// node-redis cannot destroy a socket that is still connecting, so every
+// client gets a socket signal that `destroy` aborts.
+const withSignal = (socket: NodeRedisClientOptions["socket"], signal: AbortSignal) => {
+  // node-redis' TLS option type omits `signal`, which `tls.connect` accepts.
+  const callerSignal = socket && "signal" in socket ? socket.signal : undefined
+  return { ...socket, signal: callerSignal ? AbortSignal.any([callerSignal, signal]) : signal }
+}
+
 const makeSocket = (
   socket: NodeRedisClientOptions["socket"],
   signal: AbortSignal,
   isReady: () => boolean
 ) => {
-  // node-redis' TLS option type omits `signal`, which `tls.connect` accepts.
-  const callerSignal = socket && "signal" in socket ? socket.signal : undefined
   return {
-    ...socket,
-    signal: callerSignal ? AbortSignal.any([callerSignal, signal]) : signal,
+    ...withSignal(socket, signal),
     reconnectStrategy: socket?.reconnectStrategy ?? ((retries, cause) => {
       if (!isReady()) return cause
       if (cause instanceof SocketTimeoutError) return false
@@ -120,63 +123,74 @@ const make = Effect.fnUntraced(function*(
     send: sendWith(client),
     // Reserved connections do not reconnect: a dropped socket fails the
     // in-flight command and the connection leaves the pool.
-    connect: Effect.tryPromise({
-      try: async () => {
-        const connection = client.duplicate({ socket: { ...socket, reconnectStrategy: false } })
+    //
+    // The pool acquires connections uninterruptibly, so `connect` opts back in
+    // to interruption and destroys the connection itself when interrupted.
+    connect: Effect.interruptible(Effect.tryPromise({
+      try: async (signal) => {
+        const abort = new AbortController()
+        const connection = client.duplicate({
+          socket: { ...withSignal(socket, abort.signal), reconnectStrategy: false }
+        })
         connection.on("error", (cause) => {
+          if (abort.signal.aborted) return
           runSync(Effect.logWarning("NodeRedis reserved connection error", cause))
         })
+        // The signal only aborts on interruption, which discards the
+        // connection even if it has already opened.
+        signal.addEventListener("abort", () => destroy(connection, abort), { once: true })
         try {
           await connection.connect()
-          return connection
+          return { connection, abort }
         } catch (cause) {
-          destroy(connection)
+          destroy(connection, abort)
           throw cause
         }
       },
       catch: (cause) => new Redis.RedisError({ cause })
-    }).pipe(
-      Effect.map((connection) => ({
+    })).pipe(
+      Effect.map(({ abort, connection }) => ({
         send: sendWith(connection),
         // `destroy` rejects in-flight commands instead of waiting for their
         // replies like `close` does.
-        close: Effect.sync(() => destroy(connection))
+        close: Effect.sync(() => destroy(connection, abort))
       }))
     ),
     pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
     subscribe: Effect.fnUntraced(function*(channel, onMessage) {
       const terminal = yield* Deferred.make<void, Redis.RedisError>()
       const abort = new AbortController()
-      yield* Effect.acquireRelease(
-        Effect.tryPromise({
-          try: async () => {
-            let subscriberReady = false
-            const subscriber = client.duplicate({ socket: makeSocket(socket, abort.signal, () => subscriberReady) })
-            subscriber.once("ready", () => {
-              subscriberReady = true
-            })
-            subscriber.on("error", (cause) => {
-              if (abort.signal.aborted) return
-              runSync(Effect.logWarning("NodeRedis subscriber error", cause))
-              if (!subscriber.isOpen) {
-                runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
-              }
-            })
-            try {
-              await subscriber.connect()
-              await subscriber.subscribe(channel, (message, channel) => {
-                onMessage({ channel, message })
-              })
-              return subscriber
-            } catch (cause) {
-              destroy(subscriber, abort)
-              throw cause
-            }
-          },
-          catch: (cause) => new Redis.RedisError({ cause })
-        }),
+      let subscriberReady = false
+      // Only creating the subscriber is uninterruptible, so a stalled connection
+      // or `SUBSCRIBE` can be interrupted and the scope closes it.
+      const subscriber = yield* Effect.acquireRelease(
+        Effect.sync(() => client.duplicate({ socket: makeSocket(socket, abort.signal, () => subscriberReady) })),
         (subscriber) => Effect.sync(() => destroy(subscriber, abort))
       )
+      subscriber.once("ready", () => {
+        subscriberReady = true
+      })
+      subscriber.on("error", (cause) => {
+        if (abort.signal.aborted) return
+        runSync(Effect.logWarning("NodeRedis subscriber error", cause))
+        if (!subscriber.isOpen) {
+          runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
+        }
+      })
+      yield* Effect.tryPromise({
+        try: async () => {
+          try {
+            await subscriber.connect()
+            await subscriber.subscribe(channel, (message, channel) => {
+              onMessage({ channel, message })
+            })
+          } catch (cause) {
+            destroy(subscriber, abort)
+            throw cause
+          }
+        },
+        catch: (cause) => new Redis.RedisError({ cause })
+      })
       return Deferred.await(terminal)
     })
   })
@@ -204,10 +218,10 @@ const make = Effect.fnUntraced(function*(
  * node-redis' exponential backoff and stops on socket timeouts.
  *
  * Scope finalization destroys the shared client immediately, failing commands
- * still in flight and aborting any connection attempt in progress. A reserved
- * connection or subscriber that is still connecting delays scope finalization
- * until its connection attempt settles. Run blocking commands on
- * `Redis.reserve` so they do not hold up the shared connection.
+ * still in flight and aborting any connection attempt in progress. Interrupting
+ * `Redis.reserve` or `Redis.subscribe` while its connection is still being
+ * established closes that connection. Run blocking commands on `Redis.reserve`
+ * so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
@@ -230,10 +244,10 @@ export const layer = (
  * node-redis' exponential backoff and stops on socket timeouts.
  *
  * Scope finalization destroys the shared client immediately, failing commands
- * still in flight and aborting any connection attempt in progress. A reserved
- * connection or subscriber that is still connecting delays scope finalization
- * until its connection attempt settles. Run blocking commands on
- * `Redis.reserve` so they do not hold up the shared connection.
+ * still in flight and aborting any connection attempt in progress. Interrupting
+ * `Redis.reserve` or `Redis.subscribe` while its connection is still being
+ * established closes that connection. Run blocking commands on `Redis.reserve`
+ * so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
