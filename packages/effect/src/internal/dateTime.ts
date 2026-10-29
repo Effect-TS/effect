@@ -127,7 +127,7 @@ export const makeZonedProto = (
     enumerable: false,
     writable: true
   })
-  Object.defineProperty(self, "adjustedEpochMillis", {
+  Object.defineProperty(self, "adjustedEpochMilliseconds", {
     value: undefined,
     enumerable: false,
     writable: true
