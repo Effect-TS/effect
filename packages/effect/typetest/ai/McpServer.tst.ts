@@ -209,6 +209,17 @@ describe("McpServer", () => {
     >()
   })
 
+  it("should accept InputRequired as a declared toolkit failure", () => {
+    const toolkit = Toolkit.make(Tool.make("Confirm", { failure: Schema.instanceOf(McpSchema.InputRequired) }))
+    const layer = McpServer.toolkit(toolkit).pipe(
+      Layer.provide(toolkit.toLayer({
+        Confirm: () => Effect.fail(new McpSchema.InputRequired({ requestState: "state" }))
+      }))
+    )
+
+    expect<Layer.Services<typeof layer>>().type.toBe<McpServer.McpServer>()
+  })
+
   describe("resource templates", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     class IdCodec extends Context.Service<IdCodec, { readonly n: number }>()("IdCodec") {}
