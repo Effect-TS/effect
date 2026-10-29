@@ -41,10 +41,11 @@ const annotatePureCalls: esbuild.Plugin = {
 }
 
 /**
- * Bundles a fixture with esbuild and returns the absolute paths of the modules
- * that made it into the output, including modules reached through dynamic
- * imports. Only the output entry of the metafile lists retained modules;
- * `metafile.inputs` is the whole import graph, tree-shaken or not.
+ * Bundles a fixture, given relative to the package directory, with esbuild
+ * and returns the absolute paths of the modules that made it into the output,
+ * including modules reached through dynamic imports. Only the output entry of
+ * the metafile lists retained modules; `metafile.inputs` is the whole import
+ * graph, tree-shaken or not.
  */
 export const bundledModules = async (
   fixture: string,
@@ -52,7 +53,7 @@ export const bundledModules = async (
 ): Promise<ReadonlyArray<string>> => {
   const result = await esbuild.build({
     ...options,
-    entryPoints: [path.join(packageDir, "fixtures", fixture)],
+    entryPoints: [path.join(packageDir, fixture)],
     bundle: true,
     write: false,
     metafile: true,

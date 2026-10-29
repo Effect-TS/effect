@@ -541,6 +541,84 @@ it.live("streams form data files without buffering the whole body", () => {
   )
 })
 
+it.live("returns TransportError when a form data file stream cannot be created", () => {
+  const server = Http.createServer((request, response) => {
+    request.resume()
+    request.on("end", () => response.end())
+  })
+  const layer = HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+  )
+  return Effect.gen(function*() {
+    class ThrowingFile extends File {
+      override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+        throw new Error("file stream failed")
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new ThrowingFile(["file contents"], "notes.txt"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(
+      Effect.timeout("2 seconds"),
+      Effect.flip
+    )
+    assert(error._tag === "HttpClientError", `Expected HttpClientError, got ${error._tag}`)
+    assert.strictEqual(error.reason._tag, "TransportError")
+  }).pipe(
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(layer)
+  )
+})
+
+it.live("reads ahead a bounded amount of a backpressured form data file and releases it on interruption", () => {
+  const server = Http.createServer((request) => request.pause())
+  const layer = HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+  )
+  return Effect.gen(function*() {
+    const chunkSize = 64 * 1024
+    const fileSize = 64 * 1024 * 1024
+    const streams: Array<ReadableStream<Uint8Array<ArrayBuffer>>> = []
+    let read = 0
+    let cancelled = false
+    class LargeFile extends File {
+      override stream() {
+        const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+          pull(controller) {
+            if (read === fileSize) return controller.close()
+            read += chunkSize
+            controller.enqueue(new Uint8Array(chunkSize))
+          },
+          cancel() {
+            cancelled = true
+          }
+        })
+        streams.push(stream)
+        return stream
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new LargeFile([], "large.bin"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(
+      Effect.timeout("1 second"),
+      Effect.flip
+    )
+    assert.strictEqual(error._tag, "TimeoutError")
+    // The server never reads the upload, so only socket buffers should fill.
+    assert.isBelow(read, fileSize / 4)
+    yield* Effect.sync(() => streams[0].locked).pipe(
+      Effect.repeat({ while: (locked) => locked, schedule: Schedule.spaced("10 millis") }),
+      Effect.timeout("1 second")
+    )
+    assert.strictEqual(streams.length, 1)
+    assert.isTrue(cancelled)
+  }).pipe(
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(layer)
+  )
+})
+
 it.live.each(["response completion", "response interruption", "upload failure"] as const)(
   "releases an unfinished keep-alive upload after %s before layer teardown",
   (mode) =>
