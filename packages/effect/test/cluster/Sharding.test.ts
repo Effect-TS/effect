@@ -4490,25 +4490,31 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       assert.strictEqual(history.length, 2, "the unhealthy runner should be published immediately")
     }).pipe(Effect.scoped))
 
+  const reregister = Effect.fnUntraced(function*(config: Partial<ShardingConfig.ShardingConfig["Service"]>) {
+    const other = (groups: Array<string>, weight: number) =>
+      Runner.make({ address: RunnerAddress.make("localhost", 5001), groups, weight })
+    const membership: Array<readonly [Runner.Runner, boolean]> = [[other(["other"], 1), true]]
+    const { advance, history } = yield* buildRunner(membership, config)
+    const owned = () => history[history.length - 1].owned.split(",").length
+    yield* advance(1000)
+    assert.strictEqual(owned(), shards.length)
+
+    membership[0] = [other(["default", "other"], 1), true]
+    yield* advance(1000)
+    const withGroup = owned()
+    assert.isBelow(withGroup, shards.length)
+
+    membership[0] = [other(["default", "other"], 2), true]
+    yield* advance(1000)
+    assert.isBelow(owned(), withGroup)
+  }, Effect.scoped)
+
   it.effect("updates assignments when a runner re-registers with new groups or weight", () =>
     Effect.gen(function*() {
-      const other = (groups: Array<string>, weight: number) =>
-        Runner.make({ address: RunnerAddress.make("localhost", 5001), groups, weight })
-      const membership: Array<readonly [Runner.Runner, boolean]> = [[other(["other"], 1), true]]
-      const { advance, history } = yield* buildRunner(membership)
-      const owned = () => history[history.length - 1].owned.split(",").length
-      yield* advance(1000)
-      assert.strictEqual(owned(), shards.length)
-
-      membership[0] = [other(["default", "other"], 1), true]
-      yield* advance(1000)
-      const withGroup = owned()
-      assert.isBelow(withGroup, shards.length)
-
-      membership[0] = [other(["default", "other"], 2), true]
-      yield* advance(1000)
-      assert.isBelow(owned(), withGroup)
-    }).pipe(Effect.scoped))
+      yield* reregister({})
+      // replacing a published runner is not held back by the join debounce
+      yield* reregister({ runnerJoinDebounce: 2000 })
+    }))
 
   // Runners A (1234) and Z (1240, assigned no shard groups) start together,
   // then B, C and D join 1.5 seconds apart. Every runner shares membership and
