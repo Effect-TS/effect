@@ -25,11 +25,13 @@ export const SENTINELS_ANNOTATION_KEY = "~sentinels"
 export const CONSTRUCTOR_ANNOTATION_KEY = "~constructor"
 
 /**
- * Marks the Json fallback of an opaque declaration, which accepts more than the declaration.
+ * Marks a JSON lowering that accepts more than its source, such as the Json
+ * fallback of an opaque declaration or of a checked Unknown whose checks JSON
+ * Schema cannot carry.
  *
  * @internal
  */
-export const OPAQUE_JSON_ANNOTATION_KEY = "~opaqueJson"
+export const APPROXIMATE_JSON_ANNOTATION_KEY = "~approximateJson"
 
 /** @internal */
 export const jsonSchemaAnnotationKeys = [
@@ -68,7 +70,7 @@ export const getExpected = memoize((ast: SchemaAST.AST): string => {
 export const annotationExcludedKeys = new Set([
   SENTINELS_ANNOTATION_KEY,
   STRUCTURAL_ANNOTATION_KEY,
-  OPAQUE_JSON_ANNOTATION_KEY,
+  APPROXIMATE_JSON_ANNOTATION_KEY,
   "representation",
   "arbitraryConstraint",
   "toJsonSchema",

@@ -5321,17 +5321,22 @@ export const unknownToJson = new Link(
 )
 
 /** @internal */
-export const opaqueToJson = new Link(
-  annotate(Json, { [InternalAnnotations.OPAQUE_JSON_ANNOTATION_KEY]: true }),
+export const approximateToJson = new Link(
+  annotate(Json, { [InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY]: true }),
   SchemaTransformation.passthrough()
 )
 
+const jsonObjectOrArray = new Union([
+  new Arrays(false, [], [Json]),
+  new Objects([], [new IndexSignature(string, Json)])
+])
+
 /** @internal */
-export const objectKeywordToJson = new Link(
-  new Union([
-    new Arrays(false, [], [Json]),
-    new Objects([], [new IndexSignature(string, Json)])
-  ]),
+export const objectKeywordToJson = new Link(jsonObjectOrArray, SchemaTransformation.passthrough())
+
+/** @internal */
+export const approximateObjectKeywordToJson = new Link(
+  annotate(jsonObjectOrArray, { [InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY]: true }),
   SchemaTransformation.passthrough()
 )
 
