@@ -119,18 +119,16 @@ export const make: (
     exporter.push(makeOtlpSpan(span))
   }
 
-  // A span is kept when its trace ID's randomness reaches the threshold. A ratio
-  // of 1 makes the threshold 0, which skips the check.
-  const threshold = (1 - (options.sampler?.ratio ?? 1)) * 2 ** 52
+  const threshold = samplingThreshold(options.sampler?.ratio ?? 1)
   const parentBased = options.sampler?.parentBased ?? true
 
   return Tracer.make({
     span(options) {
-      const span = new SpanImpl(options, exportFn)
-      if (threshold > 0 && span.sampled && !(parentBased && Option.isSome(span.parent))) {
-        span.sampled = traceIdRandomness(span.traceId) >= threshold
+      if (threshold <= 0 || !options.sampled || (parentBased && Option.isSome(options.parent))) {
+        return new SpanImpl(options, exportFn)
       }
-      return span
+      const traceId = Option.isSome(options.parent) ? options.parent.value.traceId : Hex.random(32)
+      return new SpanImpl({ ...options, traceId, sampled: isTraceSampled(traceId, threshold) }, exportFn)
     },
     context: options.context ?
       function(primitive, fiber) {
@@ -289,9 +287,15 @@ export const layerFromConfig = (options?: {
 // internal
 
 // Like the OpenTelemetry probability sampler, a trace is kept when the last 56
-// bits of its ID reach a threshold, so every span of a trace gets the same
-// decision. This reads the top 52 of those bits, which a double holds exactly.
-const traceIdRandomness = (traceId: string): number => parseInt(traceId.slice(-14, -1), 16)
+// bits of its ID reach `(1 - ratio) * 2^56`, so every span of a trace gets the
+// same decision. Only the top 52 of those bits are compared, which a double
+// holds exactly. Trace IDs that are not hex are kept.
+const samplingThreshold = (ratio: number): number => (1 - ratio) * 2 ** 52
+
+const isTraceSampled = (traceId: string, threshold: number): boolean => {
+  const randomness = Number(`0x${traceId.slice(-14, -1)}`)
+  return Number.isNaN(randomness) || randomness >= threshold
+}
 
 class SpanImpl implements Tracer.Span {
   readonly _tag = "Span"
@@ -300,7 +304,7 @@ class SpanImpl implements Tracer.Span {
   readonly annotations: Context.Context<never>
   readonly links: Array<Tracer.SpanLink>
   readonly kind: Tracer.SpanKind
-  sampled: boolean
+  readonly sampled: boolean
   readonly export: (span: SpanImpl) => void
   status: Tracer.SpanStatus
   _traceId: string | undefined = undefined
@@ -318,6 +322,7 @@ class SpanImpl implements Tracer.Span {
       readonly startTime: bigint
       readonly kind: Tracer.SpanKind
       readonly sampled: boolean
+      readonly traceId?: string | undefined
     },
     exportFn: (span: SpanImpl) => void
   ) {
@@ -327,6 +332,7 @@ class SpanImpl implements Tracer.Span {
     this.links = options.links
     this.kind = options.kind
     this.sampled = options.sampled
+    this._traceId = options.traceId
     this.export = exportFn
     this.status = {
       _tag: "Started",
