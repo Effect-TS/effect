@@ -379,7 +379,7 @@ export const make: (options: {
         let cursor: string | undefined
         for (let page = 0; page < limits.maxPages; page++) {
           const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
-          if (result[kind].length > limits.maxItems - items.length) {
+          if (items.length + result[kind].length > limits.maxItems) {
             return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
           }
           for (const item of result[kind]) items.push(item)
@@ -579,7 +579,7 @@ export function toolkit(
     const complete = config.resultMode === "complete"
     const success = complete ? McpSchema.CallToolResult : Schema.String
     const failureMode = config.failureMode ?? "error"
-    const tools: Array<RemoteTool<"text" | "complete", Tool.FailureMode, unknown>> = []
+    const tools: Array<Tool.Any> = []
     const handlers: Record<
       string,
       (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
@@ -597,7 +597,7 @@ export function toolkit(
         failure: McpClientError,
         toModelOutput: complete ? toModelOutput : undefined
       }
-      // Narrowing gives each tool a single failure mode, matching the distributive RemoteTool.
+      // Each branch narrows `failureMode`, so the tool matches one member of the distributive `RemoteTool`.
       let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = (
         failureMode === "return"
           ? Tool.dynamic(name, { ...spec, failureMode })
@@ -1109,18 +1109,16 @@ const limitError = (description: string) => fail(new LimitError({ description })
 
 const resolveDiscoveryLimits = (
   limits: DiscoveryLimits | undefined,
-  defaults: { readonly maxPages: number; readonly maxItems: number }
-): Effect.Effect<{ readonly maxPages: number; readonly maxItems: number }, McpClientError> => {
+  defaults: typeof DEFAULT_DISCOVERY_LIMITS
+): Effect.Effect<typeof DEFAULT_DISCOVERY_LIMITS, McpClientError> => {
   const maxPages = limits?.maxPages ?? defaults.maxPages
   const maxItems = limits?.maxItems ?? defaults.maxItems
-  return isLimit(maxPages) && isLimit(maxItems)
+  return Number.isSafeInteger(maxPages) && maxPages >= 0 && Number.isSafeInteger(maxItems) && maxItems >= 0
     ? Effect.succeed({ maxPages, maxItems })
     : Effect.fail(
       fail(new ConfigurationError({ description: "MCP discovery limits must be nonnegative safe integers" }))
     )
 }
-
-const isLimit = (n: number) => Number.isSafeInteger(n) && n >= 0
 
 const validationError = (cause: Schema.SchemaError) =>
   fail(new ValidationError({ description: "Invalid MCP payload", cause }))
