@@ -594,6 +594,20 @@ describe("DateTime", () => {
       deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
     })
 
+    it("stay out of the enumerable shape when written through the public fields", () => {
+      // e.g. by another copy of effect that shares the instance
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const zoned = DateTime.makeZonedUnsafe(utc, { timeZone: "Europe/London" })
+      const parts = DateTime.toPartsUtc(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      utc.partsUtc = parts
+      zoned.partsUtc = parts
+      populate(utc)
+      populate(zoned)
+      strictEqual(DateTime.toPartsUtc(zoned), parts)
+      deepStrictEqual(Object.keys(utc), ["epochMilliseconds"])
+      deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
+    })
+
     it("do not affect equality with a fresh instance", () => {
       const make = () => DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", { timeZone: "Europe/London" })
       const populated = make()
