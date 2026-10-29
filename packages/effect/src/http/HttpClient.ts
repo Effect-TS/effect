@@ -1385,11 +1385,13 @@ export declare namespace WithCircuitBreaker {
     readonly key?: string | ((request: HttpClientRequest.HttpClientRequest) => string) | undefined
     /**
      * Classifies the `Exit` of each request that the breaker admitted.
+     * `context.probe` is `true` when the request is the HalfOpen probe.
      * Defaults to `circuitBreakerClassifier`.
      */
     readonly classify?:
       | ((
-        exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
+        exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>,
+        context: { readonly probe: boolean }
       ) => CircuitBreaker.Outcome | Effect.Effect<CircuitBreaker.Outcome, never, R2>)
       | undefined
   }
