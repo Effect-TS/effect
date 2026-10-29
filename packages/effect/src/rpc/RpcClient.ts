@@ -319,15 +319,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   const entries = new Map<RequestId, ClientEntry>()
 
   let isShutdown = false
-  // Interrupts the calls that are not tracked in `entries` when the client closes.
-  const shutdown = Deferred.makeUnsafe<never>()
   yield* Scope.addFinalizer(
     scope,
     Effect.withFiber((parent) => {
       isShutdown = true
-      const exit = Exit.interrupt(parent.id)
-      Deferred.doneUnsafe(shutdown, exit)
-      return clearEntries(exit)
+      return clearEntries(Exit.interrupt(parent.id))
     })
   )
 
@@ -424,18 +420,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           ...(discard ? { discard: true as const } : {})
         }
       )
-      if (discard && !supportsReplies) {
-        // nothing will acknowledge the call, so it completes with its send
-        return send.pipe(
-          span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
-          Effect.asVoid,
-          Effect.raceFirst(Deferred.await(shutdown))
-        )
-      }
+      // A protocol without replies cannot acknowledge a discarded call, so the
+      // call is acknowledged up front and completes once it has been sent.
+      const ackedBySend = discard && !supportsReplies
       let fiber: Fiber.Fiber<any, any>
       return Effect.onInterrupt(
         Effect.callback<any, any>((resume) => {
-          let acked = false
+          let acked = ackedBySend
           const entry: ClientEntry = {
             _tag: "Effect",
             rpc,
@@ -467,13 +458,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               entries.delete(id)
               return resume(exit)
             } else if (acked) {
+              entries.delete(id)
               return resume(Exit.void)
             }
           })
         }),
         (interruptors) => {
           entries.delete(id)
-          return Effect.andThen(
+          // there is no reply to cancel for a call acknowledged by its send
+          return ackedBySend ? Fiber.interrupt(fiber) : Effect.andThen(
             Fiber.interrupt(fiber),
             sendInterrupt(id, Array.from(interruptors), context)
           )
