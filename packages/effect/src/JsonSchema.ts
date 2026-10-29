@@ -745,8 +745,10 @@ function transformSchema(
 
 /** @internal */
 export function rewriteRefs(schema: JsonSchema, rewrite: ($ref: string) => string): JsonSchema {
-  return transformSchema(schema, (schema) => {
-    rewriteSchemaRef(schema, rewrite)
+  // References inside a schema resource resolve against that resource, so only rewrite the enclosing document.
+  const isRootResource = createsResource(schema.$id)
+  return transformSchema(schema, (schema, inEmbeddedResource) => {
+    if (!isRootResource && !inEmbeddedResource) rewriteSchemaRef(schema, rewrite)
   }) as JsonSchema
 }
 

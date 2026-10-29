@@ -249,9 +249,12 @@ function compileJsonSchema(
       }
     }
   }
-  // Alias definitions that share an identifier and compile to the same schema. Repeat until no new alias is found,
-  // since aliasing a definition can make the definitions referencing it equal too. Definitions keyed by their own
-  // identifier come first, so they stay canonical over suffixed keys.
+  // Alias definitions that share an identifier and compile to the same schema. Members of a group start out
+  // equivalent and are split by their schemas, with references rewritten to each class representative, until no
+  // class splits; this also merges equivalent recursive definitions. Definitions keyed by their own identifier come
+  // first, so they stay canonical over suffixed keys.
+  const fallbackGroups = new Map<string, Array<string>>()
+  const identifierGroups = new Map<string, Array<string>>()
   const aliasCandidates = Arr.sort(
     referenceKeys,
     Order.mapInput(
@@ -259,37 +262,39 @@ function compileJsonSchema(
       (key: string) => InternalToRepresentation.getReferenceIdentifier(references[key]) !== key
     )
   )
-  let aliased = true
-  while (aliased) {
-    aliased = false
-    const fallbackDefinitions = new Map<string, Array<string>>()
-    const identifierDefinitions = new Map<string, Array<string>>()
-    const finalized = new Map<string, JsonSchema.JsonSchema>()
-    const getFinalized = (key: string) => {
-      let schema = finalized.get(key)
-      if (schema === undefined) {
-        schema = finalizeJsonSchema(compiledDefinitions.get(key)!.schema)
-        finalized.set(key, schema)
-      }
-      return schema
+  for (const key of aliasCandidates) {
+    const representation = references[key]
+    const fallback = getIdentifierFallback(representation)
+    const identifier = fallback ?? InternalToRepresentation.getReferenceIdentifier(representation)
+    if (identifier === undefined) continue
+    const groups = fallback === undefined ? identifierGroups : fallbackGroups
+    const members = groups.get(identifier)
+    if (members === undefined) groups.set(identifier, [key])
+    else members.push(key)
+  }
+  let classes = [...fallbackGroups.values(), ...identifierGroups.values()].filter((members) => members.length > 1)
+  let split = true
+  while (split) {
+    split = false
+    definitionAliases.clear()
+    for (const [canonical, ...members] of classes) {
+      for (const member of members) definitionAliases.set(member, canonical)
     }
-    for (const key of aliasCandidates) {
-      if (definitionAliases.has(key)) continue
-      const representation = references[key]
-      const fallback = getIdentifierFallback(representation)
-      const identifier = fallback ?? InternalToRepresentation.getReferenceIdentifier(representation)
-      if (identifier === undefined) continue
-      const definitions = fallback === undefined ? identifierDefinitions : fallbackDefinitions
-      const candidates = definitions.get(identifier)
-      const match = candidates?.find((candidate) => Equal.equals(getFinalized(candidate), getFinalized(key)))
-      if (match === undefined) {
-        if (candidates === undefined) definitions.set(identifier, [key])
-        else candidates.push(key)
-      } else {
-        definitionAliases.set(key, match)
-        aliased = true
+    const refined: Array<Array<string>> = []
+    for (const members of classes) {
+      const parts: Array<{ readonly schema: JsonSchema.JsonSchema; readonly members: Array<string> }> = []
+      for (const key of members) {
+        const schema = finalizeJsonSchema(compiledDefinitions.get(key)!.schema)
+        const part = parts.find((part) => Equal.equals(part.schema, schema))
+        if (part === undefined) parts.push({ schema, members: [key] })
+        else part.members.push(key)
+      }
+      if (parts.length > 1) split = true
+      for (const part of parts) {
+        if (part.members.length > 1) refined.push(part.members)
       }
     }
+    classes = refined
   }
   const schemas = Arr.map(compiledSchemas, finalizeJsonSchema)
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
@@ -340,10 +345,10 @@ function compileJsonSchema(
       }
       if (!pointer.startsWith("/$defs/")) return $ref
       const separator = pointer.indexOf("/", 7)
-      let canonical = definitionAliases.get(unescapeToken(pointer.slice(7, separator < 0 ? undefined : separator)))
+      const canonical = definitionAliases.get(
+        unescapeToken(pointer.slice(7, separator < 0 ? undefined : separator))
+      )
       if (canonical === undefined) return $ref
-      // A canonical definition can itself be aliased by a later pass.
-      while (definitionAliases.has(canonical)) canonical = definitionAliases.get(canonical)!
       // URI-encoded slashes separate pointer tokens; only ~1 represents a slash within a token.
       return $ref.replace(
         /^#(?:\/|%2f).*?(?:\/|%2f).*?(?=\/|%2f|$)/i,
