@@ -792,6 +792,29 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.isUndefined(Schema.toJsonSchemaDocument(objects).schema.oneOf)
     })
 
+    for (
+      const [name, member] of [
+        ["Date", Schema.Date],
+        ["a checked Date", Schema.Date.check(Schema.makeFilter((d: Date) => d.getTime() > 0))],
+        ["DateFromString", Schema.DateFromString],
+        ["URL", Schema.URL]
+      ] as const
+    ) {
+      it(`keeps ${name} approximate when decoding rejects some of its JSON encodings`, () => {
+        const schema = Schema.Union([member, Schema.Literal("a")], { mode: "oneOf" })
+        assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+        assert.isTrue(Schema.is(restored)("a"))
+      })
+    }
+
+    it("keeps oneOf when every branch encodes exactly", () => {
+      const schema = Schema.Union([Schema.Finite, Schema.Literal("a")], { mode: "oneOf" })
+      assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
+        oneOf: [{ type: "number" }, { type: "string", enum: ["a"] }]
+      })
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
