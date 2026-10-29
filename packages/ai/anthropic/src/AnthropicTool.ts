@@ -1879,7 +1879,7 @@ export type TextEditorStrReplaceCommand = typeof TextEditorStrReplaceCommand.Typ
  * Used by `text_editor_20241022` and `text_editor_20250124`. Later versions
  * send `insert_text` instead.
  *
- * @see {@link TextEditorInsertTextCommand} for `text_editor_20250429` and `text_editor_20250728`
+ * @see {@link TextEditorInsertTextCommand} for the `insert_text` variant
  *
  * @stability unstable
  * @category schemas
@@ -1910,10 +1910,10 @@ export const TextEditorInsertCommand = Schema.Struct({
 export type TextEditorInsertCommand = typeof TextEditorInsertCommand.Type
 
 /**
- * Inserts text at a specific line number in a file, using the `insert_text`
- * field sent by `text_editor_20250429` and `text_editor_20250728`.
+ * Inserts text at a specific line number in a file. Used by
+ * `text_editor_20250429` and `text_editor_20250728`, which send `insert_text`.
  *
- * @see {@link TextEditorInsertCommand} for `text_editor_20241022` and `text_editor_20250124`
+ * @see {@link TextEditorInsertCommand} for the `new_str` variant
  *
  * @stability unstable
  * @category schemas
@@ -1935,8 +1935,7 @@ export const TextEditorInsertTextCommand = Schema.Struct({
   insert_text: Schema.String
 })
 /**
- * Text editor command payload for inserting text in `text_editor_20250429` and
- * `text_editor_20250728`.
+ * Text editor command payload for inserting text after a specific line number in a file.
  *
  * @stability unstable
  * @category models
