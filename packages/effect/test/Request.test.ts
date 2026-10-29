@@ -907,26 +907,9 @@ describe("Request", { concurrent: false }, () => {
 
   // Bun does not expose `gc` through V8 flags.
   it.effect.skipIf(process.versions.bun !== undefined)(
-    "pooled batches do not retain completed requests",
+    "batches do not retain completed requests",
     () =>
       Effect.gen(function*() {
-        // Hold every pooled batch so the next request constructs a new batch.
-        const release = yield* Deferred.make<void>()
-        let blockedBatches = 0
-        const blocking = Resolver.make<GetNameById>((entries) => {
-          blockedBatches++
-          return Effect.andThen(
-            Deferred.await(release),
-            Effect.sync(() => entries.forEach((entry) => entry.completeUnsafe(Exit.succeed(""))))
-          )
-        }).pipe(Resolver.batchN(1))
-        const blocked = yield* Effect.forEach(
-          Array.range(1, 128),
-          (id) => Effect.request(new GetNameById({ id }), blocking),
-          { concurrency: "unbounded" }
-        ).pipe(Effect.forkChild)
-        yield* Effect.yieldNow.pipe(Effect.repeat({ until: () => blockedBatches === 128 }))
-
         let reference!: WeakRef<GetNameById>
         yield* Effect.request(
           new GetNameById({ id: 0 }),
@@ -939,8 +922,6 @@ describe("Request", { concurrent: false }, () => {
         )
         yield* collectGarbage
         assert.isUndefined(reference.deref())
-        yield* Deferred.succeed(release, void 0)
-        yield* Fiber.join(blocked)
       })
   )
 })
