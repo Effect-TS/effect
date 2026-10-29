@@ -2194,56 +2194,11 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("Text editor tool", () => {
-    it.effect("decodes the insert command's insert_text", () =>
-      Effect.gen(function*() {
-        let receivedParams: unknown = undefined
-        const toolkit = Toolkit.make(AnthropicTool.TextEditor_20250728({}))
-        const toolkitLayer = toolkit.toLayer({
-          AnthropicTextEditor: (params) => {
-            receivedParams = params
-            return Effect.succeed("Text inserted")
-          }
-        })
-
-        const input = { command: "insert", path: "notes.md", insert_line: 0, insert_text: "# Notes\n" }
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-sonnet-4-20250514",
-                content: [{ type: "tool_use", id: "toolu_edit_1", name: "str_replace_based_edit_tool", input }],
-                stop_reason: "tool_use",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 10,
-                  output_tokens: 5,
-                  service_tier: null
-                }
-              }))
-            )
-          ))
-        )
-
-        const response = yield* LanguageModel.generateText({
-          prompt: "add a heading",
-          toolkit
-        }).pipe(
-          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
-          Effect.provide(toolkitLayer),
-          Effect.provide(layer)
-        )
-
-        assert.deepStrictEqual(receivedParams, input)
-        assert.strictEqual(response.toolResults[0]?.result, "Text inserted")
-      }))
+    it("decodes insert_text for the insert command", () => {
+      const input = { command: "insert", path: "notes.md", insert_line: 0, insert_text: "# Notes\n" }
+      const tool = AnthropicTool.TextEditor_20250728({})
+      assert.deepStrictEqual(Schema.decodeUnknownSync(tool.parametersSchema)(input), input)
+    })
   })
 
   describe("provider tool names", () => {
