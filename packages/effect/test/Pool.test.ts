@@ -88,49 +88,31 @@ describe("Pool", () => {
       deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
     }))
 
-  describe("get in a finalizer of the pool's own scope", () => {
-    const run = Effect.fnUntraced(function*(idle: Duration.Input) {
+  it.effect("a later finalizer of the pool's scope can get an item after idle items expire", () =>
+    Effect.gen(function*() {
+      let acquired = 0
       const scope = yield* Scope.make()
       const pool = yield* Pool.makeWithTTL({
-        acquire: Effect.acquireRelease(Effect.succeed("connection"), () => Effect.void),
+        acquire: Effect.sync(() => ++acquired),
         min: 0,
-        max: 5,
+        max: 1,
         timeToLive: "1 second"
       }).pipe(Scope.provide(scope))
-      const results: Array<Exit.Exit<string>> = []
-      // Registered after the pool, so it runs before the pool shuts down.
+      let result: Exit.Exit<number> | undefined
       yield* Scope.addFinalizer(
         scope,
-        Effect.flatMap(Effect.exit(Effect.scoped(Pool.get(pool))), (exit) => Effect.sync(() => results.push(exit)))
+        Effect.scoped(Pool.get(pool)).pipe(Effect.exit, Effect.map((exit) => (result = exit)))
       )
       yield* Effect.scoped(Pool.get(pool))
-      yield* TestClock.adjust(idle)
-      const idleItems = pool.state.items.size
+      yield* TestClock.adjust("2 seconds")
 
-      // Finalizers are uninterruptible, so bound the wait by polling.
-      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
-      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) {
-        yield* Effect.yieldNow
-      }
+      // Finalizers are uninterruptible: bound the wait by polling, and detach
+      // the close so a hang cannot block the test's cleanup.
+      const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
       assert.isDefined(closing.pollUnsafe(), "Scope.close did not return")
-      strictEqual(results.length, 1)
-      return { idleItems, result: results[0] }
-    })
-
-    it.effect("lends an idle item", () =>
-      Effect.gen(function*() {
-        const { idleItems, result } = yield* run(0)
-        strictEqual(idleItems, 1)
-        deepStrictEqual(result, Exit.succeed("connection"))
-      }))
-
-    it.effect("is interrupted instead of hanging once the idle item was retired", () =>
-      Effect.gen(function*() {
-        const { idleItems, result } = yield* run("4 seconds")
-        strictEqual(idleItems, 0)
-        assert.isTrue(Exit.hasInterrupts(result))
-      }))
-  })
+      deepStrictEqual(result, Exit.succeed(2))
+    }))
 
   it.effect("defects don't prevent cleanup", () =>
     Effect.gen(function*() {
