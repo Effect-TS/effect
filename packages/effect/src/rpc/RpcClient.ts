@@ -418,19 +418,18 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       let fiber: Fiber.Fiber<any, any>
       return Effect.onInterrupt(
         Effect.callback<any, any>((resume) => {
-          // the acknowledgement of a discarded call, held until its send has finished
-          let ack: Exit.Exit<any, any> | undefined
+          let acked = false
           const entry: ClientEntry = {
             _tag: "Effect",
             rpc,
             context,
             resume(exit) {
-              if (discard) {
-                // Interrupting the send could cancel the call, as an HTTP
-                // handler is scoped to its request, so the call completes
-                // once the send has finished too.
-                ack = exit._tag === "Success" ? Exit.void : exit
-                if (fiber?.pollUnsafe()) resume(ack)
+              if (discard && exit._tag === "Success") {
+                // A successful acknowledgement waits for the send to finish, as
+                // interrupting the send could cancel the call: an HTTP handler
+                // is scoped to its request. Failures complete the call at once.
+                acked = true
+                if (fiber?.pollUnsafe()) resume(Exit.void)
                 return
               }
               resume(exit)
@@ -450,8 +449,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             if (exit._tag === "Failure") {
               entries.delete(id)
               return resume(exit)
-            } else if (ack) {
-              return resume(ack)
+            } else if (acked) {
+              return resume(Exit.void)
             }
           })
         }),
