@@ -236,20 +236,18 @@ export interface ValueMatcher<
  *
  * **Details**
  *
- * A `Case` can be a positive match (`When`), a negative match (`Not`), or an
- * extracting match (`WhenFilter`).
+ * A `Case` can be either a positive match (`When`) or a negative match (`Not`).
  * Cases are the building blocks of pattern matching logic and determine
  * how values are tested and transformed.
  *
  * @see {@link When} for positive cases
  * @see {@link Not} for negative cases
- * @see {@link WhenFilter} for extracting cases
  *
  * @stability stable
  * @category models
  * @since 4.0.0
  */
-export type Case = When | Not | WhenFilter
+export type Case = When | Not
 
 /**
  * Represents a positive pattern matching case.
@@ -319,27 +317,6 @@ export interface Not {
   readonly _tag: "Not"
   guard(u: unknown): boolean
   evaluate(input: unknown, ...args: Array<any>): any
-}
-
-/**
- * Represents an extracting pattern matching case.
- *
- * **Details**
- *
- * A `WhenFilter` case runs a `Filter` once against the input. When the filter
- * succeeds, `evaluate` receives the extracted value instead of the original
- * input. When it fails, matching continues with the original input.
- *
- * @see {@link whenFilter} for creating extracting cases
- *
- * @stability stable
- * @category models
- * @since 4.1.0
- */
-export interface WhenFilter {
-  readonly _tag: "WhenFilter"
-  filter(u: unknown): Result.Result<unknown, unknown>
-  evaluate(pass: unknown, ...args: Array<any>): any
 }
 
 /**
@@ -889,16 +866,16 @@ export const whenAnd: <
  * @since 4.1.0
  */
 export const whenFilter: <
-  R,
+  Input,
   Pass,
   Fail,
   Ret,
   Args extends Array<any>,
   Fn extends (_: Pass, ...args: Args) => Ret
 >(
-  filter: Filter.Filter<R, Pass, Fail>,
+  filter: Filter.Filter<Input, Pass, Fail>,
   f: Fn
-) => <I, F, A, Pr>(
+) => <I, F, R extends Input, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret, Args>
 ) => Matcher<I, F, R, A | ReturnType<Fn>, Pr, Ret, Args> = internal.whenFilter
 
