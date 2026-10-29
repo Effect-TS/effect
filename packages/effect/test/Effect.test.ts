@@ -5439,6 +5439,28 @@ describe("Effect", () => {
       })
     }
 
+    it("fibers yielding in the same tick each resume in their own context", async () => {
+      const program = Effect.gen(function*() {
+        yield* Effect.yieldNow
+        const afterYield = current()
+        yield* Effect.sleep(0)
+        const afterSleep = current()
+        const child = yield* Effect.forkChild(Effect.andThen(Effect.yieldNow, Effect.sync(current)))
+        const forked = yield* Fiber.join(child)
+        return { afterYield, afterSleep, forked }
+      })
+      const results = await Promise.all([
+        runWithStore("a", program),
+        runWithStore("b", program),
+        runWithStore(undefined, program)
+      ])
+      assert.deepStrictEqual(results, [
+        { afterYield: "a", afterSleep: "a", forked: "a" },
+        { afterYield: "b", afterSleep: "b", forked: "b" },
+        { afterYield: "none", afterSleep: "none", forked: "none" }
+      ])
+    })
+
     // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
     // in the worker, including from concurrent tests, would count as a leak.
     const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)

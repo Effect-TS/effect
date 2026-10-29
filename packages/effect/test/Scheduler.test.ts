@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit } from "effect"
+import { Effect, Exit, Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Scheduler", () => {
@@ -76,6 +76,57 @@ describe("Scheduler", () => {
 
       assert.deepStrictEqual(order, [1, 2, 3])
     }))
+
+  it("MixedScheduler keeps queued tasks when a task throws", () => {
+    const scheduler = new Scheduler.MixedScheduler("sync").makeDispatcher()
+    const order: Array<string> = []
+
+    scheduler.scheduleTask(() => {
+      order.push("throws")
+      throw new Error("boom")
+    }, 0)
+    scheduler.scheduleTask(() => order.push("p0"), 0)
+    scheduler.scheduleTask(() => order.push("p1"), 1)
+
+    assert.throws(() => scheduler.flush(), "boom")
+    scheduler.flush()
+
+    assert.deepStrictEqual(order, ["throws", "p0", "p1"])
+  })
+
+  it.effect("orders yielded tasks by priority across fibers", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const low = yield* Effect.forkChild(
+        Effect.andThen(Effect.yieldNowWith(10), Effect.sync(() => order.push("low")))
+      )
+      const high = yield* Effect.forkChild(
+        Effect.andThen(Effect.yieldNowWith(0), Effect.sync(() => order.push("high")))
+      )
+      yield* Fiber.joinAll([low, high])
+
+      assert.deepStrictEqual(order, ["high", "low"])
+    }))
+
+  it("a dropped custom setImmediate callback does not stall other fibers", async () => {
+    // Like a timer owned by a finished Cloudflare Workers request
+    let dropped = false
+    const scheduler = new Scheduler.MixedScheduler("async", (f) => {
+      if (!dropped) {
+        dropped = true
+        return () => {}
+      }
+      const timer = setTimeout(f, 0)
+      return () => clearTimeout(timer)
+    })
+    const stalled = Effect.runFork(Effect.yieldNow, { scheduler })
+
+    const result = await Effect.runPromise(Effect.as(Effect.yieldNow, 1), { scheduler })
+
+    assert.strictEqual(result, 1)
+    assert.isUndefined(stalled.pollUnsafe())
+    await Effect.runPromise(Fiber.interrupt(stalled))
+  })
 
   it.effect("PreventSchedulerYield disables shouldYield checks", () =>
     Effect.gen(function*() {
