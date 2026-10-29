@@ -9136,7 +9136,8 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * condition and branches cannot see them. When the condition cannot be
  * exported exactly, including when it only describes a JSON encoding such as
  * `"NaN"` for `Number`, the export requires one of the branches to hold
- * instead, because a different `if` could select the wrong branch.
+ * instead, because a different `if` could select the wrong branch. A branch
+ * that cannot be exported exactly is left unconstrained.
  *
  * **Example** (Requiring a size for boxes)
  *
@@ -9196,13 +9197,17 @@ export function isConditional(
         schemas: [conditionAST, ...branchASTs]
       },
       toJsonSchema: ({ schemas: [condition, ...branches], exact }) => {
-        if (exact?.[0] !== true) return [branches.length === 2 ? { anyOf: branches } : {}, true]
+        // An inexact branch may reject JSON instances its predicate accepts, so it is left unconstrained.
+        const exactKeys = keys.filter((_, i) => exact?.[i + 1] === true)
+        const isComplete = exactKeys.length === keys.length
+        if (exact?.[0] !== true) {
+          return [isComplete && branches.length === 2 ? { anyOf: branches } : {}, true]
+        }
         const fragment = {
           if: condition,
-          ...Object.fromEntries(keys.map((key, i) => [conditionalKeywords[key], branches[i]]))
+          ...Object.fromEntries(exactKeys.map((key) => [conditionalKeywords[key], branches[keys.indexOf(key)]]))
         }
-        // An inexact branch accepts more JSON instances than its predicate.
-        return branches.every((_, i) => exact[i + 1] === true) ? fragment : [fragment, true]
+        return isComplete ? fragment : [fragment, true]
       },
       toCode: ({ schemas: [condition, ...branches] }) => ({
         runtime: `Schema.isConditional(${condition.runtime}, { ${
