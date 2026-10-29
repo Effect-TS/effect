@@ -2,7 +2,7 @@
  * Registers long-running MCP tools using a supplied task execution service.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.0
  */
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
@@ -33,7 +33,7 @@ import type * as Toolkit from "./Toolkit.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface Options<R = never> {
   readonly owner: "shared" | Effect.Effect<string, never, R | McpSchema.McpRequestContext>
@@ -44,7 +44,7 @@ export interface Options<R = never> {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface RequestContext {
   readonly clientId: number
@@ -59,7 +59,7 @@ export interface RequestContext {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface TaskRequest {
   readonly taskId: string
@@ -71,7 +71,7 @@ export interface TaskRequest {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface CreateRequest {
   readonly toolName: string
@@ -85,7 +85,7 @@ export interface CreateRequest {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface UpdateRequest extends TaskRequest {
   readonly inputResponses: Readonly<Record<string, McpSchema.McpInputResponse>>
@@ -96,7 +96,7 @@ export interface UpdateRequest extends TaskRequest {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export interface TaskFailure {
   readonly code: number
@@ -109,7 +109,7 @@ export interface TaskFailure {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.0
  */
 export type Task =
   & {
@@ -133,7 +133,7 @@ export {
    *
    * @stability unstable
    * @category errors
-   * @since 4.0.0
+   * @since 4.1.0
    */
   TaskError
 }
@@ -149,7 +149,7 @@ export {
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.0
  */
 export class Execution extends Context.Service<Execution, {
   readonly create: (request: CreateRequest) => Effect.Effect<Task, TaskError>
@@ -177,7 +177,7 @@ export class Execution extends Context.Service<Execution, {
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.0
  */
 export class TaskContext extends Context.Service<TaskContext, {
   readonly requestInput: <A, R>(options: {
@@ -205,7 +205,7 @@ export class TaskContext extends Context.Service<TaskContext, {
  *
  * @stability unstable
  * @category combinators
- * @since 4.0.0
+ * @since 4.1.0
  */
 export const workflowRace: typeof DurableDeferred.raceAll = (options) =>
   Effect.flatMap(TaskWorkflow.CurrentRaces, (parents) =>
@@ -229,7 +229,7 @@ type Services<H> = H extends (...args: Array<never>) => Effect.Effect<unknown, u
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.0
  */
 export function toolkit<Tools extends Record<string, Tool.Any>, R = never>(
   tools: Toolkit.Toolkit<Tools>,
@@ -366,6 +366,11 @@ const Request = Schema.Struct({
   requestMetadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
 })
 const Failure = Schema.Struct({ ...McpSchema.McpErrorBase.fields, data: Schema.optionalKey(Schema.JsonObject) })
+const ToolFailure = Schema.Struct({
+  _tag: Schema.Literal("McpTaskToolFailure"),
+  result: McpSchema.CallToolResult
+})
+const isToolFailure = Schema.is(ToolFailure)
 
 const decodeWorkflowName = Schema.decodeUnknownEffect(Schema.NonEmptyString)
 const decodeTaskToken = Schema.decodeUnknownEffect(DurableDeferred.TokenParsed.FromString)
@@ -377,7 +382,9 @@ const isFailure = Schema.is(Failure)
  *
  * **Details**
  *
- * Handlers may use Activities. Change `name` for replay-incompatible handlers.
+ * Handlers may use Activities. Tool failures and defects run Workflow compensations
+ * before being returned as completed tasks with `isError: true`.
+ * Change `name` for replay-incompatible handlers.
  * Workflow owns history cleanup, including durable input and status records.
  * Updates acknowledge persisted responses without waiting for the handler to decode them.
  * Responses for inputs that are no longer outstanding are ignored.
@@ -392,7 +399,7 @@ const isFailure = Schema.is(Failure)
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.0
  */
 export const layerWorkflow = <
   Tools extends Record<string, Tool.Any>,
@@ -424,7 +431,7 @@ export const layerWorkflow = <
         const workflow = Workflow.make(JSON.stringify(["McpTasks", options.name, tool.name]), {
           payload: { arguments: Schema.JsonObject, request: Request, ownerId: Schema.String, id: Schema.String },
           success: McpSchema.CallToolResult,
-          error: Failure,
+          error: Schema.Union([Failure, ToolFailure]),
           idempotencyKey: ({ id }) => id
         })
 
@@ -495,7 +502,15 @@ export const layerWorkflow = <
               arguments: payload.arguments,
               requestContext: payload.request,
               ownerId: payload.ownerId
-            }).pipe(Effect.provideService(TaskContext, taskContext))
+            }).pipe(
+              Effect.provideService(TaskContext, taskContext),
+              // Tool errors must fail the Workflow so its compensations run before publication.
+              Effect.flatMap((result) =>
+                result.isError
+                  ? Effect.fail({ _tag: "McpTaskToolFailure" as const, result })
+                  : Effect.succeed(result)
+              )
+            )
           }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine)))
         yield* Effect.updateContext(register, (context: Context.Context<Effect.Services<typeof register>>) =>
           Context.add(McpServer.omitRequestServices(context), Scope.Scope, Context.get(context, Scope.Scope)))
@@ -532,6 +547,9 @@ export const layerWorkflow = <
             }
 
             const error = Cause.findErrorOption(exit.cause)
+            if (Option.isSome(error) && isToolFailure(error.value)) {
+              return { ...base, lastUpdatedAt, status: "completed", result: error.value.result } satisfies Task
+            }
 
             return {
               ...base,
@@ -637,7 +655,7 @@ export const layerWorkflow = <
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.0
  */
 export const layerMemory = <
   Tools extends Record<string, Tool.Any>,

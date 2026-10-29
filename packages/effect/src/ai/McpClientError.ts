@@ -224,7 +224,7 @@ export class ToolError extends Schema.Error<ToolError>("effect/ai/McpClientError
  *
  * @stability experimental
  * @category reasons
- * @since 4.0.6
+ * @since 4.1.0
  */
 export class TaskCancelled extends Schema.Error<TaskCancelled>("effect/ai/McpClientError/TaskCancelled")({
   _tag: Schema.tag("TaskCancelled"),
@@ -241,7 +241,7 @@ export class TaskCancelled extends Schema.Error<TaskCancelled>("effect/ai/McpCli
  *
  * @stability experimental
  * @category reasons
- * @since 4.0.6
+ * @since 4.1.0
  */
 export class InputError extends Schema.Error<InputError>("effect/ai/McpClientError/InputError")({
   _tag: Schema.tag("InputError"),

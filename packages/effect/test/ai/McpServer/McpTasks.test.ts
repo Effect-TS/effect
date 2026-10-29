@@ -20,6 +20,7 @@ import * as Scope from "effect/Scope"
 import { TestClock } from "effect/testing"
 import * as Activity from "effect/workflow/Activity"
 import * as DurableDeferred from "effect/workflow/DurableDeferred"
+import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import {
@@ -225,14 +226,32 @@ describe("Creation and results", () => {
     }))
 
   for (const defect of [false, true]) {
-    it.effect(`should ${defect ? "sanitize the failure" : "return a completed tool error"} when a handler ${defect ? "dies" : "returns its declared failure"}`, () =>
+    it.effect(`should compensate and ${defect ? "sanitize the failure" : "return a completed tool error"} when a handler ${defect ? "dies" : "returns its declared failure"}`, () =>
       Effect.gen(function*() {
+        const ledger: Array<string> = []
         const tools = Toolkit.make(Tool.make("report", { success: Schema.String, failure: Schema.String }))
         const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, {
-          report: () => defect ? Effect.die("secret-token") : Effect.fail("declined")
+          report: Effect.fnUntraced(function*() {
+            for (const name of ["reserve", "charge"]) {
+              yield* Activity.make({
+                name,
+                success: Schema.String,
+                execute: Effect.sync(() => {
+                  ledger.push(name)
+                  return name
+                })
+              }).pipe(Workflow.withCompensation((value) =>
+                Effect.sync(() => {
+                  ledger.push(`undo:${value}`)
+                })
+              ))
+            }
+            return yield* (defect ? Effect.die("secret-token") : Effect.fail("declined"))
+          })
         }, { name: "errors" }))).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
         const harness = yield* makeHttpHarness(layer)
         const task = yield* terminal(harness, (yield* create(harness)).taskId)
+        assert.deepStrictEqual(ledger, ["reserve", "charge", "undo:charge", "undo:reserve"])
         if (defect) {
           assert.strictEqual(task.status, "completed")
           if (task.status === "completed") assert.strictEqual(task.result.isError, true)

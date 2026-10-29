@@ -20,7 +20,7 @@ const decodeTaskHandleContents = Schema.decodeUnknownEffect(
  *
  * @stability unstable
  * @category errors
- * @since 4.0.0
+ * @since 4.1.0
  */
 export class TaskError extends Data.TaggedError("TaskError")<McpTasks.TaskFailure> {}
 /** @internal */
