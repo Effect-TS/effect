@@ -2115,37 +2115,23 @@ describe.concurrent("Sharding", () => {
       yield* TestClock.adjust(5000)
       assert.deepStrictEqual(yield* Fiber.join(result), [true, 2])
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      // Like a MySQL deadlock: the first reply write rolls back the whole
-      // transaction, later writes autocommit, and the transaction fails.
+      // Like a MySQL deadlock: the first in-transaction reply write aborts the
+      // transaction, later writes on it autocommit, and the transaction fails.
       Layer.updateService(MessageStorage.MessageStorage, (storage) => {
         let deadlocked = false
         let aborted = false
-        let saved: Array<Snowflake.Snowflake> = []
         return {
           ...storage,
           withTransaction: (effect) =>
             Effect.suspend(() => {
               aborted = false
               return storage.withTransaction(effect)
-            }).pipe(
-              Effect.tap(() => aborted ? Effect.die("COMMIT failed") : Effect.void),
-              Effect.onExit((exit) => {
-                const rolledBack = saved
-                saved = []
-                return Exit.isFailure(exit)
-                  ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
-                  : Effect.void
-              })
-            ),
+            }).pipe(Effect.tap(() => aborted ? Effect.die("COMMIT failed") : Effect.void)),
           saveReply: (reply) =>
             MessageStorage.MemoryTransaction.use((inTransaction) => {
-              if (!inTransaction || aborted) return storage.saveReply(reply)
-              if (!deadlocked) {
-                deadlocked = aborted = true
-                return Effect.fail(new ClusterError.PersistenceError({ cause: "deadlock" }))
-              }
-              saved.push(reply.reply.requestId)
-              return storage.saveReply(reply)
+              if (!inTransaction || deadlocked) return storage.saveReply(reply)
+              deadlocked = aborted = true
+              return Effect.fail(new ClusterError.PersistenceError({ cause: "deadlock" }))
             })
         }
       }),
