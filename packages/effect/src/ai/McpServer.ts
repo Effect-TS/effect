@@ -3133,7 +3133,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : result.isFailure && isInputRequired(result.result)
+              : result.isFailure && isDeclaredFailure(result.result) && isInputRequired(result.result)
               ? Effect.succeed(result.result)
               : Effect.succeed(
                 new CallToolResult({
