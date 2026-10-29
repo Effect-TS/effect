@@ -434,7 +434,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     makeDispatcher: () => track(parentScheduler.makeDispatcher())
   }
   // Fibers share the parent's fiber dispatcher; standalone callers get their own.
-  Scheduler.setFiberDispatcher(scheduler, () => track(Scheduler.fiberDispatcher(parentScheduler)))
+  Scheduler.setFiberDispatcher(scheduler, (root) => track(Scheduler.fiberDispatcher(parentScheduler, root)))
 
   const wake = (latch: Latch.Latch) =>
     Effect.suspend(() => {

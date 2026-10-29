@@ -5496,6 +5496,58 @@ describe("Effect", () => {
       assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed({ afterWake: "waiter", afterYield: "waiter" }))
     })
 
+    const schedulers = {
+      "the default scheduler": () => ({ scheduler: undefined, drain: () => {} }),
+      "a synchronous custom scheduler": () => {
+        const tasks: Array<() => void> = []
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "sync",
+          shouldYield: () => false,
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          })
+        }
+        return {
+          scheduler,
+          drain: () => {
+            while (tasks.length > 0) tasks.shift()!()
+          }
+        }
+      }
+    }
+    for (const [label, make] of Object.entries(schedulers)) {
+      it(`a refused context entry fails the wake and keeps the fiber in its own context (${label})`, () => {
+        const { drain, scheduler } = make()
+        const finalizers: Array<string> = []
+        const deferred = Deferred.makeUnsafe<void>()
+        const fiber = storage.run("waiter", () =>
+          Effect.runFork(
+            Deferred.await(deferred).pipe(Effect.ensuring(Effect.sync(() => finalizers.push(current())))),
+            { scheduler }
+          ))
+        drain()
+
+        // Like a runtime that only lets a context be entered from where it was captured
+        const refuse = vi.spyOn(AsyncResource.prototype, "runInAsyncScope").mockImplementationOnce(() => {
+          throw new Error("refused")
+        })
+        try {
+          storage.run("waker", () => assert.throws(() => Deferred.doneUnsafe(deferred, Effect.void), "refused"))
+        } finally {
+          refuse.mockRestore()
+        }
+        storage.run("other", () => fiber.interruptUnsafe())
+        drain()
+
+        const exit = fiber.pollUnsafe()
+        assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+        assert.deepStrictEqual(finalizers, ["waiter"])
+      })
+    }
+
     // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
     // in the worker, including from concurrent tests, would count as a leak.
     const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)

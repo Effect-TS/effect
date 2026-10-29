@@ -205,7 +205,7 @@ describe("Scheduler", () => {
   })
 
   it("a dropped custom setImmediate callback does not stall other fibers", async () => {
-    // Like a timer owned by a finished Cloudflare Workers request
+    // A host can drop a timer callback, for example when its owner has gone away
     let dropped = false
     const scheduler = new Scheduler.MixedScheduler("async", (f) => {
       if (!dropped) {

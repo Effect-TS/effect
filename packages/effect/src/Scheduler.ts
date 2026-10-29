@@ -116,15 +116,8 @@ const setImmediate = (f: () => void) => {
   }
 }
 
-/**
- * Cloudflare Workers discard timers set by a request once it has responded.
- *
- * @internal
- */
-export const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
-
-const sharedDispatchers = new WeakMap<MixedScheduler, MixedSchedulerDispatcher>()
-const fiberDispatcherFactories = new WeakMap<Scheduler, () => SchedulerDispatcher>()
+const treeDispatchers = new WeakMap<object, Map<MixedScheduler, MixedSchedulerDispatcher>>()
+const fiberDispatcherFactories = new WeakMap<Scheduler, (root: object) => SchedulerDispatcher>()
 
 /**
  * Registers how fibers on `scheduler` get their dispatcher, for wrapping
@@ -132,7 +125,10 @@ const fiberDispatcherFactories = new WeakMap<Scheduler, () => SchedulerDispatche
  *
  * @internal
  */
-export const setFiberDispatcher = (scheduler: Scheduler, makeDispatcher: () => SchedulerDispatcher): void => {
+export const setFiberDispatcher = (
+  scheduler: Scheduler,
+  makeDispatcher: (root: object) => SchedulerDispatcher
+): void => {
   fiberDispatcherFactories.set(scheduler, makeDispatcher)
 }
 
@@ -180,14 +176,12 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
- * Fibers running on the same `MixedScheduler` share one dispatcher, so their
- * queued tasks are ordered by priority together and run from one callback per
- * turn. A fiber resumes in the async context it suspended in, whichever
- * callback runs it. `makeDispatcher` still returns a new dispatcher on every
- * call, so tasks scheduled on it directly run in the context that armed it.
- * A scheduler created with a custom `setImmediate`, and any scheduler on
- * Cloudflare Workers, gives each fiber its own dispatcher instead, because
- * those callbacks can belong to a request and be dropped with it.
+ * A root fiber and the fibers forked from it share one dispatcher per
+ * `MixedScheduler`, so their queued tasks are ordered by priority together and
+ * run from one callback per turn. A fiber resumes in the async context it
+ * suspended in, whichever callback runs it. `makeDispatcher` still returns a
+ * new dispatcher on every call, so tasks scheduled on it directly run in the
+ * context that armed it.
  *
  * **Gotchas**
  *
@@ -197,11 +191,6 @@ class PriorityBuckets {
  * Sync mode does not yield to the event loop: CPU-heavy work delays other
  * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
  * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
- * A fiber woken or interrupted by another request continues later in its own
- * request, because workerd does not let one request enter another's async
- * context. If its request has already finished, or it suspended at module
- * scope, workerd may never deliver that continuation: the fiber stays
- * suspended, and its interruption and finalizers stay pending too.
  *
  * @stability stable
  * @category models
@@ -249,34 +238,33 @@ export class MixedScheduler implements Scheduler {
 }
 
 /**
- * Returns the dispatcher fibers use on `scheduler`.
+ * Returns the dispatcher a fiber in the tree of `root` uses on `scheduler`.
  *
- * Fibers re-enter their own async context when they resume, so they can share
- * one dispatcher per `MixedScheduler`. Other callers of `makeDispatcher` keep
- * their own, because their tasks have no context to restore. Custom schedulers,
- * `makeDispatcher` overrides, custom `setImmediate` callbacks and Cloudflare
- * Workers keep one dispatcher per call: a dropped callback would otherwise
- * stall every fiber on the scheduler.
+ * Fibers re-enter their own async context when they resume, so a fiber tree
+ * can share one dispatcher per `MixedScheduler`. Separate trees keep separate
+ * dispatchers, so a dropped callback only stalls the tree that armed it. Other
+ * callers of `makeDispatcher`, custom schedulers and `makeDispatcher`
+ * overrides keep one dispatcher per call.
  *
  * @internal
  */
-export const fiberDispatcher = (scheduler: Scheduler): SchedulerDispatcher => {
+export const fiberDispatcher = (scheduler: Scheduler, root: object): SchedulerDispatcher => {
   const makeDispatcher = fiberDispatcherFactories.get(scheduler)
   if (makeDispatcher !== undefined) {
-    return makeDispatcher()
+    return makeDispatcher(root)
   }
-  if (
-    isCloudflareWorkers ||
-    !(scheduler instanceof MixedScheduler) ||
-    scheduler.makeDispatcher !== MixedScheduler.prototype.makeDispatcher ||
-    (scheduler.setImmediate !== setImmediate && scheduler.setImmediate !== setMicrotask)
-  ) {
+  if (!(scheduler instanceof MixedScheduler) || scheduler.makeDispatcher !== MixedScheduler.prototype.makeDispatcher) {
     return scheduler.makeDispatcher()
   }
-  let dispatcher = sharedDispatchers.get(scheduler)
+  let dispatchers = treeDispatchers.get(root)
+  if (dispatchers === undefined) {
+    dispatchers = new Map()
+    treeDispatchers.set(root, dispatchers)
+  }
+  let dispatcher = dispatchers.get(scheduler)
   if (dispatcher === undefined) {
     dispatcher = new MixedSchedulerDispatcher(scheduler.setImmediate)
-    sharedDispatchers.set(scheduler, dispatcher)
+    dispatchers.set(scheduler, dispatcher)
   }
   return dispatcher
 }
