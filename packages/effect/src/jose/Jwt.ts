@@ -11,7 +11,7 @@
  * decoding; this module does not impose a token-size limit.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Clock from "../Clock.ts"
 import type * as Aead from "../crypto/Aead.ts"
@@ -34,7 +34,7 @@ import * as Jws from "./Jws.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const RegisteredClaims = Schema.Struct({
   iss: Schema.optionalKey(Schema.String),
@@ -51,7 +51,7 @@ export const RegisteredClaims = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type RegisteredClaims = typeof RegisteredClaims.Type
 
@@ -60,7 +60,7 @@ export type RegisteredClaims = typeof RegisteredClaims.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface VerifyOptions {
   /**
@@ -96,7 +96,7 @@ export interface VerifyOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface VerifyWithKeySetOptions extends VerifyOptions, Jws.VerifyWithKeySetOptions {}
 
@@ -106,7 +106,7 @@ export interface VerifyWithKeySetOptions extends VerifyOptions, Jws.VerifyWithKe
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Verified<A, H = Jws.ProtectedHeader> {
   readonly claims: A
@@ -119,7 +119,7 @@ export interface Verified<A, H = Jws.ProtectedHeader> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Decrypted<A> extends Verified<A, Jwe.ProtectedHeader> {
   readonly key: SecretKey<"dir">
@@ -130,7 +130,7 @@ export interface Decrypted<A> extends Verified<A, Jwe.ProtectedHeader> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Unverified {
   readonly protectedHeader: Jws.ProtectedHeader
@@ -143,7 +143,7 @@ export interface Unverified {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type JwtError = JoseError.JoseError | Schema.SchemaError
 
@@ -275,7 +275,7 @@ const encodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const sign = Effect.fnUntraced(function*<
   S extends Schema.Constraint,
@@ -325,7 +325,7 @@ export const sign = Effect.fnUntraced(function*<
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const verify: <S extends Schema.Constraint, K extends VerificationKey>(
   schema: S,
@@ -355,7 +355,7 @@ export const verify: <S extends Schema.Constraint, K extends VerificationKey>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const verifyWithKeySet: <S extends Schema.Constraint>(
   schema: S,
@@ -419,7 +419,7 @@ export const verifyWithKeySet: <S extends Schema.Constraint>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const encrypt = Effect.fnUntraced(function*<
   S extends Schema.Constraint,
@@ -458,7 +458,7 @@ export const encrypt = Effect.fnUntraced(function*<
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const decrypt = Effect.fnUntraced(function*<S extends Schema.Constraint, E = never, R = never>(
   schema: S,
@@ -486,7 +486,7 @@ export const decrypt = Effect.fnUntraced(function*<S extends Schema.Constraint, 
  *
  * @stability unstable
  * @category decoding
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const decodeUnverified = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>

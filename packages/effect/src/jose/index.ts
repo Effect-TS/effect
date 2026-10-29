@@ -16,43 +16,43 @@
  * decryption, or unverified decoding.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 
 // @barrel
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as JoseError from "./JoseError.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as Jwe from "./Jwe.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as Jwk from "./Jwk.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as Jwks from "./Jwks.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as Jws from "./Jws.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 export * as Jwt from "./Jwt.ts"

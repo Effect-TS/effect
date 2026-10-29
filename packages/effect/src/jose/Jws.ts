@@ -11,7 +11,7 @@
  * impose a token-size limit.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Mac from "../crypto/Mac.ts"
 import * as Signature from "../crypto/Signature.ts"
@@ -48,7 +48,7 @@ import { Jwks } from "./Jwks.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const ProtectedHeader = Schema.StructWithRest(
   Schema.Struct({
@@ -65,7 +65,7 @@ export const ProtectedHeader = Schema.StructWithRest(
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type ProtectedHeader = typeof ProtectedHeader.Type
 
@@ -76,7 +76,7 @@ export type ProtectedHeader = typeof ProtectedHeader.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Header {
   readonly alg?: never
@@ -92,7 +92,7 @@ export interface Header {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Verified {
   readonly protectedHeader: ProtectedHeader
@@ -104,7 +104,7 @@ export interface Verified {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface VerifyWithKeySetOptions {
   /**
@@ -118,7 +118,7 @@ export interface VerifyWithKeySetOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type Requirements = Mac.Mac | Signature.Signature
 
@@ -129,7 +129,7 @@ export type Requirements = Mac.Mac | Signature.Signature
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type KeyRequirements<K extends SigningKey | VerificationKey> = K extends SecretKey<HmacAlgorithm> ? Mac.Mac
   : Signature.Signature
@@ -216,7 +216,7 @@ const verifySignature = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const sign = Effect.fnUntraced(signGenerator)
 
@@ -256,7 +256,7 @@ function* signGenerator(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const verify = Effect.fnUntraced(verifyGenerator)
 
@@ -292,7 +292,7 @@ function* verifyGenerator(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const verifyWithKeySet = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>,

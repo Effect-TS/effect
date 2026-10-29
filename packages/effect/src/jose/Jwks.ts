@@ -11,7 +11,7 @@
  * {@link layerRemote} fetch one from an HTTPS endpoint and cache it.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
@@ -56,7 +56,7 @@ const UnsupportedJwk = Schema.StructWithRest(
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const KeySet = Schema.Struct({
   keys: Schema.Array(Schema.Union([PublicJwk, UnsupportedJwk]))
@@ -67,7 +67,7 @@ export const KeySet = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type KeySet = typeof KeySet.Type
 
@@ -76,7 +76,7 @@ export type KeySet = typeof KeySet.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Selection {
   readonly algorithm: AsymmetricAlgorithm
@@ -93,7 +93,7 @@ export interface Selection {
  *
  * @stability unstable
  * @category services
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class Jwks extends Context.Service<Jwks, {
   readonly resolve: (selection: Selection) => Effect.Effect<PublicKey, JoseError.JoseError>
@@ -171,7 +171,7 @@ const makeImporter = () => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const makeLocal = (keySet: KeySet): Effect.Effect<Jwks["Service"]> =>
   Effect.sync(() => {
@@ -186,7 +186,7 @@ export const makeLocal = (keySet: KeySet): Effect.Effect<Jwks["Service"]> =>
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const layerLocal = (keySet: KeySet): Layer.Layer<Jwks> => Layer.effect(Jwks, makeLocal(keySet))
 
@@ -195,7 +195,7 @@ export const layerLocal = (keySet: KeySet): Layer.Layer<Jwks> => Layer.effect(Jw
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface RemoteOptions {
   /**
@@ -287,7 +287,7 @@ const readUrl = (input: string) => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const makeRemote = Effect.fnUntraced(function*(
   options: RemoteOptions
@@ -407,7 +407,7 @@ export const makeRemote = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const layerRemote = (
   options: RemoteOptions

@@ -11,7 +11,7 @@
  * rejects RSA keys shorter than 2048 bits.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Aead from "../crypto/Aead.ts"
 import * as Digest from "../crypto/Digest.ts"
@@ -42,7 +42,7 @@ import type { JoseError } from "./JoseError.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const AsymmetricAlgorithm = Schema.Literals([
   "RS256",
@@ -62,7 +62,7 @@ export const AsymmetricAlgorithm = Schema.Literals([
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type AsymmetricAlgorithm = typeof AsymmetricAlgorithm.Type
 
@@ -72,7 +72,7 @@ export type AsymmetricAlgorithm = typeof AsymmetricAlgorithm.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const Algorithm = Schema.Literals([
   "HS256",
@@ -95,7 +95,7 @@ export const Algorithm = Schema.Literals([
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type Algorithm = typeof Algorithm.Type
 
@@ -104,7 +104,7 @@ export type Algorithm = typeof Algorithm.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type HmacAlgorithm = "HS256" | "HS384" | "HS512"
 
@@ -114,7 +114,7 @@ export type HmacAlgorithm = "HS256" | "HS384" | "HS512"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type SecretAlgorithm = HmacAlgorithm | "dir"
 
@@ -145,7 +145,7 @@ const okp = { ...metadata, kty: Schema.Literal("OKP"), crv: Schema.Literal("Ed25
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const PublicJwk = Schema.Union([
   Schema.Struct({ ...rsa, ...noPrivateMembers }),
@@ -158,7 +158,7 @@ export const PublicJwk = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type PublicJwk = typeof PublicJwk.Type
 
@@ -168,7 +168,7 @@ export type PublicJwk = typeof PublicJwk.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const PrivateJwk = Schema.Union([
   Schema.Struct({
@@ -190,7 +190,7 @@ export const PrivateJwk = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type PrivateJwk = typeof PrivateJwk.Type
 
@@ -199,7 +199,7 @@ export type PrivateJwk = typeof PrivateJwk.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const SecretJwk = Schema.Struct({ ...metadata, kty: Schema.Literal("oct"), k: Schema.String })
 
@@ -208,7 +208,7 @@ export const SecretJwk = Schema.Struct({ ...metadata, kty: Schema.Literal("oct")
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type SecretJwk = typeof SecretJwk.Type
 
@@ -218,7 +218,7 @@ export type SecretJwk = typeof SecretJwk.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface PublicKey {
   readonly _tag: "PublicKey"
@@ -233,7 +233,7 @@ export interface PublicKey {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface PrivateKey {
   readonly _tag: "PrivateKey"
@@ -247,7 +247,7 @@ export interface PrivateKey {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface SecretKey<A extends SecretAlgorithm = SecretAlgorithm> {
   readonly _tag: "SecretKey"
@@ -261,7 +261,7 @@ export interface SecretKey<A extends SecretAlgorithm = SecretAlgorithm> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type SigningKey = PrivateKey | SecretKey<HmacAlgorithm>
 
@@ -270,7 +270,7 @@ export type SigningKey = PrivateKey | SecretKey<HmacAlgorithm>
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type VerificationKey = PublicKey | SecretKey<HmacAlgorithm>
 
@@ -280,7 +280,7 @@ export type VerificationKey = PublicKey | SecretKey<HmacAlgorithm>
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface KeyPair {
   readonly publicKey: PublicJwk
@@ -292,7 +292,7 @@ export interface KeyPair {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface GenerateKeyPairOptions {
   readonly algorithm: AsymmetricAlgorithm
@@ -394,7 +394,7 @@ const exportJwk = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const generateKeyPair = Effect.fnUntraced(function*(
   options: GenerateKeyPairOptions
@@ -425,7 +425,7 @@ export const generateKeyPair = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const generateSecret = Effect.fnUntraced(function*(
   algorithm: SecretAlgorithm,
@@ -456,7 +456,7 @@ export const generateSecret = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const importPublic = Effect.fnUntraced(function*(
   jwk: PublicJwk,
@@ -480,7 +480,7 @@ export const importPublic = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const importPrivate = Effect.fnUntraced(function*(
   input: Redacted.Redacted<PrivateJwk>,
@@ -504,7 +504,7 @@ export const importPrivate = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const importSpki = Effect.fnUntraced(function*(
   input: Uint8Array | string,
@@ -529,7 +529,7 @@ export const importSpki = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const importPkcs8 = Effect.fnUntraced(function*(
   input: Redacted.Redacted<Uint8Array | string>,
@@ -572,7 +572,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const importSecret = Effect.fnUntraced(function*<A extends SecretAlgorithm>(
   input: Redacted.Redacted<SecretJwk>,
@@ -609,7 +609,7 @@ export const importSecret = Effect.fnUntraced(function*<A extends SecretAlgorith
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const exportPublic = Effect.fnUntraced(function*(
   key: PublicKey
@@ -625,7 +625,7 @@ export const exportPublic = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const exportPrivate = Effect.fnUntraced(function*(
   key: PrivateKey
@@ -642,7 +642,7 @@ export const exportPrivate = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.1.1
  */
 export function exportSpki(
   key: PublicKey,
@@ -674,7 +674,7 @@ export function exportSpki(
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.1.1
  */
 export function exportPkcs8(
   key: PrivateKey,
@@ -704,7 +704,7 @@ export function exportPkcs8(
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type ThumbprintInput = PublicJwk | Redacted.Redacted<PrivateJwk | SecretJwk> | PublicKey | PrivateKey | SecretKey
 
@@ -721,7 +721,7 @@ export type ThumbprintInput = PublicJwk | Redacted.Redacted<PrivateJwk | SecretJ
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const thumbprint = Effect.fnUntraced(function*(
   input: ThumbprintInput,
@@ -771,7 +771,7 @@ export const thumbprint = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const thumbprintUri = (
   input: ThumbprintInput,

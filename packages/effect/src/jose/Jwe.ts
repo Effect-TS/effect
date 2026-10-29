@@ -9,7 +9,7 @@
  * a token-size limit.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Aead from "../crypto/Aead.ts"
 import * as SecureRandom from "../crypto/SecureRandom.ts"
@@ -35,7 +35,7 @@ import type { SecretKey } from "./Jwk.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const ProtectedHeader = Schema.StructWithRest(
   Schema.Struct({
@@ -53,7 +53,7 @@ export const ProtectedHeader = Schema.StructWithRest(
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type ProtectedHeader = typeof ProtectedHeader.Type
 
@@ -64,7 +64,7 @@ export type ProtectedHeader = typeof ProtectedHeader.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Header {
   readonly alg?: never
@@ -86,7 +86,7 @@ export interface Header {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type KeyResolver<E = never, R = never> = (
   header: ProtectedHeader
@@ -97,7 +97,7 @@ export type KeyResolver<E = never, R = never> = (
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface Decrypted {
   readonly protectedHeader: ProtectedHeader
@@ -136,7 +136,7 @@ const tagLength = 16
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const encrypt = Effect.fnUntraced(function*<
   H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header
@@ -177,7 +177,7 @@ export const encrypt = Effect.fnUntraced(function*<
  *
  * @stability unstable
  * @category cryptography
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
   token: string | Redacted.Redacted<string>,

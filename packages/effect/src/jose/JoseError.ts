@@ -14,7 +14,7 @@
  * clients is how oracles leak.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.1
  */
 import * as Data from "../Data.ts"
 import * as Predicate from "../Predicate.ts"
@@ -28,7 +28,7 @@ const ReasonTypeId = "~effect/jose/JoseError/Reason" as const
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class InvalidToken extends Data.TaggedError("InvalidToken")<{
   readonly description: string
@@ -36,7 +36,7 @@ export class InvalidToken extends Data.TaggedError("InvalidToken")<{
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -51,7 +51,7 @@ export class InvalidToken extends Data.TaggedError("InvalidToken")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class InvalidKey extends Data.TaggedError("InvalidKey")<{
   readonly description: string
@@ -60,7 +60,7 @@ export class InvalidKey extends Data.TaggedError("InvalidKey")<{
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -75,7 +75,7 @@ export class InvalidKey extends Data.TaggedError("InvalidKey")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class InvalidArgument extends Data.TaggedError("InvalidArgument")<{
   readonly description: string
@@ -84,7 +84,7 @@ export class InvalidArgument extends Data.TaggedError("InvalidArgument")<{
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -99,13 +99,13 @@ export class InvalidArgument extends Data.TaggedError("InvalidArgument")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class AlgorithmNotAllowed extends Data.TaggedError("AlgorithmNotAllowed")<{}> {
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -119,13 +119,13 @@ export class AlgorithmNotAllowed extends Data.TaggedError("AlgorithmNotAllowed")
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class SignatureVerificationFailed extends Data.TaggedError("SignatureVerificationFailed")<{}> {
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -139,13 +139,13 @@ export class SignatureVerificationFailed extends Data.TaggedError("SignatureVeri
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class DecryptionFailed extends Data.TaggedError("DecryptionFailed")<{}> {
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -159,13 +159,13 @@ export class DecryptionFailed extends Data.TaggedError("DecryptionFailed")<{}> {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class KeyNotFound extends Data.TaggedError("KeyNotFound")<{}> {
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -180,13 +180,13 @@ export class KeyNotFound extends Data.TaggedError("KeyNotFound")<{}> {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class AmbiguousKey extends Data.TaggedError("AmbiguousKey")<{}> {
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -201,7 +201,7 @@ export class AmbiguousKey extends Data.TaggedError("AmbiguousKey")<{}> {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class KeySetUnavailable extends Data.TaggedError("KeySetUnavailable")<{
   readonly description: string
@@ -210,7 +210,7 @@ export class KeySetUnavailable extends Data.TaggedError("KeySetUnavailable")<{
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -225,7 +225,7 @@ export class KeySetUnavailable extends Data.TaggedError("KeySetUnavailable")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class ClaimValidationFailed extends Data.TaggedError("ClaimValidationFailed")<{
   readonly claim: "iss" | "sub" | "aud" | "exp" | "nbf" | "iat" | "jti" | "typ"
@@ -234,7 +234,7 @@ export class ClaimValidationFailed extends Data.TaggedError("ClaimValidationFail
   /**
    * Marks this value as a `JoseError` reason for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [ReasonTypeId] = ReasonTypeId
 
@@ -248,7 +248,7 @@ export class ClaimValidationFailed extends Data.TaggedError("ClaimValidationFail
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type JoseErrorReason =
   | InvalidToken
@@ -286,7 +286,7 @@ export type JoseErrorReason =
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class JoseError extends Data.TaggedError("JoseError")<{
   readonly reason: JoseErrorReason
@@ -294,14 +294,14 @@ export class JoseError extends Data.TaggedError("JoseError")<{
   /**
    * Marks this value as a `JoseError` for runtime guards.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   readonly [TypeId] = TypeId
 
   /**
    * The reason's cause, when it has one.
    *
-   * @since 4.1.0
+   * @since 4.1.1
    */
   override readonly cause: unknown = "cause" in this.reason ? this.reason.cause : undefined
 
@@ -315,7 +315,7 @@ export class JoseError extends Data.TaggedError("JoseError")<{
  *
  * @stability unstable
  * @category guards
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const isJoseError = (u: unknown): u is JoseError => Predicate.hasProperty(u, TypeId)
 
@@ -324,6 +324,6 @@ export const isJoseError = (u: unknown): u is JoseError => Predicate.hasProperty
  *
  * @stability unstable
  * @category guards
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const isJoseErrorReason = (u: unknown): u is JoseErrorReason => Predicate.hasProperty(u, ReasonTypeId)
