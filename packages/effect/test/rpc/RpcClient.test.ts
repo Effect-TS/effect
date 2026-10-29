@@ -665,7 +665,7 @@ describe("RpcClient", () => {
       yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["a"] })
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Ack", requestId })
       const receiver = yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["b", "c"] }).pipe(
-        Effect.forkChild
+        Effect.forkChild({ startImmediately: true })
       )
       yield* Deferred.await(consuming)
       assert.isUndefined(receiver.pollUnsafe())
