@@ -499,6 +499,7 @@ export type RemoteTool<
  * **Details**
  *
  * Defaults to text results, `"error"` failure mode and untrusted server hints.
+ * Type arguments that select another mode require the matching option.
  * `"complete"` preserves the full `CallToolResult` and sends its content blocks
  * to the model as text and file parts. `"return"` sends typed handler failures
  * to the model, including transport errors. `ToolError` keeps the failed result.
@@ -515,24 +516,27 @@ export type RemoteTool<
  * @category models
  * @since 4.1.0
  */
-export interface ToolkitOptions<
+export type ToolkitOptions<
   ResultMode extends "text" | "complete" = "text",
   FailureMode extends Tool.FailureMode = "error",
   Requirements = never
-> {
-  readonly prefix?: string | undefined
-  readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
-  readonly resultMode?: ResultMode | undefined
-  readonly failureMode?: FailureMode | undefined
-  readonly trustAnnotations?: boolean | undefined
-  readonly timeout?: Duration.Input | undefined
-  readonly transformTool?:
-    | ((
-      tool: RemoteTool<ResultMode, FailureMode>,
-      descriptor: McpSchema.Tool
-    ) => RemoteTool<ResultMode, FailureMode, Requirements>)
-    | undefined
-}
+> =
+  & {
+    readonly prefix?: string | undefined
+    readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+    readonly trustAnnotations?: boolean | undefined
+    readonly timeout?: Duration.Input | undefined
+    readonly transformTool?:
+      | ((
+        tool: RemoteTool<ResultMode, FailureMode>,
+        descriptor: McpSchema.Tool
+      ) => RemoteTool<ResultMode, FailureMode, Requirements>)
+      | undefined
+  }
+  // A mode may be omitted only when its type is exactly the runtime default.
+  & ([ResultMode] extends ["text"] ? { readonly resultMode?: "text" | undefined } : { readonly resultMode: ResultMode })
+  & ([FailureMode] extends ["error"] ? { readonly failureMode?: "error" | undefined }
+    : { readonly failureMode: FailureMode })
 
 /**
  * Binds remote tools using the standard Toolkit implementation.
@@ -549,27 +553,32 @@ export interface ToolkitOptions<
  * @category constructors
  * @since 4.0.6
  */
-export const toolkit = <
+export function toolkit(
+  client: McpClient,
+  prefix?: string
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
+export function toolkit<
   ResultMode extends "text" | "complete" = "text",
   FailureMode extends Tool.FailureMode = "error",
   Requirements = never
 >(
   client: McpClient,
-  options: string | ToolkitOptions<ResultMode, FailureMode, Requirements> = {}
+  options: ToolkitOptions<ResultMode, FailureMode, Requirements>
 ): Effect.Effect<
   Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>,
   McpClientError
-> =>
-  Effect.gen(function*() {
-    const config: ToolkitOptions<ResultMode, FailureMode, Requirements> = typeof options === "string"
-      ? { prefix: options }
-      : options
+>
+export function toolkit(
+  client: McpClient,
+  options: string | ToolkitConfig = ""
+): Effect.Effect<Toolkit.WithHandler<any>, McpClientError> {
+  return Effect.gen(function*() {
+    const config: ToolkitConfig = typeof options === "string" ? { prefix: options } : options
     const descriptors = config.tools ?? (yield* client.listTools())
     const complete = config.resultMode === "complete"
-    // The success schema follows the runtime resultMode.
-    const success = (complete ? McpSchema.CallToolResult : Schema.String) as RemoteTool<ResultMode>["successSchema"]
-    const failureMode = (config.failureMode ?? "error") as FailureMode
-    const tools: Array<RemoteTool<ResultMode, FailureMode, Requirements>> = []
+    const success = complete ? McpSchema.CallToolResult : Schema.String
+    const failureMode = config.failureMode ?? "error"
+    const tools: Array<RemoteTool<"text" | "complete", Tool.FailureMode, unknown>> = []
     const handlers: Record<
       string,
       (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
@@ -580,7 +589,7 @@ export const toolkit = <
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
         return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
       }
-      let tool: RemoteTool<ResultMode, FailureMode> = Tool.dynamic(name, {
+      let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = Tool.dynamic(name, {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
         success,
@@ -608,17 +617,10 @@ export const toolkit = <
       })
     }
 
-    // Bind with the widened tool type; the selected modes only narrow the schemas.
-    const binding: Array<RemoteTool<"text" | "complete", Tool.FailureMode, Requirements>> = tools
-    const toolkit = Toolkit.make(...binding)
-    const bound = yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
-    return {
-      tools: Object.fromEntries(tools.map((tool) => [tool.name, tool])),
-      handle: bound.handle as Toolkit.WithHandler<
-        Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>
-      >["handle"]
-    }
+    const toolkit = Toolkit.make(...tools)
+    return yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
   })
+}
 
 // =============================================================================
 // Transports
@@ -1319,6 +1321,13 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 // =============================================================================
 // Internal: Toolkit
 // =============================================================================
+
+// Overloads keep the public modes sound; the implementation reads every option as optional.
+type ToolkitConfig = {
+  readonly [K in keyof AnyToolkitOptions]?: AnyToolkitOptions[K] | undefined
+}
+
+type AnyToolkitOptions = ToolkitOptions<"text" | "complete", Tool.FailureMode, any>
 
 const toModelOutput = (result: McpSchema.CallToolResult): Array<Prompt.ToolModelOutputPart> => {
   const parts: Array<Prompt.ToolModelOutputPart> = []
