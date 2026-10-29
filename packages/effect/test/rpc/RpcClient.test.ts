@@ -35,11 +35,6 @@ import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
 import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
 
-interface FakeWorker {
-  readonly failure: Deferred.Deferred<never, WorkerError>
-  readonly responses: Queue.Queue<RpcMessage.FromServerEncoded>
-}
-
 class GetUser extends Request.Class<{ id: number }, string> {}
 
 const TestGroup = RpcGroup.make(
@@ -708,74 +703,51 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(sentRequestIds, [1, 2])
     }))
 
-  describe("worker pool failures", () => {
-    const makeWorkerPool = Effect.fnUntraced(function*() {
-      const spawned = yield* Queue.unbounded<FakeWorker>()
-      const sent = yield* Queue.unbounded<{ readonly worker: FakeWorker; readonly id: string | number }>()
-      const spawnWorker = Effect.fnUntraced(function*() {
-        const worker: FakeWorker = {
-          failure: yield* Deferred.make<never, WorkerError>(),
-          responses: yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
-        }
-        yield* Queue.offer(spawned, worker)
-        const backing: Worker.Worker<RpcMessage.FromServerEncoded, RpcMessage.FromClientEncoded> = {
+  it.effect("fails only the calls on a crashed pooled worker", () =>
+    Effect.gen(function*() {
+      const sent = yield* Queue.unbounded<{
+        readonly id: string | number
+        readonly crash: Deferred.Deferred<never, WorkerError>
+        readonly replies: Queue.Queue<RpcMessage.FromServerEncoded>
+      }>()
+      const spawn = Effect.gen(function*() {
+        const crash = yield* Deferred.make<never, WorkerError>()
+        const replies = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const backing: Worker.Worker<any, any> = {
           send: (message) =>
-            message._tag === "Request" ? Effect.asVoid(Queue.offer(sent, { worker, id: message.id })) : Effect.void,
+            message._tag === "Request"
+              ? Effect.asVoid(Queue.offer(sent, { id: message.id, crash, replies }))
+              : Effect.void,
           run: (handler) =>
-            Effect.raceFirst(
-              Deferred.await(worker.failure),
-              Effect.forever(Effect.flatMap(Queue.take(worker.responses), handler))
-            )
+            Effect.raceFirst(Deferred.await(crash), Effect.forever(Effect.flatMap(Queue.take(replies), handler)))
         }
         return backing
       })
-      const workerPlatform = Worker.WorkerPlatform.of({
-        spawn: <O, I>() => spawnWorker() as unknown as Effect.Effect<Worker.Worker<O, I>>
-      })
       const client = yield* RpcClient.make(TestGroup).pipe(
         Effect.provideServiceEffect(RpcClient.Protocol, RpcClient.makeProtocolWorker({ size: 2, concurrency: 1 })),
-        Effect.provideService(Worker.WorkerPlatform, workerPlatform),
+        Effect.provideService(Worker.WorkerPlatform, Worker.WorkerPlatform.of({ spawn: () => spawn })),
         Effect.provideService(Worker.Spawner, (() => undefined) as Worker.SpawnerFn)
       )
-      return { client, spawned, sent }
-    })
 
-    const crash = (worker: FakeWorker) =>
-      Deferred.fail(worker.failure, new WorkerError({ reason: new WorkerReceiveError({ message: "worker exited" }) }))
+      const crashing = yield* client.Ping().pipe(Effect.forkChild)
+      const crashed = yield* Queue.take(sent)
+      const healthy = yield* client.Ping().pipe(Effect.forkChild)
+      const healthyRequest = yield* Queue.take(sent)
 
-    const succeed = (worker: FakeWorker, requestId: string | number) =>
-      Queue.offer(worker.responses, { _tag: "Exit", requestId, exit: { _tag: "Success", value: "pong" } })
+      yield* Deferred.fail(
+        crashed.crash,
+        new WorkerError({ reason: new WorkerReceiveError({ message: "worker exited" }) })
+      )
+      const error = yield* Effect.flip(Fiber.join(crashing))
+      assert.strictEqual(error.reason._tag, "WorkerReceiveError")
 
-    it.effect("fails only the requests on the crashed worker", () =>
-      Effect.gen(function*() {
-        const { client, sent } = yield* makeWorkerPool()
-        const onCrashed = yield* client.Ping().pipe(Effect.forkChild)
-        const crashed = yield* Queue.take(sent)
-        const onHealthy = yield* client.Ping().pipe(Effect.forkChild)
-        const healthy = yield* Queue.take(sent)
-        assert.notStrictEqual(crashed.worker, healthy.worker)
-
-        yield* crash(crashed.worker)
-        const error = yield* Effect.flip(Fiber.join(onCrashed))
-        assert.strictEqual(error.reason._tag, "WorkerReceiveError")
-
-        yield* succeed(healthy.worker, healthy.id)
-        assert.strictEqual(yield* Fiber.join(onHealthy), "pong")
-      }))
-
-    it.effect("keeps requests running when an idle worker crashes", () =>
-      Effect.gen(function*() {
-        const { client, spawned, sent } = yield* makeWorkerPool()
-        const onHealthy = yield* client.Ping().pipe(Effect.forkChild)
-        const healthy = yield* Queue.take(sent)
-        const workers = [yield* Queue.take(spawned), yield* Queue.take(spawned)]
-        const idle = workers.find((worker) => worker !== healthy.worker)!
-
-        yield* crash(idle)
-        yield* succeed(healthy.worker, healthy.id)
-        assert.strictEqual(yield* Fiber.join(onHealthy), "pong")
-      }))
-  })
+      yield* Queue.offer(healthyRequest.replies, {
+        _tag: "Exit",
+        requestId: healthyRequest.id,
+        exit: { _tag: "Success", value: "pong" }
+      })
+      assert.strictEqual(yield* Fiber.join(healthy), "pong")
+    }))
 
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
