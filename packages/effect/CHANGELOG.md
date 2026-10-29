@@ -1,5 +1,217 @@
 # effect
 
+## 4.1.0
+
+### Minor Changes
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`631d4f4`](https://github.com/Effect-TS/effect/commit/631d4f41e2c09ce039cddad3f460a4793e53989d) Thanks @harrysolovay! - Add `Schema.isAscii`, a check that accepts only ASCII strings, and the matching `SchemaRepresentation.isAsciiReviver`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`7ea1ea2`](https://github.com/Effect-TS/effect/commit/7ea1ea2ecfb1bb4808901c522259de44aaee6136) Thanks @wmaurer! - Add an optional `cause` to the AI `NetworkError`. It holds the `HttpClientError` the request failed with, stored unchanged and not redacted, so the reason a request failed is no longer lost. The new `NetworkError.fromHttpClientError` sets it, and all AI providers now use it. `NetworkError.fromRequestError` is unchanged.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`a2ccc14`](https://github.com/Effect-TS/effect/commit/a2ccc146936c0e73c23c33ac0aa4b4994c049af7) Thanks @fubhy! - Fix `Atom.Serializable` to encode to and decode from `Schema.Json`, matching the JSON codec used by `Atom.serializable`. Encoded results may now require narrowing; runtime behavior is unchanged.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`c4d298d`](https://github.com/Effect-TS/effect/commit/c4d298d332b834f3071c96a83b18a6d6a4316cb6) Thanks @okarin1511! - Render inherited CLI flags in a separate `INHERITED FLAGS` section and add `"full"`, `"summary"`, and `"none"` modes for inherited and global flags in `CliOutput.defaultFormatter`. `HelpDoc` adds `inheritedFlags`, `commandPath`, and `globalFlagsScope` provenance so summaries can point to the appropriate help, with globals always listed on their declaring command. Custom formatters must read ancestor shared flags from `HelpDoc.inheritedFlags` instead of `HelpDoc.flags`.
+
+- [#10087](https://github.com/Effect-TS/effect/pull/10087) [`ac10e55`](https://github.com/Effect-TS/effect/commit/ac10e55cf2379f48109f244628aa805bd26d8ff9) Thanks @effect-bot! - Add `runnerJoinDebounce` to `ShardingConfig`. When set, a runner joining the cluster is only added to shard assignments once the healthy runners have stayed unchanged for that duration, or at most four times that duration after the first pending join. A scale-up or a deployment with a large surge then hands each shard off once instead of once per join. Runners that already hold shards and leave or become unhealthy are still published immediately; a pending runner that leaves only restarts the quiet period. While joins are pending, runners take no new shards, so a shard can stay unlocked briefly until each runner publishes. Defaults to `0`, which keeps the current behavior.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`df8dce5`](https://github.com/Effect-TS/effect/commit/df8dce5e7e73da2643fc15896e5683e15377b457) Thanks @tim-smart! - Add `trim` and `keepEmptyValues` options to `SchemaGetter.splitKeyValue`, `SchemaTransformation.splitKeyValue` and `Config.Record`. Both default to `false`, so existing callers are unaffected.
+  
+  `OtlpResource.fromConfig` now trims `OTEL_RESOURCE_ATTRIBUTES` keys and values and keeps entries with an empty value as `""`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`0c24a8f`](https://github.com/Effect-TS/effect/commit/0c24a8fd670622237ad8a9ab66a3ea7c93533b83) Thanks @sledorze! - Add a `maxDepth` option to `Context.makeUnsafe`, controlling how many `Context.add` calls are kept as overlays before the context is rebased into a flat map. Defaults to 8.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`2d1fcd4`](https://github.com/Effect-TS/effect/commit/2d1fcd4ec7aac24943adc901f4de0b1a7ef8a563) Thanks @effect-bot! - Add an `onDstOverlap` option to `Cron` and `Schedule.cron` that chooses which occurrences of local times repeated when clocks fall back are included: `"earlier"` (default), `"later"` or `"both"`. It applies to every repeated local time, including ones not caused by daylight saving time.
+  
+  `Cron.prev` now returns the latest matching instant before its input when starting inside a repeated hour. Near a spring-forward gap it no longer throws or returns an instant at or after its input.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`8f23668`](https://github.com/Effect-TS/effect/commit/8f236683ad92bc4b4f58e16e91d40ce713c20578) Thanks @fubhy! - Replace `effect/Crypto` with family-specific `effect/crypto/*` services, opaque keys, `CryptoError`, a configurable `WebCrypto` reference and key schemas in `effect/Schema`. Encoding secret or private keys through byte/format schemas requires `{ allowEncode: true }`.
+  
+  ### Breaking changes
+  
+  - Use `SecureRandom` for randomness and UUIDs, and `Digest` with algorithm values such as `Digest.sha256` for hashing. Replace `effect/testing/TestCrypto` with `Layer.mock` for the required services.
+  - Provide crypto explicitly; it is no longer included in the runtime `*Services` bundles. `NodeCrypto`, `BunCrypto`, `DenoCrypto` and `BrowserCrypto` offer individual family layers and a combined `layer`, supplying `SecureRandom` where needed. Core modules offer `layerWebCrypto`.
+  - Provide `Digest.Digest` instead of `Crypto.Crypto` to `SqlMessageStorage` and `SingleRunner`, and instead of `EventLogEncryption` to `SqlEventLogServerEncrypted.makeStorage` and `layerStorage`. Replace `EventLogEncryption.sha256String` with `digest.digestHex(Digest.sha256, bytes)`.
+  
+  Existing workflow ID, activity idempotency key and event log table-name encodings are unchanged.
+  
+  Event log encryption, identity key derivation and session authentication now run on `Aead`, `Digest`, `Signature` and `SecureRandom`. `EventLogEncryption.make` and `EventLogEncryption.layer` take those services from context, so Node apps can use the `NodeCrypto` layers. `EventLogEncryption.layerSubtle` and the session auth functions use the Web Crypto layers on the `WebCrypto` reference instead of `globalThis.crypto`. Existing identities, derived signing keys and encrypted batches are unchanged.
+  
+  UUIDv7 and ULID generation is now monotonic below the maximum 48-bit timestamp, including within a millisecond and across clock rollback. Ordering is per `SecureRandom` instance; the unsafe helpers and model UUIDv7 defaults share per-realm ordering.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`3f8f359`](https://github.com/Effect-TS/effect/commit/3f8f3595b06f144b109c47c0bbc8788262aedb21) Thanks @jem-computer! - Declare decision images as input fields with `Decision.Image`, and add `Decision.locate`, which answers with a bounding box around one target in an image field.
+  
+  - `DecideOptions.images` is removed. Add `Decision.Image` fields to the input schema and refer to each image by its path in instructions:
+  
+    ```ts
+    // Before
+    DecisionModel.decide(Triage, { input: "Checkout error", images: [screenshot] })
+    // After
+    const Triage = Decision.make({
+      input: Schema.Struct({ report: Schema.String, screenshot: Decision.Image }),
+      decisions
+    })
+    DecisionModel.decide(Triage, { input: { report: "Checkout error", screenshot } })
+    ```
+  
+  - Custom providers receive `images` as `{ reference, path, image }`, with each image replaced by its reference in `state` and its data as a base64 string or `URL`.
+  - `Decision.locate({ image: "photo", instructions })` takes a path that `Decision.make` checks against the input's image fields. Providers opt in with `supportsLocate: true`. `Decision.Any` and `DecisionModel.ProviderAnswer` gain locate variants, so exhaustive switches over them need a `Locate` case.
+  - `TypeSafeDecisionModel` supports images, sent as assets keyed by reference, and sends locate decisions as Box questions, which need `jev-preview` or `jev-1.14.0`. OpenAI and Cloudflare label each image with its reference.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`2a03584`](https://github.com/Effect-TS/effect/commit/2a03584eae4783d961589a42a70436567858b0c1) Thanks @jayhemnani9910! - Add `Duration.formatIso`, `Duration.fromIso` and `Schema.DurationFromIsoString` for ISO 8601 durations. Only exact units are supported: weeks, days, hours, minutes and seconds. Years and months are rejected because they have no fixed length.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`40e145e`](https://github.com/Effect-TS/effect/commit/40e145e07ed9e3912a5348cc7300b6e2d1c0cf09) Thanks @yordis! - Add `Duration.toMicros` for converting durations to microseconds.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`7217410`](https://github.com/Effect-TS/effect/commit/72174109300d4a429142c847d78029c4507173c5) Thanks @tim-smart! - Add encrypted remote compaction to the event log.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`cf249fe`](https://github.com/Effect-TS/effect/commit/cf249fea89e8c0345b362f00acdd031af6efcdcf) Thanks @tim-smart! - Detect unsupported streaming request bodies in `FetchHttpClient` and fail with an `EncodeError` instead of silently sending `[object ReadableStream]`. Set `FetchHttpClient.StreamBodyFallback` to `"buffer"` to buffer the body in memory on those runtimes instead.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`4f0fad1`](https://github.com/Effect-TS/effect/commit/4f0fad1c9bed26e68c060a36c1b1da97accafb80) Thanks @effect-bot! - Fence Redis PersistedQueue settlements and lock refreshes on a per-acquisition lock, so a stale handler can no longer release another live claim, including one with the same custom id in another queue. The lock format is incompatible with older workers on the same prefix: stop every old worker and let its locks expire before starting upgraded workers.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`f74db37`](https://github.com/Effect-TS/effect/commit/f74db37101786d76f575a2d633c7b59e86329ebc) Thanks @smit153! - Accept `{ self }` before the generator body in `Effect.fnUntraced` and `Effect.fnUntracedEager` to bind `this`, matching `Effect.fn`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`069cf72`](https://github.com/Effect-TS/effect/commit/069cf72a5908db2ee5175826ff4067af5d707c19) Thanks @effect-bot! - Add opt-in RFC 9457 Problem Details support to `HttpApi`.
+  
+  - `ProblemDetails` in `effect/http` provides the `application/problem+json` media type, a lenient codec for problem details objects, and a response constructor.
+  - `HttpApiError.Problem<Self>()(tag, { type, status, title }, fields?)` declares a typed problem as a yieldable error class that endpoints render, document and decode as `application/problem+json`, discriminated by `type`.
+  - `HttpApiSchema.asProblem` renders a built-in error such as `HttpApiError.NotFound` as a problem.
+  - `HttpApiMiddleware.ProblemDetails` with `HttpApiMiddleware.layerProblemDetails` renders request decoding failures as a generic `400` problem (with per-field `errors` when `includeDetails` is enabled) and response encoding failures as a `500` problem.
+  
+  The default behaviour is unchanged: without the opt-in, built-in errors and decoding failures still produce the same responses as before.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`9a07ebc`](https://github.com/Effect-TS/effect/commit/9a07ebc550ebd9e6a7578f79c61f69f5180085ee) Thanks @effect-bot! - Allow `HttpApiSchema.Upgrade` alongside ordinary success responses, for servers that decline the upgrade, and add `HttpApiClient.isUpgraded` to narrow the client result.
+  
+  `HttpApiClient.Upgraded` values now carry a `[HttpApiClient.UpgradedTypeId]` brand. Code that builds `Upgraded` values by hand, such as client mocks, must add `[HttpApiClient.UpgradedTypeId]: HttpApiClient.UpgradedTypeId` to the object literal.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`f40dc4e`](https://github.com/Effect-TS/effect/commit/f40dc4e492684ef7b30e8d94f1e5fecab24b2d87) Thanks @bezff! - `HttpClient.withCookiesRef` now takes a `Ref<ReadonlyArray<Cookie>>` and sends stored response cookies only to a matching host, path and scheme, using the new `Cookies.mergeIntoArray` and `Cookies.toRequestCookieHeader`. Seed the ref with `Cookies.mergeIntoArray` or with cookies that set a `domain`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`fa516c6`](https://github.com/Effect-TS/effect/commit/fa516c644b9cf85ec869b486dd2fb6c4c434fc51) Thanks @Tarekkharsa! - Export `HttpClient.isTransientError` and `HttpClient.isTransientResponse`, the predicates `retryTransient` uses to decide what to retry.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`ffd9237`](https://github.com/Effect-TS/effect/commit/ffd92377dbcf739b9c545e9f14f6e783a44a42b2) Thanks @effect-bot! - Add `log: "Unhandled"` to `Effect.ignore`, `Effect.ignoreCause`, and their Stream and Channel variants. This resolves `References.UnhandledLogLevel` when a failure occurs and suppresses logging when that reference is `undefined`, while preserving each combinator's existing failure semantics.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`93895b9`](https://github.com/Effect-TS/effect/commit/93895b9899b3cc796663f64e3220aacb315a10e8) Thanks @tim-smart! - Add `keys` to `KeyValueStore` and `SchemaStore`. It returns a snapshot of the keys in the store, in no particular order, and is implemented by the memory, file system, SQL, Web Storage and IndexedDB stores. Custom stores built with `KeyValueStore.make` or `KeyValueStore.makeStringOnly` must now provide `keys`.
+  
+  `KeyValueStore.prefix(...)` now scopes `keys`, `size` and `isEmpty` to keys under the prefix, with the prefix removed from the returned keys. Previously `size` and `isEmpty` reported on the whole backing store.
+  
+  Stores built with `KeyValueStore.make` that don't provide `clearPrefix` now derive it from `keys` and `remove` instead of failing for non-empty prefixes.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`e5a1479`](https://github.com/Effect-TS/effect/commit/e5a147947745ceab53dc0b44848222d809751472) Thanks @effect-bot! - Add the unstable `Match.literals` and `Match.literalsExhaustive` APIs for matching string and number literal unions with a record of handlers.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`65db606`](https://github.com/Effect-TS/effect/commit/65db606e6bf7c91b3061a48fbf31e51226b8044d) Thanks @effect-bot! - Add request-level dependencies and middleware to `McpServer` so handler services can be supplied per request. Breaking: pass registration layers through the transport's `registrations` option, and capture construction-time handler services in `Layer.unwrap` instead of `Layer.provide`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`7c42335`](https://github.com/Effect-TS/effect/commit/7c42335aba1e2e1430a3651dcdffb159213fcf6f) Thanks @tim-smart! - Add `McpServer.visibility` to hide tools, resources and prompts per request based on services provided by MCP middleware. Middleware that wraps a visibility now runs on list requests, once for each registration, so `MiddlewareMethod` includes the list methods. Middleware provided both locally and globally now runs once.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`cb21d14`](https://github.com/Effect-TS/effect/commit/cb21d148be8ed97ed1ab271f623bcb99341704e3) Thanks @effect-bot! - Add a `cacheHints` option to the `McpServer` layers to set how long clients may treat `v2026_07_28` discovery and list results as fresh, for example `cacheHints: { tools: { ttl: "1 minute", cacheScope: "private" } }`. Results without a hint, and `resources/read`, keep `{ ttlMs: 0, cacheScope: "private" }`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`c32eb78`](https://github.com/Effect-TS/effect/commit/c32eb78a5914298b25274e7a331a0e3d249a64d8) Thanks @effect-bot! - Expose `SqlMessageStorage.makeEncodedStorage` to construct an encoded SQL message storage driver without running migrations or executing startup SQL. Run `layerMigrations` separately with the same table prefix before using the driver; `makeEncoded` continues to run migrations by default.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`be9895b`](https://github.com/Effect-TS/effect/commit/be9895bd7608f606dfdc4910ab722e2eb700ab19) Thanks @bezff! - Move `fromFileSystem` from `effect/sql/Migrator` to `effect/sql/MigratorFileSystem`, so React Native apps can import `effect/sql/Migrator` and `effect/sql` under Metro. The `effect/sql` barrel and `@effect/sql-sqlite-react-native/SqliteMigrator` no longer export `fromFileSystem`; the other SQL adapter migrators still re-export it.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`26b4bfe`](https://github.com/Effect-TS/effect/commit/26b4bfe99f5666c1a6b6f1a7aaa37707d0af0d32) Thanks @fubhy! - Type received and forwarded HTTP request methods as `string` so methods such as `PROPFIND` are represented accurately, including in AI HTTP error details. Exhaustive matches on request methods now need a fallback or a guard using `HttpMethod.isHttpMethod`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`f97711f`](https://github.com/Effect-TS/effect/commit/f97711f43f24e4c5045f51bba373ba23ccf230fd) Thanks @effect-bot! - Isolate `Persistence` stores on the `KeyValueStore` and Redis backings. Clearing a store now only removes that store's entries, and different store / key pairs no longer map to the same backing key.
+  
+  Add `KeyValueStore.clearPrefix`, implemented by the memory, file system, SQL, Web Storage and IndexedDB stores. `KeyValueStore.prefix(...).clear` now only removes keys under the prefix. Stores built with `KeyValueStore.make` that don't provide `clearPrefix` remove the matching keys one by one instead of clearing everything.
+  
+  Both backings now store entries under `<storeId>:<key>`, with `%` and `:` in the store id percent-encoded.
+  
+  **Key layout change.** Entries written by earlier versions are not read back:
+  
+  - `Persistence.layerKvs` / `layerBackingKvs`: every existing entry becomes unreachable, because keys used to be `<storeId><key>` with no separator. Cached results are recomputed. `Chat.layerPersisted` on a `KeyValueStore` backing loses its stored chat histories.
+  - `Persistence.layerRedis` / `layerBackingRedis`: keys are unchanged unless the store id contains `%` or `:`. Entries for those store ids become unreachable.
+  
+  Old entries are not migrated or removed automatically.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`4f16778`](https://github.com/Effect-TS/effect/commit/4f167781512ad6c1e5ac54bd4449237d12d0f96b) Thanks @effect-bot! - Add the unstable `Pool.Stats` and `Pool.stats` APIs for sampling how many pool items are idle or in use and how many borrowers are waiting. `PgPool.stats` and `PgClient.poolStats` expose the same snapshot for PostgreSQL sessions, so applications can export connection pool metrics without reaching into pool internals.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`d2b6bc7`](https://github.com/Effect-TS/effect/commit/d2b6bc71ea63bc20f7efba052a95e71dc9853248) Thanks @jpowersdev! - Add experimental `Glob` path matching and a shared `FileSystem.glob` implementation for Node, Bun, and Deno.
+  
+  - Breaking: custom `FileSystem` implementations, including inputs to `FileSystem.make`, must provide `readDirectoryEntries`; mapping `readDirectory` names to `{ name, type: "Unknown" }` is supported. Wrappers must apply directory-listing changes to both methods.
+  - `FileSystem.make` now derives `glob` instead of accepting it. Apply custom overrides afterward with `FileSystem.of({ ...fs, glob: customGlob })`.
+  - Glob patterns use `/` separators and backslash escapes; Node extglobs no longer expand. Results use `/` separators and are relative to `root` unless the pattern is absolute. Deno wildcards now skip dotfiles unless explicitly named or `dot: true`; unreadable wildcard-reached directories are skipped, while read failures at the root or a leading literal directory propagate.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`3d88452`](https://github.com/Effect-TS/effect/commit/3d88452eb653a24fd8bd44894bedcdd8f3a09865) Thanks @fubhy! - Add `CommandLine` to `effect/process` for quoting and joining command lines, and support `Redacted` arguments and `env` values in `ChildProcess`.
+  
+  Migration:
+  
+  - `ChildProcess.make` templates keep quoted words together and throw a `CommandLineError` for shell syntax such as `|`, `$HOME` or `*`. Quote such characters or pass them with `${}`.
+  - With the `shell` option, templates cannot contain `${}` values and extra arguments fail with `BadArgument`. Pass the whole script as the command, built with `CommandLine.join`.
+  - `StandardCommand.args` and `env` values can be `Redacted` strings.
+  - `ChildProcess.TemplateExpression` and `ChildProcess.TemplateExpressionItem` are removed. Use the `CommandLine` types of the same name.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`3c42058`](https://github.com/Effect-TS/effect/commit/3c420582246e531eedefe0b98eede39dd9a98240) Thanks @effect-bot! - Remove `AiError.HttpRequestDetails` and `Response.HttpRequestDetails`, so AI errors and response metadata no longer carry request headers or query parameters. `AiError.NetworkError` records the request as `method` and `url` fields instead of `request`, and the `request` field is gone from `AiError.HttpContext` and `Response.ResponseMetadataPart`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`2ae4045`](https://github.com/Effect-TS/effect/commit/2ae404530b0cc6ad59d0e2b3ced56efce2a98390) Thanks @tim-smart! - Calls made with `discard: true` now complete when the server acknowledges them, instead of when the request is written.
+  
+  SchemaBinary peers must be upgraded together because the new `discard` field changes the envelope fingerprint.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`e853fa1`](https://github.com/Effect-TS/effect/commit/e853fa1e9d9da28c5d2ee2c8bb4d44121762ff12) Thanks @effect-bot! - Add an `onDisconnect` option to `RpcServer.make` and its layer and HTTP wrappers, so applications can observe client disconnects without taking from `Protocol.disconnects` and preventing the server from interrupting the disconnected client's requests.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`1194a4c`](https://github.com/Effect-TS/effect/commit/1194a4c48e9c9684d3bea4d15df80c0ec122a6cd) Thanks @bezff! - `sql.insert` and `sql.updateValues` now require a non-empty array of rows at the type level. Narrow array inputs with `Array.isReadonlyArrayNonEmpty` before passing them to these helpers.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`2cb498e`](https://github.com/Effect-TS/effect/commit/2cb498e0795ecabc491689cb298db966da24c8e7) Thanks @effect-bot! - Fix a SQLite client hanging forever after a queued `withTransaction` or `reserve` was interrupted just as it received the connection. The interrupted acquisition could keep the connection's only permit without registering its release.
+  
+  Add `Semaphore.takeScoped`, which holds permits until the current scope closes. Waiting can be interrupted unless the caller is uninterruptible, and acquired permits are always returned when the scope closes.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`89e5443`](https://github.com/Effect-TS/effect/commit/89e5443280e15b3329f07cab3c03dc1f2ccc4ab0) Thanks @jpowersdev! - Add `Terminal.size`, a scoped queue that starts with the current terminal dimensions and receives each resize. Custom terminals passed to `Terminal.make` must now supply `size`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`2a9a425`](https://github.com/Effect-TS/effect/commit/2a9a4258a7bcbdd38432b5ffac3cb9a04cce98b0) Thanks @jayhemnani9910! - `Toml.parse` now returns a `Result` instead of throwing, failing with an `EncodingError` on invalid input. It also rejects documents that extend an inline table or a statically defined array, which TOML 1.0 forbids.
+
+### Patch Changes
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`ed20129`](https://github.com/Effect-TS/effect/commit/ed20129f33028e0322c3f7cc117144a56c889e3b) Thanks @effect-bot! - Report unobserved release failures at `UnhandledLogLevel` for RcMap and RcRef idle expiry, abandoned interrupted RcMap lookups, and ScopedCache expiry discovered by keys, values, or entries scans. Preserve failure propagation when cleanup is observed by a caller.
+
+- [#10076](https://github.com/Effect-TS/effect/pull/10076) [`20795b9`](https://github.com/Effect-TS/effect/commit/20795b9a4f32dc29dd82c98ddd72d57786883ad0) Thanks @jpowersdev! - `Base64Url.decode` and `Base64Url.decodeString` now reject partially padded input such as `Zg=`. Unpadded input (`Zg`) and fully padded input (`Zg==`) still decode.
+
+- [#10083](https://github.com/Effect-TS/effect/pull/10083) [`a8e5e6c`](https://github.com/Effect-TS/effect/commit/a8e5e6cb08e6651fb4c8f6f814300e2adbe39a7d) Thanks @jpowersdev! - Fix `BigDecimal.fromString` and `BigDecimal.fromStringUnsafe` accepting a sign after the decimal point.
+
+- [#10093](https://github.com/Effect-TS/effect/pull/10093) [`fb5dbee`](https://github.com/Effect-TS/effect/commit/fb5dbee799a633920b47f3c7f2fa9fbc2d0e0621) Thanks @tim-smart! - Release a frozen runner's MySQL shard locks after `shardLockExpiration`. `SqlRunnerStorage` sets `wait_timeout` on its MySQL lock connection, and restores it before returning the connection to the pool, so a runner that stops refreshing loses its named locks instead of holding them until the server drops its TCP connection. Vitess ignores `wait_timeout`, so runners behind Vitess keep the previous behavior.
+
+- [#10095](https://github.com/Effect-TS/effect/pull/10095) [`8309b94`](https://github.com/Effect-TS/effect/commit/8309b94770b78c945f50d2d583857720bdb50420) Thanks @tim-smart! - Restore `idle_session_timeout` on the PostgreSQL shard-lock connection before `SqlRunnerStorage` returns it to the pool, so other queries on that connection no longer have their session ended after `shardLockExpiration` idle.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`af23904`](https://github.com/Effect-TS/effect/commit/af239048d989cd9fde20dc2367f2a3f73a517f26) Thanks @devangpratap! - Reject an append assignment such as `FOO+=bar cmd` in `CommandLine.template` and `ChildProcess.make` with `UnsupportedSyntax`, as `FOO=bar cmd` already is, instead of running `FOO+=bar` as the program.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`468c6ee`](https://github.com/Effect-TS/effect/commit/468c6ee46b4434bf0e798cfd62b43b0971eeae0f) Thanks @tim-smart! - Keep the source context's `maxDepth` when `Context.pick` is given zero or one key, and reduce the bundle size of `Context.makeUnsafe`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`fe6b748`](https://github.com/Effect-TS/effect/commit/fe6b748933b35bc22237ae829e17cd3d76abac8a) Thanks @effect-bot! - Support duplex `additionalFds` through `getInputFd` and `getOutputFd`, preserving both directions when used with `pipeTo`.
+
+- [#10064](https://github.com/Effect-TS/effect/pull/10064) [`e75708c`](https://github.com/Effect-TS/effect/commit/e75708cde5a52301dbebce6e0ef43ccef5b0b690) Thanks @gcanti! - Fix `SchemaRepresentation.toCodeDocument` losing `__proto__` properties or changing object prototypes in generated annotations.
+
+- [#10086](https://github.com/Effect-TS/effect/pull/10086) [`7890077`](https://github.com/Effect-TS/effect/commit/7890077223d7e150544599e40cbd5f9e15f21996) Thanks @jpowersdev! - `HttpTraceContext.fromHeaders` now rejects uppercase hex trace and span IDs in `traceparent`, `b3` and `X-B3-*` headers, matching the lowercase encodings required by W3C Trace Context and B3. Previously they were accepted and propagated unchanged, which conforming downstream receivers reject.
+
+- [#10085](https://github.com/Effect-TS/effect/pull/10085) [`c4a00fc`](https://github.com/Effect-TS/effect/commit/c4a00fcbdee66672dfa22bcc0b2d4c58df562a8d) Thanks @jpowersdev! - Reject `traceparent` headers with malformed trace flags in `HttpTraceContext`. Flags that are not two lowercase hexadecimal digits now return `Option.none()` instead of continuing the trace.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`8938b19`](https://github.com/Effect-TS/effect/commit/8938b194465d99e6e5c53dc7d904a383b5858fe4) Thanks @effect-bot! - Make `remove` on `KeyValueStore.layerFileSystem` succeed when the key does not exist, matching the other backends.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`89e1e1e`](https://github.com/Effect-TS/effect/commit/89e1e1e992494aafd531d90986efb4502b601e0a) Thanks @tim-smart! - Stop `McpServer` from sending stateful clients list-change notifications for changes made before the server handled their `initialize` request, over stdio, HTTP sessions and custom transports.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`eda0960`](https://github.com/Effect-TS/effect/commit/eda09602d1a2c54475c49f2f9fe500dccc824d04) Thanks @effect-bot! - Let `McpServer` middleware and visibility layers receive per-request services from `HttpRouter.middleware` under `layerHttp`. Unmet per-request services now stay as `McpRequest<"Requires", S>` layer requirements, replacing `MissingRequestDependencies`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`89e1e1e`](https://github.com/Effect-TS/effect/commit/89e1e1e992494aafd531d90986efb4502b601e0a) Thanks @tim-smart! - Add `McpTest.makeClient`, an in-memory MCP client for testing `McpServer` registrations over the JSON-RPC wire encoding.
+
+- [#10062](https://github.com/Effect-TS/effect/pull/10062) [`e19c611`](https://github.com/Effect-TS/effect/commit/e19c611b5640c89088463655628c0ceb4b239e73) Thanks @duailibe! - `Otlp.layer`, `Otlp.layerFromConfig`, `Otlp.layerJson` and `Otlp.layerProtobuf` now declare the shared `OtlpExporter.Flusher` they provide, instead of `Layer<never>`.
+
+- [#10065](https://github.com/Effect-TS/effect/pull/10065) [`8e668fe`](https://github.com/Effect-TS/effect/commit/8e668fe1ceb53846df37797d3df692e02bc3f7c5) Thanks @jpowersdev! - Preserve a leading UTF-8 BOM in URL-encoded body field names.
+
+- [#10067](https://github.com/Effect-TS/effect/pull/10067) [`ce9e999`](https://github.com/Effect-TS/effect/commit/ce9e9990546e38a0fadbc64240c2eedbb1c353d6) Thanks @jpowersdev! - Preserve a leading `?` in URL-encoded form field names. `urlParamsBody` previously dropped it as a query-string prefix, so `?name=value` decoded to `name`.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`6dc3f7c`](https://github.com/Effect-TS/effect/commit/6dc3f7c3e1479392b85a2913cf2146248ab2e916) Thanks @jpowersdev! - Add the unstable `Csv` module to `effect/encoding` for streaming CSV parsing and writing over text or UTF-8 bytes, with header records and schema adapters that convert cells through `Schema.toCodecStringTree`.
+
+- [#10050](https://github.com/Effect-TS/effect/pull/10050) [`1513bbd`](https://github.com/Effect-TS/effect/commit/1513bbd7fcafd34361301c4f13d23eb834ea8817) Thanks @gcanti! - Prevent excessive CPU use when `Schema.fromFormData` and `Schema.fromURLSearchParams` decode field names containing unmatched opening brackets.
+
+- [#10061](https://github.com/Effect-TS/effect/pull/10061) [`c065ed7`](https://github.com/Effect-TS/effect/commit/c065ed7b2cd9de19cfd5303114908128a70b309f) Thanks @gcanti! - Fix `Schema.TaggedUnion.match` and `matchOrElse` return inference and handler input types, and narrow `matchOrElse` fallbacks to unhandled variants.
+  
+  Remove explicit output type arguments from `Schema.TaggedUnion.match` and `matchOrElse` calls; annotate handler return types when an explicit output is needed.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`e710bbb`](https://github.com/Effect-TS/effect/commit/e710bbb1801c351232757f453d875e98c5686b6c) Thanks @devangpratap! - Fix `Toml.parse` accepting out of range dates and times such as `1979-02-30` or `24:00:00`, and rolling `1979-02-30T07:32:00Z` over to March 2 instead of rejecting it.
+
+- [#8829](https://github.com/Effect-TS/effect/pull/8829) [`b0d6e75`](https://github.com/Effect-TS/effect/commit/b0d6e7569e3eeddcbfa2f882f20cfcff06bf8f4a) Thanks @jayhemnani9910! - Fix `Toml.parse` rejecting multiline basic and literal strings ending with one or two content quotes.
+
+- [#10068](https://github.com/Effect-TS/effect/pull/10068) [`32b3570`](https://github.com/Effect-TS/effect/commit/32b3570b3e6a10b596e56601a31fdebd6d17c138) Thanks @effect-bot! - Store the empty string key in `Trie` instead of silently discarding it. Construction, lookup, replacement, modification, removal, iteration and `longestPrefixOf` now treat `""` like any other key.
+
+- [#10051](https://github.com/Effect-TS/effect/pull/10051) [`9f93f4f`](https://github.com/Effect-TS/effect/commit/9f93f4f0111a2da7e0122373bc3981862fa9e63d) Thanks @okarin1511! - Support YAML 1.1 merge keys (`<<`) in `Yaml.parse`. An unquoted `<<` key merges a mapping, or a sequence of mappings, into the enclosing mapping. Explicit keys take precedence over merged keys, and earlier merge sources over later ones. Quote the key (`"<<"`) to keep it as an ordinary key.
+
+- [#10069](https://github.com/Effect-TS/effect/pull/10069) [`27370c7`](https://github.com/Effect-TS/effect/commit/27370c746ebaba219b20ff4905f6948f1f0a3700) Thanks @effect-bot! - Fix `Yaml.parse` rejecting block sequence entry mappings whose first key sits more than one space after the dash. Later keys in the entry must now align with the first key, and a tab before the first key is rejected.
+
 ## 4.0.7
 
 ### Patch Changes
