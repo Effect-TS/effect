@@ -80,7 +80,7 @@ function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => S
     case "Declaration": {
       const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
       if (!Predicate.isFunction(getLink)) {
-        return SchemaAST.replaceEncoding(ast, [SchemaAST.unknownToJson])
+        return SchemaAST.replaceEncoding(ast, [SchemaAST.opaqueToJson])
       }
       const typeParameters = ast.typeParameters.map((tp) => InternalMake.make(SchemaAST.toEncoded(tp)))
       const link = getLink(typeParameters)

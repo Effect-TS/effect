@@ -458,6 +458,29 @@ export const Link: new(
   }
 }
 
+const totalLinks = new WeakMap<Link, boolean | (() => boolean)>()
+
+/**
+ * Marks a link whose decoding accepts every value of its target and yields a
+ * value of the decoded side, ignoring the decoded side's checks. A predicate
+ * defers the decision until the link is first inspected.
+ *
+ * @internal
+ */
+export function total(link: Link, predicate?: () => boolean): Link {
+  totalLinks.set(link, predicate ?? true)
+  return link
+}
+
+/** @internal */
+export function isTotal(link: Link): boolean {
+  const entry = totalLinks.get(link)
+  if (typeof entry !== "function") return entry === true
+  const out = entry()
+  totalLinks.set(link, out)
+  return out
+}
+
 /**
  * A non-empty chain of {@link Link} values representing the transformation
  * steps between a schema's decoded (type) form and its encoded (wire) form.
@@ -970,11 +993,13 @@ export const Undefined: new(
   }
 }
 
-const undefinedToNull = new Link(
-  null_,
-  new SchemaTransformation.Transformation(
-    SchemaGetter.transform(() => undefined),
-    SchemaGetter.transform(() => null)
+const undefinedToNull = total(
+  new Link(
+    null_,
+    new SchemaTransformation.Transformation(
+      SchemaGetter.transform(() => undefined),
+      SchemaGetter.transform(() => null)
+    )
   )
 )
 
@@ -1705,9 +1730,11 @@ export const UniqueSymbol: new(
   toCodecStringTree(): AST {
     const key = globalThis.Symbol.keyFor(this.symbol)
     return replaceEncoding(this, [
-      new Link(
-        key === undefined ? never : new Literal(globalThis.String(this.symbol)),
-        symbolToString.transformation
+      total(
+        new Link(
+          key === undefined ? never : new Literal(globalThis.String(this.symbol)),
+          symbolToString.transformation
+        )
       )
     ])
   }
@@ -1830,11 +1857,13 @@ export const Literal: new(
 function literalToString(ast: Literal): Literal {
   const literalAsString = globalThis.String(ast.literal)
   return replaceEncoding(ast, [
-    new Link(
-      new Literal(literalAsString),
-      new SchemaTransformation.Transformation(
-        SchemaGetter.transform(() => ast.literal),
-        SchemaGetter.transform(() => literalAsString)
+    total(
+      new Link(
+        new Literal(literalAsString),
+        new SchemaTransformation.Transformation(
+          SchemaGetter.transform(() => ast.literal),
+          SchemaGetter.transform(() => literalAsString)
+        )
       )
     )
   ])
@@ -4275,11 +4304,13 @@ export function isFinite(annotations?: Schema.Annotations.Filter) {
 /** @internal */
 export const finite = appendChecks(number, [isFinite()])
 
-const numberToJson = new Link(
-  new Union([finite, nonFiniteLiterals]),
-  new SchemaTransformation.Transformation(
-    SchemaGetter.Number(),
-    SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
+const numberToJson = total(
+  new Link(
+    new Union([finite, nonFiniteLiterals]),
+    new SchemaTransformation.Transformation(
+      SchemaGetter.Number(),
+      SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
+    )
   )
 )
 
@@ -4423,7 +4454,10 @@ export function appendChecks<A extends AST>(ast: A, checks: Checks | undefined):
 /** @internal */
 export function mapLink(link: Link, f: (ast: AST) => AST): Link {
   const to = f(link.to)
-  return to === link.to ? link : new Link(to, link.transformation)
+  if (to === link.to) return link
+  // Re-encoding the target keeps the values the link decodes.
+  const out = new Link(to, link.transformation)
+  return totalLinks.has(link) ? total(out, () => isTotal(link)) : out
 }
 
 function updateLastLink(encoding: Encoding, f: (ast: AST) => AST): Encoding {
@@ -5005,10 +5039,7 @@ export const bigIntString = appendChecks(string, [isStringBigInt({
   expected: "a string representing a bigint"
 })])
 
-const bigIntToString = new Link(
-  bigIntString,
-  SchemaTransformation.bigintFromString
-)
+const bigIntToString = total(new Link(bigIntString, SchemaTransformation.bigintFromString))
 
 const REGEXP_PATTERN = "Symbol\\(([\\s\\S]*)\\)"
 
@@ -5020,23 +5051,25 @@ export const symbolString = appendChecks(string, [isStringSymbol()])
 /**
  * to distinguish between Symbol and String, we need to add a check to the string keyword
  */
-const symbolToString = new Link(
-  symbolString,
-  new SchemaTransformation.Transformation(
-    SchemaGetter.transform((description) => globalThis.Symbol.for(isStringSymbolRegExp.exec(description)![1])),
-    SchemaGetter.transformEffect((sym: symbol, options) => {
-      const key = globalThis.Symbol.keyFor(sym)
-      if (key !== undefined) {
-        return Effect.succeed(globalThis.String(sym))
-      }
-      return Effect.fail(
-        new SchemaIssue.Forbidden(
-          { message: "cannot serialize to string, Symbol is not registered" },
-          sym,
-          options
+const symbolToString = total(
+  new Link(
+    symbolString,
+    new SchemaTransformation.Transformation(
+      SchemaGetter.transform((description) => globalThis.Symbol.for(isStringSymbolRegExp.exec(description)![1])),
+      SchemaGetter.transformEffect((sym: symbol, options) => {
+        const key = globalThis.Symbol.keyFor(sym)
+        if (key !== undefined) {
+          return Effect.succeed(globalThis.String(sym))
+        }
+        return Effect.fail(
+          new SchemaIssue.Forbidden(
+            { message: "cannot serialize to string, Symbol is not registered" },
+            sym,
+            options
+          )
         )
-      )
-    })
+      })
+    )
   )
 )
 
@@ -5315,17 +5348,27 @@ export const MutableJson = annotate(Json, {
 })
 
 /** @internal */
-export const unknownToJson = new Link(
-  Json,
-  SchemaTransformation.passthrough()
-)
+export const unknownToJson = total(new Link(Json, SchemaTransformation.passthrough()))
 
 /** @internal */
-export const objectKeywordToJson = new Link(
-  new Union([
-    new Arrays(false, [], [Json]),
-    new Objects([], [new IndexSignature(string, Json)])
-  ]),
+export const objectKeywordToJson = total(
+  new Link(
+    new Union([
+      new Arrays(false, [], [Json]),
+      new Objects([], [new IndexSignature(string, Json)])
+    ]),
+    SchemaTransformation.passthrough()
+  )
+)
+
+/**
+ * The JSON lowering of a declaration without a JSON codec. It is not total,
+ * so JSON Schema exports it as an approximation.
+ *
+ * @internal
+ */
+export const opaqueToJson = new Link(
+  Json,
   SchemaTransformation.passthrough()
 )
 

@@ -398,6 +398,7 @@ function compileJsonSchema(
 
     const local: Array<Exactness> = []
     dependencies.push(local)
+    if (representation.annotations?.[InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY] === true) local.push(false)
     let output = {
       ...on(representation, path, local),
       ...collectJsonSchemaAnnotations(representation.annotations, options)

@@ -2662,6 +2662,12 @@ export interface ToRepresentationOptions {
  * distinctions such as those added by `Schema.brand` are absent from the AST
  * and cannot be reconstructed from the resulting document.
  *
+ * An encoded side reached through a transformation that can reject values, or
+ * that drops checks of its decoded side, accepts more than the codec. Its
+ * representation is marked approximate, so {@link toJsonSchemaDocument} exports
+ * a `oneOf` containing it as `anyOf`. When the encoded side is a shared
+ * reference, the referenced definition is marked.
+ *
  * @see {@link toRepresentations} for multiple roots sharing one reference table
  *
  * @stability stable
@@ -2732,7 +2738,8 @@ export function toMultiDocument(document: Document): MultiDocument {
  * A `oneOf` union exports as `anyOf` when any branch contains a known
  * approximation; otherwise it retains `oneOf`. Approximation propagates through
  * checks, nested schemas, check dependencies, and recursive references. Filters
- * without a `toJsonSchema` callback and opaque declarations are approximate.
+ * without a `toJsonSchema` callback, opaque declarations, and encoded sides that
+ * {@link toRepresentation} marks as approximate are approximate.
  * Custom callbacks declare their result using {@link ToJsonSchema.CheckOutput}.
  *
  * **Gotchas**

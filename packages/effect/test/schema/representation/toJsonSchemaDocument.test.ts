@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { Effect, Exit, JsonSchema, Schema, SchemaAST, SchemaIssue, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -698,6 +698,91 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
           .schema,
         { type: "string" }
       )
+    })
+
+    for (
+      const [name, member] of [
+        ["Date", Schema.Date],
+        ["a checked Date", Schema.Date.check(Schema.makeFilter((d: Date) => d.getTime() > 0))],
+        ["DateFromString", Schema.DateFromString],
+        ["URL", Schema.URL]
+      ] as const
+    ) {
+      it(`keeps ${name} approximate when decoding rejects some of its JSON encodings`, () => {
+        const schema = Schema.Union([member, Schema.Literal("a")], { mode: "oneOf" })
+        assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+        assert.isTrue(Schema.is(restored)("a"))
+      })
+    }
+
+    it("keeps oneOf when every branch encodes exactly", () => {
+      const schema = Schema.Union([Schema.Finite, Schema.Literal("a")], { mode: "oneOf" })
+      assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
+        oneOf: [{ type: "number" }, { type: "string", enum: ["a"] }]
+      })
+    })
+
+    class Person extends Schema.Class<Person>("Person")({ name: Schema.String }) {}
+
+    for (
+      const [name, member, mode] of [
+        ["a Class", Person, "oneOf"],
+        ["an Option", Schema.Option(Schema.String), "oneOf"],
+        [
+          "a decoding default",
+          Schema.Struct({ a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("x"))) }),
+          "oneOf"
+        ],
+        ["an Option of a partial codec", Schema.Option(Schema.NumberFromString), "anyOf"],
+        [
+          "a decoding default of a partial codec",
+          Schema.Struct({
+            a: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1")))
+          }),
+          "anyOf"
+        ],
+        ["a Number check the JSON encoding drops", Schema.Number.check(Schema.isGreaterThan(0)), "anyOf"]
+      ] as const
+    ) {
+      it(`exports a oneOf with ${name} as ${mode}`, () => {
+        const schema = Schema.Union([member, Schema.Literal("a")], { mode: "oneOf" })
+        assert.hasAllKeys(Schema.toJsonSchemaDocument(schema).schema, [mode])
+      })
+    }
+
+    for (
+      const [name, member] of [
+        [
+          "a failing default",
+          Schema.Struct({
+            a: Schema.String.pipe(
+              Schema.withDecodingDefaultKey(Effect.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue())))
+            )
+          })
+        ],
+        [
+          "an invalid default",
+          Schema.Struct({
+            a: Schema.optional(Schema.NonEmptyString).pipe(Schema.withDecodingDefault(Effect.succeed("")))
+          })
+        ]
+      ] as const
+    ) {
+      it(`keeps a oneOf branch with ${name} approximate`, () => {
+        const schema = Schema.Union([member, Schema.Struct({ b: Schema.Literal("a") })], { mode: "oneOf" })
+        assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(Schema.toCodecJson(schema))({ b: "a" })))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+        assert.isTrue(Schema.is(restored)({ b: "a" }))
+      })
+    }
+
+    it("keeps partial encodings approximate through the public representation route", () => {
+      const schema = Schema.Union([Schema.DateFromString, Schema.Literal("a")], { mode: "oneOf" })
+      const restored = SchemaRepresentation.fromJsonSchemaDocument(
+        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(Schema.toCodecJson(schema).ast))
+      )
+      assert.isTrue(Schema.is(restored)("a"))
     })
 
     it("omits isPattern flags that JSON Schema cannot represent", () => {
