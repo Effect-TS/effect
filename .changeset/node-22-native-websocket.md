@@ -7,20 +7,20 @@
 "@effect/ai-openai": patch
 ---
 
-Node.js 22.19.0 is now the minimum supported version for `@effect/platform-node`, `@effect/platform-node-shared`, `@effect/opentelemetry` and `@effect/docgen`, up from 18. `@effect/platform-node` already depends on `undici` 8, which requires 22.19.0.
+Node.js 22.19.0 (required by `undici` 8) is now the minimum for `@effect/platform-node`, `@effect/platform-node-shared`, `@effect/opentelemetry` and `@effect/docgen`, up from 18.
 
-WebSocket clients no longer use the `ws` package. `NodeSocket.layerWebSocketConstructor` and `NodeSocket.layerWebSocket` always use Node's global `WebSocket`, and pass handshake headers and subprotocols to it as `WebSocketInit`. Importing only client APIs from `NodeSocket` no longer bundles `ws`.
+`NodeSocket` WebSocket clients now use Node's global `WebSocket` instead of `ws`, so client-only usage no longer bundles `ws`.
 
-**Breaking:** `ws` moved out of `NodeSocket` into a new `NodeWS` module.
+**Breaking:** `ws` moved to a new `NodeWS` module.
 
-- `NodeSocket.NodeWS` (also re-exported as `BunSocket.NodeWS`) is removed. Use `NodeWS` from `@effect/platform-node/NodeWS` or `@effect/platform-node-shared/NodeWS`, which re-exports `ws` with the same members: `NodeSocket.NodeWS.WebSocketServer` becomes `NodeWS.WebSocketServer`. On Bun, import `ws` directly. The `ws` default export is not re-exported; use `NodeWS.WebSocket` instead of `NodeSocket.NodeWS.default`.
+- `NodeSocket.NodeWS` and `BunSocket.NodeWS` are removed. Import `NodeWS` from `@effect/platform-node` or `@effect/platform-node-shared` (on Bun, import `ws` directly). Use `NodeWS.WebSocket` in place of `NodeSocket.NodeWS.default`.
 - `NodeSocket.layerWebSocketConstructorWS` is removed. Use `NodeWS.layerWebSocketConstructor`.
 
-**Behaviour changes** for clients that passed handshake headers, which used `ws` before and now use the global `WebSocket`:
+**Behaviour changes** for clients that pass handshake headers, which previously used `ws`. Use `NodeWS.layerWebSocketConstructor` to keep the old behaviour:
 
-- Node's `WebSocket` cannot pause reads. Incoming frames are buffered without limit by default, and a configured `highWaterMark` now fails the socket with a `SocketReadError` instead of pausing reads at 64 KiB. Use `NodeWS.layerWebSocketConstructor` to keep pausing.
-- Connection errors are reported as a generic `ErrorEvent` without the underlying error code, so `SocketOpenError` causes carry less detail.
-- The `Socket.WebSocket` service holds a global `WebSocket` instance, so `instanceof` checks against `ws` and `ws`-only methods such as `terminate()` and `ping()` no longer apply.
-- A `Host` header is ignored; the handshake always sends the URL's host. Use `NodeWS.layerWebSocketConstructor` to set a custom `Host`, for example for virtual-host routing.
-- Outgoing messages are not compressed. Incoming messages are still decompressed when the server uses `permessage-deflate`. Use `NodeWS.layerWebSocketConstructor` if outbound compression matters.
-- Connections go through undici's global dispatcher instead of `http.globalAgent` / `https.globalAgent`.
+- Reads cannot be paused. Incoming frames are buffered without limit, and a configured `highWaterMark` fails the socket with a `SocketReadError`.
+- Connection errors are a generic `ErrorEvent`, so `SocketOpenError` causes lack the underlying error code.
+- The `Socket.WebSocket` service is a global `WebSocket`, so `ws` `instanceof` checks and `ws`-only methods such as `terminate()` and `ping()` no longer apply.
+- A custom `Host` header is ignored.
+- Outgoing messages are not compressed. Incoming `permessage-deflate` messages are still decompressed.
+- Connections use undici's global dispatcher instead of `http.globalAgent` / `https.globalAgent`.
