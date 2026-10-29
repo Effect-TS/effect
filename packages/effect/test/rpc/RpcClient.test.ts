@@ -15,6 +15,7 @@ import {
   Queue,
   Request,
   RequestResolver,
+  Result,
   Schedule,
   Schema,
   SchemaTransformation,
@@ -65,6 +66,34 @@ const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Ef
   const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
   const handle = yield* Deferred.await(received)
   return { client, handle, sent }
+})
+
+// A transport that delivers requests but never replies, like a message queue.
+const makeOneWayProtocol = Effect.fnUntraced(function*(
+  sendRequest: Effect.Effect<void, RpcClientError> = Effect.void
+) {
+  const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+  const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(
+    RpcClient.Protocol,
+    RpcClient.Protocol.of({
+      codecFor: RpcSerialization.json.codecFor,
+      supportsAck: false,
+      supportsReplies: false,
+      supportsTransferables: false,
+      run: () => Effect.never,
+      send: (_clientId, message) =>
+        Queue.offer(sent, message).pipe(Effect.andThen(message._tag === "Request" ? sendRequest : Effect.void))
+    })
+  ))
+  return { client, sent }
+})
+
+// Awaits a fiber for up to a second of test time, so a call that never
+// completes fails the assertion instead of hanging the test.
+const awaitWithin = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
+  const result = yield* Fiber.await(fiber).pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
+  yield* TestClock.adjust("1 second")
+  return yield* Fiber.join(result)
 })
 
 const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
@@ -503,6 +532,59 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Fiber.await(call), Exit.fail(error))
       yield* Deferred.await(sendInterrupted)
     }))
+
+  describe("protocol without replies", () => {
+    const sendError = new RpcClientError({
+      reason: new RpcClientDefect({ message: "broker unavailable", cause: undefined })
+    })
+    for (
+      const [name, outcome] of [["succeeds", Result.succeed(undefined)], ["fails", Result.fail(sendError)]] as const
+    ) {
+      it.effect(`completes a discarded call once its send ${name}`, () =>
+        Effect.gen(function*() {
+          const sending = yield* Deferred.make<void, RpcClientError>()
+          const { client, sent } = yield* makeOneWayProtocol(Deferred.await(sending))
+          const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.result, Effect.forkChild)
+          const request = yield* Queue.take(sent)
+          assert(request._tag === "Request" && request.discard === true)
+          yield* Effect.yieldNow
+          assert.isUndefined(call.pollUnsafe())
+
+          yield* Deferred.complete(sending, Effect.fromResult(outcome))
+          assert.deepStrictEqual(yield* awaitWithin(call), Option.some(Exit.succeed(outcome)))
+        }))
+    }
+
+    for (const consumer of ["unary", "stream"] as const) {
+      it.effect(`rejects a ${consumer} call that is not discarded without sending it`, () =>
+        Effect.gen(function*() {
+          const { client, sent } = yield* makeOneWayProtocol()
+          const call = yield* (consumer === "unary" ? client.Unary() : Stream.runDrain(client.Good())).pipe(
+            Effect.forkChild
+          )
+          const exit = yield* awaitWithin(call)
+          assert(Option.isSome(exit) && Exit.isFailure(exit.value))
+          const error = Cause.squash(exit.value.cause)
+          assert.instanceOf(error, RpcClientError)
+          assert.strictEqual(error.reason._tag, "RpcClientDefect")
+          assert.deepStrictEqual(yield* Queue.clear(sent), [])
+        }))
+    }
+
+    it.effect("interrupts the pending send of an interrupted discarded call without sending Interrupt", () =>
+      Effect.gen(function*() {
+        const sendInterrupted = yield* Deferred.make<void>()
+        const { client, sent } = yield* makeOneWayProtocol(
+          Effect.never.pipe(Effect.onInterrupt(() => Deferred.succeed(sendInterrupted, undefined)))
+        )
+        const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.forkChild)
+        yield* Queue.take(sent)
+
+        yield* Fiber.interrupt(call)
+        yield* Deferred.await(sendInterrupted)
+        assert.deepStrictEqual(yield* Queue.clear(sent), [])
+      }))
+  })
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
