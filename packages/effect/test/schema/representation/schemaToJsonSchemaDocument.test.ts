@@ -298,4 +298,34 @@ describe("Schema.toJsonSchemaDocument", () => {
       }
     }
   })
+
+  it("exports a representation-level isNot without rejecting values its host encodes", () => {
+    const host = Schema.Number.check(Schema.isNot(Schema.Literal("NaN")))
+    const imported = SchemaRepresentation.fromJsonSchemaDocument(
+      SchemaRepresentation.toJsonSchemaDocument(Schema.toRepresentation(host))
+    )
+    assert.isTrue(Schema.is(imported)("NaN"))
+    assert.isFalse(Schema.is(imported)(true))
+
+    const union = Schema.Union([host, Schema.Boolean], { mode: "oneOf" })
+    assert.isUndefined(SchemaRepresentation.toJsonSchemaDocument(Schema.toRepresentation(union)).schema.oneOf)
+  })
+
+  it("keeps isNot on a recursive host without transformations", () => {
+    interface Category {
+      readonly name: string
+      readonly child?: Category
+    }
+    const Category: Schema.Codec<Category> = Schema.Struct({
+      name: Schema.String,
+      child: Schema.optionalKey(Schema.suspend((): Schema.Codec<Category> => Category))
+    }).check(Schema.isNot(Schema.Struct({ name: Schema.Literal("forbidden") }))).annotate({ identifier: "Category" })
+    const document = Schema.toJsonSchemaDocument(Category)
+    assert.isDefined(document.definitions.Category.not)
+
+    const imported = SchemaRepresentation.fromJsonSchemaDocument(document)
+    assert.isTrue(Schema.is(imported)({ name: "root", child: { name: "leaf" } }))
+    assert.isFalse(Schema.is(imported)({ name: "forbidden" }))
+    assert.isFalse(Schema.is(imported)({ name: "root", child: { name: "forbidden" } }))
+  })
 })
