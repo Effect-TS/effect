@@ -355,6 +355,7 @@ function compileJsonSchema(
 
   function compileCheck(
     check: SchemaRepresentation.Check,
+    host: SchemaRepresentation.Representation,
     type: JsonSchema.Type | undefined,
     path: Path,
     dependencies: Array<Exactness>
@@ -369,7 +370,7 @@ function compileJsonSchema(
       ) ?? []
       const output = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
       const result = check.representation?.id === "effect/schema/isNot" && !isApproximateCheckOutput(output)
-        ? compileNegation(output, check.representation.schemas![0], schemas[0], operands)
+        ? compileNegation(output, host, check.representation.schemas![0], schemas[0], operands)
         : output
       const approximate = isApproximateCheckOutput(result)
       if (approximate) {
@@ -394,7 +395,7 @@ function compileJsonSchema(
     }
 
     const schemas = check.checks.flatMap((child, index) => {
-      const result = compileCheck(child, type, [...path, "checks", index], dependencies)
+      const result = compileCheck(child, host, type, [...path, "checks", index], dependencies)
       return result === undefined ? [] : [result[0]]
     })
     if (schemas.length === 0) return undefined
@@ -405,11 +406,13 @@ function compileJsonSchema(
 
   function compileNegation(
     output: JsonSchema.JsonSchema,
+    host: SchemaRepresentation.Representation,
     operand: SchemaRepresentation.Representation,
     compiled: JsonSchema.JsonSchema,
     exactness: Exactness
   ): SchemaRepresentation.ToJsonSchema.CheckOutput {
-    if (!acceptsOnlyRuntimeValues(operand)) return [{}, true]
+    // Both sides must agree with the runtime: the host on the value the check sees, the operand on what it rejects.
+    if (!acceptsOnlyRuntimeValues(host) || !acceptsOnlyRuntimeValues(operand)) return [{}, true]
     pendingNegations.set(compiled, exactness)
     return output
   }
@@ -492,7 +495,7 @@ function compileJsonSchema(
     }
     for (let index = 0; index < representation.checks.length; index++) {
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
-      const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
+      const check = compileCheck(representation.checks[index], representation, type, [...path, "checks", index], local)
       if (check !== undefined) output = appendJsonSchema(output, ...check)
     }
     compiledRepresentations.set(representation, { schema: output, dependencies: local })

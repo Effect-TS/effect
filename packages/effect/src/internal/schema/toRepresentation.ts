@@ -29,6 +29,23 @@ interface Content {
   readonly schema?: ReferenceCandidate | undefined
 }
 
+const approximateNegation = (): SchemaRepresentation.ToJsonSchema.CheckOutput => [{}, true]
+
+function hasEncodedDescendant(ast: SchemaAST.AST): boolean {
+  const seen = new Set<SchemaAST.AST>()
+  let out = false
+  function visit(child: SchemaAST.AST): SchemaAST.AST {
+    if (out || seen.has(child)) return child
+    seen.add(child)
+    if (child.encoding !== undefined) out = true
+    else if (SchemaAST.isSuspend(child)) visit(child.thunk())
+    else if ("recur" in child) child.recur(visit)
+    return child
+  }
+  if ("recur" in ast) ast.recur(visit)
+  return out
+}
+
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
 }
@@ -214,7 +231,7 @@ export function toRepresentations(
 
   function on(ast: SchemaAST.AST, content: Content | undefined): SchemaRepresentation.Representation {
     const common = {
-      checks: ast.checks?.map(fromCheck) ?? [],
+      checks: ast.checks?.map((check) => fromCheck(check, ast)) ?? [],
       ...(ast._tag === "Declaration" ? fromAnnotations(ast.annotations) : annotationsField(ast.annotations))
     }
     switch (ast._tag) {
@@ -312,13 +329,19 @@ export function toRepresentations(
   }
 
   function fromCheck(
-    check: SchemaAST.Check<any>
+    check: SchemaAST.Check<any>,
+    host: SchemaAST.AST
   ): SchemaRepresentation.Check {
+    const fields = fromAnnotations(check.annotations, true)
     return {
       ...(check._tag === "Filter"
         ? { _tag: check._tag, aborted: check.aborted }
-        : { _tag: check._tag, checks: Arr.map(check.checks, fromCheck) }),
-      ...fromAnnotations(check.annotations, true)
+        : { _tag: check._tag, checks: Arr.map(check.checks, (child) => fromCheck(child, host)) }),
+      ...fields,
+      // A negation checks the decoded value, so it cannot constrain encoded descendants in JSON Schema.
+      ...(check.annotations?.representation?.id === "effect/schema/isNot" && hasEncodedDescendant(host)
+        ? { annotations: { ...fields?.annotations, toJsonSchema: approximateNegation } }
+        : undefined)
     }
   }
 
