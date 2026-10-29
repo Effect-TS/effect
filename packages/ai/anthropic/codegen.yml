@@ -38,6 +38,8 @@ patches:
   - '[{"op":"replace","path":"/components/schemas/BetaMessageIterationUsage/required","value":["cache_creation","cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens","type"]}]'
   # Keep refusal fallback fields optional; the API omits them when no fallback applies (#10932).
   - '[{"op":"replace","path":"/components/schemas/BetaRefusalStopDetails/required","value":["category","explanation","type"]}]'
+  # Read JSON Lines batch results as bytes; the generator cannot decode application/x-jsonl (#10107)
+  - '[{"op":"replace","path":"/paths/~1v1~1messages~1batches~1{message_batch_id}~1results/get/responses/200/content/application~1x-jsonl/schema","value":{"type":"string","format":"binary"}},{"op":"replace","path":"/paths/~1v1~1messages~1batches~1{message_batch_id}~1results?beta=true/get/responses/200/content/application~1x-jsonl/schema","value":{"type":"string","format":"binary"}}]'
 # Decode every error envelope and let the status code decide the error, as released.
 collapseErrorResponses: true
 # Released schemas that no operation references: stream events, batch results, memory tool
@@ -69,6 +71,8 @@ includeSchemas:
   - ErroredResult
   - ExpiredResult
   - SucceededResult
+  - BetaMessageBatchIndividualResponse
+  - MessageBatchIndividualResponse
   - BetaMemoryTool_20250818_CreateCommand
   - BetaMemoryTool_20250818_DeleteCommand
   - BetaMemoryTool_20250818_InsertCommand

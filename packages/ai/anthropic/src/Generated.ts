@@ -17122,6 +17122,52 @@ export const SucceededResult = Schema.Struct({
   "type": Schema.Literal("succeeded").annotate({ "title": "Type", "default": "succeeded" })
 }).annotate({ "title": "SucceededResult", "identifier": "SucceededResult" })
 
+export type BetaMessageBatchIndividualResponse = {
+  readonly "custom_id": string
+  readonly "result": BetaSucceededResult | BetaErroredResult | BetaCanceledResult | BetaExpiredResult
+}
+
+export const BetaMessageBatchIndividualResponse = Schema.Struct({
+  "custom_id": Schema.String.annotate({
+    "title": "Custom Id",
+    "description":
+      "Developer-provided ID created for each request in a Message Batch. Useful for matching results to requests, as results may be given out of request order.\n\nMust be unique for each request within the Message Batch."
+  }),
+  "result": Schema.Union([BetaSucceededResult, BetaErroredResult, BetaCanceledResult, BetaExpiredResult], {
+    mode: "oneOf"
+  }).annotate({
+    "title": "Result",
+    "description":
+      "Processing result for this request.\n\nContains a Message output if processing was successful, an error response if processing failed, or the reason why processing was not attempted, such as cancellation or expiration."
+  })
+}).annotate({
+  "title": "MessageBatchIndividualResponse",
+  "description": "This is a single line in the response `.jsonl` file and does not represent the response as a whole.",
+  "identifier": "BetaMessageBatchIndividualResponse"
+})
+
+export type MessageBatchIndividualResponse = {
+  readonly "custom_id": string
+  readonly "result": SucceededResult | ErroredResult | CanceledResult | ExpiredResult
+}
+
+export const MessageBatchIndividualResponse = Schema.Struct({
+  "custom_id": Schema.String.annotate({
+    "title": "Custom Id",
+    "description":
+      "Developer-provided ID created for each request in a Message Batch. Useful for matching results to requests, as results may be given out of request order.\n\nMust be unique for each request within the Message Batch."
+  }),
+  "result": Schema.Union([SucceededResult, ErroredResult, CanceledResult, ExpiredResult], { mode: "oneOf" }).annotate({
+    "title": "Result",
+    "description":
+      "Processing result for this request.\n\nContains a Message output if processing was successful, an error response if processing failed, or the reason why processing was not attempted, such as cancellation or expiration."
+  })
+}).annotate({
+  "title": "MessageBatchIndividualResponse",
+  "description": "This is a single line in the response `.jsonl` file and does not represent the response as a whole.",
+  "identifier": "MessageBatchIndividualResponse"
+})
+
 export type BetaMemoryTool_20250818_CreateCommand = {
   readonly "command": "create"
   readonly "path": string
@@ -20210,11 +20256,29 @@ export const make = <E, R>(
               "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeBinary,
               "4xx": decodeError("MessageBatchesResults4XX", MessageBatchesResults4XX),
               orElse: unexpectedStatus
             }))
           )
         )
+      ),
+    "messageBatchesResultsStream": (messageBatchId, options) =>
+      Stream.unwrap(
+        __makePathRequest(HttpClientRequest.get, [messageBatchId], () =>
+          "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/results")
+          .pipe(
+            Effect.map((request) =>
+              request.pipe(
+                HttpClientRequest.setHeaders({
+                  "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+                  "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+                  "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+                }),
+                binaryRequest
+              )
+            )
+          )
       ),
     "messagesCountTokensPost": (options: Parameters<AnthropicClient["messagesCountTokensPost"]>[0]) =>
       HttpClientRequest.post("/v1/messages/count_tokens").pipe(
@@ -20698,11 +20762,30 @@ export const make = <E, R>(
               "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeBinary,
               "4xx": decodeError("BetaMessageBatchesResults4XX", BetaMessageBatchesResults4XX),
               orElse: unexpectedStatus
             }))
           )
         )
+      ),
+    "betaMessageBatchesResultsStream": (messageBatchId, options) =>
+      Stream.unwrap(
+        __makePathRequest(HttpClientRequest.get, [messageBatchId], () =>
+          "/v1/messages/batches/" + __encodePathParam(messageBatchId) +
+          "/results?beta=true").pipe(
+            Effect.map((request) =>
+              request.pipe(
+                HttpClientRequest.setHeaders({
+                  "anthropic-beta": options?.params?.["anthropic-beta"] ?? undefined,
+                  "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+                  "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+                  "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+                }),
+                binaryRequest
+              )
+            )
+          )
       ),
     "betaMessagesCountTokensPost": (options: Parameters<AnthropicClient["betaMessagesCountTokensPost"]>[0]) =>
       HttpClientRequest.post("/v1/messages/count_tokens?beta=true").pipe(
@@ -21393,7 +21476,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       messageBatchId: string,
       options: { readonly params?: typeof MessageBatchesResultsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
-      WithOptionalResponse<void, Config>,
+      WithOptionalResponse<Uint8Array, Config>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -21407,7 +21490,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
         readonly config?: Config | undefined
       } | undefined
     ): Effect.Effect<
-      WithOptionalResponse<void, Config | undefined>,
+      WithOptionalResponse<Uint8Array, Config | undefined>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -21415,6 +21498,17 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
   }
+  /**
+   * Streams the results of a Message Batch as a `.jsonl` file.
+   *
+   * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   *
+   * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+   */
+  readonly "messageBatchesResultsStream": (
+    messageBatchId: string,
+    options: { readonly params?: typeof MessageBatchesResultsParams.Encoded | undefined } | undefined
+  ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Count the number of tokens in a Message.
    *
@@ -22177,7 +22271,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       messageBatchId: string,
       options: { readonly params?: typeof BetaMessageBatchesResultsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
-      WithOptionalResponse<void, Config>,
+      WithOptionalResponse<Uint8Array, Config>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -22191,7 +22285,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
         readonly config?: Config | undefined
       } | undefined
     ): Effect.Effect<
-      WithOptionalResponse<void, Config | undefined>,
+      WithOptionalResponse<Uint8Array, Config | undefined>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -22199,6 +22293,17 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
   }
+  /**
+   * Streams the results of a Message Batch as a `.jsonl` file.
+   *
+   * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   *
+   * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+   */
+  readonly "betaMessageBatchesResultsStream": (
+    messageBatchId: string,
+    options: { readonly params?: typeof BetaMessageBatchesResultsParams.Encoded | undefined } | undefined
+  ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Count the number of tokens in a Message.
    *
