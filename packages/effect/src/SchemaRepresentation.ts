@@ -55,6 +55,14 @@ export declare namespace ToJsonSchema {
   export interface CheckInput {
     readonly type: JsonSchema.Type | undefined
     readonly schemas: ReadonlyArray<JsonSchema.JsonSchema>
+    /**
+     * Whether each entry of `schemas` was compiled exactly. An entry is
+     * approximate when it, or anything it references, is a looser
+     * approximation. A reference still being compiled counts as approximate.
+     *
+     * @since 4.1.0
+     */
+    readonly exact: ReadonlyArray<boolean>
   }
 
   /**
@@ -1567,21 +1575,17 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @stability stable
  * @category validation
- * @since 4.0.0
+ * @since 4.1.0
  */
-export const isConditionalReviver: FilterReviver<{
-  readonly then: boolean
-  readonly else: boolean
-}> = makeReviverFilter(
+export const isConditionalReviver: FilterReviver<ReadonlyArray<"onTrue" | "onFalse">> = makeReviverFilter(
   "effect/schema/isConditional",
-  // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-  Schema.Struct({ then: Schema.Boolean, else: Schema.Boolean }),
+  Schema.Array(Schema.Literals(["onTrue", "onFalse"])),
   ({ annotations, payload, schemas }) =>
-    Schema.isConditional(schemas[0], {
-      // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-      then: payload.then ? schemas[1] : undefined,
-      else: payload.else ? schemas[payload.then ? 2 : 1] : undefined
-    }, annotations)
+    Schema.isConditional(
+      schemas[0],
+      Object.fromEntries(payload.map((key, index) => [key, schemas[index + 1]])),
+      annotations
+    )
 )
 
 /**

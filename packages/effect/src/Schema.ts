@@ -9119,8 +9119,8 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   )
 }
 /**
- * Validates a value against `then` when it satisfies `condition`, and against
- * `else` otherwise. An absent branch imposes no constraint.
+ * Validates a value against `onTrue` when it satisfies `condition`, and against
+ * `onFalse` otherwise. An absent branch imposes no constraint.
  *
  * **Details**
  *
@@ -9133,7 +9133,9 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * This check corresponds to `if`, `then`, and `else` in JSON Schema. Effect
  * checks the decoded value, while JSON Schema checks the original input. A
  * closed struct strips excess properties before its checks run, so the
- * condition and branches cannot see them.
+ * condition and branches cannot see them. When the condition can only be
+ * exported approximately, the export requires one of the branches to hold
+ * instead, because a wider `if` could select the wrong branch.
  *
  * **Example** (Requiring a size for boxes)
  *
@@ -9145,8 +9147,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  *   size: Schema.optionalKey(Schema.Finite)
  * }).check(
  *   Schema.isConditional(Schema.Struct({ kind: Schema.Literal("box") }), {
- *     // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
- *     then: Schema.Struct({ size: Schema.Finite })
+ *     onTrue: Schema.Struct({ size: Schema.Finite })
  *   })
  * )
  *
@@ -9157,57 +9158,57 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  *
  * @stability stable
  * @category validation
- * @since 4.0.0
+ * @since 4.1.0
  */
 export function isConditional(
   condition: Constraint,
-  branches: { readonly then?: Constraint | undefined; readonly else?: Constraint | undefined },
+  branches: { readonly onTrue?: Constraint | undefined; readonly onFalse?: Constraint | undefined },
   annotations?: Annotations.Filter
 ) {
   const conditionAST = toType(condition).ast
-  const thenAST = branches.then === undefined ? undefined : toType(branches.then).ast
-  const elseAST = branches.else === undefined ? undefined : toType(branches.else).ast
-  const hasThen = thenAST !== undefined
-  const hasElse = elseAST !== undefined
-  const conditionParser = SchemaParser._issue(conditionAST)
-  const thenParser = hasThen ? SchemaParser._issue(thenAST) : undefined
-  const elseParser = hasElse ? SchemaParser._issue(elseAST) : undefined
+  const parseCondition = SchemaParser._issue(conditionAST)
+  const keys: Array<"onTrue" | "onFalse"> = []
+  const branchASTs: Array<SchemaAST.AST> = []
+  const parseBranch: {
+    onTrue?: ReturnType<typeof SchemaParser._issue>
+    onFalse?: ReturnType<typeof SchemaParser._issue>
+  } = {}
+  for (const key of ["onTrue", "onFalse"] as const) {
+    const branch = branches[key]
+    if (branch === undefined) continue
+    const ast = toType(branch).ast
+    keys.push(key)
+    branchASTs.push(ast)
+    parseBranch[key] = SchemaParser._issue(ast)
+  }
   return makeFilter<unknown>(
     (input, _ast, options) => {
-      const parser = conditionParser(input, options) === undefined ? thenParser : elseParser
-      return parser?.(input, options) ?? true
+      // Only success matters for the condition, so stop at its first issue.
+      const holds = parseCondition(input, { ...options, errors: "first" }) === undefined
+      return parseBranch[holds ? "onTrue" : "onFalse"]?.(input, options) ?? true
     },
     {
       expected: "a value satisfying the conditional schema",
       representation: {
         id: "effect/schema/isConditional",
-        // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-        payload: { then: hasThen, else: hasElse },
-        schemas: [conditionAST, ...(hasThen ? [thenAST] : []), ...(hasElse ? [elseAST] : [])]
+        payload: keys,
+        schemas: [conditionAST, ...branchASTs]
       },
-      toJsonSchema: ({ schemas }) => conditionalBranches(schemas, hasThen, hasElse),
-      toCode: ({ schemas }) => {
-        const { if: condition, ...branches } = conditionalBranches(schemas, hasThen, hasElse)
-        const entries = Object.entries(branches).map(([key, code]) => `${key}: ${code.runtime}`)
-        return { runtime: `Schema.isConditional(${condition.runtime}, { ${entries.join(", ")} })` }
-      },
+      toJsonSchema: ({ schemas: [condition, ...branches], exact }) =>
+        exact[0]
+          ? { if: condition, ...Object.fromEntries(keys.map((key, i) => [conditionalKeywords[key], branches[i]])) }
+          : [branches.length === 2 ? { anyOf: branches } : {}, true],
+      toCode: ({ schemas: [condition, ...branches] }) => ({
+        runtime: `Schema.isConditional(${condition.runtime}, { ${
+          keys.map((key, i) => `${key}: ${branches[i].runtime}`).join(", ")
+        } })`
+      }),
       ...annotations
     }
   )
 }
 
-function conditionalBranches<A>(
-  schemas: ReadonlyArray<A>,
-  hasThen: boolean,
-  hasElse: boolean
-): { readonly if: A; readonly then?: A; readonly else?: A } {
-  return {
-    if: schemas[0],
-    // oxlint-disable-next-line unicorn/no-thenable -- conditional branch
-    ...(hasThen ? { then: schemas[1] } : undefined),
-    ...(hasElse ? { else: schemas[hasThen ? 2 : 1] } : undefined)
-  }
-}
+const conditionalKeywords = { onTrue: "then", onFalse: "else" } as const
 
 /**
  * Validates that all items in an array are unique according to Effect equality.

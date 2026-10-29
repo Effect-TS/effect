@@ -27,8 +27,8 @@ interface PropertyNames {
 interface Conditional {
   readonly _tag: "Conditional"
   readonly condition: ImportedJsonSchemaRepresentation
-  readonly then: ImportedJsonSchemaRepresentation | undefined
-  readonly else: ImportedJsonSchemaRepresentation | undefined
+  readonly onTrue: ImportedJsonSchemaRepresentation | undefined
+  readonly onFalse: ImportedJsonSchemaRepresentation | undefined
   readonly annotations?: Schema.Annotations.Filter | undefined
 }
 
@@ -277,17 +277,26 @@ export function fromJsonSchemaMultiDocument(
   const validatedAliases = new Set<string>()
   const resolvingChoices = new Set<string>()
   const references = new Map<string, ReferenceSlot>()
+  // Definitions finalized for a condition, when they contain closed objects.
+  const conditionReferences = new Map<string, ReferenceSlot>()
+  const reachesClosedObjectCache = new Map<string, boolean>()
   let inNestedResource = false
 
-  function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
+  // A condition only selects a branch, so closed objects inside it must reject
+  // excess properties instead of stripping them under the caller's parse options.
+  function finalize(input: ImportedJsonSchemaRepresentation, inCondition = false): Schema.Top {
     const annotations = mergeAnnotations(input.annotations, input.customAnnotations)
     if (input._tag === "Reference") {
       if (annotations !== undefined) resolveReference(input, input.path)
-      let slot = references.get(input.$ref)
+      const conditionScoped = inCondition && reachesClosedObject(input)
+      const slots = conditionScoped ? conditionReferences : references
+      let slot = slots.get(input.$ref)
       if (slot === undefined) {
         slot = new ReferenceSlot(input.$ref)
-        references.set(input.$ref, slot)
-        slot.body = finalize(translateDefinition(input.$ref, input.path)).annotate({ identifier: input.$ref })
+        slots.set(input.$ref, slot)
+        slot.body = finalize(translateDefinition(input.$ref, input.path), conditionScoped).annotate({
+          identifier: input.$ref
+        })
       }
       return annotations === undefined ? slot.body ?? slot.wrapper : slot.wrapper.annotate(annotations)
     }
@@ -295,7 +304,7 @@ export function fromJsonSchemaMultiDocument(
     let schema: Schema.Top
     switch (input._tag) {
       case "Unknown":
-        schema = Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+        schema = Schema.Json.annotate({ expected: "JSON value" })
         break
       case "Never":
       case "Null":
@@ -309,10 +318,10 @@ export function fromJsonSchemaMultiDocument(
         break
       case "Arrays": {
         const elements = input.elements.map((element) => {
-          const type = finalize(element.type)
+          const type = finalize(element.type, inCondition)
           return element.isOptional ? Schema.optionalKey(type) : type
         })
-        const rest = input.rest[0] === undefined ? undefined : finalize(input.rest[0])
+        const rest = input.rest[0] === undefined ? undefined : finalize(input.rest[0], inCondition)
         schema = rest !== undefined
           ? elements.length === 0
             ? Schema.Array(rest)
@@ -333,13 +342,27 @@ export function fromJsonSchemaMultiDocument(
         }
         const fields: Record<string, Schema.Top> = {}
         for (const property of input.propertySignatures) {
-          const type = finalize(property.type)
+          const type = finalize(property.type, inCondition)
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        const record = index === undefined
-          ? undefined
-          : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
+        let key: Schema.Record.Key | undefined
+        let record: Schema.StructWithRest.Records[number] | undefined
+        if (index !== undefined) {
+          key = finalize(index.parameter) as Schema.Record.Key
+          record = Schema.Record(key, finalize(index.type, inCondition))
+        }
+        if (inCondition && isClosedObject(input)) {
+          // Keep every key so the property names check sees the excess ones.
+          const names = input.propertySignatures.map((property) => property.name)
+          schema = Schema.StructWithRest(Schema.Struct(fields), [
+            ...(record === undefined ? [] : [record]),
+            Schema.Record(Schema.String, finalize(unknown))
+          ]).check(Schema.isPropertyNames(
+            key ?? (names.length === 0 ? Schema.Never : Schema.Literals(names))
+          ))
+          break
+        }
         schema = record !== undefined
           ? input.propertySignatures.length === 0
             ? record
@@ -348,31 +371,82 @@ export function fromJsonSchemaMultiDocument(
         break
       }
       case "Union":
-        schema = Schema.Union(input.types.map(finalize), input.options)
+        schema = Schema.Union(input.types.map((type) => finalize(type, inCondition)), input.options)
         break
     }
-    if (annotations !== undefined && input._tag !== "Unknown") schema = schema.annotate(annotations)
-    const checks = input.checks.map(finalizeCheck)
+    if (annotations !== undefined) schema = schema.annotate(annotations)
+    const checks = input.checks.map((check) => finalizeCheck(check, inCondition))
     return checks.length > 0 ? schema.check(...checks as [InternalAST.Check<any>]) : schema
   }
 
-  function finalizeCheck(check: Check): InternalAST.Check<any> {
+  function finalizeCheck(check: Check, inCondition: boolean): InternalAST.Check<any> {
     if (check._tag === "FilterGroup") {
       return Schema.makeFilterGroup(
-        check.checks.map(finalizeCheck) as [InternalAST.Check<any>, ...Array<InternalAST.Check<any>>],
+        check.checks.map((check) => finalizeCheck(check, inCondition)) as [
+          InternalAST.Check<any>,
+          ...Array<InternalAST.Check<any>>
+        ],
         check.annotations
       )
     }
     const filter = check._tag === "PropertyNames"
       ? Schema.isPropertyNames(finalize(check.type))
       : check._tag === "Conditional"
-      ? Schema.isConditional(finalize(check.condition), {
-        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
-        then: check.then === undefined ? undefined : finalize(check.then),
-        else: check.else === undefined ? undefined : finalize(check.else)
+      ? Schema.isConditional(finalize(check.condition, true), {
+        onTrue: check.onTrue === undefined ? undefined : finalize(check.onTrue, inCondition),
+        onFalse: check.onFalse === undefined ? undefined : finalize(check.onFalse, inCondition)
       })
       : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
+  }
+
+  // Without an open index signature, finalize relies on parse options to reject excess keys.
+  function isClosedObject(input: ImportedObjects): boolean {
+    return input.indexSignatures[0]?.parameter !== string
+  }
+
+  // Whether finalizing a reference inside a condition differs from finalizing it elsewhere.
+  function reachesClosedObject(reference: ImportedReference): boolean {
+    let result = reachesClosedObjectCache.get(reference.$ref)
+    if (result === undefined) {
+      result = visit(reference, new Set())
+      reachesClosedObjectCache.set(reference.$ref, result)
+    }
+    return result
+
+    function visit(input: ImportedJsonSchemaRepresentation, seen: Set<string>): boolean {
+      switch (input._tag) {
+        case "Reference":
+          if (seen.has(input.$ref)) return false
+          seen.add(input.$ref)
+          return visit(translateDefinition(input.$ref, input.path), seen)
+        case "Arrays":
+          return input.elements.some((element) => visit(element.type, seen)) ||
+            input.rest.some((rest) => visit(rest, seen)) || input.checks.some((check) => visitCheck(check, seen))
+        case "Objects":
+          return isClosedObject(input) ||
+            input.propertySignatures.some((property) => visit(property.type, seen)) ||
+            input.indexSignatures.some((index) => visit(index.type, seen)) ||
+            input.checks.some((check) => visitCheck(check, seen))
+        case "Union":
+          return input.types.some((type) => visit(type, seen)) || input.checks.some((check) => visitCheck(check, seen))
+        default:
+          return input.checks.some((check) => visitCheck(check, seen))
+      }
+    }
+
+    // Conditions are always finalized for a condition, so only branches can differ.
+    function visitCheck(check: Check, seen: Set<string>): boolean {
+      switch (check._tag) {
+        case "FilterGroup":
+          return check.checks.some((check) => visitCheck(check, seen))
+        case "Conditional":
+          return check.onTrue !== undefined && visit(check.onTrue, seen) ||
+            check.onFalse !== undefined && visit(check.onFalse, seen)
+        default:
+          return false
+      }
+    }
   }
 
   function annotate(
@@ -681,7 +755,7 @@ export function fromJsonSchemaMultiDocument(
       for (const name of scope.properties.keys()) names.add(name)
       hasFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" && scope.patterns.length === 0
       requiresFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" ||
-        scope.additionalProperties._tag !== "Unknown" && (scope.hasProperties || scope.patterns.length > 0)
+        !isUnconstrained(scope.additionalProperties) && (scope.hasProperties || scope.patterns.length > 0)
     }
     const closedPattern = scopes.length === 1 && names.size === 0 &&
         scopes[0].additionalProperties._tag === "Never" && scopes[0].patterns.length === 1
@@ -741,6 +815,14 @@ export function fromJsonSchemaMultiDocument(
       path,
       ...checked
     }
+  }
+
+  function hasChecks(representation: ImportedJsonSchemaRepresentation): boolean {
+    return representation._tag !== "Reference" && representation.checks.length > 0
+  }
+
+  function isUnconstrained(representation: ImportedJsonSchemaRepresentation): boolean {
+    return representation._tag === "Unknown" && representation.checks.length === 0
   }
 
   const jsonRootTags = ["Null", "String", "Number", "Boolean", "Objects", "Arrays"] as const
@@ -837,24 +919,33 @@ export function fromJsonSchemaMultiDocument(
     if ((left.options?.mode ?? "anyOf") !== "anyOf" || (right.options?.mode ?? "anyOf") !== "anyOf") {
       return undefined
     }
-    const rightByValue = new Map<string | number | boolean | null, ImportedJsonSchemaRepresentation>()
+    // Duplicates coalesce only without checks, so a checked duplicate cannot replace an unchecked one.
+    const rightByValue = new Map<string | number | boolean | null, Array<ImportedJsonSchemaRepresentation>>()
     for (const representation of right.types) {
       const value = literalValue(representation)
       if (value === undefined) return undefined
-      const previous = rightByValue.get(value)
-      rightByValue.set(value, {
-        ...representation,
-        customAnnotations: mergeAnnotations(previous?.customAnnotations, representation.customAnnotations)
-      })
+      const matches = rightByValue.get(value)
+      const previous = matches?.at(-1)
+      if (matches === undefined) {
+        rightByValue.set(value, [representation])
+      } else if (previous !== undefined && !hasChecks(previous) && !hasChecks(representation)) {
+        matches[matches.length - 1] = {
+          ...representation,
+          customAnnotations: mergeAnnotations(previous.customAnnotations, representation.customAnnotations)
+        }
+      } else {
+        matches.push(representation)
+      }
     }
     const types: Array<ImportedJsonSchemaRepresentation> = []
     for (const representation of left.types) {
       const value = literalValue(representation)
       if (value === undefined) return undefined
-      const match = rightByValue.get(value)
-      if (match !== undefined) types.push(intersect(representation, annotate(match, right), path))
+      for (const match of rightByValue.get(value) ?? []) {
+        types.push(intersect(representation, annotate(match, right), path))
+      }
     }
-    return makeUnion(left, types)
+    return makeUnion({ ...left, checks: [...left.checks, ...right.checks] }, types)
   }
 
   function intersectUnionWithType(
@@ -1152,9 +1243,8 @@ export function fromJsonSchemaMultiDocument(
       const conditional: Conditional = {
         _tag: "Conditional",
         condition: translateSchema(schema.if, [...path, "if"]),
-        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
-        then: Object.hasOwn(schema, "then") ? translateSchema(schema.then, [...path, "then"]) : undefined,
-        else: Object.hasOwn(schema, "else") ? translateSchema(schema.else, [...path, "else"]) : undefined
+        onTrue: Object.hasOwn(schema, "then") ? translateSchema(schema.then, [...path, "then"]) : undefined,
+        onFalse: Object.hasOwn(schema, "else") ? translateSchema(schema.else, [...path, "else"]) : undefined
       }
       representation = intersect(representation, { _tag: "Unknown", checks: [conditional] }, path)
     }
