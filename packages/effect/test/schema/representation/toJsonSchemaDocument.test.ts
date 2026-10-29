@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { Effect, JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -716,6 +716,34 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         oneOf: [{ type: "number" }, { type: "string", enum: ["a"] }]
       })
     })
+
+    class Person extends Schema.Class<Person>("Person")({ name: Schema.String }) {}
+
+    for (
+      const [name, member, mode] of [
+        ["a Class", Person, "oneOf"],
+        ["an Option", Schema.Option(Schema.String), "oneOf"],
+        [
+          "a decoding default",
+          Schema.Struct({ a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("x"))) }),
+          "oneOf"
+        ],
+        ["an Option of a partial codec", Schema.Option(Schema.NumberFromString), "anyOf"],
+        [
+          "a decoding default of a partial codec",
+          Schema.Struct({
+            a: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1")))
+          }),
+          "anyOf"
+        ],
+        ["a Number check the JSON encoding drops", Schema.Number.check(Schema.isGreaterThan(0)), "anyOf"]
+      ] as const
+    ) {
+      it(`exports a oneOf with ${name} as ${mode}`, () => {
+        const schema = Schema.Union([member, Schema.Literal("a")], { mode: "oneOf" })
+        assert.hasAllKeys(Schema.toJsonSchemaDocument(schema).schema, [mode])
+      })
+    }
 
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(

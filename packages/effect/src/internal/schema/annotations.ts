@@ -24,6 +24,14 @@ export const SENTINELS_ANNOTATION_KEY = "~sentinels"
 /** @internal */
 export const CONSTRUCTOR_ANNOTATION_KEY = "~constructor"
 
+/**
+ * Marks an encoded representation that accepts more than its codec, such as
+ * one reached through a transformation that can reject encoded values.
+ *
+ * @internal
+ */
+export const APPROXIMATE_JSON_ANNOTATION_KEY = "~approximateJson"
+
 /** @internal */
 export const jsonSchemaAnnotationKeys = [
   "title",
@@ -61,6 +69,7 @@ export const getExpected = memoize((ast: SchemaAST.AST): string => {
 export const annotationExcludedKeys = new Set([
   SENTINELS_ANNOTATION_KEY,
   STRUCTURAL_ANNOTATION_KEY,
+  APPROXIMATE_JSON_ANNOTATION_KEY,
   "representation",
   "arbitraryConstraint",
   "toJsonSchema",

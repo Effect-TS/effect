@@ -6030,10 +6030,12 @@ export function withDecodingDefaultKey<S extends Constraint, R = never>(
 ): (self: S) => withDecodingDefaultKey<S, R> {
   const encode = options?.encodingStrategy === "omit" ? SchemaGetter.omit() : SchemaGetter.passthrough()
   return (self: S): withDecodingDefaultKey<S, R> => {
-    return optionalKey(toEncoded(self)).pipe(decodeTo(self, {
-      decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
-      encode
-    }))
+    return totalLastLink(
+      optionalKey(toEncoded(self)).pipe(decodeTo(self, {
+        decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
+        encode
+      }))
+    )
   }
 }
 /**
@@ -6137,10 +6139,12 @@ export function withDecodingDefault<S extends Constraint, R = never>(
 ): (self: S) => withDecodingDefault<S, R> {
   const encode = options?.encodingStrategy === "omit" ? SchemaGetter.omit() : SchemaGetter.passthrough()
   return (self: S): withDecodingDefault<S, R> => {
-    return optional(toEncoded(self)).pipe(decodeTo(self, {
-      decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
-      encode
-    }))
+    return totalLastLink(
+      optional(toEncoded(self)).pipe(decodeTo(self, {
+        decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
+        encode
+      }))
+    )
   }
 }
 /**
@@ -9558,12 +9562,14 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
       }),
       expected: "ReadonlyMap",
       toCodec: ([key, value]) =>
-        link<globalThis.Map<Key["Encoded"], Value["Encoded"]>>()(
-          ArraySchema(Tuple([key, value])),
-          SchemaTransformation.transform({
-            decode: (entries) => new globalThis.Map(entries),
-            encode: (map) => [...map.entries()]
-          })
+        SchemaAST.total(
+          link<globalThis.Map<Key["Encoded"], Value["Encoded"]>>()(
+            ArraySchema(Tuple([key, value])),
+            SchemaTransformation.transform({
+              decode: (entries) => new globalThis.Map(entries),
+              encode: (map) => [...map.entries()]
+            })
+          )
         )
     }
   )
@@ -9636,12 +9642,14 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
       }),
       expected: "ReadonlySet",
       toCodec: ([value]) =>
-        link<globalThis.Set<Value["Encoded"]>>()(
-          ArraySchema(value),
-          SchemaTransformation.transform({
-            decode: (values) => new globalThis.Set(values),
-            encode: (set) => [...set.values()]
-          })
+        SchemaAST.total(
+          link<globalThis.Set<Value["Encoded"]>>()(
+            ArraySchema(value),
+            SchemaTransformation.transform({
+              decode: (values) => new globalThis.Set(values),
+              encode: (set) => [...set.values()]
+            })
+          )
         )
     }
   )
@@ -16201,15 +16209,17 @@ export function Option<A extends Constraint>(value: A): Option<A> {
       }),
       expected: "Option",
       toCodec: ([value]) =>
-        link<Option_.Option<A["Encoded"]>>()(
-          Union([
-            Struct({ _tag: Literal("Some"), value }),
-            Struct({ _tag: Literal("None") })
-          ]),
-          SchemaTransformation.transform({
-            decode: (e) => e._tag === "None" ? Option_.none() : Option_.some(e.value),
-            encode: (o) => (Option_.isSome(o) ? { _tag: "Some", value: o.value } as const : { _tag: "None" } as const)
-          })
+        SchemaAST.total(
+          link<Option_.Option<A["Encoded"]>>()(
+            Union([
+              Struct({ _tag: Literal("Some"), value }),
+              Struct({ _tag: Literal("None") })
+            ]),
+            SchemaTransformation.transform({
+              decode: (e) => e._tag === "None" ? Option_.none() : Option_.some(e.value),
+              encode: (o) => (Option_.isSome(o) ? { _tag: "Some", value: o.value } as const : { _tag: "None" } as const)
+            })
+          )
         )
     }
   )
@@ -17604,7 +17614,7 @@ function getClassSchemaFactory<S extends Constraint>(
             link: new SchemaAST.Link(from, transformation)
           }),
           toCodec: ([from]: readonly [ConstraintCodec<S["Encoded"], S["Encoded"]>]) =>
-            new SchemaAST.Link(from.ast, transformation),
+            SchemaAST.total(new SchemaAST.Link(from.ast, transformation)),
           toEquivalence: ([from]: readonly [Equivalence.Equivalence<S["Type"]>]) => from,
           toFormatter: ([from]: readonly [Formatter<S["Type"]>]) => (t: Self) => `${self.identifier}(${from(t)})`,
           [InternalAnnotations.SENTINELS_ANNOTATION_KEY]: SchemaAST.collectSentinels(from.ast),
@@ -17612,8 +17622,17 @@ function getClassSchemaFactory<S extends Constraint>(
         }
       )
     )
-    return memo = decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S>(to, transformation)(from)
+    return memo = totalLastLink(
+      decodeTo<declareConstructor<Self, S["Encoded"], readonly [S]>, S>(to, transformation)(from)
+    )
   }
+}
+
+// Marks the link that `decodeTo` appended as total.
+function totalLastLink<S extends Constraint>(schema: S): S {
+  const encoding = schema.ast.encoding!
+  SchemaAST.total(encoding[encoding.length - 1])
+  return schema
 }
 
 function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Struct<Struct.Fields> {
@@ -18179,7 +18198,7 @@ export function toJsonSchemaDocument(
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
     InternalToCodec.toCodecJsonAST(schema.ast),
-    options
+    { ...options, markApproximateEncodings: true }
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }

@@ -22,6 +22,7 @@ interface ReferenceCandidate {
   isRecursive?: boolean | undefined
   reference?: string | undefined
   emitted?: boolean | undefined
+  approximate?: boolean | undefined
 }
 
 interface Content {
@@ -33,10 +34,87 @@ function annotationsField<A>(annotations: A | undefined): { readonly annotations
   return annotations === undefined ? undefined : { annotations }
 }
 
+const exactEncodings = new WeakMap<SchemaAST.AST, boolean>()
+
+// The representation describes only the last encoding, so it is exact when
+// decoding accepts every value of that encoding.
+function isExactEncoding(ast: SchemaAST.AST): boolean {
+  if (ast.encoding === undefined) return true
+  let out = exactEncodings.get(ast)
+  if (out === undefined) {
+    out = isExactChain(ast, new Set())
+    exactEncodings.set(ast, out)
+  }
+  return out
+}
+
+// Every link must be total and keep the checks of its decoded side. Codecs
+// nested in a decoded side also decode values of the exported encoding.
+function isExactChain(ast: SchemaAST.AST, visited: Set<SchemaAST.AST>): boolean {
+  if (ast.encoding === undefined) return true
+  let decoded = ast
+  for (const link of ast.encoding) {
+    if (
+      !SchemaAST.isTotal(link) ||
+      (decoded.checks !== undefined && decoded.checks !== link.to.checks) ||
+      (decoded !== ast && decoded.encoding !== undefined) ||
+      !getChildren(decoded).every((child) => isExactCodec(child, visited))
+    ) {
+      return false
+    }
+    decoded = link.to
+  }
+  return isExactChain(decoded, visited)
+}
+
+// Recursive schemas are exact unless some other part of them is not.
+function isExactCodec(ast: SchemaAST.AST, visited: Set<SchemaAST.AST>): boolean {
+  if (visited.has(ast)) return true
+  visited.add(ast)
+  return isExactChain(ast, visited) &&
+    getChildren(SchemaAST.getLastEncoding(ast)).every((child) => isExactCodec(child, visited))
+}
+
+function getChildren(ast: SchemaAST.AST): ReadonlyArray<SchemaAST.AST> {
+  switch (ast._tag) {
+    case "Declaration":
+      return ast.typeParameters
+    case "Union":
+      return ast.types
+    case "TemplateLiteral":
+      return ast.parts
+    case "Arrays":
+      return [...ast.elements, ...ast.rest]
+    case "Objects":
+      return [
+        ...ast.propertySignatures.map((property) => property.type),
+        ...ast.indexSignatures.flatMap((index) => [index.parameter, index.type])
+      ]
+    case "Suspend":
+      return [ast.thunk()]
+  }
+  return []
+}
+
+function withApproximateJson(
+  annotations: Schema.Annotations.Annotations | undefined
+): Schema.Annotations.Annotations {
+  return { ...annotations, [InternalAnnotations.APPROXIMATE_JSON_ANNOTATION_KEY]: true }
+}
+
+/** @internal */
+export interface Options extends SchemaRepresentation.ToRepresentationOptions {
+  /**
+   * Marks representations reached through an encoding that accepts more than
+   * its codec, for JSON Schema export.
+   */
+  readonly markApproximateEncodings?: boolean | undefined
+}
+
 /** @internal */
 export function toRepresentation(
   ast: SchemaAST.AST,
-  options?: SchemaRepresentation.ToRepresentationOptions
+  options?: Options
 ): SchemaRepresentation.Document {
   const { references, representations } = toRepresentations([ast], options)
   return { representation: representations[0], references }
@@ -45,11 +123,14 @@ export function toRepresentation(
 /** @internal */
 export function toRepresentations(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  options?: SchemaRepresentation.ToRepresentationOptions
+  options?: Options
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const usedReferences = new Set<string>()
   const candidates = new Map<SchemaAST.AST, Array<ReferenceCandidate>>()
+  const isApproximate = options?.markApproximateEncodings === true ?
+    (ast: SchemaAST.AST) => !isExactEncoding(ast) :
+    () => false
 
   for (const ast of asts) visit(ast)
 
@@ -157,7 +238,10 @@ export function toRepresentations(
   }
 
   function visit(input: SchemaAST.AST): SchemaAST.AST {
-    visitCandidate(getCandidate(input))
+    const candidate = getCandidate(input)
+    // A reference cannot carry the marker, so it applies to the shared definition.
+    if (isApproximate(input)) candidate.approximate = true
+    visitCandidate(candidate)
     return input
   }
 
@@ -194,28 +278,36 @@ export function toRepresentations(
   }
 
   function recur(input: SchemaAST.AST): SchemaRepresentation.Representation {
-    return recurCandidate(getCandidate(input))
+    return recurCandidate(getCandidate(input), isApproximate(input))
   }
 
-  function recurCandidate(candidate: ReferenceCandidate): SchemaRepresentation.Representation {
+  function recurCandidate(
+    candidate: ReferenceCandidate,
+    approximate = false
+  ): SchemaRepresentation.Representation {
     const ast = candidate.ast
     const reference = candidate.reference
     if (reference !== undefined) {
       if (!candidate.emitted) {
         candidate.emitted = true
         const annotated = candidate.identifier === undefined ? ast : annotateReference(ast, candidate, reference)
-        const representation = on(annotated, candidate.content)
+        const representation = on(annotated, candidate.content, candidate.approximate === true)
         InternalRecord.assignProperty(references, reference, representation)
       }
       return { _tag: "Reference", $ref: reference }
     }
-    return on(ast, candidate.content)
+    return on(ast, candidate.content, approximate)
   }
 
-  function on(ast: SchemaAST.AST, content: Content | undefined): SchemaRepresentation.Representation {
+  function on(
+    ast: SchemaAST.AST,
+    content: Content | undefined,
+    approximate = false
+  ): SchemaRepresentation.Representation {
+    const annotations = approximate ? withApproximateJson(ast.annotations) : ast.annotations
     const common = {
       checks: ast.checks?.map(fromCheck) ?? [],
-      ...(ast._tag === "Declaration" ? fromAnnotations(ast.annotations) : annotationsField(ast.annotations))
+      ...(ast._tag === "Declaration" ? fromAnnotations(annotations) : annotationsField(annotations))
     }
     switch (ast._tag) {
       case "Declaration":
