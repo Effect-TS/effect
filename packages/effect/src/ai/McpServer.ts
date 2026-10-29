@@ -3572,7 +3572,7 @@ export const resource: {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type SkillFile = string | Uint8Array | {
   readonly content: string | Uint8Array
@@ -3595,7 +3595,7 @@ export type SkillFile = string | Uint8Array | {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export interface SkillOptions {
   readonly uri: string
@@ -3643,7 +3643,7 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  *
  * @stability unstable
  * @category handlers
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause.IllegalArgumentError, McpServer> =
   Effect.fnUntraced(function*(options: SkillOptions) {
@@ -3722,7 +3722,7 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const skill = (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer> =>
   Layer.effectDiscard(registerSkill(options))

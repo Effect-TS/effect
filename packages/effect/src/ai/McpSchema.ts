@@ -1392,7 +1392,7 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class SkillResource extends Schema.Class<SkillResource>(
   "@effect/ai/McpSchema/SkillResource"
@@ -1426,7 +1426,7 @@ export class SkillResource extends Schema.Class<SkillResource>(
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export const SkillFrontmatter = Schema.StructWithRest(
   Schema.Struct({
@@ -1465,7 +1465,7 @@ export const SkillFrontmatter = Schema.StructWithRest(
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.1
  */
 export type SkillFrontmatter = typeof SkillFrontmatter.Type
 
@@ -1475,7 +1475,7 @@ export type SkillFrontmatter = typeof SkillFrontmatter.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.1.1
  */
 export class Skill extends Schema.Class<Skill>(
   "@effect/ai/McpSchema/Skill"
