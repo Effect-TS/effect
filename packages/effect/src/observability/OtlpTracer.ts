@@ -23,6 +23,7 @@ import type * as Headers from "../http/Headers.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
+import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type { ExtractTag } from "../Types.ts"
@@ -64,6 +65,20 @@ export const make: (
     readonly maxBatchSize?: number | undefined
     readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
+    /**
+     * Keeps the share of traces given by `ratio`, from 0 to 1, decided from the
+     * trace ID. With `parentBased`, the default, a span with a parent follows
+     * the parent's sampled flag, even when created with `sampled: true`, and
+     * only root spans use `ratio`.
+     *
+     * The sampler only drops spans. A span Effect leaves unsampled, such as one
+     * below `MinimumTraceLevel`, is never exported. Without a sampler, every
+     * span Effect marks as sampled is exported.
+     */
+    readonly sampler?: {
+      readonly ratio: number
+      readonly parentBased?: boolean | undefined
+    } | undefined
   }
 ) => Effect.Effect<
   Tracer.Tracer,
@@ -104,9 +119,25 @@ export const make: (
     exporter.push(makeOtlpSpan(span))
   }
 
+  const sampler = options.sampler
+  const parentBased = sampler?.parentBased ?? true
+  const isSampled = sampler === undefined ? undefined : (span: SpanImpl): boolean => {
+    if (parentBased && Option.isSome(span.parent)) {
+      return span.parent.value.sampled
+    }
+    if (sampler.ratio >= 1) return true
+    if (sampler.ratio <= 0) return false
+    // Like the OpenTelemetry probability sampler, a trace is kept when the last
+    // 56 bits of its ID reach `(1 - ratio) * 2^56`, so every span of a trace
+    // gets the same decision. Only the top 52 of those bits are compared, which
+    // a double holds exactly. A trace ID without hex digits there is kept.
+    const randomness = Number(`0x${span.traceId.slice(-14, -1)}`)
+    return Number.isNaN(randomness) || randomness >= (1 - sampler.ratio) * 2 ** 52
+  }
+
   return Tracer.make({
     span(options) {
-      return new SpanImpl(options, exportFn)
+      return new SpanImpl(options, exportFn, isSampled)
     },
     context: options.context ?
       function(primitive, fiber) {
@@ -143,6 +174,20 @@ export const layer: (options: {
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
+  /**
+   * Keeps the share of traces given by `ratio`, from 0 to 1, decided from the
+   * trace ID. With `parentBased`, the default, a span with a parent follows
+   * the parent's sampled flag, even when created with `sampled: true`, and
+   * only root spans use `ratio`.
+   *
+   * The sampler only drops spans. A span Effect leaves unsampled, such as one
+   * below `MinimumTraceLevel`, is never exported. Without a sampler, every
+   * span Effect marks as sampled is exported.
+   */
+  readonly sampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
 }) => Layer.Layer<Exporter.Flusher, never, OtlpSerialization | HttpClient.HttpClient> = flow(
   make,
   Layer.effect(Tracer.Tracer),
@@ -158,6 +203,14 @@ export const layer: (options: {
  * `OTEL_EXPORTER_OTLP_TRACES_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
  * HttpClientRequest's default minimum body size of 1KB.
+ *
+ * `OTEL_TRACES_SAMPLER` accepts "always_on", "always_off", "traceidratio",
+ * "parentbased_always_on", "parentbased_always_off" and
+ * "parentbased_traceidratio", and sets the `sampler` option of `make`. The
+ * `traceidratio` samplers keep the share of traces set by
+ * `OTEL_TRACES_SAMPLER_ARG`, from 0 to 1, defaulting to 1. Other values, such
+ * as "jaeger_remote", fail the layer. When `OTEL_TRACES_SAMPLER` is unset, no
+ * sampler is used.
  *
  * @stability unstable
  * @category layers
@@ -190,7 +243,8 @@ export const layerFromConfig = (options?: {
       tracesTimeout,
       exportTimeout,
       scheduleDelay,
-      maxBatchSize
+      maxBatchSize,
+      samplerName
     } = yield* Config.all({
       baseCompression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_COMPRESSION")),
       compression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION")),
@@ -202,8 +256,28 @@ export const layerFromConfig = (options?: {
           Config.map(Duration.millis)
         )
       ),
-      maxBatchSize: Config.option(Config.Int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE"))
+      maxBatchSize: Config.option(Config.Int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE")),
+      samplerName: Config.option(Config.Literals([
+        "always_on",
+        "always_off",
+        "traceidratio",
+        "parentbased_always_on",
+        "parentbased_always_off",
+        "parentbased_traceidratio"
+      ], "OTEL_TRACES_SAMPLER"))
     })
+
+    const sampler = Option.isNone(samplerName) ? undefined : {
+      ratio: samplerName.value.endsWith("traceidratio")
+        ? yield* Config.schema(
+          Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+          "OTEL_TRACES_SAMPLER_ARG"
+        ).pipe(Config.withDefault(1))
+        : samplerName.value.endsWith("always_on")
+        ? 1
+        : 0,
+      parentBased: samplerName.value.startsWith("parentbased_")
+    }
 
     const shutdownTimeout = Option.firstSomeOf([tracesTimeout, baseTimeout, exportTimeout]).pipe(
       Option.map((_) => Duration.millis(_))
@@ -217,7 +291,8 @@ export const layerFromConfig = (options?: {
       exportInterval: Option.getOrUndefined(scheduleDelay),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       context: options?.context,
-      shutdownTimeout: Option.getOrUndefined(shutdownTimeout)
+      shutdownTimeout: Option.getOrUndefined(shutdownTimeout),
+      sampler
     })
   }).pipe(Effect.orDie, Layer.unwrap)
 
@@ -249,15 +324,16 @@ class SpanImpl implements Tracer.Span {
       readonly kind: Tracer.SpanKind
       readonly sampled: boolean
     },
-    exportFn: (span: SpanImpl) => void
+    exportFn: (span: SpanImpl) => void,
+    isSampled?: (span: SpanImpl) => boolean
   ) {
     this.name = options.name
     this.parent = options.parent
     this.annotations = options.annotations
     this.links = options.links
     this.kind = options.kind
-    this.sampled = options.sampled
     this.export = exportFn
+    this.sampled = options.sampled && (isSampled === undefined || isSampled(this))
     this.status = {
       _tag: "Started",
       startTime: options.startTime

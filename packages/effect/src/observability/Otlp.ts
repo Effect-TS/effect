@@ -60,6 +60,13 @@ export const layer = (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }): Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
   const base = HttpClientRequest.get(options.baseUrl)
@@ -93,7 +100,8 @@ export const layer = (options: {
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       context: options.tracerContext,
-      shutdownTimeout: options.shutdownTimeout
+      shutdownTimeout: options.shutdownTimeout,
+      sampler: options.tracerSampler
     })
   )
 }
@@ -170,6 +178,13 @@ export const layerJson: (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
   layer,
@@ -205,6 +220,13 @@ export const layerProtobuf: (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
   layer,
