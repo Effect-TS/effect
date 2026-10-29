@@ -2100,6 +2100,44 @@ describe.concurrent("Sharding", () => {
       )),
       Layer.provide(TestShardingConfig)
     ))))
+
+  it.effect("WithTransaction replays the request when saving the reply aborts the transaction", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+
+      // Count handler runs when the reply arrives: only the replay may reply.
+      const result = yield* makeClient("1").WithTransaction({ id: 1 }).pipe(
+        Effect.map((value) => [value, Queue.sizeUnsafe(state.envelopes)] as const),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(result), [true, 2])
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      // Like a MySQL deadlock: the first in-transaction reply write aborts the
+      // transaction, later writes on it autocommit, and the transaction fails.
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => {
+        let deadlocked = false
+        let aborted = false
+        return {
+          ...storage,
+          withTransaction: (effect) =>
+            Effect.suspend(() => {
+              aborted = false
+              return storage.withTransaction(effect)
+            }).pipe(Effect.tap(() => aborted ? Effect.die("COMMIT failed") : Effect.void)),
+          saveReply: (reply) =>
+            MessageStorage.MemoryTransaction.use((inTransaction) => {
+              if (!inTransaction || deadlocked) return storage.saveReply(reply)
+              deadlocked = aborted = true
+              return Effect.fail(new ClusterError.PersistenceError({ cause: "deadlock" }))
+            })
+        }
+      }),
+      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(TestShardingConfig)
+    ))))
 })
 
 // Memory storage that discards replies saved inside a failed transaction, like
