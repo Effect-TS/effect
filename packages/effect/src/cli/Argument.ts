@@ -405,12 +405,6 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required argument is missing.
  *
- * **Details**
- *
- * When a command runs, fallback prompts wait until every flag and argument is
- * parsed and `Command.beforePrompts` effects have run, then are shown in
- * declaration order.
- *
  * **Gotchas**
  *
  * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and

@@ -7,20 +7,16 @@
  */
 import * as Arr from "../../Array.ts"
 import * as Context from "../../Context.ts"
-import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
 import * as Effectable from "../../Effectable.ts"
-import * as Fiber from "../../Fiber.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
-import type * as Scope from "../../Scope.ts"
 import * as CliError from "../CliError.ts"
 import type * as GlobalFlag from "../GlobalFlag.ts"
 import type { ArgDoc, ExampleDoc, FlagDoc, HelpDoc, SubcommandGroupDoc } from "../HelpDoc.ts"
 import * as Param from "../Param.ts"
 import * as Primitive from "../Primitive.ts"
 import { type ConfigInternal, emptyConfig, reconstructTree } from "./config.ts"
-import { PromptDeferral } from "./fallbackPrompt.ts"
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -28,17 +24,9 @@ import { PromptDeferral } from "./fallbackPrompt.ts"
 
 import type { Command, CommandContext, Environment, ParsedTokens } from "../Command.ts"
 
-/**
- * Parses tokens without showing fallback prompts. Succeeds with an effect
- * that shows the deferred prompts in declaration order and returns the input.
- */
-export type Prepare<A> = (
-  input: ParsedTokens
-) => Effect.Effect<Effect.Effect<A, CliError.CliError, Environment>, CliError.CliError, Environment | Scope.Scope>
-
 interface SubcommandGroup {
   readonly group: string | undefined
-  readonly commands: Arr.NonEmptyReadonlyArray<Command<any, unknown, any, unknown, unknown, unknown, unknown>>
+  readonly commands: Arr.NonEmptyReadonlyArray<Command<any, unknown, any, unknown, unknown>>
 }
 
 /**
@@ -53,10 +41,8 @@ export interface CommandInternal<Name extends string, Input, E, R, ContextInput>
   readonly service: Context.Key<CommandContext<Name>, ContextInput>
   readonly annotations: Context.Context<never>
   readonly globalFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
-  readonly beforePrompts: ReadonlyArray<Effect.Effect<unknown, unknown, unknown>>
-  readonly prepare: Prepare<Input>
-  readonly prepareContext: Prepare<ContextInput>
   readonly parse: (input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>
+  readonly parseContext: (input: ParsedTokens) => Effect.Effect<ContextInput, CliError.CliError, Environment>
   readonly handle: (
     input: Input,
     commandPath: ReadonlyArray<string>
@@ -79,9 +65,9 @@ export const TypeId = "~effect/cli/Command" as const
  * Casts a Command to its internal implementation.
  * For use by internal modules that need access to config, parse, handle, etc.
  */
-export const toImpl = <Name extends string, Input, E, R, ContextInput = {}, HookE = never, HookR = never>(
-  self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
-): CommandInternal<Name, Input, E, R, ContextInput> => self as any
+export const toImpl = <Name extends string, Input, E, R, ContextInput = {}>(
+  self: Command<Name, Input, ContextInput, E, R>
+): CommandInternal<Name, Input, E, R, ContextInput> => self as CommandInternal<Name, Input, E, R, ContextInput>
 
 /* ========================================================================== */
 /* Proto                                                                      */
@@ -110,15 +96,16 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   readonly service?: Context.Key<CommandContext<Name>, ContextInput> | undefined
   readonly annotations?: Context.Context<never> | undefined
   readonly globalFlags?: ReadonlyArray<GlobalFlag.GlobalFlag<any>> | undefined
-  readonly beforePrompts?: ReadonlyArray<Effect.Effect<unknown, unknown, unknown>> | undefined
   readonly description?: string | undefined
   readonly shortDescription?: string | undefined
   readonly alias?: string | undefined
   readonly unlisted?: boolean | undefined
   readonly resolveExamples?: ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>) | undefined
   readonly subcommands?: ReadonlyArray<SubcommandGroup> | undefined
-  readonly prepare?: Prepare<Input> | undefined
-  readonly prepareContext?: Prepare<ContextInput> | undefined
+  readonly parse?: ((input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>) | undefined
+  readonly parseContext?:
+    | ((input: ParsedTokens) => Effect.Effect<ContextInput, CliError.CliError, Environment>)
+    | undefined
   readonly handle?:
     | ((input: Input, commandPath: ReadonlyArray<string>) => Effect.Effect<void, E, R | Environment>)
     | undefined
@@ -128,7 +115,6 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   const service = options.service ?? Context.Service<CommandContext<Name>, ContextInput>(`${TypeId}/${options.name}`)
   const annotations = options.annotations ?? Context.empty()
   const globalFlags = options.globalFlags ?? []
-  const beforePrompts = options.beforePrompts ?? []
   const subcommands = options.subcommands ?? []
   const resolveExamples = options.resolveExamples ?? noExamples
 
@@ -140,10 +126,8 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
       ? options.handle(input, commandPath)
       : Effect.fail(new CliError.ShowHelp({ commandPath, errors: [] }))
 
-  const prepare: Prepare<Input> = options.prepare ?? makeParser(config) as Prepare<Input>
-  const prepareContext: Prepare<ContextInput> = options.prepareContext ??
-    makeParser(contextConfig, { allowLeftovers: true }) as Prepare<ContextInput>
-  const parse = (input: ParsedTokens) => Effect.scoped(Effect.flatten(prepare(input)))
+  const parse = options.parse ?? makeParser(config) as any
+  const parseContext = options.parseContext ?? makeParser(contextConfig, { allowLeftovers: true }) as any
 
   const buildHelpDoc = (commandPath: ReadonlyArray<string>): HelpDoc => {
     const args: Array<ArgDoc> = []
@@ -226,15 +210,13 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
     resolveExamples,
     annotations,
     globalFlags,
-    beforePrompts,
     subcommands,
     unlisted: options.unlisted ?? false,
     config,
     contextConfig,
     service,
-    prepare,
-    prepareContext,
     parse,
+    parseContext,
     handle,
     buildHelpDoc,
     ...(Predicate.isNotUndefined(options.description)
@@ -290,9 +272,9 @@ const appendChoiceKeys = (
 }
 
 /**
- * Creates the `Prepare` function for a given config. Used as the default for
- * both `prepare` and `prepareContext`, and also by `withSharedFlags` to avoid
- * constructing a full throwaway command.
+ * Creates a parser for a given config. Used as the default for both `parse`
+ * and `parseContext`, and also by `withSharedFlags` to avoid constructing a
+ * full throwaway command.
  */
 export const makeParser = (
   cfg: ConfigInternal,
@@ -301,65 +283,37 @@ export const makeParser = (
   } | undefined
 ) =>
   Effect.fnUntraced(function*(input: ParsedTokens) {
-    const resolvers: Array<Effect.Effect<unknown, CliError.CliError, Environment>> = []
-    let currentArguments = input.arguments
-    for (const param of cfg.orderedParams) {
-      const prepared = yield* prepareParam(param, { flags: input.flags, arguments: currentArguments })
-      resolvers.push(prepared.resolve)
-      currentArguments = prepared.remainingArguments
+    const parsedArgs: Param.ParsedArgs = { flags: input.flags, arguments: input.arguments }
+    const [remainingArguments, values] = yield* parseParams(parsedArgs, cfg.orderedParams)
+    if (options?.allowLeftovers !== true && remainingArguments.length > 0) {
+      return yield* new CliError.UnexpectedArgument({ arguments: remainingArguments })
     }
-    if (options?.allowLeftovers !== true && currentArguments.length > 0) {
-      return yield* new CliError.UnexpectedArgument({ arguments: currentArguments })
-    }
-    return Effect.map(Effect.all(resolvers), (values) => reconstructTree(cfg.tree, values))
+    return reconstructTree(cfg.tree, values)
   })
 
 /**
- * A param parsed up to its fallback prompt.
+ * Parses param values from parsed command arguments into their typed
+ * representations.
  */
-export interface PreparedParam<A> {
-  readonly remainingArguments: ReadonlyArray<string>
-  /**
-   * Shows the deferred fallback prompt, if any, and returns the value.
-   */
-  readonly resolve: Effect.Effect<A, CliError.CliError, Environment>
-}
+const parseParams: (parsedArgs: Param.ParsedArgs, params: ReadonlyArray<Param.Any>) => Effect.Effect<
+  readonly [remainingArguments: ReadonlyArray<string>, values: ReadonlyArray<unknown>],
+  CliError.CliError,
+  Environment
+> = Effect.fnUntraced(function*(parsedArgs, params) {
+  const results: Array<unknown> = []
+  let currentArguments = parsedArgs.arguments
 
-/**
- * Parses a param with its fallback prompt deferred.
- *
- * The parse runs in a fiber tied to the current scope. When it reaches a
- * fallback prompt it pauses there, so outer combinators such as
- * `withDefault` or `orElse` only see the prompt's outcome, and work done
- * before the prompt is not repeated. A paused param leaves the positional
- * arguments untouched, because a fallback prompt only runs when the value is
- * missing.
- */
-export const prepareParam = <A>(
-  param: Param.Param<Param.ParamKind, A>,
-  args: Param.ParsedArgs
-): Effect.Effect<PreparedParam<A>, CliError.CliError, Environment | Scope.Scope> =>
-  Effect.gen(function*() {
-    // Completed with `true` when the parse pauses at a prompt, `false` when it ends
-    const paused = Deferred.makeUnsafe<boolean>()
-    const resume = Deferred.makeUnsafe<void>()
-    const fiber = yield* param.parse(args).pipe(
-      Effect.provideService(PromptDeferral, Effect.andThen(Deferred.succeed(paused, true), Deferred.await(resume))),
-      Effect.ensuring(Deferred.succeed(paused, false)),
-      Effect.forkScoped
-    )
-    if (yield* Deferred.await(paused)) {
-      return {
-        remainingArguments: args.arguments,
-        resolve: Effect.andThen(
-          Deferred.succeed(resume, undefined),
-          Effect.map(Fiber.join(fiber), ([, value]) => value)
-        )
-      }
-    }
-    const [remainingArguments, value] = yield* Fiber.join(fiber)
-    return { remainingArguments, resolve: Effect.succeed(value) }
-  })
+  for (const option of params) {
+    const [remainingArguments, parsed] = yield* option.parse({
+      flags: parsedArgs.flags,
+      arguments: currentArguments
+    })
+    results.push(parsed)
+    currentArguments = remainingArguments
+  }
+
+  return [currentArguments, results] as const
+})
 
 /**
  * Checks that inherited parent context flags do not reuse names declared by
@@ -369,7 +323,7 @@ export const prepareParam = <A>(
  * otherwise the parent's current context config is checked.
  */
 export const checkForDuplicateFlags = <Name extends string, Input, ContextInput, E, R>(
-  parent: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
+  parent: Command<Name, Input, ContextInput, E, R>,
   subcommands: ReadonlyArray<Command.Any>,
   options?: {
     readonly contextConfig?: ConfigInternal | undefined

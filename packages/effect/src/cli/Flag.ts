@@ -778,12 +778,6 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
  *
- * **Details**
- *
- * When a command runs, fallback prompts wait until every flag and argument is
- * parsed and `Command.beforePrompts` effects have run, then are shown in
- * declaration order.
- *
  * **Gotchas**
  *
  * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
@@ -798,6 +792,38 @@ export const withFallbackConfig: {
  *   Flag.withFallbackPrompt(Prompt.String({ message: "Name" }))
  * )
  * name.kind // => "flag"
+ * ```
+ *
+ * **Example** (Showing an introduction before fallback prompts)
+ *
+ * The prompt can be built by an effect, which only runs when the prompt is
+ * needed. Share a cached introduction between the prompt builders and
+ * `Command.provideEffectDiscard`: it runs once, before the first prompt, and
+ * also runs when every flag is supplied. Flags declared after the first
+ * prompted flag may not have been validated yet when the introduction runs.
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect } from "effect"
+ * import { Command, Flag, Prompt } from "effect/cli"
+ *
+ * const program = Effect.gen(function*() {
+ *   const intro = yield* Effect.cached(Console.log("Welcome to demo"))
+ *
+ *   const ask = (name: string) =>
+ *     Flag.String(name).pipe(
+ *       Flag.withFallbackPrompt(
+ *         Effect.as(intro, Prompt.String({ message: `${name}?` }))
+ *       )
+ *     )
+ *
+ *   const demo = Command.make(
+ *     "demo",
+ *     { name: ask("name"), dir: ask("dir") },
+ *     (input) => Console.log(input)
+ *   ).pipe(Command.provideEffectDiscard(intro))
+ *
+ *   yield* Command.run(demo, { version: "1.0.0" })
+ * })
  * ```
  *
  * @stability unstable

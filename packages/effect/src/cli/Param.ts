@@ -23,7 +23,6 @@ import * as Schema from "../Schema.ts"
 import type { Covariant } from "../Types.ts"
 import * as CliError from "./CliError.ts"
 import type { Environment } from "./Command.ts"
-import { PromptDeferral } from "./internal/fallbackPrompt.ts"
 import * as Primitive from "./Primitive.ts"
 import * as Prompt from "./Prompt.ts"
 import * as TerminalCapabilities from "./TerminalCapabilities.ts"
@@ -1468,10 +1467,6 @@ export const withFallbackConfig: {
  * `FallbackPrompt` accepts either a `Prompt` or an effect that builds one.
  * Effectful prompt creation is lazy and runs only when the fallback is needed.
  *
- * When a command runs, fallback prompts wait until every flag and argument is
- * parsed and `Command.beforePrompts` effects have run, then are shown in
- * declaration order.
- *
  * **Gotchas**
  *
  * This only handles missing options and missing arguments. Invalid values do not
@@ -1501,8 +1496,6 @@ export const withFallbackPrompt: {
   ) {
     const { canPrompt } = yield* TerminalCapabilities.TerminalCapabilities
     if (!canPrompt) return yield* Effect.fail(error)
-    const deferPrompt = yield* PromptDeferral
-    yield* deferPrompt
     const built = Prompt.isPrompt(prompt) ? prompt : yield* prompt
     const value = yield* Effect.catchTag(Prompt.run(built), "QuitError", () => Effect.fail(error))
     return [args.arguments, value as A | B] as const
