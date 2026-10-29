@@ -704,7 +704,7 @@ export const rate = (options: {
  *
  * @stability experimental
  * @category models
- * @since 4.1.0
+ * @since 4.2.0
  */
 export type Classifier<A, E, R2 = never> = (
   exit: Exit.Exit<A, E>,
