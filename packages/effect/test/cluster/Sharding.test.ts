@@ -4492,12 +4492,17 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
 
   // Runners A (1234) and Z (1240, assigned no shard groups) start together,
   // then B, C and D join 1.5 seconds apart. Every runner shares membership and
-  // shard locks, and Z routes a volatile request for each of 24 entities.
+  // shard locks, and Z routes a volatile request to an entity on each shard.
   const staggeredCluster = Effect.fnUntraced(function*(options: {
+    readonly refreshAssignmentsInterval?: number
     // Fail A's next membership read once C has joined, while joins are pending.
-    readonly failRefreshDuringJoins: boolean
+    readonly failRefreshDuringJoins?: boolean
+    // Delay B's next membership read after D has joined by 2.5 seconds, then
+    // fail it, so B's view is stale while A publishes.
+    readonly stallJoinerRefresh?: boolean
   }) {
     const cluster = makeSharedCluster()
+    // The ports Z routed each shard to, in order
     const routes = new Map<string, Array<number>>()
     const scope = yield* Scope.make()
     const startRunner = (
@@ -4515,7 +4520,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
             runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
             shardsPerGroup: 24,
             entityTerminationTimeout: 0,
-            refreshAssignmentsInterval: 100,
+            refreshAssignmentsInterval: options.refreshAssignmentsInterval ?? 100,
             sendRetryInterval: 100,
             runnerJoinDebounce: 2000,
             ...config
@@ -4534,10 +4539,10 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
           // Records each routing attempt, then fails it so the request retries.
           send: ({ address, message }) =>
             Effect.suspend(() => {
-              const entityId = message.envelope.address.entityId
-              const history = routes.get(entityId) ?? []
+              const shard = message.envelope.address.shardId.toString()
+              const history = routes.get(shard) ?? []
               if (history[history.length - 1] !== address.port) history.push(address.port)
-              routes.set(entityId, history)
+              routes.set(shard, history)
               return Effect.fail(new ClusterError.EntityNotAssignedToRunner({ address: message.envelope.address }))
             }),
           notify: () => Effect.void,
@@ -4546,10 +4551,13 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
         })
       ).pipe(Layer.provide(Snowflake.layerGenerator))
     )
-    const makeClient = yield* TestEntity.client.pipe(
-      Effect.provideService(Sharding.Sharding, Context.get(observer, Sharding.Sharding))
-    )
-    for (let id = 1; id <= 24; id++) {
+    const observerSharding = Context.get(observer, Sharding.Sharding)
+    const makeClient = yield* TestEntity.client.pipe(Effect.provideService(Sharding.Sharding, observerSharding))
+    const routedShards = new Set<string>()
+    for (let id = 1; routedShards.size < 24; id++) {
+      const shard = observerSharding.getShardId(EntityId.make(String(id)), "default").toString()
+      if (routedShards.has(shard)) continue
+      routedShards.add(shard)
       yield* Effect.forkIn(makeClient(String(id)).GetUserVolatile({ id }), scope)
     }
 
@@ -4564,12 +4572,19 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
         yield* TestClock.adjust(1500)
       }
     }
-    for (let i = 0; i < 100; i++) {
+    if (options.stallJoinerRefresh) {
+      cluster.stallGetRunners.set(1235, 2500)
+    }
+    for (let i = 0; i < 150; i++) {
       yield* TestClock.adjust(100)
     }
 
     // Exclude the handoffs made while shutting down, which waits on the test clock
-    const result = { owners: structuredClone(cluster.owners), routes: structuredClone(routes) }
+    const result = {
+      owners: structuredClone(cluster.owners),
+      locks: new Map(globalThis.Array.from(cluster.locks, ([shard, owner]) => [shard, owner.port])),
+      routes: structuredClone(routes)
+    }
     const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
     while (closing.pollUnsafe() === undefined) {
       yield* TestClock.adjust(100)
@@ -4577,10 +4592,12 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
     return result
   })
 
-  // Every shard is locked by at most two runners in turn, and Z changes the
-  // runner it routes each entity to at most once.
+  // Every shard is locked by at most two runners in turn and Z changes the
+  // runner it routes each shard to at most once. Each shard ends up locked by
+  // the runner Z routes it to.
   const assertSingleHandoffs = (result: {
     readonly owners: ReadonlyMap<string, ReadonlyArray<number>>
+    readonly locks: ReadonlyMap<string, number>
     readonly routes: ReadonlyMap<string, ReadonlyArray<number>>
   }) => {
     assert.strictEqual(result.owners.size, 24)
@@ -4589,9 +4606,11 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       assert.isAtMost(owners.length, 2, `shard ${shard} was locked by ${owners.join(" -> ")}`)
     }
     assert.strictEqual(result.routes.size, 24)
-    assert.isTrue([...result.routes.values()].some((routes) => routes.length === 2), "no entity was rerouted")
-    for (const [entityId, routes] of result.routes) {
-      assert.isAtMost(routes.length, 2, `entity ${entityId} was routed to ${routes.join(" -> ")}`)
+    assert.isTrue([...result.routes.values()].some((routes) => routes.length === 2), "no shard was rerouted")
+    for (const [shard, routes] of result.routes) {
+      assert.isAtMost(routes.length, 2, `shard ${shard} was routed to ${routes.join(" -> ")}`)
+      const route = routes[routes.length - 1]
+      assert.strictEqual(result.locks.get(shard), route, `shard ${shard} is routed to ${route}`)
     }
   }
 
@@ -4603,6 +4622,16 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
   it.effect("hands each shard off once when membership refresh fails during pending joins", () =>
     Effect.gen(function*() {
       assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: true }))
+    }))
+
+  it.effect("hands each shard off once when runners poll membership out of phase", () =>
+    Effect.gen(function*() {
+      assertSingleHandoffs(yield* staggeredCluster({ refreshAssignmentsInterval: 3000 }))
+    }))
+
+  it.effect("hands each shard off once when a joining runner's membership refresh stalls", () =>
+    Effect.gen(function*() {
+      assertSingleHandoffs(yield* staggeredCluster({ stallJoinerRefresh: true }))
     }))
 })
 
@@ -4630,13 +4659,16 @@ interface SharedCluster {
   readonly owners: Map<string, Array<number>>
   /** Ports whose next membership read fails. */
   readonly failGetRunners: Set<number>
+  /** Ports whose next membership read fails after the given milliseconds. */
+  readonly stallGetRunners: Map<number, number>
 }
 
 const makeSharedCluster = (): SharedCluster => ({
   membership: [],
   locks: new Map(),
   owners: new Map(),
-  failGetRunners: new Set()
+  failGetRunners: new Set(),
+  stallGetRunners: new Map()
 })
 
 // One runner's view of shared membership and exclusive shard locks.
@@ -4646,11 +4678,15 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
     return owner !== undefined && Equal.equals(owner, address)
   }
   return RunnerStorage.RunnerStorage.of({
-    getRunners: Effect.suspend(() =>
-      cluster.failGetRunners.delete(port)
-        ? Effect.fail(new ClusterError.PersistenceError({ cause: "getRunners failed" }))
-        : Effect.succeed(cluster.membership.slice())
-    ),
+    getRunners: Effect.suspend(() => {
+      const failed = Effect.fail(new ClusterError.PersistenceError({ cause: "getRunners failed" }))
+      const stall = cluster.stallGetRunners.get(port)
+      if (stall !== undefined) {
+        cluster.stallGetRunners.delete(port)
+        return Effect.delay(failed, stall)
+      }
+      return cluster.failGetRunners.delete(port) ? failed : Effect.succeed(cluster.membership.slice())
+    }),
     register: (runner) =>
       Effect.sync(() => {
         cluster.membership.push([runner, true])
