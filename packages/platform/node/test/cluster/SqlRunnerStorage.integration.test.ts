@@ -785,6 +785,86 @@ describe("SqlRunnerStorage", () => {
             expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
           }))
       }
+
+      if (label === "mysql" || label === "vitess") {
+        // MySQL session timeouts are whole seconds.
+        const shardLockExpiration = lockOperationInterval * 3
+
+        // vtgate ignores SET SESSION wait_timeout and keeps its own lock
+        // connection alive, so behind Vitess a frozen runner keeps its locks.
+        if (label === "mysql") {
+          it.effect(
+            "releases a frozen runner's named shard locks after shardLockExpiration",
+            () =>
+              Effect.gen(function*() {
+                const storageA = yield* SqlRunnerStorage.make({ prefix: "frozen" })
+                const storageB = yield* SqlRunnerStorage.make({ prefix: "frozen" })
+                const shard = ShardId.make("default", 1)
+
+                expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+                // storageA freezes: it stops refreshing, but its lock connection stays open
+                const frozenAt = yield* Clock.currentTimeMillis
+                expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+
+                yield* storageB.acquire(runnerAddress2, [shard]).pipe(
+                  Effect.repeat({
+                    until: (acquired) => acquired.length > 0,
+                    schedule: Schedule.spaced(100)
+                  }),
+                  Effect.timeoutOrElse({
+                    duration: shardLockExpiration * 3,
+                    orElse: () => Effect.die("the frozen runner still holds its named shard lock")
+                  })
+                )
+                const elapsed = (yield* Clock.currentTimeMillis) - frozenAt
+                assert.isAtLeast(elapsed, shardLockExpiration * 0.9)
+                assert.isBelow(elapsed, shardLockExpiration * 2)
+              }).pipe(
+                Effect.scoped,
+                Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+                TestClock.withLive
+              ),
+            60_000
+          )
+        }
+
+        it.effect("acquires cleanly after a runner without shards leaves its lock connection idle", () => {
+          const logs: Array<string> = []
+          const logger = Logger.make((options) => {
+            if (options.logLevel !== "Debug" && options.logLevel !== "Trace") {
+              logs.push(Logger.formatJson.log(options))
+            }
+          })
+          return Effect.gen(function*() {
+            const storage = yield* SqlRunnerStorage.make({ prefix: "idle" })
+            const runner = Runner.make({
+              address: runnerAddress1,
+              groups: ["default"],
+              weight: 1
+            })
+            const shard = ShardId.make("default", 1)
+
+            yield* storage.register(runner, true)
+            // Without shards, only the liveness probe runs, and it uses the shared
+            // pool, so the lock connection stays idle past shardLockExpiration.
+            const idleUntil = (yield* Clock.currentTimeMillis) + shardLockExpiration * 1.5
+            while ((yield* Clock.currentTimeMillis) < idleUntil) {
+              expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
+              yield* Effect.sleep(lockOperationInterval)
+            }
+
+            expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+            expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
+            yield* storage.release(runnerAddress1, shard)
+            expect(logs).toEqual([])
+          }).pipe(
+            Effect.scoped,
+            Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+            Effect.provide(Logger.layer([logger])),
+            TestClock.withLive
+          )
+        }, 60_000)
+      }
     })
   })
 })
