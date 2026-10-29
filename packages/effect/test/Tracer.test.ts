@@ -265,6 +265,17 @@ describe("Tracer", () => {
           assert.isUndefined(reference!.deref())
         })
     )
+
+    it.effect("are kept by fibers sharing a finished fiber's context", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.gen(function*() {
+          yield* Fiber.await(yield* Effect.forkChild(Effect.void))
+          // Let the child's completion unwind before reading the span
+          yield* Effect.yieldNow
+          return yield* Effect.currentSpan
+        }).pipe(Effect.withSpan("parent"))
+        strictEqual(span.name, "parent")
+      }))
   })
 
   describe("Effect.annotateSpans", () => {
