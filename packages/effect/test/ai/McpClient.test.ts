@@ -1,6 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Context, Deferred, Effect, Fiber, Layer, Queue, Schema, Sink, Stream } from "effect"
-import { LanguageModel, McpClient, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+import {
+  LanguageModel,
+  McpClient,
+  McpClientError,
+  McpProtocol,
+  McpSchema,
+  McpServer,
+  Prompt,
+  Tool,
+  Toolkit
+} from "effect/ai"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -155,6 +165,170 @@ describe("McpClient", () => {
         }).pipe(Effect.scoped))
     })
   }
+
+  describe("discovery limits", () => {
+    it.effect("should expose server capabilities when initialization succeeds", () =>
+      Effect.gen(function*() {
+        const capabilities = { tools: { listChanged: true }, experimental: { custom: {} } }
+        const { client } = yield* scriptedHttp((message) => jsonRpcResult(message, { ...discoverResult, capabilities }))
+        assert.deepStrictEqual(client.capabilities, capabilities)
+      }))
+
+    it.effect("should stop discovery when a scan exceeds inherited or overridden limits", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/list"
+            ? jsonRpcResult(message, { ...discoverResult, tools: [slowTool], nextCursor: String(message.id) })
+            : scriptedReply(McpProtocol.v2026_07_28, message), { discoveryLimits: { maxPages: 1 } })
+        const listCalls = () => sent.filter(({ message }) => methodOf(message) === "tools/list").length
+
+        const pageError = yield* client.listTools({ limits: { maxItems: 5 } }).pipe(Effect.flip)
+        assert.strictEqual(pageError.reason._tag, "LimitError")
+        assert.strictEqual(listCalls(), 1)
+
+        const itemError = yield* client.listTools({ limits: { maxPages: 3, maxItems: 1 } }).pipe(Effect.flip)
+        assert.strictEqual(itemError.reason._tag, "LimitError")
+        assert.strictEqual(listCalls(), 3)
+      }))
+
+    it.effect("should fail with ConfigurationError when client or scan limits are invalid", () =>
+      Effect.gen(function*() {
+        const reply = (message: McpSchema.JsonRpcRequest) => scriptedReply(McpProtocol.v2026_07_28, message)
+        const clientError = yield* scriptedHttp(reply, { discoveryLimits: { maxItems: -1 } }).pipe(Effect.flip)
+        const { client, sent } = yield* scriptedHttp(reply)
+        const scanError = yield* client.listTools({ limits: { maxPages: 0.5 } }).pipe(Effect.flip)
+        assert.strictEqual(clientError.reason._tag, "ConfigurationError")
+        assert.strictEqual(scanError.reason._tag, "ConfigurationError")
+        assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
+      }))
+  })
+
+  describe("toolkit options", () => {
+    it.effect("should map complete results to model output when bound to an approved snapshot", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/call"
+            ? jsonRpcResult(message, {
+              ...discoverResult,
+              content: [
+                { type: "text", text: "preview" },
+                { type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
+                { type: "resource", resource: { uri: "test://notes", text: "notes", mimeType: "text/plain" } },
+                { type: "resource", resource: { uri: "test://report", blob: "cGRm", mimeType: "application/pdf" } }
+              ],
+              structuredContent: { total: 42 }
+            })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const toolkit = yield* McpClient.toolkit(client, {
+          tools: [slowTool],
+          prefix: "remote__",
+          resultMode: "complete"
+        })
+        const [output] = yield* toolkit.handle("remote__slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert("content" in output.result)
+        assert.deepStrictEqual(output.result.structuredContent, { total: 42 })
+        assert.deepStrictEqual(output.modelOutput, [
+          Prompt.textPart({ text: "preview" }),
+          Prompt.filePart({ mediaType: "image/png", data: new TextEncoder().encode("image") }),
+          Prompt.textPart({ text: "notes" }),
+          Prompt.filePart({ mediaType: "application/pdf", data: new TextEncoder().encode("pdf") })
+        ])
+        assert.isFalse(sent.some(({ message }) => methodOf(message) === "tools/list"))
+      }))
+
+    it.effect("should return tool and transport failures to the model when failureMode is return", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) =>
+          message.method !== "tools/call"
+            ? scriptedReply(McpProtocol.v2026_07_28, message)
+            : message.params?.name === "denied"
+            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "denied" }], isError: true })
+            : new Response(null, { status: 503 })
+        )
+        const tools = [McpSchema.Tool.make({ ...slowTool, name: "denied" }), slowTool]
+        const returning = yield* McpClient.toolkit(client, { tools, failureMode: "return" })
+        const [denied] = yield* returning.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect))
+        const [unavailable] = yield* returning.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert(McpClientError.isMcpClientError(denied.result) && denied.result.reason._tag === "ToolError")
+        assert.deepStrictEqual(denied.result.reason.result.content, [{ type: "text", text: "denied" }])
+        assert(McpClientError.isMcpClientError(unavailable.result) && unavailable.result.reason._tag === "HttpError")
+
+        const failing = yield* McpClient.toolkit(client, { tools })
+        const error = yield* failing.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+        assert(McpClientError.isMcpClientError(error) && error.reason._tag === "ToolError")
+      }))
+
+    it.effect("should copy server hints only when annotations are trusted", () =>
+      Effect.gen(function*() {
+        const { client } = yield* scriptedHttp((message) => scriptedReply(McpProtocol.v2026_07_28, message))
+        const descriptor = McpSchema.Tool.make({
+          name: "hints",
+          inputSchema: { type: "object" },
+          annotations: McpSchema.ToolAnnotations.make({
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false
+          })
+        })
+        const untrusted = (yield* McpClient.toolkit(client, { tools: [descriptor] })).tools.hints
+        const trusted = (yield* McpClient.toolkit(client, { tools: [descriptor], trustAnnotations: true })).tools.hints
+        assert.strictEqual(Context.getUnsafe(untrusted.annotations, McpClient.ToolDescriptor), descriptor)
+        assert.isUndefined(trusted.needsApproval)
+        for (
+          const [annotation, expected] of [
+            [Tool.Readonly, true],
+            [Tool.Destructive, false],
+            [Tool.Idempotent, true],
+            [Tool.OpenWorld, false]
+          ] as const
+        ) {
+          assert.strictEqual(Context.get(untrusted.annotations, annotation), !expected)
+          assert.strictEqual(Context.get(trusted.annotations, annotation), expected)
+        }
+      }))
+
+    it.effect("should time out a tool call when the toolkit deadline expires", () =>
+      Effect.gen(function*() {
+        const client = yield* connect(McpProtocol.v2025_11_25)
+        const toolkit = yield* McpClient.toolkit(client, { tools: [slowTool], timeout: "1 second" })
+        const call = yield* toolkit.handle("slow", {}).pipe(
+          Effect.flatMap(Stream.runCollect),
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("1 second")
+        const error = yield* Fiber.join(call)
+        assert(McpClientError.isMcpClientError(error) && error.reason._tag === "TimeoutError")
+      }))
+
+    it.effect("should keep the remote contract when transformTool derives a tool", () =>
+      Effect.gen(function*() {
+        const { client, sent } = yield* scriptedHttp((message) =>
+          message.method === "tools/call"
+            ? jsonRpcResult(message, { ...discoverResult, content: [{ type: "text", text: "done" }] })
+            : scriptedReply(McpProtocol.v2026_07_28, message)
+        )
+        const toolkit = yield* McpClient.toolkit(client, {
+          tools: [slowTool],
+          transformTool: (tool, descriptor) => {
+            assert.strictEqual(descriptor, slowTool)
+            return tool.setNeedsApproval(true).annotate(Tool.Title, "Approved tool")
+          }
+        })
+        const tool = toolkit.tools.slow
+        assert.isTrue(tool.needsApproval)
+        assert.strictEqual(Context.getUnsafe(tool.annotations, Tool.Title), "Approved tool")
+        assert.strictEqual(Context.getUnsafe(tool.annotations, McpClient.ToolDescriptor), slowTool)
+        assert.deepStrictEqual(Tool.getJsonSchema(tool), slowTool.inputSchema)
+        const [output] = yield* toolkit.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.strictEqual(output.result, "done")
+        const call = sent.find(({ message }) => methodOf(message) === "tools/call")?.message
+        assert(call !== undefined && "method" in call)
+        assert.strictEqual(call.params?.name, "slow")
+      }))
+  })
 
   // Both supported revisions allow error responses without an ID, e.g. HTTP 400 version rejections.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
@@ -578,6 +752,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
   options: {
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
+    readonly discoveryLimits?: Parameters<typeof McpClient.make>[0]["discoveryLimits"]
   } = {}
 ) {
   const sent: Array<{
@@ -600,7 +775,9 @@ const scriptedHttp = Effect.fnUntraced(function*(
   )
   const transport = yield* McpClient.http({ url: MCP_ENDPOINT, protocol: options.protocol ?? McpProtocol.v2026_07_28 })
     .pipe(Effect.provideService(HttpClient.HttpClient, options.filterStatusOk ? HttpClient.filterStatusOk(http) : http))
-  const client = yield* McpClient.make(clientInfo).pipe(Effect.provideService(McpClient.Transport, transport))
+  const client = yield* McpClient.make({ ...clientInfo, discoveryLimits: options.discoveryLimits }).pipe(
+    Effect.provideService(McpClient.Transport, transport)
+  )
   return { client, sent }
 })
 
