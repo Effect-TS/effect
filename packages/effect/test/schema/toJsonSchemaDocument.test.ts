@@ -4418,6 +4418,43 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("shares a transformed recursive content schema reference with direct uses", () => {
+      const Node: Schema.Codec<unknown> = Schema.Struct({
+        note: Schema.OptionFromOptional(Schema.String),
+        next: Schema.optionalKey(Schema.suspend(() => Node))
+      }).annotate({ identifier: "Node" })
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ direct: Node, json: Schema.fromJsonString(Node) }),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "direct": { "$ref": "#/$defs/Node" },
+              "json": { "$ref": "#/$defs/NodeEncoded" }
+            },
+            "required": ["direct", "json"],
+            "additionalProperties": false
+          },
+          definitions: {
+            "Node": {
+              "type": "object",
+              "properties": {
+                "note": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                "next": { "$ref": "#/$defs/Node" }
+              },
+              "additionalProperties": false
+            },
+            "NodeEncoded": {
+              "type": "string",
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#/$defs/Node" }
+            }
+          }
+        }
+      )
+    })
+
     it("respects an explicit encoded-side identifier", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String

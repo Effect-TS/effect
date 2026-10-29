@@ -209,6 +209,27 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       })
     }
 
+    it("does not rewrite callback references inside an embedded resource", () => {
+      const resource = {
+        $id: "https://example.com/local",
+        $defs: { Same_1: { type: "boolean" }, Same: { type: "number" } },
+        $ref: "#/$defs/Same_1"
+      }
+      const callback = Schema.Unknown.check(Schema.makeFilter(() => true, {
+        toJsonSchema: () => resource
+      }))
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+        SchemaRepresentation.toRepresentations([
+          Schema.String.annotate({ identifier: "Same" }).ast,
+          Schema.String.annotate({ identifier: "Same" }).ast,
+          callback.ast
+        ])
+      )
+
+      assert.deepStrictEqual(Object.keys(output.definitions), ["Same"])
+      assert.deepStrictEqual(output.schemas[2], resource)
+    })
+
     it("rewrites callback references with encoded leading separators", () => {
       const Content = Schema.String.annotate({ identifier: "Rate%" })
       const make = () =>
