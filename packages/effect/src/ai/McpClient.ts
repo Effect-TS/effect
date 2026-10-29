@@ -141,9 +141,8 @@ export interface McpClient {
   /**
    * Returns every skill page as one snapshot with the same bounds as `listTools`, or none
    * when the server does not declare the Skills extension. Fails on an invalid entry, unless
-   * `skipInvalidSkills` is set: invalid entries are then left out, and each is passed to
-   * `onInvalidSkill` when supplied, which also implies skipping. Requires the `skills`
-   * option, as do the other skill methods.
+   * `onInvalidSkill` is supplied: invalid entries are then left out and each is passed to it.
+   * Requires `extensions: { skills: true }`, as do the other skill methods.
    */
   readonly listSkills: (
     options?: {
@@ -152,7 +151,6 @@ export interface McpClient {
         readonly maxPages?: number | undefined
         readonly maxItems?: number | undefined
       } | undefined
-      readonly skipInvalidSkills?: boolean | undefined
       readonly onInvalidSkill?:
         | ((invalid: { readonly entry: unknown; readonly error: McpClientError }) => Effect.Effect<void>)
         | undefined
@@ -181,9 +179,12 @@ export interface McpClient {
     }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   /**
-   * Reads a file listed in a skill's manifest and fails with a `ValidationError` unless its
-   * bytes match the listed SHA-256 digest and size, and, for `SKILL.md`, unless its YAML
-   * frontmatter equals the listed frontmatter. Unbounded unless `timeout` is supplied.
+   * Reads a file of a skill and fails with a `ValidationError` unless its bytes match the
+   * SHA-256 digest and size listed in the skill's manifest, and, for `SKILL.md`, unless its
+   * YAML frontmatter equals the listed frontmatter. A skill whose `resources` is `"dynamic"`
+   * has no digests: any file inside its directory can be read, and `SKILL.md` is still
+   * checked. Files outside the manifest or directory are never requested. Unbounded unless
+   * `timeout` is supplied.
    */
   readonly readSkillResource: (
     params: { readonly skill: McpSchema.Skill; readonly uri: string },
@@ -244,16 +245,17 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * and bounds initialization and each complete `listTools`, `listPrompts`,
  * `listResources`, `listSkills` or `readResourceDirectory` scan.
  * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
- * items. `callTool`,
- * `getPrompt`, `readResource`, `getSkill` and `readSkillResource` have no
+ * items. `callTool`, `getPrompt`, `readResource`, `getSkill` and
+ * `readSkillResource` have no
  * deadline unless their own `timeout` option is supplied.
  *
- * `skills: true` declares the Skills extension (SEP-2640) to the server and
- * enables `listSkills`, `getSkill`, `readResourceDirectory` and
- * `readSkillResource`; without it they fail with a `ConfigurationError`. They
- * run only against a server that declares the extension too, and skill
- * entries are checked against its rules. `readSkillResource` checks digests
- * with SHA-256 on `crypto.subtle`.
+ * `extensions` selects the protocol extensions the client declares. With
+ * `skills: true` it declares the Skills extension (SEP-2640) and enables
+ * `listSkills`, `getSkill`, `readResourceDirectory` and `readSkillResource`;
+ * without it they fail with a `ConfigurationError`. They run only against a
+ * server that declares the extension too, and skill entries are checked
+ * against its rules. `readSkillResource` checks digests with SHA-256 on
+ * `crypto.subtle`.
  * Schema decoding requires the schema's services from the caller.
  *
  * @stability experimental
@@ -272,7 +274,9 @@ export const make: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
-  readonly skills?: boolean | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
 }) => Effect.Effect<
   McpClient,
   McpClientError,
@@ -305,7 +309,7 @@ export const make: (options: {
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
-  const skillsEnabled = options.skills === true
+  const skillsEnabled = options.extensions?.skills === true
   const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
@@ -472,7 +476,7 @@ export const make: (options: {
   const invalid = (description: string) => Effect.fail(fail(new ValidationError({ description })))
   const unsupported = (description: string) => Effect.fail(fail(new UnsupportedError({ description })))
   const requireSkillsOption = skillsEnabled ? Effect.void : Effect.fail(
-    fail(new ConfigurationError({ description: "MCP skills methods require the client's skills option" }))
+    fail(new ConfigurationError({ description: "MCP skills methods require extensions: { skills: true }" }))
   )
 
   const decodeSkill = Effect.fnUntraced(function*(entry: unknown) {
@@ -492,10 +496,8 @@ export const make: (options: {
       for (const entry of entries) {
         const decoded = yield* Effect.result(decodeSkill(entry))
         if (decoded._tag === "Failure") {
-          if (options?.skipInvalidSkills !== true && options?.onInvalidSkill === undefined) {
-            return yield* Effect.fail(decoded.failure)
-          }
-          if (options.onInvalidSkill !== undefined) yield* options.onInvalidSkill({ entry, error: decoded.failure })
+          if (options?.onInvalidSkill === undefined) return yield* Effect.fail(decoded.failure)
+          yield* options.onInvalidSkill({ entry, error: decoded.failure })
           continue
         }
         if (!skills.has(decoded.success.uri)) skills.set(decoded.success.uri, decoded.success)
@@ -553,21 +555,24 @@ export const make: (options: {
     function*(params: { readonly skill: McpSchema.Skill; readonly uri: string }, _options?: CallOptions) {
       yield* requireSkillsOption
       const { skill, uri } = params
-      if (skill.resources === "dynamic") {
-        return yield* unsupported(`MCP skill ${skill.uri} publishes no digests; read it with readResource`)
-      }
       // A file missing from the manifest is a change to the skill, not a file to trust.
-      const listed = skill.resources.find((resource) => resource.uri === uri)
-      if (listed === undefined) return yield* invalid(`${uri} is not listed by the MCP skill ${skill.uri}`)
+      const listed = skill.resources === "dynamic"
+        ? undefined
+        : skill.resources.find((resource) => resource.uri === uri)
+      if (skill.resources === "dynamic" ? !McpSkills.isSkillFile(skill.uri, uri) : listed === undefined) {
+        return yield* invalid(`${uri} is not a file of the MCP skill ${skill.uri}`)
+      }
       const result = yield* call<McpSchema.ReadResourceResult>("resources", "resources/read", { uri })
       const [content, ...rest] = result.contents
       if (content === undefined || rest.length > 0 || content.uri !== uri) {
         return yield* invalid(`MCP resources/read returned other contents than ${uri}`)
       }
       const bytes = "text" in content ? encoder.encode(content.text) : content.blob
-      const actual = `sha256:${yield* digest.digestHex(Digest.sha256, bytes)}`
-      if (bytes.byteLength !== listed.size || actual !== listed.digest) {
-        return yield* invalid(`${uri} does not match the digest and size listed by the MCP skill ${skill.uri}`)
+      if (listed !== undefined) {
+        const actual = `sha256:${yield* digest.digestHex(Digest.sha256, bytes)}`
+        if (bytes.byteLength !== listed.size || actual !== listed.digest) {
+          return yield* invalid(`${uri} does not match the digest and size listed by the MCP skill ${skill.uri}`)
+        }
       }
       if (uri !== skill.uri) return result
       // Verified bytes can still carry other frontmatter than the listing, and
@@ -1002,7 +1007,9 @@ export const layerStdio: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
-  readonly skills?: boolean | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly maxMessageBytes?: ByteSize.Input | undefined
@@ -1241,7 +1248,9 @@ export const layerHttp: (options: {
     readonly maxPages?: number | undefined
     readonly maxItems?: number | undefined
   } | undefined
-  readonly skills?: boolean | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
   readonly url: string | URL
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly headers?: Readonly<Record<string, string>> | undefined

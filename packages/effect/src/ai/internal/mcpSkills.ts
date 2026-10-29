@@ -8,6 +8,8 @@ import * as Cause from "../../Cause.ts"
 import * as Digest from "../../crypto/Digest.ts"
 import * as Effect from "../../Effect.ts"
 import * as Yaml from "../../encoding/Yaml.ts"
+import * as Mime from "../../http/Mime.ts"
+import * as Option from "../../Option.ts"
 import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
@@ -54,27 +56,18 @@ export const declareExtension = <A>(
 // Wire schemas
 // =============================================================================
 
-const SkillResource = Schema.Struct({
-  uri: Schema.String,
-  digest: Schema.String,
-  size: Schema.Int
-})
-
 const Skill = Schema.Struct({
   uri: Schema.String,
   frontmatter: Legacy.UnknownObject,
-  resources: Schema.Union([Schema.Array(SkillResource), Schema.Literal("dynamic")])
+  resources: Schema.Union([
+    Schema.Array(Schema.Struct(PublicMcpSchema.SkillResource.fields)),
+    Schema.Literal("dynamic")
+  ])
 })
 
 // Listed entries are checked one at a time, so that a client can leave out an
 // invalid entry instead of rejecting the whole page.
 const ListedSkills = Schema.Array(Schema.Unknown)
-
-const DirectoryChild = Schema.Struct({
-  uri: Schema.String,
-  name: Schema.String,
-  mimeType: Schema.String
-})
 
 /**
  * @internal
@@ -98,7 +91,7 @@ export class LegacyGetSkill extends Rpc.make("skills/get", {
  * @internal
  */
 export class LegacyReadResourceDirectory extends Rpc.make("resources/directory/read", {
-  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, resources: Schema.Array(DirectoryChild) }),
+  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, resources: Schema.Array(Legacy.Resource) }),
   error: Legacy.McpError,
   payload: { ...Legacy.PaginatedRequest.fields, uri: Schema.String }
 }) {}
@@ -152,7 +145,7 @@ export const ReadResourceDirectoryResult = Schema.StructWithRest(
   Schema.Struct({
     ...Stateless.PaginatedResult,
     ...Stateless.CacheableResult,
-    resources: Schema.Array(DirectoryChild)
+    resources: Schema.Array(Stateless.Resource)
   }),
   [Stateless.UnknownObject]
 )
@@ -262,12 +255,9 @@ export interface SourceFile {
  * @internal
  */
 export interface ServedFile {
-  readonly uri: string
-  readonly name: string
-  readonly description: string | undefined
-  readonly mimeType: string
+  // Listed by `resources/list` and as a child on `resources/directory/read`.
+  readonly resource: McpCore.DirectoryChild
   readonly content: Uint8Array
-  readonly digest: string
   // Set when the file is textual and valid UTF-8; otherwise it is served as a blob.
   readonly text: string | undefined
 }
@@ -278,29 +268,16 @@ export interface ServedFile {
 export interface StaticSkill {
   readonly entry: McpCore.Skill
   readonly files: ReadonlyArray<ServedFile>
-  // Directory URI to its direct children, sorted by name.
+  // Directory URI to its direct children, sorted by URI.
   readonly directories: ReadonlyMap<string, ReadonlyArray<McpCore.DirectoryChild>>
 }
 
-const MIME_BY_EXTENSION: ReadonlyMap<string, string> = new Map([
-  ["csv", "text/csv"],
-  ["gif", "image/gif"],
-  ["html", "text/html"],
-  ["jpeg", "image/jpeg"],
-  ["jpg", "image/jpeg"],
-  ["js", "text/javascript"],
-  ["json", "application/json"],
-  ["md", "text/markdown"],
-  ["pdf", "application/pdf"],
-  ["png", "image/png"],
+// Scripts that skills commonly bundle, which the standard table lacks or, for
+// `.ts`, maps to MPEG transport streams.
+const SCRIPT_MIME_TYPES: ReadonlyMap<string, string> = new Map([
   ["py", "text/x-python"],
   ["sh", "text/x-shellscript"],
-  ["svg", "image/svg+xml"],
-  ["ts", "text/x-typescript"],
-  ["txt", "text/plain"],
-  ["webp", "image/webp"],
-  ["yaml", "application/yaml"],
-  ["yml", "application/yaml"]
+  ["ts", "text/x-typescript"]
 ])
 
 const TEXTUAL_APPLICATION_TYPES: ReadonlySet<string> = new Set([
@@ -314,7 +291,8 @@ const TEXTUAL_APPLICATION_TYPES: ReadonlySet<string> = new Set([
  */
 export const mimeTypeFor = (path: string): string => {
   const extension = /\.([^./]+)$/.exec(path)?.[1]?.toLowerCase()
-  return (extension === undefined ? undefined : MIME_BY_EXTENSION.get(extension)) ?? "application/octet-stream"
+  const script = extension === undefined ? undefined : SCRIPT_MIME_TYPES.get(extension)
+  return script ?? Option.getOrElse(Mime.getType(path), () => "application/octet-stream")
 }
 
 // `ignoreBOM` keeps a leading BOM in the decoded text, so re-encoding the text
@@ -350,8 +328,6 @@ const isSafeRelativePath = (path: string): boolean =>
 // The Agent Skills `name` rule: lowercase letters, digits and single hyphens,
 // neither leading nor trailing, at most 64 characters.
 const isSkillName = (name: string): boolean => name.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
-
-const DIGEST = /^sha256:[0-9a-f]{64}$/
 
 const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
 
@@ -391,15 +367,34 @@ export const jsonEquals = (a: unknown, b: unknown): boolean => {
 }
 
 /**
+ * The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
+ *
+ * @internal
+ */
+export const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)
+
+/**
+ * Whether `uri` addresses a file inside the skill whose `SKILL.md` is at
+ * `skillUri`.
+ *
+ * @internal
+ */
+export const isSkillFile = (skillUri: string, uri: string): boolean => {
+  const root = skillRoot(skillUri)
+  return uri.startsWith(`${root}/`) && isSafeRelativePath(uri.slice(root.length + 1))
+}
+
+/**
  * Why a skill entry received from a server breaks the extension's rules, or
- * `undefined` when it is valid. Hosts must not load an invalid entry.
+ * `undefined` when it is valid. Hosts must not load an invalid entry. The
+ * digest and size formats are checked by {@link PublicMcpSchema.SkillResource}.
  *
  * @internal
  */
 export const entryProblem = (entry: McpCore.Skill): string | undefined => {
   const schemeEnd = entry.uri.indexOf("://")
   if (schemeEnd <= 0 || !entry.uri.endsWith("/SKILL.md")) return "the URI does not address a SKILL.md"
-  const root = entry.uri.slice(0, -"/SKILL.md".length)
+  const root = skillRoot(entry.uri)
   const skillPath = root.slice(schemeEnd + 3)
   if (!isSafeRelativePath(skillPath)) return "the skill path has an empty, '.' or '..' segment"
   const name = skillPath.split("/").at(-1)!
@@ -413,12 +408,8 @@ export const entryProblem = (entry: McpCore.Skill): string | undefined => {
   if (entry.resources === "dynamic") return undefined
   const uris = new Set<string>()
   for (const resource of entry.resources) {
-    if (!resource.uri.startsWith(`${root}/`) || !isSafeRelativePath(resource.uri.slice(root.length + 1))) {
-      return `${resource.uri} is not a file of the skill`
-    }
+    if (!isSkillFile(entry.uri, resource.uri)) return `${resource.uri} is not a file of the skill`
     if (uris.has(resource.uri)) return `${resource.uri} is listed twice`
-    if (!DIGEST.test(resource.digest)) return `${resource.uri} has an invalid digest`
-    if (!Number.isSafeInteger(resource.size) || resource.size < 0) return `${resource.uri} has an invalid size`
     uris.add(resource.uri)
   }
   return uris.has(entry.uri) ? undefined : "the manifest does not list SKILL.md"
@@ -435,27 +426,10 @@ export const isDirectChild = (directory: string, child: string): boolean => {
   return name !== "" && name !== "." && name !== ".." && !name.includes("/")
 }
 
-const PLAIN_KEY = /^[A-Za-z_][A-Za-z0-9_-]*$/
-
-/**
- * Renders a `SKILL.md` whose frontmatter is exactly `frontmatter`. Each value
- * is written as JSON, which YAML 1.2 parses as the same value, so the served
- * frontmatter cannot drift from the entry.
- *
- * @internal
- */
-export const renderSkillMd = (frontmatter: Readonly<Record<string, unknown>>, instructions: string): string => {
-  let yaml = ""
-  for (const [key, value] of Object.entries(frontmatter)) {
-    yaml += `${PLAIN_KEY.test(key) ? key : JSON.stringify(key)}: ${JSON.stringify(value)}\n`
-  }
-  return `---\n${yaml}---\n\n${instructions}`
-}
-
 const decodeFrontmatter = Schema.decodeUnknownEffect(PublicMcpSchema.SkillFrontmatter)
 
-const compareNames = (a: { readonly name: string }, b: { readonly name: string }): number =>
-  a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+const compareUris = (a: { readonly uri: string }, b: { readonly uri: string }): number =>
+  a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : 0
 
 /**
  * Validates a static skill against the extension's server requirements and
@@ -467,8 +441,6 @@ const compareNames = (a: { readonly name: string }, b: { readonly name: string }
  */
 export const makeStaticSkill = (options: {
   readonly uri: string
-  // Read from SKILL.md when omitted; otherwise SKILL.md must carry the same frontmatter.
-  readonly frontmatter?: Readonly<Record<string, unknown>> | undefined
   readonly files: ReadonlyArray<SourceFile>
 }): Effect.Effect<StaticSkill, Cause.IllegalArgumentError, Digest.Digest> =>
   Effect.gen(function*() {
@@ -501,17 +473,11 @@ export const makeStaticSkill = (options: {
     const skillMd = options.files.find((file) => file.path === "SKILL.md")
     if (skillMd === undefined) return yield* fail("SKILL.md is missing")
 
-    // Hosts compare SKILL.md's frontmatter with the listed one and reject the
-    // skill on any difference, so the two must agree before it is served.
-    const served = parseFrontmatter(decodeText("text/markdown", skillMd.content) ?? "")
-    if (served === undefined) return yield* fail("SKILL.md must begin with YAML frontmatter holding a mapping")
-    const frontmatter = options.frontmatter ?? served
-    if (!isPlainObject(frontmatter) || !isJsonValue(frontmatter)) {
-      return yield* fail("the frontmatter must be a JSON object")
-    }
-    if (!jsonEquals(frontmatter, served)) {
-      return yield* fail("the frontmatter of SKILL.md differs from the given frontmatter")
-    }
+    // The listed frontmatter is parsed from the served SKILL.md, so the two
+    // cannot differ. It must survive the trip to JSON unchanged.
+    const frontmatter = parseFrontmatter(decodeText("text/markdown", skillMd.content) ?? "")
+    if (frontmatter === undefined) return yield* fail("SKILL.md must begin with YAML frontmatter holding a mapping")
+    if (!isJsonValue(frontmatter)) return yield* fail("the frontmatter must be a JSON object")
     if (frontmatter.name !== name) {
       return yield* fail(`the frontmatter name ${JSON.stringify(frontmatter.name)} must equal "${name}"`)
     }
@@ -529,27 +495,22 @@ export const makeStaticSkill = (options: {
       const fileUri = `${scheme}${skillPath}/${file.path}`
       const fileDigest = `sha256:${yield* digest.digestHex(Digest.sha256, file.content)}`
       const mimeType = file.mimeType ?? mimeTypeFor(file.path)
-      const isSkillMd = file.path === "SKILL.md"
-      files.push({
-        uri: fileUri,
-        name: isSkillMd ? name : file.path.split("/").at(-1)!,
-        description: isSkillMd ? description : undefined,
-        mimeType,
-        content: file.content,
-        digest: fileDigest,
-        text: decodeText(mimeType, file.content)
-      })
-      resources.push({ uri: fileUri, digest: fileDigest, size: file.content.byteLength })
+      const size = file.content.byteLength
+      const resource: McpCore.DirectoryChild = file.path === "SKILL.md"
+        ? { uri: fileUri, name, description, mimeType, size }
+        : { uri: fileUri, name: file.path.split("/").at(-1)!, mimeType, size }
+      files.push({ resource, content: file.content, text: decodeText(mimeType, file.content) })
+      resources.push({ uri: fileUri, digest: fileDigest, size })
 
       // Every directory from the namespace root down is readable, including
       // the prefix directories above the skill root.
       const segments = `${skillPath}/${file.path}`.split("/")
       for (let depth = 1; depth < segments.length; depth++) {
         const directory = `${scheme}${segments.slice(0, depth).join("/")}`
-        const child: McpCore.DirectoryChild = {
+        const child: McpCore.DirectoryChild = depth === segments.length - 1 ? resource : {
           uri: `${scheme}${segments.slice(0, depth + 1).join("/")}`,
           name: segments[depth]!,
-          mimeType: depth === segments.length - 1 ? mimeType : DIRECTORY_MIME_TYPE
+          mimeType: DIRECTORY_MIME_TYPE
         }
         let siblings = children.get(directory)
         if (siblings === undefined) {
@@ -562,7 +523,7 @@ export const makeStaticSkill = (options: {
 
     const directories = new Map<string, ReadonlyArray<McpCore.DirectoryChild>>()
     for (const [directory, siblings] of children) {
-      directories.set(directory, Array.from(siblings.values()).sort(compareNames))
+      directories.set(directory, Array.from(siblings.values()).sort(compareUris))
     }
     return { entry: { uri, frontmatter, resources }, files, directories }
   })

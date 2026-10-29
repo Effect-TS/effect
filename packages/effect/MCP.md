@@ -139,38 +139,41 @@ string containing the provided `id`. The `mimeType` specifies the format of the 
 
 Skills publish [Agent Skills](https://agentskills.io/) under the MCP Skills extension
 ([SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension)). `McpServer.skill` takes
-the URI of the skill's `SKILL.md`, its frontmatter, and its instructions and supporting files:
+the URI of the skill's `SKILL.md` and the skill's files, `SKILL.md` included:
 
 ```typescript
 import { McpServer } from "effect/ai"
 
 const RefundsSkill = McpServer.skill({
   uri: "skill://billing/refunds/SKILL.md",
-  frontmatter: {
-    name: "refunds",
-    description: "Process refunds using the billing tools"
-  },
-  instructions: "Read references/policy.md before issuing a refund.\n",
   files: {
+    "SKILL.md": `---
+name: refunds
+description: Process refunds using the billing tools
+---
+
+Read references/policy.md before issuing a refund.
+`,
     "references/policy.md": "Refunds above CHF 500 require manager approval.\n"
   }
 })
 ```
 
-- Each file is served as a resource under the skill's URI, and `SKILL.md` is rendered from the
-  frontmatter and instructions. To serve a `SKILL.md` you already have, put it in `files` and leave
-  out `instructions`. Its YAML frontmatter is then listed as the skill's, and `frontmatter` may be
-  left out; when given, it must equal the file's.
+- Each file is served verbatim as a resource under the skill's URI, and the skill's frontmatter is
+  parsed from `SKILL.md`. Clients may parse it with YAML 1.1, which reads values such as `yes` or
+  `1.0` as booleans and numbers, so quote strings like these.
 - Clients list skills with `skills/list`, look one up with `skills/get`, and browse directories with
   `resources/directory/read`. Each entry lists every file with the SHA-256 digest and size of the
-  bytes served.
+  bytes served. The bytes are copied at registration.
 - The server declares the `io.modelcontextprotocol/skills` extension once a skill is registered, on
   every protocol revision. Under `v2026_07_28` the `skills` cache hint applies to these results.
 - Building the layer fails with `IllegalArgumentError` when the skill breaks the extension's rules:
-  a name other than the last URI segment, frontmatter that is not valid
-  `McpSchema.SkillFrontmatter` (the Agent Skills specification's fields, such as string-only
-  `metadata` values), a `SKILL.md` without frontmatter or with other frontmatter than given, a file
-  outside the skill, or more than 512 files or 16 MiB.
+  a name other than the last URI segment, a `SKILL.md` without frontmatter, frontmatter that is not
+  valid `McpSchema.SkillFrontmatter` (the Agent Skills specification's fields, such as string-only
+  `metadata` values) or not plain JSON, a file outside the skill, or more than 512 files or 16 MiB.
+- Skills cannot nest: registering a skill whose directory contains or lies inside another skill's
+  fails. So does registering a skill with a file whose URI is already a resource, and registering a
+  resource at the URI of a skill's file afterwards is a defect.
 
 ## Prompts
 
@@ -792,23 +795,22 @@ export const loadContext = (client: McpClient.McpClient) =>
 
 ### Skills
 
-Pass `skills: true` to declare the MCP Skills extension
+Pass `extensions: { skills: true }` to declare the MCP Skills extension
 ([SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension)) and enable the skill
 methods. Without it they fail with a `ConfigurationError`, and the client does not declare the
 extension.
 
 - `listSkills` returns every skill as an `McpSchema.Skill`, or none when the server does not declare
-  the extension. An invalid entry fails the whole listing unless you pass `skipInvalidSkills: true`,
-  which leaves invalid entries out. Pass `onInvalidSkill` as well, or instead, to receive each
-  entry that was left out. `getSkill` looks a skill up by the
-  URI of its `SKILL.md`, listed or not.
+  the extension. An invalid entry fails the whole listing unless you pass `onInvalidSkill`, which
+  leaves invalid entries out and receives each one. `getSkill` looks a skill up by the URI of its
+  `SKILL.md`, listed or not.
 - `readResourceDirectory` lists the direct children of a directory in a skill namespace, when the
   server declares `directoryRead`.
 - `readSkillResource` reads a file listed in a skill's manifest and fails with a `ValidationError`
   unless its bytes match the listed SHA-256 digest and size, and, for `SKILL.md`, unless its YAML
   frontmatter equals the listed `frontmatter`. Use it rather than `readResource` for skill files. A
-  skill whose `resources` is `"dynamic"` publishes no digests, so it fails with an
-  `UnsupportedError`.
+  skill whose `resources` is `"dynamic"` publishes no digests, so any file inside its directory can
+  be read, and its `SKILL.md` frontmatter is still checked. Other files are never requested.
 - Skill entries that break the extension's rules fail with a `ValidationError`. Of the frontmatter,
   only `name` and `description` are checked, so fields from later Agent Skills revisions still
   load. Decode `skill.frontmatter` with `McpSchema.SkillFrontmatter` to read the specification's

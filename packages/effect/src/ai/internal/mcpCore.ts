@@ -5,6 +5,7 @@
  */
 
 import * as Arr from "../../Array.ts"
+import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
@@ -288,15 +289,18 @@ export interface Skill {
 }
 
 /**
- * A `resources/directory/read` child: a file, or a subdirectory with the
- * `inode/directory` MIME type.
+ * A `resources/directory/read` child: a file, with the metadata
+ * `resources/list` gives it, or a subdirectory with the `inode/directory` MIME
+ * type.
  *
  * @internal
  */
 export interface DirectoryChild {
   readonly uri: string
   readonly name: string
+  readonly description?: string | undefined
   readonly mimeType: string
+  readonly size?: number | undefined
 }
 
 /**
@@ -336,11 +340,11 @@ export interface SkillRegistration {
  * @internal
  */
 export interface Skills {
-  readonly register: (registration: SkillRegistration) => Effect.Effect<void>
-  // The digest a registered skill other than `skillUri` serves `uri` with,
-  // whatever its visibility, so a nested skill cannot serve different bytes
-  // than the skill that encloses it.
-  readonly fileDigest: (uri: string, skillUri: string) => string | undefined
+  // Fails when the skill's directory overlaps another skill's, or one of its
+  // files is already registered as a resource.
+  readonly register: (registration: SkillRegistration) => Effect.Effect<void, Cause.IllegalArgumentError>
+  // Whether `uri` is a file of a registered skill, which only that skill may serve.
+  readonly ownsFile: (uri: string) => boolean
   readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<Skill>, RequestRejected>
   readonly get: (uri: string, invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound | RequestRejected>
   readonly readDirectory: (
@@ -525,6 +529,13 @@ export interface McpCore {
  */
 export type Visible = (invocation: McpInvocation) => Effect.Effect<boolean, RequestRejected>
 
+// Whether one skill directory contains the other, or both are the same.
+const skillsOverlap = (a: string, b: string): boolean => {
+  const rootA = a.slice(0, -"/SKILL.md".length)
+  const rootB = b.slice(0, -"/SKILL.md".length)
+  return rootA === rootB || rootA.startsWith(`${rootB}/`) || rootB.startsWith(`${rootA}/`)
+}
+
 /**
  * @internal
  */
@@ -534,6 +545,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
   const skillRegistrations = new Map<string, SkillRegistration>()
+  const skillFiles = new Set<string>()
   const completionRegistrations = new Map<
     string,
     (
@@ -659,17 +671,23 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
 
   const skills: Skills = {
     register: (registration) =>
-      Effect.sync(() => {
-        skillRegistrations.set(registration.entry.uri, registration)
+      Effect.suspend(() => {
+        const { uri, resources } = registration.entry
+        const fail = (reason: string) => Effect.fail(new Cause.IllegalArgumentError(`Skill ${uri}: ${reason}`))
+        for (const other of skillRegistrations.keys()) {
+          if (skillsOverlap(uri, other)) return fail(`its directory overlaps the skill ${other}`)
+        }
+        const files = resources === "dynamic" ? [] : resources.map((resource) => resource.uri)
+        for (const file of files) {
+          if (resourceRegistrations.some((entry) => entry.descriptor.uri === file)) {
+            return fail(`${file} is already registered as a resource`)
+          }
+        }
+        skillRegistrations.set(uri, registration)
+        for (const file of files) skillFiles.add(file)
+        return Effect.void
       }),
-    fileDigest: (uri, skillUri) => {
-      for (const { entry } of skillRegistrations.values()) {
-        if (entry.uri === skillUri || entry.resources === "dynamic") continue
-        const file = entry.resources.find((resource) => resource.uri === uri)
-        if (file !== undefined) return file.digest
-      }
-      return undefined
-    },
+    ownsFile: (uri) => skillFiles.has(uri),
     list: (invocation) =>
       filterList(
         Array.from(skillRegistrations.values(), (registration) => ({
@@ -703,7 +721,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       if (!found) {
         return yield* new DirectoryNotFound({ uri })
       }
-      return Array.from(children.values()).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+      return Array.from(children.values()).sort((a, b) => a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : 0)
     })
   }
 

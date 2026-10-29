@@ -108,6 +108,8 @@ interface QueuedServerNotification {
 
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
+  // Registers a resource without the check that reserves skill files for their skill.
+  readonly addResource: McpServer["Service"]["addResource"]
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestEndpoints: number }
   readonly globalMiddleware: Array<middleware.Fn<any, any, any>>
@@ -1140,6 +1142,27 @@ export class McpServer extends Context.Service<McpServer, {
         ))
     })
 
+    const addResource: McpServer["Service"]["addResource"] = Effect.fnUntraced(function*(options) {
+      const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
+      if (existingIndex === -1) {
+        resources.push(options)
+      } else {
+        resources[existingIndex] = options
+      }
+      const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
+      yield* internalCore.resources.register({
+        descriptor: options.resource,
+        visible: visible("resources/list", options.resource.uri),
+        isVisible: isEnabled(options.annotations),
+        read: (invocation) =>
+          invoke(options.handle, invocation, {
+            method: "resources/read",
+            target: options.resource.uri,
+            payload: { uri: options.resource.uri }
+          })
+      })
+      yield* notifications.client["notifications/resources/list_changed"]({})
+    })
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
@@ -1235,27 +1258,12 @@ export class McpServer extends Context.Service<McpServer, {
       get resourceTemplates() {
         return resourceTemplates
       },
-      addResource: Effect.fnUntraced(function*(options) {
-        const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
-        if (existingIndex === -1) {
-          resources.push(options)
-        } else {
-          resources[existingIndex] = options
-        }
-        const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
-        yield* internalCore.resources.register({
-          descriptor: options.resource,
-          visible: visible("resources/list", options.resource.uri),
-          isVisible: isEnabled(options.annotations),
-          read: (invocation) =>
-            invoke(options.handle, invocation, {
-              method: "resources/read",
-              target: options.resource.uri,
-              payload: { uri: options.resource.uri }
-            })
-        })
-        yield* notifications.client["notifications/resources/list_changed"]({})
-      }),
+      addResource: (options) =>
+        internalCore.skills.ownsFile(options.resource.uri)
+          ? Effect.die(
+            new Cause.IllegalArgumentError(`Resource ${options.resource.uri} is a file of a registered skill`)
+          )
+          : addResource(options),
       addResourceTemplate: Effect.fnUntraced(
         function*({ annotations, completions, handle, routerPath, services, template }) {
           const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
@@ -1413,6 +1421,7 @@ export class McpServer extends Context.Service<McpServer, {
     })
     internalState.set(service, {
       core: internalCore,
+      addResource,
       notifications: notificationsQueue,
       notificationDelivery,
       globalMiddleware
@@ -3579,42 +3588,33 @@ export type SkillFile = string | Uint8Array | {
  * `skill://<skill-path>/SKILL.md`. Its last path segment is the skill's name,
  * which must equal the frontmatter's `name`. Other schemes work the same way.
  *
- * `files` maps paths relative to the skill root to supporting files. Give
- * `frontmatter` and `instructions` to have `SKILL.md` rendered from them.
- * Otherwise give `SKILL.md` in `files`, and it is served verbatim; its
- * frontmatter is listed as the skill's, or, when `frontmatter` is also given,
- * must match it, since clients compare the two and reject the skill on a
- * mismatch.
+ * `files` maps paths relative to the skill root to the skill's files,
+ * `SKILL.md` included. Files are served verbatim, and the skill's listed
+ * frontmatter is parsed from `SKILL.md`. Quote frontmatter strings that a YAML
+ * 1.1 parser reads as another type, such as `yes` or `1.0`.
  *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export type SkillOptions =
-  & {
-    readonly uri: string
-    readonly files?: Readonly<Record<string, SkillFile>> | undefined
-    readonly annotations?: Context.Context<never> | undefined
-  }
-  & (
-    | { readonly frontmatter: McpSchema.SkillFrontmatter; readonly instructions: string }
-    | {
-      readonly frontmatter?: McpSchema.SkillFrontmatter | undefined
-      readonly instructions?: undefined
-      readonly files: { readonly "SKILL.md": SkillFile } & Readonly<Record<string, SkillFile>>
-    }
-  )
+export interface SkillOptions {
+  readonly uri: string
+  readonly files: { readonly "SKILL.md": SkillFile } & Readonly<Record<string, SkillFile>>
+  readonly annotations?: Context.Context<never> | undefined
+}
 
 const skillFileEncoder = new TextEncoder()
 
+// Bytes are copied so that later changes by the caller cannot alter what is
+// served under the listed digest.
 const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile =>
   typeof file === "string"
     ? { path, content: skillFileEncoder.encode(file) }
     : file instanceof Uint8Array
-    ? { path, content: file }
+    ? { path, content: file.slice() }
     : {
       path,
-      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : file.content,
+      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : file.content.slice(),
       mimeType: file.mimeType
     }
 
@@ -3630,12 +3630,12 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  * declares the extension once any skill is registered.
  *
  * Fails when the skill breaks the extension's rules: a name that does not
- * match the URI, frontmatter that is not valid
- * {@link McpSchema.SkillFrontmatter}, a `SKILL.md` without YAML frontmatter or
- * whose frontmatter differs from the given one, a file path that leaves the
- * skill, or more than 512 files or 16 MiB in all.
- * A nested skill must serve the same bytes for each file it shares with the
- * skill enclosing it.
+ * match the URI, a `SKILL.md` without YAML frontmatter, frontmatter that is
+ * not valid {@link McpSchema.SkillFrontmatter} or not plain JSON, a file path
+ * that leaves the skill, or more than 512 files or 16 MiB in all. It also
+ * fails when the skill's directory contains or lies inside another skill's,
+ * or one of its files is already registered as a resource. Registering a
+ * resource at the URI of a skill's file afterwards is a defect.
  *
  * SHA-256 runs on `crypto.subtle`.
  *
@@ -3647,59 +3647,17 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  */
 export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause.IllegalArgumentError, McpServer> =
   Effect.fnUntraced(function*(options: SkillOptions) {
-    const files = Object.entries(options.files ?? {}).map(([path, file]) => toSkillSourceFile(path, file))
-    if (options.instructions !== undefined) {
-      if (options.files?.["SKILL.md"] !== undefined) {
-        return yield* new Cause.IllegalArgumentError(
-          `Skill ${options.uri}: give SKILL.md as instructions or as a file, not both`
-        )
-      }
-      files.push({
-        path: "SKILL.md",
-        content: skillFileEncoder.encode(McpSkills.renderSkillMd(options.frontmatter, options.instructions)),
-        mimeType: "text/markdown"
-      })
-    }
-    const skill = yield* McpSkills.makeStaticSkill({
-      uri: options.uri,
-      frontmatter: options.frontmatter,
-      files
-    }).pipe(Effect.provide(Digest.layerWebCrypto))
+    const files = Object.entries(options.files).map(([path, file]) => toSkillSourceFile(path, file))
+    const skill = yield* McpSkills.makeStaticSkill({ uri: options.uri, files }).pipe(
+      Effect.provide(Digest.layerWebCrypto)
+    )
 
     const registry = yield* McpServer
-    const { core, globalMiddleware } = internalState.get(registry)!
-    for (const file of skill.files) {
-      const digest = core.skills.fileDigest(file.uri, options.uri)
-      if (digest !== undefined && digest !== file.digest) {
-        return yield* new Cause.IllegalArgumentError(
-          `Skill ${options.uri}: ${file.uri} has different bytes than in another skill that contains it`
-        )
-      }
-    }
-
+    const { addResource, core, globalMiddleware } = internalState.get(registry)!
     const services = yield* Effect.context<never>()
     const annotations = options.annotations ?? Context.empty()
-    for (const file of skill.files) {
-      yield* registry.addResource({
-        resource: new Resource({
-          uri: file.uri,
-          name: file.name,
-          description: file.description,
-          mimeType: file.mimeType,
-          size: file.content.byteLength
-        }),
-        annotations,
-        services,
-        handle: Effect.succeed({
-          contents: [
-            file.text === undefined
-              ? { uri: file.uri, mimeType: file.mimeType, blob: file.content }
-              : { uri: file.uri, mimeType: file.mimeType, text: file.text }
-          ]
-        })
-      })
-    }
     const { invoke, visible } = makeInvoke(services, globalMiddleware)
+    // Claims the skill's file URIs before they are registered as resources.
     yield* core.skills.register({
       entry: skill.entry,
       isVisible: isEnabled(annotations),
@@ -3713,6 +3671,17 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
         }),
       readDirectory: (uri) => Effect.succeed(skill.directories.get(uri))
     })
+    for (const { content, resource, text } of skill.files) {
+      const { uri, mimeType } = resource
+      yield* addResource({
+        resource: new Resource(resource),
+        annotations,
+        services,
+        handle: Effect.succeed({
+          contents: [text === undefined ? { uri, mimeType, blob: content } : { uri, mimeType, text }]
+        })
+      })
+    }
   })
 
 /**
@@ -3727,12 +3696,14 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
  *
  * const RefundsSkill = McpServer.skill({
  *   uri: "skill://billing/refunds/SKILL.md",
- *   frontmatter: {
- *     name: "refunds",
- *     description: "Process refunds using the billing tools"
- *   },
- *   instructions: "Read references/policy.md before issuing a refund.\n",
  *   files: {
+ *     "SKILL.md": `---
+ * name: refunds
+ * description: Process refunds using the billing tools
+ * ---
+ *
+ * Read references/policy.md before issuing a refund.
+ * `,
  *     "references/policy.md": "Refunds above CHF 500 require manager approval.\n"
  *   }
  * })

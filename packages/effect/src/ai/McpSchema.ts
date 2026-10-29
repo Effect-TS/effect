@@ -1405,11 +1405,11 @@ export class SkillResource extends Schema.Class<SkillResource>(
    * The SHA-256 digest of the file's bytes, as `sha256:` followed by 64
    * lowercase hexadecimal digits.
    */
-  digest: Schema.String,
+  digest: Schema.String.check(Schema.isPattern(/^sha256:[0-9a-f]{64}$/)),
   /**
    * The length of the file's bytes.
    */
-  size: Schema.Int
+  size: Schema.Natural
 }) {}
 
 /**
