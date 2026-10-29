@@ -125,35 +125,32 @@ const make = Effect.fnUntraced(function*(
     // in-flight command and the connection leaves the pool.
     //
     // The pool acquires connections uninterruptibly, so `connect` opts back in
-    // to interruption and destroys the connection itself when interrupted.
+    // to interruption. The signal aborts only on interruption: it closes a
+    // socket that is still connecting, and `destroy` discards a connection
+    // that has already opened.
     connect: Effect.interruptible(Effect.tryPromise({
       try: async (signal) => {
-        const abort = new AbortController()
-        const connection = client.duplicate({
-          socket: { ...withSignal(socket, abort.signal), reconnectStrategy: false }
-        })
+        const connection = client.duplicate({ socket: { ...withSignal(socket, signal), reconnectStrategy: false } })
         connection.on("error", (cause) => {
-          if (abort.signal.aborted) return
+          if (signal.aborted) return
           runSync(Effect.logWarning("NodeRedis reserved connection error", cause))
         })
-        // The signal only aborts on interruption, which discards the
-        // connection even if it has already opened.
-        signal.addEventListener("abort", () => destroy(connection, abort), { once: true })
+        signal.addEventListener("abort", () => destroy(connection), { once: true })
         try {
           await connection.connect()
-          return { connection, abort }
+          return connection
         } catch (cause) {
-          destroy(connection, abort)
+          destroy(connection)
           throw cause
         }
       },
       catch: (cause) => new Redis.RedisError({ cause })
     })).pipe(
-      Effect.map(({ abort, connection }) => ({
+      Effect.map((connection) => ({
         send: sendWith(connection),
         // `destroy` rejects in-flight commands instead of waiting for their
         // replies like `close` does.
-        close: Effect.sync(() => destroy(connection, abort))
+        close: Effect.sync(() => destroy(connection))
       }))
     ),
     pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
