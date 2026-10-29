@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
+import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -135,19 +136,30 @@ describe("McpServer skills", () => {
       }))
 
     // Changing the caller's bytes after registration must not change what is served under the listed digest.
+    // A Node `Buffer` is a `Uint8Array` whose `slice` shares memory, so it needs a real copy too.
     it.effect("serves the bytes given at registration after the caller changes them", () =>
       Effect.gen(function*() {
-        const logo = new Uint8Array(PNG)
+        const bytes = new Uint8Array(PNG)
+        const buffer = Buffer.from(PNG)
+        const wrapped = Buffer.from(PNG)
         const harness = yield* modernHarness(McpServer.skill({
           uri: "skill://logo/SKILL.md",
-          files: { "SKILL.md": skillMd("name: logo\ndescription: Draw the logo"), "logo.png": logo }
+          files: {
+            "SKILL.md": skillMd("name: logo\ndescription: Draw the logo"),
+            "bytes.png": bytes,
+            "buffer.png": buffer,
+            "wrapped.png": { content: wrapped, mimeType: "image/png" }
+          }
         }))
-        logo.fill(0)
+        for (const input of [bytes, buffer, wrapped]) input.fill(0)
 
         const { message } = yield* call(harness, "skills/get", { uri: "skill://logo/SKILL.md" })
-        const listed = message.result.skill.resources.find((resource: any) => resource.uri === "skill://logo/logo.png")
-        assert.deepStrictEqual(new Uint8Array(yield* readBytes(harness, listed.uri)), PNG)
-        assert.strictEqual(listed.digest, sha256(PNG))
+        for (const name of ["bytes.png", "buffer.png", "wrapped.png"]) {
+          const uri = `skill://logo/${name}`
+          const listed = message.result.skill.resources.find((resource: any) => resource.uri === uri)
+          assert.deepStrictEqual(new Uint8Array(yield* readBytes(harness, uri)), PNG, name)
+          assert.strictEqual(listed.digest, sha256(PNG), name)
+        }
       }))
 
     it.effect("gets a skill by the URI of its SKILL.md", () =>
@@ -493,6 +505,22 @@ describe("McpServer skills", () => {
         const withPolicy = McpServer.registerSkill(refunds(undefined, { "references/policy.md": "Approve first.\n" }))
         assertRejected(yield* registerAll(withPolicy, policy), /skill:\/\/refunds\/references\/policy\.md/)
         assertRejected(yield* registerAll(policy, withPolicy), /skill:\/\/refunds\/references\/policy\.md/)
+      }))
+
+    // The ownership check must run when the Effect runs, not when it is constructed.
+    it.effect("rejects an addResource Effect built before a skill claims its URI", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          const pending = server.addResource({
+            resource: new McpSchema.Resource({ uri: "skill://refunds/SKILL.md", name: "Replacement" }),
+            annotations: Context.empty(),
+            handle: Effect.succeed({ contents: [{ uri: "skill://refunds/SKILL.md", text: "Replaced.\n" }] })
+          })
+          yield* McpServer.registerSkill(refunds())
+          yield* pending
+        }).pipe(Effect.provide(McpServer.McpServer.layer), Effect.exit)
+        assertRejected(exit, /skill:\/\/refunds\/SKILL\.md is a file of a registered skill/)
       }))
   })
 })
