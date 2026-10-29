@@ -51,8 +51,6 @@ export interface Compiled {
 export interface Masks {
   readonly initial: number
   readonly globstar: number
-  /** `Literal` and `Wildcard` nodes. */
-  readonly segment: number
   readonly end: number
   /** `End` nodes that also accept files. */
   readonly endFile: number
@@ -89,7 +87,6 @@ const compileMasks = (nodes: ReadonlyArray<Node>, initial: States): Masks => {
     start |= 1 << state
   }
   let globstar = 0
-  let segment = 0
   let end = 0
   let endFile = 0
   for (let i = 0; i < nodes.length; i++) {
@@ -97,16 +94,14 @@ const compileMasks = (nodes: ReadonlyArray<Node>, initial: States): Masks => {
     const bit = 1 << i
     if (node._tag === "Globstar") {
       globstar |= bit
-    } else if (node._tag !== "End") {
-      segment |= bit
-    } else {
+    } else if (node._tag === "End") {
       end |= bit
       if (!node.directoryOnly) {
         endFile |= bit
       }
     }
   }
-  return { initial: start, globstar, segment, end, endFile }
+  return { initial: start, globstar, end, endFile }
 }
 
 // Reject UNC paths rather than collapsing them into local absolute paths.
@@ -627,7 +622,8 @@ const stepMasks = (compiled: Compiled, masks: Masks, states: number, name: strin
   let next = !root && name !== "." && name !== ".." && (compiled.dot || !name.startsWith("."))
     ? states & masks.globstar
     : 0
-  let segments = states & masks.segment
+  // the remaining states are `Literal` and `Wildcard` nodes
+  let segments = states & ~(masks.globstar | masks.end)
   while (segments !== 0) {
     const bit = segments & -segments
     segments ^= bit
