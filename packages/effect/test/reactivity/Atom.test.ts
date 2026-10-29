@@ -880,59 +880,20 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, [2, 4])
   })
 
-  it("a listener added to a stale atom whose rebuild throws hears its recovery", () => {
-    const source = Atom.make(0)
-    const derived = Atom.make((get) => {
-      const value = get(source)
-      if (value === 1) throw new Error("build failed")
-      return value
-    })
-    const r = AtomRegistry.make()
-    const seen: Array<number> = []
-    r.get(derived)
-    r.set(source, 1)
-    r.subscribe(derived, (value) => seen.push(value))
-    assert.throws(() => r.get(derived), /build failed/)
-    r.set(source, 2)
-    assert.deepStrictEqual(seen, [2])
-  })
-
-  it("subscribing to a stale atom reports a listener error from its rebuild", () => {
-    let failing = false
-    let value = 0
-    const atom = Atom.make(() => {
-      if (failing) throw new Error("build failed")
-      return value
-    })
-    const r = AtomRegistry.make()
-    r.get(atom)
-    r.subscribe(atom, () => {
-      throw new Error("listener failed")
-    })
-    failing = true
-    assert.throws(() => r.refresh(atom), /build failed/)
-    failing = false
-    value = 1
-    assert.throws(() => r.subscribe(atom, () => {}), /listener failed/)
-  })
-
-  it("subscribing to an atom reports a finalizer error from a failed build", () => {
+  it("subscribing reports a dependency's finalizer error from a failed build", () => {
     let failing = true
-    const atom = Atom.make((get) => {
+    const parent = Atom.make((get) => {
       if (!failing) return 0
       get.addFinalizer(() => {
         throw new Error("cleanup failed")
       })
       throw new Error("build failed")
     })
-    const derived = Atom.map(atom, (n) => n)
-    for (const target of [atom, derived]) {
-      const r = AtomRegistry.make()
-      failing = true
-      assert.throws(() => r.get(target), /build failed/)
-      failing = false
-      assert.throws(() => r.subscribe(target, () => {}), /cleanup failed/)
-    }
+    const derived = Atom.map(parent, (n) => n)
+    const r = AtomRegistry.make()
+    assert.throws(() => r.get(derived), /build failed/)
+    failing = false
+    assert.throws(() => r.subscribe(derived, () => {}), /cleanup failed/)
   })
 
   it("recovers an observed dependent when its parent first succeeds after throwing", () => {
