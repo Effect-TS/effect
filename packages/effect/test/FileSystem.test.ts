@@ -172,6 +172,22 @@ describe("FileSystem", () => {
         assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second"))))
       }))
 
+    it.live("fails with a directory read error while slower reads are still pending", () =>
+      Effect.gen(function*() {
+        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
+        const error = failure("Busy", "readDirectory", "d16")
+        const fs = makeFileSystem({
+          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
+          readDirectory: (path) =>
+            path === "d16"
+              ? Effect.delay(Effect.fail(error), "5 millis")
+              : path === "."
+              ? undefined
+              : Effect.delay(Effect.succeed(["x.ts"]), "50 millis")
+        })
+        assert.deepStrictEqual(yield* Effect.exit(fs.glob("**")), Exit.fail(error))
+      }))
+
     it.effect("propagates defects from readLink", () =>
       Effect.gen(function*() {
         const fs = makeFileSystem({ readLink: () => Effect.die("boom") })
