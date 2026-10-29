@@ -916,7 +916,7 @@ describe("Atom", { concurrent: false }, () => {
     assert.throws(() => r.subscribe(atom, () => {}), /listener failed/)
   })
 
-  it("subscribing to an atom reports a finalizer error from its failed build", () => {
+  it("subscribing to an atom reports a finalizer error from a failed build", () => {
     let failing = true
     const atom = Atom.make((get) => {
       if (!failing) return 0
@@ -925,10 +925,14 @@ describe("Atom", { concurrent: false }, () => {
       })
       throw new Error("build failed")
     })
-    const r = AtomRegistry.make()
-    assert.throws(() => r.get(atom), /build failed/)
-    failing = false
-    assert.throws(() => r.subscribe(atom, () => {}), /cleanup failed/)
+    const derived = Atom.map(atom, (n) => n)
+    for (const target of [atom, derived]) {
+      const r = AtomRegistry.make()
+      failing = true
+      assert.throws(() => r.get(target), /build failed/)
+      failing = false
+      assert.throws(() => r.subscribe(target, () => {}), /cleanup failed/)
+    }
   })
 
   it("recovers an observed dependent when its parent first succeeds after throwing", () => {
