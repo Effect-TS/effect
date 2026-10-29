@@ -3,6 +3,23 @@
 This package contains the internal bundle-size tooling used to measure Effect
 entrypoints with Rollup, minification, and gzip.
 
+## Stable HTTP coverage
+
+The regular CI comparison discovers every top-level fixture automatically:
+
+| Scenario        | Fixtures                                                                           |
+| --------------- | ---------------------------------------------------------------------------------- |
+| HTTP clients    | `http-client.ts` (fetch), `http-client-node.ts`, `http-client-undici.ts`           |
+| HTTP servers    | `http-router.ts` (web handler), `http-server-node.ts`                              |
+| HttpApi clients | `http-api-client-fetch.ts`, `http-api-client-node.ts`, `http-api-client-undici.ts` |
+| HttpApi server  | `http-api-server-node.ts`                                                          |
+
+Node fixtures include third-party dependencies such as Undici and `ws` in the
+measurement through CommonJS conversion; Node built-ins remain external. The
+fixtures are bundled, not executed, so reports do not start servers or send
+requests. New fixtures establish a baseline on merge; subsequent comparisons
+report their size changes.
+
 ## AI Agent Instructions
 
 Use this workflow when a user wants to quickly understand how a local source

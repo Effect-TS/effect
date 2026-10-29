@@ -18,6 +18,7 @@
  *
  * @since 4.0.0
  */
+import commonjs from "@rollup/plugin-commonjs"
 import { nodeResolve } from "@rollup/plugin-node-resolve"
 import replace from "@rollup/plugin-replace"
 import terser from "@rollup/plugin-terser"
@@ -134,6 +135,8 @@ export const createPlugins = (pathService: Path.Path, options: PluginOptions = {
   const plugins: Array<Plugin> = [
     createResolveLocalPackageImports(pathService),
     nodeResolve(),
+    // @ts-expect-error see https://github.com/rollup/plugins/issues/1662
+    commonjs(),
     // @ts-expect-error see https://github.com/rollup/plugins/issues/1662
     replace({
       "process.env.NODE_ENV": JSON.stringify("production"),
