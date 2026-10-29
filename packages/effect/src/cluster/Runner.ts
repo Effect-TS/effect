@@ -86,26 +86,26 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   }
 
   /**
-   * Compares runners by address, shard groups (in order), and shard-assignment
-   * weight.
+   * Compares runners by address, shard-assignment weight, and shard groups in
+   * any order.
    *
    * @stability unstable
    * @since 4.0.0
    */
   [Equal.symbol](that: Runner): boolean {
     return this.address[Equal.symbol](that.address) && this.weight === that.weight &&
-      this.groups.length === that.groups.length && this.groups.every((group, i) => group === that.groups[i])
+      this.groups.length === that.groups.length && this.groups.every((group) => that.groups.includes(group))
   }
 
   /**
-   * Computes a structural hash from the runner address, shard groups, and
-   * shard-assignment weight.
+   * Computes a structural hash from the runner address, shard-assignment
+   * weight, and shard groups in any order.
    *
    * @stability unstable
    * @since 4.0.0
    */
   [Hash.symbol](): number {
-    return Hash.string(`${this.address.toString()}:${this.weight}:${this.groups.join(",")}`)
+    return Hash.string(`${this.address.toString()}:${this.weight}:${[...this.groups].sort().join(",")}`)
   }
 }
 
