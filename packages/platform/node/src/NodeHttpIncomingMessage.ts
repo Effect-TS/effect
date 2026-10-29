@@ -108,7 +108,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
     return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes))),
+        // A leading "?" is form data; URLSearchParams would drop it as a query prefix.
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes).replace(/^\?/, "%3F"))),
         catch: this.onError
       }))
   }
