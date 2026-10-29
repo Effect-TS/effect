@@ -150,6 +150,17 @@ describe("FileSystem", () => {
         assert.deepStrictEqual(yield* fs.glob("missing/**"), [])
       }))
 
+    it.live("fails when a directory read fails while another read is still pending", () =>
+      Effect.gen(function*() {
+        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
+        const error = failure("Busy", "readDirectory", "d00")
+        const fs = makeFileSystem({
+          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
+          readDirectory: (path) => path === "d00" ? Effect.fail(error) : path === "d63" ? Effect.never : undefined
+        })
+        assert.deepStrictEqual(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second")), Exit.fail(error))
+      }))
+
     it.effect("propagates defects from readLink", () =>
       Effect.gen(function*() {
         const fs = makeFileSystem({ readLink: () => Effect.die("boom") })
