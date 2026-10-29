@@ -1072,11 +1072,10 @@ export const withSubcommands: {
 
     const resolveContext = yield* impl.prepareContext(raw)
     const resolveResult = yield* sub.prepare(raw.subcommand.value.parsedInput)
-    return Effect.gen(function*() {
-      const context = yield* resolveContext
-      const result = yield* resolveResult
-      return { ...context, [SubcommandStateSymbol]: { name: sub.name, result } } as NextInput
-    })
+    return Effect.map(
+      Effect.all([resolveContext, resolveResult]),
+      ([context, result]) => ({ ...context, [SubcommandStateSymbol]: { name: sub.name, result } }) as NextInput
+    )
   })
 
   const handle = Effect.fnUntraced(function*(input: NextInput, path: ReadonlyArray<string>) {
@@ -1186,11 +1185,10 @@ export const withSharedFlags: {
       Effect.fnUntraced(function*(raw: ParsedTokens) {
         const resolveBase = yield* prepareBase(raw)
         const resolveShared = yield* prepareShared(raw)
-        return Effect.gen(function*() {
-          const base = yield* resolveBase
-          const shared = yield* resolveShared
-          return { ...(base as object), ...(shared as object) } as Next
-        })
+        return Effect.map(
+          Effect.all([resolveBase, resolveShared]),
+          ([base, shared]) => ({ ...(base as object), ...(shared as object) }) as Next
+        )
       })
 
     const handle = (
@@ -2021,7 +2019,7 @@ export const wizard = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> =>
   Effect.map(Wizard.run(command, options), (result) => result.args)
 
-const builtInFlags: ReadonlySet<GlobalFlag.GlobalFlag<any>> = new Set(GlobalFlag.BuiltIns)
+const builtInFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>> = GlobalFlag.BuiltIns
 
 const getOutOfScopeGlobalFlagErrors = (
   allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
@@ -2345,16 +2343,15 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         if (flag._tag !== "Setting") continue
         settings.push([flag, yield* prepareParam(flag.flag, emptyArgs).pipe(toShowHelp)])
       }
-      const resolveSettings = Effect.fnUntraced(function*(options: { readonly builtInOnly: boolean }) {
-        let context = Context.make(GlobalFlag.LogLevel, Option.none<LogLevel.LogLevel>())
+      const provideSettings = Effect.fnUntraced(function*(context: Context.Context<never>, builtIn: boolean) {
         for (const [flag, prepared] of settings) {
-          if (options.builtInOnly && !builtInFlags.has(flag)) continue
+          if (builtInFlags.includes(flag) !== builtIn) continue
           const value = yield* prepared.resolve.pipe(toShowHelp)
           context = Context.add(context, flag, value)
           // Apply built-in setting behavior
-          const level = flag === GlobalFlag.LogLevel ? value as Option.Option<LogLevel.LogLevel> : Option.none()
-          if (Option.isSome(level)) {
-            context = Context.add(context, References.MinimumLogLevel, level.value)
+          if (flag === GlobalFlag.LogLevel) {
+            const level = value as Option.Option<LogLevel.LogLevel>
+            if (Option.isSome(level)) context = Context.add(context, References.MinimumLogLevel, level.value)
           }
         }
         return context
@@ -2362,19 +2359,16 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
 
       // 8. Run setup hooks. They only see built-in settings, which never
       // prompt; other settings stay requirements of the hooks
-      const hooks = getCommandsForCommandPath(command, commandPath).flatMap((current) =>
-        toImpl(current).beforePrompts as ReadonlyArray<Effect.Effect<unknown, E, R>>
-      )
-      if (hooks.length > 0) {
-        const context = yield* resolveSettings({ builtInOnly: true })
-        for (const hook of hooks) {
-          yield* Effect.provideContext(hook, context)
+      let context = yield* provideSettings(Context.make(GlobalFlag.LogLevel, Option.none<LogLevel.LogLevel>()), true)
+      for (const current of getCommandsForCommandPath(command, commandPath)) {
+        for (const hook of toImpl(current).beforePrompts) {
+          yield* Effect.provideContext(hook as Effect.Effect<unknown, E, R>, context)
         }
       }
 
       // 9. Show deferred fallback prompts, then run the handler
       const input = yield* resolveInput.pipe(toShowHelp)
-      const context = yield* resolveSettings({ builtInOnly: false })
+      context = yield* provideSettings(context, false)
       yield* Effect.provideContext(commandImpl.handle(input, [command.name]), context)
     },
     Effect.scoped,

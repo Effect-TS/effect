@@ -320,10 +320,6 @@ export const makeParser = (
 export interface PreparedParam<A> {
   readonly remainingArguments: ReadonlyArray<string>
   /**
-   * Whether parsing paused at a fallback prompt.
-   */
-  readonly deferred: boolean
-  /**
    * Shows the deferred fallback prompt, if any, and returns the value.
    */
   readonly resolve: Effect.Effect<A, CliError.CliError, Environment>
@@ -347,18 +343,14 @@ export const prepareParam = <A>(
     // Completed with `true` when the parse pauses at a prompt, `false` when it ends
     const paused = Deferred.makeUnsafe<boolean>()
     const resume = Deferred.makeUnsafe<void>()
-    const deferral: PromptDeferral = {
-      wait: Effect.andThen(Deferred.succeed(paused, true), Deferred.await(resume))
-    }
     const fiber = yield* param.parse(args).pipe(
-      Effect.provideService(PromptDeferral, deferral),
+      Effect.provideService(PromptDeferral, Effect.andThen(Deferred.succeed(paused, true), Deferred.await(resume))),
       Effect.ensuring(Deferred.succeed(paused, false)),
       Effect.forkScoped
     )
     if (yield* Deferred.await(paused)) {
       return {
         remainingArguments: args.arguments,
-        deferred: true,
         resolve: Effect.andThen(
           Deferred.succeed(resume, undefined),
           Effect.map(Fiber.join(fiber), ([, value]) => value)
@@ -366,7 +358,7 @@ export const prepareParam = <A>(
       }
     }
     const [remainingArguments, value] = yield* Fiber.join(fiber)
-    return { remainingArguments, deferred: false, resolve: Effect.succeed(value) }
+    return { remainingArguments, resolve: Effect.succeed(value) }
   })
 
 /**
