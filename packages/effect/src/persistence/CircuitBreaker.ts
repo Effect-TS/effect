@@ -347,23 +347,13 @@ export interface CircuitBreaker {
   readonly execute: {
     <A, E, R2 = never>(options: {
       readonly key: string
-      readonly classify?:
-        | ((
-          exit: Exit.Exit<A, E>,
-          context: { readonly probe: boolean }
-        ) => Outcome | Effect.Effect<Outcome, never, R2>)
-        | undefined
+      readonly classify?: Classifier<A, E, R2> | undefined
     }): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
     <A, E, R, R2 = never>(
       self: Effect.Effect<A, E, R>,
       options: {
         readonly key: string
-        readonly classify?:
-          | ((
-            exit: Exit.Exit<A, E>,
-            context: { readonly probe: boolean }
-          ) => Outcome | Effect.Effect<Outcome, never, R2>)
-          | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2>
   }
@@ -501,12 +491,7 @@ export const make: (options: {
       self: Effect.Effect<A, E, R>,
       { classify, key }: {
         readonly key: string
-        readonly classify?:
-          | ((
-            exit: Exit.Exit<A, E>,
-            context: { readonly probe: boolean }
-          ) => Outcome | Effect.Effect<Outcome, never, R2>)
-          | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
@@ -588,12 +573,7 @@ const reportUnhandled = (message: string, cause: Cause.Cause<unknown>): Effect.E
 const classifyExit = <A, E, R2>(
   exit: Exit.Exit<A, E>,
   probe: boolean,
-  classify:
-    | ((
-      exit: Exit.Exit<A, E>,
-      context: { readonly probe: boolean }
-    ) => Outcome | Effect.Effect<Outcome, never, R2>)
-    | undefined,
+  classify: Classifier<A, E, R2> | undefined,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<Exit.Exit<Outcome>, never, R2> => {
   if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
@@ -710,6 +690,26 @@ export const rate = (options: {
   }
   return { _tag: "Rate", threshold, minimumCalls, size }
 }
+
+/**
+ * Function that classifies the `Exit` of an admitted call, passed as the
+ * `classify` option of `execute`.
+ *
+ * **Details**
+ *
+ * - `context.probe` is `true` when the call is the HalfOpen probe, so an
+ *   outcome the classifier ignores when the circuit is closed, such as a
+ *   rate-limited response, can count as a failure that reopens the circuit.
+ * - The result may be an `Outcome` or an effect producing one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.0
+ */
+export type Classifier<A, E, R2 = never> = (
+  exit: Exit.Exit<A, E>,
+  context: { readonly probe: boolean }
+) => Outcome | Effect.Effect<Outcome, never, R2>
 
 /**
  * Classification of a call's exit, as returned by a `classify` function.

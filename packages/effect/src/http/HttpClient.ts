@@ -1388,12 +1388,7 @@ export declare namespace WithCircuitBreaker {
      * `context.probe` is `true` when the request is the HalfOpen probe.
      * Defaults to `circuitBreakerClassifier`.
      */
-    readonly classify?:
-      | ((
-        exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>,
-        context: { readonly probe: boolean }
-      ) => CircuitBreaker.Outcome | Effect.Effect<CircuitBreaker.Outcome, never, R2>)
-      | undefined
+    readonly classify?: CircuitBreaker.Classifier<HttpClientResponse.HttpClientResponse, E, R2> | undefined
   }
 }
 
