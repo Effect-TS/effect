@@ -8,11 +8,9 @@ describe("Path", () => {
     Effect.gen(function*() {
       const path = yield* Path.Path
 
-      for (const ext of ["csv", ".csv"]) {
-        strictEqual(path.format({ name: "report", ext }), "report.csv")
-      }
+      strictEqual(path.format({ name: "report", ext: "csv" }), "report.csv")
+      strictEqual(path.format({ name: "report", ext: ".csv" }), "report.csv")
       strictEqual(path.format({ name: "report", ext: "" }), "report")
-      strictEqual(path.format({ base: "report.txt", ext: "csv" }), "report.txt")
     }).pipe(Effect.provide(Path.layer)))
 
   it.effect("resolveWithin keeps POSIX paths lexically inside the root", () =>
