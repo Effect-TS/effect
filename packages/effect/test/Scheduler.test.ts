@@ -146,7 +146,7 @@ describe("Scheduler", () => {
   it("calls an overridden MixedScheduler makeDispatcher for each fiber", async () => {
     let calls = 0
     class CountingScheduler extends Scheduler.MixedScheduler {
-      makeDispatcher() {
+      override makeDispatcher() {
         calls++
         return super.makeDispatcher()
       }

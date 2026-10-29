@@ -5,39 +5,38 @@ import * as esbuild from "esbuild"
 import { Miniflare } from "miniflare"
 import { fileURLToPath } from "node:url"
 
-const makeWorker = (fixture: string) =>
-  Effect.gen(function*() {
-    const result = yield* Effect.promise(() =>
-      esbuild.build({
-        entryPoints: [fileURLToPath(new URL(`./fixtures/${fixture}`, import.meta.url))],
-        bundle: true,
-        format: "esm",
-        platform: "browser",
-        target: "es2022",
-        conditions: ["workerd", "worker", "browser"],
-        external: ["node:*"],
-        write: false
-      })
-    )
-    return yield* Effect.acquireRelease(
-      Effect.sync(() =>
-        new Miniflare({
-          workers: [{
-            config: {
-              name: "worker",
-              compatibilityDate: "2026-09-11",
-              compatibilityFlags: ["nodejs_compat"],
-              manifest: {
-                mainModule: "index.mjs",
-                modules: { "index.mjs": { type: "esm", contents: result.outputFiles[0].text } }
-              }
+const makeWorker = Effect.fnUntraced(function*(fixture: string) {
+  const result = yield* Effect.promise(() =>
+    esbuild.build({
+      entryPoints: [fileURLToPath(new URL(`./fixtures/${fixture}`, import.meta.url))],
+      bundle: true,
+      format: "esm",
+      platform: "browser",
+      target: "es2022",
+      conditions: ["workerd", "worker", "browser"],
+      external: ["node:*"],
+      write: false
+    })
+  )
+  return yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      new Miniflare({
+        workers: [{
+          config: {
+            name: "worker",
+            compatibilityDate: "2026-09-11",
+            compatibilityFlags: ["nodejs_compat"],
+            manifest: {
+              mainModule: "index.mjs",
+              modules: { "index.mjs": { type: "esm", contents: result.outputFiles[0].text } }
             }
-          }]
-        })
-      ),
-      (miniflare) => Effect.promise(() => miniflare.dispose())
-    )
-  })
+          }
+        }]
+      })
+    ),
+    (miniflare) => Effect.promise(() => miniflare.dispose())
+  )
+})
 
 const request = (worker: Miniflare, path: string) =>
   Effect.promise(async () => {
@@ -47,16 +46,15 @@ const request = (worker: Miniflare, path: string) =>
 
 // Starts a request that suspends a fiber, then sends `wake` from another
 // request until the fiber is ready to be woken.
-const waitAndWake = (worker: Miniflare, wait: string, wake: string) =>
-  Effect.gen(function*() {
-    const waiting = yield* Effect.forkChild(request(worker, wait))
-    let woken = yield* request(worker, wake)
-    while (woken.status === 200 && woken.body === "null") {
-      yield* Effect.sleep(10)
-      woken = yield* request(worker, wake)
-    }
-    return { woken, waited: yield* Fiber.join(waiting) }
-  })
+const waitAndWake = Effect.fnUntraced(function*(worker: Miniflare, wait: string, wake: string) {
+  const waiting = yield* Effect.forkChild(request(worker, wait))
+  let woken = yield* request(worker, wake)
+  while (woken.status === 200 && woken.body === "null") {
+    yield* Effect.sleep(10)
+    woken = yield* request(worker, wake)
+  }
+  return { woken, waited: yield* Fiber.join(waiting) }
+})
 
 describe("workerd", () => {
   it.live("a fiber woken by another request resumes in its own async context", () =>
