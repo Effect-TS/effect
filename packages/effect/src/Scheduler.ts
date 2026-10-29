@@ -124,6 +124,17 @@ const setImmediate = (f: () => void) => {
 export const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
 
 const sharedDispatchers = new WeakMap<MixedScheduler, MixedSchedulerDispatcher>()
+const fiberDispatcherFactories = new WeakMap<Scheduler, () => SchedulerDispatcher>()
+
+/**
+ * Registers how fibers on `scheduler` get their dispatcher, for wrapping
+ * schedulers whose public `makeDispatcher` must stay one dispatcher per call.
+ *
+ * @internal
+ */
+export const setFiberDispatcher = (scheduler: Scheduler, makeDispatcher: () => SchedulerDispatcher): void => {
+  fiberDispatcherFactories.set(scheduler, makeDispatcher)
+}
 
 class PriorityBuckets {
   buckets: Array<[priority: number, tasks: Array<() => void>]> = []
@@ -186,9 +197,11 @@ class PriorityBuckets {
  * Sync mode does not yield to the event loop: CPU-heavy work delays other
  * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
  * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
- * A fiber woken by another request continues one microtask later in its own
+ * A fiber woken or interrupted by another request continues later in its own
  * request, because workerd does not let one request enter another's async
- * context. If its request has already finished, the fiber is not resumed.
+ * context. If its request has already finished, or it suspended at module
+ * scope, workerd may never deliver that continuation: the fiber stays
+ * suspended, and its interruption and finalizers stay pending too.
  *
  * @stability stable
  * @category models
@@ -248,6 +261,10 @@ export class MixedScheduler implements Scheduler {
  * @internal
  */
 export const fiberDispatcher = (scheduler: Scheduler): SchedulerDispatcher => {
+  const makeDispatcher = fiberDispatcherFactories.get(scheduler)
+  if (makeDispatcher !== undefined) {
+    return makeDispatcher()
+  }
   if (
     isCloudflareWorkers ||
     !(scheduler instanceof MixedScheduler) ||

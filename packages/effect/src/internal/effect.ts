@@ -538,6 +538,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._parent = undefined
     this._asyncContext = undefined
     this._resumeInRequest = undefined
+    this._resumeRouted = false
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -559,6 +560,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _parent: FiberImpl<any, any> | undefined
   declare _asyncContext: AsyncContext | undefined
   declare _resumeInRequest: ((effect: Primitive) => void) | undefined
+  declare _resumeRouted: boolean
 
   // set in setContext
   declare context: Context.Context<never>
@@ -622,6 +624,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         this._resumeInRequest = resolve
       }).then((effect) => {
         this._running = false
+        this._resumeRouted = false
         this.evaluate(effect)
       })
     }
@@ -630,7 +633,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    if (this._exit) {
+    if (this._exit || this._resumeRouted) {
+      // A routed resume wins, like a resume that ran synchronously.
       return
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
@@ -653,10 +657,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           )
         } catch (error) {
           if (entered) throw error
-          // workerd rejects entering another request's async context. Count
-          // the fiber as running, so interrupts are deferred, until the
-          // continuation it registered in its own request resumes it.
+          // workerd rejects entering another request's async context. Until
+          // the continuation the fiber registered in its own request resumes
+          // it, count it as running so interrupts are deferred, and ignore
+          // other wakes.
           this._running = true
+          this._resumeRouted = true
           return resumeInRequest(effect)
         }
       } finally {

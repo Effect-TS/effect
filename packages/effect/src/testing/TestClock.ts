@@ -409,32 +409,32 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     }
   }
 
+  const track = (dispatcher: Scheduler.SchedulerDispatcher): Scheduler.SchedulerDispatcher => ({
+    scheduleTask(task, priority) {
+      const tracker = currentTracker
+      if (tracker === undefined) {
+        return dispatcher.scheduleTask(task, priority)
+      }
+      tracker.pending++
+      dispatcher.scheduleTask(() => {
+        try {
+          runTracked(tracker, task)
+        } finally {
+          if (--tracker.pending === 0) tracker.onIdle?.()
+        }
+      }, priority)
+    },
+    flush() {
+      dispatcher.flush()
+    }
+  })
   const scheduler: Scheduler.Scheduler = {
     executionMode: parentScheduler.executionMode,
     shouldYield: (fiber) => parentScheduler.shouldYield(fiber),
-    makeDispatcher() {
-      const dispatcher = Scheduler.fiberDispatcher(parentScheduler)
-      return {
-        scheduleTask(task, priority) {
-          const tracker = currentTracker
-          if (tracker === undefined) {
-            return dispatcher.scheduleTask(task, priority)
-          }
-          tracker.pending++
-          dispatcher.scheduleTask(() => {
-            try {
-              runTracked(tracker, task)
-            } finally {
-              if (--tracker.pending === 0) tracker.onIdle?.()
-            }
-          }, priority)
-        },
-        flush() {
-          dispatcher.flush()
-        }
-      }
-    }
+    makeDispatcher: () => track(parentScheduler.makeDispatcher())
   }
+  // Fibers share the parent's fiber dispatcher; standalone callers get their own.
+  Scheduler.setFiberDispatcher(scheduler, () => track(Scheduler.fiberDispatcher(parentScheduler)))
 
   const wake = (latch: Latch.Latch) =>
     Effect.suspend(() => {
