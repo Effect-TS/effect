@@ -250,9 +250,9 @@ describe("McpClient", () => {
         const returning = yield* McpClient.toolkit(client, { tools, failureMode: "return" })
         const [denied] = yield* returning.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect))
         const [unavailable] = yield* returning.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
-        assert(denied.isFailure && denied.result.reason._tag === "ToolError")
+        assert(McpClientError.isMcpClientError(denied.result) && denied.result.reason._tag === "ToolError")
         assert.deepStrictEqual(denied.result.reason.result.content, [{ type: "text", text: "denied" }])
-        assert(unavailable.isFailure && unavailable.result.reason._tag === "HttpError")
+        assert(McpClientError.isMcpClientError(unavailable.result) && unavailable.result.reason._tag === "HttpError")
 
         const failing = yield* McpClient.toolkit(client, { tools })
         const error = yield* failing.handle("denied", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
@@ -274,7 +274,7 @@ describe("McpClient", () => {
         })
         const untrusted = (yield* McpClient.toolkit(client, { tools: [descriptor] })).tools.hints
         const trusted = (yield* McpClient.toolkit(client, { tools: [descriptor], trustAnnotations: true })).tools.hints
-        assert.strictEqual(Context.get(untrusted.annotations, McpClient.ToolDescriptor), descriptor)
+        assert.strictEqual(Context.getUnsafe(untrusted.annotations, McpClient.ToolDescriptor), descriptor)
         assert.isUndefined(trusted.needsApproval)
         for (
           const [annotation, expected] of [
@@ -319,8 +319,8 @@ describe("McpClient", () => {
         })
         const tool = toolkit.tools.slow
         assert.isTrue(tool.needsApproval)
-        assert.strictEqual(Context.get(tool.annotations, Tool.Title), "Approved tool")
-        assert.strictEqual(Context.get(tool.annotations, McpClient.ToolDescriptor), slowTool)
+        assert.strictEqual(Context.getUnsafe(tool.annotations, Tool.Title), "Approved tool")
+        assert.strictEqual(Context.getUnsafe(tool.annotations, McpClient.ToolDescriptor), slowTool)
         assert.deepStrictEqual(Tool.getJsonSchema(tool), slowTool.inputSchema)
         const [output] = yield* toolkit.handle("slow", {}).pipe(Effect.flatMap(Stream.runCollect))
         assert.strictEqual(output.result, "done")
