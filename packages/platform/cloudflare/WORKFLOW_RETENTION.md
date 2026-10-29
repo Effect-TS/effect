@@ -10,24 +10,24 @@ its intended use. They do not propose a retention API or GC implementation.
 
 ## What the probes show
 
-A Workflow's stored result currently lets repeated calls reuse its outcome:
+The first [probe](./test/CloudflareWorkflowEngine.test.ts) defines `Operation`
+with an Activity that increments a counter and returns it. The excerpt uses
+the same payload and execution ID throughout; `namespace` is the test fixture:
 
 ```ts
-yield * Provision.execute({ requestId: "1" }) // creates a server
-yield * Provision.execute({ requestId: "1" }) // returns the same server
+assert.strictEqual(yield * Operation.execute(payload), 1)
+assert.strictEqual(yield * Operation.execute(payload), 1) // cached result
+
+// Deliberately remove this execution's test storage:
+namespace.stores.delete(encodeName(Operation._tag, executionId))
+namespace.crash() // discard in-memory runtimes
+
+assert.strictEqual(yield * Operation.execute(payload), 2) // Activity ran again
 ```
 
-Here, `Provision` represents a registered Workflow whose idempotency key is
-`requestId`. If its stored execution is manually removed and the same call is
-retried, its Activity can execute again.
-
-A parent may also replay a completed child call:
-
-```ts
-const server = yield * Provision.execute({ requestId: "1" })
-yield * DurableDeferred.await(Continue)
-// After a restart, this parent replays from the top.
-```
+The fixture deletion is not a public cleanup API. The first two assertions
+observe result reuse; the final assertion observes another Activity invocation
+after deliberate storage removal and loss of in-memory runtimes.
 
 The probes in `CloudflareWorkflowEngine.test.ts` observe:
 
