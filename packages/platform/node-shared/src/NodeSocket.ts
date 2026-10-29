@@ -4,7 +4,7 @@
  * This module opens `node:net` or `node:tls` connections, or wraps existing
  * Node `Duplex` streams, and presents them as `Socket.Socket` values, socket
  * channels, or layers. It also exposes the `NetSocket` service tag for the
- * underlying Node socket and re-exports the `ws` package namespace.
+ * underlying Node socket. The `ws` package is re-exported from `NodeWS`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -27,13 +27,6 @@ import type { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 
 const isDeno = "Deno" in globalThis
-
-/**
- * @stability unstable
- * @category re-exports
- * @since 4.0.0
- */
-export * as NodeWS from "ws"
 
 /**
  * Service tag for the underlying Node `net.Socket` associated with the current

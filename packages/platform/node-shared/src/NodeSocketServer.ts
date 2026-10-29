@@ -28,7 +28,7 @@ import type * as Http from "node:http"
 import * as Net from "node:net"
 import * as Tls from "node:tls"
 import * as NodeSocket from "./NodeSocket.ts"
-import { NodeWS } from "./NodeSocket.ts"
+import * as NodeWS from "./NodeWS.ts"
 
 const isDeno = "Deno" in globalThis
 
@@ -263,7 +263,7 @@ export const makeWebSocket: (
  * @since 4.0.0
  */
 export const layerWebSocket: (
-  options: NodeSocket.NodeWS.ServerOptions<typeof NodeSocket.NodeWS.WebSocket, typeof Http.IncomingMessage>
+  options: NodeWS.ServerOptions<typeof NodeWS.WebSocket, typeof Http.IncomingMessage>
 ) => Layer.Layer<
   SocketServer.SocketServer,
   SocketServer.SocketServerError

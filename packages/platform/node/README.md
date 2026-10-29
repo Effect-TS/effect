@@ -8,6 +8,10 @@
 npm install effect @effect/platform-node
 ```
 
+## Requirements
+
+- **Node.js 22.19 or newer**, required by the bundled `undici` HTTP client. WebSocket clients use Node's global `WebSocket`. The `ws` package is only loaded by `NodeSocketServer`, `NodeHttpServer`, and the opt-in `NodeWS` module.
+
 ## Links
 
 - [Website](https://effect.website): documentation, guides, and news.
