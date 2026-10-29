@@ -3593,15 +3593,21 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("does not strip excess properties before evaluating a closed condition", () => {
+    it("delegates excess properties of closed conditions to ParseOptions", async () => {
       const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
         type: "object",
         if: { type: "object", properties: { kind: { const: "box" } }, additionalProperties: false },
         // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
         then: false
       }))
-      assert.isTrue(Schema.is(schema)({ kind: "box", extra: 1 }))
-      assert.isFalse(Schema.is(schema)({ kind: "box" }))
+      const asserts = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>)
+      const decoding = asserts.decoding()
+      const strictDecoding = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+      await decoding.fail({ kind: "box", extra: 1 }, "Expected never")
+      await strictDecoding.succeed({ kind: "box", extra: 1 })
+      for (const current of [decoding, strictDecoding]) {
+        await current.fail({ kind: "box" }, "Expected never")
+      }
     })
 
     it("keeps conditionals when intersecting a primitive with a literal", () => {

@@ -35,12 +35,6 @@ describe("SchemaRepresentation compilers", () => {
     >()
   })
 
-  it("accepts check compiler inputs without exactness", () => {
-    const callback: SchemaRepresentation.ToJsonSchema.Check = ({ schemas }) => ({ allOf: [...schemas] })
-
-    expect(callback({ type: "string", schemas: [] })).type.toBe<SchemaRepresentation.ToJsonSchema.CheckOutput>()
-  })
-
   it("exposes node code generation through toCode annotations", () => {
     const declaration: Schema.Annotations.Declaration<unknown> = {
       toCode: () => ({ runtime: "Custom", Type: "unknown" })

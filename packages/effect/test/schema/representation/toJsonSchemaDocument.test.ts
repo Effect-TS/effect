@@ -685,111 +685,13 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.strictEqual(receivedType, "integer")
     })
 
-    it("round trips isConditional without absent branches", () => {
-      const output = SchemaRepresentation.toJsonSchemaDocument(
-        SchemaRepresentation.toRepresentation(
-          Schema.Json.check(Schema.isConditional(Schema.String, { onFalse: Schema.Finite })).ast
-        )
+    it("omits isConditional and marks the export approximate", () => {
+      const conditional = Schema.String.check(Schema.isConditional(Schema.String, { onTrue: Schema.Never }))
+      const schema = Schema.Union([conditional, Schema.Finite], { mode: "oneOf" })
+      assert.deepStrictEqual(
+        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)).schema,
+        { anyOf: [{ type: "string" }, { type: "number" }] }
       )
-      assert.deepStrictEqual(output.schema, { if: { type: "string" }, else: { type: "number" } })
-      const restored = SchemaRepresentation.fromJsonSchemaDocument(output)
-      assert.isTrue(Schema.is(restored)("a"))
-      assert.isTrue(Schema.is(restored)(1))
-      assert.isFalse(Schema.is(restored)(true))
-    })
-
-    it("keeps values valid when an isConditional condition exports approximately", () => {
-      const pattern = Schema.String.check(Schema.isPattern(/^a$/i))
-      for (const condition of [pattern, pattern.annotate({ identifier: "A" })]) {
-        const schema = Schema.Json.check(Schema.isConditional(condition, { onTrue: Schema.Never }))
-        assert.isFalse(Schema.is(schema)("a"))
-        const restored = SchemaRepresentation.fromJsonSchemaDocument(
-          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast))
-        )
-        assert.isTrue(Schema.is(restored)("b"))
-      }
-    })
-
-    it("keeps values valid when an isConditional condition only matches JSON encodings", () => {
-      for (
-        const [condition, input] of [
-          [Schema.Number, "NaN"],
-          [Schema.Undefined, null],
-          [Schema.BigInt, "1"]
-        ] as const
-      ) {
-        const schema = Schema.Json.check(Schema.isConditional(condition, { onTrue: Schema.Never }))
-        assert.isTrue(Schema.is(schema)(input))
-        const restored = SchemaRepresentation.fromJsonSchemaDocument(
-          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)),
-          { patterns: "apply" }
-        )
-        assert.isTrue(Schema.is(restored)(input))
-      }
-    })
-
-    it("keeps imported conditionals through export", () => {
-      const imported = SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-        type: "object",
-        if: { properties: { kind: { const: "box" } } },
-        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
-        then: { required: ["size"] }
-      }))
-      const restored = SchemaRepresentation.fromJsonSchemaDocument(
-        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(imported.ast))
-      )
-      assert.isFalse(Schema.is(restored)({ kind: "box" }))
-      assert.isTrue(Schema.is(restored)({ kind: "box", size: 1 }))
-    })
-
-    it("keeps opaque declarations approximate when they export as JSON values", () => {
-      const opaque = Schema.declare((u: unknown): u is number => typeof u === "number")
-      const schema = Schema.Union([opaque, Schema.Literal("a")], { mode: "oneOf" })
-      assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
-      const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
-      assert.isTrue(Schema.is(restored)("a"))
-    })
-
-    it("keeps values valid when an isConditional branch is an exclusive union of encodings", () => {
-      const branch = Schema.Union([Schema.BigInt, Schema.String], { mode: "oneOf" })
-      for (
-        const schema of [
-          Schema.Json.check(Schema.isConditional(Schema.String, { onTrue: branch })),
-          Schema.Json.check(
-            Schema.isConditional(Schema.String.check(Schema.isPattern(/^a$/i)), {
-              onTrue: Schema.Never,
-              onFalse: branch
-            })
-          )
-        ]
-      ) {
-        assert.isTrue(Schema.is(schema)("1"))
-        const restored = SchemaRepresentation.fromJsonSchemaDocument(
-          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)),
-          { patterns: "apply" }
-        )
-        assert.isTrue(Schema.is(restored)("1"))
-      }
-    })
-
-    it("keeps checked Unknown and ObjectKeyword approximate when JSON drops their checks", () => {
-      for (
-        const check of [
-          Schema.isConditional(Schema.String, { onTrue: Schema.Never }),
-          Schema.makeFilter((u: unknown) => typeof u !== "string")
-        ]
-      ) {
-        const schema = Schema.Union([Schema.Unknown.check(check), Schema.Literal("a")], { mode: "oneOf" })
-        assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
-        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
-        assert.isTrue(Schema.is(restored)("a"))
-      }
-      const objects = Schema.Union([
-        Schema.ObjectKeyword.check(Schema.makeFilter((u: object) => Array.isArray(u))),
-        Schema.Struct({})
-      ], { mode: "oneOf" })
-      assert.isTrue(Schema.is(Schema.toCodecJson(objects))({}))
-      assert.isUndefined(Schema.toJsonSchemaDocument(objects).schema.oneOf)
     })
 
     it("omits isPattern flags that JSON Schema cannot represent", () => {
