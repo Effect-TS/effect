@@ -1,7 +1,7 @@
 import { PgliteClient } from "@effect/sql-pglite"
 import { assert, describe, it, layer } from "@effect/vitest"
 import * as Pglite from "@electric-sql/pglite"
-import { Effect, Exit, Layer, Queue, Scope, String } from "effect"
+import { Effect, Exit, Fiber, Layer, Option, Queue, References, Scope, String } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { SqlClient } from "effect/sql/SqlClient"
 
@@ -185,4 +185,24 @@ describe("PgliteClient", { concurrent: false }, () => {
       assert.strictEqual(sql.driver, "pglite")
       assert.strictEqual(sql.withoutTransforms().driver, "pglite")
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)), { timeout: 30_000 })
+
+  it.live("releases the connection when a queued query is interrupted", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgliteClient.make()
+      for (const queuedQuery of [sql.withTransaction(sql`SELECT 2`), sql`SELECT 2`]) {
+        // Sweep the interrupt across the gap between taking the connection and registering its release.
+        for (let delay = 0; delay < 31; delay++) {
+          const holder = yield* Effect.forkChild(sql`SELECT 1`)
+          const queued = yield* queuedQuery.pipe(
+            Effect.provideService(References.MaxOpsBeforeYield, 3),
+            Effect.forkChild
+          )
+          for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+          yield* Fiber.interrupt(queued)
+          yield* Fiber.join(holder)
+          const next = yield* sql`SELECT 3`.pipe(Effect.timeoutOption("5 seconds"))
+          assert.isTrue(Option.isSome(next), `connection leaked at delay ${delay}`)
+        }
+      }
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)), { timeout: 60_000 })
 })

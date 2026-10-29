@@ -318,8 +318,7 @@ export const make = (
       transactionService: LibsqlTransaction,
       spanAttributes,
       acquireConnection: Effect.fnUntraced(function*(restore) {
-        yield* restore(semaphore.take(1))
-        yield* Effect.addFinalizer(() => semaphore.release(1))
+        yield* restore(semaphore.takeScoped(1))
         return yield* connection.beginTransaction
       }),
       begin: () => Effect.void, // already begun in acquireConnection
@@ -333,7 +332,7 @@ export const make = (
     // Outside a transaction, hold the permit until the statement's scope
     // closes, so no other fiber can begin a transaction while it runs.
     const lease = Effect.as(
-      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
+      semaphore.takeScoped(1),
       connection as LibsqlConnection
     )
     const acquirer = Effect.flatMap(

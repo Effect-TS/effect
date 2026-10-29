@@ -226,7 +226,7 @@ export const fromClient = (
     // Statements, streams and transactions hold the permit until their scope
     // closes, so no other fiber can use the connection while they run.
     const acquirer = Effect.as(
-      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
+      semaphore.takeScoped(1),
       connection
     )
 

@@ -309,7 +309,7 @@ export const make = (
 
     // Streams and reservations hold the permit until their scope closes.
     const acquirer = Effect.as(
-      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
+      semaphore.takeScoped(1),
       connection
     )
 
