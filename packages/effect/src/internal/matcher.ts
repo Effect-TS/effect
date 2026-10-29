@@ -335,8 +335,11 @@ export const whenFilter = <
     (input) => {
       guarded = undefined
       const result = filter(input as Input)
-      guarded = Result.isSuccess(result) ? { input, pass: result.success } : undefined
-      return guarded !== undefined
+      if (Result.isFailure(result)) {
+        return false
+      }
+      guarded = { input, pass: result.success }
+      return true
     },
     (input, ...args) => {
       const cached = guarded
