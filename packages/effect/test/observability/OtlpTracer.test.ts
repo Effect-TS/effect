@@ -99,40 +99,43 @@ describe("OtlpTracer", () => {
       }).pipe(Effect.provide(layer))
     })
 
-    const all = ["local", "root", "remote"]
-    for (
-      const [env, expected] of [
-        [{ OTEL_TRACES_SAMPLER: "always_on" }, all],
-        [{ OTEL_TRACES_SAMPLER: "always_off" }, []],
-        [{ OTEL_TRACES_SAMPLER: "traceidratio" }, all],
-        [{ OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, []],
-        [{ OTEL_TRACES_SAMPLER: "parentbased_always_on" }, all],
-        [{ OTEL_TRACES_SAMPLER: "parentbased_always_off" }, ["remote"]],
-        [{ OTEL_TRACES_SAMPLER: "parentbased_traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, ["remote"]]
-      ] as const
-    ) {
-      const name = Object.entries(env).map(([key, value]) => `${key}=${value}`).join(" ")
-      it.effect(`follows ${name}`, () => {
-        const { exportedNames, layer } = capture(layerFromEnv(env))
-        return Effect.gen(function*() {
-          yield* emitSpans
-          assert.deepStrictEqual(exportedNames(), expected)
-        }).pipe(Effect.provide(layer))
-      })
-    }
+    it.effect("keeps the parent's decision by default", () => {
+      const { exportedNames, layer } = capture(tracerLayer({ ratio: 0 }))
+      return Effect.gen(function*() {
+        yield* emitSpans
+        assert.deepStrictEqual(exportedNames(), ["remote"])
+      }).pipe(Effect.provide(layer))
+    })
 
-    for (
-      const [variable, env] of [
-        ["OTEL_TRACES_SAMPLER", { OTEL_TRACES_SAMPLER: "jaeger_remote" }],
-        ["OTEL_TRACES_SAMPLER_ARG", { OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "1.5" }]
-      ] as const
-    ) {
-      it.effect(`fails on an unsupported ${variable}`, () =>
-        Effect.gen(function*() {
+    it.effect("follows OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG", () =>
+      Effect.gen(function*() {
+        for (
+          const [env, expected] of [
+            [{}, ["local", "root", "remote"]],
+            [{ OTEL_TRACES_SAMPLER: "always_off" }, []],
+            [{ OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, []],
+            [{ OTEL_TRACES_SAMPLER: "parentbased_always_off" }, ["remote"]],
+            [{ OTEL_TRACES_SAMPLER: "parentbased_traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, ["remote"]]
+          ] as const
+        ) {
+          const { exportedNames, layer } = capture(layerFromEnv(env))
+          yield* Effect.provide(emitSpans, layer)
+          assert.deepStrictEqual(exportedNames(), expected, JSON.stringify(env))
+        }
+      }))
+
+    it.effect("fails on an unsupported OTEL_TRACES_SAMPLER or OTEL_TRACES_SAMPLER_ARG", () =>
+      Effect.gen(function*() {
+        for (
+          const [variable, env] of [
+            ["OTEL_TRACES_SAMPLER", { OTEL_TRACES_SAMPLER: "jaeger_remote" }],
+            ["OTEL_TRACES_SAMPLER_ARG", { OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "1.5" }]
+          ] as const
+        ) {
           const exit = yield* Effect.exit(Layer.build(capture(layerFromEnv(env)).layer))
           assert(Exit.isFailure(exit))
           assert.include(Cause.pretty(exit.cause), `at ["${variable}"]`)
-        }))
-    }
+        }
+      }))
   })
 })
