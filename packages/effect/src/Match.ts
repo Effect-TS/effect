@@ -11,6 +11,7 @@
  * @stability stable
  * @since 4.0.0
  */
+import type * as Filter from "./Filter.ts"
 import * as internal from "./internal/matcher.ts"
 import type * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -816,6 +817,67 @@ export const whenAnd: <
   Args extends Array<any>,
   Fn extends (_: Types.WhenMatch<R, T.UnionToIntersection<P[number]>>, ...args: Args) => Ret
 >(...args: [...patterns: ExactPatterns<R, P>, f: Fn]) => internal.whenAnd<R, P, Ret, Args, Fn>(...args)
+
+/**
+ * Defines a case that extracts a value with a `Filter`.
+ *
+ * **When to use**
+ *
+ * Use when a case both decides whether the input matches and computes a value
+ * the handler needs, such as parsing or normalizing the input, so the work is
+ * not repeated inside the handler.
+ *
+ * **Details**
+ *
+ * The filter runs once when the case is reached, and never if an earlier case
+ * already matched. On success, the handler receives the filter's pass value.
+ * On failure, the failure value is discarded and matching continues with the
+ * original input.
+ *
+ * Because a filter can reject any input, this case does not remove anything
+ * from the remaining input, so it never makes {@link exhaustive} valid on its
+ * own.
+ *
+ * **Example** (Matching on a parsed value)
+ *
+ * ```ts import.meta.vitest
+ * import { Filter, Match, Option } from "effect"
+ *
+ * const domainLabel = Filter.fromPredicateOption((query: string) => {
+ *   const label = query.trim().toLowerCase()
+ *   return label.length > 0 ? Option.some(label) : Option.none()
+ * })
+ *
+ * const describeQuery = Match.type<string>().pipe(
+ *   Match.when("", () => "empty"),
+ *   Match.whenFilter(domainLabel, (label) => `search:${label}`),
+ *   Match.orElse(() => "invalid")
+ * )
+ *
+ * describeQuery("  ACME  ") // => "search:acme"
+ * describeQuery("") // => "empty"
+ * describeQuery("   ") // => "invalid"
+ * ```
+ *
+ * @see {@link when} for matching a pattern and receiving the original input
+ *
+ * @stability stable
+ * @category defining patterns
+ * @since 4.2.0
+ */
+export const whenFilter: <
+  Input,
+  Pass,
+  Fail,
+  Ret,
+  Args extends Array<any>,
+  Fn extends (_: Pass, ...args: Args) => Ret
+>(
+  filter: Filter.Filter<Input, Pass, Fail>,
+  f: Fn
+) => <I, F, R extends Input, A, Pr>(
+  self: Matcher<I, F, R, A, Pr, Ret, Args>
+) => Matcher<I, F, R, A | ReturnType<Fn>, Pr, Ret, Args> = internal.whenFilter
 
 /**
  * Matches values based on a specified discriminant field.
