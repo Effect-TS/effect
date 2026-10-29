@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Filter, Match, Option, pipe } from "effect"
-import { strictEqual } from "./utils/assert.ts"
+import { assertFalse, assertTrue, strictEqual } from "./utils/assert.ts"
 
 describe("Match", () => {
   it("fn keeps the selector arguments", () => {
@@ -135,5 +135,18 @@ describe("Match", () => {
     strictEqual(describeType("  ACME  "), "search:acme")
     strictEqual(describeType("   "), "invalid:[   ]")
     strictEqual(calls, 4)
+  })
+
+  it("whenFilter cases keep the guard and evaluate contract of Case", () => {
+    const [_case] = Match.type<string>().pipe(
+      Match.whenFilter(
+        Filter.fromPredicateOption((s: string) => s === "" ? Option.none() : Option.some(s.length)),
+        (n) => n * 10
+      )
+    ).cases
+
+    assertTrue(_case.guard("abc"))
+    strictEqual(_case.evaluate("abc"), 30)
+    assertFalse(_case.guard(""))
   })
 })

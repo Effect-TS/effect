@@ -16,6 +16,7 @@ declare const discriminatedInput:
   | { readonly kind: "B"; readonly b: number }
 declare const text: string
 declare const parseNumber: Filter.Filter<string, number, string>
+declare const parseUnknown: Filter.Filter<unknown, number, unknown>
 declare const status: "draft" | "review" | "published"
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
 
@@ -591,5 +592,24 @@ describe("Match", () => {
     const incomplete = Match.type<string>().pipe(Match.whenFilter(parseNumber, (n) => n))
     // @ts-expect-error Argument of type
     Match.exhaustive(incomplete)
+  })
+
+  it("whenFilter keeps the matcher's remaining input for broader filters", () => {
+    Match.type<string>().pipe(
+      Match.whenFilter(parseUnknown, (n) => n),
+      Match.orElse((input) => {
+        expect(input).type.toBe<string>()
+        return input
+      })
+    )
+
+    Match.type<string | number>().pipe(
+      Match.when(Match.string, (s) => s),
+      Match.whenFilter(parseUnknown, (n) => n),
+      Match.orElse((input) => {
+        expect(input).type.toBe<number>()
+        return input
+      })
+    )
   })
 })
