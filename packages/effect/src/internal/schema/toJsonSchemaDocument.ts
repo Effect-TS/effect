@@ -191,8 +191,11 @@ function appendJsonSchema(
 }
 
 // Exactness forms a dependency graph because definitions can be recursive. A
-// cycle is exact unless it can reach `false`.
-type Exactness = boolean | ReadonlyArray<Exactness>
+// cycle is exact unless it can reach `false`. `"encoded"` marks a fragment that
+// exactly describes the JSON encoding of a non-JSON type, such as `"NaN"` for
+// Number. It is exact for the encoded document but not as a predicate on the
+// JSON instance itself, which is what check dependencies need.
+type Exactness = boolean | "encoded" | ReadonlyArray<Exactness>
 
 type CompiledJsonSchema = {
   schema: JsonSchema.JsonSchema
@@ -201,6 +204,7 @@ type CompiledJsonSchema = {
 
 function isExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>()): boolean {
   if (typeof exactness === "boolean") return exactness
+  if (exactness === "encoded") return true
   if (seen.has(exactness)) return true
   seen.add(exactness)
   return exactness.every((dependency) => isExact(dependency, seen))
@@ -208,7 +212,8 @@ function isExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>(
 
 function isJsonDeclaration(representation: SchemaRepresentation.Declaration): boolean {
   const id = representation.representation?.id
-  return id === "effect/schema/Json" || id === "effect/schema/MutableJson"
+  return (id === "effect/schema/Json" || id === "effect/schema/MutableJson") &&
+    representation.annotations?.[InternalAnnotations.OPAQUE_JSON_ANNOTATION_KEY] !== true
 }
 
 function isApproximateCheckOutput(
@@ -278,12 +283,13 @@ function compileJsonSchema(
   }
   return { dialect: "draft-2020-12", schemas, definitions }
 
-  function isSettledExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>()): boolean {
+  // Whether a check dependency matches exactly the JSON instances that satisfy its predicate.
+  function isPredicateExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>()): boolean {
     if (typeof exactness === "boolean") return exactness
-    if (pendingDependencies.has(exactness)) return false
+    if (exactness === "encoded" || pendingDependencies.has(exactness)) return false
     if (seen.has(exactness)) return true
     seen.add(exactness)
-    return exactness.every((dependency) => isSettledExact(dependency, seen))
+    return exactness.every((dependency) => isPredicateExact(dependency, seen))
   }
 
   function registerPendingOneOf(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
@@ -367,7 +373,7 @@ function compileJsonSchema(
         const local: Array<Exactness> = []
         dependencies.push(local)
         const compiled = recur(schema, [...path, "representation", "schemas", index], local)
-        exact.push(isSettledExact(local))
+        exact.push(isPredicateExact(local))
         return compiled
       }) ?? []
       const result = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas, exact })
@@ -437,6 +443,8 @@ function compileJsonSchema(
       const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
       if (check !== undefined) output = appendJsonSchema(output, ...check)
     }
+    // Finite and integer checks collapse the encoding of non-finite numbers.
+    if (representation._tag === "Number" && isJsonSchemaNumberEncoding(output)) local.push("encoded")
     compiledRepresentations.set(representation, { schema: output, dependencies: local })
     return registerPendingOneOf(output)
   }
@@ -454,16 +462,20 @@ function compileJsonSchema(
         return { anyOf: [{ type: "object" }, { type: "array" }] }
       case "Void":
       case "Undefined":
+        dependencies.push("encoded")
+        return { type: "null" }
       case "Null":
         return { type: "null" }
       case "BigInt":
+        dependencies.push("encoded")
         return { type: "string", allOf: [{ pattern: "^-?\\d+$" }] }
       case "Symbol":
+        dependencies.push("encoded")
         return { type: "string", allOf: [{ pattern: "^Symbol\\(([\\s\\S]*)\\)$" }] }
       case "UniqueSymbol":
-        return globalThis.Symbol.keyFor(representation.symbol) === undefined
-          ? { not: {} }
-          : { type: "string", enum: [globalThis.String(representation.symbol)] }
+        if (globalThis.Symbol.keyFor(representation.symbol) === undefined) return { not: {} }
+        dependencies.push("encoded")
+        return { type: "string", enum: [globalThis.String(representation.symbol)] }
       case "Declaration":
         // Every JSON instance is a JSON value, so `{}` is exact for Json.
         if (!isJsonDeclaration(representation)) dependencies.push(false)
@@ -485,9 +497,9 @@ function compileJsonSchema(
         return { type: "boolean" }
       case "Literal": {
         const literal = representation.literal
-        return typeof literal === "bigint"
-          ? { type: "string", enum: [globalThis.String(literal)] }
-          : { type: typeof literal, enum: [literal] }
+        if (typeof literal !== "bigint") return { type: typeof literal, enum: [literal] }
+        dependencies.push("encoded")
+        return { type: "string", enum: [globalThis.String(literal)] }
       }
       case "Enum": {
         const types = representation.enums.map(([title, literal]) => ({

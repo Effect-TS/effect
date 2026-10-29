@@ -9133,9 +9133,10 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * This check corresponds to `if`, `then`, and `else` in JSON Schema. Effect
  * checks the decoded value, while JSON Schema checks the original input. A
  * closed struct strips excess properties before its checks run, so the
- * condition and branches cannot see them. When the condition can only be
- * exported approximately, the export requires one of the branches to hold
- * instead, because a wider `if` could select the wrong branch.
+ * condition and branches cannot see them. When the condition cannot be
+ * exported exactly, including when it only describes a JSON encoding such as
+ * `"NaN"` for `Number`, the export requires one of the branches to hold
+ * instead, because a different `if` could select the wrong branch.
  *
  * **Example** (Requiring a size for boxes)
  *
@@ -9194,10 +9195,15 @@ export function isConditional(
         payload: keys,
         schemas: [conditionAST, ...branchASTs]
       },
-      toJsonSchema: ({ schemas: [condition, ...branches], exact }) =>
-        exact[0]
-          ? { if: condition, ...Object.fromEntries(keys.map((key, i) => [conditionalKeywords[key], branches[i]])) }
-          : [branches.length === 2 ? { anyOf: branches } : {}, true],
+      toJsonSchema: ({ schemas: [condition, ...branches], exact }) => {
+        if (exact?.[0] !== true) return [branches.length === 2 ? { anyOf: branches } : {}, true]
+        const fragment = {
+          if: condition,
+          ...Object.fromEntries(keys.map((key, i) => [conditionalKeywords[key], branches[i]]))
+        }
+        // An inexact branch accepts more JSON instances than its predicate.
+        return branches.every((_, i) => exact[i + 1] === true) ? fragment : [fragment, true]
+      },
       toCode: ({ schemas: [condition, ...branches] }) => ({
         runtime: `Schema.isConditional(${condition.runtime}, { ${
           keys.map((key, i) => `${key}: ${branches[i].runtime}`).join(", ")
