@@ -440,11 +440,11 @@ class RegistryImpl implements AtomRegistry {
     const node = this.ensureNode(atom)
     if (options?.immediate) {
       f(node.value())
-    } else if ((node.state & NodeFlags.waitingForValue) !== 0) {
+    } else {
       // a listener hears the next change, which only reaches an up-to-date
       // node. A failed build is left for the next read to report, so that the
-      // listener is still added and hears the recovery. A failure after the
-      // value is committed would not be reported again, so it is rethrown.
+      // listener still hears the recovery; an error raised once the value is
+      // committed has no later read to report it, so it is rethrown
       try {
         node.value()
       } catch (error) {
@@ -736,20 +736,17 @@ class NodeImpl<A> {
   }
 
   build(): void {
+    const lifetime = makeLifetime(this)
     // a lifetime still attached to a node that needs a value belongs to a
-    // build that failed, or to one that is running and is now superseded.
-    // Its finalizers run only once, so a failure among them is reported once
-    // this build is done.
-    let teardownFailure: unknown = noFailure
+    // build that failed, or to one that is running and is now superseded;
+    // its finalizers run only once, so their failure is reported by this build
     try {
       this.disposeLifetime()
     } catch (error) {
-      teardownFailure = error
+      lifetime.failure = error
     }
     this.invalidatedDuringBuild = false
-    const lifetime = makeLifetime(this)
     this.lifetime = lifetime
-    lifetime.failure = teardownFailure
     let value: A
     let read = false
     try {
@@ -1028,7 +1025,8 @@ interface Lifetime<A> extends Atom.AtomContext {
   readonly node: NodeImpl<A>
   // the parents read so far by the build; `undefined` once the build has returned
   reads: Set<NodeImpl<any>> | undefined
-  // a failure met while reading a parent that still produced its value
+  // a failure the build rethrows once it commits: from releasing the previous
+  // lifetime, or from reading a parent that still produced its value
   failure: unknown
   finalizers: Array<() => void> | undefined
   disposed: boolean
