@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
-import { makeMemoryStore, memoryStoreSweepInterval } from "effect/internal/rateLimiter"
 import { RateLimiter } from "effect/persistence"
+import { makeMemoryStore, memoryStoreSweepInterval } from "effect/persistence/RateLimiter"
 import { TestClock } from "effect/testing"
 import * as RateLimiterTest from "./RateLimiterTest.ts"
 
