@@ -1073,5 +1073,16 @@ describe(`RateLimiter`, () => {
         yield* TestClock.adjust("2 hours")
         assert.strictEqual(memory.size, 0)
       }).pipe(Effect.scoped))
+
+    it.effect("starts an expired token bucket fresh before the next sweep", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 second" })
+
+        // Past the bucket's expiry, before any sweep: a new configuration starts fresh.
+        yield* TestClock.adjust("2 seconds")
+        const result = yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 hour" })
+        assert.strictEqual(result.remaining, 0)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
   })
 })
