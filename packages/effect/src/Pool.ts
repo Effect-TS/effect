@@ -378,7 +378,10 @@ export const makeWithStrategy = <A, E, R>(options: {
 }): Effect.Effect<Pool<A, E>, never, Scope.Scope | R> =>
   Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
     const services = yield* Effect.context<R | Scope.Scope>()
-    const scope = Context.get(services, Scope.Scope)
+    // Finalizers added to the outer scope after the pool run before the pool
+    // shuts down, so the pool forks into a child scope that closes in its
+    // place. The child is sequential, so background fibers stop before shutdown.
+    const scope = Scope.forkUnsafe(Context.get(services, Scope.Scope))
     const acquire = Effect.updateContext(
       options.acquire,
       (input) => Context.merge(services, input)
@@ -598,19 +601,6 @@ const getSlowWith = <A, E, X, R>(
     const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
         state.usage--
-        return internal.interrupt
-      }
-      // Once the pool's scope is closing, for example while one of its other
-      // finalizers borrows from the pool, a replacement forked into it never
-      // starts. Lend what is available, but do not wait for an item that only
-      // a replacement could provide.
-      if (
-        state.scope.state._tag === "Closed" &&
-        targetSize(self) > activeSize(self) &&
-        firstHealthyAvailable(self) === undefined
-      ) {
-        state.usage--
-        if (state.waiters.delete(waiter)) wakeWaiters(self, fiber, 1)
         return internal.interrupt
       }
       // A borrower that has not waited yet queues behind the borrowers already
