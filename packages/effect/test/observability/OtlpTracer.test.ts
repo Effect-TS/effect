@@ -51,12 +51,14 @@ const layerFromEnv = (env: Record<string, string>) =>
     })))
   )
 
-// Ends a root span with a local child, and a span continued from a sampled
-// remote parent.
+// Ends a root span with a local child, a span continued from a sampled remote
+// parent, and a span forced to be sampled under an unsampled remote parent.
 const emitSpans = Effect.gen(function*() {
   const parent = Tracer.externalSpan({ traceId: "0af7651916cd43dd8448eb211c80319c", spanId: "b7ad6b7169203331" })
+  const unsampled = Tracer.externalSpan({ ...parent, sampled: false })
   yield* Effect.void.pipe(Effect.withSpan("local"), Effect.withSpan("root"))
   yield* Effect.void.pipe(Effect.withSpan("remote", { parent }))
+  yield* Effect.void.pipe(Effect.withSpan("forced", { parent: unsampled, sampled: true }))
   yield* (yield* OtlpExporter.Flusher).flush
 })
 
@@ -99,6 +101,19 @@ describe("OtlpTracer", () => {
       }).pipe(Effect.provide(layer))
     })
 
+    it.effect("keeps trace IDs that are not hex unless the ratio is 0", () =>
+      Effect.gen(function*() {
+        const parent = Tracer.externalSpan({ traceId: "trace-456", spanId: "0000000000000001" })
+        for (const [ratio, expected] of [[0.5, ["span"]], [0, []]] as const) {
+          const { exportedNames, layer } = capture(tracerLayer({ ratio, parentBased: false }))
+          yield* Effect.gen(function*() {
+            yield* Effect.void.pipe(Effect.withSpan("span", { parent }))
+            yield* (yield* OtlpExporter.Flusher).flush
+          }).pipe(Effect.provide(layer))
+          assert.deepStrictEqual(exportedNames(), expected, `ratio ${ratio}`)
+        }
+      }))
+
     it.effect("keeps the parent's decision by default", () => {
       const { exportedNames, layer } = capture(tracerLayer({ ratio: 0 }))
       return Effect.gen(function*() {
@@ -111,7 +126,7 @@ describe("OtlpTracer", () => {
       Effect.gen(function*() {
         for (
           const [env, expected] of [
-            [{}, ["local", "root", "remote"]],
+            [{}, ["local", "root", "remote", "forced"]],
             [{ OTEL_TRACES_SAMPLER: "always_off" }, []],
             [{ OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, []],
             [{ OTEL_TRACES_SAMPLER: "parentbased_always_off" }, ["remote"]],
