@@ -19,6 +19,7 @@ describe("Host", () => {
     assert.strictEqual(success(Host.domainNameFromString("Example.COM.")), "example.com.")
     assert.strictEqual(success(Host.domainNameFromString("_pg._tcp.DB.internal")), "_pg._tcp.db.internal")
     assert.strictEqual(success(Host.domainNameFromString("Bücher.Example")), "xn--bcher-kva.example")
+    assert.strictEqual(success(Host.domainNameFromString("=\u0338.example")), "xn--1ch.example")
   })
 
   it("makes domain names fully qualified", () => {
@@ -36,7 +37,7 @@ describe("Host", () => {
   })
 
   it("rejects malformed domain names", () => {
-    for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`]) {
+    for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`, "xn--a.K"]) {
       failure(Host.domainNameFromString(input))
     }
   })

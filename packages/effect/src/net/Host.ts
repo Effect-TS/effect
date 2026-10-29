@@ -135,15 +135,12 @@ const validateDomainName = (name: string): string | undefined => {
 }
 
 const toAsciiDomainName = (input: string): string | undefined => {
-  let ascii = true
-  for (const character of input) {
-    if (character.charCodeAt(0) < 0x80) {
-      if (!asciiNameCharacter.test(character)) return undefined
-    } else {
-      ascii = false
+  if (!/[^a-z0-9_.-]/i.test(input)) return input.toLowerCase()
+  for (const character of input.normalize("NFC")) {
+    if (character.charCodeAt(0) < 0x80 && !asciiNameCharacter.test(character)) {
+      return undefined
     }
   }
-  if (ascii) return input.toLowerCase()
   try {
     return new URL(`http://${input}`).hostname
   } catch {
