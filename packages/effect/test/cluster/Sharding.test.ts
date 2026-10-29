@@ -4492,7 +4492,8 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
 
   // Runners A (1234) and Z (1240, assigned no shard groups) start together,
   // then B, C and D join 1.5 seconds apart. Every runner shares membership and
-  // shard locks, and Z routes a volatile request to an entity on each shard.
+  // shard locks, A to D register a singleton on each shard, and Z routes a
+  // volatile request to an entity on each shard.
   const staggeredCluster = Effect.fnUntraced(function*(options: {
     readonly refreshAssignmentsInterval?: number
     // Fail A's next membership read once C has joined, while joins are pending.
@@ -4500,10 +4501,20 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
     // Delay B's next membership read after D has joined by 2.5 seconds, then
     // fail it, so B's view is stale while A publishes.
     readonly stallJoinerRefresh?: boolean
+    // Delay B's first acquisition by 7.6 seconds, so it completes after A
+    // publishes and while B has C and D pending.
+    readonly slowJoinerAcquire?: boolean
   }) {
     const cluster = makeSharedCluster()
+    if (options.slowJoinerAcquire) {
+      cluster.acquireDelays.set(1235, 7600)
+    }
     // The ports Z routed each shard to, in order
     const routes = new Map<string, Array<number>>()
+    // The ports each shard's singleton started on, in order
+    const executions = new Map<string, Array<number>>()
+    // The port each shard's singleton is running on
+    const running = new Map<string, number>()
     const scope = yield* Scope.make()
     const startRunner = (
       port: number,
@@ -4528,7 +4539,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
         ),
         scope
       )
-    yield* startRunner(1234)
+    const runnerA = yield* startRunner(1234)
     const observer = yield* startRunner(
       1240,
       { assignedShardGroups: [] },
@@ -4560,10 +4571,36 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       routedShards.add(shard)
       yield* Effect.forkIn(makeClient(String(id)).GetUserVolatile({ id }), scope)
     }
+    const singletons = new Map<string, string>()
+    for (let id = 1; singletons.size < 24; id++) {
+      const shard = observerSharding.getShardId(EntityId.make(`singleton-${id}`), "default").toString()
+      if (!singletons.has(shard)) singletons.set(shard, `singleton-${id}`)
+    }
+    const registerSingletons = Effect.fnUntraced(function*(context: Context.Context<Sharding.Sharding>, port: number) {
+      for (const [shard, name] of singletons) {
+        yield* Context.get(context, Sharding.Sharding).registerSingleton(
+          name,
+          Effect.sync(() => {
+            const history = executions.get(shard) ?? []
+            if (history[history.length - 1] !== port) history.push(port)
+            executions.set(shard, history)
+            running.set(shard, port)
+          }).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                if (running.get(shard) === port) running.delete(shard)
+              })
+            )
+          )
+        ).pipe(Effect.provideService(Scope.Scope, scope))
+      }
+    })
+    yield* registerSingletons(runnerA, 1234)
 
     yield* TestClock.adjust(1500)
     for (const port of [1235, 1236, 1237]) {
-      yield* startRunner(port)
+      yield* registerSingletons(yield* startRunner(port), port)
       if (port === 1236 && options.failRefreshDuringJoins) {
         yield* TestClock.adjust(200)
         cluster.failGetRunners.add(1234)
@@ -4583,7 +4620,9 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
     const result = {
       owners: structuredClone(cluster.owners),
       locks: new Map(globalThis.Array.from(cluster.locks, ([shard, owner]) => [shard, owner.port])),
-      routes: structuredClone(routes)
+      routes: structuredClone(routes),
+      executions: structuredClone(executions),
+      running: structuredClone(running)
     }
     const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
     while (closing.pollUnsafe() === undefined) {
@@ -4592,18 +4631,29 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
     return result
   })
 
-  // Every shard is locked by at most two runners in turn and Z changes the
-  // runner it routes each shard to at most once. Each shard ends up locked by
-  // the runner Z routes it to.
+  // Every shard is locked by at most two runners in turn, its singleton runs
+  // on at most two runners in turn, and Z changes the runner it routes each
+  // shard to at most once. Each shard ends up locked by the runner Z routes it
+  // to, with its singleton running there. `lockChurn` allows a runner to lock a
+  // shard briefly without running anything on it.
   const assertSingleHandoffs = (result: {
     readonly owners: ReadonlyMap<string, ReadonlyArray<number>>
     readonly locks: ReadonlyMap<string, number>
     readonly routes: ReadonlyMap<string, ReadonlyArray<number>>
-  }) => {
+    readonly executions: ReadonlyMap<string, ReadonlyArray<number>>
+    readonly running: ReadonlyMap<string, number>
+  }, options?: { readonly lockChurn?: boolean }) => {
     assert.strictEqual(result.owners.size, 24)
     assert.isTrue([...result.owners.values()].some((owners) => owners.length === 2), "no shard was handed off")
-    for (const [shard, owners] of result.owners) {
-      assert.isAtMost(owners.length, 2, `shard ${shard} was locked by ${owners.join(" -> ")}`)
+    if (!options?.lockChurn) {
+      for (const [shard, owners] of result.owners) {
+        assert.isAtMost(owners.length, 2, `shard ${shard} was locked by ${owners.join(" -> ")}`)
+      }
+    }
+    assert.strictEqual(result.executions.size, 24)
+    for (const [shard, executions] of result.executions) {
+      assert.isAtMost(executions.length, 2, `shard ${shard} ran its singleton on ${executions.join(" -> ")}`)
+      assert.strictEqual(result.running.get(shard), result.locks.get(shard), `shard ${shard} runs its singleton`)
     }
     assert.strictEqual(result.routes.size, 24)
     assert.isTrue([...result.routes.values()].some((routes) => routes.length === 2), "no shard was rerouted")
@@ -4617,22 +4667,44 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
   it.effect("hands each shard off once across a staggered cluster startup", () =>
     Effect.gen(function*() {
       assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: false }))
-    }))
+    }), 30_000)
 
-  it.effect("hands each shard off once when membership refresh fails during pending joins", () =>
-    Effect.gen(function*() {
-      assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: true }))
-    }))
+  it.effect(
+    "hands each shard off once when membership refresh fails during pending joins",
+    () =>
+      Effect.gen(function*() {
+        assertSingleHandoffs(yield* staggeredCluster({ failRefreshDuringJoins: true }))
+      }),
+    30_000
+  )
 
   it.effect("hands each shard off once when runners poll membership out of phase", () =>
     Effect.gen(function*() {
       assertSingleHandoffs(yield* staggeredCluster({ refreshAssignmentsInterval: 3000 }))
-    }))
+    }), 30_000)
 
-  it.effect("hands each shard off once when a joining runner's membership refresh stalls", () =>
-    Effect.gen(function*() {
-      assertSingleHandoffs(yield* staggeredCluster({ stallJoinerRefresh: true }))
-    }))
+  it.effect(
+    "hands each shard off once when a joining runner's membership refresh stalls",
+    () =>
+      Effect.gen(function*() {
+        assertSingleHandoffs(yield* staggeredCluster({ stallJoinerRefresh: true }))
+      }),
+    30_000
+  )
+
+  it.effect(
+    "runs each singleton on one new runner when a joining runner's acquisition is slow",
+    () =>
+      Effect.gen(function*() {
+        assertSingleHandoffs(
+          yield* staggeredCluster({ refreshAssignmentsInterval: 3000, slowJoinerAcquire: true }),
+          // B can still lock shards when its slow acquisition completes, but must
+          // not run them while joins are pending
+          { lockChurn: true }
+        )
+      }),
+    30_000
+  )
 })
 
 // Runner membership the test controls; the local runner joins on registration.
@@ -4661,6 +4733,8 @@ interface SharedCluster {
   readonly failGetRunners: Set<number>
   /** Ports whose next membership read fails after the given milliseconds. */
   readonly stallGetRunners: Map<number, number>
+  /** Ports whose next acquisition of any shards completes after the given milliseconds. */
+  readonly acquireDelays: Map<number, number>
 }
 
 const makeSharedCluster = (): SharedCluster => ({
@@ -4668,7 +4742,8 @@ const makeSharedCluster = (): SharedCluster => ({
   locks: new Map(),
   owners: new Map(),
   failGetRunners: new Set(),
-  stallGetRunners: new Map()
+  stallGetRunners: new Map(),
+  acquireDelays: new Map()
 })
 
 // One runner's view of shared membership and exclusive shard locks.
@@ -4698,10 +4773,11 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
         if (index >= 0) cluster.membership.splice(index, 1)
       }),
     setRunnerHealth: () => Effect.void,
-    acquire: (address, shardIds) =>
-      Effect.sync(() => {
+    acquire: (address, shardIds) => {
+      const requested = globalThis.Array.from(shardIds)
+      const acquire = Effect.sync(() => {
         const acquired: Array<ShardId.ShardId> = []
-        for (const shardId of shardIds) {
+        for (const shardId of requested) {
           const key = shardId.toString()
           if (cluster.locks.has(key) && !isOwner(shardId, address)) continue
           cluster.locks.set(key, address)
@@ -4711,7 +4787,12 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
           acquired.push(shardId)
         }
         return acquired
-      }),
+      })
+      const delay = cluster.acquireDelays.get(port)
+      if (delay === undefined || requested.length === 0) return acquire
+      cluster.acquireDelays.delete(port)
+      return Effect.delay(acquire, delay)
+    },
     refresh: (address, shardIds) =>
       Effect.sync(() => globalThis.Array.from(shardIds).filter((shardId) => isOwner(shardId, address))),
     release: (address, shardId) =>
