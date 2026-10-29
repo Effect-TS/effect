@@ -605,6 +605,37 @@ describe("RpcClient", () => {
         yield* Deferred.await(sendInterrupted)
         assert.deepStrictEqual(yield* Queue.clear(sent), [])
       }))
+
+    for (const [name, reply] of [["successful", Exit.succeed("ignored")], ["failed", Exit.die("ignored")]] as const) {
+      it.effect(`ignores a ${name} reply for a discarded call and still interrupts it when the client closes`, () =>
+        Effect.gen(function*() {
+          const sendInterrupted = yield* Deferred.make<void>()
+          const scope = yield* Scope.make()
+          const sent = yield* Queue.unbounded<RpcMessage.RequestId>()
+          const { client, write } = yield* RpcClient.makeNoSerialization(ChunkGroup, {
+            supportsReplies: false,
+            onFromClient: ({ message }) =>
+              message._tag === "Request" ?
+                Queue.offer(sent, message.id).pipe(
+                  Effect.andThen(Effect.never),
+                  Effect.onInterrupt(() => Deferred.succeed(sendInterrupted, undefined))
+                ) :
+                Effect.void
+          }).pipe(Scope.provide(scope))
+          const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.forkChild)
+          const requestId = yield* Queue.take(sent)
+
+          // nothing replies on this protocol, so a reply for the request is not its acknowledgement
+          yield* write({ _tag: "Exit", clientId: 0, requestId, exit: reply })
+          yield* Effect.yieldNow
+          assert.isUndefined(call.pollUnsafe())
+
+          yield* Scope.close(scope, Exit.void)
+          const exit = yield* awaitWithin(call)
+          assert(Option.isSome(exit) && Exit.isFailure(exit.value) && Cause.hasInterruptsOnly(exit.value.cause))
+          yield* Deferred.await(sendInterrupted)
+        }))
+    }
   })
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
