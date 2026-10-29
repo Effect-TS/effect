@@ -1362,7 +1362,7 @@ export const withRateLimiter: {
  * Namespace containing configuration types for `withCircuitBreaker`.
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 export declare namespace WithCircuitBreaker {
   /**
@@ -1370,7 +1370,7 @@ export declare namespace WithCircuitBreaker {
    *
    * @stability experimental
    * @category circuit breaking
-   * @since 4.0.6
+   * @since 4.0.7
    */
   export interface Options<E, R2 = never> {
     /**
@@ -1512,7 +1512,7 @@ export declare namespace WithCircuitBreaker {
  *
  * @stability experimental
  * @category circuit breaking
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const withCircuitBreaker: {
   <E, R2 = never>(options: WithCircuitBreaker.Options<E, R2>): <R>(
@@ -1567,7 +1567,7 @@ const requestOrigin = (request: HttpClientRequest.HttpClientRequest): string =>
  *
  * @stability experimental
  * @category circuit breaking
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const circuitBreakerClassifier = <E>(
   exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
