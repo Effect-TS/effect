@@ -391,6 +391,8 @@ describe("BigDecimal", () => {
     assertSomeBigDecimal(BigDecimal.fromString("0.00002e-5"), BigDecimal.make(2n, 10))
     assertNone(BigDecimal.fromString("0.0000e2e1"))
     assertNone(BigDecimal.fromString("0.1.2"))
+    assertNone(BigDecimal.fromString(".-1"))
+    assertNone(BigDecimal.fromString(".+1"))
   })
 
   it("format", () => {
