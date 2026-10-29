@@ -762,6 +762,40 @@ describe("SqlRunnerStorage", () => {
           Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
         ))
 
+      if (label === "mysql" || label === "vitess") {
+        it.effect("releases a frozen runner's advisory shard locks after shardLockExpiration", () => {
+          const shardLockExpiration = lockOperationInterval * 3
+          return Effect.gen(function*() {
+            const storageA = yield* SqlRunnerStorage.make({})
+            const storageB = yield* SqlRunnerStorage.make({})
+            const shard = ShardId.make("default", 13)
+
+            expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+            // storageA freezes: it stops refreshing, but its lock session stays open
+            const frozenAt = yield* Clock.currentTimeMillis
+            expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+
+            yield* storageB.acquire(runnerAddress2, [shard]).pipe(
+              Effect.repeat({
+                until: (acquired) => acquired.length > 0,
+                schedule: Schedule.spaced(100)
+              }),
+              Effect.timeoutOrElse({
+                duration: shardLockExpiration * 3,
+                orElse: () => Effect.die("the frozen runner still holds its advisory shard lock")
+              })
+            )
+            const elapsed = (yield* Clock.currentTimeMillis) - frozenAt
+            assert.isAtLeast(elapsed, shardLockExpiration * 0.9)
+            assert.isBelow(elapsed, shardLockExpiration * 2)
+          }).pipe(
+            Effect.scoped,
+            Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+            TestClock.withLive
+          )
+        }, 60_000)
+      }
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
