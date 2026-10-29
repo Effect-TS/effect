@@ -6,7 +6,7 @@ import * as Net from "node:net"
 
 // A loopback peer that accepts a connection and, unless `onData` replies,
 // never answers.
-const makePeer = Effect.fnUntraced(function*(onData?: (socket: Net.Socket, data: Buffer) => void) {
+const makePeer = Effect.fnUntraced(function*(onData?: (socket: Net.Socket, data: string) => void) {
   const received = yield* Deferred.make<void>()
   const closed = yield* Deferred.make<void>()
   const sockets = new Set<Net.Socket>()
@@ -14,7 +14,7 @@ const makePeer = Effect.fnUntraced(function*(onData?: (socket: Net.Socket, data:
     sockets.add(socket)
     socket.on("error", () => {})
     socket.once("data", () => Deferred.doneUnsafe(received, Effect.void))
-    if (onData) socket.on("data", (data) => onData(socket, data))
+    if (onData) socket.on("data", (data) => onData(socket, data.toString()))
     socket.once("close", () => Deferred.doneUnsafe(closed, Effect.void))
   })
   yield* Effect.acquireRelease(
@@ -37,7 +37,7 @@ describe("NodeRedis", () => {
       Effect.gen(function*() {
         const peer = yield* makePeer()
         const fiber = yield* Layer.build(NodeRedis.layer({
-          socket: { host: "127.0.0.1", port: peer.port, tls },
+          socket: tls ? { host: "127.0.0.1", port: peer.port, tls } : { host: "127.0.0.1", port: peer.port },
           // `SELECT` guarantees a handshake on every node-redis version.
           database: 1
         })).pipe(Effect.scoped, Effect.forkChild)
@@ -53,7 +53,7 @@ describe("NodeRedis", () => {
       const ended = yield* Deferred.make<void>()
       const peer = yield* makePeer((socket, data) => {
         // Complete the connection handshake, but never reply to PING.
-        for (const [, command] of data.toString().matchAll(/\*\d+\r\n\$\d+\r\n(\w+)\r\n/g)) {
+        for (const [, command] of data.matchAll(/\*\d+\r\n\$\d+\r\n(\w+)\r\n/g)) {
           if (command === "PING") Deferred.doneUnsafe(stalled, Effect.void)
           else socket.write("+OK\r\n")
         }
