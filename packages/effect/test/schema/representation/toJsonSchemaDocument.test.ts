@@ -710,6 +710,46 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       }
     })
 
+    it("keeps values valid when an isConditional condition only matches JSON encodings", () => {
+      for (
+        const [condition, input] of [
+          [Schema.Number, "NaN"],
+          [Schema.Undefined, null],
+          [Schema.BigInt, "1"]
+        ] as const
+      ) {
+        const schema = Schema.Json.check(Schema.isConditional(condition, { onTrue: Schema.Never }))
+        assert.isTrue(Schema.is(schema)(input))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(
+          SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)),
+          { patterns: "apply" }
+        )
+        assert.isTrue(Schema.is(restored)(input))
+      }
+    })
+
+    it("keeps imported conditionals through export", () => {
+      const imported = SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        if: { properties: { kind: { const: "box" } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema keyword
+        then: { required: ["size"] }
+      }))
+      const restored = SchemaRepresentation.fromJsonSchemaDocument(
+        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(imported.ast))
+      )
+      assert.isFalse(Schema.is(restored)({ kind: "box" }))
+      assert.isTrue(Schema.is(restored)({ kind: "box", size: 1 }))
+    })
+
+    it("keeps opaque declarations approximate when they export as JSON values", () => {
+      const opaque = Schema.declare((u: unknown): u is number => typeof u === "number")
+      const schema = Schema.Union([opaque, Schema.Literal("a")], { mode: "oneOf" })
+      assert.isTrue(Schema.is(Schema.toCodecJson(schema))("a"))
+      const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+      assert.isTrue(Schema.is(restored)("a"))
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
