@@ -268,7 +268,7 @@ describe("Schema.toJsonSchemaDocument", () => {
   })
 
   it("exports isNot without rejecting JSON whose host decoding changes the checked value", () => {
-    const cases: ReadonlyArray<readonly [Schema.Top, unknown]> = [
+    const cases: ReadonlyArray<readonly [Schema.Codec<unknown, unknown>, unknown]> = [
       [Schema.Struct({ n: Schema.Number }).check(Schema.isNot(Schema.Struct({ n: Schema.Literal("NaN") }))), {
         n: "NaN"
       }],
