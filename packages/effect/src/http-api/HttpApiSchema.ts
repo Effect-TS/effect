@@ -574,7 +574,7 @@ export const StreamSse: {
 }): StreamSse<Sse.EventCodec, Schema.Top, unknown> => {
   const events = options.events ?? (options.data === undefined ? undefined : Schema.Struct({
     ...Sse.EventEncoded.fields,
-    data: Schema.fromJsonString(options.data)
+    data: Schema.fromJsonString(Schema.toCodecJson(options.data))
   }))
   if (events === undefined) {
     throw new Error("StreamSse requires either an events schema or a data schema")
