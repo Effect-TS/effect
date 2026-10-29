@@ -64,10 +64,11 @@ import * as Prompt from "./Prompt.ts"
 /**
  * Represents a CLI command with its configuration, handler, and metadata.
  *
- * `E` and `R` are the errors and requirements of the whole command. The last
- * two type parameters record the part of them that comes from
- * `Command.beforePrompts` hooks, so `withHandler` and the `provide*`
- * combinators keep it. They do not affect assignability.
+ * `E` and `R` are the errors and requirements of the whole command. `HookE`
+ * and `HookR` record the part of them that comes from `Command.beforePrompts`
+ * hooks, so `withHandler` and the `provide*` combinators keep it. An
+ * annotation of a command with hooks must include them; a five-parameter
+ * annotation does not accept such a command.
  *
  * **Details**
  *
@@ -147,8 +148,8 @@ export interface Command<
   out ContextInput = {},
   out E = never,
   out R = never,
-  _HookE = never,
-  _HookR = never
+  out HookE = never,
+  out HookR = never
 > extends
   Effect.Effect<
     ContextInput,
@@ -156,7 +157,7 @@ export interface Command<
     CommandContext<Name>
   >
 {
-  readonly [TypeId]: Command.Variance<Input, E, R>
+  readonly [TypeId]: Command.Variance<Input, E, R, HookE, HookR>
 
   /**
    * The name of the command.
@@ -218,16 +219,20 @@ export declare namespace Command {
    * **Details**
    *
    * The parsed input type is contravariant, while the command error and service
-   * requirement types are covariant.
+   * requirement types are covariant. `HookE` and `HookR` are the part of `E`
+   * and `R` that comes from `Command.beforePrompts` hooks, and are covariant
+   * too.
    *
    * @stability unstable
    * @category models
    * @since 4.0.0
    */
-  export interface Variance<in Input, out E, out R> {
+  export interface Variance<in Input, out E, out R, out HookE = never, out HookR = never> {
     readonly Input: Contravariant<Input>
     readonly E: Covariant<E>
     readonly R: Covariant<R>
+    readonly HookE: Covariant<HookE>
+    readonly HookR: Covariant<HookR>
   }
 
   /**
@@ -445,7 +450,9 @@ export type Error<C> = C extends Command<
   infer _Input,
   infer _ContextInput,
   infer _Error,
-  infer _Requirements
+  infer _Requirements,
+  infer _HookError,
+  infer _HookRequirements
 > ? _Error :
   never
 
@@ -461,7 +468,9 @@ export type Services<C> = C extends Command<
   infer _Input,
   infer _ContextInput,
   infer _Error,
-  infer _Requirements
+  infer _Requirements,
+  infer _HookError,
+  infer _HookRequirements
 > ? _Requirements :
   never
 
@@ -1216,6 +1225,9 @@ export const withSharedFlags: {
  * **Details**
  *
  * Declared global flags apply to the command and all of its descendants.
+ * Setting values are provided to handlers, so their requirements are removed
+ * from the command type. `Command.beforePrompts` hooks run before setting
+ * values are known, so a hook's requirement on a setting stays.
  *
  * @stability unstable
  * @category combinators
@@ -1231,9 +1243,9 @@ export const withGlobalFlags: {
     Input,
     ContextInput,
     E,
-    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>,
+    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>> | HookR,
     HookE,
-    Exclude<HookR, ExtractGlobalFlagContext<GlobalFlags>>
+    HookR
   >
   <
     Name extends string,
@@ -1252,9 +1264,9 @@ export const withGlobalFlags: {
     Input,
     ContextInput,
     E,
-    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>,
+    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>> | HookR,
     HookE,
-    Exclude<HookR, ExtractGlobalFlagContext<GlobalFlags>>
+    HookR
   >
 } = dual(
   2,
@@ -1281,7 +1293,8 @@ type ExtractGlobalFlagContext<T extends ReadonlyArray<GlobalFlag.GlobalFlag<any>
   : never
   : never
 type BuiltInSettingContext = ExtractGlobalFlagContext<typeof GlobalFlag.BuiltIns>
-type ExtractSubcommand<T> = T extends Command<infer _Name, infer _Input, infer _CI, infer _E, infer _R> ? T
+type ExtractSubcommand<T> = T extends
+  Command<infer _Name, infer _Input, infer _CI, infer _E, infer _R, infer _HookE, infer _HookR> ? T
   : T extends Command.SubcommandGroup<infer Commands> ? Commands[number]
   : never
 type ExtractSubcommandErrors<T extends ReadonlyArray<Command.SubcommandEntry>> = Error<ExtractSubcommand<T[number]>>
@@ -1845,15 +1858,22 @@ export const provideEffectDiscard: {
  * the handler run.
  *
  * The effect cannot read the command input, because prompted values do not
- * exist yet. `Command.provide*` effects still run after the prompts, right
- * before the handler, so they do not provide services to hooks. The hook's
- * errors and requirements stay in the command type through `withHandler` and
- * the `provide*` combinators.
+ * exist yet. For the same reason, hooks do not receive custom global setting
+ * values from the command line: `withGlobalFlags` keeps a hook's requirement
+ * on a setting, so the caller of `run` must provide it. Built-in settings such
+ * as `--log-level` never prompt and are available to hooks.
+ *
+ * `Command.provide*` effects still run after the prompts, right before the
+ * handler, so they do not provide services to hooks. The hook's errors and
+ * requirements are tracked in the command's `HookE` and `HookR` type
+ * parameters, so they stay in the command type through `withHandler` and the
+ * `provide*` combinators.
  *
  * **Gotchas**
  *
- * Hooks can read global settings, except a setting whose value comes from a
- * fallback prompt, which is only known after the hooks have run.
+ * A type annotation for a command with hooks must include `HookE` and `HookR`.
+ * A five-parameter `Command.Command<Name, Input, ContextInput, E, R>`
+ * annotation does not accept it, because that would drop the hook types.
  *
  * **Example** (Printing an introduction before prompts)
  *
@@ -1910,11 +1930,27 @@ export const beforePrompts: {
     effect: Effect.Effect<_, E2, R2>
   ): <const Name extends string, Input, E, R, ContextInput, HookE, HookR>(
     self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
-  ) => Command<Name, Input, ContextInput, E | E2, R | R2, HookE | E2, HookR | R2>
+  ) => Command<
+    Name,
+    Input,
+    ContextInput,
+    E | E2,
+    R | Exclude<R2, BuiltInSettingContext>,
+    HookE | E2,
+    HookR | Exclude<R2, BuiltInSettingContext>
+  >
   <const Name extends string, Input, E, R, ContextInput, HookE, HookR, _, E2, R2>(
     self: Command<Name, Input, ContextInput, E, R, HookE, HookR>,
     effect: Effect.Effect<_, E2, R2>
-  ): Command<Name, Input, ContextInput, E | E2, R | R2, HookE | E2, HookR | R2>
+  ): Command<
+    Name,
+    Input,
+    ContextInput,
+    E | E2,
+    R | Exclude<R2, BuiltInSettingContext>,
+    HookE | E2,
+    HookR | Exclude<R2, BuiltInSettingContext>
+  >
 } = dual(2, <const Name extends string, Input, E, R, ContextInput, _, E2, R2>(
   self: Command<Name, Input, ContextInput, E, R>,
   effect: Effect.Effect<_, E2, R2>
@@ -1978,12 +2014,14 @@ export const beforePrompts: {
  * @since 4.0.0
  */
 export const wizard = <Name extends string, Input, E, R, ContextInput>(
-  command: Command<Name, Input, ContextInput, E, R>,
+  command: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
   options?: {
     readonly prefix?: ReadonlyArray<string> | undefined
   } | undefined
 ): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> =>
   Effect.map(Wizard.run(command, options), (result) => result.args)
+
+const builtInFlags: ReadonlySet<GlobalFlag.GlobalFlag<any>> = new Set(GlobalFlag.BuiltIns)
 
 const getOutOfScopeGlobalFlagErrors = (
   allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
@@ -2025,7 +2063,7 @@ const getOutOfScopeGlobalFlagErrors = (
 }
 
 const showHelp = <Name extends string, Input, E, R, ContextInput>(
-  command: Command<Name, Input, ContextInput, E, R>,
+  command: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
   error: CliError.ShowHelp,
   renderErrors: boolean
 ): Effect.Effect<void, CliError.CliError, Environment> =>
@@ -2121,17 +2159,17 @@ export const run: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
   }): <Name extends string, Input, E, R, ContextInput>(
-    command: Command<Name, Input, ContextInput, E, R>
+    command: Command<Name, Input, ContextInput, E, R, unknown, unknown>
   ) => Effect.Effect<void, E | CliError.CliError, R | Environment>
   <Name extends string, Input, E, R, ContextInput>(
-    command: Command<Name, Input, ContextInput, E, R>,
+    command: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
     config: {
       readonly version: string
       readonly renderErrors?: boolean | undefined
     }
   ): Effect.Effect<void, E | CliError.CliError, R | Environment>
 } = dual(2, <Name extends string, Input, E, R, ContextInput>(
-  command: Command<Name, Input, ContextInput, E, R>,
+  command: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
   config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
@@ -2211,7 +2249,7 @@ export const run: {
  * @since 4.0.0
  */
 export const runWith = <const Name extends string, Input, E, R, ContextInput>(
-  command: Command<Name, Input, ContextInput, E, R>,
+  command: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
   config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
@@ -2307,10 +2345,10 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         if (flag._tag !== "Setting") continue
         settings.push([flag, yield* prepareParam(flag.flag, emptyArgs).pipe(toShowHelp)])
       }
-      const resolveSettings = Effect.fnUntraced(function*(options: { readonly deferred: boolean }) {
+      const resolveSettings = Effect.fnUntraced(function*(options: { readonly builtInOnly: boolean }) {
         let context = Context.make(GlobalFlag.LogLevel, Option.none<LogLevel.LogLevel>())
         for (const [flag, prepared] of settings) {
-          if (prepared.deferred && !options.deferred) continue
+          if (options.builtInOnly && !builtInFlags.has(flag)) continue
           const value = yield* prepared.resolve.pipe(toShowHelp)
           context = Context.add(context, flag, value)
           // Apply built-in setting behavior
@@ -2322,12 +2360,13 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         return context
       })
 
-      // 8. Run setup hooks with the settings known so far
+      // 8. Run setup hooks. They only see built-in settings, which never
+      // prompt; other settings stay requirements of the hooks
       const hooks = getCommandsForCommandPath(command, commandPath).flatMap((current) =>
         toImpl(current).beforePrompts as ReadonlyArray<Effect.Effect<unknown, E, R>>
       )
       if (hooks.length > 0) {
-        const context = yield* resolveSettings({ deferred: false })
+        const context = yield* resolveSettings({ builtInOnly: true })
         for (const hook of hooks) {
           yield* Effect.provideContext(hook, context)
         }
@@ -2335,7 +2374,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
 
       // 9. Show deferred fallback prompts, then run the handler
       const input = yield* resolveInput.pipe(toShowHelp)
-      const context = yield* resolveSettings({ deferred: true })
+      const context = yield* resolveSettings({ builtInOnly: false })
       yield* Effect.provideContext(commandImpl.handle(input, [command.name]), context)
     },
     Effect.scoped,

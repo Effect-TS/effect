@@ -38,7 +38,7 @@ export type Prepare<A> = (
 
 interface SubcommandGroup {
   readonly group: string | undefined
-  readonly commands: Arr.NonEmptyReadonlyArray<Command<any, unknown, any, unknown, unknown>>
+  readonly commands: Arr.NonEmptyReadonlyArray<Command<any, unknown, any, unknown, unknown, unknown, unknown>>
 }
 
 /**
@@ -79,9 +79,9 @@ export const TypeId = "~effect/cli/Command" as const
  * Casts a Command to its internal implementation.
  * For use by internal modules that need access to config, parse, handle, etc.
  */
-export const toImpl = <Name extends string, Input, E, R, ContextInput = {}>(
-  self: Command<Name, Input, ContextInput, E, R>
-): CommandInternal<Name, Input, E, R, ContextInput> => self as CommandInternal<Name, Input, E, R, ContextInput>
+export const toImpl = <Name extends string, Input, E, R, ContextInput = {}, HookE = never, HookR = never>(
+  self: Command<Name, Input, ContextInput, E, R, HookE, HookR>
+): CommandInternal<Name, Input, E, R, ContextInput> => self as any
 
 /* ========================================================================== */
 /* Proto                                                                      */
@@ -377,7 +377,7 @@ export const prepareParam = <A>(
  * otherwise the parent's current context config is checked.
  */
 export const checkForDuplicateFlags = <Name extends string, Input, ContextInput, E, R>(
-  parent: Command<Name, Input, ContextInput, E, R>,
+  parent: Command<Name, Input, ContextInput, E, R, unknown, unknown>,
   subcommands: ReadonlyArray<Command.Any>,
   options?: {
     readonly contextConfig?: ConfigInternal | undefined
