@@ -798,7 +798,8 @@ describe("SchemaRepresentation built-in object revivers", () => {
       reviver: SchemaRepresentation.isConditionalReviver,
       dependencies: [SchemaRepresentation.isMinLengthReviver],
       valid: "ab",
-      invalid: "a"
+      invalid: "a",
+      hasToJsonSchema: false
     })
   })
 

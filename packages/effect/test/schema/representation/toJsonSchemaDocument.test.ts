@@ -692,6 +692,12 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)).schema,
         { anyOf: [{ type: "string" }, { type: "number" }] }
       )
+      const unexportable = Schema.Struct({ [Symbol("key")]: Schema.String })
+      assert.deepStrictEqual(
+        Schema.toJsonSchemaDocument(Schema.String.check(Schema.isConditional(unexportable, { onTrue: Schema.Never })))
+          .schema,
+        { type: "string" }
+      )
     })
 
     it("omits isPattern flags that JSON Schema cannot represent", () => {
