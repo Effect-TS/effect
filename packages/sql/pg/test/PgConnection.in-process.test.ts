@@ -434,7 +434,7 @@ describe("PgConnection in-process server", () => {
       assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
     }))
 
-  describe("queryWithPrelude", () => {
+  describe("batch", () => {
     const makeScripted = (reply: (write: Buffer) => Buffer) => {
       const writes: Array<Buffer> = []
       const socket: Duplex = new Duplex({
@@ -453,42 +453,55 @@ describe("PgConnection in-process server", () => {
       return { socket, writes }
     }
 
-    it.effect("sends preludes and the query in one write closed by a single Sync", () =>
+    it.effect("sends every statement unnamed in one write closed by a single Sync", () =>
       Effect.gen(function*() {
-        const preludeResult = Buffer.concat([
-          backendMessage("1", Buffer.alloc(0)),
-          backendMessage("2", Buffer.alloc(0)),
-          backendMessage("D", Buffer.concat([int16(1), int32(8), Buffer.from("org-acme")])),
-          backendMessage("C", Buffer.from("SELECT 1\0"))
-        ])
-        const queryResult = Buffer.concat([
-          backendMessage("1", Buffer.alloc(0)),
-          backendMessage("2", Buffer.alloc(0)),
+        const column = (name: string, oid: number) =>
           backendMessage(
             "T",
-            Buffer.concat([int16(1), Buffer.from("n\0"), int32(0), int16(0), int32(23), int16(4), int32(-1), int16(1)])
-          ),
-          backendMessage("D", Buffer.concat([int16(1), int32(4), int32(7)])),
-          backendMessage("C", Buffer.from("SELECT 1\0")),
-          readyForQuery
-        ])
-        const { socket, writes } = makeScripted(() => Buffer.concat([preludeResult, queryResult]))
+            Buffer.concat([
+              int16(1),
+              Buffer.from(`${name}\0`),
+              int32(0),
+              int16(0),
+              int32(oid),
+              int16(-1),
+              int32(-1),
+              int16(1)
+            ])
+          )
+        const statementResult = (description: Buffer, value: Buffer) =>
+          Buffer.concat([
+            backendMessage("1", Buffer.alloc(0)),
+            backendMessage("2", Buffer.alloc(0)),
+            description,
+            backendMessage("D", Buffer.concat([int16(1), int32(value.length), value])),
+            backendMessage("C", Buffer.from("SELECT 1\0"))
+          ])
+        const { socket, writes } = makeScripted(() =>
+          Buffer.concat([
+            statementResult(column("org", 25), Buffer.from("acme")),
+            statementResult(column("n", 23), int32(7)),
+            readyForQuery
+          ])
+        )
         const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
 
-        const result = yield* connection.queryWithPrelude(
-          [{ sql: "SELECT set_config('app.org', $1, true)", params: ["org-acme"] }],
-          "SELECT 7::int4 AS n"
-        )
+        const results = yield* connection.batch([
+          { sql: "SELECT set_config('app.org', $1, true) AS org", params: ["acme"] },
+          { sql: "SELECT 7::int4 AS n" }
+        ])
 
         assert.strictEqual(writes.length, 2)
-        assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "E", "P", "B", "D", "E", "S"])
-        assert.deepStrictEqual(result.rows, [{ n: 7 }])
+        assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "P", "B", "D", "E", "S"])
+        assert.deepStrictEqual(frontendPreparedNames(writes[1]), ["", ""])
+        assert.deepStrictEqual(results.map((result) => result.rows), [[{ org: "acme" }], [{ n: 7 }]])
       }))
 
-    it.effect("does not retry when a prelude fails with a stale-plan code", () =>
+    it.effect("is never retried", () =>
       Effect.gen(function*() {
         const { socket, writes } = makeScripted((write) =>
           frontendTags(write).length === 5 ? emptyQueryResult : Buffer.concat([
+            backendMessage("1", Buffer.alloc(0)),
             errorResponse([["S", "ERROR"], ["C", "0A000"], ["M", "not supported"]]),
             readyForQuery
           ])
@@ -496,10 +509,19 @@ describe("PgConnection in-process server", () => {
         const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
         yield* connection.query("SELECT 1")
 
-        const error = yield* Effect.flip(connection.queryWithPrelude([{ sql: "SELECT 1" }], "SELECT 1"))
+        const error = yield* Effect.flip(connection.batch([{ sql: "SELECT 1" }, { sql: "SELECT 1" }]))
 
         assert.propertyVal(error.reason.cause, "code", "0A000")
         assert.strictEqual(writes.length, 3)
+      }))
+
+    it.effect("returns no results without writing for an empty batch", () =>
+      Effect.gen(function*() {
+        const { socket, writes } = makeScripted(() => emptyQueryResult)
+        const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+
+        assert.deepStrictEqual(yield* connection.batch([]), [])
+        assert.strictEqual(writes.length, 1)
       }))
   })
 

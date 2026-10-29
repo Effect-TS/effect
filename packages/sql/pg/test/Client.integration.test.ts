@@ -417,13 +417,16 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.deepStrictEqual(seen, [{ count: 1 }])
     }))
 
-  it.effect("withPrelude applies the current statement transformer", () =>
+  it.effect("batch applies the current statement transformer to each statement", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      const rows = yield* sql.withPrelude(sql`SELECT 1 AS value`, []).pipe(
-        Effect.provideService(Statement.CurrentTransformer, (_, sql) => Effect.succeed(sql`SELECT 2 AS value`))
+      const results = yield* sql.batch([sql`SELECT 1 AS value`, sql`SELECT 3 AS value`]).pipe(
+        Effect.provideService(
+          Statement.CurrentTransformer,
+          (statement, sql) => Effect.succeed(sql.unsafe(statement.compile()[0].replace(" AS", " + 1 AS")))
+        )
       )
-      assert.deepStrictEqual(rows, [{ value: 2 }])
+      assert.deepStrictEqual(results, [[{ value: 2 }], [{ value: 4 }]])
     }))
 })
 
@@ -641,29 +644,32 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       expect(value).toEqual([[1]])
     }))
 
-  it.effect("withPrelude runs on the transaction connection and transforms rows", () =>
+  it.effect("batch runs on the transaction connection and transforms rows", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
       const setOrg = (org: string) => sql`SELECT set_config('app.org', ${org}, true)`
-      const query = sql`SELECT current_setting('app.org', true) AS org_name`
+      const query = sql<{ readonly orgName: string }>`SELECT current_setting('app.org', true) AS org_name`
 
-      assert.deepStrictEqual(yield* query.pipe(sql.withPrelude([setOrg("acme")])), [{ orgName: "acme" }])
+      const [, rows] = yield* sql.batch([setOrg("acme"), query])
+      assert.deepStrictEqual(rows, [{ orgName: "acme" }])
       const inTransaction = yield* sql.withTransaction(Effect.gen(function*() {
-        yield* sql.withPrelude(sql`SELECT 1`, [setOrg("globex")])
+        yield* sql.batch([setOrg("globex")])
         return yield* query
       }))
       assert.deepStrictEqual(inTransaction, [{ orgName: "globex" }])
     }))
 
-  it.effect("withPrelude follows withoutTransforms", () =>
+  it.effect("batch compiles and transforms each statement with its own client", () =>
     Effect.gen(function*() {
-      const raw = (yield* PgClient.PgClient).withoutTransforms()
-      yield* raw`CREATE TABLE prelude_untransformed (${raw("mixedCase")} int4)`
-      const rows = yield* raw.withPrelude(
-        raw`SELECT ${raw("mixedCase")} AS org_name FROM prelude_untransformed`,
-        [raw`INSERT INTO prelude_untransformed (${raw("mixedCase")}) VALUES (1)`]
-      )
-      assert.deepStrictEqual(rows, [{ org_name: 1 }])
+      const sql = yield* PgClient.PgClient
+      const raw = sql.withoutTransforms()
+      yield* raw`CREATE TABLE batch_untransformed (${raw("mixedCase")} int4)`
+      const results = yield* sql.batch([
+        raw`INSERT INTO batch_untransformed (${raw("mixedCase")}) VALUES (1)`,
+        raw`SELECT ${raw("mixedCase")} AS org_name FROM batch_untransformed`,
+        sql`SELECT ${sql("mixedCase")} AS org_name FROM (SELECT 2 AS mixed_case) AS t`
+      ])
+      assert.deepStrictEqual(results, [[], [{ org_name: 1 }], [{ orgName: 2 }]])
     }))
 
   it.effect("retains the supplied config", () =>
@@ -820,7 +826,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
       assert.strictEqual(finalized, 2)
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 
-  it.effect("withPrelude propagates its span like a statement", () =>
+  it.effect("batch propagates its span like a statement", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer
       const spans: Array<Tracer.NativeSpan> = []
@@ -848,7 +854,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
         const traced = <A, E>(effect: Effect.Effect<A, E>) =>
           effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
         assert.deepStrictEqual(
-          yield* traced(hookParent(sql.withPrelude(sql`SELECT 1`, []))),
+          yield* traced(hookParent(sql.batch([sql`SELECT 1`]))),
           yield* traced(hookParent(sql`SELECT 1`)),
           `propagate: ${propagate}`
         )
