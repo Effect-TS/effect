@@ -203,6 +203,18 @@ export interface Notification {
 }
 
 /**
+ * A statement sent ahead of the query in a `queryWithPrelude` cycle.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface PreludeStatement {
+  readonly sql: string
+  readonly params?: ReadonlyArray<unknown> | undefined
+}
+
+/**
  * A connected and authenticated PostgreSQL session.
  *
  * @stability unstable
@@ -253,6 +265,38 @@ export interface PgConnection {
     params?: ReadonlyArray<unknown>,
     prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
+  /**
+   * Runs the prelude statements and then the query in one extended-query
+   * cycle: one write closed by a single `Sync`. PostgreSQL runs the cycle in
+   * one implicit transaction unless the session is already in one, so
+   * transaction-local settings such as `set_config(..., true)` or `SET LOCAL`
+   * apply to the query and end with the cycle. Returns only the query's
+   * result and discards prelude rows. Interruption behaves as for `query`.
+   *
+   * **Details**
+   *
+   * Prelude statements are always unnamed. The query uses the prepared
+   * statement cache unless `prepare` is `false`.
+   *
+   * A failing prelude fails the effect with its error and the query does not
+   * run. Outside an explicit transaction the cycle is rolled back as a whole.
+   *
+   * When a cached query statement turns out to be stale outside an explicit
+   * transaction, the whole cycle runs again unnamed, so preludes can run
+   * twice. Keep them to transaction-local effects, or pass `prepare: false`.
+   *
+   * A `BEGIN` prelude is not rejected, but a later failure in that cycle
+   * leaves an aborted transaction that the caller must roll back.
+   *
+   * On a multiplexed connection the cycle is pipelined like any other
+   * statement and does not pin the session. Streams do not support preludes.
+   */
+  readonly queryWithPrelude: (
+    prelude: ReadonlyArray<PreludeStatement>,
+    sql: string,
+    params?: ReadonlyArray<unknown>,
+    prepare?: boolean
+  ) => Effect.Effect<Result, SqlError>
   /**
    * Streams rows without collecting the full result. The session is pinned for
    * the lifetime of the stream. An early abort behaves like an interrupted
@@ -542,8 +586,9 @@ class PgConnectionImpl implements PgConnection {
   readonly encodeQuery = (
     sql: string,
     params: ReadonlyArray<unknown>,
-    cache: PreparedCache | undefined
-  ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
+    cache: PreparedCache | undefined,
+    prelude: ReadonlyArray<PreludeStatement> = emptyPrelude
+  ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache, prelude)
 
   /**
    * Routes backend messages to the oldest statement still on the wire.
@@ -676,14 +721,15 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    cache: PreparedCache | undefined
+    cache: PreparedCache | undefined,
+    prelude: ReadonlyArray<PreludeStatement>
   ): Effect.Effect<QueryOutput, SqlError> =>
     Effect.flatMap(
       this.owner.withPermit(Effect.suspend(() => {
         if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
         let plan: Plan
         try {
-          plan = this.encodeQuery(sql, params, cache)
+          plan = this.encodeQuery(sql, params, cache, prelude)
         } catch (cause) {
           return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
         }
@@ -705,7 +751,12 @@ class PgConnectionImpl implements PgConnection {
           )
         )
         if (cache === undefined || entry.plan.parses) return awaited
-        return retryStale(entry.plan, cache, awaited, () => this.pipelineCycle(sql, params, wantRows, undefined))
+        return retryStale(
+          entry.plan,
+          cache,
+          awaited,
+          () => this.pipelineCycle(sql, params, wantRows, undefined, prelude)
+        )
       }
     )
 
@@ -717,8 +768,9 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    cache: PreparedCache | undefined
-  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, cache))
+    cache: PreparedCache | undefined,
+    prelude: ReadonlyArray<PreludeStatement> = emptyPrelude
+  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, cache, prelude))
 
   /**
    * Runs one cycle. A reused statement the backend has since dropped, or whose
@@ -729,18 +781,19 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    cache: PreparedCache | undefined
+    cache: PreparedCache | undefined,
+    prelude: ReadonlyArray<PreludeStatement>
   ): Effect.Effect<QueryOutput, SqlError> => {
     if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
     let plan: Plan
     try {
-      plan = this.encodeQuery(sql, params, cache)
+      plan = this.encodeQuery(sql, params, cache, prelude)
     } catch (cause) {
       return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
     }
     const run = runQuery(this, plan, wantRows)
     if (cache === undefined || plan.parses) return run
-    return retryStale(plan, cache, run, () => this.attempt(sql, params, wantRows, undefined))
+    return retryStale(plan, cache, run, () => this.attempt(sql, params, wantRows, undefined, prelude))
   }
 
   /** Sends a `CancelRequest` for this session on a side connection. */
@@ -798,12 +851,13 @@ class PgConnectionImpl implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    prepare: boolean
+    prepare: boolean,
+    prelude: ReadonlyArray<PreludeStatement> = emptyPrelude
   ): Effect.Effect<QueryOutput, SqlError> => {
     const cache = prepare ? this.prepared : undefined
     return this.multiplex
-      ? this.pipelineCycle(sql, params, wantRows, cache)
-      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows, cache))
+      ? this.pipelineCycle(sql, params, wantRows, cache, prelude)
+      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows, cache, prelude))
   }
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
@@ -815,6 +869,14 @@ class PgConnectionImpl implements PgConnection {
     prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
     Effect.map(this.run(sql, params ?? emptyParams, false, prepare), takeValues)
+
+  readonly queryWithPrelude = (
+    prelude: ReadonlyArray<PreludeStatement>,
+    sql: string,
+    params?: ReadonlyArray<unknown>,
+    prepare = true
+  ): Effect.Effect<Result, SqlError> =>
+    Effect.map(this.run(sql, params ?? emptyParams, true, prepare, prelude), takeResult)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -854,12 +916,13 @@ class PinnedPgConnection implements PgConnection {
     sql: string,
     params: ReadonlyArray<unknown>,
     wantRows: boolean,
-    prepare: boolean
+    prepare: boolean,
+    prelude: ReadonlyArray<PreludeStatement> = emptyPrelude
   ): Effect.Effect<QueryOutput, SqlError> {
     return this.base.wire.withPermit(Effect.suspend(() =>
       this.released
         ? Effect.fail(pinReleasedError())
-        : this.base.cycleOwned(sql, params, wantRows, prepare ? this.base.prepared : undefined)
+        : this.base.cycleOwned(sql, params, wantRows, prepare ? this.base.prepared : undefined, prelude)
     ))
   }
 
@@ -882,6 +945,14 @@ class PinnedPgConnection implements PgConnection {
     prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
     Effect.map(this.cycle(sql, params ?? emptyParams, false, prepare), takeValues)
+
+  readonly queryWithPrelude = (
+    prelude: ReadonlyArray<PreludeStatement>,
+    sql: string,
+    params?: ReadonlyArray<unknown>,
+    prepare = true
+  ): Effect.Effect<Result, SqlError> =>
+    Effect.map(this.cycle(sql, params ?? emptyParams, true, prepare, prelude), takeResult)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)
@@ -1002,6 +1073,7 @@ const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
 }
 
 const emptyParams: ReadonlyArray<unknown> = []
+const emptyPrelude: ReadonlyArray<PreludeStatement> = []
 
 const takeResult = (output: QueryOutput): Result => output.result
 const takeValues = (output: QueryOutput): ReadonlyArray<ReadonlyArray<unknown>> => output.values
@@ -1016,6 +1088,9 @@ const describeExecuteSync: Uint8Array = concat([
   PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
   PgProtocol.encodeSync()
 ])
+
+/** The tail of a prelude statement, whose rows are discarded unread. */
+const executePortal: Uint8Array = PgProtocol.encodeExecute({ portal: "", maxRows: 0 })
 
 /** The same tail for a statement whose columns are already known. */
 const executeSync: Uint8Array = concat([
@@ -1048,6 +1123,8 @@ interface Plan {
   readonly frame: Uint8Array
   /** `CloseComplete` messages to consume before the cycle proper. */
   readonly closes: number
+  /** Prelude statements to consume after the closes and before the query. */
+  readonly preludes: number
   /** Whether the frame carries a `Parse`. */
   readonly parses: boolean
   /** Whether the frame carries a `Describe`, so the columns arrive on the wire. */
@@ -1065,21 +1142,67 @@ const encodeUnnamed = (
   sql: string,
   parameters: ReadonlyArray<PgTypes.Parameter>,
   parameterTypes: ReadonlyArray<number>,
-  encodeBind: BindEncoder
+  encodeBind: BindEncoder,
+  prelude: EncodedPrelude | undefined
 ): Plan => {
   const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
   if (EffectResult.isFailure(parse)) throw parse.failure
   const bind = encodeBind({ portal: "", statement: "", parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
   return {
-    frame: concat([parse.success, bind.success, describeExecuteSync]),
+    frame: prelude === undefined
+      ? concat([parse.success, bind.success, describeExecuteSync])
+      : concat([prelude.frames, parse.success, bind.success, describeExecuteSync]),
     closes: 0,
+    preludes: prelude?.count ?? 0,
     parses: true,
     describes: true,
     prepared: undefined,
     description: undefined,
     stale: false
   }
+}
+
+interface EncodedPrelude {
+  readonly frames: Uint8Array
+  readonly count: number
+}
+
+const inferParameters = (
+  params: ReadonlyArray<unknown>,
+  registry: PgTypes.Registry | undefined
+): { readonly parameters: Array<PgTypes.Parameter>; readonly parameterTypes: Array<number> } => {
+  const count = params.length
+  const parameters: Array<PgTypes.Parameter> = new Array(count)
+  const parameterTypes: Array<number> = new Array(count)
+  for (let index = 0; index < count; index++) {
+    const parameter = inferParameter(params[index], registry)
+    parameters[index] = parameter
+    parameterTypes[index] = parameter.oid
+  }
+  return { parameters, parameterTypes }
+}
+
+/**
+ * Encodes prelude statements as unnamed `Parse` / `Bind` / `Execute` groups.
+ * No `Describe`: their rows are discarded, so their columns are never needed.
+ */
+const encodePrelude = (
+  prelude: ReadonlyArray<PreludeStatement>,
+  registry: PgTypes.Registry | undefined,
+  encodeBind: BindEncoder
+): EncodedPrelude | undefined => {
+  if (prelude.length === 0) return undefined
+  const chunks: Array<Uint8Array> = []
+  for (const statement of prelude) {
+    const { parameterTypes, parameters } = inferParameters(statement.params ?? emptyParams, registry)
+    const parse = PgProtocol.encodeParse({ name: "", query: statement.sql, parameterTypes })
+    if (EffectResult.isFailure(parse)) throw parse.failure
+    const bind = encodeBind({ portal: "", statement: "", parameters })
+    if (EffectResult.isFailure(bind)) throw bind.failure
+    chunks.push(parse.success, bind.success, executePortal)
+  }
+  return { frames: concat(chunks), count: prelude.length }
 }
 
 /**
@@ -1097,19 +1220,14 @@ const encodeQuery = (
   params: ReadonlyArray<unknown>,
   registry: PgTypes.Registry | undefined,
   encodeBind: BindEncoder,
-  cache: PreparedCache | undefined
+  cache: PreparedCache | undefined,
+  preludeStatements: ReadonlyArray<PreludeStatement>
 ): Plan => {
-  const count = params.length
-  const parameters: Array<PgTypes.Parameter> = new Array(count)
-  const parameterTypes: Array<number> = new Array(count)
-  for (let index = 0; index < count; index++) {
-    const parameter = inferParameter(params[index], registry)
-    parameters[index] = parameter
-    parameterTypes[index] = parameter.oid
-  }
+  const { parameterTypes, parameters } = inferParameters(params, registry)
+  const prelude = encodePrelude(preludeStatements, registry, encodeBind)
 
   if (cache === undefined) {
-    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind)
+    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind, prelude)
   }
 
   const prepared = cache.get(sql, parameterTypes)
@@ -1117,20 +1235,26 @@ const encodeQuery = (
     // Another cycle is already on the wire carrying this name's `Parse`.
     // Naming it again would collide, and reusing it would mean binding to
     // columns nobody has seen yet, so this execution goes unnamed.
-    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind)
+    return encodeUnnamed(sql, parameters, parameterTypes, encodeBind, prelude)
   }
   const bind = encodeBind({ portal: "", statement: prepared.name, parameters })
   if (EffectResult.isFailure(bind)) throw bind.failure
   const parse = prepared.ready ? undefined : PgProtocol.encodeParse({ name: prepared.name, query: sql, parameterTypes })
   if (parse !== undefined && EffectResult.isFailure(parse)) throw parse.failure
   const closeFrames = cache.takeCloses()
+  const head = closeFrames === undefined
+    ? prelude?.frames
+    : prelude === undefined
+    ? closeFrames.frames
+    : concat([closeFrames.frames, prelude.frames])
 
   if (parse === undefined) {
     return {
-      frame: closeFrames === undefined
+      frame: head === undefined
         ? concat([bind.success, executeSync])
-        : concat([closeFrames.frames, bind.success, executeSync]),
+        : concat([head, bind.success, executeSync]),
       closes: closeFrames?.count ?? 0,
+      preludes: prelude?.count ?? 0,
       parses: false,
       describes: false,
       prepared,
@@ -1141,10 +1265,11 @@ const encodeQuery = (
 
   prepared.parsing = true
   return {
-    frame: closeFrames === undefined
+    frame: head === undefined
       ? concat([parse.success, bind.success, describeExecuteSync])
-      : concat([closeFrames.frames, parse.success, bind.success, describeExecuteSync]),
+      : concat([head, parse.success, bind.success, describeExecuteSync]),
     closes: closeFrames?.count ?? 0,
+    preludes: prelude?.count ?? 0,
     parses: true,
     describes: true,
     prepared,
@@ -1310,7 +1435,17 @@ const pinReleasedError = (): SqlError =>
 
 const escapeIdentifier = (identifier: string): string => `"${identifier.replaceAll("\"", "\"\"")}"`
 
-type QueryPhase = "close" | "parse" | "bind" | "describe" | "rows" | "complete" | "error"
+type QueryPhase =
+  | "close"
+  | "preludeParse"
+  | "preludeBind"
+  | "preludeRows"
+  | "parse"
+  | "bind"
+  | "describe"
+  | "rows"
+  | "complete"
+  | "error"
 
 /**
  * Splits a command tag such as `SELECT 3` or `INSERT 0 1`. Reading the two
@@ -1357,6 +1492,7 @@ class QueryMachine implements Consumer {
   private readonly values: Array<ReadonlyArray<unknown>> | undefined
 
   private closes: number
+  private preludes: number
   private phase: QueryPhase
   private fieldCount: number
   private resultFields: ReadonlyArray<Field>
@@ -1381,9 +1517,12 @@ class QueryMachine implements Consumer {
     this.rows = wantRows ? [] : undefined
     this.values = wantRows ? undefined : []
     this.closes = plan.closes
-    this.phase = plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
+    this.preludes = plan.preludes
+    this.phase = plan.closes > 0 ? "close" : this.afterCloses()
     const description = plan.description
-    this.readField = description?.readField
+    // Prelude rows arrive first and are discarded raw; the query's reader is
+    // installed once they are done.
+    this.readField = plan.preludes > 0 ? undefined : description?.readField
     this.fieldCount = description?.resultFields.length ?? 0
     this.resultFields = description?.resultFields ?? emptyFields
     this.rowBuilder = description?.rowBuilder
@@ -1391,6 +1530,20 @@ class QueryMachine implements Consumer {
 
   isDone(): boolean {
     return this.done
+  }
+
+  private afterCloses(): QueryPhase {
+    return this.preludes > 0 ? "preludeParse" : this.plan.parses ? "parse" : "bind"
+  }
+
+  private endPrelude(): void {
+    if (--this.preludes > 0) {
+      this.phase = "preludeParse"
+      return
+    }
+    this.phase = this.plan.parses ? "parse" : "bind"
+    const description = this.plan.description
+    if (description !== undefined) this.conn.session.parser.readField = description.readField
   }
 
   abort(onDrained: () => void): void {
@@ -1444,13 +1597,21 @@ class QueryMachine implements Consumer {
     switch (message._tag) {
       case "CloseComplete":
         if (this.phase !== "close") return this.failDesync(`Unexpected CloseComplete during ${this.phase}`)
-        if (--this.closes === 0) this.phase = this.plan.parses ? "parse" : "bind"
+        if (--this.closes === 0) this.phase = this.afterCloses()
         return
       case "ParseComplete":
+        if (this.phase === "preludeParse") {
+          this.phase = "preludeBind"
+          return
+        }
         if (this.phase !== "parse") return this.failDesync(`Unexpected ParseComplete during ${this.phase}`)
         this.phase = "bind"
         return
       case "BindComplete":
+        if (this.phase === "preludeBind") {
+          this.phase = "preludeRows"
+          return
+        }
         if (this.phase !== "bind") return this.failDesync(`Unexpected BindComplete during ${this.phase}`)
         this.phase = this.plan.describes ? "describe" : "rows"
         return
@@ -1485,6 +1646,7 @@ class QueryMachine implements Consumer {
         return
       }
       case "DataRow": {
+        if (this.phase === "preludeRows") return
         if (this.phase !== "rows" || this.rowBuilder === undefined) {
           return this.failDesync(`Unexpected DataRow during ${this.phase}`)
         }
@@ -1497,6 +1659,7 @@ class QueryMachine implements Consumer {
         return
       }
       case "CommandComplete": {
+        if (this.phase === "preludeRows") return this.endPrelude()
         if (this.phase !== "rows") return this.failDesync(`Unexpected CommandComplete during ${this.phase}`)
         const parsed = parseCommandTag(message.commandTag)
         this.command = parsed.command
@@ -1506,11 +1669,13 @@ class QueryMachine implements Consumer {
         return
       }
       case "EmptyQueryResponse":
+        if (this.phase === "preludeRows") return this.endPrelude()
         if (this.phase !== "rows") return this.failDesync(`Unexpected EmptyQueryResponse during ${this.phase}`)
         this.phase = "complete"
         return
       case "ErrorResponse": {
-        if (isStalePreparedStatement(message.fields.code)) this.plan.stale = true
+        // A prelude never names a statement, so its errors are never stale plans.
+        if (this.preludes === 0 && isStalePreparedStatement(message.fields.code)) this.plan.stale = true
         // A cycle that carried this statement's `Parse` but failed before its
         // columns arrived leaves an entry that can never become ready while
         // the backend may still hold the name: the `Parse` outlives the
