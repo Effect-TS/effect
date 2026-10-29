@@ -2,4 +2,8 @@
 "effect": patch
 ---
 
-Honor zero limits in `RateLimiterStore.fixedWindow` for the memory and Redis stores, reject over-limit first requests in the Redis fixed-window script, and return an infinite delay from delay-mode `RateLimiter.consume` when the limit is nonpositive.
+Fix `RateLimiter` handling of zero and negative limits:
+
+- `RateLimiterStore.fixedWindow` now honors a zero `limit` in the memory and Redis stores.
+- The Redis fixed-window script now rejects an over-limit first request instead of charging it.
+- Delay-mode `RateLimiter.consume` now returns an infinite delay for a nonpositive limit instead of admitting requests.

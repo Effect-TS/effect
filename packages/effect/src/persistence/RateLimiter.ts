@@ -109,8 +109,9 @@ export const make: Effect.Effect<
       const algorithm = options.algorithm ?? "fixed-window"
       const window = Duration.max(Duration.fromInputUnsafe(options.window), Duration.millis(1))
       const windowMillis = Duration.toMillis(window)
+      const exceeded = tokens > options.limit
 
-      if (onExceeded === "fail" && tokens > options.limit) {
+      if (onExceeded === "fail" && exceeded) {
         return Effect.fail(
           new RateLimiterError({
             reason: new RateLimitExceeded({
@@ -125,7 +126,6 @@ export const make: Effect.Effect<
 
       // A nonpositive limit never refills, so skip the store and its infinite refill rate.
       if (options.limit <= 0) {
-        const exceeded = tokens > options.limit
         return Effect.succeed<ConsumeResult>({
           delay: exceeded ? Duration.infinity : Duration.zero,
           limit: options.limit,
