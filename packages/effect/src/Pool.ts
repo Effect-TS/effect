@@ -378,7 +378,8 @@ export const makeWithStrategy = <A, E, R>(options: {
 }): Effect.Effect<Pool<A, E>, never, Scope.Scope | R> =>
   Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
     const services = yield* Effect.context<R | Scope.Scope>()
-    const scope = Context.get(services, Scope.Scope)
+    // A child scope keeps the pool usable in later finalizers of the outer scope
+    const scope = Scope.forkUnsafe(Context.get(services, Scope.Scope))
     const acquire = Effect.updateContext(
       options.acquire,
       (input) => Context.merge(services, input)

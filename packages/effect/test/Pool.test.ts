@@ -88,6 +88,32 @@ describe("Pool", () => {
       deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
     }))
 
+  it.effect("a later finalizer of the pool's scope can get an item after idle items expire", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const scope = yield* Scope.make()
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.sync(() => ++acquired),
+        min: 0,
+        max: 1,
+        timeToLive: "1 second"
+      }).pipe(Scope.provide(scope))
+      let result: Exit.Exit<number> | undefined
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.scoped(Pool.get(pool)).pipe(Effect.exit, Effect.map((exit) => (result = exit)))
+      )
+      yield* Effect.scoped(Pool.get(pool))
+      yield* TestClock.adjust("2 seconds")
+
+      // Finalizers are uninterruptible: bound the wait by polling, and detach
+      // the close so a hang cannot block the test's cleanup.
+      const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      assert.isDefined(closing.pollUnsafe(), "Scope.close did not return")
+      deepStrictEqual(result, Exit.succeed(2))
+    }))
+
   it.effect("defects don't prevent cleanup", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
