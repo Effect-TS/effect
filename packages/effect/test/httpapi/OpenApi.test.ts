@@ -928,15 +928,17 @@ describe("OpenApi", () => {
     assert.throws(() => OpenApi.fromApi(Api), /Duplicate OpenAPI operation for GET \/shared/)
   })
 
-  it("rejects equivalent templated method and path pairs", () => {
-    const Api = HttpApi.make("Api").add(
-      HttpApiGroup.make("test").add(
-        HttpApiEndpoint.get("first", "/users/:id", { params: { id: Schema.String } }),
-        HttpApiEndpoint.get("second", "/users/:userId", { params: { userId: Schema.String } })
+  it("rejects equivalent templated paths", () => {
+    for (const method of ["GET", "DELETE"] as const) {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("first", "/users/:id", { params: { id: Schema.String } }),
+          HttpApiEndpoint.make(method)("second", "/users/:userId", { params: { userId: Schema.String } })
+        )
       )
-    )
 
-    assert.throws(() => OpenApi.fromApi(Api), /Duplicate OpenAPI operation for GET \/users\/\{userId\}/)
+      assert.throws(() => OpenApi.fromApi(Api), /OpenAPI .*\/users\/\{userId\}/)
+    }
   })
 
   it("rejects duplicate operation identifiers", () => {

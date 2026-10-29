@@ -360,6 +360,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
 
   const schemaOps: Array<SchemaOp> = []
   const pathOperations = new Set<string>()
+  const pathTemplates = new Map<string, string>()
   const operationIds = new Set<string>()
   const finalizeOperations: Array<() => void> = []
 
@@ -640,10 +641,16 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         () => "Error"
       )
 
-      const pathOperation = `${method} ${path.replace(/\{[^}]+\}/g, "{}")}`
+      const normalizedPath = path.replace(/\{[^}]+\}/g, "{}")
+      const pathOperation = `${method} ${normalizedPath}`
       if (pathOperations.has(pathOperation)) {
         throw new globalThis.Error(`Duplicate OpenAPI operation for ${endpoint.method} ${path}`)
       }
+      const existingPath = pathTemplates.get(normalizedPath)
+      if (existingPath !== undefined && existingPath !== path) {
+        throw new globalThis.Error(`Conflicting OpenAPI paths: ${existingPath} and ${path}`)
+      }
+      pathTemplates.set(normalizedPath, path)
       pathOperations.add(pathOperation)
       if (!Object.hasOwn(spec.paths, path)) {
         InternalRecord.assignProperty(spec.paths, path, {})
