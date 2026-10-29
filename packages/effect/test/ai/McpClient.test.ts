@@ -752,7 +752,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
   options: {
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
-    readonly discoveryLimits?: McpClient.DiscoveryLimits | undefined
+    readonly discoveryLimits?: Parameters<typeof McpClient.make>[0]["discoveryLimits"]
   } = {}
 ) {
   const sent: Array<{

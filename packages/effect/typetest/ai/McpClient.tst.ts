@@ -94,9 +94,8 @@ describe("McpClient", () => {
   })
 
   it("should require mode selectors when typed options choose nondefault modes", () => {
-    type Snapshot = { readonly tools: ReadonlyArray<McpSchema.Tool> }
-    expect<Snapshot>().type.not.toBeAssignableTo<McpClient.ToolkitOptions<"complete">>()
-    expect<Snapshot>().type.not.toBeAssignableTo<McpClient.ToolkitOptions<"text", "return">>()
+    expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client, { tools: [tool] })
+    expect(McpClient.toolkit<"text", "return">).type.not.toBeCallableWith(client, { tools: [tool] })
   })
 
   it("should require mode selectors when type arguments choose nondefault modes", () => {
