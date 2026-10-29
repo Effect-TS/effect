@@ -863,7 +863,7 @@ export const whenAnd: <
  *
  * @stability stable
  * @category defining patterns
- * @since 4.1.0
+ * @since 4.2.0
  */
 export const whenFilter: <
   Input,
