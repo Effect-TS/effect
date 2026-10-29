@@ -1,5 +1,6 @@
 import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
+import * as Fiber from "../Fiber.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import * as Order from "../Order.ts"
 import type { PlatformError } from "../PlatformError.ts"
@@ -570,6 +571,8 @@ const isIgnorable = (error: PlatformError): boolean => isMissing(error) || error
 // Node and Deno report `readLink` on a path that is not a link as "Unknown"
 const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error.reason._tag === "Unknown"
 
+const DIRECTORY_CONCURRENCY = 16
+
 const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
 
 /** @internal */
@@ -660,12 +663,13 @@ const walk = Effect.fnUntraced(function*(
     readonly next: States | undefined
   }
 
-  const visit = Effect.fnUntraced(function*(
+  // Synchronous unless the entry type must be resolved through `stat` / `readLink`
+  const visit = (
     { name, type }: FileSystem.DirectoryEntry,
     parent: string,
     states: States,
     excluded: States
-  ): Effect.fn.Return<Child | undefined, PlatformError> {
+  ): Child | undefined | Effect.Effect<Child | undefined, PlatformError> => {
     const result = step(compiled, states, name)
     const next = union(result)
     if (next.size === 0) {
@@ -674,36 +678,53 @@ const walk = Effect.fnUntraced(function*(
     const relative = join(parent, name)
     const nextExcluded = union(step(excludes, excluded, name))
     const descend = canDescend(compiled, next)
-    const isDirectory = !descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory
-      ? false
-      : type !== "Unknown" && type !== "SymbolicLink"
-      ? type === "Directory"
-      : yield* fs.stat(toFsPath(relative)).pipe(
-        Effect.map((info) => info.type === "Directory"),
-        Effect.catchIf(isIgnorable, () => Effect.succeed(false))
-      )
-    const accepted = accepts(compiled, next, isDirectory)
-    if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
-      return undefined
+    const child = (isDirectory: boolean, link: boolean): Child | undefined => {
+      const accepted = accepts(compiled, next, isDirectory)
+      if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
+        return undefined
+      }
+      return {
+        relative,
+        accepted,
+        excluded: nextExcluded,
+        next: !isDirectory || !descend
+          ? undefined
+          : !link || result.globstar.size === 0
+          ? next
+          // Follow symlinks only through explicit segments, not `**`.
+          : canDescend(compiled, result.explicit)
+          ? result.explicit
+          : undefined
+      }
     }
-    const child = (next: States | undefined): Child => ({ relative, accepted, excluded: nextExcluded, next })
-    if (!isDirectory || !descend) {
-      return child(undefined)
+    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory) {
+      return child(false, false)
     }
-    if (result.globstar.size === 0) {
-      return child(next)
+    if (type !== "Unknown" && type !== "SymbolicLink") {
+      return child(type === "Directory", false)
     }
-    // Follow symlinks only through explicit segments, not `**`.
-    const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
-    if (type !== "Unknown") {
-      return child(type === "SymbolicLink" ? followed : next)
-    }
-    return yield* fs.readLink(toFsPath(relative)).pipe(
-      Effect.as(child(followed)),
-      Effect.catchIf(isNotLink, () => Effect.succeed(child(next)))
+    const path = toFsPath(relative)
+    return fs.stat(path).pipe(
+      Effect.map((info) => info.type === "Directory"),
+      Effect.catchIf(isIgnorable, () => Effect.succeed(false)),
+      Effect.flatMap((isDirectory) => {
+        const resolved = child(isDirectory, type === "SymbolicLink")
+        if (type === "SymbolicLink" || resolved?.next === undefined || result.globstar.size === 0) {
+          return Effect.succeed(resolved)
+        }
+        return fs.readLink(path).pipe(
+          Effect.as(child(isDirectory, true)),
+          Effect.catchIf(isNotLink, () => Effect.succeed(resolved))
+        )
+      })
     )
-  })
+  }
 
+  // Bounds directory reads in flight across the whole walk, not per level
+  let slots = DIRECTORY_CONCURRENCY
+  const release = Effect.sync(() => {
+    slots++
+  })
   const directory = Effect.fnUntraced(function*(
     relative: string,
     states: States,
@@ -712,11 +733,43 @@ const walk = Effect.fnUntraced(function*(
     out: Array<string>
   ): Effect.fn.Return<void, PlatformError> {
     const listing = yield* entries(relative, states, named)
-    const children = yield* Effect.forEach(
-      listing.entries,
-      (entry) => visit(entry, relative, states, excluded),
-      { concurrency: 16 }
-    )
+    const children: Array<Child | undefined> = []
+    const pending: Array<Effect.Effect<void, PlatformError>> = []
+    for (const entry of listing.entries) {
+      const child = visit(entry, relative, states, excluded)
+      if (Effect.isEffect(child)) {
+        const index = children.push(undefined) - 1
+        pending.push(Effect.map(child, (child) => {
+          children[index] = child
+        }))
+      } else {
+        children.push(child)
+      }
+    }
+    if (pending.length > 0) {
+      yield* Effect.all(pending, { concurrency: 16, discard: true })
+    }
+    // Walk each subdirectory in its own fiber if a slot is free and inline
+    // otherwise, then splice their results back in listing order
+    const nested: Array<Array<string>> = []
+    const fibers: Array<Fiber.Fiber<void, PlatformError>> = []
+    for (const child of children) {
+      if (child?.next !== undefined) {
+        const childOut: Array<string> = []
+        nested.push(childOut)
+        const walk = directory(child.relative, child.next, child.excluded, listing.named, childOut)
+        if (slots > 0) {
+          slots--
+          fibers.push(yield* Effect.forkChild(Effect.ensuring(walk, release)))
+        } else {
+          yield* walk
+        }
+      }
+    }
+    if (fibers.length > 0) {
+      yield* Fiber.joinAll(fibers)
+    }
+    let index = 0
     for (const child of children) {
       if (child === undefined) {
         continue
@@ -725,7 +778,9 @@ const walk = Effect.fnUntraced(function*(
         out.push(child.relative)
       }
       if (child.next !== undefined) {
-        yield* directory(child.relative, child.next, child.excluded, listing.named, out)
+        for (const path of nested[index++]) {
+          out.push(path)
+        }
       }
     }
   })
