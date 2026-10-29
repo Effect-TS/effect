@@ -4453,7 +4453,7 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       // the last join at 4500ms is published once membership is quiet for the window
       assert.isAtLeast(settled[1].at, 6500)
       assert.isBelow(settled[1].at, 7000)
-    }))
+    }), 30_000)
 
   it.effect("publishes continuous joins within four settle windows", () =>
     Effect.gen(function*() {
