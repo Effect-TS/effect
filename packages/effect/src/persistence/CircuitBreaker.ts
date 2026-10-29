@@ -14,6 +14,9 @@
  *   a failed one reopens it. An interrupted or `Ignored` probe frees the slot.
  * - The backoff count survives a close. It resets once the circuit has stayed
  *   closed as long as it was last open.
+ * - Calls that must always run pass `onRejection: "allow"`. The circuit
+ *   records them when it would admit them, and runs them unrecorded when it
+ *   would refuse them, as in "Recording calls that must always run" below.
  *
  * The breaker never waits. Retry rejections outside it, as in "Retrying
  * rejections" below. Put `Effect.retry` and `Effect.timeout` inside it, so it
@@ -118,6 +121,36 @@
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * **Example** (Recording calls that must always run)
+ *
+ * The write runs even while the circuit is open, and its failures still open
+ * the circuit for the reads that share the key.
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Effect } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class LedgerError extends Data.TaggedError("LedgerError") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "30 seconds"
+ *   })
+ *   const write = Effect.fail(new LedgerError()).pipe(
+ *     breaker.execute({ key: "ledger", onRejection: "allow" })
+ *   )
+ *
+ *   // The first failed write opens the circuit, and the second still runs.
+ *   yield* Effect.flip(write)
+ *   const error = yield* Effect.flip(write)
+ *   const state = yield* breaker.state("ledger")
+ *   return [error._tag, state._tag]
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => ["LedgerError", "Open"]
+ * ```
+ *
  * @stability experimental
  * @since 4.0.6
  */
@@ -168,6 +201,10 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *   an effect. By default a success is a `Success` and any failure, defects
  *   included, is a `Failure`, since a rejected `Effect.promise` only surfaces
  *   as a defect. An exit that is only interruption is always `Ignored`.
+ *   `onRejection` decides what a call does when the circuit refuses it:
+ *   `"fail"` (the default) fails it with `CircuitOpen` or `CircuitHalfOpen`,
+ *   `"allow"` runs it unrecorded. An allowed call the circuit admits, probe
+ *   included, is recorded as usual.
  * - `state` reads the shared state of a circuit.
  * - `transitions` emits this breaker's transitions and ends when its scope
  *   closes.
@@ -345,12 +382,14 @@ export interface CircuitBreaker {
     <A, E, R2 = never>(options: {
       readonly key: string
       readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+      readonly onRejection?: "fail" | "allow" | undefined
     }): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
     <A, E, R, R2 = never>(
       self: Effect.Effect<A, E, R>,
       options: {
         readonly key: string
         readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly onRejection?: "fail" | "allow" | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2>
   }
@@ -486,9 +525,10 @@ export const make: (options: {
 
     const execute = <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
-      { classify, key }: {
+      { classify, key, onRejection }: {
         readonly key: string
         readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly onRejection?: "fail" | "allow" | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
@@ -496,6 +536,12 @@ export const make: (options: {
           const admitted = yield* Effect.exit(Scope.provide(store.admit(key), admitScope))
           if (Exit.isFailure(admitted)) {
             const error = Cause.findErrorOption(admitted.cause)
+            if (
+              onRejection === "allow" && error._tag === "Some" &&
+              error.value.reason._tag !== "CircuitBreakerStoreError"
+            ) {
+              return yield* restore(self)
+            }
             if (
               onStoreError === "fail" || error._tag === "None" ||
               error.value.reason._tag !== "CircuitBreakerStoreError"
