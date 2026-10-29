@@ -176,10 +176,22 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * replaces one runner at a time, every departure is published immediately,
    * so shards still move at each step.
    *
-   * Only joins wait. Runners leaving or becoming unhealthy are published
-   * immediately along with any pending joins, and the initial assignment never
-   * waits. While joins are pending, shards keep running on their current
-   * runners and the new runners stay idle.
+   * Only joins wait. When a runner in the published assignment leaves or
+   * becomes unhealthy, the change is published immediately along with any
+   * pending joins, and the initial assignment never waits. A pending runner
+   * that leaves before its join is published has no shards to move, so it
+   * only restarts the quiet period.
+   *
+   * While joins are pending, shards keep running on their current runners,
+   * the new runners stay idle, and runners do not take any shards they do not
+   * already hold. Each runner publishes on its own polls, so a shard released
+   * by a runner that has published stays unlocked until its new runner
+   * publishes too, usually within two `refreshAssignmentsInterval`s.
+   *
+   * Each runner debounces the joins it has observed. A runner that misses
+   * them, for example because it cannot read membership, can take shards from
+   * its outdated assignment and hand them off again later, as it can when
+   * this option is `0`.
    *
    * Pending joins are published at most four times this duration after the
    * first one, even if runners keep joining, so the worst case delay is four

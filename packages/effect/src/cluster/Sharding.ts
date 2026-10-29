@@ -281,6 +281,9 @@ const make = Effect.gen(function*() {
   // shards still held by this runner while their entities stop and their locks
   // are released
   const releasingShards = MutableHashSet.empty<ShardId>()
+  // healthy runners that joined after the first assignment, held back from the
+  // hash rings until the healthy set settles (see `runnerJoinDebounce`)
+  const pendingRunners = MutableHashSet.empty<Runner>()
   // The releasing gauge reports to the metric registry and attributes the
   // layer was built with.
   const updateReleasingShardsGauge = () =>
@@ -608,6 +611,14 @@ const make = Effect.gen(function*() {
 
         // a runner that is shutting down takes no new shards
         if (isShutdown.current) {
+          continue
+        }
+
+        // While joins are pending, the assignments are about to change, so
+        // new shards wait until they are published. Otherwise this runner could
+        // take a shard released for a joining runner, then hand it off again.
+        // Publishing reopens the latch.
+        if (MutableHashSet.size(pendingRunners) > 0) {
           continue
         }
 
@@ -1421,11 +1432,9 @@ const make = Effect.gen(function*() {
   let nextRunners = MutableHashMap.empty<Runner, boolean>()
   const healthyRunners = MutableHashSet.empty<Runner>()
 
-  // Healthy runners that joined after the first assignment are held back
-  // from the hash rings until the healthy set settles, so a burst of joins
-  // moves each shard at most once.
+  // Joins after the first assignment wait in `pendingRunners` until the
+  // healthy set settles, so a burst of joins is published as one assignment.
   const joinDebounce = Duration.toMillis(Duration.fromInputUnsafe(config.runnerJoinDebounce))
-  const pendingRunners = MutableHashSet.empty<Runner>()
   let pendingSince = 0
   let pendingChangedAt = 0
   let assignmentsPublished = false
@@ -1490,9 +1499,16 @@ const make = Effect.gen(function*() {
         MutableHashMap.remove(allRunners, runner)
         MutableHashSet.remove(healthyRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
+        // A pending runner was never assigned shards, so it leaving moves
+        // nothing. Like a join, it restarts the quiet period instead of
+        // publishing the other pending joins mid-burst.
         if (MutableHashSet.has(pendingRunners, runner)) {
           MutableHashSet.remove(pendingRunners, runner)
           pendingChangedAt = now
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            // let the acquisition loop take the shards it was holding off on
+            activeShardsLatch.openUnsafe()
+          }
           return
         }
         changed = true
