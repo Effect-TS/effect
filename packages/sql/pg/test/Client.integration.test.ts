@@ -531,7 +531,8 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
   // transactions, where the statements prepared on the last one do not exist.
   it.effect("ends transactions whose prepared statements went missing", () =>
     Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
+      // Its own session, so `DEALLOCATE ALL` cannot affect concurrent tests.
+      const sql = yield* PgClient.makeClient((yield* PgClient.PgClient).config)
       const select = sql<{ value: number }>`SELECT ${1}::int4 AS value`
       const assertSqlFailure = (cause: Cause.Cause<unknown>) => {
         assert.isFalse(Cause.hasDies(cause))
@@ -552,7 +553,7 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       )
 
       assert.deepStrictEqual(yield* sql.withTransaction(select), [{ value: 1 }])
-    }))
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 })
 
 it.layer(PgContainer.layerMakeClientAcquireForStream, { timeout: "30 seconds" })(
