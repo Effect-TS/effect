@@ -55,16 +55,6 @@ export declare namespace ToJsonSchema {
   export interface CheckInput {
     readonly type: JsonSchema.Type | undefined
     readonly schemas: ReadonlyArray<JsonSchema.JsonSchema>
-    /**
-     * Whether each entry of `schemas` matches exactly the JSON instances that
-     * satisfy the type side of that schema. An entry is not exact when it, or
-     * anything it references, is a looser approximation, describes the JSON
-     * encoding of a non-JSON type (such as `"NaN"` for `Number`), or is a
-     * reference still being compiled. Treat a missing entry as unknown.
-     *
-     * @since 4.2.0
-     */
-    readonly exact?: ReadonlyArray<boolean> | undefined
   }
 
   /**

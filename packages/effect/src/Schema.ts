@@ -9132,12 +9132,10 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * JSON Schema:
  * This check corresponds to `if`, `then`, and `else` in JSON Schema. Effect
  * checks the decoded value, while JSON Schema checks the original input. A
- * closed struct strips excess properties before its checks run, so the
- * condition and branches cannot see them. When the condition cannot be
- * exported exactly, including when it only describes a JSON encoding such as
- * `"NaN"` for `Number`, the export requires one of the branches to hold
- * instead, because a different `if` could select the wrong branch. A branch
- * that cannot be exported exactly is left unconstrained.
+ * closed struct strips excess properties under the default parse options, so
+ * a closed condition can match a value with extra keys that JSON Schema would
+ * reject; use `onExcessProperty: "error"` for JSON Schema behavior.
+ * `toJsonSchemaDocument` omits this check and marks the document approximate.
  *
  * **Example** (Requiring a size for boxes)
  *
@@ -9196,19 +9194,7 @@ export function isConditional(
         payload: keys,
         schemas: [conditionAST, ...branchASTs]
       },
-      toJsonSchema: ({ schemas: [condition, ...branches], exact }) => {
-        // An inexact branch may reject JSON instances its predicate accepts, so it is left unconstrained.
-        const exactKeys = keys.filter((_, i) => exact?.[i + 1] === true)
-        const isComplete = exactKeys.length === keys.length
-        if (exact?.[0] !== true) {
-          return [isComplete && branches.length === 2 ? { anyOf: branches } : {}, true]
-        }
-        const fragment = {
-          if: condition,
-          ...Object.fromEntries(exactKeys.map((key) => [conditionalKeywords[key], branches[keys.indexOf(key)]]))
-        }
-        return isComplete ? fragment : [fragment, true]
-      },
+      toJsonSchema: () => [{}, true],
       toCode: ({ schemas: [condition, ...branches] }) => ({
         runtime: `Schema.isConditional(${condition.runtime}, { ${
           keys.map((key, i) => `${key}: ${branches[i].runtime}`).join(", ")
@@ -9218,8 +9204,6 @@ export function isConditional(
     }
   )
 }
-
-const conditionalKeywords = { onTrue: "then", onFalse: "else" } as const
 
 /**
  * Validates that all items in an array are unique according to Effect equality.

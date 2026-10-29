@@ -277,26 +277,17 @@ export function fromJsonSchemaMultiDocument(
   const validatedAliases = new Set<string>()
   const resolvingChoices = new Set<string>()
   const references = new Map<string, ReferenceSlot>()
-  // Definitions finalized for a condition, when they contain closed objects.
-  const conditionReferences = new Map<string, ReferenceSlot>()
-  const reachesClosedObjectCache = new Map<string, boolean>()
   let inNestedResource = false
 
-  // A condition only selects a branch, so closed objects inside it must reject
-  // excess properties instead of stripping them under the caller's parse options.
-  function finalize(input: ImportedJsonSchemaRepresentation, inCondition = false): Schema.Top {
+  function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
     const annotations = mergeAnnotations(input.annotations, input.customAnnotations)
     if (input._tag === "Reference") {
       if (annotations !== undefined) resolveReference(input, input.path)
-      const conditionScoped = inCondition && reachesClosedObject(input)
-      const slots = conditionScoped ? conditionReferences : references
-      let slot = slots.get(input.$ref)
+      let slot = references.get(input.$ref)
       if (slot === undefined) {
         slot = new ReferenceSlot(input.$ref)
-        slots.set(input.$ref, slot)
-        slot.body = finalize(translateDefinition(input.$ref, input.path), conditionScoped).annotate({
-          identifier: input.$ref
-        })
+        references.set(input.$ref, slot)
+        slot.body = finalize(translateDefinition(input.$ref, input.path)).annotate({ identifier: input.$ref })
       }
       return annotations === undefined ? slot.body ?? slot.wrapper : slot.wrapper.annotate(annotations)
     }
@@ -318,10 +309,10 @@ export function fromJsonSchemaMultiDocument(
         break
       case "Arrays": {
         const elements = input.elements.map((element) => {
-          const type = finalize(element.type, inCondition)
+          const type = finalize(element.type)
           return element.isOptional ? Schema.optionalKey(type) : type
         })
-        const rest = input.rest[0] === undefined ? undefined : finalize(input.rest[0], inCondition)
+        const rest = input.rest[0] === undefined ? undefined : finalize(input.rest[0])
         schema = rest !== undefined
           ? elements.length === 0
             ? Schema.Array(rest)
@@ -342,27 +333,13 @@ export function fromJsonSchemaMultiDocument(
         }
         const fields: Record<string, Schema.Top> = {}
         for (const property of input.propertySignatures) {
-          const type = finalize(property.type, inCondition)
+          const type = finalize(property.type)
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        let key: Schema.Record.Key | undefined
-        let record: Schema.StructWithRest.Records[number] | undefined
-        if (index !== undefined) {
-          key = finalize(index.parameter) as Schema.Record.Key
-          record = Schema.Record(key, finalize(index.type, inCondition))
-        }
-        if (inCondition && isClosedObject(input)) {
-          // Keep every key so the property names check sees the excess ones.
-          const names = input.propertySignatures.map((property) => property.name)
-          schema = Schema.StructWithRest(Schema.Struct(fields), [
-            ...(record === undefined ? [] : [record]),
-            Schema.Record(Schema.String, finalize(unknown))
-          ]).check(Schema.isPropertyNames(
-            key ?? (names.length === 0 ? Schema.Never : Schema.Literals(names))
-          ))
-          break
-        }
+        const record = index === undefined
+          ? undefined
+          : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
         schema = record !== undefined
           ? input.propertySignatures.length === 0
             ? record
@@ -371,82 +348,30 @@ export function fromJsonSchemaMultiDocument(
         break
       }
       case "Union":
-        schema = Schema.Union(input.types.map((type) => finalize(type, inCondition)), input.options)
+        schema = Schema.Union(input.types.map(finalize), input.options)
         break
     }
     if (annotations !== undefined) schema = schema.annotate(annotations)
-    const checks = input.checks.map((check) => finalizeCheck(check, inCondition))
+    const checks = input.checks.map(finalizeCheck)
     return checks.length > 0 ? schema.check(...checks as [InternalAST.Check<any>]) : schema
   }
 
-  function finalizeCheck(check: Check, inCondition: boolean): InternalAST.Check<any> {
+  function finalizeCheck(check: Check): InternalAST.Check<any> {
     if (check._tag === "FilterGroup") {
       return Schema.makeFilterGroup(
-        check.checks.map((check) => finalizeCheck(check, inCondition)) as [
-          InternalAST.Check<any>,
-          ...Array<InternalAST.Check<any>>
-        ],
+        check.checks.map(finalizeCheck) as [InternalAST.Check<any>, ...Array<InternalAST.Check<any>>],
         check.annotations
       )
     }
     const filter = check._tag === "PropertyNames"
       ? Schema.isPropertyNames(finalize(check.type))
       : check._tag === "Conditional"
-      ? Schema.isConditional(finalize(check.condition, true), {
-        onTrue: check.onTrue === undefined ? undefined : finalize(check.onTrue, inCondition),
-        onFalse: check.onFalse === undefined ? undefined : finalize(check.onFalse, inCondition)
+      ? Schema.isConditional(finalize(check.condition), {
+        onTrue: check.onTrue === undefined ? undefined : finalize(check.onTrue),
+        onFalse: check.onFalse === undefined ? undefined : finalize(check.onFalse)
       })
       : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
-  }
-
-  // Without an open index signature, finalize relies on parse options to reject excess keys.
-  function isClosedObject(input: ImportedObjects): boolean {
-    return input.indexSignatures[0]?.parameter !== string
-  }
-
-  // Whether finalizing a reference inside a condition differs from finalizing it elsewhere.
-  function reachesClosedObject(reference: ImportedReference): boolean {
-    let result = reachesClosedObjectCache.get(reference.$ref)
-    if (result === undefined) {
-      result = visit(reference, new Set())
-      reachesClosedObjectCache.set(reference.$ref, result)
-    }
-    return result
-
-    function visit(input: ImportedJsonSchemaRepresentation, seen: Set<string>): boolean {
-      switch (input._tag) {
-        case "Reference":
-          if (seen.has(input.$ref)) return false
-          seen.add(input.$ref)
-          return visit(translateDefinition(input.$ref, input.path), seen)
-        case "Arrays":
-          return input.elements.some((element) => visit(element.type, seen)) ||
-            input.rest.some((rest) => visit(rest, seen)) || input.checks.some((check) => visitCheck(check, seen))
-        case "Objects":
-          return isClosedObject(input) ||
-            input.propertySignatures.some((property) => visit(property.type, seen)) ||
-            input.indexSignatures.some((index) => visit(index.type, seen)) ||
-            input.checks.some((check) => visitCheck(check, seen))
-        case "Union":
-          return input.types.some((type) => visit(type, seen)) || input.checks.some((check) => visitCheck(check, seen))
-        default:
-          return input.checks.some((check) => visitCheck(check, seen))
-      }
-    }
-
-    // Conditions are always finalized for a condition, so only branches can differ.
-    function visitCheck(check: Check, seen: Set<string>): boolean {
-      switch (check._tag) {
-        case "FilterGroup":
-          return check.checks.some((check) => visitCheck(check, seen))
-        case "Conditional":
-          return check.onTrue !== undefined && visit(check.onTrue, seen) ||
-            check.onFalse !== undefined && visit(check.onFalse, seen)
-        default:
-          return false
-      }
-    }
   }
 
   function annotate(
