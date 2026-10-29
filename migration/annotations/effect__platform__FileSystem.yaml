@@ -30,7 +30,7 @@
   note: "The helper remains after moving the module to effect/FileSystem."
 "@effect/platform/FileSystem#make":
   replacement: "FileSystem.make"
-  note: "The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links."
+  note: "The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links and readDirectoryEntries to list { name, type } entries (map readDirectory names to type \"Unknown\" if types are unavailable). glob is derived and cannot be passed; override it afterward with FileSystem.of({ ...fs, glob })."
 "@effect/platform/FileSystem#MakeDirectoryOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"makeDirectory\"]>[1]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."

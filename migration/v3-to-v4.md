@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`20e5ba813ca014bc841672325b5e824b8100d976`)
+Head: `origin/main` (`b41529e2ea04dff5fb1f68ef8044d42b75ba141e`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -490,7 +490,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/opentelemetry/OtlpSerialization` -> `effect/observability/OtlpSerialization`
 - `@effect/opentelemetry/OtlpTracer` -> `effect/observability/OtlpTracer`
 - `@effect/opentelemetry/Tracer`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly.
+- `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly. NodeSdk and WebSdk are no longer in the root barrel; import them from @effect/opentelemetry/NodeSdk and @effect/opentelemetry/WebSdk.
 - `@effect/platform` -> `none`: The @effect/platform package was folded into the effect package: core services live in effect root modules (e.g. effect/FileSystem, effect/Path) and HTTP in effect/http; follow the Import Map for each module.
 - `@effect/platform-browser/index` -> `@effect/platform-browser`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-browser package root or import specific modules directly.
 - `@effect/platform-bun/BunCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
@@ -1511,6 +1511,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Generated.UploadFileV1FilesPostParams` -> `Generated.UploadFileV1FilesPostParams`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.UploadFileV1FilesPostRequest` -> `Generated.UploadFileV1FilesPostRequestFormData`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
+
+- `Generated.Usage` -> `Generated.Usage`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.UsageServiceTierEnum` -> `none`: Removed or inlined when the Anthropic specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -4970,27 +4972,27 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `McpServer.McpServer` -> `McpServer.McpServer`: The service is now a Context.Service. initializedClients and notificationsMailbox are no longer exposed. Registration callbacks use McpSchema.McpRequestContext; McpServerClient is only supplied for initialized stateful requests. Prefer registerToolkit, registerResource, and registerPrompt over implementing the registry shape directly.
 
-- `McpServer.layer` -> `McpServer.layer`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it still runs over a caller-provided RpcServer.Protocol.
+- `McpServer.layer` -> `McpServer.layer`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it still runs over a caller-provided RpcServer.Protocol. Pass registration layers as the registrations option to build them before the server starts.
 
-- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai. Pass registration layers as the registrations option; request-level dependencies it doesn't supply become HttpRouter request requirements that HttpRouter.middleware can provide.
 
-- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai, and registration layers as the registrations option.
 
-- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai, and registration layers as the registrations option.
 
-- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from prompt decoding, handler, and completion callback requirements instead of McpServerClient.
+- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/ai/McpServer. The layer now requires McpServer. Services read by prompt and completion handlers are request-level, provided with McpServer.middleware; read construction-time services in Layer.unwrap and close over them.
 
-- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/ai/McpServer. Prompt decoding, handler, and completion callback requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/ai/McpServer. Services read by prompt and completion handlers are request-level, provided per request with McpServer.middleware; parameter decoding services are still required at registration. McpSchema.McpRequestContext is always provided.
 
-- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/ai/McpServer. Resource and completion handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/ai/McpServer. Services read by resource and completion handlers are request-level, provided per request with McpServer.middleware; read construction-time services in the enclosing effect and close over them. McpSchema.McpRequestContext is always provided.
 
-- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/ai/McpServer. Requirements from every tool handler are propagated, excluding McpSchema.McpRequestContext instead of McpServerClient; provide the remaining handler services. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
+- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/ai/McpServer. Services a tool declares with dependencies or Tool.addDependency are request-level: provide them per request with McpServer.middleware instead of at registration. Parameter decoding and result encoding services are still required at registration. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
 
-- `McpServer.resource` -> `McpServer.resource`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from resource and completion handler requirements instead of McpServerClient.
+- `McpServer.resource` -> `McpServer.resource`: Moved to effect/ai/McpServer. The layer now requires McpServer. Services read by resource and completion handlers are request-level, provided with McpServer.middleware; read construction-time services in Layer.unwrap and close over them instead of using Layer.provide.
 
 - `McpServer.run` -> `McpServer.run`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it remains the Effect-level runner over RpcServer.Protocol.
 
-- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/ai/McpServer. The registration layer supplies McpSchema.McpRequestContext to handlers instead of excluding McpServerClient from requirements. Its requirements include services from every tool handler. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
+- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/ai/McpServer. The layer now requires McpServer; pass it to a transport through the registrations option. Services a tool declares with dependencies are request-level and are provided with McpServer.middleware. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
 
 ### `@effect/ai/Model`
 
@@ -6090,13 +6092,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Persistence.ResultPersistenceTypeId` -> `none`: The ResultPersistence brand is no longer publicly exported in v4.
 
-- `Persistence.layerKeyValueStore` -> `effect/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs.
+- `Persistence.layerKeyValueStore` -> `effect/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs. Entries are now stored under `<storeId>:<key>` with the store id percent-encoded, so entries written by v3 under `<storeId><key>` are not read back and are recomputed; clearing a store removes only its own entries.
 
 - `Persistence.layerMemory` -> `effect/persistence/Persistence#layerBackingMemory`: Use layerBackingMemory for the old backing service; v4 layerMemory creates the higher-level Persistence service.
 
 - `Persistence.layerResult` -> `effect/persistence/Persistence#layer`: The ResultPersistence service layer was renamed to layer.
 
-- `Persistence.layerResultKeyValueStore` -> `effect/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs.
+- `Persistence.layerResultKeyValueStore` -> `effect/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs. Entries are now stored under `<storeId>:<key>` with the store id percent-encoded, so entries written by v3 under `<storeId><key>` are not read back and are recomputed.
 
 - `Persistence.layerResultMemory` -> `effect/persistence/Persistence#layerMemory`: The combined memory-backed result layer was renamed to layerMemory.
 
@@ -6312,7 +6314,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-bun/BunHttpServer`
 
-- `BunHttpServer.ServeOptions` -> `BunHttpServer.ServeOptions<R>`: The alias remains, but R is now a route-key string union and routes uses Bun.Serve.Routes; update old route-map generic arguments or infer R from routes.
+- `BunHttpServer.ServeOptions` -> `BunHttpServer.ServeOptions<R>`: The alias remains, but R is now a route-key string union and routes uses Bun.Serve.Routes; update old route-map generic arguments or infer R from routes. Bun's 10 second idleTimeout is now disabled unless idleTimeout is set, so directly exposed servers should set it.
 
 - `BunHttpServer.layerContext` -> `BunHttpServer.layerHttpServices`: Direct rename; it provides HttpPlatform, Etag.Generator, and BunServices.
 
@@ -6574,7 +6576,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Command.lines` -> `ChildProcessSpawner.ChildProcessSpawner.lines`: Output collection moved onto the ChildProcessSpawner service.
 
-- `Command.runInShell` -> `ChildProcess.CommandOptions["shell"]`: Set shell when calling ChildProcess.make; there is no post-construction shell combinator.
+- `Command.runInShell` -> `ChildProcess.CommandOptions["shell"]`: Set shell when calling ChildProcess.make; there is no post-construction shell combinator. With shell set, the command string is the whole script: extra arguments fail with BadArgument and templates cannot interpolate ${} values, so build the script with CommandLine.join or CommandLine.quote.
 
 - `Command.start` -> `ChildProcessSpawner.ChildProcessSpawner.spawn`: Use the spawner service, or yield the Effectable ChildProcess.Command directly, to obtain a ChildProcessHandle.
 
@@ -6704,7 +6706,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `FileSystem.layerNoop` -> `FileSystem.layerNoop`: The helper remains after moving the module to effect/FileSystem.
 
-- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links.
+- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links and readDirectoryEntries to list { name, type } entries (map readDirectory names to type "Unknown" if types are unavailable). glob is derived and cannot be passed; override it afterward with FileSystem.of({ ...fs, glob }).
 
 ### `@effect/platform/Headers`
 
@@ -6916,6 +6918,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/http-api/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
 
+- `HttpApiMiddleware.HttpApiMiddleware.Without` -> `Exclude<R, HttpApiMiddleware.AnyId>`: The helper was removed because middleware IDs are explicit; use Exclude when the direct filter is still needed.
+
 - `HttpApiMiddleware.SecurityTypeId` -> `none`: The marker is private; use HttpApiMiddleware.isSecurity.
 
 - `HttpApiMiddleware.Tag` -> `effect/http-api/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
@@ -7108,6 +7112,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpClient.transform` -> `effect/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
 
+- `HttpClient.withCookiesRef` -> `HttpClient.withCookiesRef`: Pass a Ref\<ReadonlyArray\<Cookies.Cookie\>\> instead of a Ref\<Cookies\>. Stored cookies are sent only to a matching host, path and scheme, and a cookie without a domain is never sent; seed the ref with Cookies.mergeIntoArray for the target URL or with cookies that set a domain.
+
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
 
 - `HttpClient.withTracerDisabledWhen` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, predicate))`: The convenience combinator was removed; provide the reference around response effects.
@@ -7123,6 +7129,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpClientError.TypeId` -> `HttpClientError.isHttpClientError`: The brand key is private in v4; use the public runtime refinement.
 
 ### `@effect/platform/HttpClientRequest`
+
+- `HttpClientRequest.HttpClientRequest` -> `HttpClientRequest.HttpClientRequest`: method is now typed as string because requests converted from Web or server requests can carry methods outside the HttpMethod literals; exhaustive matches need a fallback or an HttpMethod.isHttpMethod guard.
 
 - `HttpClientRequest.Options.NoBody` -> `HttpClientRequest.Options.NoUrl`: NoBody was removed; v4 method helpers uniformly omit only url.
 
@@ -7178,6 +7186,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.FindMyWay.make` -> `FindMyWay.make`: Import FindMyWay from effect/http.
 
+- `HttpLayerRouter.Middleware` -> `HttpRouter.Middleware`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.Middleware is a separate type for MCP request middleware.
+
 - `HttpLayerRouter.MiddlewareTypeId` -> `none`: The middleware type id is internal in v4; use HttpRouter.Middleware.
 
 - `HttpLayerRouter.PathInput` -> `HttpRouter.PathInput`: Moved to the consolidated v4 router.
@@ -7185,6 +7195,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.Request.From` -> `HttpRouter.Request.From`: Moved with the layer-oriented router into the consolidated HttpRouter module.
 
 - `HttpLayerRouter.Request.Only` -> `HttpRouter.Request.Only`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Request.Without` -> `HttpRouter.Request.Without`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.McpRequest.Without is the MCP counterpart.
 
 - `HttpLayerRouter.Route.Context` -> `HttpRouter.Route.Context`: Moved with the Route helper types into the consolidated HttpRouter module.
 
@@ -7210,6 +7222,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
+- `HttpLayerRouter.middleware.Fn` -> `HttpRouter.middleware.Fn`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.middleware.Fn is a separate type for MCP request middleware.
+
+- `HttpLayerRouter.middleware.Make` -> `HttpRouter.middleware.Make`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.middleware.Make is a separate type for MCP request middleware.
+
 - `HttpLayerRouter.schemaJson` -> `HttpRouter.schemaJson`: Moved to the consolidated router with v4 Schema and error types.
 
 - `HttpLayerRouter.schemaNoBody` -> `HttpRouter.schemaNoBody`: Moved to the consolidated router with v4 Schema types.
@@ -7219,6 +7235,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.toHttpEffect` -> `HttpRouter.toHttpEffect`: Moved to the consolidated HttpRouter; route-not-found failures now use HttpServerError.HttpServerError.
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
+
+### `@effect/platform/HttpMethod`
+
+- `HttpMethod.hasBody` -> `HttpMethod.hasBody`: Retained and now narrows an HttpMethod to HttpMethod.WithBody. An overload also accepts any string, such as a received request method, and returns a plain boolean.
 
 ### `@effect/platform/HttpMiddleware`
 
@@ -7356,7 +7376,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpServerRequest`
 
-- `HttpServerRequest.HttpServerRequest` -> `HttpServerRequest.HttpServerRequest`: Custom implementations must also supply upgradeWith({ headers }), which upgrades the connection and sends the given headers on the 101 response; upgrade is equivalent to upgradeWith({}). WebSocket upgrades fail when headers are given.
+- `HttpServerRequest.HttpServerRequest` -> `HttpServerRequest.HttpServerRequest`: Custom implementations must also supply upgradeWith({ headers }), which upgrades the connection and sends the given headers on the 101 response; upgrade is equivalent to upgradeWith({}). WebSocket upgrades fail when headers are given. method is now typed as string because received methods such as PROPFIND are kept as is; exhaustive matches need a fallback or an HttpMethod.isHttpMethod guard.
 
 - `HttpServerRequest.ParsedSearchParams` -> `HttpServerRequest.ParsedSearchParams`: The marker and tag became one Context.Service class.
 
@@ -7422,9 +7442,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `KeyValueStore.layerSchema` -> `KeyValueStore.toSchemaStore`: Schema stores are now derived with toSchemaStore; define the desired Context.Service and layer explicitly.
 
-- `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions.
+- `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions. Custom stores must now also provide keys, an effect returning a snapshot of the stored keys; clearPrefix is derived from keys and remove when omitted.
 
-- `KeyValueStore.prefix` -> `KeyValueStore.prefix`: The prefixed-store combinator remains in the moved module.
+- `KeyValueStore.prefix` -> `KeyValueStore.prefix`: The prefixed-store combinator remains in the moved module. Unlike v3, clear, size and isEmpty now apply only to keys under the prefix, and keys returns them with the prefix removed.
 
 ### `@effect/platform/MsgPack`
 
@@ -7830,6 +7850,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcClient.layerProtocolHttp` -> `effect/rpc/RpcClient#layerProtocolHttp`: Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
 
+- `RpcClient.makeNoSerialization` -> `effect/rpc/RpcClient#makeNoSerialization`: Retained, but onFromClient no longer receives a discard flag; a discarded call is a Request message with discard: true. Discarded calls now complete when the server acknowledges them rather than when the request is written.
+
 - `RpcClient.makeProtocolHttp` -> `effect/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
 - `RpcClient.withHeadersEffect` -> `Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))`: withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect.
@@ -8164,7 +8186,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/Statement`
 
-- `Statement.Constructor` -> `effect/sql/Statement#Constructor`: Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as "data" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them.
+- `Statement.Constructor` -> `effect/sql/Statement#Constructor`: Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as "data" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them. sql.insert and sql.updateValues now require a non-empty array of rows; narrow array inputs with Array.isReadonlyArrayNonEmpty first.
 
 - `Statement.Fragment`: TODO: needs guidance
 
