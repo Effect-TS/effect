@@ -77,12 +77,8 @@ export type Role = "public" | "private" | "secret"
 export type Direction = "decode" | "encode"
 
 /**
- * A JSON Web Key (RFC 7517), as the Web Crypto API reads and writes it.
- *
- * **Details**
- *
- * Declared here so the declarations do not depend on the DOM library's global
- * `JsonWebKey`. It matches that global and Node's `webcrypto.JsonWebKey`.
+ * A JSON Web Key (RFC 7517) with the native Web Crypto field types and
+ * mutability, usable without DOM declarations.
  *
  * @stability unstable
  * @category models
