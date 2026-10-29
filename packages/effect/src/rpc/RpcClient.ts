@@ -425,11 +425,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             rpc,
             context,
             resume(exit) {
-              if (discard) {
+              if (discard && exit._tag === "Success") {
                 // Interrupting the send could cancel the call, as an HTTP
                 // handler is scoped to its request, so the call completes
-                // once the send has finished too.
-                ack = exit._tag === "Success" ? Exit.void : exit
+                // once the send has finished too. A failure, such as a
+                // transport error, completes the call at once.
+                ack = Exit.void
                 if (fiber?.pollUnsafe()) resume(ack)
                 return
               }

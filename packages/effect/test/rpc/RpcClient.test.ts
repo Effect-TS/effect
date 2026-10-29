@@ -469,6 +469,36 @@ describe("RpcClient", () => {
       assert.isUndefined(yield* Fiber.join(call))
     }))
 
+  it.effect("fails a discarded call on a transport error while its send is still pending", () =>
+    Effect.gen(function*() {
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(
+        RpcClient.Protocol,
+        RpcClient.Protocol.of({
+          codecFor: RpcSerialization.json.codecFor,
+          supportsAck: false,
+          supportsTransferables: false,
+          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+          // a socket write waits while the connection is down
+          send: (_clientId, message) =>
+            message._tag === "Request" ? Queue.offer(sent, message).pipe(Effect.andThen(Effect.never)) : Effect.void
+        })
+      ))
+      const handle = yield* Deferred.await(received)
+      const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.exit, Effect.forkChild)
+      yield* Queue.take(sent)
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection lost", cause: undefined })
+      })
+
+      yield* handle({ _tag: "ClientProtocolError", error })
+
+      const exit = call.pollUnsafe()
+      assert(exit !== undefined && Exit.isSuccess(exit))
+      assert.deepStrictEqual(exit.value, Exit.fail(error))
+    }))
+
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
