@@ -1470,6 +1470,7 @@ const make = Effect.gen(function*() {
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
       const now = clock.currentTimeMillisUnsafe()
+      const newlyHealthy: Array<Runner> = []
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
         MutableHashMap.set(nextRunners, runner, healthy)
@@ -1492,7 +1493,7 @@ const make = Effect.gen(function*() {
           continue
         }
         changed = true
-        addToRings(runner)
+        newlyHealthy.push(runner)
       }
 
       // Remove runners that are no longer present or healthy
@@ -1516,6 +1517,11 @@ const make = Effect.gen(function*() {
           HashRing.remove(hashRings.get(runner.groups[i])!, runner.address)
         }
       })
+
+      // Add runners after removals, so a runner re-registered at the same address keeps its ring entries
+      for (let i = 0; i < newlyHealthy.length; i++) {
+        addToRings(newlyHealthy[i])
+      }
 
       // Publish pending joins once the healthy set has settled, the cap is
       // reached, or the assignments are recomputed anyway.
