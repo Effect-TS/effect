@@ -74,8 +74,10 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * unless explicitly disabled through `ssl` options.
  *
  * Prepared statements are enabled by default and limited by
- * `preparedStatementCacheSize`. Disable them for statement-mode poolers or
- * workloads that generate unique SQL. Streams always use unnamed statements.
+ * `preparedStatementCacheSize`. Disable them for poolers that do not keep
+ * named statements between transactions or statements, such as PgBouncer
+ * with `max_prepared_statements = 0`, or for workloads that generate unique
+ * SQL. Streams always use unnamed statements.
  *
  * With `multiplex` enabled, unpinned queries from multiple fibers are
  * pipelined. Transactions, streams, and listeners remain exclusive. An

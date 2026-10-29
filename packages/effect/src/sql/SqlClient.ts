@@ -206,9 +206,8 @@ export declare namespace SqlClient {
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
-     * Whether the transaction control statements - `BEGIN`, `COMMIT`,
-     * `ROLLBACK`, and the savepoint pair - can be prepared like any other
-     * statement.
+     * Whether the transaction control statements - `BEGIN`, `COMMIT` and
+     * `SAVEPOINT` - can be prepared like any other statement.
      *
      * **Details**
      *
@@ -216,6 +215,11 @@ export declare namespace SqlClient {
      * prepare them stops parsing them again each time. Off by default,
      * because several databases refuse to prepare transaction control at all;
      * a driver has to say that its own does not.
+     *
+     * Rollbacks and savepoint releases always run unprepared. A prepared
+     * statement the backend has lost cannot be parsed again inside a
+     * transaction, so cleanup that depended on one could leave the
+     * transaction open.
      */
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
@@ -274,13 +278,14 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const rollback = options.rollback ?? "ROLLBACK"
   const rollbackSavepoint = options.rollbackSavepoint ?? ((name: string) => `ROLLBACK TO SAVEPOINT ${name}`)
   const transactionAcquirer = options.transactionAcquirer ?? options.acquirer
+  const unprepared = (conn: Connection.Connection, sql: string) => conn.executeUnprepared(sql, [], undefined)
   const control = options.prepareTransactionControls === true
     ? (conn: Connection.Connection, sql: string) => conn.execute(sql, [], undefined)
-    : (conn: Connection.Connection, sql: string) => conn.executeUnprepared(sql, [], undefined)
+    : unprepared
   const isTransaction = options.isTransaction
   const cleanup = isTransaction
-    ? (conn: Connection.Connection, sql: string) => isTransaction(conn) ? control(conn, sql) : Effect.void
-    : control
+    ? (conn: Connection.Connection, sql: string) => isTransaction(conn) ? unprepared(conn, sql) : Effect.void
+    : unprepared
   const withTransaction = makeWithTransaction({
     transactionService,
     spanAttributes: options.spanAttributes,
