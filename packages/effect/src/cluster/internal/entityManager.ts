@@ -369,8 +369,11 @@ export const make = Effect.fnUntraced(function*<
                     )
                   }
                 }
+                // A failed save can abort the request transaction, so a retry
+                // could store a success outside it. Save once and let the
+                // failed transaction replay the request.
                 const write = retryRespond(
-                  4,
+                  persisted && request.transaction && Exit.isSuccess(response.exit) ? 0 : 4,
                   Effect.suspend(() =>
                     request.message.respond(
                       new Reply.WithExit({
