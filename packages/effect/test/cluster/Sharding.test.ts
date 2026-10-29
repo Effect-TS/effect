@@ -2905,53 +2905,6 @@ describe("Sharding metrics", { concurrent: false }, () => {
     }))
 })
 
-describe("Sharding runner refresh", () => {
-  const heldShardsAroundReregister = Effect.fnUntraced(function*(before: Runner.Runner, after: Runner.Runner) {
-    const storage = yield* RunnerStorage.makeMemory
-    const context = yield* Sharding.layer.pipe(
-      Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, storage)),
-      Layer.provide([RunnerHealth.layerNoop, Runners.layerNoop]),
-      Layer.provide(MessageStorage.layerMemory),
-      Layer.provide(ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-        shardsPerGroup: 8,
-        refreshAssignmentsInterval: 10
-      })),
-      Layer.build
-    )
-    const sharding = Context.get(context, Sharding.Sharding)
-    const shardIds = Array.makeBy(8, (i) => ShardId.make("default", i + 1))
-    const held = () => shardIds.filter((shardId) => sharding.hasShardId(shardId)).length
-
-    yield* storage.register(before, true)
-    yield* TestClock.adjust(1000)
-    const heldBefore = held()
-    yield* storage.register(after, true)
-    yield* TestClock.adjust(1000)
-    return [heldBefore, held()] as const
-  })
-
-  it.effect("assigns shards to a runner that re-registers with a new shard group", () =>
-    Effect.gen(function*() {
-      const [before, after] = yield* heldShardsAroundReregister(
-        Runner.make({ address: otherRunner.address, groups: ["other"], weight: 1 }),
-        Runner.make({ address: otherRunner.address, groups: ["default", "other"], weight: 1 })
-      )
-      assert.strictEqual(before, 8)
-      assert.strictEqual(after, 4)
-    }))
-
-  it.effect("keeps assigning shards to a runner that re-registers with a new weight", () =>
-    Effect.gen(function*() {
-      const [before, after] = yield* heldShardsAroundReregister(
-        otherRunner,
-        Runner.make({ address: otherRunner.address, groups: ["default"], weight: 2 })
-      )
-      assert.strictEqual(before, 4)
-      assert.isBelow(after, 4)
-    }))
-})
-
 describe("Sharding shard lock failover", { concurrent: false }, () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
@@ -4535,6 +4488,26 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
       membership[0] = [existing, false]
       yield* advance(500)
       assert.strictEqual(history.length, 2, "the unhealthy runner should be published immediately")
+    }).pipe(Effect.scoped))
+
+  it.effect("updates assignments when a runner re-registers with new groups or weight", () =>
+    Effect.gen(function*() {
+      const other = (groups: Array<string>, weight: number) =>
+        Runner.make({ address: RunnerAddress.make("localhost", 5001), groups, weight })
+      const membership: Array<readonly [Runner.Runner, boolean]> = [[other(["other"], 1), true]]
+      const { advance, history } = yield* buildRunner(membership)
+      const owned = () => history[history.length - 1].owned.split(",").length
+      yield* advance(1000)
+      assert.strictEqual(owned(), shards.length)
+
+      membership[0] = [other(["default", "other"], 1), true]
+      yield* advance(1000)
+      const withGroup = owned()
+      assert.isBelow(withGroup, shards.length)
+
+      membership[0] = [other(["default", "other"], 2), true]
+      yield* advance(1000)
+      assert.isBelow(owned(), withGroup)
     }).pipe(Effect.scoped))
 
   // Runners A (1234) and Z (1240, assigned no shard groups) start together,
