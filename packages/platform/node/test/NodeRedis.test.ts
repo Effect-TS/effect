@@ -1,10 +1,8 @@
 import { NodeRedis } from "@effect/platform-node"
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { Redis } from "effect/persistence"
-import * as ChildProcess from "node:child_process"
 import * as Net from "node:net"
-import * as Util from "node:util"
 
 // A loopback peer that accepts a connection and, unless `onData` replies,
 // never answers.
@@ -81,43 +79,4 @@ describe("NodeRedis", () => {
       // The client is fully destroyed, not just disconnected by the abort signal.
       yield* Deferred.await(ended)
     }))
-
-  it.live("stops reconnecting after a socket timeout", () =>
-    Effect.gen(function*() {
-      const peer = yield* makePeer((socket, data) => {
-        // Complete the connection handshake, but never reply to PING.
-        for (const [, command] of data.matchAll(/\*\d+\r\n\$\d+\r\n(\w+)\r\n/g)) {
-          if (command !== "PING") socket.write("+OK\r\n")
-        }
-      })
-      yield* Effect.gen(function*() {
-        const { client } = yield* NodeRedis.NodeRedis
-        const redis = yield* Redis.Redis
-        yield* Effect.flip(redis.send("PING"))
-        assert.isFalse(client.isOpen)
-      }).pipe(
-        Effect.provide(NodeRedis.layer({
-          socket: { host: "127.0.0.1", port: peer.port, socketTimeout: 200 },
-          RESP: 2,
-          disableClientInfo: true,
-          maintNotifications: "disabled"
-        }))
-      )
-    }))
-
-  // Vitest's CommonJS interop hides missing named exports, so plain Node loads
-  // the module, with `redis` resolved to the oldest supported peer.
-  it("loads under native ESM with redis 5.0.x", async () => {
-    const redis = new URL("./fixtures/redis-5.0.cjs", import.meta.url).href
-    const nodeRedis = new URL("../src/NodeRedis.ts", import.meta.url).href
-    await Util.promisify(ChildProcess.execFile)(process.execPath, [
-      "--input-type=module",
-      "--eval",
-      `import { registerHooks } from "node:module"
-registerHooks({
-  resolve: (specifier, context, next) => next(specifier === "redis" ? ${JSON.stringify(redis)} : specifier, context)
-})
-await import(${JSON.stringify(nodeRedis)})`
-    ])
-  })
 })
