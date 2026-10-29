@@ -61,8 +61,7 @@ export const layer = (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   /**
-   * Trace sampling, passed to `OtlpTracer.layer` as `sampler`. Defaults to
-   * keeping every trace.
+   * Passed to `OtlpTracer.layer` as `sampler`.
    */
   readonly tracerSampler?: {
     readonly ratio: number
@@ -180,8 +179,7 @@ export const layerJson: (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   /**
-   * Trace sampling, passed to `OtlpTracer.layer` as `sampler`. Defaults to
-   * keeping every trace.
+   * Passed to `OtlpTracer.layer` as `sampler`.
    */
   readonly tracerSampler?: {
     readonly ratio: number
@@ -223,8 +221,7 @@ export const layerProtobuf: (options: {
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
   /**
-   * Trace sampling, passed to `OtlpTracer.layer` as `sampler`. Defaults to
-   * keeping every trace.
+   * Passed to `OtlpTracer.layer` as `sampler`.
    */
   readonly tracerSampler?: {
     readonly ratio: number
