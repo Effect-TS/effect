@@ -4,6 +4,17 @@ import * as Effect from "effect/Effect"
 import * as Path from "effect/Path"
 
 describe("Path", () => {
+  it.effect("format adds a missing dot to extensions", () =>
+    Effect.gen(function*() {
+      const path = yield* Path.Path
+
+      for (const ext of ["csv", ".csv"]) {
+        strictEqual(path.format({ name: "report", ext }), "report.csv")
+      }
+      strictEqual(path.format({ name: "report", ext: "" }), "report")
+      strictEqual(path.format({ base: "report.txt", ext: "csv" }), "report.txt")
+    }).pipe(Effect.provide(Path.layer)))
+
   it.effect("resolveWithin keeps POSIX paths lexically inside the root", () =>
     Effect.gen(function*() {
       const path = yield* Path.Path

@@ -387,7 +387,8 @@ function normalizeStringPosix(path: string, allowAboveRoot: boolean) {
 
 function _format(sep: string, pathObject: Partial<Path.Parsed>) {
   const dir = pathObject.dir || pathObject.root
-  const base = pathObject.base || (pathObject.name || "") + (pathObject.ext || "")
+  const ext = pathObject.ext || ""
+  const base = pathObject.base || (pathObject.name || "") + (ext && !ext.startsWith(".") ? `.${ext}` : ext)
   if (!dir) {
     return base
   }
