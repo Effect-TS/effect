@@ -606,6 +606,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     })
 
   const write = (message: FromServer<Rpcs>): Effect.Effect<void> => {
+    // Without replies, entries only track pending sends, so per-request
+    // messages must not complete them. Defects still reach every entry.
+    if (!supportsReplies && (message._tag === "Chunk" || message._tag === "Exit")) {
+      return Effect.void
+    }
     switch (message._tag) {
       case "Chunk": {
         const requestId = message.requestId
