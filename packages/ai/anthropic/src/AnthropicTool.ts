@@ -1874,6 +1874,13 @@ export type TextEditorStrReplaceCommand = typeof TextEditorStrReplaceCommand.Typ
  * Inserts the new text after the specified line number. Use `0` to insert at
  * the beginning of the file; other values are 1-indexed.
  *
+ * **Gotchas**
+ *
+ * Used by `text_editor_20250429` and `text_editor_20250728`. The older
+ * `str_replace_editor` versions send `new_str` instead.
+ *
+ * @see {@link TextEditorLegacyInsertCommand} for `text_editor_20241022` and `text_editor_20250124`
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -1901,6 +1908,45 @@ export const TextEditorInsertCommand = Schema.Struct({
  * @since 4.0.0
  */
 export type TextEditorInsertCommand = typeof TextEditorInsertCommand.Type
+
+/**
+ * Inserts text at a specific line number in a file, using the `new_str` field
+ * sent by the older `str_replace_editor` tool versions.
+ *
+ * **Gotchas**
+ *
+ * Used by `text_editor_20241022` and `text_editor_20250124`.
+ *
+ * @see {@link TextEditorInsertCommand} for `text_editor_20250429` and `text_editor_20250728`
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.1
+ */
+export const TextEditorLegacyInsertCommand = Schema.Struct({
+  command: Schema.Literal("insert"),
+  /**
+   * Path to the file to modify.
+   */
+  path: Schema.String,
+  /**
+   * The line number after which to insert (0 = beginning, 1-indexed).
+   */
+  insert_line: Schema.Int,
+  /**
+   * The text to insert.
+   */
+  new_str: Schema.String
+})
+/**
+ * Text editor command payload for inserting text in `text_editor_20241022` and
+ * `text_editor_20250124`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.1
+ */
+export type TextEditorLegacyInsertCommand = typeof TextEditorLegacyInsertCommand.Type
 
 /**
  * Undoes the last edit made to a file.
@@ -1945,7 +1991,7 @@ const TextEditor_StrReplaceEditor_Commands = Schema.Union([
   TextEditorViewCommand,
   TextEditorCreateCommand,
   TextEditorStrReplaceCommand,
-  TextEditorInsertCommand,
+  TextEditorLegacyInsertCommand,
   TextEditorUndoEditCommand
 ])
 
