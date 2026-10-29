@@ -281,6 +281,9 @@ const make = Effect.gen(function*() {
   // shards still held by this runner while their entities stop and their locks
   // are released
   const releasingShards = MutableHashSet.empty<ShardId>()
+  // runners that joined after the first assignment, kept out of the hash rings
+  // until the healthy set settles (see `runnerJoinDebounce`)
+  const pendingRunners = MutableHashSet.empty<Runner>()
   // The releasing gauge reports to the metric registry and attributes the
   // layer was built with.
   const updateReleasingShardsGauge = () =>
@@ -611,6 +614,13 @@ const make = Effect.gen(function*() {
           continue
         }
 
+        // While joins are pending the assignments are about to change, so take
+        // no new shards; otherwise a shard released for a joining runner could
+        // be taken here and handed off again. Publishing reopens the latch.
+        if (MutableHashSet.size(pendingRunners) > 0) {
+          continue
+        }
+
         // if a shard has been assigned to this runner, we acquire it
         const unacquiredShards = MutableHashSet.empty<ShardId>()
         for (const shardId of selfShards) {
@@ -635,13 +645,16 @@ const make = Effect.gen(function*() {
           Effect.ignore,
           Effect.timeoutOption(shardLockInterval)
         )
-        // A forced release can start while `acquire` is in flight, so re-check
-        // it here as well as before acquiring.
+        // A forced release or a pending join can begin while `acquire` is in
+        // flight, so re-check both. Shards locked meanwhile are released
+        // without running anything on them.
         const forcedReleasePending = forcedShardReleasePending()
+        const joinsPending = MutableHashSet.size(pendingRunners) > 0
         for (const shardId of acquired) {
           if (
             !shardLocksHealthyLatch.isOpen() ||
             forcedReleasePending ||
+            joinsPending ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
           ) {
@@ -1415,10 +1428,33 @@ const make = Effect.gen(function*() {
     ClusterMetrics.runnersHealthy.updateUnsafe(BigInt(1), Context.empty())
   }
 
+  // Kept outside the loop so a restart after a storage failure does not drop
+  // this state and publish pending joins early.
+  const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
+  let nextRunners = MutableHashMap.empty<Runner, boolean>()
+  const healthyRunners = MutableHashSet.empty<Runner>()
+  const joinDebounce = Duration.toMillis(Duration.fromInputUnsafe(config.runnerJoinDebounce))
+  // when the first pending join and the latest pending change were observed
+  let pendingSince = 0
+  let pendingChangedAt = 0
+  // the initial assignment never waits, even if this runner ends up with no shards
+  let assignmentsPublished = false
+  // stays set until the assignments are actually recomputed
+  let changed = false
+
+  const addToRings = (runner: Runner) => {
+    for (let i = 0; i < runner.groups.length; i++) {
+      const group = runner.groups[i]
+      let ring = hashRings.get(group)
+      if (!ring) {
+        ring = HashRing.make()
+        hashRings.set(group, ring)
+      }
+      HashRing.add(ring, runner.address, { weight: runner.weight })
+    }
+  }
+
   yield* Effect.gen(function*() {
-    const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
-    let nextRunners = MutableHashMap.empty<Runner, boolean>()
-    const healthyRunners = MutableHashSet.empty<Runner>()
     const withTimeout = Effect.timeout(Duration.seconds(5))
 
     while (true) {
@@ -1433,7 +1469,7 @@ const make = Effect.gen(function*() {
       }
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
-      let changed = false
+      const now = clock.currentTimeMillisUnsafe()
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
         MutableHashMap.set(nextRunners, runner, healthy)
@@ -1445,30 +1481,54 @@ const make = Effect.gen(function*() {
           }
           continue
         }
-        changed = true
         MutableHashSet.add(healthyRunners, runner)
         MutableHashMap.remove(allRunners, runner)
-        for (let j = 0; j < runner.groups.length; j++) {
-          const group = runner.groups[j]
-          let ring = hashRings.get(group)
-          if (!ring) {
-            ring = HashRing.make()
-            hashRings.set(group, ring)
+        if (joinDebounce > 0 && assignmentsPublished) {
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            pendingSince = now
           }
-          HashRing.add(ring, runner.address, { weight: runner.weight })
+          pendingChangedAt = now
+          MutableHashSet.add(pendingRunners, runner)
+          continue
         }
+        changed = true
+        addToRings(runner)
       }
 
       // Remove runners that are no longer present or healthy
       MutableHashMap.forEach(allRunners, (_, runner) => {
-        changed = true
         MutableHashMap.remove(allRunners, runner)
         MutableHashSet.remove(healthyRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
+        // A pending runner owns no shards, so its departure only restarts the
+        // quiet period instead of publishing the other joins mid-burst.
+        if (MutableHashSet.has(pendingRunners, runner)) {
+          MutableHashSet.remove(pendingRunners, runner)
+          pendingChangedAt = now
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            // let the acquisition loop take the shards it was holding off on
+            activeShardsLatch.openUnsafe()
+          }
+          return
+        }
+        changed = true
         for (let i = 0; i < runner.groups.length; i++) {
           HashRing.remove(hashRings.get(runner.groups[i])!, runner.address)
         }
       })
+
+      // Publish pending joins once the healthy set has settled, the cap is
+      // reached, or the assignments are recomputed anyway.
+      if (
+        MutableHashSet.size(pendingRunners) > 0 &&
+        (changed || now - pendingChangedAt >= joinDebounce || now - pendingSince >= joinDebounce * 4)
+      ) {
+        changed = true
+        for (const runner of pendingRunners) {
+          addToRings(runner)
+        }
+        MutableHashSet.clear(pendingRunners)
+      }
 
       // swap allRunners and nextRunners
       const prevRunners = allRunners
@@ -1483,6 +1543,8 @@ const make = Effect.gen(function*() {
 
       // Recompute shard assignments if the set of healthy runners has changed.
       if (changed) {
+        changed = false
+        assignmentsPublished = true
         MutableHashSet.clear(selfShards)
         hashRings.forEach((ring, group) => {
           const newAssignments = HashRing.getShards(ring, config.shardsPerGroup)

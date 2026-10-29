@@ -168,6 +168,37 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly refreshAssignmentsInterval: Duration.Input
   /**
+   * How long the healthy runners must stay unchanged before runners that
+   * joined are added to shard assignments. A burst of joins, such as a
+   * scale-up or a deployment with a large surge, is then published as one
+   * assignment and each shard is handed off once instead of once per join.
+   * In a rolling update that replaces one runner at a time, each departure is
+   * still published immediately, so shards still move at every step.
+   *
+   * Only joins wait. The initial assignment, departures and unhealthy runners
+   * are published immediately, together with any pending joins. A pending
+   * runner that leaves has no shards to move, so it only restarts the quiet
+   * period.
+   *
+   * While joins are pending, shards keep running where they are, the new
+   * runners stay idle and no runner takes shards it does not already hold.
+   * Runners publish on their own polls, so a shard released by one runner can
+   * stay unlocked until its new owner publishes, usually within two
+   * `refreshAssignmentsInterval`s. A runner that does not observe the joins,
+   * for example because it cannot read membership, can still take shards from
+   * its outdated assignment and hand them off again, as with `0`.
+   *
+   * Pending joins are published at most four times this duration after the
+   * first one, even if runners keep joining. The quiet period is checked once
+   * per `refreshAssignmentsInterval`, so the worst case delay is four times
+   * this duration plus one interval, and values shorter than the interval
+   * behave like a single quiet poll.
+   *
+   * Defaults to `0`, which publishes every change immediately. Leave it at
+   * `0` for scale-ups driven by load, where idle new runners are costly.
+   */
+  readonly runnerJoinDebounce: Duration.Input
+  /**
    * The interval to retry a send if EntityNotAssignedToRunner is returned.
    */
   readonly sendRetryInterval: Duration.Input
@@ -215,6 +246,7 @@ export const defaults: ShardingConfig["Service"] = {
   entityReplyPollInterval: Duration.millis(200),
   sendRetryInterval: Duration.millis(100),
   refreshAssignmentsInterval: Duration.seconds(3),
+  runnerJoinDebounce: Duration.zero,
   runnerHealthCheckInterval: Duration.minutes(1),
   simulateRemoteSerialization: true
 }
@@ -372,6 +404,10 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   refreshAssignmentsInterval: Config.Duration("refreshAssignmentsInterval").pipe(
     Config.withDefault(defaults.refreshAssignmentsInterval)
     // Config.withDescription("The interval at which to refresh shard assignments.")
+  ),
+  runnerJoinDebounce: Config.Duration("runnerJoinDebounce").pipe(
+    Config.withDefault(defaults.runnerJoinDebounce)
+    // Config.withDescription("How long the healthy runners must stay unchanged before joining runners are assigned shards.")
   ),
   runnerHealthCheckInterval: Config.Duration("runnerHealthCheckInterval").pipe(
     Config.withDefault(defaults.runnerHealthCheckInterval)
