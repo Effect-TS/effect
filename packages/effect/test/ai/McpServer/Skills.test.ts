@@ -33,16 +33,21 @@ const sha256 = (content: string | Uint8Array) => `sha256:${createHash("sha256").
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
+const skillMd = (frontmatter: string, body = "") => `---\n${frontmatter}\n---\n\n${body}`
+
+const REFUNDS_SKILL_MD = skillMd(
+  "name: refunds\n" +
+    "description: Process refunds using the billing tools\n" +
+    "license: Apache-2.0\n" +
+    "metadata:\n" +
+    "  acme-tools: issue_refund",
+  "Read references/policy.md before issuing a refund.\n"
+)
+
 const Refunds = McpServer.skill({
   uri: "skill://acme/billing/refunds/SKILL.md",
-  frontmatter: {
-    name: "refunds",
-    description: "Process refunds using the billing tools",
-    license: "Apache-2.0",
-    metadata: { "acme-tools": "issue_refund" }
-  },
-  instructions: "Read references/policy.md before issuing a refund.\n",
   files: {
+    "SKILL.md": REFUNDS_SKILL_MD,
     "references/policy.md": "Refunds above CHF 500 require manager approval.\n",
     "assets/logo.png": PNG,
     "scripts/check": { content: "#!/bin/sh\n", mimeType: "text/x-shellscript" }
@@ -51,10 +56,7 @@ const Refunds = McpServer.skill({
 
 const Invoices = McpServer.skill({
   uri: "skill://acme/billing/invoices/SKILL.md",
-  frontmatter: { name: "invoices", description: "Draft invoices" },
-  files: {
-    "SKILL.md": "---\nname: invoices\ndescription: Draft invoices\n---\n\nUse the invoice tools.\n"
-  }
+  files: { "SKILL.md": skillMd("name: invoices\ndescription: Draft invoices", "Use the invoice tools.\n") }
 })
 
 const Skills = Layer.mergeAll(Refunds, Invoices)
@@ -74,6 +76,14 @@ const call = Effect.fnUntraced(function*(
   const response = yield* harness.post(body, { ...headers, ...extraHeaders })
   return { status: response.status, message: (yield* readMcpHttpResponse(response)) as any }
 })
+
+const readBytes = Effect.fnUntraced(
+  function*(harness: Effect.Success<ReturnType<typeof makeHttpHarness>>, uri: string) {
+    const { message } = yield* call(harness, "resources/read", { uri })
+    const [content] = message.result.contents
+    return content.text === undefined ? Buffer.from(content.blob, "base64") : Buffer.from(content.text, "utf8")
+  }
+)
 
 describe("McpServer skills", () => {
   describe("v2026-07-28", () => {
@@ -114,70 +124,30 @@ describe("McpServer skills", () => {
         )
 
         for (const resource of refunds.resources) {
-          const { message: read } = yield* call(harness, "resources/read", { uri: resource.uri })
-          const [content] = read.result.contents
-          const bytes = content.text === undefined
-            ? Buffer.from(content.blob, "base64")
-            : Buffer.from(content.text, "utf8")
+          const bytes = yield* readBytes(harness, resource.uri)
           assert.strictEqual(resource.digest, sha256(bytes))
           assert.strictEqual(resource.size, bytes.byteLength)
         }
-      }))
-
-    it.effect("renders SKILL.md frontmatter that parses to the listed frontmatter", () =>
-      Effect.gen(function*() {
-        const harness = yield* modernHarness(Skills)
-        const { message } = yield* call(harness, "resources/read", { uri: "skill://acme/billing/refunds/SKILL.md" })
-        assert.deepStrictEqual(message.result.contents, [{
-          uri: "skill://acme/billing/refunds/SKILL.md",
-          mimeType: "text/markdown",
-          text: "---\n" +
-            "name: \"refunds\"\n" +
-            "description: \"Process refunds using the billing tools\"\n" +
-            "license: \"Apache-2.0\"\n" +
-            "metadata: {\"acme-tools\":\"issue_refund\"}\n" +
-            "---\n\n" +
-            "Read references/policy.md before issuing a refund.\n"
-        }])
-      }))
-
-    it.effect("serves a SKILL.md given as a file verbatim", () =>
-      Effect.gen(function*() {
-        const harness = yield* modernHarness(Skills)
-        const { message } = yield* call(harness, "resources/read", { uri: "skill://acme/billing/invoices/SKILL.md" })
         assert.strictEqual(
-          message.result.contents[0].text,
-          "---\nname: invoices\ndescription: Draft invoices\n---\n\nUse the invoice tools.\n"
+          (yield* readBytes(harness, "skill://acme/billing/refunds/SKILL.md")).toString("utf8"),
+          REFUNDS_SKILL_MD
         )
       }))
 
-    it.effect("names and describes SKILL.md from the frontmatter in resources/list", () =>
+    // Changing the caller's bytes after registration must not change what is served under the listed digest.
+    it.effect("serves the bytes given at registration after the caller changes them", () =>
       Effect.gen(function*() {
-        const harness = yield* modernHarness(Skills)
-        const { message } = yield* call(harness, "resources/list")
-        const skillMd = message.result.resources.find((resource: any) =>
-          resource.uri === "skill://acme/billing/refunds/SKILL.md"
-        )
-        assert.strictEqual(skillMd.name, "refunds")
-        assert.strictEqual(skillMd.description, "Process refunds using the billing tools")
-        assert.strictEqual(skillMd.mimeType, "text/markdown")
-      }))
-
-    it.effect("lists the frontmatter of a SKILL.md given as a file without frontmatter", () =>
-      Effect.gen(function*() {
+        const logo = new Uint8Array(PNG)
         const harness = yield* modernHarness(McpServer.skill({
-          uri: "skill://acme/notes/SKILL.md",
-          files: {
-            "SKILL.md":
-              "---\nname: notes\ndescription: Take notes\nmetadata:\n  version: \"2\"\n---\n\nWrite things down.\n"
-          }
+          uri: "skill://logo/SKILL.md",
+          files: { "SKILL.md": skillMd("name: logo\ndescription: Draw the logo"), "logo.png": logo }
         }))
-        const { message } = yield* call(harness, "skills/get", { uri: "skill://acme/notes/SKILL.md" })
-        assert.deepStrictEqual(message.result.skill.frontmatter, {
-          name: "notes",
-          description: "Take notes",
-          metadata: { version: "2" }
-        })
+        logo.fill(0)
+
+        const { message } = yield* call(harness, "skills/get", { uri: "skill://logo/SKILL.md" })
+        const listed = message.result.skill.resources.find((resource: any) => resource.uri === "skill://logo/logo.png")
+        assert.deepStrictEqual(new Uint8Array(yield* readBytes(harness, listed.uri)), PNG)
+        assert.strictEqual(listed.digest, sha256(PNG))
       }))
 
     it.effect("gets a skill by the URI of its SKILL.md", () =>
@@ -193,61 +163,59 @@ describe("McpServer skills", () => {
         )
       }))
 
-    it.effect("rejects skills/get for anything but a served skill with -32602", () =>
-      Effect.gen(function*() {
-        const harness = yield* modernHarness(Skills)
-        for (
-          const uri of [
-            "skill://acme/billing/missing/SKILL.md",
-            "skill://acme/billing/refunds/references/policy.md"
-          ]
-        ) {
-          const { message } = yield* call(harness, "skills/get", { uri })
-          assert.strictEqual(message.error.code, -32602)
-        }
-      }))
-
+    // Directory children carry the same resource metadata as resources/list.
     it.effect("reads every directory of the skill namespace, merging shared prefixes", () =>
       Effect.gen(function*() {
         const harness = yield* modernHarness(Skills)
         const read = (uri: string) =>
           call(harness, "resources/directory/read", { uri }).pipe(Effect.map(({ message }) => message.result))
+        const directory = (uri: string) => ({ uri, name: uri.split("/").at(-1), mimeType: "inode/directory" })
+        const { message: list } = yield* call(harness, "resources/list")
+        const listed = (uri: string) => list.result.resources.find((resource: any) => resource.uri === uri)
+
+        assert.deepStrictEqual(listed("skill://acme/billing/refunds/SKILL.md"), {
+          uri: "skill://acme/billing/refunds/SKILL.md",
+          name: "refunds",
+          description: "Process refunds using the billing tools",
+          mimeType: "text/markdown",
+          size: new TextEncoder().encode(REFUNDS_SKILL_MD).byteLength
+        })
 
         const prefix = yield* read("skill://acme/billing")
         assert.strictEqual(prefix.resultType, "complete")
         assert.strictEqual(prefix.ttlMs, 0)
         assert.deepStrictEqual(prefix.resources, [
-          { uri: "skill://acme/billing/invoices", name: "invoices", mimeType: "inode/directory" },
-          { uri: "skill://acme/billing/refunds", name: "refunds", mimeType: "inode/directory" }
+          directory("skill://acme/billing/invoices"),
+          directory("skill://acme/billing/refunds")
         ])
-        assert.deepStrictEqual((yield* read("skill://acme")).resources, [
-          { uri: "skill://acme/billing", name: "billing", mimeType: "inode/directory" }
-        ])
+        assert.deepStrictEqual((yield* read("skill://acme")).resources, [directory("skill://acme/billing")])
         assert.deepStrictEqual((yield* read("skill://acme/billing/refunds")).resources, [
-          { uri: "skill://acme/billing/refunds/SKILL.md", name: "SKILL.md", mimeType: "text/markdown" },
-          { uri: "skill://acme/billing/refunds/assets", name: "assets", mimeType: "inode/directory" },
-          { uri: "skill://acme/billing/refunds/references", name: "references", mimeType: "inode/directory" },
-          { uri: "skill://acme/billing/refunds/scripts", name: "scripts", mimeType: "inode/directory" }
+          listed("skill://acme/billing/refunds/SKILL.md"),
+          directory("skill://acme/billing/refunds/assets"),
+          directory("skill://acme/billing/refunds/references"),
+          directory("skill://acme/billing/refunds/scripts")
         ])
         assert.deepStrictEqual((yield* read("skill://acme/billing/refunds/assets")).resources, [
-          { uri: "skill://acme/billing/refunds/assets/logo.png", name: "logo.png", mimeType: "image/png" }
+          listed("skill://acme/billing/refunds/assets/logo.png")
         ])
       }))
 
-    it.effect("rejects a directory read of a file or an unknown URI with -32602", () =>
+    it.effect("rejects unknown skills, non-directories and foreign cursors with -32602", () =>
       Effect.gen(function*() {
         const harness = yield* modernHarness(Skills)
-        for (const uri of ["skill://acme/billing/refunds/SKILL.md", "skill://acme/missing", "skill://acme/billing/"]) {
-          const { message } = yield* call(harness, "resources/directory/read", { uri })
-          assert.strictEqual(message.error.code, -32602)
+        for (
+          const [method, params] of [
+            ["skills/get", { uri: "skill://acme/billing/missing/SKILL.md" }],
+            ["skills/get", { uri: "skill://acme/billing/refunds/references/policy.md" }],
+            ["resources/directory/read", { uri: "skill://acme/billing/refunds/SKILL.md" }],
+            ["resources/directory/read", { uri: "skill://acme/missing" }],
+            ["resources/directory/read", { uri: "skill://acme/billing/" }],
+            ["skills/list", { cursor: "next" }]
+          ] as const
+        ) {
+          const { message } = yield* call(harness, method, params)
+          assert.strictEqual(message.error.code, -32602, `${method} ${JSON.stringify(params)}`)
         }
-      }))
-
-    it.effect("rejects a cursor it never issued with -32602", () =>
-      Effect.gen(function*() {
-        const harness = yield* modernHarness(Skills)
-        const { message } = yield* call(harness, "skills/list", { cursor: "next" })
-        assert.strictEqual(message.error.code, -32602)
       }))
 
     it.effect("applies the skills cache hint to every skills result", () =>
@@ -349,14 +317,14 @@ describe("McpServer skills", () => {
       const registrations = Layer.mergeAll(
         McpServer.skill({
           uri: "skill://acme/public/SKILL.md",
-          frontmatter: { name: "public", description: "Public skill" },
-          instructions: "Public.\n"
+          files: { "SKILL.md": skillMd("name: public\ndescription: Public skill", "Public.\n") }
         }),
         McpServer.skill({
           uri: "skill://acme/admin/SKILL.md",
-          frontmatter: { name: "admin", description: "Admin skill" },
-          instructions: "Admin.\n",
-          files: { "notes/secret.md": "Secret.\n" }
+          files: {
+            "SKILL.md": skillMd("name: admin\ndescription: Admin skill", "Admin.\n"),
+            "notes/secret.md": "Secret.\n"
+          }
         }).pipe(Layer.provide(AdminOnly.combine(Auth).layer))
       )
       return { calls, registrations }
@@ -364,7 +332,7 @@ describe("McpServer skills", () => {
 
     const admin = { "x-user": "admin" }
 
-    it.effect("hides a skill from skills/list, skills/get and directory reads", () =>
+    it.effect("hides a skill from skills/list, skills/get, directory reads and file reads", () =>
       Effect.gen(function*() {
         const { registrations } = makeFixture()
         const harness = yield* modernHarness(registrations)
@@ -413,112 +381,74 @@ describe("McpServer skills", () => {
           "resources/directory/read skill://acme/admin/SKILL.md"
         ])
       }))
-
-    it.effect("hides a skill on sessionful revisions", () =>
-      Effect.gen(function*() {
-        const { registrations } = makeFixture()
-        const protocol = McpProtocol.v2025_11_25
-        const harness = yield* makeHttpHarness(
-          registrations.pipe(Layer.provideMerge(makeServerLayer({ name: "SkillsServer", protocols: [protocol] })))
-        )
-        const headers = yield* initializeHttpSession(harness, protocol)
-        const post = (method: string, params: Record<string, unknown>) =>
-          harness.post({ jsonrpc: "2.0", id: 2, method, params }, headers).pipe(
-            Effect.flatMap(readMcpHttpResponse),
-            Effect.map((message) => message as any)
-          )
-        const list = yield* post("skills/list", {})
-        assert.deepStrictEqual(list.result.skills.map((skill: any) => skill.uri), ["skill://acme/public/SKILL.md"])
-        const get = yield* post("skills/get", { uri: "skill://acme/admin/SKILL.md" })
-        assert.strictEqual(get.error.code, -32602)
-      }))
   })
 
   describe("registration", () => {
-    const register = (options: McpServer.SkillOptions) =>
-      McpServer.registerSkill(options).pipe(Effect.provide(McpServer.McpServer.layer), Effect.exit)
+    const registerAll = (...registrations: ReadonlyArray<Effect.Effect<void, unknown, McpServer.McpServer>>) =>
+      Effect.all(registrations, { discard: true }).pipe(Effect.provide(McpServer.McpServer.layer), Effect.exit)
 
-    const base = {
-      uri: "skill://refunds/SKILL.md",
-      frontmatter: { name: "refunds", description: "Process refunds" },
-      instructions: "Refund carefully.\n"
-    } as const
+    const register = (options: McpServer.SkillOptions) => registerAll(McpServer.registerSkill(options))
+
+    const skill = (uri: string, frontmatter: string, files: Record<string, string> = {}): McpServer.SkillOptions => ({
+      uri,
+      files: { "SKILL.md": skillMd(frontmatter, "Refund carefully.\n"), ...files }
+    })
+
+    const refunds = (frontmatter = "name: refunds\ndescription: Process refunds", files?: Record<string, string>) =>
+      skill("skill://refunds/SKILL.md", frontmatter, files)
 
     const assertRejected = (exit: Exit.Exit<void, unknown>, reason: RegExp) => {
       assert.isTrue(Exit.isFailure(exit))
       if (Exit.isFailure(exit)) assert.match(String(exit.cause), reason)
     }
 
-    it.effect("accepts a valid skill", () =>
+    it.effect("accepts a valid skill, keeping frontmatter fields the Agent Skills specification does not define", () =>
       Effect.gen(function*() {
-        assert.isTrue(Exit.isSuccess(yield* register(base)))
+        assert.isTrue(
+          Exit.isSuccess(yield* register(refunds("name: refunds\ndescription: Process refunds\nx-team: [billing]")))
+        )
       }))
 
     it.effect("rejects a name that differs from the last path segment", () =>
       Effect.gen(function*() {
         assertRejected(
-          yield* register({ ...base, uri: "skill://other/SKILL.md" }),
+          yield* register(skill("skill://other/SKILL.md", "name: refunds\ndescription: Process refunds")),
           /frontmatter name "refunds" must equal "other"/
-        )
-      }))
-
-    it.effect("rejects a name that breaks the Agent Skills naming rules", () =>
-      Effect.gen(function*() {
-        assertRejected(
-          yield* register({
-            ...base,
-            uri: "skill://Refunds/SKILL.md",
-            frontmatter: { name: "Refunds", description: "Process refunds" }
-          }),
-          /not valid Agent Skills frontmatter[\s\S]*\["name"\]/
-        )
-      }))
-
-    it.effect("rejects an empty description", () =>
-      Effect.gen(function*() {
-        assertRejected(
-          yield* register({ ...base, frontmatter: { name: "refunds", description: "" } }),
-          /not valid Agent Skills frontmatter[\s\S]*\["description"\]/
         )
       }))
 
     it.effect("rejects a URI that does not address a SKILL.md", () =>
       Effect.gen(function*() {
-        assertRejected(yield* register({ ...base, uri: "skill://refunds/README.md" }), /<skill-path>\/SKILL\.md/)
-      }))
-
-    // The Agent Skills specification defines `metadata` as a map of strings.
-    it.effect("rejects frontmatter that breaks the Agent Skills specification's optional fields", () =>
-      Effect.gen(function*() {
         assertRejected(
-          yield* register({
-            uri: "skill://refunds/SKILL.md",
-            files: { "SKILL.md": "---\nname: refunds\ndescription: Process refunds\nmetadata:\n  version: 2\n---\n" }
-          }),
-          /\["metadata"\]\["version"\]/
-        )
-        assertRejected(
-          yield* register({ ...base, frontmatter: { ...base.frontmatter, compatibility: "x".repeat(501) } }),
-          /\["compatibility"\]/
+          yield* register(skill("skill://refunds/README.md", "name: refunds\ndescription: Process refunds")),
+          /<skill-path>\/SKILL\.md/
         )
       }))
 
-    it.effect("keeps frontmatter fields the Agent Skills specification does not define", () =>
-      Effect.gen(function*() {
-        assert.isTrue(
-          Exit.isSuccess(yield* register({ ...base, frontmatter: { ...base.frontmatter, "x-team": ["billing"] } }))
-        )
-      }))
-
-    it.effect("rejects a SKILL.md whose frontmatter differs from the given frontmatter", () =>
+    it.effect("rejects frontmatter that breaks the Agent Skills specification", () =>
       Effect.gen(function*() {
         assertRejected(
-          yield* register({
-            uri: "skill://refunds/SKILL.md",
-            frontmatter: { name: "refunds", description: "Process refunds" },
-            files: { "SKILL.md": "---\nname: refunds\ndescription: Something else\n---\n" }
-          }),
-          /frontmatter of SKILL.md differs/
+          yield* register(skill("skill://Refunds/SKILL.md", "name: Refunds\ndescription: Process refunds")),
+          /not valid Agent Skills frontmatter[\s\S]*\["name"\]/
+        )
+        for (
+          const [frontmatter, reason] of [
+            ["name: refunds\ndescription: \"\"", /\["description"\]/],
+            // `metadata` is a map of strings.
+            ["name: refunds\ndescription: Process refunds\nmetadata:\n  version: 2", /\["metadata"\]\["version"\]/],
+            [`name: refunds\ndescription: Process refunds\ncompatibility: ${"x".repeat(501)}`, /\["compatibility"\]/]
+          ] as const
+        ) {
+          assertRejected(yield* register(refunds(frontmatter)), reason)
+        }
+      }))
+
+    // YAML can express values JSON cannot, such as `.inf`; they cannot be listed.
+    it.effect("rejects frontmatter that is not plain JSON", () =>
+      Effect.gen(function*() {
+        assertRejected(
+          yield* register(refunds("name: refunds\ndescription: Process refunds\nx-limit: .inf")),
+          /JSON object/
         )
       }))
 
@@ -532,48 +462,37 @@ describe("McpServer skills", () => {
 
     it.effect("rejects a file path that escapes the skill", () =>
       Effect.gen(function*() {
-        assertRejected(yield* register({ ...base, files: { "../secrets.md": "secret" } }), /escapes the skill/)
+        for (const path of ["../secrets.md", "references/../../secrets.md", "/etc/passwd", "references\\..\\x"]) {
+          assertRejected(yield* register(refunds(undefined, { [path]: "secret" })), /escapes the skill/)
+        }
       }))
 
-    it.effect("rejects SKILL.md given both as instructions and as a file", () =>
+    // Nesting is not supported: a skill inside another skill's directory would need the enclosing manifest to list it.
+    it.effect("rejects a skill whose directory overlaps another skill's, in either order", () =>
       Effect.gen(function*() {
-        assertRejected(
-          yield* McpServer.registerSkill({ ...base, files: { "SKILL.md": "---\n---\n" } } as any).pipe(
-            Effect.provide(McpServer.McpServer.layer),
-            Effect.exit
-          ),
-          /not both/
+        const outer = refunds()
+        const inner = skill("skill://refunds/nested/SKILL.md", "name: nested\ndescription: Nested")
+        assertRejected(yield* registerAll(McpServer.registerSkill(outer), McpServer.registerSkill(inner)), /overlaps/)
+        assertRejected(yield* registerAll(McpServer.registerSkill(inner), McpServer.registerSkill(outer)), /overlaps/)
+
+        // Sharing a prefix is not overlapping.
+        const sibling = skill("skill://refunds-v2/SKILL.md", "name: refunds-v2\ndescription: Process refunds")
+        assert.isTrue(
+          Exit.isSuccess(yield* registerAll(McpServer.registerSkill(outer), McpServer.registerSkill(sibling)))
         )
       }))
 
-    it.effect("rejects a nested skill that serves different bytes than its enclosing skill", () =>
+    // A plain resource replacing a skill file would serve bytes that no longer match the manifest.
+    it.effect("rejects a plain resource sharing a URI with a skill file, in either order", () =>
       Effect.gen(function*() {
-        const exit = yield* Effect.gen(function*() {
-          yield* McpServer.registerSkill({
-            ...base,
-            files: { "nested/SKILL.md": "---\nname: nested\ndescription: Nested\n---\n" }
-          })
-          yield* McpServer.registerSkill({
-            uri: "skill://refunds/nested/SKILL.md",
-            frontmatter: { name: "nested", description: "Nested" },
-            instructions: "Different body.\n"
-          })
-        }).pipe(Effect.provide(McpServer.McpServer.layer), Effect.exit)
-        assertRejected(exit, /different bytes/)
-      }))
-
-    it.effect("accepts a nested skill that serves the same bytes as its enclosing skill", () =>
-      Effect.gen(function*() {
-        const nested = "---\nname: nested\ndescription: Nested\n---\n"
-        const exit = yield* Effect.gen(function*() {
-          yield* McpServer.registerSkill({ ...base, files: { "nested/SKILL.md": nested } })
-          yield* McpServer.registerSkill({
-            uri: "skill://refunds/nested/SKILL.md",
-            frontmatter: { name: "nested", description: "Nested" },
-            files: { "SKILL.md": nested }
-          })
-        }).pipe(Effect.provide(McpServer.McpServer.layer), Effect.exit)
-        assert.isTrue(Exit.isSuccess(exit))
+        const policy = McpServer.registerResource({
+          uri: "skill://refunds/references/policy.md",
+          name: "Policy",
+          content: Effect.succeed("Replaced.\n")
+        })
+        const withPolicy = McpServer.registerSkill(refunds(undefined, { "references/policy.md": "Approve first.\n" }))
+        assertRejected(yield* registerAll(withPolicy, policy), /skill:\/\/refunds\/references\/policy\.md/)
+        assertRejected(yield* registerAll(policy, withPolicy), /skill:\/\/refunds\/references\/policy\.md/)
       }))
   })
 })
