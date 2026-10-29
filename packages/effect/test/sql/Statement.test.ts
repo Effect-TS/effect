@@ -189,6 +189,43 @@ describe("Statement", () => {
       )
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("runs a custom operation through the statement execution path", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const connection = makeConnection(Effect.void)
+      const transformRows = Statement.defaultTransforms(Str.snakeToCamel).array
+      const sql = yield* SqlClient.make({
+        driver: "test",
+        acquirer: Effect.succeed(connection),
+        compiler: Statement.makeCompilerSqlite(Str.camelToSnake),
+        spanAttributes: [],
+        transformRows
+      })
+      const statement = sql`SELECT ${sql("userId")} FROM people WHERE id = ${1}`
+      const calls: Array<unknown> = []
+      const custom = (withoutTransform?: boolean) =>
+        statement.withConnection("custom", (received, query, params, rows) =>
+          Effect.sync(() => {
+            calls.push([received === connection, query, params, rows])
+          }), withoutTransform)
+
+      yield* custom().pipe(Effect.withTracer(tracer))
+      yield* custom(true)
+
+      assert.deepStrictEqual(calls, [
+        [true, "SELECT \"user_id\" FROM people WHERE id = ?", [1], transformRows],
+        [true, "SELECT \"userId\" FROM people WHERE id = ?", [1], undefined]
+      ])
+      assert.strictEqual(spans[0].attributes.get("effect.sql.method"), "custom")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("skips propagation when tracing is disabled", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient(Effect.map(Effect.option(Effect.currentSpan), (span) => {
@@ -201,9 +238,9 @@ describe("Statement", () => {
     }).pipe(Effect.provide(Reactivity.layer)))
 })
 
-const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = observe) => {
+const makeConnection = (observe: Effect.Effect<void>): Connection => {
   const execute = Effect.as(observe, [])
-  const connection: Connection = {
+  return {
     execute: () => execute,
     executeRaw: () => execute,
     executeValues: () => execute,
@@ -211,6 +248,10 @@ const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = obse
     executeValuesUnprepared: () => execute,
     executeStream: () => Stream.fromEffect(execute)
   }
+}
+
+const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = observe) => {
+  const connection = makeConnection(observe)
   return SqlClient.make({
     driver: "test",
     acquirer: Effect.as(acquire, connection),
