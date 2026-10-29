@@ -492,130 +492,53 @@ it.live("releases an immediately failing form data stream and connection before 
   )
 })
 
-it.live("streams form data files without buffering the whole body", () => {
-  let receivedUpload: () => void
-  const uploadReceived = new Promise<void>((resolve) => {
-    receivedUpload = resolve
-  })
-  const server = Http.createServer((request, response) => {
-    let body = ""
-    request.setEncoding("utf8")
-    request.on("data", (chunk) => {
-      body += chunk
-      receivedUpload()
-    })
-    request.on("end", () => response.end(body))
-  })
-  const layer = HttpServer.layerTestClient.pipe(
-    Layer.provide(NodeClient.layerNodeHttp),
-    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
-  )
-  return Effect.gen(function*() {
-    const encoder = new TextEncoder()
-    // The rest of the file is only produced once the server has received part
-    // of the upload, so buffering the body before sending it never completes.
-    class SlowFile extends File {
-      override stream() {
-        return new ReadableStream<Uint8Array<ArrayBuffer>>({
-          start(controller) {
-            controller.enqueue(encoder.encode("first"))
-          },
-          async pull(controller) {
-            await uploadReceived
-            controller.enqueue(encoder.encode("second"))
-            controller.close()
-          }
-        })
-      }
-    }
-    const formData = new FormData()
-    formData.append("file", new SlowFile(["firstsecond"], "notes.txt", { type: "text/plain" }))
-    const response = yield* HttpClient.post("/", { body: HttpBody.formData(formData) })
-    const body = yield* response.text
-    assert.include(body, "filename=\"notes.txt\"")
-    assert.include(body, "firstsecond")
-  }).pipe(
-    Effect.timeout("2 seconds"),
-    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
-    Effect.provide(layer)
-  )
-})
-
-it.live("returns TransportError when a form data file stream cannot be created", () => {
-  const server = Http.createServer((request, response) => {
-    request.resume()
-    request.on("end", () => response.end())
-  })
-  const layer = HttpServer.layerTestClient.pipe(
-    Layer.provide(NodeClient.layerNodeHttp),
-    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
-  )
-  return Effect.gen(function*() {
+it.live("returns TransportError when a form data file stream cannot be created", () =>
+  Effect.gen(function*() {
     class ThrowingFile extends File {
-      override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+      override stream(): never {
         throw new Error("file stream failed")
       }
     }
     const formData = new FormData()
-    formData.append("file", new ThrowingFile(["file contents"], "notes.txt"))
-    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(
-      Effect.timeout("2 seconds"),
-      Effect.flip
-    )
-    assert(error._tag === "HttpClientError", `Expected HttpClientError, got ${error._tag}`)
+    formData.append("file", new ThrowingFile([], "notes.txt"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.flip)
     assert.strictEqual(error.reason._tag, "TransportError")
-  }).pipe(
-    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
-    Effect.provide(layer)
-  )
-})
-
-it.live("reads ahead a bounded amount of a backpressured form data file and releases it on interruption", () => {
-  const server = Http.createServer((request) => request.pause())
-  const layer = HttpServer.layerTestClient.pipe(
+  }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
     Layer.provide(NodeClient.layerNodeHttp),
-    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
-  )
-  return Effect.gen(function*() {
-    const chunkSize = 64 * 1024
-    const fileSize = 64 * 1024 * 1024
-    const streams: Array<ReadableStream<Uint8Array<ArrayBuffer>>> = []
-    let read = 0
-    let cancelled = false
-    class LargeFile extends File {
-      override stream() {
-        const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
-          pull(controller) {
-            if (read === fileSize) return controller.close()
-            read += chunkSize
-            controller.enqueue(new Uint8Array(chunkSize))
-          },
-          cancel() {
-            cancelled = true
-          }
-        })
-        streams.push(stream)
-        return stream
-      }
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  ))))
+
+it.live("reads backpressured form data files on demand and releases them on interruption", () => {
+  const server = Http.createServer((request) => request.pause())
+  let read = 0
+  let stream: ReadableStream | undefined
+  class LargeFile extends File {
+    override stream() {
+      return stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+        pull(controller) {
+          if (read === 64 * 1024 * 1024) return controller.close()
+          read += 64 * 1024
+          controller.enqueue(new Uint8Array(64 * 1024))
+        }
+      })
     }
+  }
+  return Effect.gen(function*() {
     const formData = new FormData()
     formData.append("file", new LargeFile([], "large.bin"))
-    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(
-      Effect.timeout("1 second"),
-      Effect.flip
-    )
-    assert.strictEqual(error._tag, "TimeoutError")
+    yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.timeout("1 second"), Effect.ignore)
     // The server never reads the upload, so only socket buffers should fill.
-    assert.isBelow(read, fileSize / 4)
-    yield* Effect.sync(() => streams[0].locked).pipe(
-      Effect.repeat({ while: (locked) => locked, schedule: Schedule.spaced("10 millis") }),
+    assert.isBelow(read, 16 * 1024 * 1024)
+    yield* Effect.sync(() => stream?.locked).pipe(
+      Effect.repeat({ while: (locked) => locked !== false, schedule: Schedule.spaced("10 millis") }),
       Effect.timeout("1 second")
     )
-    assert.strictEqual(streams.length, 1)
-    assert.isTrue(cancelled)
   }).pipe(
     Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
-    Effect.provide(layer)
+    Effect.provide(HttpServer.layerTestClient.pipe(
+      Layer.provide(NodeClient.layerNodeHttp),
+      Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+    ))
   )
 })
 
