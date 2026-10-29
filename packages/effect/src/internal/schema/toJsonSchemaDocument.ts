@@ -3,6 +3,7 @@ import * as Equal from "../../Equal.ts"
 import { decodeUriFragment, formatUriFragmentToken, unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { rewriteRefs } from "../../JsonSchema.ts"
+import * as Order from "../../Order.ts"
 import * as RegEx from "../../RegExp.ts"
 import type * as Schema from "../../Schema.ts"
 import * as InternalAST from "../../SchemaAST.ts"
@@ -10,6 +11,7 @@ import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
+import * as InternalToRepresentation from "./toRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
 
@@ -229,7 +231,6 @@ function compileJsonSchema(
     ReadonlyArray<JsonSchema.JsonSchema>,
     { branches: ReadonlyArray<Exactness>; schemas: Array<JsonSchema.JsonSchema> }
   >()
-  const fallbackDefinitions = new Map<string, Array<string>>()
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
@@ -248,18 +249,46 @@ function compileJsonSchema(
       }
     }
   }
-  for (const key of referenceKeys) {
-    const representation = references[key]
-    const fallback = getIdentifierFallback(representation)
-    if (fallback === undefined) continue
-    const schema = compiledDefinitions.get(key)!.schema
-    const candidates = fallbackDefinitions.get(fallback)
-    const match = candidates?.find((candidate) => Equal.equals(compiledDefinitions.get(candidate)!.schema, schema))
-    if (match === undefined) {
-      if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
-      else candidates.push(key)
-    } else {
-      definitionAliases.set(key, match)
+  // Alias definitions that share an identifier and compile to the same schema. Repeat until no new alias is found,
+  // since aliasing a definition can make the definitions referencing it equal too. Definitions keyed by their own
+  // identifier come first, so they stay canonical over suffixed keys.
+  const aliasCandidates = Arr.sort(
+    referenceKeys,
+    Order.mapInput(
+      Order.Boolean,
+      (key: string) => InternalToRepresentation.getReferenceIdentifier(references[key]) !== key
+    )
+  )
+  let aliased = true
+  while (aliased) {
+    aliased = false
+    const fallbackDefinitions = new Map<string, Array<string>>()
+    const identifierDefinitions = new Map<string, Array<string>>()
+    const finalized = new Map<string, JsonSchema.JsonSchema>()
+    const getFinalized = (key: string) => {
+      let schema = finalized.get(key)
+      if (schema === undefined) {
+        schema = finalizeJsonSchema(compiledDefinitions.get(key)!.schema)
+        finalized.set(key, schema)
+      }
+      return schema
+    }
+    for (const key of aliasCandidates) {
+      if (definitionAliases.has(key)) continue
+      const representation = references[key]
+      const fallback = getIdentifierFallback(representation)
+      const identifier = fallback ?? InternalToRepresentation.getReferenceIdentifier(representation)
+      if (identifier === undefined) continue
+      const definitions = fallback === undefined ? identifierDefinitions : fallbackDefinitions
+      const candidates = definitions.get(identifier)
+      const match = candidates?.find((candidate) => Equal.equals(getFinalized(candidate), getFinalized(key)))
+      if (match === undefined) {
+        if (candidates === undefined) definitions.set(identifier, [key])
+        else candidates.push(key)
+      } else {
+        definitionAliases.set(key, match)
+        aliased = true
+      }
     }
   }
   const schemas = Arr.map(compiledSchemas, finalizeJsonSchema)
@@ -311,10 +340,10 @@ function compileJsonSchema(
       }
       if (!pointer.startsWith("/$defs/")) return $ref
       const separator = pointer.indexOf("/", 7)
-      const canonical = definitionAliases.get(
-        unescapeToken(pointer.slice(7, separator < 0 ? undefined : separator))
-      )
+      let canonical = definitionAliases.get(unescapeToken(pointer.slice(7, separator < 0 ? undefined : separator)))
       if (canonical === undefined) return $ref
+      // A canonical definition can itself be aliased by a later pass.
+      while (definitionAliases.has(canonical)) canonical = definitionAliases.get(canonical)!
       // URI-encoded slashes separate pointer tokens; only ~1 represents a slash within a token.
       return $ref.replace(
         /^#(?:\/|%2f).*?(?:\/|%2f).*?(?=\/|%2f|$)/i,

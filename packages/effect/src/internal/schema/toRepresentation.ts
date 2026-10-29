@@ -29,6 +29,14 @@ interface Content {
   readonly schema?: ReferenceCandidate | undefined
 }
 
+// Explicit identifiers of emitted references, kept even when the reference key is suffixed.
+const referenceIdentifiers = new WeakMap<SchemaRepresentation.Representation, string>()
+
+/** @internal */
+export function getReferenceIdentifier(representation: SchemaRepresentation.Representation): string | undefined {
+  return referenceIdentifiers.get(representation)
+}
+
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
 }
@@ -205,6 +213,9 @@ export function toRepresentations(
         candidate.emitted = true
         const annotated = candidate.identifier === undefined ? ast : annotateReference(ast, candidate, reference)
         const representation = on(annotated, candidate.content)
+        if (candidate.identifier !== undefined && candidate.fallback === undefined) {
+          referenceIdentifiers.set(representation, candidate.identifier)
+        }
         InternalRecord.assignProperty(references, reference, representation)
       }
       return { _tag: "Reference", $ref: reference }
