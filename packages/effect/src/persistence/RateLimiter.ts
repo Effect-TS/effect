@@ -708,12 +708,7 @@ interface AdaptiveState {
   expiresAt: number
 }
 
-/**
- * How often the in-memory store removes expired entries.
- *
- * @internal
- */
-export const memoryStoreSweepInterval: Duration.Duration = Duration.minutes(1)
+const memoryStoreSweepInterval = Duration.minutes(1)
 
 /**
  * Creates a process-local `RateLimiterStore`. Every entry expires once its
