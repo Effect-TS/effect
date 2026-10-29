@@ -74,7 +74,8 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * unless explicitly disabled through `ssl` options.
  *
  * Prepared statements are enabled by default and limited by
- * `preparedStatementCacheSize`. Disable them for statement-mode poolers or
+ * `preparedStatementCacheSize`. Disable them for poolers that drop named
+ * statements, such as PgBouncer with `max_prepared_statements = 0`, or for
  * workloads that generate unique SQL. Streams always use unnamed statements.
  *
  * With `multiplex` enabled, unpinned queries from multiple fibers are
@@ -223,7 +224,7 @@ export interface PgConnection {
    * After release, queries, streams and listeners through the returned
    * connection fail, and its `interrupt` does nothing. Releasing a pin with
    * an in-flight statement or an open listener closes the session and fails
-   * any listener queues.
+   * any listener queues, as does leaving a transaction the pin began aborted.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -391,6 +392,8 @@ class PgConnectionImpl implements PgConnection {
   deadWith: SqlError | undefined
   closed = false
   cancelPending = false
+  /** Reported by the latest `ReadyForQuery`. */
+  transactionStatus: PgProtocol.TransactionStatus = "I"
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly retireHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
@@ -449,6 +452,7 @@ class PgConnectionImpl implements PgConnection {
         if (message.fields.code === queryCanceledCode) this.cancelPending = false
         break
       case "ReadyForQuery":
+        this.transactionStatus = message.status
         if (this.cancelPending) {
           this.cancelPending = false
           this.retire()
@@ -787,6 +791,13 @@ class PgConnectionImpl implements PgConnection {
               new Error("Pinned connection released with work outstanding"),
               "PgConnection: Pinned connection released with work outstanding"
             ))
+          } else if (view.startedIdle && this.transactionStatus === "E") {
+            // A failed cleanup, such as a cancelled `ROLLBACK`, leaves every later
+            // statement failing. A transaction open before the pin is its caller's.
+            this.fatal(connectionQueryError(
+              new Error("Pinned connection released in an aborted transaction"),
+              "PgConnection: Pinned connection released in an aborted transaction"
+            ))
           }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
         }
@@ -842,11 +853,14 @@ class PinnedPgConnection implements PgConnection {
   released = false
   listeners = 0
   unlistening = 0
+  /** No transaction was open when the pin took the session. */
+  readonly startedIdle: boolean
 
   constructor(base: PgConnectionImpl) {
     this.base = base
     this[internalsKey] = base[internalsKey]
     this.pin = Effect.succeed(this)
+    this.startedIdle = base.transactionStatus === "I"
   }
 
   // Check the lease under the wire permit so queued work cannot run after release.

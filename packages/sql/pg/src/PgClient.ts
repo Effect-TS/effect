@@ -153,7 +153,8 @@ export interface PgClientConfig<R = never> {
   readonly multiplexConcurrency?: number | undefined
   /**
    * Caches prepared statements by name. Enabled by default. Disable it for
-   * poolers that cannot preserve named statements between queries.
+   * poolers that cannot preserve named statements between queries, such as
+   * PgBouncer in transaction mode with `max_prepared_statements = 0`.
    */
   readonly prepare?: boolean | undefined
   /** How many statements a connection keeps prepared. Defaults to `100`. */
@@ -318,6 +319,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
       commit,
+      onCommitFailure,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer,
       compiler,
@@ -427,6 +429,15 @@ const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
         )
         : Effect.void
   )
+
+/**
+ * Rolls back a transaction left open by a `COMMIT` the backend rejected before
+ * running it. Outside a transaction `ROLLBACK` only warns. Its own failure is
+ * ignored so the `COMMIT` error is the one reported; a session it leaves
+ * aborted is closed on pin release.
+ */
+const onCommitFailure = (conn: Connection): Effect.Effect<void> =>
+  Effect.ignore(conn.executeUnprepared("ROLLBACK", [], undefined))
 
 const makeConnection = (
   connection: PgConnection.PgConnection,
