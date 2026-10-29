@@ -3059,7 +3059,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         : Effect.map(encodeFailure(error), (encoded) =>
           new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
     // `structuredContent` must be JSON and match the advertised `outputSchema`, which is derived from the JSON codec.
-    const encodeStructured = Schema.encodeUnknownEffect(Schema.toCodecJson(tool.successSchema)) as (
+    // The Toolkit has already encoded the result, so only the JSON conversion of its encoded form runs here.
+    const encodeStructured = Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.toEncoded(tool.successSchema))) as (
       result: unknown
     ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
     const successResult = (result: unknown) =>
@@ -3147,7 +3148,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               // An absent result, such as `Schema.Void`, has no structured form.
               return result.encodedResult === undefined
                 ? Effect.succeed(new CallToolResult({ isError: false, content: [] }))
-                : successResult(result.result)
+                : successResult(result.encodedResult)
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
             return result.failureOrigin === "handler"
