@@ -916,7 +916,7 @@ describe("McpClient skills", () => {
           assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
 
           const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
-          assert.deepStrictEqual(children.map((child) => child.name), ["SKILL.md", "assets", "references"])
+          assert.deepStrictEqual(children.map((child) => child.name), ["refunds", "assets", "references"])
 
           assert(refunds.resources !== "dynamic")
           for (const { uri } of refunds.resources) {
