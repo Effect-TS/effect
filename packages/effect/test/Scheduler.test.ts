@@ -119,31 +119,20 @@ describe("Scheduler", () => {
     }
   })
 
-  it("on Cloudflare Workers a dropped timer does not stall other dispatchers", async () => {
-    vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" })
-    // A separate module instance reads the user agent when it loads
-    const { MixedScheduler } = await import("../src/Scheduler.ts?workers")
-    vi.unstubAllGlobals()
-    const callbacks: Array<() => void> = []
-    const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation((f: any) => {
-      callbacks.push(f)
-      return {} as any
-    })
-    try {
-      const scheduler = new MixedScheduler()
-      let ran = false
-
-      scheduler.makeDispatcher().scheduleTask(() => {}, 0)
-      scheduler.makeDispatcher().scheduleTask(() => {
-        ran = true
-      }, 0)
-      // The first request's timer is dropped
-      callbacks.slice(1).forEach((f) => f())
-
-      assert.isTrue(ran)
-    } finally {
-      setImmediate.mockRestore()
+  it("calls an overridden MixedScheduler makeDispatcher for each fiber", async () => {
+    let calls = 0
+    class CountingScheduler extends Scheduler.MixedScheduler {
+      makeDispatcher() {
+        calls++
+        return super.makeDispatcher()
+      }
     }
+    const scheduler = new CountingScheduler()
+
+    await Effect.runPromise(Effect.yieldNow, { scheduler })
+    await Effect.runPromise(Effect.yieldNow, { scheduler })
+
+    assert.strictEqual(calls, 2)
   })
 
   it.effect("orders yielded tasks by priority across fibers", () =>

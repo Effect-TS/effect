@@ -39,23 +39,30 @@ const makeWorker = (fixture: string) =>
     )
   })
 
+const request = (worker: Miniflare, path: string) =>
+  Effect.promise(async () => {
+    const response = await worker.dispatchFetch(`http://localhost${path}`)
+    return { status: response.status, body: await response.text() }
+  }).pipe(Effect.timeoutOrElse({ duration: "10 seconds", orElse: () => Effect.die(`request stalled: ${path}`) }))
+
+// Starts a request that suspends a fiber, then sends `wake` from another
+// request until the fiber is ready to be woken.
+const waitAndWake = (worker: Miniflare, wait: string, wake: string) =>
+  Effect.gen(function*() {
+    const waiting = yield* Effect.forkChild(request(worker, wait))
+    let woken = yield* request(worker, wake)
+    while (woken.status === 200 && woken.body === "null") {
+      yield* Effect.sleep(10)
+      woken = yield* request(worker, wake)
+    }
+    return { woken, waited: yield* Fiber.join(waiting) }
+  })
+
 describe("workerd", () => {
   it.live("a fiber woken by another request resumes in its own async context", () =>
     Effect.gen(function*() {
       const worker = yield* makeWorker("workerdWakeup.ts")
-      const fetch = (path: string) =>
-        Effect.promise(async () => {
-          const response = await worker.dispatchFetch(`http://localhost${path}`)
-          return { status: response.status, body: await response.text() }
-        })
-
-      const waiting = yield* Effect.forkChild(fetch("/wait?store=request-a"))
-      let woken = yield* fetch("/wake?store=request-b")
-      while (woken.status === 200 && woken.body === "null") {
-        yield* Effect.sleep(10)
-        woken = yield* fetch("/wake?store=request-b")
-      }
-      const waited = yield* Fiber.join(waiting)
+      const { waited, woken } = yield* waitAndWake(worker, "/wait?store=request-a", "/wake?store=request-b")
 
       assert.deepStrictEqual(woken, { status: 200, body: JSON.stringify("request-b") })
       assert.deepStrictEqual(waited, {
@@ -63,4 +70,58 @@ describe("workerd", () => {
         body: JSON.stringify({ afterWake: "request-a", afterPromise: "request-a" })
       })
     }), { timeout: 60_000 })
+
+  for (const order of ["interrupt-first", "wake-first"] as const) {
+    it.live(
+      `a fiber interrupted and woken by another request (${order}) finalizes in its own async context`,
+      () =>
+        Effect.gen(function*() {
+          const worker = yield* makeWorker("workerdWakeup.ts")
+          const { waited, woken } = yield* waitAndWake(
+            worker,
+            "/interruptible?store=request-a&keepAlive",
+            `/interrupt-and-wake?store=request-b&order=${order}`
+          )
+
+          assert.deepStrictEqual(woken, { status: 200, body: JSON.stringify("request-b") })
+          assert.deepStrictEqual(waited, {
+            status: 200,
+            body: JSON.stringify({ interrupted: true, finalizers: ["request-a"] })
+          })
+        }),
+      { timeout: 60_000 }
+    )
+  }
+
+  it.live(
+    "a child forked after a cross-request wake first runs in its parent's async context",
+    () =>
+      Effect.gen(function*() {
+        const worker = yield* makeWorker("workerdWakeup.ts")
+        const { waited, woken } = yield* waitAndWake(
+          worker,
+          "/fork-after-wake?store=request-a&keepAlive",
+          "/wake-with-armed-dispatcher?store=request-b"
+        )
+
+        assert.deepStrictEqual(woken, { status: 200, body: JSON.stringify("request-b") })
+        assert.deepStrictEqual(waited, { status: 200, body: JSON.stringify("request-a") })
+      }),
+    { timeout: 60_000 }
+  )
+
+  it.live(
+    "a timer dropped with a finished request does not stall fibers in later requests",
+    () =>
+      Effect.gen(function*() {
+        const worker = yield* makeWorker("workerdWakeup.ts")
+
+        const spinning = yield* request(worker, "/spin?store=request-a")
+        const yielded = yield* request(worker, "/yield?store=request-b")
+
+        assert.deepStrictEqual(spinning, { status: 200, body: JSON.stringify("request-a") })
+        assert.deepStrictEqual(yielded, { status: 200, body: JSON.stringify("request-b") })
+      }),
+    { timeout: 60_000 }
+  )
 })

@@ -8,6 +8,7 @@ import * as Fiber from "effect/Fiber"
 import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
+import { AsyncLocalStorage } from "node:async_hooks"
 import { vi } from "vitest"
 
 describe("TestClock", () => {
@@ -79,6 +80,19 @@ describe("TestClock", () => {
         assert.isFalse(observed.has(60_000))
       }))
   }
+
+  it.effect("makeDispatcher runs each standalone dispatcher's tasks in its own async context", () =>
+    Effect.gen(function*() {
+      const scheduler = yield* Scheduler.Scheduler
+      const storage = new AsyncLocalStorage<string>()
+      const seen: Array<string | undefined> = []
+      for (const store of ["a", "b"]) {
+        storage.run(store, () => scheduler.makeDispatcher().scheduleTask(() => seen.push(storage.getStore()), 0))
+      }
+      yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)))
+
+      assert.deepStrictEqual(seen, ["a", "b"])
+    }))
 
   it.effect("sleep - does not require passage of wall time", () =>
     Effect.gen(function*() {
