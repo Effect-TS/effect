@@ -648,6 +648,33 @@ describe("RpcClient", () => {
       assert.isAtMost(pulls, 3)
     }))
 
+  it.effect("does not acknowledge a chunk dropped when its stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      const consuming = yield* Deferred.make<void>()
+      const sent = yield* Queue.unbounded<RpcMessage.FromClient<RpcGroup.Rpcs<typeof ChunkGroup>>>()
+      const { client, write } = yield* RpcClient.makeNoSerialization(ChunkGroup, {
+        onFromClient: ({ message }) => Queue.offer(sent, message)
+      })
+      const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const request = yield* Queue.take(sent)
+      assert(request._tag === "Request")
+      const requestId = request.id
+      yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["a"] })
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Ack", requestId })
+      const receiver = yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["b", "c"] }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Deferred.await(consuming)
+      assert.isUndefined(receiver.pollUnsafe())
+      yield* Fiber.interrupt(reader)
+
+      assert(Exit.isSuccess(yield* Fiber.await(receiver)))
+      assert.deepStrictEqual((yield* Queue.takeAll(sent)).map((message) => message._tag), ["Interrupt"])
+    }))
+
   it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
     Effect.gen(function*() {
       const sent: Array<string> = []
