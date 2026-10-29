@@ -325,9 +325,8 @@ export interface ResponseExitEncoded {
 }
 
 /**
- * A server-to-client protocol message reporting a client protocol error to all
- * affected in-flight requests. When `requestIds` is set, only those requests
- * fail; otherwise every in-flight request does.
+ * A server-to-client protocol message failing in-flight requests with a client
+ * protocol error: those in `requestIds`, or all of them when it is omitted.
  *
  * @stability unstable
  * @category models
