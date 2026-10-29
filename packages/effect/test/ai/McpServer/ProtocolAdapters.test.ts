@@ -94,6 +94,29 @@ const CapabilityGatedTool = Tool.make("capability-gated", {
     client.capabilities.roots !== undefined
 )
 
+class RootsUnavailable extends Schema.TaggedError<RootsUnavailable>()("RootsUnavailable", {}) {}
+
+const InputRequiredTool = Tool.make("input-required", {
+  parameters: Tool.EmptyParams,
+  success: Schema.String,
+  failure: Schema.instanceOf(McpSchema.InputRequired),
+  dependencies: [McpSchema.McpRequestContext]
+})
+
+const InputRequiredReturnTool = Tool.make("input-required-return", {
+  parameters: Tool.EmptyParams,
+  success: Schema.String,
+  failure: Schema.Union([Schema.instanceOf(McpSchema.InputRequired), RootsUnavailable]),
+  failureMode: "return",
+  dependencies: [McpSchema.McpRequestContext]
+})
+
+// Declares no failures, so a value shaped like InputRequired only encodes through the built-in ExecutionFailure.
+const UndeclaredInputRequiredTool = Tool.make("undeclared-input-required", {
+  parameters: Tool.EmptyParams,
+  failureMode: "return"
+})
+
 const TestToolkit = Toolkit.make(
   SharedTool,
   JsonArrayTool,
@@ -104,7 +127,10 @@ const TestToolkit = Toolkit.make(
   CapabilityTool,
   InitializeMetadataTool,
   LogLevelTool,
-  CapabilityGatedTool
+  CapabilityGatedTool,
+  InputRequiredTool,
+  InputRequiredReturnTool,
+  UndeclaredInputRequiredTool
 )
 
 const FamilyResource = McpServer.resource({
@@ -173,6 +199,14 @@ const MrtrTool = new McpSchema.Tool({
   inputSchema: { type: "object" }
 })
 
+// Requests the client's roots on the first call and completes once the retry carries them.
+const requestRoots = () =>
+  McpSchema.McpRequestContext.use((request) =>
+    request.inputResponses?.roots === undefined
+      ? Effect.fail(new McpSchema.InputRequired({ inputRequests: { roots: { method: "roots/list" } } }))
+      : Effect.succeed("resumed")
+  )
+
 interface TestState {
   sharedInvocations: number
   structuredInvocations: number
@@ -213,7 +247,17 @@ const makeFixture = Effect.fnUntraced(function*(
       "initialize-metadata": () =>
         McpSchema.McpRequestContext.useSync((context) => JSON.stringify(context.requestMetadata)),
       "log-level": () => CurrentLogLevel,
-      "capability-gated": () => Effect.succeed("visible")
+      "capability-gated": () => Effect.succeed("visible"),
+      "input-required": requestRoots,
+      "input-required-return": requestRoots,
+      // Untyped handlers can still fail with a value the tool does not declare.
+      "undeclared-input-required": () =>
+        Effect.fail({
+          _tag: "InputRequired",
+          type: "execution-denied",
+          reason: "denied",
+          requestState: "state"
+        }) as Effect.Effect<never>
     })))
   )
   const mrtrToolLayer = Layer.effectDiscard(
@@ -1152,9 +1196,55 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const legacy = yield* initialize(fixture.post, "2025-11-25")
-      const legacyError = errorOf(yield* legacy.request("tools/call", { name: MrtrTool.name, arguments: {} }))
-      assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-      assert.match(legacyError.message, /Client input is not supported/)
+      for (const name of [MrtrTool.name, "input-required", "input-required-return"]) {
+        const legacyError = errorOf(yield* legacy.request("tools/call", { name, arguments: {} }))
+        assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE, name)
+        assert.match(legacyError.message, /Client input is not supported/, name)
+      }
+    }))
+
+  it.effect("should request input and resume when a toolkit handler fails with InputRequired", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const call = (name: string, params: Record<string, unknown> = {}) =>
+        fixture.post(
+          modernRequest(50, "tools/call", { name, arguments: {}, ...params }, modernMetadata({ roots: {} })),
+          { ...modernHeaders("tools/call"), "Mcp-Name": name }
+        ).pipe(Effect.flatMap(readJsonRpcResponse), Effect.map(resultOf))
+      for (const name of ["input-required", "input-required-return"]) {
+        const pending = yield* call(name)
+        assert.strictEqual(pending.resultType, "input_required", name)
+        assert.deepStrictEqual(pending.inputRequests, { roots: { method: "roots/list" } }, name)
+
+        const resumed = yield* call(name, { inputResponses: { roots: { roots: [] } } })
+        assert.strictEqual(resumed.resultType, "complete", name)
+        assert.strictEqual(resumed.structuredContent, "resumed", name)
+      }
+    }))
+
+  it.effect("should reject a toolkit input request when the client omits its capability", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const response = yield* fixture.post(
+        modernRequest(51, "tools/call", { name: "input-required", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "input-required" }
+      )
+
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(errorOf(yield* readJsonRpcResponse(response)).code, -32021)
+    }))
+
+  it.effect("should keep an undeclared InputRequired-tagged failure as an error result", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const response = yield* fixture.post(
+        modernRequest(52, "tools/call", { name: "undeclared-input-required", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "undeclared-input-required" }
+      )
+      const result = resultOf(yield* readJsonRpcResponse(response))
+
+      assert.strictEqual(result.resultType, "complete")
+      assert.strictEqual(result.isError, true)
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>
