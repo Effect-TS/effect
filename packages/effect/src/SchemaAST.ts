@@ -5321,6 +5321,12 @@ export const unknownToJson = new Link(
 )
 
 /** @internal */
+export const opaqueToJson = new Link(
+  annotate(Json, { [InternalAnnotations.OPAQUE_JSON_ANNOTATION_KEY]: true }),
+  SchemaTransformation.passthrough()
+)
+
+/** @internal */
 export const objectKeywordToJson = new Link(
   new Union([
     new Arrays(false, [], [Json]),

@@ -56,13 +56,15 @@ export declare namespace ToJsonSchema {
     readonly type: JsonSchema.Type | undefined
     readonly schemas: ReadonlyArray<JsonSchema.JsonSchema>
     /**
-     * Whether each entry of `schemas` was compiled exactly. An entry is
-     * approximate when it, or anything it references, is a looser
-     * approximation. A reference still being compiled counts as approximate.
+     * Whether each entry of `schemas` matches exactly the JSON instances that
+     * satisfy the type side of that schema. An entry is not exact when it, or
+     * anything it references, is a looser approximation, describes the JSON
+     * encoding of a non-JSON type (such as `"NaN"` for `Number`), or is a
+     * reference still being compiled. Treat a missing entry as unknown.
      *
      * @since 4.1.0
      */
-    readonly exact: ReadonlyArray<boolean>
+    readonly exact?: ReadonlyArray<boolean> | undefined
   }
 
   /**
