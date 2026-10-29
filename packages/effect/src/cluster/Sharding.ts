@@ -1500,7 +1500,7 @@ const make = Effect.gen(function*() {
       MutableHashMap.forEach(allRunners, (_, runner) => {
         MutableHashMap.remove(allRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
-        // An unhealthy runner was never added to the rings
+        // a runner that was never healthy is not in the rings
         if (!MutableHashSet.has(healthyRunners, runner)) return
         MutableHashSet.remove(healthyRunners, runner)
         // A pending runner owns no shards, so its departure only restarts the
@@ -1520,7 +1520,8 @@ const make = Effect.gen(function*() {
         }
       })
 
-      // Add runners after removals, so a runner re-registered at the same address keeps its ring entries
+      // Added after the removals, so a replacement at the same address is not
+      // removed along with the runner it replaced.
       for (let i = 0; i < newlyHealthy.length; i++) {
         addToRings(newlyHealthy[i])
       }

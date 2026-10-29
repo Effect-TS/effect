@@ -86,8 +86,8 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   }
 
   /**
-   * Compares runners by address, shard-assignment weight, and the set of shard
-   * groups, ignoring order and duplicates.
+   * Compares runners by address, shard-assignment weight, and shard groups,
+   * treating the groups as a set.
    *
    * @stability unstable
    * @since 4.0.0
@@ -100,7 +100,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
 
   /**
    * Computes a structural hash from the runner address, shard-assignment
-   * weight, and the set of shard groups, ignoring order and duplicates.
+   * weight, and shard groups, treating the groups as a set.
    *
    * @stability unstable
    * @since 4.0.0
