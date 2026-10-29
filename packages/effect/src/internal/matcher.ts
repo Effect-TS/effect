@@ -1,3 +1,4 @@
+import type * as Filter from "../Filter.ts"
 import { dual, identity } from "../Function.ts"
 import type {
   Case,
@@ -8,7 +9,8 @@ import type {
   Types,
   ValueFlavor,
   ValueMatcher,
-  When
+  When,
+  WhenFilter
 } from "../Match.ts"
 import * as Option from "../Option.ts"
 import { pipeArguments } from "../Pipeable.ts"
@@ -95,6 +97,14 @@ const ValueMatcherProto: Omit<
         this.provided,
         Result.succeed(_case.evaluate(this.provided))
       )
+    } else if (_case._tag === "WhenFilter") {
+      const result = _case.filter(this.provided)
+      if (Result.isSuccess(result)) {
+        return makeValueMatcher(
+          this.provided,
+          Result.succeed(_case.evaluate(result.success))
+        )
+      }
     }
 
     return this
@@ -129,6 +139,15 @@ const makeNot = (
 ): Not => ({
   _tag: "Not",
   guard,
+  evaluate
+})
+
+const makeWhenFilter = (
+  filter: (u: unknown) => Result.Result<unknown, unknown>,
+  evaluate: (pass: unknown, ...args: Array<any>) => any
+): WhenFilter => ({
+  _tag: "WhenFilter",
+  filter,
   evaluate
 })
 
@@ -310,6 +329,22 @@ export const when = <
   Ret,
   Args
 > => (self as any).add(makeWhen(makePredicate(pattern), f as any))
+
+/** @internal */
+export const whenFilter = <
+  R,
+  Pass,
+  Fail,
+  Ret,
+  Args extends Array<any>,
+  Fn extends (_: Pass, ...args: Args) => Ret
+>(
+  filter: Filter.Filter<R, Pass, Fail>,
+  f: Fn
+) =>
+<I, F, A, Pr>(
+  self: Matcher<I, F, R, A, Pr, Ret, Args>
+): Matcher<I, F, R, A | ReturnType<Fn>, Pr, Ret, Args> => (self as any).add(makeWhenFilter(filter as any, f as any))
 
 /** @internal */
 export const whenOr = <
@@ -637,6 +672,11 @@ export const result: <I, F, R, A, Pr, Ret, Args extends Array<any>>(
           return Result.succeed(_case.evaluate(input, ...args))
         } else if (_case._tag === "Not" && _case.guard(input) === false) {
           return Result.succeed(_case.evaluate(input, ...args))
+        } else if (_case._tag === "WhenFilter") {
+          const result = _case.filter(input)
+          if (Result.isSuccess(result)) {
+            return Result.succeed(_case.evaluate(result.success, ...args))
+          }
         }
         return Result.fail(input as any)
       }
@@ -649,6 +689,11 @@ export const result: <I, F, R, A, Pr, Ret, Args extends Array<any>>(
           return Result.succeed(_case.evaluate(input, ...args))
         } else if (_case._tag === "Not" && _case.guard(input) === false) {
           return Result.succeed(_case.evaluate(input, ...args))
+        } else if (_case._tag === "WhenFilter") {
+          const result = _case.filter(input)
+          if (Result.isSuccess(result)) {
+            return Result.succeed(_case.evaluate(result.success, ...args))
+          }
         }
       }
 
