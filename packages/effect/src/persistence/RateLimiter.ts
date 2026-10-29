@@ -85,6 +85,9 @@ export const RateLimiter: Context.Service<RateLimiter, RateLimiter> = Context.Se
  * The limiter supports fixed-window and token-bucket algorithms and either
  * fails or returns a delay when a limit is exceeded.
  *
+ * A nonpositive `limit` admits no positive token requests: fail mode rejects
+ * them and delay mode returns an infinite delay without touching the store.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -106,8 +109,6 @@ export const make: Effect.Effect<
       const algorithm = options.algorithm ?? "fixed-window"
       const window = Duration.max(Duration.fromInputUnsafe(options.window), Duration.millis(1))
       const windowMillis = Duration.toMillis(window)
-      const refillRate = Duration.divideUnsafe(window, options.limit)
-      const refillRateMillis = Duration.toMillis(refillRate)
 
       if (onExceeded === "fail" && tokens > options.limit) {
         return Effect.fail(
@@ -121,6 +122,20 @@ export const make: Effect.Effect<
           })
         )
       }
+
+      // A nonpositive limit never refills, so skip the store and its infinite refill rate.
+      if (options.limit <= 0) {
+        const exceeded = tokens > options.limit
+        return Effect.succeed<ConsumeResult>({
+          delay: exceeded ? Duration.infinity : Duration.zero,
+          limit: options.limit,
+          remaining: options.limit - tokens,
+          resetAfter: exceeded ? Duration.infinity : Duration.zero
+        })
+      }
+
+      const refillRate = Duration.divideUnsafe(window, options.limit)
+      const refillRateMillis = Duration.toMillis(refillRate)
 
       if (algorithm === "fixed-window") {
         return Effect.flatMap(
@@ -749,7 +764,7 @@ export const layerStoreMemory: Layer.Layer<
             counter = { count: 0, expiresAt: now }
             fixedCounters.set(options.key, counter)
           }
-          if (options.limit && counter.count + options.tokens > options.limit) {
+          if (options.limit !== undefined && counter.count + options.tokens > options.limit) {
             return [counter.count + options.tokens, counter.expiresAt - now] as const
           }
           counter.count += options.tokens
@@ -1057,6 +1072,9 @@ local limit = tonumber(ARGV[3])
 local current = tonumber(redis.call("GET", key))
 
 if not current then
+  if limit and tokens > limit then
+    return { string.format("%.17g", tokens), 0 }
+  end
   local nextpttl = math.max(1, math.ceil(refillms * tokens))
   redis.call("SET", key, tokens, "PX", nextpttl)
   return { string.format("%.17g", tokens), nextpttl }
