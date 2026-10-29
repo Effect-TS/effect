@@ -1259,11 +1259,13 @@ export class McpServer extends Context.Service<McpServer, {
         return resourceTemplates
       },
       addResource: (options) =>
-        internalCore.skills.ownsFile(options.resource.uri)
-          ? Effect.die(
-            new Cause.IllegalArgumentError(`Resource ${options.resource.uri} is a file of a registered skill`)
-          )
-          : addResource(options),
+        Effect.suspend(() =>
+          internalCore.skills.ownsFile(options.resource.uri)
+            ? Effect.die(
+              new Cause.IllegalArgumentError(`Resource ${options.resource.uri} is a file of a registered skill`)
+            )
+            : addResource(options)
+        ),
       addResourceTemplate: Effect.fnUntraced(
         function*({ annotations, completions, handle, routerPath, services, template }) {
           const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
@@ -3606,15 +3608,16 @@ export interface SkillOptions {
 const skillFileEncoder = new TextEncoder()
 
 // Bytes are copied so that later changes by the caller cannot alter what is
-// served under the listed digest.
+// served under the listed digest. `Buffer#slice` shares memory, so copy with
+// the `Uint8Array` constructor.
 const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile =>
   typeof file === "string"
     ? { path, content: skillFileEncoder.encode(file) }
     : file instanceof Uint8Array
-    ? { path, content: file.slice() }
+    ? { path, content: new Uint8Array(file) }
     : {
       path,
-      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : file.content.slice(),
+      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : new Uint8Array(file.content),
       mimeType: file.mimeType
     }
 
