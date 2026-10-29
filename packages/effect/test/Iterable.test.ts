@@ -91,6 +91,45 @@ describe("Iterable", () => {
       deepStrictEqual(pipe(new Set([2, 4]), Iter.takeWhile(f), toArray), [2, 4])
     })
 
+    it("takeWhile stays done after the predicate fails", () => {
+      const source = [2, 3, 4][Symbol.iterator]()
+      const tested: Array<number> = []
+      const iterator = Iter.takeWhile({ [Symbol.iterator]: () => source }, (n) => {
+        tested.push(n)
+        return n % 2 === 0
+      })[Symbol.iterator]()
+
+      deepStrictEqual(iterator.next(), { done: false, value: 2 })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      deepStrictEqual(tested, [2, 3])
+      deepStrictEqual(source.next(), { done: false, value: 4 })
+    })
+
+    it("takeWhile stops pulling an exhausted source", () => {
+      let pulls = 0
+      const source = {
+        [Symbol.iterator]() {
+          const iterator = [2][Symbol.iterator]()
+          return {
+            next() {
+              pulls++
+              return iterator.next()
+            }
+          }
+        }
+      }
+      const taken = Iter.takeWhile(source, () => true)
+      const iterator = taken[Symbol.iterator]()
+
+      deepStrictEqual(iterator.next(), { done: false, value: 2 })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      strictEqual(pulls, 2)
+      deepStrictEqual(toArray(taken), [2])
+    })
+
     it("drop", () => {
       deepStrictEqual(pipe(Iter.empty(), Iter.drop(0), toArray), [])
       deepStrictEqual(pipe([1, 2], Iter.drop(0), toArray), [1, 2])

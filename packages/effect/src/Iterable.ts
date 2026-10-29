@@ -647,12 +647,16 @@ export const takeWhile: {
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A> => ({
   [Symbol.iterator]() {
-    const iterator = self[Symbol.iterator]()
+    let iterator: Iterator<A> | undefined = self[Symbol.iterator]()
     let i = 0
     return {
       next() {
+        if (iterator === undefined) {
+          return { done: true, value: undefined }
+        }
         const result = iterator.next()
         if (result.done || !predicate(result.value, i++)) {
+          iterator = undefined
           return { done: true, value: undefined }
         }
         return result
