@@ -2195,13 +2195,13 @@ describe("AnthropicLanguageModel", () => {
 
   describe("Text editor tool", () => {
     it("decodes insert_text for the insert command", () => {
-      const input = { command: "insert", path: "notes.md", insert_line: 0, insert_text: "# Notes\n" }
+      const input = { command: "insert", path: "notes.md", insert_line: 0, insert_text: "# Notes\n" } as const
       const tool = AnthropicTool.TextEditor_20250728({})
       assert.deepStrictEqual(Schema.decodeUnknownSync(tool.parametersSchema)(input), input)
     })
 
     it("decodes new_str for the legacy insert command", () => {
-      const input = { command: "insert", path: "notes.md", insert_line: 0, new_str: "# Notes\n" }
+      const input = { command: "insert", path: "notes.md", insert_line: 0, new_str: "# Notes\n" } as const
       const tool = AnthropicTool.TextEditor_20250124({})
       assert.deepStrictEqual(Schema.decodeUnknownSync(tool.parametersSchema)(input), input)
       assert.deepStrictEqual(Schema.decodeUnknownSync(AnthropicTool.TextEditorInsertCommand)(input), input)
