@@ -39,30 +39,49 @@ export class NodeRedis extends Context.Service<NodeRedis, {
   readonly use: <A>(f: (client: NodeRedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
 }>()("@effect/platform-node/NodeRedis") {}
 
+// node-redis cannot destroy a socket that is still connecting, so clients that
+// reconnect get a socket signal that `destroy` aborts.
+const makeSocket = (
+  socket: NodeRedisClientOptions["socket"],
+  signal: AbortSignal,
+  isReady: () => boolean
+) => {
+  // node-redis' TLS option type omits `signal`, which `tls.connect` accepts.
+  const callerSignal = socket && "signal" in socket ? socket.signal : undefined
+  return {
+    ...socket,
+    signal: callerSignal ? AbortSignal.any([callerSignal, signal]) : signal,
+    reconnectStrategy: socket?.reconnectStrategy ?? ((retries, cause) => {
+      if (!isReady()) return cause
+      if (cause instanceof SocketTimeoutError) return false
+      const jitter = Math.floor(Math.random() * 200)
+      const delay = Math.min(2 ** retries * 50, 2000)
+      return delay + jitter
+    })
+  }
+}
+
+// Destroying first leaves the abort only an untracked, still-connecting socket
+// to close, so it raises no client error.
+const destroy = (client: NodeRedisClient, abort?: AbortController) => {
+  try {
+    client.destroy()
+  } catch {
+    // node-redis before 6.3 throws when destroying a client whose connection
+    // has failed.
+  }
+  abort?.abort()
+}
+
 const make = Effect.fnUntraced(function*(
   { acquireTimeout, idleTimeout, maxConnections, minConnections, ...options }: NodeRedisOptions = {}
 ) {
-  let ready = false
   const socket = options.socket
+  const abort = new AbortController()
+  let ready = false
   const client = yield* Effect.acquireRelease(
-    Effect.sync((): NodeRedisClient =>
-      createClient({
-        ...options,
-        socket: socket?.reconnectStrategy === undefined
-          ? {
-            ...socket,
-            reconnectStrategy: (retries, cause) => {
-              if (!ready) return cause
-              if (cause instanceof SocketTimeoutError) return false
-              const jitter = Math.floor(Math.random() * 200)
-              const delay = Math.min(2 ** retries * 50, 2000)
-              return delay + jitter
-            }
-          }
-          : socket
-      })
-    ),
-    (client) => Effect.ignoreCause(Effect.promise(() => client.close()))
+    Effect.sync(() => createClient({ ...options, socket: makeSocket(socket, abort.signal, () => ready) })),
+    (client) => Effect.sync(() => destroy(client, abort))
   )
   client.once("ready", () => {
     ready = true
@@ -73,6 +92,8 @@ const make = Effect.fnUntraced(function*(
   // reported as `RedisError`.
   const runSync = Effect.runSyncWith(yield* Effect.context<never>())
   client.on("error", (cause) => {
+    // node-redis before 6.3 reports connection attempts that teardown cut short.
+    if (abort.signal.aborted) return
     runSync(Effect.logWarning("NodeRedis client error", cause))
   })
 
@@ -109,7 +130,7 @@ const make = Effect.fnUntraced(function*(
           await connection.connect()
           return connection
         } catch (cause) {
-          if (connection.isOpen) connection.destroy()
+          destroy(connection)
           throw cause
         }
       },
@@ -119,38 +140,23 @@ const make = Effect.fnUntraced(function*(
         send: sendWith(connection),
         // `destroy` rejects in-flight commands instead of waiting for their
         // replies like `close` does.
-        close: Effect.sync(() => {
-          if (connection.isOpen) connection.destroy()
-        })
+        close: Effect.sync(() => destroy(connection))
       }))
     ),
     pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
     subscribe: Effect.fnUntraced(function*(channel, onMessage) {
       const terminal = yield* Deferred.make<void, Redis.RedisError>()
+      const abort = new AbortController()
       yield* Effect.acquireRelease(
         Effect.tryPromise({
           try: async () => {
             let subscriberReady = false
-            const subscriber = client.duplicate(
-              socket?.reconnectStrategy === undefined
-                ? {
-                  socket: {
-                    ...socket,
-                    reconnectStrategy: (retries, cause) => {
-                      if (!subscriberReady) return cause
-                      if (cause instanceof SocketTimeoutError) return false
-                      const jitter = Math.floor(Math.random() * 200)
-                      const delay = Math.min(2 ** retries * 50, 2000)
-                      return delay + jitter
-                    }
-                  }
-                }
-                : {}
-            )
+            const subscriber = client.duplicate({ socket: makeSocket(socket, abort.signal, () => subscriberReady) })
             subscriber.once("ready", () => {
               subscriberReady = true
             })
             subscriber.on("error", (cause) => {
+              if (abort.signal.aborted) return
               runSync(Effect.logWarning("NodeRedis subscriber error", cause))
               if (!subscriber.isOpen) {
                 runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
@@ -163,16 +169,13 @@ const make = Effect.fnUntraced(function*(
               })
               return subscriber
             } catch (cause) {
-              if (subscriber.isOpen) subscriber.destroy()
+              destroy(subscriber, abort)
               throw cause
             }
           },
           catch: (cause) => new Redis.RedisError({ cause })
         }),
-        (subscriber) =>
-          Effect.sync(() => {
-            if (subscriber.isOpen) subscriber.destroy()
-          })
+        (subscriber) => Effect.sync(() => destroy(subscriber, abort))
       )
       return Deferred.await(terminal)
     })
@@ -200,11 +203,11 @@ const make = Effect.fnUntraced(function*(
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization calls `close()` on the shared client, which waits for
- * in-flight commands, including blocking commands, and can therefore delay
- * scope closure. Run blocking commands on `Redis.reserve` instead: reserved
- * connections are destroyed when the scope closes, failing their in-flight
- * commands.
+ * Scope finalization destroys the shared client immediately, failing commands
+ * still in flight and aborting any connection attempt in progress. A reserved
+ * connection or subscriber that is still connecting delays scope finalization
+ * until its connection attempt settles. Run blocking commands on
+ * `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
@@ -226,11 +229,11 @@ export const layer = (
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization calls `close()` on the shared client, which waits for
- * in-flight commands, including blocking commands, and can therefore delay
- * scope closure. Run blocking commands on `Redis.reserve` instead: reserved
- * connections are destroyed when the scope closes, failing their in-flight
- * commands.
+ * Scope finalization destroys the shared client immediately, failing commands
+ * still in flight and aborting any connection attempt in progress. A reserved
+ * connection or subscriber that is still connecting delays scope finalization
+ * until its connection attempt settles. Run blocking commands on
+ * `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
