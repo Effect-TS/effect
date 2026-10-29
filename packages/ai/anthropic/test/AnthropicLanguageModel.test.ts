@@ -2204,6 +2204,7 @@ describe("AnthropicLanguageModel", () => {
       const input = { command: "insert", path: "notes.md", insert_line: 0, new_str: "# Notes\n" }
       const tool = AnthropicTool.TextEditor_20250124({})
       assert.deepStrictEqual(Schema.decodeUnknownSync(tool.parametersSchema)(input), input)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(AnthropicTool.TextEditorInsertCommand)(input), input)
     })
   })
 
