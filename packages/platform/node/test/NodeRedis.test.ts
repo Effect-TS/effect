@@ -1,5 +1,5 @@
 import { NodeRedis } from "@effect/platform-node"
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { Redis } from "effect/persistence"
 import * as ChildProcess from "node:child_process"
@@ -80,6 +80,29 @@ describe("NodeRedis", () => {
       yield* Deferred.await(peer.closed)
       // The client is fully destroyed, not just disconnected by the abort signal.
       yield* Deferred.await(ended)
+    }))
+
+  it.live("stops reconnecting after a socket timeout", () =>
+    Effect.gen(function*() {
+      const peer = yield* makePeer((socket, data) => {
+        // Complete the connection handshake, but never reply to PING.
+        for (const [, command] of data.matchAll(/\*\d+\r\n\$\d+\r\n(\w+)\r\n/g)) {
+          if (command !== "PING") socket.write("+OK\r\n")
+        }
+      })
+      yield* Effect.gen(function*() {
+        const { client } = yield* NodeRedis.NodeRedis
+        const redis = yield* Redis.Redis
+        yield* Effect.flip(redis.send("PING"))
+        assert.isFalse(client.isOpen)
+      }).pipe(
+        Effect.provide(NodeRedis.layer({
+          socket: { host: "127.0.0.1", port: peer.port, socketTimeout: 200 },
+          RESP: 2,
+          disableClientInfo: true,
+          maintNotifications: "disabled"
+        }))
+      )
     }))
 
   // Vitest's CommonJS interop hides missing named exports, so plain Node loads
