@@ -483,15 +483,16 @@ export type RemoteTool<
   ResultMode extends "text" | "complete" = "text",
   FailureMode extends Tool.FailureMode = "error",
   Requirements = never
-> = Tool.Tool<string, {
-  readonly parameters: typeof Schema.Unknown
-  readonly success: {
-    readonly text: typeof Schema.String
-    readonly complete: typeof McpSchema.CallToolResult
-  }[ResultMode]
-  readonly failure: typeof McpClientError
-  readonly failureMode: FailureMode
-}, Requirements>
+> = FailureMode extends Tool.FailureMode ? Tool.Tool<string, {
+    readonly parameters: typeof Schema.Unknown
+    readonly success: {
+      readonly text: typeof Schema.String
+      readonly complete: typeof McpSchema.CallToolResult
+    }[ResultMode]
+    readonly failure: typeof McpClientError
+    readonly failureMode: FailureMode
+  }, Requirements>
+  : never
 
 /**
  * Configures discovery, results and native Tool behavior.
@@ -589,14 +590,19 @@ export function toolkit(
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
         return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
       }
-      let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = Tool.dynamic(name, {
+      const spec = {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
         success,
         failure: McpClientError,
-        failureMode,
         toModelOutput: complete ? toModelOutput : undefined
-      }).annotate(Tool.Strict, false).annotate(ToolDescriptor, descriptor)
+      }
+      // Narrowing gives each tool a single failure mode, matching the distributive RemoteTool.
+      let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = (
+        failureMode === "return"
+          ? Tool.dynamic(name, { ...spec, failureMode })
+          : Tool.dynamic(name, { ...spec, failureMode })
+      ).annotate(Tool.Strict, false).annotate(ToolDescriptor, descriptor)
       if (config.trustAnnotations && descriptor.annotations !== undefined) {
         tool = tool.annotate(Tool.Readonly, descriptor.annotations.readOnlyHint)
           .annotate(Tool.Destructive, descriptor.annotations.destructiveHint)
