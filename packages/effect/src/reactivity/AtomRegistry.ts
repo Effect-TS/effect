@@ -444,7 +444,9 @@ class RegistryImpl implements AtomRegistry {
       // a listener hears the next change, which only reaches an up-to-date
       // node. A failed build is left for the next read to report, so that the
       // listener is still added and hears the recovery. A failure after the
-      // value is committed would not be reported again, so it is rethrown.
+      // value is committed would not be reported again, so it is rethrown, as
+      // is one from releasing a failed build, which runs only once.
+      node.disposeLifetime()
       try {
         node.value()
       } catch (error) {
