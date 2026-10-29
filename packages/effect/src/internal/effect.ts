@@ -661,6 +661,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._stack.length = 0
     this._children = undefined
     this.context = Context.empty()
+    // The cache is shared with other fibers, so replace it rather than mutate
+    // it, letting the ended span and its parents be collected
+    const cache = this.cache
+    if (cache.span !== undefined || cache.stackFrame !== undefined) {
+      this.cache = { ...cache, span: undefined, stackFrame: undefined }
+    }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
