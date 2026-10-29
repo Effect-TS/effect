@@ -576,16 +576,13 @@ class PgConnectionImpl implements PgConnection {
     cache: PreparedCache | undefined
   ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
 
-  /** Plans a batch, or a single query when `batch` is `undefined`. */
-  private readonly encodeCycle = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
-    cache: PreparedCache | undefined,
-    batch: ReadonlyArray<BatchStatement> | undefined
-  ): Plan =>
-    batch === undefined
-      ? encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
-      : encodeBatch(batch, this.registry, this.bindEncoder)
+  /** The cycle for one statement, planned against whatever cache the attempt allows. */
+  readonly queryCycle = (sql: string, params: ReadonlyArray<unknown>): EncodeCycle => (cache) =>
+    this.encodeQuery(sql, params, cache)
+
+  /** The cycle for a batch, which never names statements. */
+  readonly batchCycle = (statements: ReadonlyArray<BatchStatement>): EncodeCycle => () =>
+    encodeBatch(statements, this.registry, this.bindEncoder)
 
   /**
    * Routes backend messages to the oldest statement still on the wire.
@@ -715,18 +712,16 @@ class PgConnectionImpl implements PgConnection {
    * serializing them.
    */
   private readonly pipelineCycle = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
+    encode: EncodeCycle,
     wantRows: boolean,
-    cache: PreparedCache | undefined,
-    batch: ReadonlyArray<BatchStatement> | undefined
+    cache: PreparedCache | undefined
   ): Effect.Effect<QueryOutput, SqlError> =>
     Effect.flatMap(
       this.owner.withPermit(Effect.suspend(() => {
         if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
         let plan: Plan
         try {
-          plan = this.encodeCycle(sql, params, cache, batch)
+          plan = encode(cache)
         } catch (cause) {
           return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
         }
@@ -748,8 +743,7 @@ class PgConnectionImpl implements PgConnection {
           )
         )
         if (cache === undefined || entry.plan.parses) return awaited
-        return retryStale(entry.plan, cache, awaited, () =>
-          this.pipelineCycle(sql, params, wantRows, undefined, undefined))
+        return retryStale(entry.plan, cache, awaited, () => this.pipelineCycle(encode, wantRows, undefined))
       }
     )
 
@@ -758,12 +752,10 @@ class PgConnectionImpl implements PgConnection {
    * because competing pinned work and streams must acquire `owner` first.
    */
   readonly cycleOwned = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
+    encode: EncodeCycle,
     wantRows: boolean,
-    cache: PreparedCache | undefined,
-    batch?: ReadonlyArray<BatchStatement> | undefined
-  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(sql, params, wantRows, cache, batch))
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> => Effect.suspend(() => this.attempt(encode, wantRows, cache))
 
   /**
    * Runs one cycle. A reused statement the backend has since dropped, or whose
@@ -771,22 +763,20 @@ class PgConnectionImpl implements PgConnection {
    * that attempt skips the cache, so it cannot loop.
    */
   private readonly attempt = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
+    encode: EncodeCycle,
     wantRows: boolean,
-    cache: PreparedCache | undefined,
-    batch: ReadonlyArray<BatchStatement> | undefined
+    cache: PreparedCache | undefined
   ): Effect.Effect<QueryOutput, SqlError> => {
     if (this.deadWith !== undefined) return Effect.fail(this.deadWith)
     let plan: Plan
     try {
-      plan = this.encodeCycle(sql, params, cache, batch)
+      plan = encode(cache)
     } catch (cause) {
       return Effect.fail(queryError(cause, "PgConnection: Failed to encode query"))
     }
     const run = runQuery(this, plan, wantRows)
     if (cache === undefined || plan.parses) return run
-    return retryStale(plan, cache, run, () => this.attempt(sql, params, wantRows, undefined, undefined))
+    return retryStale(plan, cache, run, () => this.attempt(encode, wantRows, undefined))
   }
 
   /** Sends a `CancelRequest` for this session on a side connection. */
@@ -841,32 +831,34 @@ class PgConnectionImpl implements PgConnection {
   )
 
   private readonly run = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
+    encode: EncodeCycle,
     wantRows: boolean,
-    prepare: boolean,
-    batch?: ReadonlyArray<BatchStatement> | undefined
-  ): Effect.Effect<QueryOutput, SqlError> => {
-    const cache = prepare ? this.prepared : undefined
-    return this.multiplex
-      ? this.pipelineCycle(sql, params, wantRows, cache, batch)
-      : this.owner.withPermit(this.cycleOwned(sql, params, wantRows, cache, batch))
-  }
+    cache: PreparedCache | undefined
+  ): Effect.Effect<QueryOutput, SqlError> =>
+    this.multiplex
+      ? this.pipelineCycle(encode, wantRows, cache)
+      : this.owner.withPermit(this.cycleOwned(encode, wantRows, cache))
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.run(sql, params ?? emptyParams, true, prepare), takeResult)
+    Effect.map(
+      this.run(this.queryCycle(sql, params ?? emptyParams), true, prepare ? this.prepared : undefined),
+      takeResult
+    )
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.run(sql, params ?? emptyParams, false, prepare), takeValues)
+    Effect.map(
+      this.run(this.queryCycle(sql, params ?? emptyParams), false, prepare ? this.prepared : undefined),
+      takeValues
+    )
 
   readonly batch = (statements: ReadonlyArray<BatchStatement>): Effect.Effect<ReadonlyArray<Result>, SqlError> =>
     statements.length === 0
       ? Effect.succeed([])
-      : Effect.map(this.run("", emptyParams, true, false, statements), takeResults)
+      : Effect.map(this.run(this.batchCycle(statements), true, undefined), takeResults)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -903,16 +895,14 @@ class PinnedPgConnection implements PgConnection {
 
   // Check the lease under the wire permit so queued work cannot run after release.
   private cycle(
-    sql: string,
-    params: ReadonlyArray<unknown>,
+    encode: EncodeCycle,
     wantRows: boolean,
-    prepare: boolean,
-    batch?: ReadonlyArray<BatchStatement> | undefined
+    cache: PreparedCache | undefined
   ): Effect.Effect<QueryOutput, SqlError> {
     return this.base.wire.withPermit(Effect.suspend(() =>
       this.released
         ? Effect.fail(pinReleasedError())
-        : this.base.cycleOwned(sql, params, wantRows, prepare ? this.base.prepared : undefined, batch)
+        : this.base.cycleOwned(encode, wantRows, cache)
     ))
   }
 
@@ -927,19 +917,25 @@ class PinnedPgConnection implements PgConnection {
   }
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.cycle(sql, params ?? emptyParams, true, prepare), takeResult)
+    Effect.map(
+      this.cycle(this.base.queryCycle(sql, params ?? emptyParams), true, prepare ? this.base.prepared : undefined),
+      takeResult
+    )
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.cycle(sql, params ?? emptyParams, false, prepare), takeValues)
+    Effect.map(
+      this.cycle(this.base.queryCycle(sql, params ?? emptyParams), false, prepare ? this.base.prepared : undefined),
+      takeValues
+    )
 
   readonly batch = (statements: ReadonlyArray<BatchStatement>): Effect.Effect<ReadonlyArray<Result>, SqlError> =>
     statements.length === 0
       ? Effect.succeed([])
-      : Effect.map(this.cycle("", emptyParams, true, false, statements), takeResults)
+      : Effect.map(this.cycle(this.base.batchCycle(statements), true, undefined), takeResults)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)
@@ -1072,25 +1068,14 @@ const takeResults = (output: QueryOutput): ReadonlyArray<Result> => output.resul
  * `Execute` runs it without a row limit, and `Sync` closes the cycle; none of
  * the three carries per-query state, so the bytes are encoded once.
  */
-const describeExecuteSync: Uint8Array = concat([
-  PgProtocol.encodeDescribe({ target: "portal", name: "" }),
-  PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
-  PgProtocol.encodeSync()
-])
-
-/** `Describe` and `Execute` for one statement of a batch, which ends with a single `Sync`. */
-const describeExecute: Uint8Array = concat([
-  PgProtocol.encodeDescribe({ target: "portal", name: "" }),
-  PgProtocol.encodeExecute({ portal: "", maxRows: 0 })
-])
-
 const sync: Uint8Array = PgProtocol.encodeSync()
+const execute: Uint8Array = PgProtocol.encodeExecute({ portal: "", maxRows: 0 })
+/** `Describe` and `Execute` for one statement of a batch, which shares a single `Sync`. */
+const describeExecute: Uint8Array = concat([PgProtocol.encodeDescribe({ target: "portal", name: "" }), execute])
+const describeExecuteSync: Uint8Array = concat([describeExecute, sync])
 
 /** The same tail for a statement whose columns are already known. */
-const executeSync: Uint8Array = concat([
-  PgProtocol.encodeExecute({ portal: "", maxRows: 0 }),
-  PgProtocol.encodeSync()
-])
+const executeSync: Uint8Array = concat([execute, sync])
 
 /** The default number of statements a connection keeps prepared. */
 const defaultPreparedStatements = 100
@@ -1130,6 +1115,12 @@ interface Plan {
   /** The statements in the cycle: more than one for a batch. */
   readonly statements: number
 }
+
+/**
+ * Plans a cycle for one attempt. The cache is the one that attempt may name
+ * statements from: `undefined` on a retry, and always for a batch.
+ */
+type EncodeCycle = (cache: PreparedCache | undefined) => Plan
 
 /** The unnamed path: `Parse` / `Bind` / `Describe` / `Execute` / `Sync`. */
 const encodeUnnamed = (
@@ -2113,7 +2104,7 @@ const unlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection, identifier
         unlistenTimeoutMillis
       )
       return Effect.ensuring(
-        Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+        Effect.ignore(conn.cycleOwned(conn.queryCycle(`UNLISTEN ${identifier}`, emptyParams), true, conn.prepared)),
         Effect.andThen(Effect.sync(() => clearTimeout(timeout)), releaseUnlisten(conn, pinned))
       )
     }
