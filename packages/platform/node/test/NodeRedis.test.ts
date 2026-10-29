@@ -2,7 +2,7 @@ import { NodeRedis } from "@effect/platform-node"
 import { assert } from "@effect/vitest"
 import { Effect, Fiber, Layer } from "effect"
 import { once } from "node:events"
-import { createServer, type Socket } from "node:net"
+import { createConnection, createServer, type Socket } from "node:net"
 import { setTimeout } from "node:timers/promises"
 import { it } from "vitest"
 
@@ -15,15 +15,30 @@ const withPeer = async (
     readonly connections: () => number
   }) => Promise<void>
 ) => {
+  const rawSockets = new Set<Socket>()
   const sockets = new Set<Socket>()
   let connections = 0
   const accepted = Promise.withResolvers<Socket>()
   const server = createServer((socket) => {
-    connections++
-    sockets.add(socket)
+    rawSockets.add(socket)
     socket.on("error", () => {})
-    socket.once("close", () => sockets.delete(socket))
-    accepted.resolve(socket)
+    socket.once("close", () => {
+      rawSockets.delete(socket)
+      sockets.delete(socket)
+    })
+    socket.once("data", (data) => {
+      // Local port probes are not Redis clients, even if they send a TLS ClientHello.
+      if (data[0] !== 0x2a) {
+        socket.destroy()
+        return
+      }
+      connections++
+      sockets.add(socket)
+      // Let the test observe and parse the first RESP bytes too.
+      socket.pause()
+      socket.unshift(data)
+      accepted.resolve(socket)
+    })
   })
   server.listen(0, "127.0.0.1")
   await once(server, "listening")
@@ -33,7 +48,7 @@ const withPeer = async (
   try {
     await test({ port: address.port, sockets, accepted: accepted.promise, connections: () => connections })
   } finally {
-    for (const socket of sockets) socket.destroy()
+    for (const socket of rawSockets) socket.destroy()
     await new Promise<void>((resolve) => server.close(() => resolve()))
   }
 }
@@ -47,19 +62,31 @@ const bounded = <A>(promise: Promise<A>, millis = 2_500): Promise<A> =>
 for (const tls of [false, true]) {
   it(`interrupts a stalled ${tls ? "TLS" : "Redis"} handshake without leaking the socket`, async () => {
     await withPeer(async (peer) => {
+      const transport = tls ? createConnection({ host: "127.0.0.1", port: peer.port }) : undefined
+      if (transport) {
+        // Identify our connection before handing it to TLS, so probes cannot claim it.
+        transport.write("*")
+        const socket = await bounded(peer.accepted)
+        const data = once(socket, "data")
+        socket.resume()
+        await bounded(data)
+        socket.pause()
+      }
       const fiber = Effect.runFork(
         Layer.build(NodeRedis.layer({
           socket: {
             host: "127.0.0.1",
             port: peer.port,
-            ...(tls ? { tls: true as const } : { tls: false as const }),
+            ...(tls ? { tls: true as const, socket: transport } : { tls: false as const }),
             reconnectStrategy: () => 100
           }
         })).pipe(Effect.scoped)
       )
       const socket = await bounded(peer.accepted)
       // Redis handshake bytes (or TLS ClientHello) prove connection creation has started.
-      await bounded(once(socket, "data"))
+      const data = once(socket, "data")
+      socket.resume()
+      await bounded(data)
       const closed = once(socket, "close")
       try {
         await bounded(Effect.runPromise(Fiber.interrupt(fiber)))
@@ -93,7 +120,9 @@ it("interrupts initial reconnect backoff without opening another socket", async 
       })).pipe(Effect.scoped)
     )
     const socket = await bounded(peer.accepted)
-    await bounded(once(socket, "data"))
+    const data = once(socket, "data")
+    socket.resume()
+    await bounded(data)
     socket.destroy()
     // The callback establishes that node-redis has entered retry backoff.
     await bounded(retry.promise)
@@ -146,6 +175,7 @@ it("bounds graceful finalization when a ready client's command stalls", async ()
         else socket.write("+OK\r\n")
       }
     })
+    socket.resume()
     await bounded(stalled.promise)
     const closed = once(socket, "close")
     try {
@@ -167,7 +197,9 @@ it("preserves a caller's socket abort signal", async () => {
       })).pipe(Effect.scoped)
     )
     const socket = await bounded(peer.accepted)
-    await bounded(once(socket, "data"))
+    const data = once(socket, "data")
+    socket.resume()
+    await bounded(data)
     const closed = once(socket, "close")
     abort.abort()
     const exit = await bounded(Effect.runPromise(Fiber.await(fiber)))
