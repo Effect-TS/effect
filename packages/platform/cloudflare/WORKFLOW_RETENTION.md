@@ -1,7 +1,8 @@
-# Proposal: completed Workflow result retention
+# Proposal: result retention for Effect Workflows on Durable Objects
 
-The Cloudflare Workflow engine currently retains completed executions and their
-journals. This draft proposes opt-in collection without losing retry safety or
+The Effect Workflow engine backed by Cloudflare Durable Objects currently retains
+completed executions and their journals. This is Effect's DO engine, not the
+Cloudflare Workflows product. This draft proposes opt-in collection without losing retry safety or
 the results that callers still need for replay. It does not implement GC or add
 a public API.
 
