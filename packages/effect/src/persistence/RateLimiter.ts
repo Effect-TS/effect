@@ -696,6 +696,8 @@ export class RateLimiterStore extends Context.Service<
 /**
  * Provides a process-local in-memory `RateLimiterStore`.
  *
+ * **Details**
+ *
  * Entries expire once their state is indistinguishable from an unseen key, and
  * a background sweep scoped to the layer removes expired entries periodically.
  *
