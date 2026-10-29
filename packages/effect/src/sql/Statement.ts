@@ -85,6 +85,36 @@ export interface Statement<A> extends Fragment, Effect.Effect<ReadonlyArray<A>, 
     sql: string,
     params: ReadonlyArray<unknown>
   ]
+  /**
+   * Runs `f` the way this statement's own execution does.
+   *
+   * **Details**
+   *
+   * The `CurrentTransformer` is applied and the statement is compiled with
+   * its own compiler. A client span is opened with the statement's attributes
+   * and `operation` as its `effect.sql.method`. Span propagation and the
+   * connection wait time follow `SpanPropagationEnabled`. The connection is
+   * the enclosing transaction's, or one borrowed or acquired for this call.
+   * `transformRows` is the row transform this statement would apply, or
+   * `undefined` when `withoutTransform` is set.
+   *
+   * **When to use**
+   *
+   * Drivers use it to add execution modes core does not have, such as
+   * `PgClient.withPrelude`, without re-implementing statement execution.
+   *
+   * @since 4.2.0
+   */
+  readonly withConnection: <XA, E>(
+    operation: string,
+    f: (
+      connection: Connection,
+      sql: string,
+      params: ReadonlyArray<unknown>,
+      transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+    ) => Effect.Effect<XA, E>,
+    withoutTransform?: boolean | undefined
+  ) => Effect.Effect<XA, E | SqlError>
 }
 
 /**
@@ -1362,26 +1392,20 @@ interface StatementImpl<A> extends Statement<A> {
   readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   readonly borrower: Borrower | undefined
 
-  withConnection<XA, E>(
-    operation: string,
-    f: (
-      connection: Connection,
-      sql: string,
-      params: ReadonlyArray<unknown>
-    ) => Effect.Effect<XA, E>,
-    withoutTransform?: boolean | undefined
-  ): Effect.Effect<XA, E | SqlError>
   withConnectionSpan<XA, E>(
     operation: string,
-    f: (
-      connection: Connection,
-      sql: string,
-      params: ReadonlyArray<unknown>
-    ) => Effect.Effect<XA, E>,
+    f: ConnectionCallback<XA, E>,
     withoutTransform: boolean,
     span: Tracer.Span
   ): Effect.Effect<XA, E | SqlError>
 }
+
+type ConnectionCallback<XA, E> = (
+  connection: Connection,
+  sql: string,
+  params: ReadonlyArray<unknown>,
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+) => Effect.Effect<XA, E>
 
 const makeUnsafe = <A = Row>(
   segments: ReadonlyArray<Segment>,
@@ -1410,11 +1434,7 @@ const StatementProto: Omit<
   withConnection<XA, E>(
     this: StatementImpl<any>,
     operation: string,
-    f: (
-      connection: Connection,
-      sql: string,
-      params: ReadonlyArray<unknown>
-    ) => Effect.Effect<XA, E>,
+    f: ConnectionCallback<XA, E>,
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
@@ -1432,11 +1452,7 @@ const StatementProto: Omit<
   withConnectionSpan<XA, E>(
     this: StatementImpl<any>,
     operation: string,
-    f: (
-      connection: Connection,
-      sql: string,
-      params: ReadonlyArray<unknown>
-    ) => Effect.Effect<XA, E>,
+    f: ConnectionCallback<XA, E>,
     withoutTransform: boolean,
     span: Tracer.Span
   ): Effect.Effect<XA, E | SqlError> {
@@ -1449,12 +1465,13 @@ const StatementProto: Omit<
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
       const clock = propagate ? waitClock(fiber) : undefined
+      const transformRows = withoutTransform ? undefined : this.transformRows
       const run = clock === undefined
-        ? (connection: Connection) => f(connection, sql, params)
+        ? (connection: Connection) => f(connection, sql, params, transformRows)
         : (connection: Connection) =>
           Effect.suspend(() => {
             recordConnectionWait(span, clock)
-            return f(connection, sql, params)
+            return f(connection, sql, params, transformRows)
           })
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, run))
@@ -1522,10 +1539,9 @@ const StatementProto: Omit<
   },
 
   get unprepared(): Effect.Effect<ReadonlyArray<any>, SqlError> {
-    const self = this as StatementImpl<any>
-    return self.withConnection(
+    return this.withConnection(
       "executeUnprepared",
-      (connection, sql, params) => connection.executeUnprepared(sql, params, self.transformRows)
+      (connection, sql, params, transformRows) => connection.executeUnprepared(sql, params, transformRows)
     )
   },
 
@@ -1538,7 +1554,7 @@ const StatementProto: Omit<
       return Effect.onExit(
         this.withConnectionSpan(
           "execute",
-          (connection, sql, params) => connection.execute(sql, params, this.transformRows),
+          (connection, sql, params, transformRows) => connection.execute(sql, params, transformRows),
           false,
           span
         ),
