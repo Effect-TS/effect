@@ -9,7 +9,6 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
@@ -69,50 +68,6 @@ export interface PgClient extends Client.SqlClient {
     channel: string
   ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
-  /**
-   * Runs the `prelude` statements and then the statement in one extended-query
-   * cycle, closed by a single `Sync`, and returns only the statement's rows.
-   * Transaction-local settings made by the prelude, such as
-   * `set_config(..., true)` or `SET LOCAL`, apply to the statement and end
-   * with the cycle unless it runs inside `withTransaction`.
-   *
-   * **Details**
-   *
-   * The statement runs through the normal execution path, so statement
-   * transformers, spans, span propagation, row transforms and the current
-   * transaction's connection apply as they do for ``sql`...` ``. Each prelude
-   * is compiled by the client that built it, so a prelude built with
-   * `withoutTransforms()` stays untransformed. Statement transformers do not
-   * apply to preludes. The statement must come from a `PgClient`.
-   *
-   * A failing prelude fails the effect and the statement does not run.
-   * Preludes can run twice when a stale prepared statement is retried, so keep
-   * them to transaction-local effects. See `PgConnection.queryWithPrelude`.
-   *
-   * **Example** (Setting row-level security context for one query)
-   *
-   * ```ts
-   * import { Effect } from "effect"
-   * import { PgClient } from "@effect/sql-pg"
-   *
-   * const items = (org: string) =>
-   *   Effect.gen(function*() {
-   *     const sql = yield* PgClient.PgClient
-   *     return yield* sql`SELECT * FROM item`.pipe(
-   *       sql.withPrelude([sql`SELECT set_config('app.organization_id', ${org}, true)`])
-   *     )
-   *   })
-   * ```
-   */
-  readonly withPrelude: {
-    (
-      prelude: ReadonlyArray<Statement.Statement<unknown>>
-    ): <A>(statement: Statement.Statement<A>) => Effect.Effect<ReadonlyArray<A>, SqlError>
-    <A>(
-      statement: Statement.Statement<A>,
-      prelude: ReadonlyArray<Statement.Statement<unknown>>
-    ): Effect.Effect<ReadonlyArray<A>, SqlError>
-  }
   /**
    * Returns a snapshot of connection pool occupancy. A client from `makeClient`
    * has one session that stays leased for its lifetime, so it always reports
@@ -381,7 +336,6 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       poolStats: options.poolStats,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen,
-      withPrelude,
       notify: (channel: string, payload: string) => {
         const channelError = validateChannelName(channel, "notify")
         return channelError !== undefined ?
@@ -442,14 +396,11 @@ class ConnectionImpl implements Connection {
       ? Effect.map(operation, transformRows)
       : operation
   }
-  executeWithPrelude(
-    prelude: ReadonlyArray<PgConnection.PreludeStatement>,
-    sql: string,
-    params: ReadonlyArray<unknown>,
-    transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
-  ): Effect.Effect<ReadonlyArray<any>, SqlError> {
-    const rows = Effect.map(this.connection.queryWithPrelude(prelude, sql, params), (result) => result.rows)
-    return transformRows ? Effect.map(rows, transformRows) : rows
+  executeBatch(statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>) {
+    return Effect.map(
+      this.connection.batch(statements.map(([sql, params]) => ({ sql, params }))),
+      (results) => results.map((result) => result.rows)
+    )
   }
   executeStream(
     sql: string,
@@ -464,34 +415,6 @@ class ConnectionImpl implements Connection {
       : stream
   }
 }
-
-const compilePrelude = (statement: Statement.Statement<unknown>): PgConnection.PreludeStatement => {
-  const [sql, params] = statement.compile()
-  return { sql, params }
-}
-
-const withPrelude: PgClient["withPrelude"] = dual(
-  2,
-  <A>(
-    statement: Statement.Statement<A>,
-    prelude: ReadonlyArray<Statement.Statement<unknown>>
-  ): Effect.Effect<ReadonlyArray<A>, SqlError> =>
-    statement.withConnection(
-      "executeWithPrelude",
-      (connection, sql, params, transformRows) =>
-        connection instanceof ConnectionImpl
-          ? connection.executeWithPrelude(prelude.map(compilePrelude), sql, params, transformRows)
-          : Effect.fail(
-            new SqlError({
-              reason: new UnknownError({
-                cause: new Error("Statement was not built by a PgClient"),
-                message: "PgClient: withPrelude needs a statement built by a PgClient",
-                operation: "executeWithPrelude"
-              })
-            })
-          )
-    )
-)
 
 /** PostgreSQL returns `ROLLBACK` for `COMMIT` when a transaction is aborted. */
 const commit = (conn: Connection): Effect.Effect<void, SqlError> =>

@@ -85,36 +85,6 @@ export interface Statement<A> extends Fragment, Effect.Effect<ReadonlyArray<A>, 
     sql: string,
     params: ReadonlyArray<unknown>
   ]
-  /**
-   * Runs `f` the way this statement's own execution does.
-   *
-   * **When to use**
-   *
-   * Use to add driver-specific execution modes that core does not have, such
-   * as `PgClient.withPrelude`, without re-implementing statement execution.
-   *
-   * **Details**
-   *
-   * The `CurrentTransformer` is applied and the statement is compiled with
-   * its own compiler. A client span is opened with the statement's attributes
-   * and `operation` as its `effect.sql.method`. Span propagation and the
-   * connection wait time follow `SpanPropagationEnabled`. The connection is
-   * the enclosing transaction's, or one borrowed or acquired for this call.
-   * `transformRows` is the row transform this statement would apply, or
-   * `undefined` when `withoutTransform` is set.
-   *
-   * @since 4.2.0
-   */
-  readonly withConnection: <XA, E>(
-    operation: string,
-    f: (
-      connection: Connection,
-      sql: string,
-      params: ReadonlyArray<unknown>,
-      transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
-    ) => Effect.Effect<XA, E>,
-    withoutTransform?: boolean | undefined
-  ) => Effect.Effect<XA, E | SqlError>
 }
 
 /**
@@ -1371,6 +1341,8 @@ export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
 const ATTR_SQL_METHOD = "effect.sql.method"
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_OPERATION_BATCH_SIZE = "db.operation.batch.size"
 
 // the last value wins, matching the order the attributes are applied to spans
 const spanAttribute = (spanAttributes: ReadonlyArray<readonly [string, unknown]>, key: string): unknown => {
@@ -1392,20 +1364,26 @@ interface StatementImpl<A> extends Statement<A> {
   readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   readonly borrower: Borrower | undefined
 
+  withConnection<XA, E>(
+    operation: string,
+    f: (
+      connection: Connection,
+      sql: string,
+      params: ReadonlyArray<unknown>
+    ) => Effect.Effect<XA, E>,
+    withoutTransform?: boolean | undefined
+  ): Effect.Effect<XA, E | SqlError>
   withConnectionSpan<XA, E>(
     operation: string,
-    f: ConnectionCallback<XA, E>,
+    f: (
+      connection: Connection,
+      sql: string,
+      params: ReadonlyArray<unknown>
+    ) => Effect.Effect<XA, E>,
     withoutTransform: boolean,
     span: Tracer.Span
   ): Effect.Effect<XA, E | SqlError>
 }
-
-type ConnectionCallback<XA, E> = (
-  connection: Connection,
-  sql: string,
-  params: ReadonlyArray<unknown>,
-  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
-) => Effect.Effect<XA, E>
 
 const makeUnsafe = <A = Row>(
   segments: ReadonlyArray<Segment>,
@@ -1434,7 +1412,11 @@ const StatementProto: Omit<
   withConnection<XA, E>(
     this: StatementImpl<any>,
     operation: string,
-    f: ConnectionCallback<XA, E>,
+    f: (
+      connection: Connection,
+      sql: string,
+      params: ReadonlyArray<unknown>
+    ) => Effect.Effect<XA, E>,
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
@@ -1452,7 +1434,11 @@ const StatementProto: Omit<
   withConnectionSpan<XA, E>(
     this: StatementImpl<any>,
     operation: string,
-    f: ConnectionCallback<XA, E>,
+    f: (
+      connection: Connection,
+      sql: string,
+      params: ReadonlyArray<unknown>
+    ) => Effect.Effect<XA, E>,
     withoutTransform: boolean,
     span: Tracer.Span
   ): Effect.Effect<XA, E | SqlError> {
@@ -1465,13 +1451,12 @@ const StatementProto: Omit<
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
       const clock = propagate ? waitClock(fiber) : undefined
-      const transformRows = withoutTransform ? undefined : this.transformRows
       const run = clock === undefined
-        ? (connection: Connection) => f(connection, sql, params, transformRows)
+        ? (connection: Connection) => f(connection, sql, params)
         : (connection: Connection) =>
           Effect.suspend(() => {
             recordConnectionWait(span, clock)
-            return f(connection, sql, params, transformRows)
+            return f(connection, sql, params)
           })
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, run))
@@ -1539,9 +1524,10 @@ const StatementProto: Omit<
   },
 
   get unprepared(): Effect.Effect<ReadonlyArray<any>, SqlError> {
-    return this.withConnection(
+    const self = this as StatementImpl<any>
+    return self.withConnection(
       "executeUnprepared",
-      (connection, sql, params, transformRows) => connection.executeUnprepared(sql, params, transformRows)
+      (connection, sql, params) => connection.executeUnprepared(sql, params, self.transformRows)
     )
   },
 
@@ -1554,7 +1540,7 @@ const StatementProto: Omit<
       return Effect.onExit(
         this.withConnectionSpan(
           "execute",
-          (connection, sql, params, transformRows) => connection.execute(sql, params, transformRows),
+          (connection, sql, params) => connection.execute(sql, params, this.transformRows),
           false,
           span
         ),
@@ -1592,6 +1578,19 @@ const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
     Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
   )
 
+const applyTransformer = <A>(
+  self: StatementImpl<A>,
+  transform: Transformer,
+  fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span
+): Effect.Effect<StatementImpl<A>> =>
+  transform(
+    self,
+    make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower),
+    fiber,
+    span
+  ) as Effect.Effect<StatementImpl<A>>
+
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
   span: Tracer.Span,
@@ -1602,16 +1601,69 @@ const withStatement = <A, X, E, R>(
     if (transform === undefined) {
       return f(self, fiber)
     }
-    return Effect.flatMap(
-      transform(
-        self,
-        make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower),
-        fiber,
-        span
-      ) as Effect.Effect<StatementImpl<A>>,
-      (statement) => f(statement, fiber)
-    )
+    return Effect.flatMap(applyTransformer(self, transform, fiber, span), (statement) => f(statement, fiber))
   })
+
+/**
+ * Runs statements in order on one connection under one client span, applying
+ * the current transformer and each statement's own compiler and row
+ * transform. Backs `SqlClient.batch`.
+ *
+ * @internal
+ */
+export const executeBatch = (
+  statements: ReadonlyArray<Statement<unknown>>,
+  acquirer: Acquirer,
+  borrower: Borrower | undefined,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>
+): Effect.Effect<any, SqlError> => {
+  if (statements.length === 0) return Effect.succeed([])
+  // OpenTelemetry names a multi-statement batch `BATCH` plus the span target.
+  const isBatch = statements.length > 1
+  const target = spanTarget(spanAttributes)
+  const name = !isBatch ? spanName(spanAttributes) : target === undefined ? "BATCH" : `BATCH ${target}`
+  return Effect.useSpan(name, { kind: "client" }, (span) =>
+    Effect.withFiber((fiber) => {
+      const transform = fiber.getRef(CurrentTransformer)
+      const impls = statements as ReadonlyArray<StatementImpl<unknown>>
+      const resolved = transform === undefined
+        ? Effect.succeed(impls)
+        : Effect.forEach(impls, (statement) => applyTransformer(statement, transform, fiber, span))
+      return Effect.flatMap(resolved, (statements) => {
+        const compiled = statements.map((statement) => statement.compile())
+        for (const [key, value] of spanAttributes) {
+          span.attribute(key, value)
+        }
+        span.attribute(ATTR_SQL_METHOD, "executeBatch")
+        if (isBatch) {
+          span.attribute(ATTR_DB_OPERATION_NAME, "BATCH")
+          span.attribute(ATTR_DB_OPERATION_BATCH_SIZE, statements.length)
+        }
+        span.attribute(ATTR_DB_QUERY_TEXT, compiled.map(([sql]) => sql).join("; "))
+        const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+        const clock = propagate ? waitClock(fiber) : undefined
+        const run = (connection: Connection) =>
+          Effect.suspend(() => {
+            if (clock !== undefined) recordConnectionWait(span, clock)
+            if (connection.executeBatch === undefined) {
+              return Effect.forEach(
+                compiled,
+                ([sql, params], index) => connection.execute(sql, params, statements[index].transformRows)
+              )
+            }
+            return Effect.map(connection.executeBatch(compiled), (results) =>
+              results.map((rows, index) => {
+                const transformRows = statements[index].transformRows
+                return transformRows === undefined ? rows : transformRows(rows)
+              }))
+          })
+        const execute = borrower === undefined
+          ? Effect.scoped(Effect.flatMap(acquirer, run))
+          : borrower(run)
+        return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
+      })
+    }))
+}
 
 const isSegment = (u: unknown): u is Segment => {
   if (!hasProperty(u, "_tag")) {
