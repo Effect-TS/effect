@@ -535,7 +535,8 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
-                    const resumeParent = parent && !parent.detached
+                    // Abandoned runs never wake the parent; another owner replays them.
+                    const resumeParent = parent && !parent.detached && !instance.abandoned
                       ? ensureSuccess(sendResumeParent(parent, executionId))
                       : Effect.void
                     if (
@@ -568,10 +569,10 @@ export const make = Effect.gen(function*() {
                         }
                         instance.suspended = false
                         instance.interrupted = true
+                        // The interrupt completes the run, so wake the parent
+                        // to observe it.
                         return Effect.ignore(clearClock({ workflow, executionId })).pipe(
-                          // The interrupt completes the run, so wake the parent
-                          // to observe it.
-                          Effect.andThen(instance.abandoned ? Effect.void : resumeParent),
+                          Effect.andThen(resumeParent),
                           Effect.andThen(
                             Effect.withFiber<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
                           )
