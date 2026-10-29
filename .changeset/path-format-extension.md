@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Path.layer` omitting the dot when formatting an extension without a leading dot.
+Fix `Path.format` dropping the dot before extensions given without one, such as `ext: "csv"`.
