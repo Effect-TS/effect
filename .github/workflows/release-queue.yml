@@ -35,7 +35,7 @@ jobs:
         if: github.event.pull_request
         env:
           GITHUB_TOKEN: ${{ secrets.EFFECT_BOT_GH }}
-      - uses: Effect-TS/next-release-action@9c7fe33d6e497924ae795d53c0c1cf75d48c96c2
+      - uses: Effect-TS/next-release-action@2f2a544fe54505fa94216ae76787ef305612ad41 # Disable automatic rebasing
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
           base_branch: main
