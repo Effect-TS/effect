@@ -105,6 +105,12 @@ describe("McpClient", () => {
     expect(McpClient.toolkit<"text", "error" | "return">).type.not.toBeCallableWith(client, {})
   })
 
+  it("should keep MCP handler errors when a supplied failure mode may be error", () => {
+    const failureMode = "error" as Tool.FailureMode
+    const bound = McpClient.toolkit(client, { failureMode })
+    expect<McpClientError | AiError>().type.toBeAssignableTo<Tool.HandlerError<BoundTool<typeof bound>> | AiError>()
+  })
+
   it("should retain customization dependencies when the bound handler is invoked", () => {
     const customized = McpClient.toolkit(client, {
       resultMode: "complete",
