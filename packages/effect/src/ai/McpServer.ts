@@ -3077,7 +3077,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           return Effect.fail(new InvalidParams({ message: error.reason.message }))
         }
         if (origin === "handler" && isDeclaredFailure(error)) {
-          return error instanceof McpSchema.InputRequired
+          return isInputRequired(error)
             ? Effect.succeed(error)
             : Effect.catchCause(declaredFailureResult(error), internalToolError)
         }
@@ -3133,7 +3133,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : result.isFailure && result.result instanceof McpSchema.InputRequired
+              : result.isFailure && isInputRequired(result.result)
               ? Effect.succeed(result.result)
               : Effect.succeed(
                 new CallToolResult({
@@ -3158,6 +3158,8 @@ const isParameterValidationError = (
   error: unknown
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+const isInputRequired = (u: unknown): u is McpSchema.InputRequired => Predicate.isTagged(u, "InputRequired")
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
 // than as a definition; a recursive root keeps its definition and the top-level
