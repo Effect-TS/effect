@@ -831,9 +831,12 @@ const formDataBody = (formData: FormData, request: HttpClientRequest) => {
       placeholders.append(key, value)
     } else {
       files.push(value)
-      placeholders.append(key, new File([], value.name, { type: value.type }))
+      // A `Blob` with a file name, as the global `File` is missing on Node 18.
+      placeholders.append(key, new Blob([], { type: value.type }), value.name)
     }
   }
+  const transportError = (cause: unknown) =>
+    new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
   const response = new globalThis.Response(placeholders)
   const contentType = response.headers.get("content-type")!
   const delimiter = Buffer.from(`--${contentType.slice(contentType.indexOf("boundary=") + 9)}`)
@@ -848,10 +851,10 @@ const formDataBody = (formData: FormData, request: HttpClientRequest) => {
         // The empty placeholder content is followed by the part's CRLF.
         streams.push(
           Stream.succeed(encoded.subarray(start, partEnd - 2)),
-          Stream.fromReadableStream({
-            evaluate: () => file.stream(),
-            onError: (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
-          })
+          Stream.unwrap(Effect.map(
+            Effect.try({ try: () => file.stream(), catch: transportError }),
+            (readable) => Stream.fromReadableStream({ evaluate: () => readable, onError: transportError })
+          ))
         )
         start = partEnd - 2
       }
