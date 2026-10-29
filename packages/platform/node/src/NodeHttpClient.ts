@@ -36,7 +36,6 @@ import type * as Http from "node:http"
 import type * as Https from "node:https"
 import { type Duplex, Readable } from "node:stream"
 import * as Consumers from "node:stream/consumers"
-import { pipeline } from "node:stream/promises"
 import { http, https } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
@@ -774,50 +773,95 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        return Effect.flatMap(loadUndici, (undici) => {
-          const response = new undici.Response(convertFormData(body.formData, undici))
-          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
-
-          return Effect.tryPromise({
-            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-            catch: (cause) =>
-              new Error.HttpClientError({
-                reason: new Error.TransportError({
-                  request,
-                  cause
-                })
-              })
-          })
-        })
+        const { contentType, stream } = formDataBody(body.formData, request)
+        nodeRequest.setHeader("content-type", contentType)
+        return sendStream(nodeRequest, request, stream)
       }
       case "Stream": {
-        return Stream.run(
+        return sendStream(
+          nodeRequest,
+          request,
           Stream.mapError(body.stream, (cause) =>
             new Error.HttpClientError({
               reason: new Error.EncodeError({
                 request,
                 cause
               })
-            })),
-          NodeSink.fromWritable({
-            evaluate: () => nodeRequest,
-            // The upload fiber owns destruction after observing body failures.
-            endOnDone: false,
-            onError: (cause) =>
-              new Error.HttpClientError({
-                reason: new Error.TransportError({
-                  request,
-                  cause
-                })
-              })
-          })
-        ).pipe(Effect.andThen(() => {
-          nodeRequest.end()
-          return waitForFinish(nodeRequest, request)
-        }))
+            }))
+        )
       }
     }
   })
+
+const sendStream = (
+  nodeRequest: Http.ClientRequest,
+  request: HttpClientRequest,
+  stream: Stream.Stream<Uint8Array, Error.HttpClientError>
+): Effect.Effect<void, Error.HttpClientError> =>
+  Stream.run(
+    stream,
+    NodeSink.fromWritable({
+      evaluate: () => nodeRequest,
+      // The upload fiber owns destruction after observing body failures.
+      endOnDone: false,
+      onError: (cause) =>
+        new Error.HttpClientError({
+          reason: new Error.TransportError({
+            request,
+            cause
+          })
+        })
+    })
+  ).pipe(Effect.andThen(() => {
+    nodeRequest.end()
+    return waitForFinish(nodeRequest, request)
+  }))
+
+/**
+ * Encodes form data as multipart with the global `Response`, so the encoding
+ * comes from the runtime instead of the external undici package.
+ *
+ * Some Node.js versions read every file eagerly when encoding and never report
+ * read failures. Files are therefore encoded as empty placeholders and their
+ * contents are streamed into the placeholder parts.
+ */
+const formDataBody = (formData: FormData, request: HttpClientRequest) => {
+  const transportError = (cause: unknown) =>
+    new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
+  const entries = Array.from(formData)
+  const placeholders = new globalThis.FormData()
+  for (const [key, value] of entries) {
+    if (typeof value === "string") placeholders.append(key, value)
+    // A `Blob` with a file name, as the global `File` is missing on Node 18.
+    else placeholders.append(key, new Blob([], { type: value.type }), value.name)
+  }
+  const response = new globalThis.Response(placeholders)
+  const contentType = response.headers.get("content-type")!
+  const delimiter = `--${contentType.slice(contentType.indexOf("boundary=") + 9)}`
+  const stream = Stream.unwrap(Effect.map(Effect.promise(() => response.arrayBuffer()), (buffer) => {
+    const encoded = Buffer.from(buffer)
+    const streams: Array<Stream.Stream<Uint8Array, Error.HttpClientError>> = []
+    let start = 0
+    let delimiterAt = 0
+    for (const [, value] of entries) {
+      delimiterAt = encoded.indexOf(delimiter, delimiterAt + delimiter.length)
+      if (typeof value === "string") continue
+      // The file contents go before the CRLF that ends its empty placeholder part.
+      const end = delimiterAt - 2
+      streams.push(
+        Stream.succeed(encoded.subarray(start, end)),
+        Stream.unwrap(Effect.map(
+          Effect.try({ try: () => value.stream(), catch: transportError }),
+          (readable) => Stream.fromReadableStream({ evaluate: () => readable, onError: transportError })
+        ))
+      )
+      start = end
+    }
+    streams.push(Stream.succeed(encoded.subarray(start)))
+    return Stream.flatten(Stream.fromArray(streams))
+  }))
+  return { contentType, stream } as const
+}
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest, signal: AbortSignal) =>
   Effect.callback<readonly [Http.IncomingMessage, Duplex?], Error.HttpClientError>((resume) => {
