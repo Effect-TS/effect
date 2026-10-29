@@ -88,6 +88,50 @@ describe("Pool", () => {
       deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
     }))
 
+  describe("get in a finalizer of the pool's own scope", () => {
+    const run = Effect.fnUntraced(function*(idle: Duration.Input) {
+      const scope = yield* Scope.make()
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.acquireRelease(Effect.succeed("connection"), () => Effect.void),
+        min: 0,
+        max: 5,
+        timeToLive: "1 second"
+      }).pipe(Scope.provide(scope))
+      const results: Array<Exit.Exit<string>> = []
+      // Registered after the pool, so it runs before the pool shuts down.
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.flatMap(Effect.exit(Effect.scoped(Pool.get(pool))), (exit) => Effect.sync(() => results.push(exit)))
+      )
+      yield* Effect.scoped(Pool.get(pool))
+      yield* TestClock.adjust(idle)
+      const idleItems = pool.state.items.size
+
+      // Finalizers are uninterruptible, so bound the wait by polling.
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) {
+        yield* Effect.yieldNow
+      }
+      assert.isDefined(closing.pollUnsafe(), "Scope.close did not return")
+      strictEqual(results.length, 1)
+      return { idleItems, result: results[0] }
+    })
+
+    it.effect("lends an idle item", () =>
+      Effect.gen(function*() {
+        const { idleItems, result } = yield* run(0)
+        strictEqual(idleItems, 1)
+        deepStrictEqual(result, Exit.succeed("connection"))
+      }))
+
+    it.effect("is interrupted instead of hanging once the idle item was retired", () =>
+      Effect.gen(function*() {
+        const { idleItems, result } = yield* run("4 seconds")
+        strictEqual(idleItems, 0)
+        assert.isTrue(Exit.hasInterrupts(result))
+      }))
+  })
+
   it.effect("defects don't prevent cleanup", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
