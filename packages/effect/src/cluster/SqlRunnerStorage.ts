@@ -98,11 +98,9 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     Math.ceil(Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))),
     2147483647
   )
-  // In whole seconds, between the smallest and largest values MySQL accepts.
-  const waitTimeout = Math.min(
-    Math.max(1, Math.ceil(Duration.toSeconds(Duration.fromInputUnsafe(config.shardLockExpiration)))),
-    31536000
-  )
+  const shardLockExpirationSeconds = Math.ceil(Duration.toSeconds(config.shardLockExpiration))
+  // Between the smallest and largest values MySQL accepts.
+  const waitTimeout = Math.min(Math.max(1, shardLockExpirationSeconds), 31536000)
 
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
@@ -224,11 +222,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   // avoid deadlocks between acquisition, refresh and bulk release.
   const pgLockOrder = sql.literal(`ORDER BY shard_id COLLATE "C"`)
 
-  const expiresSeconds = sql.literal(
-    Math.ceil(Duration.toSeconds(
-      Duration.fromInputUnsafe(config.shardLockExpiration)
-    )).toString()
-  )
+  const expiresSeconds = sql.literal(shardLockExpirationSeconds.toString())
   const lockExpiresAt = sql.onDialectOrElse({
     pg: () => sql`${sqlNow} - INTERVAL '${expiresSeconds} seconds'`,
     mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${expiresSeconds} SECOND)`,
