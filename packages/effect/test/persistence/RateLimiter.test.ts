@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
 import { RateLimiter } from "effect/persistence"
+import { makeMemoryStore } from "effect/persistence/RateLimiter"
 import { TestClock } from "effect/testing"
 import * as RateLimiterTest from "./RateLimiterTest.ts"
 
@@ -1010,5 +1011,39 @@ describe(`RateLimiter`, () => {
       }).pipe(
         Effect.provide(RateLimiter.layerStoreMemory)
       ))
+  })
+
+  describe("memory store retention", () => {
+    it.effect("keeps state until it expires, then reclaims it while idle", () =>
+      Effect.gen(function*() {
+        const memory = yield* makeMemoryStore
+        const limiter = yield* Effect.provideService(RateLimiter.make, RateLimiter.RateLimiterStore, memory.store)
+        // One token of delay-mode debt: fully refilled after three minutes.
+        yield* limiter.consume({
+          algorithm: "token-bucket",
+          onExceeded: "delay",
+          key: "bucket",
+          limit: 2,
+          window: "2 minutes",
+          tokens: 3
+        })
+
+        yield* TestClock.adjust("2 minutes")
+        assert.strictEqual(memory.size, 1)
+
+        yield* TestClock.adjust("2 minutes")
+        assert.strictEqual(memory.size, 0)
+      }).pipe(Effect.scoped))
+
+    it.effect("starts an expired token bucket fresh before the next sweep", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 second" })
+
+        // Past the bucket's expiry, before any sweep: a new configuration starts fresh.
+        yield* TestClock.adjust("2 seconds")
+        const result = yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 hour" })
+        assert.strictEqual(result.remaining, 0)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
   })
 })

@@ -17,7 +17,9 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { flow, identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
+import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import type * as Scope from "../Scope.ts"
 import * as Redis from "./Redis.ts"
 
 /**
@@ -706,18 +708,25 @@ interface AdaptiveState {
   expiresAt: number
 }
 
+const memoryStoreSweepInterval = Duration.minutes(1)
+
 /**
- * Provides a process-local in-memory `RateLimiterStore`.
+ * Creates a process-local `RateLimiterStore`. Every entry expires once its
+ * state is indistinguishable from a missing key, and a background sweep tied to
+ * the scope removes expired entries, so an idle store drains to empty.
  *
- * @stability unstable
- * @category layers
- * @since 4.0.0
+ * @internal
  */
-export const layerStoreMemory: Layer.Layer<
-  RateLimiterStore
-> = Layer.sync(RateLimiterStore, () => {
+export const makeMemoryStore: Effect.Effect<
+  {
+    readonly store: RateLimiterStore["Service"]
+    readonly size: number
+  },
+  never,
+  Scope.Scope
+> = Effect.gen(function*() {
   const fixedCounters = new Map<string, { count: number; expiresAt: number }>()
-  const tokenBuckets = new Map<string, { tokens: number; lastRefill: number }>()
+  const tokenBuckets = new Map<string, { tokens: number; lastRefill: number; expiresAt: number }>()
   const adaptiveStates = new Map<string, AdaptiveState>()
 
   const getAdaptiveState = (key: string, now: number): AdaptiveState | undefined => {
@@ -738,7 +747,7 @@ export const layerStoreMemory: Layer.Layer<
   const learnedExpiresAt = (now: number, learnedWindowMillis: number): number =>
     now + learnedWindowMillis + adaptiveStateTtlGraceMillis
 
-  return RateLimiterStore.of({
+  const store = RateLimiterStore.of({
     fixedWindow: (options) =>
       Effect.clockWith((clock) =>
         Effect.sync(() => {
@@ -763,8 +772,8 @@ export const layerStoreMemory: Layer.Layer<
           const refillRateMillis = Duration.toMillis(options.refillRate)
           const now = clock.currentTimeMillisUnsafe()
           let bucket = tokenBuckets.get(options.key)
-          if (!bucket) {
-            bucket = { tokens: options.limit, lastRefill: now }
+          if (!bucket || bucket.expiresAt <= now) {
+            bucket = { tokens: options.limit, lastRefill: now, expiresAt: now }
             tokenBuckets.set(options.key, bucket)
           }
           const tokensToAdd = Math.floor((now - bucket.lastRefill) / refillRateMillis)
@@ -780,6 +789,8 @@ export const layerStoreMemory: Layer.Layer<
           if (options.allowOverflow || newTokenCount >= 0) {
             bucket.tokens = newTokenCount
           }
+          // The bucket is indistinguishable from a fresh one once fully refilled
+          bucket.expiresAt = bucket.lastRefill + Math.ceil(options.limit - bucket.tokens) * refillRateMillis
           return [newTokenCount, Math.max(0, now - bucket.lastRefill)] as const
         })
       ),
@@ -924,7 +935,47 @@ export const layerStoreMemory: Layer.Layer<
         })
       )
   })
+
+  const sweep = Effect.clockWith((clock) =>
+    Effect.sync(() => {
+      const now = clock.currentTimeMillisUnsafe()
+      for (const map of [fixedCounters, tokenBuckets, adaptiveStates]) {
+        for (const [key, entry] of map) {
+          if (entry.expiresAt <= now) {
+            map.delete(key)
+          }
+        }
+      }
+    })
+  )
+  yield* sweep.pipe(
+    Effect.repeat(Schedule.spaced(memoryStoreSweepInterval)),
+    Effect.forkScoped
+  )
+
+  return {
+    store,
+    get size() {
+      return fixedCounters.size + tokenBuckets.size + adaptiveStates.size
+    }
+  }
 })
+
+/**
+ * Provides a process-local in-memory `RateLimiterStore`.
+ *
+ * **Details**
+ *
+ * Entries expire once their state is indistinguishable from an unseen key, and
+ * a background sweep scoped to the layer removes expired entries periodically.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerStoreMemory: Layer.Layer<
+  RateLimiterStore
+> = Layer.effect(RateLimiterStore)(Effect.map(makeMemoryStore, (memory) => memory.store))
 
 /**
  * Creates a Redis-backed `RateLimiterStore` using Lua scripts and the
