@@ -107,26 +107,29 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.provide(scope)
         )
+        if (disableAdvisoryLocks) return [conn, { pid: 0, pinLock: undefined }] as const
+        // The connection returns to the shared pool, so restore the session's
+        // idle_session_timeout along with releasing its locks. Registered
+        // before the timeout is set, so a failed setup restores it too.
+        yield* Scope.addFinalizerExit(scope, () =>
+          conn.executeRaw(
+            "SELECT pg_advisory_unlock_all(), (SELECT set_config(name, reset_val, false) FROM pg_settings WHERE name = 'idle_session_timeout')",
+            []
+          ).pipe(
+            Effect.timeout(lockOperationInterval),
+            Effect.interruptible,
+            Effect.ignoreCause
+          ))
         // Advisory locks belong to the session, so a frozen runner whose
         // connection stays open would hold them indefinitely. End the session
         // once it has been idle for shardLockExpiration, which releases them.
         // Runners holding shards use it at least every shardLockExpiration / 3.
         // Servers without idle_session_timeout (before PostgreSQL 14) keep the
         // session open.
-        const pid = disableAdvisoryLocks
-          ? 0
-          : (yield* conn.executeValues(
-            `SELECT pg_backend_pid(), (SELECT set_config(name, '${idleSessionTimeout}', false) FROM pg_settings WHERE name = 'idle_session_timeout')`,
-            []
-          ))[0][0] as number
-        if (!disableAdvisoryLocks) {
-          yield* Scope.addFinalizerExit(scope, () =>
-            conn.executeRaw("SELECT pg_advisory_unlock_all()", []).pipe(
-              Effect.timeout(lockOperationInterval),
-              Effect.interruptible,
-              Effect.ignoreCause
-            ))
-        }
+        const pid = (yield* conn.executeValues(
+          `SELECT pg_backend_pid(), (SELECT set_config(name, '${idleSessionTimeout}', false) FROM pg_settings WHERE name = 'idle_session_timeout')`,
+          []
+        ))[0][0] as number
         return [conn, { pid, pinLock: undefined }] as const
       }, Effect.orDie),
     mysql: () =>
