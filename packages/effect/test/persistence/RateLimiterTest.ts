@@ -102,6 +102,19 @@ export const suite = (
         assert.approximately(Duration.toMillis(results[2].delay), 60_000, 1_000)
         assert.deepStrictEqual(results.map((result) => result.remaining), [0.25, -0.5, -1.25])
       }))
+
+    it.effect("store caps a zero limit and leaves an undefined limit uncapped", () =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const opts = { key: "fixed-window-zero-limit", tokens: 1, refillRate: Duration.minutes(1), limit: 0 }
+
+        assert.deepStrictEqual(yield* store.fixedWindow(opts), [1, 0])
+        assert.deepStrictEqual(yield* store.fixedWindow(opts), [1, 0])
+        assert.deepStrictEqual(
+          yield* store.fixedWindow({ ...opts, key: "fixed-window-undefined-limit", limit: undefined }),
+          [1, 60_000]
+        )
+      }))
   })
 
   it.layer(layer, { timeout: "30 seconds", concurrent: false })(`RateLimiter token-bucket timing (${name})`, (it) => {
