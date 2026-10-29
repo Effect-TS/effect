@@ -326,14 +326,12 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
       }
     } catch (error) {
       // Queue the tasks after the failing one ahead of those scheduled during
-      // the drain, so other fibers' continuations are not lost.
+      // the drain, so other fibers' continuations are not lost. Scheduling
+      // them re-arms the timer if nothing has yet.
       const scheduled = this.tasks.drain()
       buckets[i][1] = buckets[i][1].slice(j + 1)
       for (const [priority, tasks] of [...buckets.slice(i), ...scheduled]) {
-        for (const task of tasks) this.tasks.scheduleTask(task, priority)
-      }
-      if (this.running === undefined && this.tasks.buckets.length > 0) {
-        this.running = this.setImmediate(this.afterScheduled)
+        for (const task of tasks) this.scheduleTask(task, priority)
       }
       throw error
     }
