@@ -38,6 +38,7 @@ const Proto = {
 const ProtoUtc = {
   ...Proto,
   _tag: "Utc",
+  partsUtc: undefined,
   [Hash.symbol](this: DateTime.Utc) {
     return Hash.number(this.epochMilliseconds)
   },
@@ -52,6 +53,9 @@ const ProtoUtc = {
 const ProtoZoned = {
   ...Proto,
   _tag: "Zoned",
+  partsUtc: undefined,
+  adjustedEpochMilliseconds: undefined,
+  partsAdjusted: undefined,
   [Hash.symbol](this: DateTime.Zoned) {
     return Hash.combine(Hash.number(this.epochMilliseconds))(Hash.hash(this.zone))
   },
@@ -113,6 +117,25 @@ const ProtoTimeZoneOffset = {
   }
 }
 
+const cacheDescriptor: PropertyDescriptor = { value: undefined, enumerable: false, writable: true }
+
+// Cache slots are defined on first write, all at once and in a fixed order, so
+// construction avoids `Object.defineProperty` and instances keep few shapes.
+const setCache = <K extends "partsUtc" | "adjustedEpochMilliseconds" | "partsAdjusted">(
+  self: DateTime.DateTime,
+  key: K,
+  value: DateTime.Zoned[K]
+): void => {
+  if (!Object.hasOwn(self, "partsUtc")) {
+    Object.defineProperty(self, "partsUtc", cacheDescriptor)
+    if (self._tag === "Zoned") {
+      Object.defineProperty(self, "adjustedEpochMilliseconds", cacheDescriptor)
+      Object.defineProperty(self, "partsAdjusted", cacheDescriptor)
+    }
+  }
+  ;(self as DateTime.Zoned)[key] = value
+}
+
 /** @internal */
 export const makeZonedProto = (
   epochMillis: number,
@@ -122,21 +145,9 @@ export const makeZonedProto = (
   const self = Object.create(ProtoZoned)
   self.epochMilliseconds = epochMillis
   self.zone = zone
-  Object.defineProperty(self, "partsUtc", {
-    value: partsUtc,
-    enumerable: false,
-    writable: true
-  })
-  Object.defineProperty(self, "adjustedEpochMilliseconds", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
-  Object.defineProperty(self, "partsAdjusted", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
+  if (partsUtc !== undefined) {
+    setCache(self, "partsUtc", partsUtc)
+  }
   return self
 }
 
@@ -196,11 +207,6 @@ export const clamp: {
 const makeUtc = (epochMillis: number): DateTime.Utc => {
   const self = Object.create(ProtoUtc)
   self.epochMilliseconds = epochMillis
-  Object.defineProperty(self, "partsUtc", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
   return self
 }
 
@@ -592,7 +598,7 @@ export const toDate = (self: DateTime.DateTime): Date => {
       ? Number(parts[6].value)
       : ((self.epochMilliseconds % 1000) + 1000) % 1000
   )
-  self.adjustedEpochMilliseconds = date.getTime()
+  setCache(self, "adjustedEpochMilliseconds", date.getTime())
   return date
 }
 
@@ -654,8 +660,9 @@ export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWee
   } else if (self.partsAdjusted !== undefined) {
     return self.partsAdjusted
   }
-  self.partsAdjusted = withDate(self, dateToParts)
-  return self.partsAdjusted
+  const parts = withDate(self, dateToParts)
+  setCache(self, "partsAdjusted", parts)
+  return parts
 }
 
 /** @internal */
@@ -663,8 +670,9 @@ export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWith
   if (self.partsUtc !== undefined) {
     return self.partsUtc
   }
-  self.partsUtc = withDateUtc(self, dateToParts)
-  return self.partsUtc
+  const parts = withDateUtc(self, dateToParts)
+  setCache(self, "partsUtc", parts)
+  return parts
 }
 
 /** @internal */
