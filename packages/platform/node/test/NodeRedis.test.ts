@@ -2,7 +2,9 @@ import { NodeRedis } from "@effect/platform-node"
 import { describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { Redis } from "effect/persistence"
+import * as ChildProcess from "node:child_process"
 import * as Net from "node:net"
+import * as Util from "node:util"
 
 // A loopback peer that accepts a connection and, unless `onData` replies,
 // never answers.
@@ -79,4 +81,20 @@ describe("NodeRedis", () => {
       // The client is fully destroyed, not just disconnected by the abort signal.
       yield* Deferred.await(ended)
     }))
+
+  // Vitest's CommonJS interop hides missing named exports, so plain Node loads
+  // the module, with `redis` resolved to the oldest supported peer.
+  it("loads under native ESM with redis 5.0.x", async () => {
+    const redis = new URL("./fixtures/redis-5.0.cjs", import.meta.url).href
+    const nodeRedis = new URL("../src/NodeRedis.ts", import.meta.url).href
+    await Util.promisify(ChildProcess.execFile)(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      `import { registerHooks } from "node:module"
+registerHooks({
+  resolve: (specifier, context, next) => next(specifier === "redis" ? ${JSON.stringify(redis)} : specifier, context)
+})
+await import(${JSON.stringify(nodeRedis)})`
+    ])
+  })
 })
