@@ -443,6 +443,12 @@ class RegistryImpl implements AtomRegistry {
     } else if (node.state === NodeState.stale) {
       // a listener hears the next change, which only reaches an up-to-date node
       node.value()
+    } else if (node.state === NodeState.uninitialized) {
+      try {
+        node.value()
+      } catch {
+        // a throwing subscribe would leave no listener to hear the recovery; the next read reports the failure
+      }
     }
     const remove = node.subscribe(function() {
       f(node._value)

@@ -869,6 +869,47 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, [5])
   })
 
+  it("a listener added to an uninitialized derived atom hears its changes", () => {
+    const count = Atom.make(0)
+    const doubled = Atom.map(count, (n) => n * 2)
+    const r = AtomRegistry.make()
+    const seen: Array<number> = []
+
+    try {
+      r.subscribe(doubled, (value) => seen.push(value))
+      assert.deepStrictEqual(seen, [])
+
+      r.set(count, 1)
+      r.set(count, 2)
+      assert.deepStrictEqual(seen, [2, 4])
+    } finally {
+      r.dispose()
+    }
+  })
+
+  it.effect("get.stream withoutInitialValue emits changes from an uninitialized derived atom", () =>
+    Effect.gen(function*() {
+      const count = Atom.make(0)
+      const doubled = Atom.map(count, (n) => n * 2)
+      const streamed = Atom.make((get) =>
+        get.stream(doubled, { withoutInitialValue: true }).pipe(Stream.take(2), Stream.runCollect)
+      )
+      const r = AtomRegistry.make()
+
+      try {
+        r.mount(streamed)
+        yield* Effect.yieldNow
+        assert(AsyncResult.isInitial(r.get(streamed)))
+
+        r.set(count, 1)
+        r.set(count, 2)
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(r.get(streamed), AsyncResult.success([2, 4]))
+      } finally {
+        r.dispose()
+      }
+    }))
+
   it("recovers an observed dependent when its parent first succeeds after throwing", () => {
     let failing = true
     const parent = Atom.make(() => {
