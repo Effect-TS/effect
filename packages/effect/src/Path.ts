@@ -385,10 +385,13 @@ function normalizeStringPosix(path: string, allowAboveRoot: boolean) {
   return res
 }
 
+function formatExt(ext: string | undefined) {
+  return ext ? (ext[0] === "." ? ext : `.${ext}`) : ""
+}
+
 function _format(sep: string, pathObject: Partial<Path.Parsed>) {
   const dir = pathObject.dir || pathObject.root
-  const ext = pathObject.ext || ""
-  const base = pathObject.base || (pathObject.name || "") + (ext && !ext.startsWith(".") ? `.${ext}` : ext)
+  const base = pathObject.base || (pathObject.name || "") + formatExt(pathObject.ext)
   if (!dir) {
     return base
   }
