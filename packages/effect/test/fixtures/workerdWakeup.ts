@@ -12,6 +12,23 @@ let suspended: { readonly fiber: Fiber.Fiber<unknown, unknown>; readonly deferre
 
 const current = Effect.sync(() => storage.getStore())
 
+// A fully synchronous custom scheduler: tasks run only when a request drains them.
+const syncTasks: Array<() => void> = []
+const drainSync = () => {
+  while (syncTasks.length > 0) syncTasks.shift()!()
+}
+const syncScheduler: Scheduler.Scheduler = {
+  executionMode: "sync",
+  shouldYield: () => false,
+  makeDispatcher: () => ({
+    scheduleTask: (task) => {
+      syncTasks.push(task)
+    },
+    flush: drainSync
+  })
+}
+let syncWakeAttempted = false
+
 // The waiter's timeout keeps its request alive while another request wakes it.
 const wait = Effect.gen(function*() {
   waiter = Deferred.makeUnsafe<void>()
@@ -123,6 +140,38 @@ const routes: Record<string, (url: URL) => unknown> = {
       return exit === undefined ? "pending" : Exit.isSuccess(exit) ? exit.value : String(exit.cause)
     }
     return { waiter: result(waiter), waker: result(waker) }
+  },
+  // Parks a fiber on the synchronous scheduler, then, once another request has
+  // tried to wake it, interrupts it from this request.
+  "/sync-scheduler-wait": async () => {
+    const finalizers: Array<string | undefined> = []
+    const deferred = Deferred.makeUnsafe<void>()
+    const fiber = Effect.runFork(
+      Deferred.await(deferred).pipe(Effect.ensuring(Effect.sync(() => finalizers.push(storage.getStore())))),
+      { scheduler: syncScheduler }
+    )
+    drainSync()
+    suspended = { fiber, deferred }
+    // Poll with a timer, so workerd does not cancel this request as hung.
+    await new Promise<void>((resolve) => {
+      const poll = () => syncWakeAttempted ? resolve() : setTimeout(poll, 10)
+      poll()
+    })
+    fiber.interruptUnsafe()
+    drainSync()
+    const exit = fiber.pollUnsafe()
+    const result = exit === undefined ? "pending" : Exit.hasInterrupts(exit) ? "interrupted" : "completed"
+    return { result, finalizers }
+  },
+  "/sync-scheduler-wake": () => {
+    if (suspended === undefined) return undefined
+    try {
+      Deferred.doneUnsafe(suspended.deferred, Effect.void)
+      drainSync()
+    } finally {
+      syncWakeAttempted = true
+    }
+    return storage.getStore()
   },
   // Leaves a fiber yielding on timers owned by this request after it responds.
   "/spin": () => {
