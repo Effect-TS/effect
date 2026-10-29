@@ -113,7 +113,8 @@ export declare namespace RpcClient {
            * handler's result and error are not returned, but transport errors,
            * middleware errors and failures before the handler starts still fail the
            * call. Over HTTP and workers the call completes after the handler has
-           * finished.
+           * finished. A protocol that only delivers requests acknowledges the call
+           * itself once it has accepted the request.
            */
           readonly discard?: Discard | undefined
         }
@@ -188,7 +189,8 @@ export declare namespace RpcClient {
          * handler's result and error are not returned, but transport errors,
          * middleware errors and failures before the handler starts still fail the
          * call. Over HTTP and workers the call completes after the handler has
-         * finished.
+         * finished. A protocol that only delivers requests acknowledges the call
+         * itself once it has accepted the request.
          */
         readonly discard?: Discard | undefined
       }
@@ -939,6 +941,15 @@ export const withHeaders: {
  *
  * Use to provide the transport boundary for RPC clients over HTTP, WebSocket,
  * workers, sockets, or custom protocols.
+ *
+ * **Details**
+ *
+ * Every `Request` passed to `send` must end with a reply for its id: an `Exit`,
+ * or a `ClientProtocolError` that lists it in `requestIds`. Until then the call
+ * stays pending, and the client keeps the request and the caller's context. A
+ * transport that only delivers requests, such as a message queue, meets this
+ * by writing a void `Exit` for a `discard` request once the transport has
+ * accepted it, and a `ClientProtocolError` for any other request.
  *
  * @stability unstable
  * @category services
