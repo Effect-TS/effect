@@ -1,6 +1,5 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
-import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
-import { NodeWS } from "@effect/platform-node/NodeSocket"
+import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest, NodeWS } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"

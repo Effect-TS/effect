@@ -17,7 +17,7 @@ npm install effect
 ## Requirements
 
 - **TypeScript 5.9 or newer.** TypeScript 7 is recommended for the best performance and compatibility with [Effect's TypeScript tooling](https://github.com/Effect-TS/tsgo#installation).
-- **Node.js 18 or newer** is the general minimum for running Effect on Node.js. Some integration packages require newer runtimes; for example, `@effect/sql-sqlite-node` requires Node.js 22.16 or newer.
+- **Node.js 22.19 or newer** is the general minimum for running Effect on Node.js.
 - **Strict type-checking:** the `strict` flag must be enabled in your `tsconfig.json`.
 
 ## Links
