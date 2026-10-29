@@ -62,7 +62,7 @@ export declare namespace ToJsonSchema {
      * encoding of a non-JSON type (such as `"NaN"` for `Number`), or is a
      * reference still being compiled. Treat a missing entry as unknown.
      *
-     * @since 4.1.0
+     * @since 4.2.0
      */
     readonly exact?: ReadonlyArray<boolean> | undefined
   }
@@ -1577,7 +1577,7 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @stability stable
  * @category validation
- * @since 4.1.0
+ * @since 4.2.0
  */
 export const isConditionalReviver: FilterReviver<ReadonlyArray<"onTrue" | "onFalse">> = makeReviverFilter(
   "effect/schema/isConditional",

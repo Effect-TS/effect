@@ -9160,7 +9160,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  *
  * @stability stable
  * @category validation
- * @since 4.1.0
+ * @since 4.2.0
  */
 export function isConditional(
   condition: Constraint,
