@@ -36,6 +36,7 @@ import { RequestId } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
 import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
+import * as SchemaGetter from "effect/SchemaGetter"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
@@ -108,6 +109,16 @@ const ArrayResultTool = Tool.make("ArrayResultTool", {
   success: Schema.Array(Schema.String)
 })
 
+// A `Response` body can only be read once, so its encoding must run only once.
+const ConsumableResultTool = Tool.make("ConsumableResultTool", {
+  success: Schema.Struct({
+    body: Schema.String.pipe(Schema.decodeTo(Schema.instanceOf(Response), {
+      decode: SchemaGetter.transform((text) => new Response(text)),
+      encode: SchemaGetter.transformEffect((response) => Effect.promise(() => response.text()))
+    }))
+  })
+})
+
 const TestToolkit = Toolkit.make(
   OptionalStringTool,
   StrictObjectTool,
@@ -120,7 +131,8 @@ const TestToolkit = Toolkit.make(
   StructuredResultTool,
   AnnotatedVoidTool,
   NullableResultTool,
-  ArrayResultTool
+  ArrayResultTool,
+  ConsumableResultTool
 )
 type TestToolkitHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof TestToolkit>>
 
@@ -144,6 +156,7 @@ const testToolkitHandlers = TestToolkit.of({
   AnnotatedVoidTool: () => Effect.void,
   NullableResultTool: () => Effect.succeed(null),
   ArrayResultTool: () => Effect.succeed(["first", "second"]),
+  ConsumableResultTool: () => Effect.succeed({ body: new Response("hello") }),
   UnserializableResultTool: () => Effect.succeed(1n)
 })
 
@@ -2078,6 +2091,20 @@ describe("McpServer", () => {
         }])
       }))
 
+    it.effect("encodes a tool result once for structured content", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+
+        const result = yield* client.callTool({
+          name: "ConsumableResultTool",
+          arguments: {}
+        })
+
+        assert.isFalse(result.isError)
+        assert.deepStrictEqual(result.structuredContent, { body: "hello" })
+        assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify({ body: "hello" }) }])
+      }))
+
     it.effect("omits structured content for null and array tool results", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()
@@ -2289,7 +2316,7 @@ describe("McpServer", () => {
         }))
     }
 
-    it.effect("reports response serialization defects before returning a generic message", () =>
+    it.effect("reports response serialization failures before returning a generic message", () =>
       Effect.gen(function*() {
         const { client, reported } = yield* makeToolkitTestClient()
 
@@ -2301,8 +2328,9 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
         assert.lengthOf(reported, 1)
-        assert.isTrue(Cause.hasDies(reported[0]))
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        const error = Cause.squash(reported[0])
+        assertTrue(AiError.isAiError(error))
+        assert.strictEqual(error.reason._tag, "ToolResultEncodingError")
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>

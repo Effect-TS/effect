@@ -3058,6 +3058,32 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), (encoded) =>
           new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
+    // `structuredContent` must be JSON and match the advertised `outputSchema`, which is derived from the JSON codec.
+    // The Toolkit has already encoded the result, so only the JSON conversion of its encoded form runs here.
+    const encodeStructured = Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.toEncoded(tool.successSchema))) as (
+      result: unknown
+    ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
+    const successResult = (result: unknown) =>
+      encodeStructured(result).pipe(
+        Effect.mapError((cause) =>
+          AiError.make({
+            module: "McpServer",
+            method: "registerToolkit",
+            reason: new AiError.ToolResultEncodingError({
+              toolName: tool.name,
+              toolResult: result,
+              description: cause.message
+            })
+          })
+        ),
+        Effect.map((structuredContent) =>
+          new CallToolResult({
+            isError: false,
+            structuredContent,
+            content: toolResultContent(structuredContent)
+          })
+        )
+      )
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -3113,21 +3139,27 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) =>
+          Effect.flatMap((result): Effect.Effect<
+            CallToolResult,
+            unknown,
+            Tool.HandlerServices<Tools[keyof Tools]>
+          > => {
+            if (!result.isFailure) {
+              // An absent result, such as `Schema.Void`, has no structured form.
+              return result.encodedResult === undefined
+                ? Effect.succeed(new CallToolResult({ isError: false, content: [] }))
+                : successResult(result.encodedResult)
+            }
             // Declared failures return their encoded payload; anything else is classified by origin.
-            result.isFailure && result.failureOrigin !== "handler"
-              ? Effect.failCause(Cause.annotate(
+            return result.failureOrigin === "handler"
+              ? Effect.succeed(
+                new CallToolResult({ isError: true, content: toolResultContent(result.encodedResult) })
+              )
+              : Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : Effect.succeed(
-                new CallToolResult({
-                  isError: result.isFailure,
-                  structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: toolResultContent(result.encodedResult)
-                })
-              )
-          ),
+          }),
           Effect.catchCause(handleCause)
         ) as Effect.Effect<CallToolResult, InvalidParams, never>
       },

@@ -210,6 +210,10 @@ The toolkit is then transformed into a layer defining the interface of the tools
 each tool definition to its concrete logic. Finally, the completed toolkit layer can be merged with
 other registrations and passed to the server.
 
+A tool result is sent to the client in its JSON encoding, the same encoding its advertised
+`outputSchema` describes. For example, a `Schema.Date` field is sent as an ISO string and a
+`Schema.Void` field as `null`.
+
 ## Request-level dependencies
 
 Some services only exist per request, such as the user a request is made for. A tool declares them
