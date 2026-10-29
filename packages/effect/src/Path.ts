@@ -386,7 +386,8 @@ function normalizeStringPosix(path: string, allowAboveRoot: boolean) {
 }
 
 function formatExt(ext: string | undefined) {
-  return ext ? (ext[0] === "." ? ext : `.${ext}`) : ""
+  if (!ext) return ""
+  return ext.startsWith(".") ? ext : `.${ext}`
 }
 
 function _format(sep: string, pathObject: Partial<Path.Parsed>) {
