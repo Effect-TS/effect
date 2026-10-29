@@ -88,6 +88,40 @@ export interface SqlClient extends Constructor {
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
    * that don't go through `makeWithTransaction` invalidate immediately.
+   *
+   * To retry serialization failures or deadlocks, wrap the outermost
+   * `withTransaction` in `Effect.retry`, which starts a fresh transaction and
+   * re-runs the whole effect, including `COMMIT`, on every attempt. Retrying
+   * a nested transaction only retries its savepoint, which can't recover an
+   * outer transaction the database has aborted. Since the effect can run more
+   * than once, keep non-transactional side effects in `afterCommit`, which
+   * discards the callbacks of a failed attempt, but doesn't guarantee they run
+   * exactly once. Don't retry a `COMMIT` that failed with a `ConnectionError`
+   * reason, as the transaction may have committed and retrying could apply
+   * its writes twice.
+   *
+   * **Example** (Retrying serialization failures and deadlocks)
+   *
+   * ```ts
+   * import { Effect, Schedule } from "effect"
+   * import { SqlClient, SqlError } from "effect/sql"
+   *
+   * const program = Effect.gen(function*() {
+   *   const sql = yield* SqlClient.SqlClient
+   *   return yield* sql.withTransaction(
+   *     sql`UPDATE accounts SET balance = balance - 10 WHERE id = 1`
+   *   ).pipe(
+   *     Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE"),
+   *     Effect.retry({
+   *       while: (error) =>
+   *         SqlError.isSqlError(error) &&
+   *         (error.reason._tag === "SerializationError" || error.reason._tag === "DeadlockError"),
+   *       times: 5,
+   *       schedule: Schedule.exponential("10 millis").pipe(Schedule.jittered)
+   *     })
+   *   )
+   * })
+   * ```
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
