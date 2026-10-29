@@ -161,6 +161,17 @@ describe("FileSystem", () => {
         assert.deepStrictEqual(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second")), Exit.fail(error))
       }))
 
+    it.live("is interrupted when a directory read is interrupted while another read is still pending", () =>
+      Effect.gen(function*() {
+        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
+        const fs = makeFileSystem({
+          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
+          readDirectory: (path) =>
+            path === "d00" ? Effect.delay(Effect.interrupt, "10 millis") : path === "d63" ? Effect.never : undefined
+        })
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second"))))
+      }))
+
     it.effect("propagates defects from readLink", () =>
       Effect.gen(function*() {
         const fs = makeFileSystem({ readLink: () => Effect.die("boom") })
