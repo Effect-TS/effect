@@ -651,15 +651,14 @@ export const takeWhile: {
     let i = 0
     return {
       next() {
-        if (iterator === undefined) {
-          return { done: true, value: undefined }
-        }
-        const result = iterator.next()
-        if (result.done || !predicate(result.value, i++)) {
+        if (iterator !== undefined) {
+          const result = iterator.next()
+          if (!result.done && predicate(result.value, i++)) {
+            return result
+          }
           iterator = undefined
-          return { done: true, value: undefined }
         }
-        return result
+        return { done: true, value: undefined }
       }
     }
   }
