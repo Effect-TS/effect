@@ -48,12 +48,15 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Unary", { success: Schema.String })
 )
 
-const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Effect<void> = Effect.void) {
+const makeChunkProtocol = Effect.fnUntraced(function*(
+  beforeInterrupt: Effect.Effect<void> = Effect.void,
+  supportsAck = false
+) {
   const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
   const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
   const protocol = RpcClient.Protocol.of({
     codecFor: RpcSerialization.json.codecFor,
-    supportsAck: false,
+    supportsAck,
     supportsTransferables: false,
     run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
     send: (_clientId, message) =>
@@ -646,6 +649,23 @@ describe("RpcClient", () => {
 
       assert.deepStrictEqual(values, [0])
       assert.isAtMost(pulls, 3)
+    }))
+
+  it.effect("does not acknowledge a chunk dropped when its stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      const consuming = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol(Effect.void, true)
+      const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["a", "b", "c"] }).pipe(Effect.forkChild)
+      yield* Deferred.await(consuming)
+      yield* Fiber.interrupt(reader)
+
+      assert(Exit.isSuccess(yield* Fiber.await(receiver)))
+      assert.deepStrictEqual(yield* Queue.takeAll(sent), [{ _tag: "Interrupt", requestId }])
     }))
 
   it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
