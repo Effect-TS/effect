@@ -105,21 +105,15 @@ describe("ScopedCache", () => {
         Effect.gen(function*() {
           class TestService extends Context.Service<TestService, { value: number }>()("TestService") {}
 
-          const program = Effect.gen(function*() {
-            const cache = yield* ScopedCache.make({
-              capacity: 10,
-              lookup: (_key: string) => Effect.map(TestService, (service) => service.value)
-            })
-            return yield* ScopedCache.get(cache, "test")
-          })
-
-          const result = yield* Effect.scoped(
-            program.pipe(
-              Effect.provideService(TestService, TestService.of({ value: 42 }))
-            )
+          // The service is only provided while the cache is constructed
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) => Effect.map(TestService, (service) => service.value)
+          }).pipe(
+            Effect.provideService(TestService, TestService.of({ value: 42 }))
           )
 
-          assert.strictEqual(result, 42)
+          assert.strictEqual(yield* ScopedCache.get(cache, "test"), 42)
         }))
 
       it.effect("requireServicesAt: 'lookup' provides services at lookup time", () =>
