@@ -127,6 +127,7 @@ describe("OtlpTracer", () => {
         for (
           const [env, expected] of [
             [{}, ["local", "root", "remote", "forced"]],
+            [{ OTEL_TRACES_SAMPLER: "parentbased_always_on" }, ["local", "root", "remote"]],
             [{ OTEL_TRACES_SAMPLER: "always_off" }, []],
             [{ OTEL_TRACES_SAMPLER: "traceidratio", OTEL_TRACES_SAMPLER_ARG: "0" }, []],
             [{ OTEL_TRACES_SAMPLER: "parentbased_always_off" }, ["remote"]],
