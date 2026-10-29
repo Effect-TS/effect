@@ -115,37 +115,47 @@ const ProtoTimeZoneOffset = {
 
 type CacheKey = "partsUtc" | "adjustedEpochMilliseconds" | "partsAdjusted"
 
+type Caches = { [K in CacheKey]?: DateTime.Zoned[K] }
+
 const cacheSlot: PropertyDescriptor = { value: undefined, enumerable: false, writable: true }
 
-// Cache slots are defined on the first write, all at once and in a fixed order,
-// so construction avoids `Object.defineProperty` and instances keep few shapes.
-const setCache = <K extends CacheKey>(self: DateTime.DateTime, key: K, value: DateTime.Zoned[K]): void => {
-  if (!Object.hasOwn(self, "partsUtc")) {
-    Object.defineProperty(self, "partsUtc", cacheSlot)
-    if (self._tag === "Zoned") {
-      Object.defineProperty(self, "adjustedEpochMilliseconds", cacheSlot)
-      Object.defineProperty(self, "partsAdjusted", cacheSlot)
-    }
-  }
-  ;(self as DateTime.Zoned)[key] = value
-}
+// Instances sealed or frozen before their first cache write cannot receive own
+// slots, so their caches live here instead.
+const sealedCaches = new WeakMap<object, Caches>()
 
-// Until the slots exist, reads see `undefined` and writes through the public
-// fields (including from other copies of effect) go through `setCache`.
-const cacheAccessor = (key: CacheKey): PropertyDescriptor => ({
-  get() {
-    return undefined
+// Until an instance has its own slots, every cache read and write, including
+// writes through the public fields from other copies of effect, reaches these
+// accessors. The first write defines all of the instance's slots at once and in
+// a fixed order, so construction avoids `Object.defineProperty` and instances
+// keep few shapes.
+const cacheAccessor = <K extends CacheKey>(key: K, slots: ReadonlyArray<CacheKey>): PropertyDescriptor => ({
+  get(this: object): Caches[K] {
+    return Object.isExtensible(this) ? undefined : sealedCaches.get(this)?.[key]
   },
-  set(this: DateTime.DateTime, value: DateTime.Zoned[CacheKey]) {
-    setCache(this, key, value)
+  set(this: Caches, value: Caches[K]) {
+    if (Object.isExtensible(this)) {
+      for (const slot of slots) {
+        Object.defineProperty(this, slot, cacheSlot)
+      }
+      this[key] = value
+    } else {
+      let caches = sealedCaches.get(this)
+      if (caches === undefined) {
+        caches = {}
+        sealedCaches.set(this, caches)
+      }
+      caches[key] = value
+    }
   }
 })
 
-Object.defineProperty(ProtoUtc, "partsUtc", cacheAccessor("partsUtc"))
+const zonedSlots: ReadonlyArray<CacheKey> = ["partsUtc", "adjustedEpochMilliseconds", "partsAdjusted"]
+
+Object.defineProperty(ProtoUtc, "partsUtc", cacheAccessor("partsUtc", ["partsUtc"]))
 Object.defineProperties(ProtoZoned, {
-  partsUtc: cacheAccessor("partsUtc"),
-  adjustedEpochMilliseconds: cacheAccessor("adjustedEpochMilliseconds"),
-  partsAdjusted: cacheAccessor("partsAdjusted")
+  partsUtc: cacheAccessor("partsUtc", zonedSlots),
+  adjustedEpochMilliseconds: cacheAccessor("adjustedEpochMilliseconds", zonedSlots),
+  partsAdjusted: cacheAccessor("partsAdjusted", zonedSlots)
 })
 
 /** @internal */
@@ -158,7 +168,7 @@ export const makeZonedProto = (
   self.epochMilliseconds = epochMillis
   self.zone = zone
   if (partsUtc !== undefined) {
-    setCache(self, "partsUtc", partsUtc)
+    self.partsUtc = partsUtc
   }
   return self
 }
@@ -610,7 +620,7 @@ export const toDate = (self: DateTime.DateTime): Date => {
       ? Number(parts[6].value)
       : ((self.epochMilliseconds % 1000) + 1000) % 1000
   )
-  setCache(self, "adjustedEpochMilliseconds", date.getTime())
+  self.adjustedEpochMilliseconds = date.getTime()
   return date
 }
 
@@ -673,7 +683,7 @@ export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWee
     return self.partsAdjusted
   }
   const parts = withDate(self, dateToParts)
-  setCache(self, "partsAdjusted", parts)
+  self.partsAdjusted = parts
   return parts
 }
 
@@ -683,7 +693,7 @@ export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWith
     return self.partsUtc
   }
   const parts = withDateUtc(self, dateToParts)
-  setCache(self, "partsUtc", parts)
+  self.partsUtc = parts
   return parts
 }
 
