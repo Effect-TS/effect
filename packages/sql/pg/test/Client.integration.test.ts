@@ -6,6 +6,7 @@ import {
   DateTime,
   Deferred,
   Effect,
+  Exit,
   Fiber,
   Layer,
   Option,
@@ -525,6 +526,39 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       yield* Fiber.join(second)
 
       assert.isTrue(Option.isNone(overlap))
+    }))
+
+  // A transaction pooler moves the session to another server between
+  // transactions, where the statements prepared on the last one do not exist.
+  it.effect("rolls back a transaction whose prepared statements went missing", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const select = sql<{ value: number }>`SELECT ${1}::int4 AS missing_rollback`
+      // Prepares BEGIN, the body and ROLLBACK.
+      yield* sql.withTransaction(Effect.andThen(select, Effect.fail("rollback"))).pipe(Effect.flip)
+      yield* sql`DEALLOCATE ALL`.unprepared
+
+      const cause = yield* sql.withTransaction(select).pipe(Effect.sandbox, Effect.flip)
+      assert.isFalse(Cause.hasDies(cause))
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, SqlError.SqlError)
+      assert.propertyVal(error.reason.cause, "code", "26000")
+
+      assert.deepStrictEqual(yield* sql.withTransaction(select), [{ missing_rollback: 1 }])
+    }))
+
+  it.effect("ends a transaction whose prepared COMMIT went missing", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      // Prepares BEGIN and COMMIT.
+      yield* sql.withTransaction(sql`SELECT 1`)
+      yield* sql`DEALLOCATE ALL`.unprepared
+
+      const exit = yield* Effect.exit(sql.withTransaction(sql`SELECT ${2}::int4 AS missing_commit`))
+      assert.isFalse(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+
+      const rows = yield* sql.withTransaction(sql<{ value: number }>`SELECT ${3}::int4 AS value`)
+      assert.deepStrictEqual(rows, [{ value: 3 }])
     }))
 })
 
