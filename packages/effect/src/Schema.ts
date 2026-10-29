@@ -14531,7 +14531,7 @@ const CryptoJsonWebKey = Struct({
     d: CryptoJsonWebKeyMember,
     t: CryptoJsonWebKeyMember
   })))
-}) as unknown as Codec<JsonWebKey>
+}) as unknown as Codec<KeyFormat_.JsonWebKey>
 
 const cryptoFormatData = <R extends KeyFormat_.Role, Data>(format: KeyFormat_.Format<R, "decode", Data>): Codec<Data> =>
   (format._tag === "jwk" ? CryptoJsonWebKey : format.pem ? String : Uint8Array) as Codec<any>
