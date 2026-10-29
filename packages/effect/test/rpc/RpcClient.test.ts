@@ -588,6 +588,31 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
     }))
 
+  it.effect("stops the server stream promptly when an acknowledged stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      let pulls = 0
+      const group = RpcGroup.make(
+        Rpc.make("Count", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+      )
+      const client = yield* RpcTest.makeClient(group).pipe(
+        Effect.provide(group.toLayer({
+          Count: () =>
+            Stream.fromIterable(Array.from({ length: 50 }, (_, i) => i), { chunkSize: 1 }).pipe(
+              Stream.mapEffect((i) => Effect.sync(() => (pulls++, i)))
+            )
+        }))
+      )
+
+      const values = yield* client.Count(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.take(1),
+        Stream.runCollect
+      )
+      yield* Effect.yieldNow
+
+      assert.deepStrictEqual(values, [0])
+      assert.isAtMost(pulls, 3)
+    }))
+
   it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
     Effect.gen(function*() {
       const sent: Array<string> = []
