@@ -7,8 +7,7 @@
  * directly, while `layerConfig` reads them from Effect config. Both also accept
  * `Redis.PoolOptions` for the connections behind `Redis.reserve`. `node-redis`
  * connects explicitly, so layer construction can fail with a `RedisError`.
- * Both layers close the client when the layer scope ends. Requires `redis`
- * 6.3.0 or later.
+ * Both layers close the client when the layer scope ends.
  *
  * @stability unstable
  * @since 4.0.0
@@ -64,9 +63,14 @@ const makeSocket = (
 
 // Destroying first leaves the abort only an untracked, still-connecting socket
 // to close, so it raises no client error.
-const destroy = (client: NodeRedisClient, abort: AbortController) => {
-  client.destroy()
-  abort.abort()
+const destroy = (client: NodeRedisClient, abort?: AbortController) => {
+  try {
+    client.destroy()
+  } catch {
+    // node-redis before 6.3 throws when destroying a client whose connection
+    // has failed.
+  }
+  abort?.abort()
 }
 
 const make = Effect.fnUntraced(function*(
@@ -77,13 +81,7 @@ const make = Effect.fnUntraced(function*(
   let ready = false
   const client = yield* Effect.acquireRelease(
     Effect.sync(() => createClient({ ...options, socket: makeSocket(socket, abort.signal, () => ready) })),
-    (client) =>
-      Effect.andThen(
-        // Ready clients get a bounded graceful close, letting in-flight
-        // commands finish.
-        ready ? Effect.ignoreCause(Effect.timeout(Effect.promise(() => client.close()), "1 second")) : Effect.void,
-        Effect.sync(() => destroy(client, abort))
-      )
+    (client) => Effect.sync(() => destroy(client, abort))
   )
   client.once("ready", () => {
     ready = true
@@ -94,6 +92,8 @@ const make = Effect.fnUntraced(function*(
   // reported as `RedisError`.
   const runSync = Effect.runSyncWith(yield* Effect.context<never>())
   client.on("error", (cause) => {
+    // node-redis before 6.3 reports connection attempts that teardown cut short.
+    if (abort.signal.aborted) return
     runSync(Effect.logWarning("NodeRedis client error", cause))
   })
 
@@ -130,7 +130,7 @@ const make = Effect.fnUntraced(function*(
           await connection.connect()
           return connection
         } catch (cause) {
-          connection.destroy()
+          destroy(connection)
           throw cause
         }
       },
@@ -140,7 +140,7 @@ const make = Effect.fnUntraced(function*(
         send: sendWith(connection),
         // `destroy` rejects in-flight commands instead of waiting for their
         // replies like `close` does.
-        close: Effect.sync(() => connection.destroy())
+        close: Effect.sync(() => destroy(connection))
       }))
     ),
     pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
@@ -156,6 +156,7 @@ const make = Effect.fnUntraced(function*(
               subscriberReady = true
             })
             subscriber.on("error", (cause) => {
+              if (abort.signal.aborted) return
               runSync(Effect.logWarning("NodeRedis subscriber error", cause))
               if (!subscriber.isOpen) {
                 runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
@@ -202,13 +203,11 @@ const make = Effect.fnUntraced(function*(
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization destroys the shared client, including any connection
- * attempt in progress. A ready client first gets one second to close
- * gracefully, after which commands still in flight fail. This bound applies to
- * the shared client only: a reserved connection or subscriber that is still
- * connecting delays scope finalization until its connection attempt settles.
- * Run blocking commands on `Redis.reserve`: reserved connections are destroyed
- * when their scope closes, failing their in-flight commands.
+ * Scope finalization destroys the shared client immediately, failing commands
+ * still in flight and aborting any connection attempt in progress. A reserved
+ * connection or subscriber that is still connecting delays scope finalization
+ * until its connection attempt settles. Run blocking commands on
+ * `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
@@ -230,13 +229,11 @@ export const layer = (
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization destroys the shared client, including any connection
- * attempt in progress. A ready client first gets one second to close
- * gracefully, after which commands still in flight fail. This bound applies to
- * the shared client only: a reserved connection or subscriber that is still
- * connecting delays scope finalization until its connection attempt settles.
- * Run blocking commands on `Redis.reserve`: reserved connections are destroyed
- * when their scope closes, failing their in-flight commands.
+ * Scope finalization destroys the shared client immediately, failing commands
+ * still in flight and aborting any connection attempt in progress. A reserved
+ * connection or subscriber that is still connecting delays scope finalization
+ * until its connection attempt settles. Run blocking commands on
+ * `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers

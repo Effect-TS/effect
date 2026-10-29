@@ -71,7 +71,7 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "redis": ">=6.3.0 <7.0.0"
+    "redis": ">=5.0.0 <7.0.0"
   },
   "devDependencies": {
     "@testcontainers/mssqlserver": "^12.2.1",
