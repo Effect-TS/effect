@@ -646,13 +646,17 @@ const make = Effect.gen(function*() {
           Effect.ignore,
           Effect.timeoutOption(shardLockInterval)
         )
-        // A forced release can start while `acquire` is in flight, so re-check
-        // it here as well as before acquiring.
+        // A forced release can start, and joins can become pending, while
+        // `acquire` is in flight, so re-check both here as well as before
+        // acquiring. Shards locked while joins are pending are released
+        // without running anything on them.
         const forcedReleasePending = forcedShardReleasePending()
+        const joinsPending = MutableHashSet.size(pendingRunners) > 0
         for (const shardId of acquired) {
           if (
             !shardLocksHealthyLatch.isOpen() ||
             forcedReleasePending ||
+            joinsPending ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
           ) {
