@@ -823,41 +823,36 @@ const sendStream = (
  * contents are streamed into the placeholder parts.
  */
 const formDataBody = (formData: FormData, request: HttpClientRequest) => {
-  const files: Array<File | undefined> = []
-  const placeholders = new globalThis.FormData()
-  for (const [key, value] of formData) {
-    if (typeof value === "string") {
-      files.push(undefined)
-      placeholders.append(key, value)
-    } else {
-      files.push(value)
-      // A `Blob` with a file name, as the global `File` is missing on Node 18.
-      placeholders.append(key, new Blob([], { type: value.type }), value.name)
-    }
-  }
   const transportError = (cause: unknown) =>
     new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
+  const entries = Array.from(formData)
+  const placeholders = new globalThis.FormData()
+  for (const [key, value] of entries) {
+    if (typeof value === "string") placeholders.append(key, value)
+    // A `Blob` with a file name, as the global `File` is missing on Node 18.
+    else placeholders.append(key, new Blob([], { type: value.type }), value.name)
+  }
   const response = new globalThis.Response(placeholders)
   const contentType = response.headers.get("content-type")!
-  const delimiter = Buffer.from(`--${contentType.slice(contentType.indexOf("boundary=") + 9)}`)
+  const delimiter = `--${contentType.slice(contentType.indexOf("boundary=") + 9)}`
   const stream = Stream.unwrap(Effect.map(Effect.promise(() => response.arrayBuffer()), (buffer) => {
     const encoded = Buffer.from(buffer)
     const streams: Array<Stream.Stream<Uint8Array, Error.HttpClientError>> = []
     let start = 0
-    let partEnd = 0
-    for (const file of files) {
-      partEnd = encoded.indexOf(delimiter, partEnd + delimiter.length)
-      if (file !== undefined) {
-        // The empty placeholder content is followed by the part's CRLF.
-        streams.push(
-          Stream.succeed(encoded.subarray(start, partEnd - 2)),
-          Stream.unwrap(Effect.map(
-            Effect.try({ try: () => file.stream(), catch: transportError }),
-            (readable) => Stream.fromReadableStream({ evaluate: () => readable, onError: transportError })
-          ))
-        )
-        start = partEnd - 2
-      }
+    let delimiterAt = 0
+    for (const [, value] of entries) {
+      delimiterAt = encoded.indexOf(delimiter, delimiterAt + delimiter.length)
+      if (typeof value === "string") continue
+      // The file contents go before the CRLF that ends its empty placeholder part.
+      const end = delimiterAt - 2
+      streams.push(
+        Stream.succeed(encoded.subarray(start, end)),
+        Stream.unwrap(Effect.map(
+          Effect.try({ try: () => value.stream(), catch: transportError }),
+          (readable) => Stream.fromReadableStream({ evaluate: () => readable, onError: transportError })
+        ))
+      )
+      start = end
     }
     streams.push(Stream.succeed(encoded.subarray(start)))
     return Stream.flatten(Stream.fromArray(streams))
