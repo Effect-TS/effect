@@ -10,11 +10,12 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Migrator from "effect/sql/Migrator"
 import type * as Client from "effect/sql/SqlClient"
 import type { SqlError } from "effect/sql/SqlError"
+import { ClientMethod } from "./ClickhouseClient.ts"
 
 /**
  * @since 4.0.0
@@ -43,7 +44,9 @@ export const run: <R2 = never>(
   ReadonlyArray<readonly [id: number, name: string]>,
   Migrator.MigrationError | SqlError,
   Client.SqlClient | R2
-> = Migrator.make({})
+> = Migrator.make({
+  asCommand: (effect) => Effect.provideService(effect, ClientMethod, "command")
+})
 
 /**
  * Creates a layer that runs the configured ClickHouse migrations during layer

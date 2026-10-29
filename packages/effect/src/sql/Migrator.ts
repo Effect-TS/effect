@@ -12,7 +12,7 @@
 import * as Arr from "../Array.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import { pipe } from "../Function.ts"
+import { identity, pipe } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as Client from "./SqlClient.ts"
@@ -104,8 +104,10 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @since 4.0.0
  */
 export const make = <RD = never>({
+  asCommand = identity,
   dumpSchema = () => Effect.void
 }: {
+  asCommand?: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   dumpSchema?: (
     path: string,
     migrationsTable: string
@@ -140,12 +142,12 @@ export const make = <RD = never>({
 )`,
       clickhouse: () =>
         // sqlite's `PRIMARY KEY NOT NULL` is a syntax error here
-        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+        asCommand(sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id Int32,
   created_at DateTime DEFAULT now(),
   name String
 ) ENGINE = MergeTree
-ORDER BY migration_id`,
+ORDER BY migration_id`),
       pg: () =>
         Effect.flatMap(
           migrationsTableExists(sql, table),
@@ -174,11 +176,13 @@ ORDER BY migration_id`,
     const insertMigrations = (
       rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
-      sql`INSERT INTO ${sql(table)} ${
-        sql.insert(
-          Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
-        )
-      }`.withoutTransform
+      asCommand(
+        sql`INSERT INTO ${sql(table)} ${
+          sql.insert(
+            Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
+          )
+        }`.withoutTransform
+      )
 
     const latestMigration = Effect.map(
       sql<{ migration_id: number; name: string; created_at: Date }>`SELECT migration_id, name, created_at FROM ${
