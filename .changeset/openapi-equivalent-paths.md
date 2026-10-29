@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reject equivalent path templates with different parameter names across HTTP methods in `OpenApi.fromApi`.
+`OpenApi.fromApi` now throws when equivalent path templates use different parameter names across HTTP methods (e.g. `GET /users/{id}` and `DELETE /users/{userId}`), instead of silently producing an invalid OpenAPI document.
