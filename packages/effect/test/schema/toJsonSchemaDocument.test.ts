@@ -4455,6 +4455,45 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("shares a suspended transformed recursive content schema reference with direct uses", () => {
+      const Node: Schema.Codec<unknown> = Schema.suspend(() =>
+        Schema.Struct({
+          note: Schema.OptionFromOptional(Schema.String),
+          next: Schema.optionalKey(Node)
+        }).annotate({ identifier: "Node" })
+      )
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ direct: Node, json: Schema.fromJsonString(Node) }),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "direct": { "$ref": "#/$defs/Suspend_" },
+              "json": {
+                "type": "string",
+                "contentMediaType": "application/json",
+                "contentSchema": { "$ref": "#/$defs/Suspend_" }
+              }
+            },
+            "required": ["direct", "json"],
+            "additionalProperties": false
+          },
+          definitions: {
+            "Node": {
+              "type": "object",
+              "properties": {
+                "note": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                "next": { "$ref": "#/$defs/Suspend_" }
+              },
+              "additionalProperties": false
+            },
+            "Suspend_": { "$ref": "#/$defs/Node" }
+          }
+        }
+      )
+    })
+
     it("respects an explicit encoded-side identifier", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String
