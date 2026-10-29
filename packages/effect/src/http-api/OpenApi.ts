@@ -723,7 +723,7 @@ function compileSchemaOps(
 
   const document = InternalToRepresentation.toRepresentations(
     Arr.map(schemaOps, (op) => op.ast),
-    { ...options, markApproximateEncodings: true }
+    options
   )
   const representations = Arr.map(document.representations, (representation, index) => {
     const op = schemaOps[index]

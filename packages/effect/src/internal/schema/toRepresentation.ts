@@ -103,18 +103,9 @@ function withApproximateJson(
 }
 
 /** @internal */
-export interface Options extends SchemaRepresentation.ToRepresentationOptions {
-  /**
-   * Marks representations reached through an encoding that accepts more than
-   * its codec, for JSON Schema export.
-   */
-  readonly markApproximateEncodings?: boolean | undefined
-}
-
-/** @internal */
 export function toRepresentation(
   ast: SchemaAST.AST,
-  options?: Options
+  options?: SchemaRepresentation.ToRepresentationOptions
 ): SchemaRepresentation.Document {
   const { references, representations } = toRepresentations([ast], options)
   return { representation: representations[0], references }
@@ -123,14 +114,11 @@ export function toRepresentation(
 /** @internal */
 export function toRepresentations(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  options?: Options
+  options?: SchemaRepresentation.ToRepresentationOptions
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const usedReferences = new Set<string>()
   const candidates = new Map<SchemaAST.AST, Array<ReferenceCandidate>>()
-  const isApproximate = options?.markApproximateEncodings === true ?
-    (ast: SchemaAST.AST) => !isExactEncoding(ast) :
-    () => false
 
   for (const ast of asts) visit(ast)
 
@@ -240,7 +228,7 @@ export function toRepresentations(
   function visit(input: SchemaAST.AST): SchemaAST.AST {
     const candidate = getCandidate(input)
     // A reference cannot carry the marker, so it applies to the shared definition.
-    if (isApproximate(input)) candidate.approximate = true
+    if (!isExactEncoding(input)) candidate.approximate = true
     visitCandidate(candidate)
     return input
   }
@@ -278,7 +266,7 @@ export function toRepresentations(
   }
 
   function recur(input: SchemaAST.AST): SchemaRepresentation.Representation {
-    return recurCandidate(getCandidate(input), isApproximate(input))
+    return recurCandidate(getCandidate(input), !isExactEncoding(input))
   }
 
   function recurCandidate(

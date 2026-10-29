@@ -458,22 +458,27 @@ export const Link: new(
   }
 }
 
-const totalLinks = new WeakSet<Link>()
+const totalLinks = new WeakMap<Link, boolean | (() => boolean)>()
 
 /**
  * Marks a link whose decoding accepts every value of its target and yields a
- * value of the decoded side, ignoring the decoded side's checks.
+ * value of the decoded side, ignoring the decoded side's checks. A predicate
+ * defers the decision until the link is first inspected.
  *
  * @internal
  */
-export function total(link: Link): Link {
-  totalLinks.add(link)
+export function total(link: Link, predicate?: () => boolean): Link {
+  totalLinks.set(link, predicate ?? true)
   return link
 }
 
 /** @internal */
 export function isTotal(link: Link): boolean {
-  return totalLinks.has(link)
+  const entry = totalLinks.get(link)
+  if (typeof entry !== "function") return entry === true
+  const out = entry()
+  totalLinks.set(link, out)
+  return out
 }
 
 /**
@@ -4452,7 +4457,7 @@ export function mapLink(link: Link, f: (ast: AST) => AST): Link {
   if (to === link.to) return link
   // Re-encoding the target keeps the values the link decodes.
   const out = new Link(to, link.transformation)
-  return isTotal(link) ? total(out) : out
+  return totalLinks.has(link) ? total(out, () => isTotal(link)) : out
 }
 
 function updateLastLink(encoding: Encoding, f: (ast: AST) => AST): Encoding {

@@ -180,7 +180,8 @@ describe("SchemaRepresentation.toRepresentation", () => {
           annotations: {
             expected: "a string that will be decoded as JSON",
             contentMediaType: "text/plain",
-            contentSchema: { type: "string" }
+            contentSchema: { type: "string" },
+            "~approximateJson": true
           },
           checks: [],
           content: {
@@ -199,7 +200,8 @@ describe("SchemaRepresentation.toRepresentation", () => {
         representation: {
           _tag: "String",
           annotations: {
-            expected: "a string that will be decoded as JSON"
+            expected: "a string that will be decoded as JSON",
+            "~approximateJson": true
           },
           checks: [],
           content: { mediaType: "application/json" }
@@ -212,7 +214,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
       assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.NumberFromString.ast), {
         representation: {
           _tag: "String",
-          annotations: { expected: "a string that will be decoded as a number" },
+          annotations: { expected: "a string that will be decoded as a number", "~approximateJson": true },
           checks: []
         },
         references: {}
@@ -229,7 +231,8 @@ describe("SchemaRepresentation.toRepresentation", () => {
             _tag: "String",
             annotations: {
               expected: "a string that will be decoded as a number",
-              "~identifier": "Finite"
+              "~identifier": "Finite",
+              "~approximateJson": true
             },
             checks: []
           }
@@ -250,7 +253,8 @@ describe("SchemaRepresentation.toRepresentation", () => {
             _tag: "String",
             annotations: {
               expected: "a string that will be decoded as a number",
-              identifier: "EncodedFinite"
+              identifier: "EncodedFinite",
+              "~approximateJson": true
             },
             checks: []
           }
@@ -271,7 +275,8 @@ describe("SchemaRepresentation.toRepresentation", () => {
             _tag: "String",
             annotations: {
               expected: "a string that will be decoded as a number",
-              "~identifier": "Finite"
+              "~identifier": "Finite",
+              "~approximateJson": true
             },
             checks: []
           }

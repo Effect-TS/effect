@@ -68,7 +68,8 @@ describe("SchemaRepresentation.toRepresentations", () => {
             _tag: "String",
             annotations: {
               expected: "a string that will be decoded as JSON",
-              "~identifier": "Tool.Content"
+              "~identifier": "Tool.Content",
+              "~approximateJson": true
             },
             checks: [],
             content: {
@@ -91,7 +92,8 @@ describe("SchemaRepresentation.toRepresentations", () => {
           {
             _tag: "String",
             annotations: {
-              expected: "a string that will be decoded as JSON"
+              expected: "a string that will be decoded as JSON",
+              "~approximateJson": true
             },
             checks: [],
             content: {
@@ -102,7 +104,8 @@ describe("SchemaRepresentation.toRepresentations", () => {
           {
             _tag: "String",
             annotations: {
-              expected: "a string that will be decoded as JSON"
+              expected: "a string that will be decoded as JSON",
+              "~approximateJson": true
             },
             checks: [],
             content: {

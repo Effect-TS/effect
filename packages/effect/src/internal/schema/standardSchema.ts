@@ -83,8 +83,7 @@ function attach(self: any, members: object): any {
 
 function toJsonSchemaDocument(ast: SchemaAST.AST): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
-    InternalToCodec.toCodecJsonAST(ast),
-    { markApproximateEncodings: true }
+    InternalToCodec.toCodecJsonAST(ast)
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document)
 }

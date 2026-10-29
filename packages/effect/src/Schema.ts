@@ -5982,6 +5982,22 @@ export type DecodingDefaultOptions = {
   readonly encodingStrategy?: "omit" | "passthrough" | undefined
 }
 
+// A default is total only when it is a known success that `schema` decodes.
+// Decoding is deferred because `schema` may be suspended.
+function isDecodingDefaultTotal<S extends Constraint>(
+  schema: S,
+  defaultValue: Effect.Effect<S["Encoded"], SchemaError, unknown>
+): boolean {
+  if (!effectIsExit(defaultValue) || defaultValue._tag !== "Success") return false
+  try {
+    return Exit_.isSuccess(
+      SchemaParser.decodeUnknownExit(schema as unknown as ConstraintDecoder<unknown>)(defaultValue.value)
+    )
+  } catch {
+    return false
+  }
+}
+
 function toIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaError, R>
 ): Effect.Effect<A, SchemaIssue.Issue, R> {
@@ -6034,7 +6050,8 @@ export function withDecodingDefaultKey<S extends Constraint, R = never>(
       optionalKey(toEncoded(self)).pipe(decodeTo(self, {
         decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
         encode
-      }))
+      })),
+      () => isDecodingDefaultTotal(self, defaultValue)
     )
   }
 }
@@ -6143,7 +6160,8 @@ export function withDecodingDefault<S extends Constraint, R = never>(
       optional(toEncoded(self)).pipe(decodeTo(self, {
         decode: SchemaGetter.withDefault(toIssueEffect(defaultValue)),
         encode
-      }))
+      })),
+      () => isDecodingDefaultTotal(self, defaultValue)
     )
   }
 }
@@ -17629,9 +17647,9 @@ function getClassSchemaFactory<S extends Constraint>(
 }
 
 // Marks the link that `decodeTo` appended as total.
-function totalLastLink<S extends Constraint>(schema: S): S {
+function totalLastLink<S extends Constraint>(schema: S, predicate?: () => boolean): S {
   const encoding = schema.ast.encoding!
-  SchemaAST.total(encoding[encoding.length - 1])
+  SchemaAST.total(encoding[encoding.length - 1], predicate)
   return schema
 }
 
@@ -18198,7 +18216,7 @@ export function toJsonSchemaDocument(
 ): JsonSchema.Document<"draft-2020-12"> {
   const document = InternalToRepresentation.toRepresentation(
     InternalToCodec.toCodecJsonAST(schema.ast),
-    { ...options, markApproximateEncodings: true }
+    options
   )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
