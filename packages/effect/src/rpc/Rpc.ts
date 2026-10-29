@@ -363,7 +363,8 @@ export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer
  * @category utility types
  * @since 4.0.0
  */
-export type SuccessChunk<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _A : never
+export type SuccessChunk<R> = R extends Any ? Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _A : never
+  : never
 
 /**
  * Extracts the RPC error schema, including error schemas contributed by

@@ -977,7 +977,7 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
         )
       )
     }
-    return decodeRequest(message, rpc) as Effect.Effect<
+    return decodeRequest(message, rpc) as any as Effect.Effect<
       {
         readonly _tag: "IncomingRequest"
         readonly envelope: Envelope.Request.Any
