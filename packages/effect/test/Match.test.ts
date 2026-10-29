@@ -140,7 +140,7 @@ describe("Match", () => {
   it("whenFilter cases keep the guard and evaluate contract of Case", () => {
     let calls = 0
     let fail = false
-    const [_case] = Match.type<string>().pipe(
+    const matcher = Match.type<string>().pipe(
       Match.whenFilter(
         Filter.fromPredicateOption((s: string) => {
           calls++
@@ -149,7 +149,9 @@ describe("Match", () => {
         }),
         (n) => n * 10
       )
-    ).cases
+    )
+    assertTrue(matcher._tag === "TypeMatcher")
+    const [_case] = matcher.cases
 
     assertTrue(_case.guard("abc"))
     strictEqual(_case.evaluate("abc"), 30)
