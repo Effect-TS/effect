@@ -142,7 +142,8 @@ const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(tra
  *
  * **Details**
  *
- * Only version `00` headers with valid trace and span identifiers are accepted.
+ * Only version `00` headers with valid trace and span identifiers and trace
+ * flags are accepted.
  *
  * @stability unstable
  * @category decoding
