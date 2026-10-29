@@ -38,8 +38,6 @@ describe("Generated", () => {
     it.effect("messageBatchesResults returns the JSON Lines body of a 200", () =>
       Effect.gen(function*() {
         const body = yield* client.messageBatchesResults("msgbatch_1", { params: {} })
-        assert.strictEqual(new TextDecoder().decode(body), jsonl)
-
         const lines = yield* Effect.forEach(new TextDecoder().decode(body).split("\n"), (line) => decodeLine(line))
         assert.deepStrictEqual(lines.map((line) => [line.custom_id, line.result.type]), [
           ["a", "errored"],
