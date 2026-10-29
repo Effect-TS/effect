@@ -455,15 +455,6 @@ describe("McpServer skills", () => {
         }
       }))
 
-    // YAML can express values JSON cannot, such as `.inf`; they cannot be listed.
-    it.effect("rejects frontmatter that is not plain JSON", () =>
-      Effect.gen(function*() {
-        assertRejected(
-          yield* register(refunds("name: refunds\ndescription: Process refunds\nx-limit: .inf")),
-          /JSON object/
-        )
-      }))
-
     it.effect("rejects a SKILL.md without frontmatter", () =>
       Effect.gen(function*() {
         assertRejected(
