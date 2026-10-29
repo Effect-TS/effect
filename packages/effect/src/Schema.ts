@@ -9194,7 +9194,6 @@ export function isConditional(
         payload: keys,
         schemas: [conditionAST, ...branchASTs]
       },
-      toJsonSchema: () => [{}, true],
       toCode: ({ schemas: [condition, ...branches] }) => ({
         runtime: `Schema.isConditional(${condition.runtime}, { ${
           keys.map((key, i) => `${key}: ${branches[i].runtime}`).join(", ")
