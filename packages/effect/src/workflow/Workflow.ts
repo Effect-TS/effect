@@ -88,6 +88,10 @@ export interface Workflow<
    * nor gets interrupted with it. The cluster engine retains the parent for
    * observability.
    *
+   * Inside a workflow, an awaited child that is interrupted fails the parent
+   * with a defect rather than an interrupt, so the parent can recover with
+   * `Effect.catchDefect` or `Effect.exit`.
+   *
    * **Gotchas**
    *
    * Do not await a detached execution later. Executing the same payload joins

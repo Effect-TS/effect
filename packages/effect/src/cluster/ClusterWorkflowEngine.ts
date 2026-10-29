@@ -535,14 +535,14 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
+                    const resumeParent = parent && !parent.detached
+                      ? ensureSuccess(sendResumeParent(parent, executionId))
+                      : Effect.void
                     if (
                       !instance.suspended &&
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      const resumeParent = parent && !parent.detached
-                        ? ensureSuccess(sendResumeParent(parent, executionId))
-                        : Effect.void
                       if (exit._tag === "Success" || !Cause.hasInterruptsOnly(exit.cause)) {
                         return resumeParent
                       }
@@ -568,9 +568,13 @@ export const make = Effect.gen(function*() {
                         }
                         instance.suspended = false
                         instance.interrupted = true
-                        return Effect.andThen(
-                          Effect.ignore(clearClock({ workflow, executionId })),
-                          Effect.withFiber<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
+                        return Effect.ignore(clearClock({ workflow, executionId })).pipe(
+                          // The interrupt completes the run, so wake the parent
+                          // to observe it.
+                          Effect.andThen(instance.abandoned ? Effect.void : resumeParent),
+                          Effect.andThen(
+                            Effect.withFiber<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
+                          )
                         )
                       }),
                       Effect.orDie

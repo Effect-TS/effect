@@ -583,6 +583,11 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
         if (wrapped._tag === "Suspended") {
           return yield* Workflow.suspend(parentInstance.value)
         }
+        // A child's interrupt is an outcome for the parent, not an interrupt of
+        // the parent's run, so surface it as a defect the parent can observe.
+        if (Exit.isFailure(wrapped.exit) && Cause.hasInterruptsOnly(wrapped.exit.cause)) {
+          return yield* Effect.die(`${self._tag}.execute: execution "${executionId}" was interrupted`)
+        }
         return yield* wrapped.exit
       }
 
