@@ -756,7 +756,8 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  *
  * This only works with the following WebSocket constructor layers:
  *
- * - `NodeSocket.layerWebSocketConstructorWS`
+ * - `NodeSocket.layerWebSocketConstructor`
+ * - `NodeWS.layerWebSocketConstructor`
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the
@@ -795,7 +796,8 @@ export const withWebSocketMode = <A, E, R>(
  *
  * This only works with the following WebSocket constructor layers:
  *
- * - `NodeSocket.layerWebSocketConstructorWS`
+ * - `NodeSocket.layerWebSocketConstructor`
+ * - `NodeWS.layerWebSocketConstructor`
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the

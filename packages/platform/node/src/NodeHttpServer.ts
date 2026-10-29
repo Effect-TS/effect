@@ -94,8 +94,8 @@ import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
 import * as NodeServices from "./NodeServices.ts"
-import { NodeWS } from "./NodeSocket.ts"
 import * as NodeStream from "./NodeStream.ts"
+import * as NodeWS from "./NodeWS.ts"
 
 /**
  * Options accepted by the Node `HttpServer` constructors and layers.

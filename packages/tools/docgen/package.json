@@ -5,7 +5,7 @@
   "license": "MIT",
   "description": "An opinionated documentation generator for Effect projects",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.19.0"
   },
   "homepage": "https://effect.website",
   "repository": {

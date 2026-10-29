@@ -3,14 +3,12 @@
  *
  * This module re-exports the shared Node socket support for TCP connections,
  * Unix domain socket connections, and Node `Duplex` streams. It also provides
- * WebSocket constructor layers: one that uses `globalThis.WebSocket` when
- * present and falls back to `ws`, one that always uses `ws`, and one that
- * creates a `Socket.Socket` layer for a WebSocket URL.
+ * WebSocket client layers backed by Node's global `WebSocket`. A client backed
+ * by the `ws` package is available from `NodeWS`.
  *
  * @stability unstable
  * @since 4.0.0
  */
-import { NodeWS as WS } from "@effect/platform-node-shared/NodeSocket"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import { flow } from "effect/Function"
@@ -22,18 +20,26 @@ import * as Socket from "effect/socket/Socket"
  */
 export * from "@effect/platform-node-shared/NodeSocket"
 
-const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) => {
-  if (options === undefined || typeof options === "string" || Array.isArray(options)) {
-    return new WS.WebSocket(url, options)
-  }
-  return new WS.WebSocket(url, options.protocols, { headers: options.headers })
-}
-
 /**
- * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when
- * available and falling back to the `ws` package otherwise.
- * Client options objects use `ws` so handshake headers and subprotocols can
- * be supplied together.
+ * Provides a `Socket.WebSocketConstructor` backed by Node's global
+ * `WebSocket`.
+ *
+ * **Details**
+ *
+ * Client options objects are passed to the constructor as Node's
+ * `WebSocketInit`, so handshake headers and subprotocols can be supplied
+ * together.
+ *
+ * **Gotchas**
+ *
+ * Use `NodeWS.layerWebSocketConstructor` when any of these matter:
+ *
+ * - Node's `WebSocket` cannot pause reads. `Socket.fromWebSocket` buffers
+ *   incoming frames without limit, or fails with a `SocketReadError` once a
+ *   configured `highWaterMark` is exceeded.
+ * - A `Host` header is ignored; the handshake always sends the URL's host.
+ * - Outgoing messages are not compressed, even when the server accepts
+ *   `permessage-deflate`.
  *
  * @stability unstable
  * @category layers
@@ -41,30 +47,23 @@ const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =
  */
 export const layerWebSocketConstructor: Layer.Layer<
   Socket.WebSocketConstructor
-> = Layer.sync(Socket.WebSocketConstructor)(() => {
-  if ("WebSocket" in globalThis) {
-    return (url, options) => {
-      if (options === undefined || typeof options === "string" || Array.isArray(options)) {
-        return new globalThis.WebSocket(url, options)
-      }
-      return makeWebSocketWS(url, options)
-    }
+> = Layer.succeed(Socket.WebSocketConstructor)((url, options) => {
+  if (options === undefined || typeof options === "string" || Array.isArray(options)) {
+    return new globalThis.WebSocket(url, options)
   }
-  return makeWebSocketWS
+  const init: WebSocketInit = {}
+  if (options.protocols !== undefined) init.protocols = options.protocols
+  if (options.headers !== undefined) init.headers = options.headers
+  return new (globalThis.WebSocket as unknown as NodeWebSocketConstructor)(url, init)
 })
 
-/**
- * Provides a `Socket.WebSocketConstructor` backed explicitly by the `ws`
- * package.
- * Supports handshake headers alongside subprotocols in client options objects.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerWebSocketConstructorWS: Layer.Layer<
-  Socket.WebSocketConstructor
-> = Layer.succeed(Socket.WebSocketConstructor)(makeWebSocketWS)
+// Node's `WebSocketInit`, which the DOM `WebSocket` constructor type omits.
+interface WebSocketInit {
+  protocols?: string | Array<string>
+  headers?: Readonly<Record<string, string>>
+}
+
+type NodeWebSocketConstructor = new(url: string, init: WebSocketInit) => globalThis.WebSocket
 
 /**
  * Creates a `Socket.Socket` layer for a WebSocket URL using the Node WebSocket
