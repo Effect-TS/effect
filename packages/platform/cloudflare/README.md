@@ -2,6 +2,11 @@
 
 Runs Effect Cluster on [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/). Every entity instance is one Durable Object, the Worker is the edge, and each object's SQLite storage is the system of record.
 
+Completed Workflow executions currently have no automatic result-retention
+policy. See the [retention proposal and executable probes](./WORKFLOW_RETENTION.md)
+for the retry and parent-replay constraints on adding safe collection. This is
+a draft proposal, not an available cleanup API.
+
 ## Installation
 
 ```sh

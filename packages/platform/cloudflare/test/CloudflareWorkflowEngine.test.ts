@@ -389,4 +389,120 @@ describe("CloudflareWorkflowEngine", () => {
       assert.isTrue(Exit.hasInterrupts(result.exit))
     }).pipe(Effect.provide(layer))
   })
+
+  // Characterization probes for the retention proposal. Clearing a store below
+  // deliberately simulates unsafe GC; it is not an engine cleanup API.
+  describe("retention characterization", () => {
+    it.effect("repeats an activity if completed execution storage is removed before a retry", () => {
+      const namespace = new FakeWorkflowNamespace()
+      let calls = 0
+      const Operation = Workflow.make("RetentionRetry", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        idempotencyKey: ({ id }) => id
+      })
+      const Provision = Activity.make({
+        name: "Provision",
+        success: Schema.Number,
+        execute: Effect.sync(() => ++calls)
+      })
+      const layer = Operation.toLayer(() => Provision).pipe(Layer.provideMerge(namespace.layer))
+
+      return Effect.gen(function*() {
+        const payload = { id: "same-request" }
+        const executionId = yield* Operation.executionId(payload)
+        assert.strictEqual(yield* Operation.execute(payload), 1)
+        assert.strictEqual(yield* Operation.execute(payload), 1)
+        assert.strictEqual(calls, 1)
+
+        namespace.stores.delete(encodeName(Operation._tag, executionId))
+        namespace.crash()
+
+        assert.strictEqual(yield* Operation.execute(payload), 2)
+        assert.strictEqual(calls, 2)
+      }).pipe(Effect.provide(layer))
+    })
+
+    it.effect("still needs a child's result for parent replay after its completion wake was delivered", () => {
+      const namespace = new FakeWorkflowNamespace()
+      let calls = 0
+      const Continue = DurableDeferred.make("RetentionParent/Continue")
+      const Child = Workflow.make("RetentionChild", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        idempotencyKey: ({ id }) => id
+      })
+      const Parent = Workflow.make("RetentionParent", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        idempotencyKey: ({ id }) => id
+      })
+      const Provision = Activity.make({
+        name: "Provision",
+        success: Schema.Number,
+        execute: Effect.sync(() => ++calls)
+      })
+
+      return Effect.gen(function*() {
+        const reachedContinue = yield* Deferred.make<void>()
+        const layer = Layer.merge(
+          Child.toLayer(() => Provision),
+          Parent.toLayer(Effect.fnUntraced(function*({ id }) {
+            const result = yield* Child.execute({ id })
+            yield* Deferred.succeed(reachedContinue, undefined)
+            yield* DurableDeferred.await(Continue)
+            return result
+          }))
+        ).pipe(Layer.provideMerge(namespace.layer))
+
+        yield* Effect.gen(function*() {
+          const parentId = yield* Parent.executionId({ id: "one" })
+          const childId = yield* Child.executionId({ id: "one" })
+          yield* Parent.execute({ id: "one" }, { discard: true })
+          yield* Deferred.await(reachedContinue)
+          yield* pollUntil(Parent, parentId, "Suspended")
+          const childName = encodeName(Child._tag, childId)
+          const childStore = namespace.store(childName)
+          assert.strictEqual(childStore.sql.execution?.resume_pending, 0)
+          assert.strictEqual(calls, 1)
+
+          namespace.stores.delete(childName)
+          namespace.crash()
+
+          const token = DurableDeferred.tokenFromExecutionId(Continue, { workflow: Parent, executionId: parentId })
+          yield* DurableDeferred.succeed(Continue, { token, value: undefined })
+          const result = yield* pollUntil(Parent, parentId, "Complete")
+          assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
+          assert.strictEqual(result.exit.value, 2)
+          assert.strictEqual(calls, 2)
+        }).pipe(Effect.provide(layer))
+      })
+    })
+
+    it.effect("persists a new deferred and arms a guard even after the workflow is complete", () => {
+      const namespace = new FakeWorkflowNamespace()
+      const Signal = DurableDeferred.make("RetentionLateSignal")
+      const Done = Workflow.make("RetentionDone", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Done.toLayer(() => Effect.void).pipe(Layer.provideMerge(namespace.layer))
+
+      return Effect.gen(function*() {
+        const executionId = yield* Done.executionId({ id: "one" })
+        yield* Done.execute({ id: "one" })
+        const store = namespace.store(encodeName(Done._tag, executionId))
+        assert.strictEqual(store.sql.deferreds.size, 0)
+        assert.isNull(store.alarm.current)
+
+        const token = DurableDeferred.tokenFromExecutionId(Signal, { workflow: Done, executionId })
+        yield* DurableDeferred.succeed(Signal, { token, value: undefined })
+
+        assert.strictEqual(store.sql.deferreds.size, 1)
+        assert.strictEqual(store.alarm.current, 60_000)
+        const result = yield* Done.poll(executionId)
+        assert(Option.isSome(result) && result.value._tag === "Complete")
+      }).pipe(Effect.provide(layer))
+    })
+  })
 })
