@@ -292,12 +292,9 @@ export function fromJsonSchemaMultiDocument(
 
     let schema: Schema.Top
     switch (input._tag) {
-      case "Unknown": {
-        const json = Schema.Json.annotate({ ...annotations, expected: "JSON value" })
-        return input.checks.length > 0
-          ? json.check(...input.checks.map(finalizeCheck) as [InternalAST.Check<any>])
-          : json
-      }
+      case "Unknown":
+        schema = Schema.Json.annotate({ expected: "JSON value" })
+        break
       case "Never":
       case "Null":
       case "String":

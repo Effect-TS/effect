@@ -332,16 +332,15 @@ export function toRepresentations(
     check: SchemaAST.Check<any>,
     host: SchemaAST.AST
   ): SchemaRepresentation.Check {
-    const fields = fromAnnotations(check.annotations, true)
+    // A negation checks the decoded value, so it cannot constrain encoded descendants in JSON Schema.
+    const annotations = check.annotations?.representation?.id === "effect/schema/isNot" && hasEncodedDescendant(host)
+      ? { ...check.annotations, toJsonSchema: approximateNegation }
+      : check.annotations
     return {
       ...(check._tag === "Filter"
         ? { _tag: check._tag, aborted: check.aborted }
         : { _tag: check._tag, checks: Arr.map(check.checks, (child) => fromCheck(child, host)) }),
-      ...fields,
-      // A negation checks the decoded value, so it cannot constrain encoded descendants in JSON Schema.
-      ...(check.annotations?.representation?.id === "effect/schema/isNot" && hasEncodedDescendant(host)
-        ? { annotations: { ...fields?.annotations, toJsonSchema: approximateNegation } }
-        : undefined)
+      ...fromAnnotations(annotations, true)
     }
   }
 
