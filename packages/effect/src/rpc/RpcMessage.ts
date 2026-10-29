@@ -325,8 +325,8 @@ export interface ResponseExitEncoded {
 }
 
 /**
- * A server-to-client protocol message reporting a client protocol error to all
- * affected in-flight requests.
+ * A server-to-client protocol message failing in-flight requests with a client
+ * protocol error: those in `requestIds`, or all of them when it is omitted.
  *
  * @stability unstable
  * @category models
@@ -335,6 +335,7 @@ export interface ResponseExitEncoded {
 export interface ClientProtocolError {
   readonly _tag: "ClientProtocolError"
   readonly error: RpcClientError
+  readonly requestIds?: ReadonlyArray<string | number>
 }
 
 /**

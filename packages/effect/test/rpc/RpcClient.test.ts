@@ -763,6 +763,52 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(sentRequestIds, [1, 2])
     }))
 
+  it.effect("fails only the calls on a crashed pooled worker", () =>
+    Effect.gen(function*() {
+      const sent = yield* Queue.unbounded<{
+        readonly id: string | number
+        readonly crash: Deferred.Deferred<never, WorkerError>
+        readonly replies: Queue.Queue<RpcMessage.FromServerEncoded>
+      }>()
+      const spawn = Effect.gen(function*() {
+        const crash = yield* Deferred.make<never, WorkerError>()
+        const replies = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const backing: Worker.Worker<any, any> = {
+          send: (message) =>
+            message._tag === "Request"
+              ? Effect.asVoid(Queue.offer(sent, { id: message.id, crash, replies }))
+              : Effect.void,
+          run: (handler) =>
+            Effect.raceFirst(Deferred.await(crash), Effect.forever(Effect.flatMap(Queue.take(replies), handler)))
+        }
+        return backing
+      })
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideServiceEffect(RpcClient.Protocol, RpcClient.makeProtocolWorker({ size: 2, concurrency: 1 })),
+        Effect.provideService(Worker.WorkerPlatform, Worker.WorkerPlatform.of({ spawn: () => spawn })),
+        Effect.provideService(Worker.Spawner, (() => undefined) as Worker.SpawnerFn)
+      )
+
+      const crashing = yield* client.Ping().pipe(Effect.forkChild)
+      const crashed = yield* Queue.take(sent)
+      const healthy = yield* client.Ping().pipe(Effect.forkChild)
+      const healthyRequest = yield* Queue.take(sent)
+
+      yield* Deferred.fail(
+        crashed.crash,
+        new WorkerError({ reason: new WorkerReceiveError({ message: "worker exited" }) })
+      )
+      const error = yield* Effect.flip(Fiber.join(crashing))
+      assert.strictEqual(error.reason._tag, "WorkerReceiveError")
+
+      yield* Queue.offer(healthyRequest.replies, {
+        _tag: "Exit",
+        requestId: healthyRequest.id,
+        exit: { _tag: "Success", value: "pong" }
+      })
+      assert.strictEqual(yield* Fiber.join(healthy), "pong")
+    }))
+
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
