@@ -4383,6 +4383,41 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("shares a transformed content schema reference with direct uses", () => {
+      const Item = Schema.Struct({
+        note: Schema.OptionFromOptional(Schema.String)
+      }).annotate({ identifier: "Item" })
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ direct: Item, json: Schema.fromJsonString(Item) }),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "direct": { "$ref": "#/$defs/Item" },
+              "json": { "$ref": "#/$defs/ItemEncoded" }
+            },
+            "required": ["direct", "json"],
+            "additionalProperties": false
+          },
+          definitions: {
+            "Item": {
+              "type": "object",
+              "properties": {
+                "note": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+              },
+              "additionalProperties": false
+            },
+            "ItemEncoded": {
+              "type": "string",
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#/$defs/Item" }
+            }
+          }
+        }
+      )
+    })
+
     it("respects an explicit encoded-side identifier", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String
