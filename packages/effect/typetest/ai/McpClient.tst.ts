@@ -99,6 +99,12 @@ describe("McpClient", () => {
     expect<Snapshot>().type.not.toBeAssignableTo<McpClient.ToolkitOptions<"text", "return">>()
   })
 
+  it("should require mode selectors when type arguments choose nondefault modes", () => {
+    expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client)
+    expect(McpClient.toolkit<"complete">).type.not.toBeCallableWith(client, "remote__")
+    expect(McpClient.toolkit<"text", "error" | "return">).type.not.toBeCallableWith(client, {})
+  })
+
   it("should retain customization dependencies when the bound handler is invoked", () => {
     const customized = McpClient.toolkit(client, {
       resultMode: "complete",
