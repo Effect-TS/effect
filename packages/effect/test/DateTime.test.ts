@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import { DateTime, Duration, Effect, Option } from "effect"
+import { assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { DateTime, Duration, Effect, Equal, Hash, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { vi } from "vitest"
 
@@ -575,6 +575,32 @@ describe("DateTime", () => {
         const zoned = DateTime.makeZonedUnsafe(iso, { timeZone: "UTC" })
         strictEqual(DateTime.toDate(zoned).toISOString(), iso)
       }
+    })
+  })
+
+  describe("lazy caches", () => {
+    const populate = (self: DateTime.DateTime) => {
+      DateTime.toPartsUtc(self)
+      DateTime.toParts(self)
+      DateTime.toDate(self)
+    }
+
+    it("stay out of the enumerable shape", () => {
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const zoned = DateTime.makeZonedUnsafe(utc, { timeZone: "Europe/London" })
+      populate(utc)
+      populate(zoned)
+      deepStrictEqual(Object.keys(utc), ["epochMilliseconds"])
+      deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
+    })
+
+    it("do not affect equality with a fresh instance", () => {
+      const make = () => DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", { timeZone: "Europe/London" })
+      const populated = make()
+      populate(populated)
+      assertTrue(Equal.equals(populated, make()))
+      strictEqual(Hash.hash(populated), Hash.hash(make()))
+      deepStrictEqual(populated, make())
     })
   })
 
