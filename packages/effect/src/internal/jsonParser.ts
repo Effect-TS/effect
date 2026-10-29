@@ -4,13 +4,19 @@ const json5Space = /(?:[\t\n\v\f\r \u00A0\u2028\u2029\uFEFF\p{Zs}]|\/\/[^\n\r\u2
 const idStart = /[$_\p{ID_Start}]/u
 const idPart = /[$\u200C\u200D\p{ID_Continue}]/u
 const idName = /[$_\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*/uy
-const digits = /\d*/y
 const hexDigits = /[\da-fA-F]*/y
-const isDigit = (c: string) => c >= "0" && c <= "9"
-const isHexDigit = (c: string) => /^[\da-fA-F]$/.test(c)
+const isDigit = (code: number) => code >= 0x30 && code <= 0x39
+const isAsciiIdPart = (code: number) =>
+  (code >= 0x61 && code <= 0x7a) || (code >= 0x41 && code <= 0x5a) || isDigit(code) || code === 0x5f || code === 0x24
 
 const jsoncSpace = /(?:[ \t\r\n]|\/\/[^\r\n]*|\/\*[^]*?\*\/)*/uy
 const jsonNumber = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y
+
+// The escapes JSON and JSON5 share, indexed by the character after the backslash.
+const escapes: Array<string | undefined> = []
+for (const [escape, value] of ["\"\"", "\\\\", "//", "b\b", "f\f", "n\n", "r\r", "t\t"]) {
+  escapes[escape.charCodeAt(0)] = value
+}
 
 // Runs of string content that need no further inspection.
 const json5Double = /[^"\\\n\r]*/y
@@ -30,13 +36,24 @@ export const syntaxError = (text: string, at: number, format: Format): SyntaxErr
 }
 
 type Frame =
-  | { readonly object: true; readonly entries: Array<[string, unknown]>; first: boolean }
-  | { readonly object: false; readonly items: Array<unknown>; first: boolean }
+  | { readonly object: true; readonly value: Record<string, unknown>; key: string; first: boolean }
+  | { readonly object: false; readonly value: Array<unknown>; first: boolean }
+
+const set = (object: Record<string, unknown>, key: string, value: unknown): void => {
+  // Assignment would set the prototype, so `__proto__` is defined as own data like
+  // JSON.parse does. Unlike JSON.parse, assignment runs any other accessor added to
+  // Object.prototype; json5 makes the same trade for speed.
+  if (key === "__proto__") {
+    Object.defineProperty(object, key, { value, writable: true, enumerable: true, configurable: true })
+  } else object[key] = value
+}
 
 // JSONC only uses the strict mode to locate errors after JSON.parse fails.
 export const parse = (text: string, format: Format): unknown => {
   const json5 = format === "JSON5"
   const space = json5 ? json5Space : jsoncSpace
+  // JSON strings forbid raw characters below U+0020; JSON5 strings only forbid line breaks.
+  const plainFloor = json5 ? 0 : 0x20
   let i = 0
 
   const fail = (at: number): never => {
@@ -76,9 +93,15 @@ export const parse = (text: string, format: Format): unknown => {
   }
 
   const hex = (count: number) => {
-    const start = i
-    for (; i < start + count; i++) if (!isHexDigit(text.charAt(i))) fail(i)
-    return String.fromCharCode(parseInt(text.slice(start, i), 16))
+    let value = 0
+    for (const end = i + count; i < end; i++) {
+      const code = text.charCodeAt(i)
+      const lower = code | 0x20
+      if (isDigit(code)) value = value * 16 + code - 0x30
+      else if (lower >= 0x61 && lower <= 0x66) value = value * 16 + lower - 0x57
+      else fail(i)
+    }
+    return String.fromCharCode(value)
   }
 
   const number = () => {
@@ -87,64 +110,97 @@ export const parse = (text: string, format: Format): unknown => {
       if (run(jsonNumber) === 0) fail(i)
       return Number(text.slice(start, i))
     }
+    let code = text.charCodeAt(i)
     let sign = 1
-    if (text.charAt(i) === "+" || text.charAt(i) === "-") {
-      sign = text.charAt(i++) === "-" ? -1 : 1
+    if (code === 0x2b || code === 0x2d) {
+      if (code === 0x2d) sign = -1
+      code = text.charCodeAt(++i)
     }
     const start = i
-    const c = text.charAt(i)
-    if (c === "I") return word("Infinity", sign * Infinity)
-    if (c === "N") return word("NaN", NaN)
-    if (c === "0" && (text.charAt(i + 1) === "x" || text.charAt(i + 1) === "X")) {
+    if (code === 0x49) return word("Infinity", sign * Infinity)
+    if (code === 0x4e) return word("NaN", NaN)
+    if (code === 0x30 && (text.charCodeAt(i + 1) | 0x20) === 0x78) {
       i += 2
       if (run(hexDigits) === 0) fail(i)
-    } else {
-      if (c === "0") i++
-      else if (isDigit(c)) run(digits)
-      else if (c !== ".") fail(i)
-      if (text.charAt(i) === ".") {
-        i++
-        // A leading decimal point needs digits after it; a trailing one does not.
-        if (run(digits) === 0 && i === start + 1) fail(i)
-      }
-      if (text.charAt(i) === "e" || text.charAt(i) === "E") {
-        i++
-        if (text.charAt(i) === "+" || text.charAt(i) === "-") i++
-        if (run(digits) === 0) fail(i)
-      }
+      return sign * Number(text.slice(start, i))
+    }
+    // Integers below 2^53 are accumulated directly; anything else goes through Number.
+    let integer = 0
+    if (code === 0x30) code = text.charCodeAt(++i)
+    else if (isDigit(code)) {
+      do {
+        integer = integer * 10 + code - 0x30
+        code = text.charCodeAt(++i)
+      } while (isDigit(code))
+    } else if (code !== 0x2e) fail(i)
+    if (code !== 0x2e && code !== 0x65 && code !== 0x45 && i - start < 16) return sign * integer
+    if (code === 0x2e) {
+      const fraction = ++i
+      while (isDigit(text.charCodeAt(i))) i++
+      // A leading decimal point needs digits after it; a trailing one does not.
+      if (i === fraction && fraction === start + 1) fail(i)
+      code = text.charCodeAt(i)
+    }
+    if (code === 0x65 || code === 0x45) {
+      code = text.charCodeAt(++i)
+      if (code === 0x2b || code === 0x2d) i++
+      const exponent = i
+      while (isDigit(text.charCodeAt(i))) i++
+      if (i === exponent) fail(i)
     }
     return sign * Number(text.slice(start, i))
   }
 
-  const string = (quote: string) => {
-    const plain = quote === "'" ? json5Single : json5 ? json5Double : jsonDouble
+  const string = (quote: number) => {
+    const plain = quote === 0x27 ? json5Single : json5 ? json5Double : jsonDouble
     let result = ""
     for (i++;;) {
+      // Plain content runs until the quote, an escape, a line break, a control character
+      // JSON forbids, or the end of input, where `code` is NaN and fails the last test.
       const start = i
-      run(plain)
+      let code = text.charCodeAt(i)
+      // Short runs are cheaper to scan by hand; long runs are handed to the pattern.
+      const handoff = i + 24
+      while (code !== quote && code !== 0x5c && code !== 0x0a && code !== 0x0d && code >= plainFloor) {
+        if (++i === handoff) {
+          run(plain)
+          code = text.charCodeAt(i)
+          break
+        }
+        code = text.charCodeAt(i)
+      }
       result += text.slice(start, i)
-      const c = text.charAt(i++)
-      if (c === quote) return result
+      i++
+      if (code === quote) return result
       // Anything else that stops a plain run is an escape or a forbidden character.
-      if (c !== "\\") fail(i - 1)
-      const e = text.charAt(i++)
-      if (!json5 && !"\"\\/bfnrtu".includes(e)) fail(i - 1)
-      const simple = "bfnrtv".indexOf(e)
-      if (e === "" || /[1-9]/.test(e)) fail(i - 1)
-      else if (simple !== -1) result += "\b\f\n\r\t\v"[simple]
-      else if (e === "x" || e === "u") result += hex(e === "x" ? 2 : 4)
-      else if (e === "0") {
-        if (isDigit(text.charAt(i))) fail(i)
+      if (code !== 0x5c) fail(i - 1)
+      const escape = text.charCodeAt(i++)
+      const simple = escapes[escape]
+      if (simple !== undefined) result += simple
+      else if (escape === 0x75) result += hex(4)
+      else if (!json5 || i > text.length || (escape >= 0x31 && escape <= 0x39)) fail(i - 1)
+      else if (escape === 0x76) result += "\v"
+      else if (escape === 0x78) result += hex(2)
+      else if (escape === 0x30) {
+        if (isDigit(text.charCodeAt(i))) fail(i)
         result += "\0"
-      } else if (e === "\r") {
+      } else if (escape === 0x0d) {
         // A CR LF line continuation contributes nothing, like a single line terminator.
-        if (text.charAt(i) === "\n") i++
-      } else if (!"\n\u2028\u2029".includes(e)) result += e
+        if (text.charCodeAt(i) === 0x0a) i++
+      } else if (escape !== 0x0a && escape !== 0x2028 && escape !== 0x2029) result += text[i - 1]
     }
   }
 
   const identifier = () => {
     const start = i
+    let code = text.charCodeAt(i)
+    if (isAsciiIdPart(code) && !isDigit(code)) {
+      do code = text.charCodeAt(++i)
+      while (isAsciiIdPart(code))
+      // Past an ASCII name, only an escape or a non-ASCII character can continue it.
+      if (code !== 0x5c && !(code >= 0x80)) return text.slice(start, i)
+      i = start
+    }
     run(idName)
     let name = text.slice(start, i)
     if (name !== "" && text.charAt(i) !== "\\") return name
@@ -167,30 +223,50 @@ export const parse = (text: string, format: Format): unknown => {
 
   const stack: Array<Frame> = []
 
-  /** Reads a value at `i`, which must already be past any whitespace. */
+  /**
+   * Reads a value at `i`, which must already be past any whitespace. Opening a
+   * collection returns `undefined`; the collection is completed later.
+   */
   const value = (): unknown => {
-    const c = text.charAt(i)
-    if (c === "{" || c === "[") {
-      stack.push(c === "[" ? { object: false, items: [], first: true } : { object: true, entries: [], first: true })
-      i++
-      return undefined
+    const code = text.charCodeAt(i)
+    switch (code) {
+      case 0x7b:
+        stack.push({ object: true, value: {}, key: "", first: true })
+        i++
+        return undefined
+      case 0x5b:
+        stack.push({ object: false, value: [], first: true })
+        i++
+        return undefined
+      case 0x22:
+        return string(0x22)
+      case 0x27:
+        return json5 ? string(0x27) : fail(i)
+      case 0x6e:
+        return word("null", null)
+      case 0x74:
+        return word("true", true)
+      case 0x66:
+        return word("false", false)
+      case 0x2b:
+      case 0x2d:
+      case 0x2e:
+      case 0x49:
+      case 0x4e:
+        return number()
     }
-    if (c === "\"" || (json5 && c === "'")) return string(c)
-    if (c === "n") return word("null", null)
-    if (c === "t") return word("true", true)
-    if (c === "f") return word("false", false)
-    if (c !== "" && "+-.0123456789IN".includes(c)) return number()
-    return fail(i)
+    return isDigit(code) ? number() : fail(i)
   }
 
   /** After a member: consumes a comma unless the collection ends. */
-  const separated = (close: string) => {
+  const separated = (close: number) => {
     skip()
-    if (text.charAt(i) === close) return
-    if (text.charAt(i) !== ",") fail(i)
+    const code = text.charCodeAt(i)
+    if (code === close) return
+    if (code !== 0x2c) fail(i)
     i++
     skip()
-    if (!json5 && text.charAt(i) === close) fail(i)
+    if (!json5 && text.charCodeAt(i) === close) fail(i)
   }
 
   skip()
@@ -198,31 +274,32 @@ export const parse = (text: string, format: Format): unknown => {
   // An explicit stack keeps deep nesting off the call stack.
   while (stack.length > 0) {
     const frame = stack[stack.length - 1]
-    const close = frame.object ? "}" : "]"
+    const close = frame.object ? 0x7d : 0x5d
     if (frame.first) skip()
     else separated(close)
-    if (text.charAt(i) === close) {
+    if (text.charCodeAt(i) === close) {
       stack.pop()
       i++
-      const completed = frame.object ? Object.fromEntries(frame.entries) : frame.items
       const parent = stack[stack.length - 1]
-      if (parent === undefined) result = completed
-      else if (parent.object) parent.entries[parent.entries.length - 1][1] = completed
-      else parent.items[parent.items.length - 1] = completed
+      if (parent === undefined) result = frame.value
+      else if (parent.object) set(parent.value, parent.key, frame.value)
+      else parent.value.push(frame.value)
       continue
     }
     frame.first = false
     if (!frame.object) {
-      frame.items.push(value())
+      const item = value()
+      if (item !== undefined) frame.value.push(item)
     } else {
-      const quote = text.charAt(i)
-      if (!json5 && quote !== "\"") fail(i)
-      const key = quote === "\"" || quote === "'" ? string(quote) : identifier()
+      const quote = text.charCodeAt(i)
+      if (!json5 && quote !== 0x22) fail(i)
+      const key = quote === 0x22 || quote === 0x27 ? string(quote) : identifier()
       skip()
-      if (text.charAt(i++) !== ":") fail(i - 1)
+      if (text.charCodeAt(i++) !== 0x3a) fail(i - 1)
       skip()
-      // Object.fromEntries keeps __proto__ as data and preserves duplicate-key ordering.
-      frame.entries.push([key, value()])
+      const item = value()
+      if (item === undefined) frame.key = key
+      else set(frame.value, key, item)
     }
   }
   skip()
