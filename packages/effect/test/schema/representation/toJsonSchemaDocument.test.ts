@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, JsonSchema, Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { Effect, Exit, JsonSchema, Schema, SchemaAST, SchemaIssue, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -744,6 +744,40 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         assert.hasAllKeys(Schema.toJsonSchemaDocument(schema).schema, [mode])
       })
     }
+
+    for (
+      const [name, member] of [
+        [
+          "a failing default",
+          Schema.Struct({
+            a: Schema.String.pipe(
+              Schema.withDecodingDefaultKey(Effect.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue())))
+            )
+          })
+        ],
+        [
+          "an invalid default",
+          Schema.Struct({
+            a: Schema.optional(Schema.NonEmptyString).pipe(Schema.withDecodingDefault(Effect.succeed("")))
+          })
+        ]
+      ] as const
+    ) {
+      it(`keeps a oneOf branch with ${name} approximate`, () => {
+        const schema = Schema.Union([member, Schema.Struct({ b: Schema.Literal("a") })], { mode: "oneOf" })
+        assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(Schema.toCodecJson(schema))({ b: "a" })))
+        const restored = SchemaRepresentation.fromJsonSchemaDocument(Schema.toJsonSchemaDocument(schema))
+        assert.isTrue(Schema.is(restored)({ b: "a" }))
+      })
+    }
+
+    it("keeps partial encodings approximate through the public representation route", () => {
+      const schema = Schema.Union([Schema.DateFromString, Schema.Literal("a")], { mode: "oneOf" })
+      const restored = SchemaRepresentation.fromJsonSchemaDocument(
+        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(Schema.toCodecJson(schema).ast))
+      )
+      assert.isTrue(Schema.is(restored)("a"))
+    })
 
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
