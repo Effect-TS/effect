@@ -203,8 +203,8 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *   as a defect. An exit that is only interruption is always `Ignored`.
  *   `onRejection` decides what a call does when the circuit refuses it:
  *   `"fail"` (the default) fails it with `CircuitOpen` or `CircuitHalfOpen`,
- *   `"allow"` runs it unrecorded. An allowed call the circuit admits, probe
- *   included, is recorded as usual.
+ *   `"allow"` runs it unrecorded. An admitted call, probe included, is
+ *   recorded as usual.
  * - `state` reads the shared state of a circuit.
  * - `transitions` emits this breaker's transitions and ends when its scope
  *   closes.
@@ -536,18 +536,11 @@ export const make: (options: {
           const admitted = yield* Effect.exit(Scope.provide(store.admit(key), admitScope))
           if (Exit.isFailure(admitted)) {
             const error = Cause.findErrorOption(admitted.cause)
-            if (
-              onRejection === "allow" && error._tag === "Some" &&
-              error.value.reason._tag !== "CircuitBreakerStoreError"
-            ) {
-              return yield* restore(self)
+            if (error._tag === "None") return yield* Effect.failCause(admitted.cause)
+            if (error.value.reason._tag !== "CircuitBreakerStoreError") {
+              return onRejection === "allow" ? yield* restore(self) : yield* Effect.failCause(admitted.cause)
             }
-            if (
-              onStoreError === "fail" || error._tag === "None" ||
-              error.value.reason._tag !== "CircuitBreakerStoreError"
-            ) {
-              return yield* Effect.failCause(admitted.cause)
-            }
+            if (onStoreError === "fail") return yield* Effect.failCause(admitted.cause)
             yield* reportUnhandled("CircuitBreaker store unavailable, running the call unrecorded", admitted.cause)
             return yield* restore(self)
           }
