@@ -132,7 +132,7 @@ export const xb3: FromHeaders = (headers) => {
 
 const w3cTraceId = /^[0-9a-f]{32}$/
 const w3cSpanId = /^[0-9a-f]{16}$/
-const w3cTraceFlags = /^[0-9a-f]{2}$/
+const w3cTraceFlags = /^[0-9a-f]{2}$/i
 
 const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/
 const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(traceId) && w3cSpanId.test(spanId)
