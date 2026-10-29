@@ -2,6 +2,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import type * as Scheduler from "effect/Scheduler"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 const storage = new AsyncLocalStorage<string>()
@@ -86,6 +87,42 @@ const routes: Record<string, (url: URL) => unknown> = {
       Deferred.doneUnsafe(deferred, Effect.void)
     })
     return storage.getStore()
+  },
+  // Yields and a same-tick wake under a synchronous custom scheduler, all in
+  // this request: both fibers must finish before the tasks loop returns.
+  "/sync-scheduler": () => {
+    const tasks: Array<() => void> = []
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "sync",
+      shouldYield: () => false,
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          tasks.push(task)
+        },
+        flush() {}
+      })
+    }
+    const deferred = Deferred.makeUnsafe<void>()
+    const waiter = storage.run("waiter", () =>
+      Effect.runFork(
+        Effect.gen(function*() {
+          yield* Effect.yieldNow
+          yield* Deferred.await(deferred)
+          yield* Effect.yieldNow
+          return storage.getStore()
+        }),
+        { scheduler }
+      ))
+    const waker = storage.run(
+      "waker",
+      () => Effect.runFork(Effect.andThen(Effect.yieldNow, Deferred.succeed(deferred, undefined)), { scheduler })
+    )
+    while (tasks.length > 0) tasks.shift()!()
+    const result = (fiber: Fiber.Fiber<unknown>) => {
+      const exit = fiber.pollUnsafe()
+      return exit === undefined ? "pending" : Exit.isSuccess(exit) ? exit.value : String(exit.cause)
+    }
+    return { waiter: result(waiter), waker: result(waker) }
   },
   // Leaves a fiber yielding on timers owned by this request after it responds.
   "/spin": () => {

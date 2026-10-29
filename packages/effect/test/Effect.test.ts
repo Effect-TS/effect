@@ -5461,6 +5461,41 @@ describe("Effect", () => {
       ])
     })
 
+    it("yields and same-tick wakes on a synchronous custom scheduler complete synchronously", () => {
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "sync",
+        shouldYield: () => false,
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        })
+      }
+      const deferred = Deferred.makeUnsafe<void>()
+      const waiter = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.gen(function*() {
+            yield* Effect.yieldNow
+            yield* Deferred.await(deferred)
+            const afterWake = current()
+            yield* Effect.yieldNow
+            return { afterWake, afterYield: current() }
+          }),
+          { scheduler }
+        ))
+      const waker = storage.run("waker", () =>
+        Effect.runFork(
+          Effect.andThen(Effect.yieldNow, Effect.andThen(Deferred.succeed(deferred, undefined), Effect.sync(current))),
+          { scheduler }
+        ))
+      while (tasks.length > 0) tasks.shift()!()
+
+      assert.deepStrictEqual(waker.pollUnsafe(), Exit.succeed("waker"))
+      assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed({ afterWake: "waiter", afterYield: "waiter" }))
+    })
+
     // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
     // in the worker, including from concurrent tests, would count as a leak.
     const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)

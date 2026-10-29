@@ -109,6 +109,19 @@ describe("workerd", () => {
   )
 
   it.live(
+    "yields and same-tick wakes on a synchronous custom scheduler complete synchronously",
+    () =>
+      Effect.gen(function*() {
+        const worker = yield* makeWorker("workerdWakeup.ts")
+
+        const response = yield* request(worker, "/sync-scheduler?store=request-a")
+
+        assert.deepStrictEqual(response, { status: 200, body: JSON.stringify({ waiter: "waiter", waker: true }) })
+      }),
+    { timeout: 60_000 }
+  )
+
+  it.live(
     "a timer dropped with a finished request does not stall fibers in later requests",
     () =>
       Effect.gen(function*() {

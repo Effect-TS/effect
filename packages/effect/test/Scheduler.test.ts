@@ -173,6 +173,37 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(order, ["high", "low"])
     }))
 
+  it.effect("orders yielded tasks by priority across a parent and its child", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const child = yield* Effect.forkChild(
+        Effect.andThen(Effect.yieldNowWith(0), Effect.sync(() => order.push("child")))
+      )
+      // Let the child start and yield before the parent yields after it.
+      yield* Effect.yieldNow
+      yield* Effect.yieldNowWith(-1)
+      order.push("parent")
+      yield* Fiber.join(child)
+
+      assert.deepStrictEqual(order, ["parent", "child"])
+    }))
+
+  it("a fiber yields on the dispatcher of the MixedScheduler it switched to", async () => {
+    const sync = new Scheduler.MixedScheduler("sync")
+    const order: Array<string> = []
+
+    await Effect.runPromise(Effect.gen(function*() {
+      yield* Effect.yieldNow
+      setImmediate(() => order.push("immediate"))
+      // The sync scheduler resumes in a microtask, before the timer above.
+      yield* Effect.provideService(Effect.yieldNow, Scheduler.Scheduler, sync)
+      order.push("yielded")
+    }))
+    await new Promise((resolve) => setImmediate(resolve))
+
+    assert.deepStrictEqual(order, ["yielded", "immediate"])
+  })
+
   it("a dropped custom setImmediate callback does not stall other fibers", async () => {
     // Like a timer owned by a finished Cloudflare Workers request
     let dropped = false
