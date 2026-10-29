@@ -116,6 +116,11 @@ const setImmediate = (f: () => void) => {
   }
 }
 
+// Cloudflare Workers discard timers set by a request once it has responded.
+const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
+
+const sharedDispatchers = new WeakMap<MixedScheduler, MixedSchedulerDispatcher>()
+
 class PriorityBuckets {
   buckets: Array<[priority: number, tasks: Array<() => void>]> = []
 
@@ -160,6 +165,13 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
+ * Fibers running on the same `MixedScheduler` share one dispatcher, so their
+ * queued tasks are ordered by priority together and run from one callback per
+ * turn. A fiber resumes in the async context it suspended in, whichever
+ * callback runs it. A scheduler created with a custom `setImmediate`, and any
+ * scheduler on Cloudflare Workers, gives each fiber its own dispatcher instead,
+ * because those callbacks can belong to a request and be dropped with it.
+ *
  * **Gotchas**
  *
  * On Cloudflare Workers, request-owned scheduler timers can be discarded,
@@ -200,17 +212,32 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * Creates a dispatcher that schedules work through this scheduler.
+   * Returns a dispatcher that schedules work through this scheduler.
    *
    * **When to use**
    *
-   * Use when you need a standalone dispatcher from a scheduler instance, for
-   * example in tests that enqueue tasks and then flush them deterministically.
+   * Use when you need a dispatcher from a scheduler instance, for example in
+   * tests that enqueue tasks and then flush them deterministically.
+   *
+   * **Details**
+   *
+   * Returns the dispatcher shared by every caller of this scheduler. With a
+   * custom `setImmediate`, or on Cloudflare Workers, each call returns a new
+   * dispatcher.
    *
    * @since 4.0.0
    */
   makeDispatcher() {
-    return new MixedSchedulerDispatcher(this.setImmediate)
+    if (isCloudflareWorkers || (this.setImmediate !== setImmediate && this.setImmediate !== setMicrotask)) {
+      // A dropped callback would stall every fiber on a shared dispatcher.
+      return new MixedSchedulerDispatcher(this.setImmediate)
+    }
+    let dispatcher = sharedDispatchers.get(this)
+    if (dispatcher === undefined) {
+      dispatcher = new MixedSchedulerDispatcher(this.setImmediate)
+      sharedDispatchers.set(this, dispatcher)
+    }
+    return dispatcher
   }
 }
 
@@ -248,11 +275,27 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    */
   runTasks() {
     const buckets = this.tasks.drain()
-    for (let i = 0; i < buckets.length; i++) {
-      const toRun = buckets[i][1]
-      for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
+    let i = 0
+    let j = 0
+    try {
+      for (; i < buckets.length; i++) {
+        const toRun = buckets[i][1]
+        for (j = 0; j < toRun.length; j++) {
+          toRun[j]()
+        }
       }
+    } catch (error) {
+      // Queue the tasks after the failing one ahead of those scheduled during
+      // the drain, so other fibers' continuations are not lost.
+      const scheduled = this.tasks.drain()
+      buckets[i][1] = buckets[i][1].slice(j + 1)
+      for (const [priority, tasks] of [...buckets.slice(i), ...scheduled]) {
+        for (const task of tasks) this.tasks.scheduleTask(task, priority)
+      }
+      if (this.running === undefined && this.tasks.buckets.length > 0) {
+        this.running = this.setImmediate(this.afterScheduled)
+      }
+      throw error
     }
   }
 
