@@ -94,6 +94,10 @@ adapters, recursion and cold paths. The `schema-benchmarks` suite contains the
 complete timing matrices exposed by the upstream Effect, Valibot and Zod
 adapters.
 
+The `datetime` suite is Effect-only. It measures `DateTime` construction from
+numbers, ISO strings and named zones, zoned arithmetic, first access to the lazy
+part caches, and cached reads over UTC, named-zone and mixed instances.
+
 The `moltar-parse-safe` and `moltar-assert-loose` suites preserve Moltar's
 object shape. Their valid cases reproduce the upstream timed operation; the
 extra-property and invalid cases are Effect extensions. They compare
