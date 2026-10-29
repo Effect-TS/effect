@@ -434,6 +434,75 @@ describe("PgConnection in-process server", () => {
       assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
     }))
 
+  describe("queryWithPrelude", () => {
+    const makeScripted = (reply: (write: Buffer) => Buffer) => {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          const message = Buffer.from(chunk)
+          writes.push(message)
+          queueMicrotask(() =>
+            socket.push(
+              writes.length === 1 ? Buffer.concat([authenticationOk, backendKeyData, readyForQuery]) : reply(message)
+            )
+          )
+          callback()
+        }
+      })
+      return { socket, writes }
+    }
+
+    it.effect("sends preludes and the query in one write closed by a single Sync", () =>
+      Effect.gen(function*() {
+        const preludeResult = Buffer.concat([
+          backendMessage("1", Buffer.alloc(0)),
+          backendMessage("2", Buffer.alloc(0)),
+          backendMessage("D", Buffer.concat([int16(1), int32(8), Buffer.from("org-acme")])),
+          backendMessage("C", Buffer.from("SELECT 1\0"))
+        ])
+        const queryResult = Buffer.concat([
+          backendMessage("1", Buffer.alloc(0)),
+          backendMessage("2", Buffer.alloc(0)),
+          backendMessage(
+            "T",
+            Buffer.concat([int16(1), Buffer.from("n\0"), int32(0), int16(0), int32(23), int16(4), int32(-1), int16(1)])
+          ),
+          backendMessage("D", Buffer.concat([int16(1), int32(4), int32(7)])),
+          backendMessage("C", Buffer.from("SELECT 1\0")),
+          readyForQuery
+        ])
+        const { socket, writes } = makeScripted(() => Buffer.concat([preludeResult, queryResult]))
+        const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+
+        const result = yield* connection.queryWithPrelude(
+          [{ sql: "SELECT set_config('app.org', $1, true)", params: ["org-acme"] }],
+          "SELECT 7::int4 AS n"
+        )
+
+        assert.strictEqual(writes.length, 2)
+        assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "E", "P", "B", "D", "E", "S"])
+        assert.deepStrictEqual(result.rows, [{ n: 7 }])
+      }))
+
+    it.effect("does not retry when a prelude fails with a stale-plan code", () =>
+      Effect.gen(function*() {
+        const { socket, writes } = makeScripted((write) =>
+          frontendTags(write).length === 5 ? emptyQueryResult : Buffer.concat([
+            errorResponse([["S", "ERROR"], ["C", "0A000"], ["M", "not supported"]]),
+            readyForQuery
+          ])
+        )
+        const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+        yield* connection.query("SELECT 1")
+
+        const error = yield* Effect.flip(connection.queryWithPrelude([{ sql: "SELECT 1" }], "SELECT 1"))
+
+        assert.propertyVal(error.reason.cause, "code", "0A000")
+        assert.strictEqual(writes.length, 3)
+      }))
+  })
+
   it.effect("uses distinct prepared statement names across connections", () =>
     Effect.gen(function*() {
       const writes: Array<Array<Buffer>> = []

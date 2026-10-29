@@ -631,6 +631,20 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       expect(value).toEqual([[1]])
     }))
 
+  it.effect("withPrelude runs on the transaction connection and transforms rows", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const setOrg = (org: string) => sql`SELECT set_config('app.org', ${org}, true)`
+      const query = sql`SELECT current_setting('app.org', true) AS org_name`
+
+      assert.deepStrictEqual(yield* query.pipe(sql.withPrelude([setOrg("acme")])), [{ orgName: "acme" }])
+      const inTransaction = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql.withPrelude(sql`SELECT 1`, [setOrg("globex")])
+        return yield* query
+      }))
+      assert.deepStrictEqual(inTransaction, [{ orgName: "globex" }])
+    }))
+
   it.effect("retains the supplied config", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient

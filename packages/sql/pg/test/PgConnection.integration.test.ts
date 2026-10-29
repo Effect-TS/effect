@@ -617,6 +617,76 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       )
       assert.deepStrictEqual(held.rows[0], { n: 1 })
     }))
+  it.effect("returns only the query rows from a prelude cycle and ends the context at Sync", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const result = yield* connection.queryWithPrelude(
+        [{ sql: "SELECT set_config('app.org', $1, true)", params: ["acme"] }],
+        "SELECT current_setting('app.org', true) AS org"
+      )
+      assert.deepStrictEqual(result.rows, [{ org: "acme" }])
+      const after = yield* connection.query("SELECT coalesce(current_setting('app.org', true), '') AS org")
+      assert.deepStrictEqual(after.rows, [{ org: "" }])
+    }))
+
+  it.effect("fails with the prelude error, skips the query and stays usable", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE prelude_skipped (a int4)")
+      const error = yield* Effect.flip(
+        connection.queryWithPrelude([{ sql: "SELECT 1/0" }], "INSERT INTO prelude_skipped VALUES (1)")
+      )
+      assert.propertyVal(error.reason.cause, "code", "22012")
+      assert.deepStrictEqual((yield* connection.query("SELECT count(*)::int4 AS n FROM prelude_skipped")).rows, [{
+        n: 0
+      }])
+    }))
+
+  it.effect("replays the prelude when a stale prepared query is retried", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const prelude = [{ sql: "SELECT set_config('app.org', $1, true)", params: ["acme"] }]
+      const query = "SELECT current_setting('app.org', true) AS org"
+      yield* connection.queryWithPrelude(prelude, query)
+      yield* connection.query("DEALLOCATE ALL")
+      assert.deepStrictEqual((yield* connection.queryWithPrelude(prelude, query)).rows, [{ org: "acme" }])
+    }))
+
+  it.effect("preserves a missing-statement error from a prelude cycle in a transaction", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const prelude = [{ sql: "SELECT set_config('app.org', $1, true)", params: ["acme"] }]
+      const query = "SELECT current_setting('app.org', true) AS org"
+      yield* connection.queryWithPrelude(prelude, query)
+      yield* connection.query("DEALLOCATE ALL")
+      yield* connection.query("BEGIN")
+      const error = yield* Effect.flip(connection.queryWithPrelude(prelude, query))
+      assert.propertyVal(error.reason.cause, "code", "26000")
+      yield* connection.query("ROLLBACK")
+      assert.deepStrictEqual((yield* connection.queryWithPrelude(prelude, query)).rows, [{ org: "acme" }])
+    }))
+
+  it.effect("keeps prelude context to its own pipelined cycle", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ multiplex: true })
+      const scoped = (org: string) =>
+        Effect.map(
+          connection.queryWithPrelude(
+            [{ sql: "SELECT set_config('app.org', $1, true)", params: [org] }],
+            "SELECT current_setting('app.org', true) AS org"
+          ),
+          (result) => result.rows[0].org
+        )
+      const plain = Effect.map(
+        connection.query("SELECT coalesce(current_setting('app.org', true), '') AS org"),
+        (result) => result.rows[0].org
+      )
+      const orgs = yield* Effect.all([scoped("a"), plain, scoped("b"), plain, scoped("c")], {
+        concurrency: "unbounded"
+      })
+      assert.deepStrictEqual(orgs, ["a", "", "b", "", "c"])
+    }))
+
   it.effect("orders ordinary statements against a stream on the same session", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
