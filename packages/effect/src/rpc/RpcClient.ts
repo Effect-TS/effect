@@ -831,8 +831,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
-        const requestIds = Array.from(entries.keys())
-        entries.clear()
+        const requestIds = message.requestIds === undefined
+          ? Array.from(entries.keys())
+          : message.requestIds.map(RequestId).filter((requestId) => entries.has(requestId))
+        for (const requestId of requestIds) entries.delete(requestId)
         return Effect.forEach(
           requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
@@ -1583,21 +1585,26 @@ export const makeProtocolWorker = (
           undefined
       }).pipe(
         Effect.tapCause((cause) => {
+          const requestIdsByClient = new Map<number, Array<string | number>>()
           for (const [requestId, entry] of entries) {
             if (entry.worker !== backing) continue
             entries.delete(requestId)
             entry.latch.openUnsafe()
+            const requestIds = requestIdsByClient.get(entry.clientId)
+            if (requestIds) requestIds.push(requestId)
+            else requestIdsByClient.set(entry.clientId, [requestId])
           }
-          const error = Cause.findError(cause)
-          return broadcast({
-            _tag: "ClientProtocolError",
-            error: new RpcClientError({
-              reason: Result.isSuccess(error) ? error.success.reason : new RpcClientDefect({
-                message: "Error in worker",
-                cause: Cause.squash(cause)
-              })
+          const found = Cause.findError(cause)
+          const error = new RpcClientError({
+            reason: Result.isSuccess(found) ? found.success.reason : new RpcClientDefect({
+              message: "Error in worker",
+              cause: Cause.squash(cause)
             })
           })
+          return Effect.forEach(
+            requestIdsByClient,
+            ([clientId, requestIds]) => writeResponse(clientId, { _tag: "ClientProtocolError", error, requestIds })
+          )
         }),
         Effect.retry(Schedule.spaced(1000)),
         Effect.annotateLogs({
