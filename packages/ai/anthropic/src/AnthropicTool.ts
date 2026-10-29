@@ -1891,7 +1891,7 @@ export const TextEditorInsertCommand = Schema.Struct({
   /**
    * The text to insert.
    */
-  new_str: Schema.String
+  insert_text: Schema.String
 })
 /**
  * Text editor command payload for inserting text after a specific line number in a file.
