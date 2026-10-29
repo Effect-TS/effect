@@ -64,12 +64,6 @@ import * as Prompt from "./Prompt.ts"
 /**
  * Represents a CLI command with its configuration, handler, and metadata.
  *
- * `E` and `R` are the errors and requirements of the whole command. `HookE`
- * and `HookR` record the part of them that comes from `Command.beforePrompts`
- * hooks, so `withHandler` and the `provide*` combinators keep it. An
- * annotation of a command with hooks must include them; a five-parameter
- * annotation does not accept such a command.
- *
  * **Details**
  *
  * Commands are the core building blocks of CLI applications. They define:
@@ -78,6 +72,12 @@ import * as Prompt from "./Prompt.ts"
  * - Configuration including flags and arguments
  * - Handler function for execution
  * - Optional subcommands for hierarchical structures
+ *
+ * `E` and `R` are the errors and requirements of the whole command. `HookE`
+ * and `HookR` record the part of them that comes from `Command.beforePrompts`
+ * hooks, so `withHandler` and the `provide*` combinators keep it. An
+ * annotation of a command with hooks must include them; a five-parameter
+ * annotation does not accept such a command.
  *
  * **Example** (Defining CLI commands)
  *
