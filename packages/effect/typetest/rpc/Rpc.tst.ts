@@ -74,6 +74,10 @@ describe("Rpc", () => {
   })
 
   describe("SuccessChunk", () => {
+    it("extracts stream elements from a mixed group", () => {
+      expect<Rpc.SuccessChunk<Mixed>>().type.toBe<string>()
+    })
+
     it("ignores never-returning RPCs in a group", () => {
       expect<Rpc.SuccessChunk<typeof StreamEvents | typeof Fails>>().type.toBe<string>()
     })
