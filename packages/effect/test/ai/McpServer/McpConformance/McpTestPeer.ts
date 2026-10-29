@@ -106,6 +106,7 @@ export const makeMcpTestPeer = Effect.fn("McpTestPeer.make")(function*(
         })
       },
       supportsAck: true,
+      supportsReplies: true,
       supportsTransferables: false,
       codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
     })

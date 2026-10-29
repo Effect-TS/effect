@@ -297,6 +297,7 @@ describe.concurrent("Runners.makeRpc", () => {
               return onRequest(request, write)
             },
             supportsAck: true,
+            supportsReplies: true,
             supportsTransferables: false,
             codecFor
           })

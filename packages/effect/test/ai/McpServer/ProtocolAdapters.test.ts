@@ -1339,6 +1339,7 @@ describe("McpServer protocol adapters", () => {
               sends++
             }),
           supportsAck: true,
+          supportsReplies: true,
           supportsTransferables: false,
           codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
@@ -1378,6 +1379,7 @@ describe("McpServer protocol adapters", () => {
               sends++
             }),
           supportsAck: true,
+          supportsReplies: true,
           supportsTransferables: false,
           supportsStructuredClone: false,
           codecFor: Schema.toCodecJson as RpcSerialization.CodecFor

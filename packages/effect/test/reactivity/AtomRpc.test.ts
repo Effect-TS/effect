@@ -53,6 +53,7 @@ const makeClientMiddlewareProtocol = (
         Effect.succeed({
           send: () => Effect.die("unexpected request"),
           supportsAck: false,
+          supportsReplies: true,
           supportsTransferables: false,
           codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })

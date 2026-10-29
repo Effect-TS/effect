@@ -55,6 +55,7 @@ const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Ef
   const protocol = RpcClient.Protocol.of({
     codecFor: RpcSerialization.json.codecFor,
     supportsAck: false,
+    supportsReplies: true,
     supportsTransferables: false,
     run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
     send: (_clientId, message) =>
@@ -347,6 +348,7 @@ describe("RpcClient", () => {
         RpcClient.Protocol.of({
           codecFor: RpcSerialization.json.codecFor,
           supportsAck: false,
+          supportsReplies: true,
           supportsTransferables: false,
           run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
           send: (_clientId, message) =>
@@ -405,6 +407,7 @@ describe("RpcClient", () => {
         RpcClient.Protocol.of({
           codecFor: RpcSerialization.json.codecFor,
           supportsAck: false,
+          supportsReplies: true,
           supportsTransferables: false,
           run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
           send: (_clientId, message) => Effect.asVoid(Queue.offer(sent, message))
@@ -508,6 +511,7 @@ describe("RpcClient", () => {
         RpcClient.Protocol.of({
           codecFor: RpcSerialization.json.codecFor,
           supportsAck: false,
+          supportsReplies: true,
           supportsTransferables: false,
           run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
           // a socket write waits while the connection is down

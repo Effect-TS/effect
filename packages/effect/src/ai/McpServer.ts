@@ -1729,6 +1729,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return Effect.void
           },
           supportsAck: true,
+          supportsReplies: true,
           supportsTransferables: false,
           supportsStructuredClone: false,
           codecFor: protocol.codecFor

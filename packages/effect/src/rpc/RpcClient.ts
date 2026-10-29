@@ -113,7 +113,8 @@ export declare namespace RpcClient {
            * handler's result and error are not returned, but transport errors,
            * middleware errors and failures before the handler starts still fail the
            * call. Over HTTP and workers the call completes after the handler has
-           * finished.
+           * finished. On a protocol without replies the call completes once its
+           * request is sent.
            */
           readonly discard?: Discard | undefined
         }
@@ -188,7 +189,8 @@ export declare namespace RpcClient {
          * handler's result and error are not returned, but transport errors,
          * middleware errors and failures before the handler starts still fail the
          * call. Over HTTP and workers the call completes after the handler has
-         * finished.
+         * finished. On a protocol without replies the call completes once its
+         * request is sent.
          */
         readonly discard?: Discard | undefined
       }
@@ -261,6 +263,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
+    readonly supportsReplies?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
@@ -284,6 +287,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
+    readonly supportsReplies?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly generateRequestId?: (() => RequestId) | undefined
@@ -293,6 +297,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 ) {
   const spanPrefix = options.spanPrefix
   const supportsAck = options?.supportsAck ?? true
+  const supportsReplies = options?.supportsReplies ?? true
   const disableTracing = options?.disableTracing ?? false
   const generateRequestId = options?.generateRequestId ?? (() => requestIdCounter++ as RequestId)
 
@@ -415,6 +420,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           ...(discard ? { discard: true as const } : {})
         }
       )
+      if (discard && !supportsReplies) {
+        // nothing will acknowledge the call, so it completes with its send
+        return send.pipe(
+          span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
+          Effect.asVoid
+        )
+      }
       let fiber: Fiber.Fiber<any, any>
       return Effect.onInterrupt(
         Effect.callback<any, any>((resume) => {
@@ -692,7 +704,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   } | undefined
 ) {
   const clientId = clientIdCounter++
-  const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
+  const { codecFor, run, send, supportsAck, supportsReplies, supportsTransferables } = yield* Protocol
   const rpcSchemas = makeRpcSchemas(codecFor)
   const decodeDefect = Schema.decodeSync(codecFor(Schema.Defect()))
 
@@ -716,9 +728,21 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   const { client, write } = yield* makeNoSerialization(group, {
     ...options,
     supportsAck,
+    supportsReplies,
     onFromClient({ message }) {
       switch (message._tag) {
         case "Request": {
+          if (!supportsReplies && message.discard !== true) {
+            return Effect.fail(
+              new RpcClientError({
+                reason: new RpcClientDefect({
+                  message:
+                    `The RPC protocol does not reply, so the call to "${message.tag}" must use the "discard" option`,
+                  cause: undefined
+                })
+              })
+            )
+          }
           const rpc = group.requests.get(message.tag)! as any as Rpc.AnyWithProps
           const collector = supportsTransferables ? Transferable.makeCollectorUnsafe() : undefined
 
@@ -730,7 +754,8 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             schemas: rpcSchemas(rpc),
             discard: message.discard === true
           }
-          entries.set(message.id, entry)
+          // replies are what entries are routed for
+          if (supportsReplies) entries.set(message.id, entry)
 
           return entry.schemas.encodePayload(message.payload).pipe(
             Effect.provideContext(entry.context),
@@ -955,6 +980,12 @@ export class Protocol extends Context.Service<Protocol, {
     transferables?: ReadonlyArray<globalThis.Transferable>
   ) => Effect.Effect<void, RpcClientError>
   readonly supportsAck: boolean
+  /**
+   * Whether the transport delivers server replies. Without replies, a call
+   * with the `discard` option completes once its request is sent, and other
+   * calls fail without being sent.
+   */
+  readonly supportsReplies: boolean
   readonly supportsTransferables: boolean
   /**
    * Builds the codec that fills the `unknown` holes of the protocol messages,
@@ -1007,6 +1038,7 @@ const makeProtocolHttpUnbatched = (client: HttpClient.HttpClient) =>
           ? Effect.flatMap(exchange.send(clientId, [request]), (pending) => exchange.requestExit(request, pending))
           : Effect.void,
       supportsAck: false,
+      supportsReplies: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
     }
@@ -1080,6 +1112,7 @@ const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.H
     return {
       send: (clientId, request) => request._tag === "Request" ? send(clientId, request) : Effect.void,
       supportsAck: false,
+      supportsReplies: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
     }
@@ -1426,6 +1459,7 @@ export const makeProtocolSocket = (options?: {
         return Effect.onError(write(request), () => Effect.sync(() => requestClientMap.delete(request.id)))
       },
       supportsAck: true,
+      supportsReplies: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
     }
@@ -1691,6 +1725,7 @@ export const makeProtocolWorker = (
     return {
       send,
       supportsAck: true,
+      supportsReplies: true,
       supportsTransferables: true,
       // Worker protocols use structured clone, so they do not depend on
       // `RpcSerialization`. A binary worker protocol is a separate protocol.

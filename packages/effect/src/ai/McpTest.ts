@@ -322,6 +322,7 @@ export const makeClient: <
         }
       },
       supportsAck: false,
+      supportsReplies: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
     }
