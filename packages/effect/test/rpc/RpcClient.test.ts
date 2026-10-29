@@ -588,6 +588,23 @@ describe("RpcClient", () => {
         yield* Deferred.await(sendInterrupted)
         assert.deepStrictEqual(yield* Queue.clear(sent), [])
       }))
+
+    it.effect("interrupts a discarded call and its pending send when the client closes", () =>
+      Effect.gen(function*() {
+        const sendInterrupted = yield* Deferred.make<void>()
+        const scope = yield* Scope.make()
+        const { client, sent } = yield* makeOneWayProtocol(
+          Effect.never.pipe(Effect.onInterrupt(() => Deferred.succeed(sendInterrupted, undefined)))
+        ).pipe(Scope.provide(scope))
+        const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.forkChild)
+        yield* Queue.take(sent)
+
+        yield* Scope.close(scope, Exit.void)
+        const exit = yield* awaitWithin(call)
+        assert(Option.isSome(exit) && Exit.isFailure(exit.value) && Cause.hasInterruptsOnly(exit.value.cause))
+        yield* Deferred.await(sendInterrupted)
+        assert.deepStrictEqual(yield* Queue.clear(sent), [])
+      }))
   })
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
