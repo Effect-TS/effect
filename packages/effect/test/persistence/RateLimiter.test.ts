@@ -60,6 +60,25 @@ describe(`RateLimiter`, () => {
           const result = yield* limiter.consume({ ...options, tokens: 4 })
           assert.strictEqual(result.remaining, 0)
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+      it.effect("rejects positive token requests with a zero limit", () =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          const options = { algorithm, key: "zero-limit", limit: 0, window: "1 minute" } as const
+          const error = yield* Effect.flip(limiter.consume({ ...options, onExceeded: "fail" }))
+          if (error.reason._tag !== "RateLimitExceeded") {
+            throw new Error("Expected RateLimitExceeded")
+          }
+          assert.strictEqual(error.reason.remaining, 0)
+
+          const result = yield* limiter.consume({ ...options, onExceeded: "delay" })
+          assert.deepStrictEqual(result.delay, Duration.infinity)
+          assert.deepStrictEqual(result.resetAfter, Duration.infinity)
+
+          const query = yield* limiter.consume({ ...options, onExceeded: "delay", tokens: 0 })
+          assert.deepStrictEqual(query.delay, Duration.zero)
+          assert.deepStrictEqual(query.resetAfter, Duration.zero)
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
     })
   }
 
