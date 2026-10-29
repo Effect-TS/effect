@@ -168,6 +168,9 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *   an effect. By default a success is a `Success` and any failure, defects
  *   included, is a `Failure`, since a rejected `Effect.promise` only surfaces
  *   as a defect. An exit that is only interruption is always `Ignored`.
+ *   `classify` also receives `{ probe }`, which is `true` when the call is the
+ *   HalfOpen probe, so an outcome it would otherwise ignore can reopen the
+ *   circuit.
  * - `state` reads the shared state of a circuit.
  * - `transitions` emits this breaker's transitions and ends when its scope
  *   closes.
@@ -344,13 +347,13 @@ export interface CircuitBreaker {
   readonly execute: {
     <A, E, R2 = never>(options: {
       readonly key: string
-      readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+      readonly classify?: Classifier<A, E, R2> | undefined
     }): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
     <A, E, R, R2 = never>(
       self: Effect.Effect<A, E, R>,
       options: {
         readonly key: string
-        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2>
   }
@@ -488,7 +491,7 @@ export const make: (options: {
       self: Effect.Effect<A, E, R>,
       { classify, key }: {
         readonly key: string
-        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
@@ -508,7 +511,7 @@ export const make: (options: {
           const admission = admitted.value
           yield* publish(admission.transition)
           const exit = yield* Effect.exit(restore(self))
-          const classified = yield* classifyExit(exit, classify, restore)
+          const classified = yield* classifyExit(exit, admission.probe, classify, restore)
           const outcome = Exit.isSuccess(classified) ? classified.value : ignored
           yield* store.record({
             key,
@@ -569,7 +572,8 @@ const reportUnhandled = (message: string, cause: Cause.Cause<unknown>): Effect.E
 
 const classifyExit = <A, E, R2>(
   exit: Exit.Exit<A, E>,
-  classify: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined,
+  probe: boolean,
+  classify: Classifier<A, E, R2> | undefined,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<Exit.Exit<Outcome>, never, R2> => {
   if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
@@ -579,7 +583,7 @@ const classifyExit = <A, E, R2>(
     return Effect.succeed(Exit.succeed(Exit.isSuccess(exit) ? success : failure()))
   }
   return Effect.exit(restore(Effect.suspend(() => {
-    const outcome = classify(exit)
+    const outcome = classify(exit, { probe })
     return Effect.isEffect(outcome) ? outcome : Effect.succeed(outcome)
   })))
 }
@@ -686,6 +690,26 @@ export const rate = (options: {
   }
   return { _tag: "Rate", threshold, minimumCalls, size }
 }
+
+/**
+ * Function that classifies the `Exit` of an admitted call, passed as the
+ * `classify` option of `execute`.
+ *
+ * **Details**
+ *
+ * - `context.probe` is `true` when the call is the HalfOpen probe, so an
+ *   outcome the classifier ignores when the circuit is closed, such as a
+ *   rate-limited response, can count as a failure that reopens the circuit.
+ * - The result may be an `Outcome` or an effect producing one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.2.0
+ */
+export type Classifier<A, E, R2 = never> = (
+  exit: Exit.Exit<A, E>,
+  context: { readonly probe: boolean }
+) => Outcome | Effect.Effect<Outcome, never, R2>
 
 /**
  * Classification of a call's exit, as returned by a `classify` function.

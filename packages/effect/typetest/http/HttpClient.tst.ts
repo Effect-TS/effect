@@ -181,11 +181,12 @@ describe("HttpClient", () => {
       >()
     })
 
-    it("should infer the exit and delegate to circuitBreakerClassifier", () => {
+    it("should infer the exit and probe context and delegate to circuitBreakerClassifier", () => {
       const delegated = HttpClient.withCircuitBreaker(client, {
         breaker,
-        classify: (exit) => {
+        classify: (exit, { probe }) => {
           expect(exit).type.toBe<Exit.Exit<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>>()
+          expect(probe).type.toBe<boolean>()
           expect(HttpClient.circuitBreakerClassifier(exit)).type.toBe<Effect.Effect<CircuitBreaker.Outcome>>()
           return HttpClient.circuitBreakerClassifier(exit)
         }

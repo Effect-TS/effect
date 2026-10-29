@@ -130,6 +130,34 @@ describe("CircuitBreaker", () => {
         assert.deepStrictEqual(Cause.findDefect(causeOf(died)), Result.succeed("died"))
         assert.strictEqual((yield* breaker.state("defect"))._tag, "Closed")
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
+
+    it.effect("receives the admission's probe flag, so an outcome ignored when closed can reopen a probe", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        const probes: Array<boolean> = []
+        const rateLimited = Effect.fail("rate limited").pipe(
+          breaker.execute({
+            key: "probe",
+            classify: (_exit, { probe }) => {
+              probes.push(probe)
+              return probe ? CircuitBreaker.failure() : CircuitBreaker.ignored
+            }
+          }),
+          Effect.ignore
+        )
+
+        yield* rateLimited
+        assert.strictEqual((yield* breaker.state("probe"))._tag, "Closed")
+        yield* Effect.fail("boom").pipe(breaker.execute({ key: "probe" }), Effect.ignore)
+        yield* TestClock.adjust("2 minutes")
+        yield* rateLimited
+
+        assert.deepStrictEqual(probes, [false, true])
+        assert.strictEqual((yield* breaker.state("probe"))._tag, "Open")
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
 
   it.effect("transitions ends when the breaker's scope closes", () =>
