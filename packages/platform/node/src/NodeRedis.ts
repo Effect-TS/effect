@@ -218,10 +218,12 @@ const make = Effect.fnUntraced(function*(
  * node-redis' exponential backoff and stops on socket timeouts.
  *
  * Scope finalization destroys the shared client immediately, failing commands
- * still in flight and aborting any connection attempt in progress. Interrupting
- * `Redis.reserve` or `Redis.subscribe` while its connection is still being
- * established closes that connection. Run blocking commands on `Redis.reserve`
- * so they do not hold up the shared connection.
+ * still in flight and aborting any connection attempt in progress, including
+ * reserved connections that are still being established. Interrupting
+ * `Redis.subscribe` while it is connecting or subscribing closes its
+ * connection. Interrupting `Redis.reserve` only stops waiting: a connection the
+ * pool is already opening joins the pool when it is ready. Run blocking
+ * commands on `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
@@ -244,10 +246,12 @@ export const layer = (
  * node-redis' exponential backoff and stops on socket timeouts.
  *
  * Scope finalization destroys the shared client immediately, failing commands
- * still in flight and aborting any connection attempt in progress. Interrupting
- * `Redis.reserve` or `Redis.subscribe` while its connection is still being
- * established closes that connection. Run blocking commands on `Redis.reserve`
- * so they do not hold up the shared connection.
+ * still in flight and aborting any connection attempt in progress, including
+ * reserved connections that are still being established. Interrupting
+ * `Redis.subscribe` while it is connecting or subscribing closes its
+ * connection. Interrupting `Redis.reserve` only stops waiting: a connection the
+ * pool is already opening joins the pool when it is ready. Run blocking
+ * commands on `Redis.reserve` so they do not hold up the shared connection.
  *
  * @stability unstable
  * @category layers
