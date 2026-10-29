@@ -81,7 +81,7 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.1.0
  */
 export interface InputHandlers<R = never> {
   readonly roots?:
@@ -103,7 +103,7 @@ export interface InputHandlers<R = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.1.0
  */
 export interface ClientOptions<R = never> {
   readonly name: string
@@ -131,7 +131,7 @@ export interface ClientOptions<R = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.1.0
  */
 export interface ToolExecution<A, R = never> {
   readonly taskId: string | undefined
