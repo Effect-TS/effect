@@ -869,6 +869,33 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, [5])
   })
 
+  it("a listener added to an uninitialized derived atom hears its changes", () => {
+    const count = Atom.make(0)
+    const doubled = Atom.map(count, (n) => n * 2)
+    const r = AtomRegistry.make()
+    const seen: Array<number> = []
+    r.subscribe(doubled, (value) => seen.push(value))
+    r.set(count, 1)
+    r.set(count, 2)
+    assert.deepStrictEqual(seen, [2, 4])
+  })
+
+  it("subscribing reports a dependency's finalizer error from a failed build", () => {
+    let failing = true
+    const parent = Atom.make((get) => {
+      if (!failing) return 0
+      get.addFinalizer(() => {
+        throw new Error("cleanup failed")
+      })
+      throw new Error("build failed")
+    })
+    const derived = Atom.map(parent, (n) => n)
+    const r = AtomRegistry.make()
+    assert.throws(() => r.get(derived), /build failed/)
+    failing = false
+    assert.throws(() => r.subscribe(derived, () => {}), /cleanup failed/)
+  })
+
   it("recovers an observed dependent when its parent first succeeds after throwing", () => {
     let failing = true
     const parent = Atom.make(() => {
