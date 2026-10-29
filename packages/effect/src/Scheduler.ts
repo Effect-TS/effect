@@ -116,8 +116,12 @@ const setImmediate = (f: () => void) => {
   }
 }
 
-// Cloudflare Workers discard timers set by a request once it has responded.
-const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
+/**
+ * Cloudflare Workers discard timers set by a request once it has responded.
+ *
+ * @internal
+ */
+export const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
 
 const sharedDispatchers = new WeakMap<MixedScheduler, MixedSchedulerDispatcher>()
 
@@ -168,9 +172,11 @@ class PriorityBuckets {
  * Fibers running on the same `MixedScheduler` share one dispatcher, so their
  * queued tasks are ordered by priority together and run from one callback per
  * turn. A fiber resumes in the async context it suspended in, whichever
- * callback runs it. A scheduler created with a custom `setImmediate`, and any
- * scheduler on Cloudflare Workers, gives each fiber its own dispatcher instead,
- * because those callbacks can belong to a request and be dropped with it.
+ * callback runs it. `makeDispatcher` still returns a new dispatcher on every
+ * call, so tasks scheduled on it directly run in the context that armed it.
+ * A scheduler created with a custom `setImmediate`, and any scheduler on
+ * Cloudflare Workers, gives each fiber its own dispatcher instead, because
+ * those callbacks can belong to a request and be dropped with it.
  *
  * **Gotchas**
  *
@@ -180,6 +186,9 @@ class PriorityBuckets {
  * Sync mode does not yield to the event loop: CPU-heavy work delays other
  * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
  * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
+ * A fiber woken by another request continues one microtask later in its own
+ * request, because workerd does not let one request enter another's async
+ * context. If its request has already finished, the fiber is not resumed.
  *
  * @stability stable
  * @category models
@@ -212,33 +221,47 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * Returns a dispatcher that schedules work through this scheduler.
+   * Creates a dispatcher that schedules work through this scheduler.
    *
    * **When to use**
    *
-   * Use when you need a dispatcher from a scheduler instance, for example in
-   * tests that enqueue tasks and then flush them deterministically.
-   *
-   * **Details**
-   *
-   * Returns the dispatcher shared by every caller of this scheduler. With a
-   * custom `setImmediate`, or on Cloudflare Workers, each call returns a new
-   * dispatcher.
+   * Use when you need a standalone dispatcher from a scheduler instance, for
+   * example in tests that enqueue tasks and then flush them deterministically.
    *
    * @since 4.0.0
    */
   makeDispatcher() {
-    if (isCloudflareWorkers || (this.setImmediate !== setImmediate && this.setImmediate !== setMicrotask)) {
-      // A dropped callback would stall every fiber on a shared dispatcher.
-      return new MixedSchedulerDispatcher(this.setImmediate)
-    }
-    let dispatcher = sharedDispatchers.get(this)
-    if (dispatcher === undefined) {
-      dispatcher = new MixedSchedulerDispatcher(this.setImmediate)
-      sharedDispatchers.set(this, dispatcher)
-    }
-    return dispatcher
+    return new MixedSchedulerDispatcher(this.setImmediate)
   }
+}
+
+/**
+ * Returns the dispatcher fibers use on `scheduler`.
+ *
+ * Fibers re-enter their own async context when they resume, so they can share
+ * one dispatcher per `MixedScheduler`. Other callers of `makeDispatcher` keep
+ * their own, because their tasks have no context to restore. Custom schedulers,
+ * `makeDispatcher` overrides, custom `setImmediate` callbacks and Cloudflare
+ * Workers keep one dispatcher per call: a dropped callback would otherwise
+ * stall every fiber on the scheduler.
+ *
+ * @internal
+ */
+export const fiberDispatcher = (scheduler: Scheduler): SchedulerDispatcher => {
+  if (
+    isCloudflareWorkers ||
+    !(scheduler instanceof MixedScheduler) ||
+    scheduler.makeDispatcher !== MixedScheduler.prototype.makeDispatcher ||
+    (scheduler.setImmediate !== setImmediate && scheduler.setImmediate !== setMicrotask)
+  ) {
+    return scheduler.makeDispatcher()
+  }
+  let dispatcher = sharedDispatchers.get(scheduler)
+  if (dispatcher === undefined) {
+    dispatcher = new MixedSchedulerDispatcher(scheduler.setImmediate)
+    sharedDispatchers.set(scheduler, dispatcher)
+  }
+  return dispatcher
 }
 
 class MixedSchedulerDispatcher implements SchedulerDispatcher {

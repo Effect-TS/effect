@@ -537,6 +537,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._deferredInterrupt = false
     this._parent = undefined
     this._asyncContext = undefined
+    this._resumeInRequest = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -557,6 +558,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
   declare _asyncContext: AsyncContext | undefined
+  declare _resumeInRequest: ((effect: Primitive) => void) | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -564,7 +566,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   declare _dispatcher: Scheduler.SchedulerDispatcher | undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
-    return this._dispatcher ??= this.cache.scheduler.makeDispatcher()
+    return this._dispatcher ??= Scheduler.fiberDispatcher(this.cache.scheduler)
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
@@ -611,6 +613,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       }
     }
   }
+  captureContext(): void {
+    this._asyncContext = captureAsyncContext()
+    if (Scheduler.isCloudflareWorkers && this._asyncContext !== undefined) {
+      // workerd delivers a promise continuation to the request that registered
+      // it, even when another request settles the promise.
+      new Promise<Primitive>((resolve) => {
+        this._resumeInRequest = resolve
+      }).then((effect) => {
+        this._running = false
+        this.evaluate(effect)
+      })
+    }
+  }
   pollUnsafe(): Exit.Exit<A, E> | undefined {
     return this._exit
   }
@@ -619,9 +634,31 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       return
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
+      const resumeInRequest = this._resumeInRequest
       this._asyncContext = undefined
+      this._resumeInRequest = undefined
       try {
-        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+        if (resumeInRequest === undefined) {
+          return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+        }
+        let entered = false
+        try {
+          return asyncContext.runInAsyncScope(
+            function(this: FiberImpl, effect: Primitive) {
+              entered = true
+              return this.evaluate(effect)
+            },
+            this,
+            effect
+          )
+        } catch (error) {
+          if (entered) throw error
+          // workerd rejects entering another request's async context. Count
+          // the fiber as running, so interrupts are deferred, until the
+          // continuation it registered in its own request resumes it.
+          this._running = true
+          return resumeInRequest(effect)
+        }
       } finally {
         // Each captured context is resumed once, so release it for async_hooks
         // consumers like vitest's detectAsyncLeaks.
@@ -634,7 +671,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect)
     if (exit === Yield) {
-      this._asyncContext = captureAsyncContext()
+      this.captureContext()
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -5596,7 +5633,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._asyncContext = captureAsyncContext()
+    child.captureContext()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child

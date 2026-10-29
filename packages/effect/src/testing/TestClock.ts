@@ -413,7 +413,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     executionMode: parentScheduler.executionMode,
     shouldYield: (fiber) => parentScheduler.shouldYield(fiber),
     makeDispatcher() {
-      const dispatcher = parentScheduler.makeDispatcher()
+      const dispatcher = Scheduler.fiberDispatcher(parentScheduler)
       return {
         scheduleTask(task, priority) {
           const tracker = currentTracker
