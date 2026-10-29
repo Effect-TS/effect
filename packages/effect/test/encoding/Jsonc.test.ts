@@ -90,6 +90,26 @@ describe("Jsonc", () => {
     )
   })
 
+  it("locates errors despite inherited setters and read-only properties", () => {
+    let calls = 0
+    // oxlint-disable-next-line no-extend-native -- Members must not reach inherited accessors; removed below.
+    Object.defineProperties(Object.prototype, {
+      accessor: { set: () => calls++, configurable: true },
+      readonly: { value: 0, configurable: true }
+    })
+    try {
+      assert.throws(
+        () => Jsonc.parse("{\"accessor\":1,\"readonly\":2,}"),
+        SyntaxError,
+        "Invalid JSONC at line 1, column 28"
+      )
+      assert.strictEqual(calls, 0)
+    } finally {
+      delete (Object.prototype as Record<string, unknown>).accessor
+      delete (Object.prototype as Record<string, unknown>).readonly
+    }
+  })
+
   it("locates errors beyond the JavaScript call-stack limit", () => {
     assert.throws(() => Jsonc.parse("[".repeat(10_000) + "?"), SyntaxError, "Invalid JSONC at line 1, column 10001")
   })

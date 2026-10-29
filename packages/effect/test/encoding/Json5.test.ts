@@ -35,6 +35,22 @@ b', \\u0061b: 1, a\\u0062c: 2, café: true, 𐐀: 2, $_: null, /* block */ }`
     assert.strictEqual((value as Record<string, unknown>).a, 2)
   })
 
+  it("defines members as own data despite inherited setters and read-only properties", () => {
+    let calls = 0
+    // oxlint-disable-next-line no-extend-native -- Members must not reach inherited accessors; removed below.
+    Object.defineProperties(Object.prototype, {
+      accessor: { set: () => calls++, configurable: true },
+      readonly: { value: 0, configurable: true }
+    })
+    try {
+      assert.deepStrictEqual(Json5.parse("{accessor: 1, readonly: [2]}"), { accessor: 1, readonly: [2] })
+      assert.strictEqual(calls, 0)
+    } finally {
+      delete (Object.prototype as Record<string, unknown>).accessor
+      delete (Object.prototype as Record<string, unknown>).readonly
+    }
+  })
+
   it.each([
     ["LF", "\n"],
     ["CR", "\r"],
