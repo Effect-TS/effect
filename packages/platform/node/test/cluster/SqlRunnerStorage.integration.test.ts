@@ -826,6 +826,35 @@ describe("SqlRunnerStorage", () => {
               ),
             60_000
           )
+
+          it.effect(
+            "restores wait_timeout before returning the lock connection to the pool",
+            () =>
+              Effect.gen(function*() {
+                const sql = yield* SqlClient.SqlClient
+                const [[defaultTimeout]] = yield* sql`SELECT @@GLOBAL.wait_timeout`.values
+
+                const lockConnectionId = yield* Effect.gen(function*() {
+                  const storage = yield* SqlRunnerStorage.make({ prefix: "pooled" })
+                  const shard = ShardId.make("default", 1)
+                  expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+                  const [[id]] = yield* sql`SELECT IS_USED_LOCK(${`pooled.${shard.toString()}`})`.values
+                  return Number(id)
+                }).pipe(Effect.scoped)
+
+                // The pool hands out the connection released last first.
+                const [[id, timeout]] = yield* sql.reserve.pipe(
+                  Effect.flatMap((conn) => conn.executeValues("SELECT CONNECTION_ID(), @@SESSION.wait_timeout", [])),
+                  Effect.scoped
+                )
+                expect(Number(id)).toEqual(lockConnectionId)
+                expect(Number(timeout)).toEqual(Number(defaultTimeout))
+              }).pipe(
+                Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+                TestClock.withLive
+              ),
+            60_000
+          )
         }
 
         it.effect("acquires cleanly after a runner without shards leaves its lock connection idle", () => {
