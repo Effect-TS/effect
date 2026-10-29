@@ -166,42 +166,34 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly refreshAssignmentsInterval: Duration.Input
   /**
-   * Debounces runners joining the cluster. A joining runner is only included
-   * in shard assignments once the healthy runners have stayed unchanged for
-   * this duration, so a burst of joins is published as a single assignment
-   * and each shard is handed off once instead of once per join.
+   * How long the healthy runners must stay unchanged before runners that
+   * joined are added to shard assignments. A burst of joins, such as a
+   * scale-up or a deployment with a large surge, is then published as one
+   * assignment and each shard is handed off once instead of once per join.
+   * In a rolling update that replaces one runner at a time, each departure is
+   * still published immediately, so shards still move at every step.
    *
-   * This helps scale-ups and deployments with a large surge, where several
-   * runners join with no runners leaving in between. In a rolling update that
-   * replaces one runner at a time, every departure is published immediately,
-   * so shards still move at each step.
+   * Only joins wait. The initial assignment, departures and unhealthy runners
+   * are published immediately, together with any pending joins. A pending
+   * runner that leaves has no shards to move, so it only restarts the quiet
+   * period.
    *
-   * Only joins wait. When a runner in the published assignment leaves or
-   * becomes unhealthy, the change is published immediately along with any
-   * pending joins, and the initial assignment never waits. A pending runner
-   * that leaves before its join is published has no shards to move, so it
-   * only restarts the quiet period.
-   *
-   * While joins are pending, shards keep running on their current runners,
-   * the new runners stay idle, and runners do not take any shards they do not
-   * already hold. Each runner publishes on its own polls, so a shard released
-   * by a runner that has published stays unlocked until its new runner
-   * publishes too, usually within two `refreshAssignmentsInterval`s.
-   *
-   * Each runner debounces the joins it has observed. A runner that misses
-   * them, for example because it cannot read membership, can take shards from
-   * its outdated assignment and hand them off again later, as it can when
-   * this option is `0`.
+   * While joins are pending, shards keep running where they are, the new
+   * runners stay idle and no runner takes shards it does not already hold.
+   * Runners publish on their own polls, so a shard released by one runner can
+   * stay unlocked until its new owner publishes, usually within two
+   * `refreshAssignmentsInterval`s. A runner that does not observe the joins,
+   * for example because it cannot read membership, can still take shards from
+   * its outdated assignment and hand them off again, as with `0`.
    *
    * Pending joins are published at most four times this duration after the
-   * first one, even if runners keep joining, so the worst case delay is four
-   * times this duration plus one `refreshAssignmentsInterval`. The quiet period
-   * is checked once per `refreshAssignmentsInterval`, so shorter values behave
-   * like a single quiet poll: with the default 3 second interval, a 1 second
-   * debounce behaves like 3 seconds.
+   * first one, even if runners keep joining. The quiet period is checked once
+   * per `refreshAssignmentsInterval`, so the worst case delay is four times
+   * this duration plus one interval, and values shorter than the interval
+   * behave like a single quiet poll.
    *
-   * Defaults to `0`, which publishes every change immediately. Leave it at `0`
-   * for scale-ups driven by load, where idle new runners are costly.
+   * Defaults to `0`, which publishes every change immediately. Leave it at
+   * `0` for scale-ups driven by load, where idle new runners are costly.
    */
   readonly runnerJoinDebounce: Duration.Input
   /**
