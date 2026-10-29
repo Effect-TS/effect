@@ -91,27 +91,11 @@ describe("Iterable", () => {
       deepStrictEqual(pipe(new Set([2, 4]), Iter.takeWhile(f), toArray), [2, 4])
     })
 
-    it("takeWhile stays done after the predicate fails", () => {
-      const source = [2, 3, 4][Symbol.iterator]()
-      const tested: Array<number> = []
-      const iterator = Iter.takeWhile({ [Symbol.iterator]: () => source }, (n) => {
-        tested.push(n)
-        return n % 2 === 0
-      })[Symbol.iterator]()
-
-      deepStrictEqual(iterator.next(), { done: false, value: 2 })
-      deepStrictEqual(iterator.next(), { done: true, value: undefined })
-      deepStrictEqual(iterator.next(), { done: true, value: undefined })
-      deepStrictEqual(iterator.next(), { done: true, value: undefined })
-      deepStrictEqual(tested, [2, 3])
-      deepStrictEqual(source.next(), { done: false, value: 4 })
-    })
-
-    it("takeWhile stops pulling an exhausted source", () => {
+    it("takeWhile stays done after completion", () => {
       let pulls = 0
       const source = {
         [Symbol.iterator]() {
-          const iterator = [2][Symbol.iterator]()
+          const iterator = [2, 3, 4][Symbol.iterator]()
           return {
             next() {
               pulls++
@@ -120,14 +104,21 @@ describe("Iterable", () => {
           }
         }
       }
-      const taken = Iter.takeWhile(source, () => true)
-      const iterator = taken[Symbol.iterator]()
 
-      deepStrictEqual(iterator.next(), { done: false, value: 2 })
-      deepStrictEqual(iterator.next(), { done: true, value: undefined })
-      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      const failed = Iter.takeWhile(source, (n) => n % 2 === 0)[Symbol.iterator]()
+      deepStrictEqual(failed.next(), { done: false, value: 2 })
+      deepStrictEqual(failed.next(), { done: true, value: undefined })
+      deepStrictEqual(failed.next(), { done: true, value: undefined })
       strictEqual(pulls, 2)
-      deepStrictEqual(toArray(taken), [2])
+
+      pulls = 0
+      const exhausted = Iter.takeWhile(source, () => true)[Symbol.iterator]()
+      for (const value of [2, 3, 4]) {
+        deepStrictEqual(exhausted.next(), { done: false, value })
+      }
+      deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+      deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+      strictEqual(pulls, 4)
     })
 
     it("drop", () => {
