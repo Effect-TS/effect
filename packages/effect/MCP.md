@@ -161,7 +161,8 @@ Read references/policy.md before issuing a refund.
 
 - Each file is served verbatim as a resource under the skill's URI, and the skill's frontmatter is
   parsed from `SKILL.md`. Clients may parse it with YAML 1.1, which reads values such as `yes` or
-  `1.0` as booleans and numbers, so quote strings like these.
+  `1.0` as booleans and numbers, so quote strings like these. Values JSON cannot carry, such as
+  `.inf` and `.nan`, are listed as `null`.
 - Clients list skills with `skills/list`, look one up with `skills/get`, and browse directories with
   `resources/directory/read`. Each entry lists every file with the SHA-256 digest and size of the
   bytes served. The bytes are copied at registration.
@@ -170,7 +171,7 @@ Read references/policy.md before issuing a refund.
 - Building the layer fails with `IllegalArgumentError` when the skill breaks the extension's rules:
   a name other than the last URI segment, a `SKILL.md` without frontmatter, frontmatter that is not
   valid `McpSchema.SkillFrontmatter` (the Agent Skills specification's fields, such as string-only
-  `metadata` values) or not plain JSON, a file outside the skill, or more than 512 files or 16 MiB.
+  `metadata` values), a file outside the skill, or more than 512 files or 16 MiB.
 - Skills cannot nest: registering a skill whose directory contains or lies inside another skill's
   fails. So does registering a skill with a file whose URI is already a resource, and registering a
   resource at the URI of a skill's file afterwards is a defect.

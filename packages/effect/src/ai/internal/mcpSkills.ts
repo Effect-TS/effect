@@ -313,13 +313,6 @@ const decodeText = (mimeType: string, content: Uint8Array): string | undefined =
 const isPlainObject = (u: unknown): u is Record<string, unknown> =>
   typeof u === "object" && u !== null && Object.getPrototypeOf(u) === Object.prototype
 
-const isJsonValue = (u: unknown): boolean => {
-  if (u === null || typeof u === "string" || typeof u === "boolean") return true
-  if (typeof u === "number") return Number.isFinite(u)
-  if (Array.isArray(u)) return u.every(isJsonValue)
-  return isPlainObject(u) && Object.values(u).every(isJsonValue)
-}
-
 const isSafeRelativePath = (path: string): boolean =>
   path !== "" &&
   !path.includes("\\") &&
@@ -342,7 +335,9 @@ export const parseFrontmatter = (markdown: string): Record<string, unknown> | un
   if (block === undefined) return undefined
   try {
     const parsed = Yaml.parse(block)
-    return isPlainObject(parsed) ? parsed : undefined
+    // The frontmatter is listed as JSON, so keep only what JSON carries:
+    // `.inf` and `.nan` become `null`.
+    return isPlainObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
   } catch {
     return undefined
   }
@@ -474,10 +469,9 @@ export const makeStaticSkill = (options: {
     if (skillMd === undefined) return yield* fail("SKILL.md is missing")
 
     // The listed frontmatter is parsed from the served SKILL.md, so the two
-    // cannot differ. It must survive the trip to JSON unchanged.
+    // cannot differ.
     const frontmatter = parseFrontmatter(decodeText("text/markdown", skillMd.content) ?? "")
     if (frontmatter === undefined) return yield* fail("SKILL.md must begin with YAML frontmatter holding a mapping")
-    if (!isJsonValue(frontmatter)) return yield* fail("the frontmatter must be a JSON object")
     if (frontmatter.name !== name) {
       return yield* fail(`the frontmatter name ${JSON.stringify(frontmatter.name)} must equal "${name}"`)
     }

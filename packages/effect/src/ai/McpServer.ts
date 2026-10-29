@@ -3634,11 +3634,11 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  *
  * Fails when the skill breaks the extension's rules: a name that does not
  * match the URI, a `SKILL.md` without YAML frontmatter, frontmatter that is
- * not valid {@link McpSchema.SkillFrontmatter} or not plain JSON, a file path
- * that leaves the skill, or more than 512 files or 16 MiB in all. It also
- * fails when the skill's directory contains or lies inside another skill's,
- * or one of its files is already registered as a resource. Registering a
- * resource at the URI of a skill's file afterwards is a defect.
+ * not valid {@link McpSchema.SkillFrontmatter}, a file path that leaves the
+ * skill, or more than 512 files or 16 MiB in all. It also fails when the
+ * skill's directory contains or lies inside another skill's, or one of its
+ * files is already registered as a resource. Registering a resource at the
+ * URI of a skill's file afterwards is a defect.
  *
  * SHA-256 runs on `crypto.subtle`.
  *
