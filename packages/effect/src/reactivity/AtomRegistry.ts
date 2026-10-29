@@ -444,9 +444,7 @@ class RegistryImpl implements AtomRegistry {
       // a listener hears the next change, which only reaches an up-to-date
       // node. A failed build is left for the next read to report, so that the
       // listener is still added and hears the recovery. A failure after the
-      // value is committed would not be reported again, so it is rethrown, as
-      // is one from releasing a failed build, which runs only once.
-      node.disposeLifetime()
+      // value is committed would not be reported again, so it is rethrown.
       try {
         node.value()
       } catch (error) {
@@ -739,11 +737,19 @@ class NodeImpl<A> {
 
   build(): void {
     // a lifetime still attached to a node that needs a value belongs to a
-    // build that failed, or to one that is running and is now superseded
-    this.disposeLifetime()
+    // build that failed, or to one that is running and is now superseded.
+    // Its finalizers run only once, so a failure among them is reported once
+    // this build is done.
+    let teardownFailure: unknown = noFailure
+    try {
+      this.disposeLifetime()
+    } catch (error) {
+      teardownFailure = error
+    }
     this.invalidatedDuringBuild = false
     const lifetime = makeLifetime(this)
     this.lifetime = lifetime
+    lifetime.failure = teardownFailure
     let value: A
     let read = false
     try {
