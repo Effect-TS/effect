@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Effect.request` batch pool retaining the async context of completed requests.
+Fix `Effect.request` retaining completed requests and their async context in its batch pool.

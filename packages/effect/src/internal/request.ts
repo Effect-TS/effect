@@ -110,10 +110,10 @@ interface Batch {
 const batchPool: Array<Batch> = []
 const pendingBatches = new WeakMap<RequestResolver<any>, BatchMap>()
 
-// Kept outside `addEntry` so pooled batch callbacks do not capture its
-// per-request closure context, which would retain completed requests.
+// Batches are built outside `addEntry` so their callbacks do not share a closure
+// context with per-request entries, which would keep completed requests alive.
 const makeBatch = (): Batch => {
-  const newBatch: Batch = {
+  const batch: Batch = {
     key: undefined,
     context: undefined as any,
     resolver: undefined as any,
@@ -123,17 +123,17 @@ const makeBatch = (): Batch => {
     delayEffect: effect.flatMap(
       withFiber((delayFiber) => {
         // Reentrant delay callbacks may fill the batch and interrupt this fiber.
-        newBatch.fiber = delayFiber
-        return newBatch.resolver.delay
+        batch.fiber = delayFiber
+        return batch.resolver.delay
       }),
-      (_) => runBatch(newBatch)
+      (_) => runBatch(batch)
     ) as Effect<void>,
     run: effect.onExit(
       effect.suspend(() =>
-        newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
+        batch.resolver.runAll(Array.from(batch.entries) as NonEmptyArray<Request.Entry<any>>, batch.key)
       ),
       (exit) => {
-        for (const entry of newBatch.entrySet) {
+        for (const entry of batch.entrySet) {
           entry.completeUnsafe(
             exit._tag === "Success"
               ? exitDie(
@@ -142,21 +142,21 @@ const makeBatch = (): Batch => {
               : exit
           )
         }
-        newBatch.entries.clear()
+        batch.entries.clear()
         if (batchPool.length < 128) {
-          newBatch.entrySet.clear()
-          newBatch.key = undefined
-          newBatch.context = undefined as any
-          newBatch.fiber = undefined
-          newBatch.resolver = undefined as any
-          newBatch.map = undefined as any
-          batchPool.push(newBatch)
+          batch.entrySet.clear()
+          batch.key = undefined
+          batch.context = undefined as any
+          batch.fiber = undefined
+          batch.resolver = undefined as any
+          batch.map = undefined as any
+          batchPool.push(batch)
         }
         return effect.void
       }
     )
   }
-  return newBatch
+  return batch
 }
 
 const addEntry = <A extends Request.Any>(
