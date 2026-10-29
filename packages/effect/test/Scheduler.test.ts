@@ -119,6 +119,30 @@ describe("Scheduler", () => {
     }
   })
 
+  for (const entry of ["flush", "timer callback"] as const) {
+    it(`MixedScheduler keeps queued tasks when re-arming throws after a task throws (${entry})`, () => {
+      const callbacks: Array<() => void> = []
+      const dispatcher = new Scheduler.MixedScheduler("async", (f) => {
+        if (callbacks.length === 1) throw new Error("arm failed")
+        callbacks.push(f)
+        return () => {}
+      }).makeDispatcher()
+      const order: Array<string> = []
+
+      dispatcher.scheduleTask(() => {
+        throw new Error("boom")
+      }, 0)
+      dispatcher.scheduleTask(() => order.push("p0a"), 0)
+      dispatcher.scheduleTask(() => order.push("p0b"), 0)
+      dispatcher.scheduleTask(() => order.push("p1"), 1)
+
+      assert.throws(entry === "flush" ? () => dispatcher.flush() : callbacks[0])
+      dispatcher.flush()
+
+      assert.deepStrictEqual(order, ["p0a", "p0b", "p1"])
+    })
+  }
+
   it("calls an overridden MixedScheduler makeDispatcher for each fiber", async () => {
     let calls = 0
     class CountingScheduler extends Scheduler.MixedScheduler {
