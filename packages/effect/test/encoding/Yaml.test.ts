@@ -476,6 +476,41 @@ development:
     })
   })
 
+  describe("merge keys", () => {
+    it("merges mappings with explicit keys and earlier sources taking precedence", () => {
+      const source = `base: &base {a: 1, b: 2}
+other: &other {b: 3, c: 4}
+block:
+  c: 5
+  <<: [*base, *other]
+flow: {<<: *other, c: 5}
+items:
+  - <<: *base
+    a: 5
+`
+      const result = Yaml.parse(source)
+      assert.deepStrictEqual(result, {
+        base: { a: 1, b: 2 },
+        other: { b: 3, c: 4 },
+        block: { a: 1, b: 2, c: 5 },
+        flow: { b: 3, c: 5 },
+        items: [{ a: 5, b: 2 }]
+      })
+      assert.deepStrictEqual(Object.keys((result as { readonly flow: object }).flow), ["b", "c"])
+    })
+
+    it("treats quoted merge keys as ordinary keys", () => {
+      assert.deepStrictEqual(Yaml.parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
+    })
+
+    it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}", "<<: {a: 1}\n<<: {b: 2}\n"])(
+      "rejects invalid merge usage in %j",
+      (source) => {
+        assert.throws(() => Yaml.parse(source), SyntaxError)
+      }
+    )
+  })
+
   describe("anchors and quoted comment boundaries", () => {
     it.each([
       ["plain", "description: &text Deploy\n  and verify.\nalias: *text\n", "Deploy and verify."],
