@@ -111,6 +111,12 @@ const InputRequiredReturnTool = Tool.make("input-required-return", {
   dependencies: [McpSchema.McpRequestContext]
 })
 
+// Declares no failures, so a value shaped like InputRequired only encodes through the built-in ExecutionFailure.
+const UndeclaredInputRequiredTool = Tool.make("undeclared-input-required", {
+  parameters: Tool.EmptyParams,
+  failureMode: "return"
+})
+
 const TestToolkit = Toolkit.make(
   SharedTool,
   JsonArrayTool,
@@ -123,7 +129,8 @@ const TestToolkit = Toolkit.make(
   LogLevelTool,
   CapabilityGatedTool,
   InputRequiredTool,
-  InputRequiredReturnTool
+  InputRequiredReturnTool,
+  UndeclaredInputRequiredTool
 )
 
 const FamilyResource = McpServer.resource({
@@ -242,7 +249,15 @@ const makeFixture = Effect.fnUntraced(function*(
       "log-level": () => CurrentLogLevel,
       "capability-gated": () => Effect.succeed("visible"),
       "input-required": requestRoots,
-      "input-required-return": requestRoots
+      "input-required-return": requestRoots,
+      // Untyped handlers can still fail with a value the tool does not declare.
+      "undeclared-input-required": () =>
+        Effect.fail({
+          _tag: "InputRequired",
+          type: "execution-denied",
+          reason: "denied",
+          requestState: "state"
+        }) as Effect.Effect<never>
     })))
   )
   const mrtrToolLayer = Layer.effectDiscard(
@@ -1217,6 +1232,19 @@ describe("McpServer protocol adapters", () => {
 
       assert.strictEqual(response.status, 400)
       assert.strictEqual(errorOf(yield* readJsonRpcResponse(response)).code, -32021)
+    }))
+
+  it.effect("should keep an undeclared InputRequired-tagged failure as an error result", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const response = yield* fixture.post(
+        modernRequest(52, "tools/call", { name: "undeclared-input-required", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "undeclared-input-required" }
+      )
+      const result = resultOf(yield* readJsonRpcResponse(response))
+
+      assert.strictEqual(result.resultType, "complete")
+      assert.strictEqual(result.isError, true)
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>
