@@ -1,4 +1,4 @@
-import { Effect, Match, Option, pipe, type Result, Schema } from "effect"
+import { Effect, type Filter, Match, Option, pipe, type Result, Schema } from "effect"
 import { describe, expect, it } from "tstyche"
 
 type Closed = { readonly _tag: "Closed" }
@@ -14,6 +14,8 @@ declare const taggedInput:
 declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
+declare const text: string
+declare const parseNumber: Filter.Filter<string, number, string>
 declare const status: "draft" | "review" | "published"
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
 
@@ -549,5 +551,45 @@ describe("Match", () => {
         expect(value).type.toBe<ReadonlyArray<string>>()
       })
     )
+  })
+
+  it("whenFilter passes the filter's Pass type and keeps the remaining input", () => {
+    expect(
+      Match.value(text).pipe(
+        Match.whenFilter(parseNumber, (n) => {
+          expect(n).type.toBe<number>()
+          return n
+        }),
+        Match.orElse((input) => {
+          expect(input).type.toBe<string>()
+          return input
+        })
+      )
+    ).type.toBe<string | number>()
+
+    expect(
+      Match.type<string>().pipe(
+        Match.whenFilter(parseNumber, (n) => n),
+        Match.option
+      )
+    ).type.toBe<(u: string) => Option.Option<number>>()
+
+    expect(
+      Match.fn((_prefix: boolean, value: string) => value).pipe(
+        Match.whenFilter(parseNumber, (_n, prefix) => prefix),
+        Match.orElse((_value, prefix) => !prefix)
+      )
+    ).type.toBe<(prefix: boolean, value: string) => boolean>()
+
+    Match.type<string>().pipe(
+      Match.withReturnType<string>(),
+      // @ts-expect-error is not assignable to
+      Match.whenFilter(parseNumber, (n) => n)
+    )
+
+    // a filter can reject any input, so it never proves exhaustiveness
+    const incomplete = Match.type<string>().pipe(Match.whenFilter(parseNumber, (n) => n))
+    // @ts-expect-error Argument of type
+    Match.exhaustive(incomplete)
   })
 })

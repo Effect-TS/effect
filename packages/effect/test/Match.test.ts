@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Match, pipe } from "effect"
+import { Filter, Match, Option, pipe } from "effect"
 import { strictEqual } from "./utils/assert.ts"
 
 describe("Match", () => {
@@ -104,5 +104,36 @@ describe("Match", () => {
     strictEqual(match([1]), "miss")
     strictEqual(match([1, 2]), "hit")
     strictEqual(match([1, 2, 3]), "hit")
+  })
+
+  it("whenFilter passes the extracted value and otherwise falls through with the original input", () => {
+    let calls = 0
+    const queryToDomainLabel = Filter.fromPredicateOption((query: string) => {
+      calls++
+      const label = query.trim().toLowerCase()
+      return label.length > 0 ? Option.some(label) : Option.none()
+    })
+    const describeQuery = (query: string) =>
+      Match.value(query).pipe(
+        Match.when("", () => "empty"),
+        Match.whenFilter(queryToDomainLabel, (label) => `search:${label}`),
+        Match.orElse((query) => `invalid:[${query}]`)
+      )
+
+    strictEqual(describeQuery("  ACME  "), "search:acme")
+    strictEqual(calls, 1)
+    strictEqual(describeQuery(""), "empty")
+    strictEqual(calls, 1)
+    strictEqual(describeQuery("   "), "invalid:[   ]")
+    strictEqual(calls, 2)
+
+    const describeType = Match.type<string>().pipe(
+      Match.whenFilter(queryToDomainLabel, (label) => `search:${label}`),
+      Match.orElse((query) => `invalid:[${query}]`)
+    )
+
+    strictEqual(describeType("  ACME  "), "search:acme")
+    strictEqual(describeType("   "), "invalid:[   ]")
+    strictEqual(calls, 4)
   })
 })
