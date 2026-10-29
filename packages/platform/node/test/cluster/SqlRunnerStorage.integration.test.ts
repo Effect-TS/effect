@@ -540,6 +540,43 @@ describe("SqlRunnerStorage", () => {
       )
     }, 60_000)
 
+    it.effect(
+      "restores idle_session_timeout before returning the lock connection to the pool",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+
+          const lockPid = yield* Effect.gen(function*() {
+            const storage = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const shard = ShardId.make("default", 1)
+            expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+            const holders = yield* sql`SELECT DISTINCT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND granted
+            AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`.values
+            expect(holders).toHaveLength(1)
+            return Number(holders[0][0])
+          }).pipe(Effect.scoped)
+
+          // Hold pooled connections until the pool hands out the former lock connection.
+          const [timeout, resetTimeout] = yield* Effect.gen(function*() {
+            for (let i = 0; i < 10; i++) {
+              const conn = yield* sql.reserve
+              const [[pid, setting, resetVal]] = yield* conn.executeValues(
+                "SELECT pg_backend_pid(), setting, reset_val FROM pg_settings WHERE name = 'idle_session_timeout'",
+                []
+              )
+              if (Number(pid) === lockPid) return [setting, resetVal]
+            }
+            return yield* Effect.die("the pool did not hand out the former lock connection")
+          }).pipe(Effect.scoped)
+          expect(timeout).toEqual(resetTimeout)
+        }).pipe(
+          Effect.provide(PgContainer.layerClientDatabase),
+          Effect.provide(ShardingConfig.layer())
+        ),
+      60_000
+    )
+
     it.effect("reports a shard lost when a failed acquisition replaces the lock session holding it", () => {
       const partitioned = makePartitionState()
       return Effect.gen(function*() {
