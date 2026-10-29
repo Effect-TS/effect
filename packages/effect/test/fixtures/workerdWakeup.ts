@@ -27,7 +27,6 @@ const syncScheduler: Scheduler.Scheduler = {
     flush: drainSync
   })
 }
-let syncWakeAttempted = false
 
 // The waiter's timeout keeps its request alive while another request wakes it.
 const wait = Effect.gen(function*() {
@@ -141,36 +140,28 @@ const routes: Record<string, (url: URL) => unknown> = {
     }
     return { waiter: result(waiter), waker: result(waker) }
   },
-  // Parks a fiber on the synchronous scheduler, then, once another request has
-  // tried to wake it, interrupts it from this request.
+  // Parks a fiber on the synchronous scheduler until another request wakes it.
   "/sync-scheduler-wait": async () => {
-    const finalizers: Array<string | undefined> = []
     const deferred = Deferred.makeUnsafe<void>()
-    const fiber = Effect.runFork(
-      Deferred.await(deferred).pipe(Effect.ensuring(Effect.sync(() => finalizers.push(storage.getStore())))),
-      { scheduler: syncScheduler }
-    )
+    const fiber = Effect.runFork(Effect.andThen(Deferred.await(deferred), current), { scheduler: syncScheduler })
     drainSync()
     suspended = { fiber, deferred }
     // Poll with a timer, so workerd does not cancel this request as hung.
-    await new Promise<void>((resolve) => {
-      const poll = () => syncWakeAttempted ? resolve() : setTimeout(poll, 10)
+    const exit = await new Promise<Exit.Exit<unknown>>((resolve) => {
+      const poll = () => {
+        drainSync()
+        const exit = fiber.pollUnsafe()
+        if (exit === undefined) setTimeout(poll, 10)
+        else resolve(exit)
+      }
       poll()
     })
-    fiber.interruptUnsafe()
-    drainSync()
-    const exit = fiber.pollUnsafe()
-    const result = exit === undefined ? "pending" : Exit.hasInterrupts(exit) ? "interrupted" : "completed"
-    return { result, finalizers }
+    return Exit.isSuccess(exit) ? exit.value : String(exit.cause)
   },
   "/sync-scheduler-wake": () => {
     if (suspended === undefined) return undefined
-    try {
-      Deferred.doneUnsafe(suspended.deferred, Effect.void)
-      drainSync()
-    } finally {
-      syncWakeAttempted = true
-    }
+    Deferred.doneUnsafe(suspended.deferred, Effect.void)
+    drainSync()
     return storage.getStore()
   },
   // Leaves a fiber yielding on timers owned by this request after it responds.

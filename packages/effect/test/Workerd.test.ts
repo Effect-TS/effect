@@ -122,7 +122,7 @@ describe("workerd", () => {
   )
 
   it.live(
-    "a synchronous custom scheduler cannot resume a fiber from another request, and its own request still can",
+    "a fiber on a synchronous custom scheduler woken by another request resumes in its own async context",
     () =>
       Effect.gen(function*() {
         const worker = yield* makeWorker("workerdWakeup.ts")
@@ -132,12 +132,8 @@ describe("workerd", () => {
           "/sync-scheduler-wake?store=request-b"
         )
 
-        assert.strictEqual(woken.status, 500, woken.body)
-        assert.include(woken.body, "outside of the request in which it was created")
-        assert.deepStrictEqual(waited, {
-          status: 200,
-          body: JSON.stringify({ result: "interrupted", finalizers: ["request-a"] })
-        })
+        assert.deepStrictEqual(woken, { status: 200, body: JSON.stringify("request-b") })
+        assert.deepStrictEqual(waited, { status: 200, body: JSON.stringify("request-a") })
       }),
     { timeout: 60_000 }
   )
