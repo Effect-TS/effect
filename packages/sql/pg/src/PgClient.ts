@@ -76,6 +76,19 @@ export interface PgClient extends Client.SqlClient {
    * `set_config(..., true)` or `SET LOCAL`, apply to the statement and end
    * with the cycle unless it runs inside `withTransaction`.
    *
+   * **Details**
+   *
+   * The statement runs through the normal execution path, so statement
+   * transformers, spans, span propagation, row transforms and the current
+   * transaction's connection apply as they do for ``sql`...` ``. Each prelude
+   * is compiled by the client that built it, so a prelude built with
+   * `withoutTransforms()` stays untransformed. Statement transformers do not
+   * apply to preludes. The statement must come from a `PgClient`.
+   *
+   * A failing prelude fails the effect and the statement does not run.
+   * Preludes can run twice when a stale prepared statement is retried, so keep
+   * them to transaction-local effects. See `PgConnection.queryWithPrelude`.
+   *
    * **Example** (Setting row-level security context for one query)
    *
    * ```ts
@@ -90,19 +103,6 @@ export interface PgClient extends Client.SqlClient {
    *     )
    *   })
    * ```
-   *
-   * **Details**
-   *
-   * The statement runs through the normal execution path, so statement
-   * transformers, spans, span propagation, row transforms and the current
-   * transaction's connection apply as they do for ``sql`...` ``. Each prelude
-   * is compiled by the client that built it, so a prelude built with
-   * `withoutTransforms()` stays untransformed. Statement transformers do not
-   * apply to preludes. The statement must come from a `PgClient`.
-   *
-   * A failing prelude fails the effect and the statement does not run.
-   * Preludes can run twice when a stale prepared statement is retried, so keep
-   * them to transaction-local effects. See `PgConnection.queryWithPrelude`.
    */
   readonly withPrelude: {
     (

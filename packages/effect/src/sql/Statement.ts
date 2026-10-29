@@ -88,6 +88,11 @@ export interface Statement<A> extends Fragment, Effect.Effect<ReadonlyArray<A>, 
   /**
    * Runs `f` the way this statement's own execution does.
    *
+   * **When to use**
+   *
+   * Use to add driver-specific execution modes that core does not have, such
+   * as `PgClient.withPrelude`, without re-implementing statement execution.
+   *
    * **Details**
    *
    * The `CurrentTransformer` is applied and the statement is compiled with
@@ -97,11 +102,6 @@ export interface Statement<A> extends Fragment, Effect.Effect<ReadonlyArray<A>, 
    * the enclosing transaction's, or one borrowed or acquired for this call.
    * `transformRows` is the row transform this statement would apply, or
    * `undefined` when `withoutTransform` is set.
-   *
-   * **When to use**
-   *
-   * Drivers use it to add execution modes core does not have, such as
-   * `PgClient.withPrelude`, without re-implementing statement execution.
    *
    * @since 4.2.0
    */
