@@ -2,4 +2,4 @@
 "@effect/ai-anthropic": minor
 ---
 
-Fix `Generated` `messageBatchesResults` failing on its successful JSON Lines response: it now returns the body as bytes, `messageBatchesResultsStream` streams it, and `MessageBatchIndividualResponse` decodes each line (and the same for the `beta*` variants).
+Fix `messageBatchesResults` and `betaMessageBatchesResults` failing on successful JSON Lines responses. They now return the raw bytes, new `*Stream` variants stream them, and each line decodes with `MessageBatchIndividualResponse` or `BetaMessageBatchIndividualResponse`.
