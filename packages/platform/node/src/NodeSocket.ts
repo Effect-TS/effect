@@ -30,10 +30,16 @@ export * from "@effect/platform-node-shared/NodeSocket"
  * `WebSocketInit`, so handshake headers and subprotocols can be supplied
  * together.
  *
- * Node's `WebSocket` cannot pause reads. `Socket.fromWebSocket` buffers
- * incoming frames without limit, or fails with a `SocketReadError` once a
- * configured `highWaterMark` is exceeded. Use `NodeWS.layerWebSocketConstructor`
- * when the transport should pause instead.
+ * **Gotchas**
+ *
+ * Use `NodeWS.layerWebSocketConstructor` when any of these matter:
+ *
+ * - Node's `WebSocket` cannot pause reads. `Socket.fromWebSocket` buffers
+ *   incoming frames without limit, or fails with a `SocketReadError` once a
+ *   configured `highWaterMark` is exceeded.
+ * - A `Host` header is ignored; the handshake always sends the URL's host.
+ * - Outgoing messages are not compressed, even when the server accepts
+ *   `permessage-deflate`.
  *
  * @stability unstable
  * @category layers

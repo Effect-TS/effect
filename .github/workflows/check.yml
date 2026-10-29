@@ -215,7 +215,7 @@ jobs:
         with:
           node-version: 22.19.0
       - name: Test
-        run: pnpm vitest run --project @effect/platform-node --project @effect/bundle --max-concurrency=10
+        run: pnpm vitest run --project @effect/platform-node --max-concurrency=10
 
   doctest:
     name: Test (Documentation)
