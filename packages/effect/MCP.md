@@ -421,7 +421,7 @@ A handler registered with `McpServer.addTool` returns `McpSchema.InputRequired` 
 tool declares `McpSchema.InputRequired` as a failure and fails with it:
 
 ```typescript
-import { Effect, Layer, Option, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 
 const ArchiveNote = Tool.make("ArchiveNote", {
@@ -438,7 +438,7 @@ declare const signState: (noteId: string) => Effect.Effect<string>
 declare const verifyState: (state: string, noteId: string) => Effect.Effect<boolean>
 declare const archiveNote: (noteId: string) => Effect.Effect<void>
 
-const decodeAccepted = Schema.decodeUnknownOption(McpSchema.ElicitAcceptResult)
+const isAccepted = Schema.is(McpSchema.ElicitAcceptResult)
 
 const NotesLayer = McpServer.toolkit(NotesToolkit).pipe(
   Layer.provide(NotesToolkit.toLayer({
@@ -446,8 +446,8 @@ const NotesLayer = McpServer.toolkit(NotesToolkit).pipe(
       const request = yield* McpSchema.McpRequestContext
       const verified = request.requestState !== undefined &&
         (yield* verifyState(request.requestState, noteId))
-      const accepted = decodeAccepted(request.inputResponses?.confirm)
-      const confirmed = Option.isSome(accepted) && accepted.value.content?.confirmed === true
+      const answer = request.inputResponses?.confirm
+      const confirmed = isAccepted(answer) && answer.content?.confirmed === true
       if (!verified || !confirmed) {
         return yield* Effect.fail(
           new McpSchema.InputRequired({

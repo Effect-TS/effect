@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Allow MCP toolkit handlers to request client input by failing with a declared `McpSchema.InputRequired`, which is returned as an `input_required` result.
+`McpServer.toolkit` and `McpServer.registerToolkit` return a declared `McpSchema.InputRequired` failure as an `input_required` result, so toolkit tools can request client input.
