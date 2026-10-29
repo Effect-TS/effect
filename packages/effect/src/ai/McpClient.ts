@@ -90,10 +90,9 @@ export interface McpClient {
   readonly serverInfo: McpSchema.Implementation | undefined
   readonly instructions?: string | undefined
   /**
-   * Returns every tool page as one snapshot within the client's discovery limits.
-   * `timeout` and individual `limits` override the client's discovery settings.
-   * Limits are nonnegative safe integers, and transport message limits still
-   * apply to each page.
+   * Returns every tool page as one snapshot within the client's discovery bounds.
+   * `timeout` and `limits` (nonnegative integers) override those bounds, and each
+   * page stays within the transport's message size limit.
    */
   readonly listTools: (
     options?: {
@@ -190,8 +189,8 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
  * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `discoveryLimits` sets the default page and item limits
- * for those scans, 100 pages and 10,000 items unless supplied. `callTool`, `getPrompt` and `readResource` have no
+ * `listResources` scan. `discoveryLimits` sets the default scan limits of 100
+ * pages and 10,000 items. `callTool`, `getPrompt` and `readResource` have no
  * deadline unless their own `timeout` option is supplied.
  * Schema decoding requires the schema's services from the caller.
  *
@@ -456,7 +455,7 @@ export const make: (options: {
  *
  * **Details**
  *
- * Server metadata remains untrusted unless the caller explicitly trusts it.
+ * The descriptor is server-provided and should be treated as untrusted.
  *
  * @stability experimental
  * @category services
@@ -493,24 +492,23 @@ export type RemoteTool<
  *
  * **Details**
  *
- * Pass a prefix such as `"reports__"` or an options object. Without `tools`,
- * the client's current tools are discovered; pass approved `tools` to skip
- * discovery and keep them unchanged while in use. Remote JSON Schemas are
- * advertised without local schema import. Model tool names must contain 1–64
- * ASCII letters, digits, underscores or hyphens. Build a new toolkit to
- * discover changes between model turns.
+ * Pass a prefix such as `"reports__"` or an options object. Tools are discovered
+ * unless an approved `tools` snapshot is supplied. Remote JSON Schemas are
+ * advertised as-is, and model tool names must be 1–64 ASCII letters, digits,
+ * underscores or hyphens. Build a new toolkit to pick up remote changes.
  *
- * Defaults to text results, `"error"` failure mode and untrusted server hints.
- * Type arguments that select another mode require the matching option.
- * `"complete"` preserves the full `CallToolResult` and sends its content blocks
- * to the model as text and file parts. `"return"` sends typed handler failures
- * to the model, including transport errors. `ToolError` keeps the failed result.
+ * By default results are text and failures fail the Effect.
+ * `resultMode: "complete"` returns the full `CallToolResult` and sends its
+ * content to the model as text and file parts. `failureMode: "return"` returns
+ * typed failures, including transport errors, to the model; `ToolError` keeps
+ * the failed result. Type arguments that select a non-default mode require the
+ * matching option.
  *
- * `timeout` bounds each tool call. `trustAnnotations` copies server hints to
- * native annotations without setting approval or granting authorization.
- * `transformTool` runs after annotations and before binding. Return a tool
- * derived from the input, e.g. with `setNeedsApproval`, `annotate` or
- * `addDependency`; its name, schemas and failure mode must stay unchanged.
+ * `timeout` bounds each tool call. `trustAnnotations` copies server hints into
+ * tool annotations but never sets approval. `transformTool` receives each
+ * annotated tool before binding and must return a tool derived from it, e.g.
+ * with `setNeedsApproval`, `annotate` or `addDependency`, keeping its name,
+ * schemas and failure mode.
  *
  * @stability experimental
  * @category constructors
@@ -539,7 +537,7 @@ export function toolkit<
         ) => RemoteTool<ResultMode, FailureMode, Requirements>)
         | undefined
     }
-    // A mode may be omitted only when its type is exactly the runtime default.
+    // A mode may be omitted only when its type is exactly the default.
     & ([ResultMode] extends ["text"] ? { readonly resultMode?: "text" | undefined }
       : { readonly resultMode: ResultMode })
     & ([FailureMode] extends ["error"] ? { readonly failureMode?: "error" | undefined }
@@ -576,7 +574,7 @@ export function toolkit(
         failure: McpClientError,
         toModelOutput: complete ? toModelOutput : undefined
       }
-      // Each branch narrows `failureMode`, so the tool matches one member of the distributive `RemoteTool`.
+      // The identical branches narrow `failureMode` to a single `RemoteTool` member.
       let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = (
         failureMode === "return"
           ? Tool.dynamic(name, { ...spec, failureMode })
@@ -1315,7 +1313,6 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 // Internal: Toolkit
 // =============================================================================
 
-// Overloads keep the public modes sound; the implementation reads every option as optional.
 interface ToolkitConfig {
   readonly prefix?: string | undefined
   readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
