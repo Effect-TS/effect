@@ -110,6 +110,61 @@ interface Batch {
 const batchPool: Array<Batch> = []
 const pendingBatches = new WeakMap<RequestResolver<any>, BatchMap>()
 
+// Built at module level so the batch callbacks do not share a lexical context
+// with the per-request closures in `addEntry`, which would retain completed
+// requests (and their async context) through the batch pool.
+const makeBatch = (
+  key: unknown,
+  context: Context.Context<never>,
+  resolver: RequestResolver<any>,
+  map: BatchMap
+): Batch => {
+  const newBatch: Batch = {
+    key,
+    context,
+    resolver,
+    map,
+    entrySet: new Set(),
+    entries: new Set(),
+    delayEffect: effect.flatMap(
+      withFiber((delayFiber) => {
+        // Reentrant delay callbacks may fill the batch and interrupt this fiber.
+        newBatch.fiber = delayFiber
+        return newBatch.resolver.delay
+      }),
+      (_) => runBatch(newBatch)
+    ) as Effect<void>,
+    run: effect.onExit(
+      effect.suspend(() =>
+        newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
+      ),
+      (exit) => {
+        for (const entry of newBatch.entrySet) {
+          entry.completeUnsafe(
+            exit._tag === "Success"
+              ? exitDie(
+                new Error("Effect.request: RequestResolver did not complete request", { cause: entry.request })
+              )
+              : exit
+          )
+        }
+        newBatch.entries.clear()
+        if (batchPool.length < 128) {
+          newBatch.entrySet.clear()
+          newBatch.key = undefined
+          newBatch.context = undefined as any
+          newBatch.fiber = undefined
+          newBatch.resolver = undefined as any
+          newBatch.map = undefined as any
+          batchPool.push(newBatch)
+        }
+        return effect.void
+      }
+    )
+  }
+  return newBatch
+}
+
 const addEntry = <A extends Request.Any>(
   resolver: RequestResolver<A>,
   request: A,
@@ -153,50 +208,7 @@ const addEntry = <A extends Request.Any>(
       batch.resolver = resolver
       batch.map = batchMap
     } else {
-      const newBatch: Batch = {
-        key,
-        context: fiber.context,
-        resolver,
-        map: batchMap,
-        entrySet: new Set(),
-        entries: new Set(),
-        delayEffect: effect.flatMap(
-          withFiber((delayFiber) => {
-            // Reentrant delay callbacks may fill the batch and interrupt this fiber.
-            newBatch.fiber = delayFiber
-            return newBatch.resolver.delay
-          }),
-          (_) => runBatch(newBatch)
-        ) as Effect<void>,
-        run: effect.onExit(
-          effect.suspend(() =>
-            newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
-          ),
-          (exit) => {
-            for (const entry of newBatch.entrySet) {
-              entry.completeUnsafe(
-                exit._tag === "Success"
-                  ? exitDie(
-                    new Error("Effect.request: RequestResolver did not complete request", { cause: entry.request })
-                  )
-                  : exit
-              )
-            }
-            newBatch.entries.clear()
-            if (batchPool.length < 128) {
-              newBatch.entrySet.clear()
-              newBatch.key = undefined
-              newBatch.context = undefined as any
-              newBatch.fiber = undefined
-              newBatch.resolver = undefined as any
-              newBatch.map = undefined as any
-              batchPool.push(newBatch)
-            }
-            return effect.void
-          }
-        )
-      }
-      batch = newBatch
+      batch = makeBatch(key, fiber.context, resolver, batchMap)
     }
     batchMap.set(key, batch)
   }
