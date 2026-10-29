@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, FileSystem, Option, PlatformError } from "effect"
+import { ByteSize, Effect, Exit, FileSystem, Latch, Option, PlatformError } from "effect"
 
 const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
   type,
@@ -59,6 +59,30 @@ const permissionTree = {
   "open": ["x.ts"],
   "secret": ["x.ts"],
   "src": ["x.ts"]
+}
+
+// More subdirectories than `glob` walks in forked fibers (16), so the rest are
+// walked inline by the fiber that listed them
+const wide = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
+const wideTree = Object.fromEntries([[".", wide], ...wide.map((name) => [name, ["x.ts"]])])
+
+// Holds the forked reads `d00` to `d15` until `d63` is being read inline. A
+// serial walk never reaches `d63`, so `d00` stops waiting after 200 millis.
+const pendingInline = (d00: Effect.Effect<never, PlatformError.PlatformError>) => {
+  const inline = Latch.makeUnsafe()
+  return makeFileSystem({
+    directories: wideTree,
+    readDirectory: (path) => {
+      const index = wide.indexOf(path)
+      return index === 63
+        ? Effect.andThen(Latch.open(inline), Effect.never)
+        : index === 0
+        ? Effect.andThen(Effect.timeoutOption(Latch.await(inline), "200 millis"), d00)
+        : index > 0 && index < 16
+        ? Effect.andThen(Latch.await(inline), Effect.succeed(["x.ts"]))
+        : undefined
+    }
+  })
 }
 
 describe("FileSystem", () => {
@@ -152,40 +176,41 @@ describe("FileSystem", () => {
 
     it.live("fails when a directory read fails while another read is still pending", () =>
       Effect.gen(function*() {
-        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
         const error = failure("Busy", "readDirectory", "d00")
-        const fs = makeFileSystem({
-          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
-          readDirectory: (path) => path === "d00" ? Effect.fail(error) : path === "d63" ? Effect.never : undefined
-        })
+        const fs = pendingInline(Effect.fail(error))
         assert.deepStrictEqual(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second")), Exit.fail(error))
       }))
 
     it.live("is interrupted when a directory read is interrupted while another read is still pending", () =>
       Effect.gen(function*() {
-        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
-        const fs = makeFileSystem({
-          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
-          readDirectory: (path) =>
-            path === "d00" ? Effect.delay(Effect.interrupt, "10 millis") : path === "d63" ? Effect.never : undefined
-        })
+        const fs = pendingInline(Effect.interrupt)
         assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second"))))
       }))
 
-    it.live("fails with a directory read error while slower reads are still pending", () =>
+    it.live("fails with an inline read error while forked reads are still pending", () =>
       Effect.gen(function*() {
-        const names = Array.from({ length: 64 }, (_, i) => `d${String(i).padStart(2, "0")}`)
         const error = failure("Busy", "readDirectory", "d16")
+        // `d16` is read inline and fails once the forked reads `d00` to `d15`
+        // have all started. Those never finish.
+        const forked = Latch.makeUnsafe()
+        let started = 0
         const fs = makeFileSystem({
-          directories: Object.fromEntries([[".", names], ...names.map((name) => [name, ["x.ts"]])]),
+          directories: wideTree,
           readDirectory: (path) =>
             path === "d16"
-              ? Effect.delay(Effect.fail(error), "5 millis")
+              ? Effect.andThen(Latch.await(forked), Effect.fail(error))
               : path === "."
               ? undefined
-              : Effect.delay(Effect.succeed(["x.ts"]), "50 millis")
+              : Effect.andThen(
+                Effect.sync(() => {
+                  if (++started === 16) {
+                    Latch.openUnsafe(forked)
+                  }
+                }),
+                Effect.never
+              )
         })
-        assert.deepStrictEqual(yield* Effect.exit(fs.glob("**")), Exit.fail(error))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.timeout(fs.glob("**"), "1 second")), Exit.fail(error))
       }))
 
     it.effect("propagates defects from readLink", () =>
