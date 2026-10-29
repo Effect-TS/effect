@@ -1768,7 +1768,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const child = yield* pollUntil(ChildWorkflow, childId, "Complete")
       assert(child._tag === "Complete" && Exit.hasInterrupts(child.exit))
       const parent = yield* pollUntil(ParentWorkflow, parentId, "Complete")
-      assert(parent._tag === "Complete" && Exit.hasInterrupts(parent.exit))
+      assert(parent._tag === "Complete" && Exit.hasDies(parent.exit) && !Exit.hasInterrupts(parent.exit))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("bounds a durable clock notification when its workflow is absent after restart", () =>
