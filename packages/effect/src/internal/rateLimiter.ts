@@ -95,7 +95,7 @@ export const makeMemoryStore: Effect.Effect<
           const refillRateMillis = Duration.toMillis(options.refillRate)
           const now = clock.currentTimeMillisUnsafe()
           let bucket = tokenBuckets.get(options.key)
-          if (!bucket) {
+          if (!bucket || bucket.expiresAt <= now) {
             bucket = { tokens: options.limit, lastRefill: now, expiresAt: now }
             tokenBuckets.set(options.key, bucket)
           }
