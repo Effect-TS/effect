@@ -3329,6 +3329,10 @@ type ToolkitOptions<Tools extends Record<string, Tool.Any>, Names extends keyof 
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  *
+ * A handler that fails with a declared `McpSchema.InputRequired` asks the
+ * client for input with an `input_required` result. Protocols without client
+ * input reject it, as they do for `addTool`.
+ *
  * A tool's `toModelOutput` supplies the `content` of successful calls while
  * `structuredContent` keeps the encoded result; parts an older protocol
  * revision cannot carry are sent as text. A `content` mapper takes precedence
@@ -3435,7 +3439,13 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         structuredContent,
         content: toolResultContent(structuredContent)
       })
-    const handleCause = (cause: Cause.Cause<unknown>) => {
+    const handleCause = (
+      cause: Cause.Cause<unknown>
+    ): Effect.Effect<
+      CallToolResult | McpSchema.InputRequired,
+      InvalidParams,
+      Tool.HandlerServices<Tools[keyof Tools]>
+    > => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
         const error = failure.success.error
@@ -3447,7 +3457,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           return Effect.fail(error)
         }
         if (origin === "handler" && isDeclaredFailure(error)) {
-          return Effect.catchCause(declaredFailureResult(error), internalToolError)
+          return isInputRequired(error)
+            ? Effect.succeed(error)
+            : Effect.catchCause(declaredFailureResult(error), internalToolError)
         }
       }
       return internalToolError(cause)
@@ -3505,7 +3517,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
           Effect.flatMap((result): Effect.Effect<
-            CallToolResult,
+            CallToolResult | McpSchema.InputRequired,
             unknown,
             Tool.HandlerServices<Tools[keyof Tools]> | McpRequestContext
           > => {
@@ -3540,16 +3552,20 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
                   : successResult(result.encodedResult)
               )
             }
-            // Declared failures return their encoded payload; anything else is classified by origin.
-            return result.failureOrigin === "handler"
-              ? Effect.succeed(failureResult(result.encodedResult))
-              : Effect.failCause(Cause.annotate(
+            // Declared failures return their encoded payload, or request client input;
+            // anything else is classified by origin.
+            if (result.failureOrigin !== "handler") {
+              return Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
+            }
+            return isDeclaredFailure(result.result) && isInputRequired(result.result)
+              ? Effect.succeed(result.result)
+              : Effect.succeed(failureResult(result.encodedResult))
           }),
           Effect.catchCause(handleCause)
-        ) as Effect.Effect<CallToolResult, InvalidParams, never>
+        ) as Effect.Effect<CallToolResult | McpSchema.InputRequired, InvalidParams, never>
       },
       services
     })
@@ -3565,6 +3581,8 @@ const isParameterValidationError = (
   error: unknown
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+const isInputRequired = (u: unknown): u is McpSchema.InputRequired => Predicate.isTagged(u, "InputRequired")
 
 // Shallow check of the `McpTool` fields `registerToolkit` sets. Passing descriptors
 // skip schema validation; the rest go through the checked constructor.
@@ -3626,6 +3644,10 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  *
  * The layer requires `McpServer`. Pass it to a transport through the
  * `registrations` option, or provide the transport layer to it.
+ *
+ * A handler that fails with a declared `McpSchema.InputRequired` asks the
+ * client for input with an `input_required` result. Protocols without client
+ * input reject it, as they do for `addTool`.
  *
  * A tool's `toModelOutput` supplies the `content` of successful calls while
  * `structuredContent` keeps the encoded result; parts an older protocol
