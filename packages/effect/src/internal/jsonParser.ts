@@ -1,5 +1,3 @@
-/** @internal */
-
 const json5Space = /(?:[\t\n\v\f\r \u00A0\u2028\u2029\uFEFF\p{Zs}]|\/\/[^\n\r\u2028\u2029]*|\/\*[^]*?\*\/)*/uy
 const idStart = /[$_\p{ID_Start}]/u
 const idPart = /[$\u200C\u200D\p{ID_Continue}]/u
