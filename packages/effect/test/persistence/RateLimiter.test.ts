@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
+import { makeMemoryStore, memoryStoreSweepInterval } from "effect/internal/rateLimiter"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as RateLimiterTest from "./RateLimiterTest.ts"
@@ -1010,5 +1011,67 @@ describe(`RateLimiter`, () => {
       }).pipe(
         Effect.provide(RateLimiter.layerStoreMemory)
       ))
+  })
+
+  describe("memory store retention", () => {
+    // One entry per state kind: a fixed-window counter, a token bucket carrying
+    // delay-mode debt and an adaptive cooldown. Each outlives one sweep interval.
+    const seed = Effect.gen(function*() {
+      const limiter = yield* RateLimiter.make
+      yield* limiter.consume({ key: "fixed", limit: 5, window: "1 hour" })
+      yield* limiter.consume({
+        algorithm: "token-bucket",
+        onExceeded: "delay",
+        key: "bucket",
+        limit: 5,
+        window: "1 hour",
+        tokens: 6
+      })
+      yield* limiter.adaptiveFeedback({
+        key: "adaptive",
+        epoch: 0,
+        tokens: 1,
+        status: 429,
+        retryAfter: Duration.minutes(10)
+      })
+      return limiter
+    })
+
+    it.effect("keeps live state across a sweep", () =>
+      Effect.gen(function*() {
+        const memory = yield* makeMemoryStore
+        const limiter = yield* Effect.provideService(seed, RateLimiter.RateLimiterStore, memory.store)
+
+        yield* TestClock.adjust(memoryStoreSweepInterval)
+        assert.strictEqual(memory.size, 3)
+
+        const fixed = yield* limiter.consume({ key: "fixed", limit: 5, window: "1 hour" })
+        assert.strictEqual(fixed.remaining, 3)
+        const bucket = yield* limiter.consume({
+          algorithm: "token-bucket",
+          onExceeded: "delay",
+          key: "bucket",
+          limit: 5,
+          window: "1 hour"
+        })
+        assert.strictEqual(bucket.remaining, -2)
+        const adaptive = yield* limiter.adaptiveConsume({
+          key: "adaptive",
+          tokens: 1,
+          fallbackLimit: 5,
+          fallbackWindow: Duration.minutes(1)
+        })
+        assert.strictEqual(adaptive.phase, "cooldown")
+      }).pipe(Effect.scoped))
+
+    it.effect("reclaims expired state while idle", () =>
+      Effect.gen(function*() {
+        const memory = yield* makeMemoryStore
+        yield* Effect.provideService(seed, RateLimiter.RateLimiterStore, memory.store)
+        assert.strictEqual(memory.size, 3)
+
+        yield* TestClock.adjust("2 hours")
+        assert.strictEqual(memory.size, 0)
+      }).pipe(Effect.scoped))
   })
 })
