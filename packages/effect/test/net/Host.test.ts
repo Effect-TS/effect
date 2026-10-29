@@ -37,7 +37,7 @@ describe("Host", () => {
   })
 
   it("rejects malformed domain names", () => {
-    for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`, "xn--a.K"]) {
+    for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`, "xn--a.\u212A"]) {
       failure(Host.domainNameFromString(input))
     }
   })
