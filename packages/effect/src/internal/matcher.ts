@@ -333,6 +333,7 @@ export const whenFilter = <
   let guarded: { readonly input: unknown; readonly pass: Pass } | undefined
   return (self as any).add(makeWhen(
     (input) => {
+      guarded = undefined
       const result = filter(input as Input)
       guarded = Result.isSuccess(result) ? { input, pass: result.success } : undefined
       return guarded !== undefined
