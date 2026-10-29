@@ -443,11 +443,12 @@ class RegistryImpl implements AtomRegistry {
     } else if ((node.state & NodeFlags.waitingForValue) !== 0) {
       // a listener hears the next change, which only reaches an up-to-date
       // node. A failed build is left for the next read to report, so that the
-      // listener is still added and hears the recovery.
+      // listener is still added and hears the recovery. A failure after the
+      // value is committed would not be reported again, so it is rethrown.
       try {
         node.value()
-      } catch {
-        // reported by the next read
+      } catch (error) {
+        if ((node.state & NodeFlags.waitingForValue) === 0) throw error
       }
     }
     const remove = node.subscribe(function() {
