@@ -1556,6 +1556,9 @@ class QueryMachine implements Consumer {
     if (this.done) return onDrained()
     this.aborted = true
     this.drainDone = onDrained
+    // Draining skips the remaining `RowDescription`s, so a later batch
+    // statement's rows would be decoded with this reader. Leave them raw.
+    this.conn.session.parser.readField = undefined
   }
 
   private complete(effect: Effect.Effect<QueryOutput, SqlError>): void {
