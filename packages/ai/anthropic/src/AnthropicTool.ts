@@ -1876,10 +1876,10 @@ export type TextEditorStrReplaceCommand = typeof TextEditorStrReplaceCommand.Typ
  *
  * **Gotchas**
  *
- * Used by `text_editor_20250429` and `text_editor_20250728`. The older
- * `str_replace_editor` versions send `new_str` instead.
+ * Used by `text_editor_20241022` and `text_editor_20250124`. Later versions
+ * send `insert_text` instead.
  *
- * @see {@link TextEditorLegacyInsertCommand} for `text_editor_20241022` and `text_editor_20250124`
+ * @see {@link TextEditorInsertTextCommand} for `text_editor_20250429` and `text_editor_20250728`
  *
  * @stability unstable
  * @category schemas
@@ -1898,7 +1898,7 @@ export const TextEditorInsertCommand = Schema.Struct({
   /**
    * The text to insert.
    */
-  insert_text: Schema.String
+  new_str: Schema.String
 })
 /**
  * Text editor command payload for inserting text after a specific line number in a file.
@@ -1910,20 +1910,16 @@ export const TextEditorInsertCommand = Schema.Struct({
 export type TextEditorInsertCommand = typeof TextEditorInsertCommand.Type
 
 /**
- * Inserts text at a specific line number in a file, using the `new_str` field
- * sent by the older `str_replace_editor` tool versions.
+ * Inserts text at a specific line number in a file, using the `insert_text`
+ * field sent by `text_editor_20250429` and `text_editor_20250728`.
  *
- * **Gotchas**
- *
- * Used by `text_editor_20241022` and `text_editor_20250124`.
- *
- * @see {@link TextEditorInsertCommand} for `text_editor_20250429` and `text_editor_20250728`
+ * @see {@link TextEditorInsertCommand} for `text_editor_20241022` and `text_editor_20250124`
  *
  * @stability unstable
  * @category schemas
  * @since 4.1.1
  */
-export const TextEditorLegacyInsertCommand = Schema.Struct({
+export const TextEditorInsertTextCommand = Schema.Struct({
   command: Schema.Literal("insert"),
   /**
    * Path to the file to modify.
@@ -1936,17 +1932,17 @@ export const TextEditorLegacyInsertCommand = Schema.Struct({
   /**
    * The text to insert.
    */
-  new_str: Schema.String
+  insert_text: Schema.String
 })
 /**
- * Text editor command payload for inserting text in `text_editor_20241022` and
- * `text_editor_20250124`.
+ * Text editor command payload for inserting text in `text_editor_20250429` and
+ * `text_editor_20250728`.
  *
  * @stability unstable
  * @category models
  * @since 4.1.1
  */
-export type TextEditorLegacyInsertCommand = typeof TextEditorLegacyInsertCommand.Type
+export type TextEditorInsertTextCommand = typeof TextEditorInsertTextCommand.Type
 
 /**
  * Undoes the last edit made to a file.
@@ -1991,7 +1987,7 @@ const TextEditor_StrReplaceEditor_Commands = Schema.Union([
   TextEditorViewCommand,
   TextEditorCreateCommand,
   TextEditorStrReplaceCommand,
-  TextEditorLegacyInsertCommand,
+  TextEditorInsertCommand,
   TextEditorUndoEditCommand
 ])
 
@@ -1999,7 +1995,7 @@ const TextEditor_StrReplaceBasedEdit_Commands = Schema.Union([
   TextEditorViewCommand,
   TextEditorCreateCommand,
   TextEditorStrReplaceCommand,
-  TextEditorInsertCommand
+  TextEditorInsertTextCommand
 ])
 
 // -----------------------------------------------------------------------------
