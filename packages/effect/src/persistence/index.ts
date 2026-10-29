@@ -7,7 +7,7 @@
 
 /**
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 export * as CircuitBreaker from "./CircuitBreaker.ts"
 
