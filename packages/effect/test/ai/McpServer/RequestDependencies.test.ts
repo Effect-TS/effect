@@ -12,6 +12,7 @@ import * as Schema from "effect/Schema"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
+class Tenant extends Context.Service<Tenant, string>()("test/Tenant") {}
 
 class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
   ...McpSchema.McpErrorBase.fields,
@@ -117,5 +118,83 @@ describe("McpServer request-level dependencies", () => {
       yield* client.readResource({ uri: "test://counted" })
 
       assert.strictEqual(calls, 1)
+    }))
+
+  it.effect("runs middleware provided outside a combined middleware outside all of it", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const TenantMiddleware = McpServer.middleware<{ provides: Tenant }>()((effect) =>
+        Effect.andThen(Effect.sync(() => order.push("tenant")), Effect.provideService(effect, Tenant, "acme"))
+      )
+      const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.gen(function*() {
+          order.push("auth")
+          const tenant = yield* Tenant
+          return yield* Effect.provideService(effect, CurrentUser, `alice@${tenant}`)
+        })
+      )
+      const Audit = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push("audit")), effect))
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(Audit.combine(Auth).layer),
+        Layer.provide(TenantMiddleware.layer),
+        Layer.provide(WhoAmIHandlers)
+      )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
+
+      assert.deepStrictEqual(order, ["tenant", "auth", "audit"])
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@acme" }])
+    }))
+
+  it.effect("keeps the order of each combined middleware when siblings share one", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const TenantMiddleware = McpServer.middleware<{ provides: Tenant }>()((effect) =>
+        Effect.andThen(Effect.sync(() => order.push("tenant")), Effect.provideService(effect, Tenant, "acme"))
+      )
+      const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.gen(function*() {
+          order.push("auth")
+          const tenant = yield* Tenant
+          return yield* Effect.provideService(effect, CurrentUser, `alice@${tenant}`)
+        })
+      )
+      const Audit = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push("audit")), effect))
+      const Log = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push("log")), effect))
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(Layer.mergeAll(
+          Audit.combine(Auth).layer,
+          Log.combine(Auth.combine(TenantMiddleware)).layer
+        )),
+        Layer.provide(WhoAmIHandlers)
+      )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
+
+      assert.deepStrictEqual(order.slice(0, 2), ["tenant", "auth"])
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@acme" }])
+    }))
+
+  it.effect("keeps the order of a combined middleware whose members siblings provide separately", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const make = (name: string) =>
+        McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push(name)), effect))
+      const [A, B, C, D, E] = ["a", "b", "c", "d", "e"].map(make)
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(Layer.mergeAll(C.combine(A).layer, D.combine(B).layer, E.combine(A.combine(B)).layer)),
+        Layer.provide(WhoAmIHandlers),
+        Layer.provide(Layer.succeed(CurrentUser, "registration"))
+      )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      yield* client.callTool({ name: "WhoAmI", arguments: {} })
+
+      assert.isBelow(order.indexOf("b"), order.indexOf("a"))
+      assert.isBelow(order.indexOf("a"), order.indexOf("c"))
+      assert.isBelow(order.indexOf("b"), order.indexOf("d"))
+      assert.isBelow(order.indexOf("a"), order.indexOf("e"))
     }))
 })

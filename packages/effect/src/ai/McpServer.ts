@@ -739,21 +739,43 @@ class MiddlewareImpl {
 
 // The innermost middleware comes first.
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  const stacks: Array<ReadonlyArray<AnyMiddlewareFn>> = []
-  let maxLength = 0
-  for (const [key, value] of context.mapUnsafe) {
-    if (key.startsWith(middlewareKeyPrefix)) {
-      stacks.push(value)
-      maxLength = Math.max(maxLength, value.length)
+  // Each stack requires its middleware to run outermost to innermost in its
+  // own order. Merge every stack's order, preferring stacks provided further
+  // outside, which come first in the context.
+  const inner = new Map<AnyMiddlewareFn, Set<AnyMiddlewareFn>>()
+  const outerCount = new Map<AnyMiddlewareFn, number>()
+  for (const [key, stack] of context.mapUnsafe) {
+    if (!key.startsWith(middlewareKeyPrefix)) continue
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const fn = stack[i]
+      if (!inner.has(fn)) {
+        inner.set(fn, new Set())
+        outerCount.set(fn, 0)
+      }
+      const outer = stack[i + 1]
+      if (outer !== undefined && outer !== fn && !inner.get(outer)!.has(fn)) {
+        inner.get(outer)!.add(fn)
+        outerCount.set(fn, outerCount.get(fn)! + 1)
+      }
     }
   }
-  const unique = new Set<AnyMiddlewareFn>()
-  for (let i = maxLength - 1; i >= 0; i--) {
-    for (const stack of stacks) {
-      if (i < stack.length) unique.add(stack[i])
+  const outermostFirst: Array<AnyMiddlewareFn> = []
+  const remaining = new Set(inner.keys())
+  while (remaining.size > 0) {
+    let next: AnyMiddlewareFn | undefined
+    for (const fn of remaining) {
+      if (outerCount.get(fn) === 0) {
+        next = fn
+        break
+      }
     }
+    // Stacks that order the same middleware both ways have no common order
+    next ??= remaining.values().next().value!
+    remaining.delete(next)
+    outermostFirst.push(next)
+    for (const fn of inner.get(next)!) outerCount.set(fn, outerCount.get(fn)! - 1)
   }
-  return Arr.fromIterable(unique).reverse()
+  return outermostFirst.reverse()
 }
 
 const isMcpError = (error: unknown): error is McpErrorBase =>
