@@ -721,33 +721,36 @@ const walk = Effect.fnUntraced(function*(
     )
   }
 
-  // Bounds directory reads in flight across the whole walk, not per level
+  // Walk subdirectories in forked fibers while slots are free and inline
+  // otherwise, bounding directory reads in flight across the whole walk. A
+  // forked walk reports its failure through `failed` so the whole walk ends
+  // promptly even while its parent is walking another subdirectory inline.
+  // Once the root walk is finishing, forked walks only exit because it
+  // interrupts them.
   let slots = DIRECTORY_CONCURRENCY
-  const release = Effect.sync(() => {
-    slots++
-  })
-  // Ends the whole walk as soon as any forked walk fails or is interrupted,
-  // even while its parent is still walking another subdirectory inline. Once
-  // the root walk is finishing, forked walks only exit because it interrupts them.
   let finishing = false
   const failed = Deferred.makeUnsafe<never, PlatformError>()
-  const fork = (walk: Effect.Effect<void, PlatformError>) =>
-    Effect.forkChild(Effect.ensuring(
-      Effect.onError(walk, (cause) =>
+  const fork = (walk: Effect.Effect<Array<string>, PlatformError>) =>
+    walk.pipe(
+      Effect.onError((cause) =>
         Effect.sync(() => {
           if (!finishing) {
             Deferred.doneUnsafe(failed, Effect.failCause(cause))
           }
-        })),
-      release
-    ))
+        })
+      ),
+      Effect.ensuring(Effect.sync(() => {
+        slots++
+      })),
+      Effect.forkChild
+    )
+
   const directory = Effect.fnUntraced(function*(
     relative: string,
     states: States,
     excluded: States,
-    named: boolean,
-    out: Array<string>
-  ): Effect.fn.Return<void, PlatformError> {
+    named: boolean
+  ): Effect.fn.Return<Array<string>, PlatformError> {
     const listing = yield* entries(relative, states, named)
     const children: Array<Child | undefined> = []
     const pending: Array<Effect.Effect<void, PlatformError>> = []
@@ -765,26 +768,20 @@ const walk = Effect.fnUntraced(function*(
     if (pending.length > 0) {
       yield* Effect.all(pending, { concurrency: 16, discard: true })
     }
-    // Walk each subdirectory in its own fiber if a slot is free and inline
-    // otherwise, then splice their results back in listing order
-    const nested: Array<Array<string>> = []
-    const fibers: Array<Fiber.Fiber<void, PlatformError>> = []
+    const subtrees: Array<Effect.Effect<Array<string>, PlatformError>> = []
     for (const child of children) {
       if (child?.next !== undefined) {
-        const childOut: Array<string> = []
-        nested.push(childOut)
-        const walk = directory(child.relative, child.next, child.excluded, listing.named, childOut)
+        const walk = directory(child.relative, child.next, child.excluded, listing.named)
         if (slots > 0) {
           slots--
-          fibers.push(yield* fork(walk))
+          subtrees.push(Fiber.join(yield* fork(walk)))
         } else {
-          yield* walk
+          subtrees.push(Effect.succeed(yield* walk))
         }
       }
     }
-    if (fibers.length > 0) {
-      yield* Fiber.joinAll(fibers)
-    }
+    // Splice subtrees back in listing order
+    const out: Array<string> = []
     let index = 0
     for (const child of children) {
       if (child === undefined) {
@@ -794,23 +791,22 @@ const walk = Effect.fnUntraced(function*(
         out.push(child.relative)
       }
       if (child.next !== undefined) {
-        for (const path of nested[index++]) {
+        for (const path of yield* subtrees[index++]) {
           out.push(path)
         }
       }
     }
+    return out
   })
 
-  const out: Array<string> = []
   // The losing walk is interrupted along with every fiber it forked
-  yield* Effect.raceFirst(
+  return yield* Effect.raceFirst(
     Effect.ensuring(
-      directory("", compiled.initial, excludes.initial, true, out),
+      directory("", compiled.initial, excludes.initial, true),
       Effect.sync(() => {
         finishing = true
       })
     ),
     Deferred.await(failed)
   )
-  return out
 })
