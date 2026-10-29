@@ -1499,8 +1499,10 @@ const make = Effect.gen(function*() {
       // Remove runners that are no longer present or healthy
       MutableHashMap.forEach(allRunners, (_, runner) => {
         MutableHashMap.remove(allRunners, runner)
-        MutableHashSet.remove(healthyRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
+        // An unhealthy runner was never added to the rings
+        if (!MutableHashSet.has(healthyRunners, runner)) return
+        MutableHashSet.remove(healthyRunners, runner)
         // A pending runner owns no shards, so its departure only restarts the
         // quiet period instead of publishing the other joins mid-burst.
         if (MutableHashSet.has(pendingRunners, runner)) {
