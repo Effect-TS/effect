@@ -137,8 +137,7 @@ const validateDomainName = (name: string): string | undefined => {
 
 const toAsciiDomainName = (input: string): string | undefined => {
   if (asciiName.test(input)) return input.toLowerCase()
-  // Check the ASCII characters of the composed form, so that a decomposed
-  // character such as `=\u0338` is read as `≠`
+  // Check the composed form, so that `=\u0338` is read as `≠`
   if (!asciiName.test(input.normalize("NFC").replace(nonAscii, ""))) return undefined
   try {
     return new URL(`http://${input}`).hostname
