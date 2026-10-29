@@ -110,20 +110,14 @@ interface Batch {
 const batchPool: Array<Batch> = []
 const pendingBatches = new WeakMap<RequestResolver<any>, BatchMap>()
 
-// Built at module level so the batch callbacks do not share a lexical context
-// with the per-request closures in `addEntry`, which would retain completed
-// requests (and their async context) through the batch pool.
-const makeBatch = (
-  key: unknown,
-  context: Context.Context<never>,
-  resolver: RequestResolver<any>,
-  map: BatchMap
-): Batch => {
+// Kept outside `addEntry` so pooled batch callbacks do not capture its
+// per-request closure context, which would retain completed requests.
+const makeBatch = (): Batch => {
   const newBatch: Batch = {
-    key,
-    context,
-    resolver,
-    map,
+    key: undefined,
+    context: undefined as any,
+    resolver: undefined as any,
+    map: undefined as any,
     entrySet: new Set(),
     entries: new Set(),
     delayEffect: effect.flatMap(
@@ -201,15 +195,11 @@ const addEntry = <A extends Request.Any>(
   batch = batchMap.get(key)
   const isNewBatch = batch === undefined
   if (!batch) {
-    if (batchPool.length > 0) {
-      batch = batchPool.pop()!
-      batch.key = key
-      batch.context = fiber.context
-      batch.resolver = resolver
-      batch.map = batchMap
-    } else {
-      batch = makeBatch(key, fiber.context, resolver, batchMap)
-    }
+    batch = batchPool.pop() ?? makeBatch()
+    batch.key = key
+    batch.context = fiber.context
+    batch.resolver = resolver
+    batch.map = batchMap
     batchMap.set(key, batch)
   }
 
