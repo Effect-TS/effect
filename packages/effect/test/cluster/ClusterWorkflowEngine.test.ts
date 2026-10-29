@@ -1757,6 +1757,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("wakes the parent when a suspended child is interrupted", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const parentId = yield* ParentWorkflow.execute({ id: "interrupted" }, { discard: true })
+      const childId = yield* ChildWorkflow.executionId({ id: "interrupted" })
+      yield* pollUntil(ParentWorkflow, parentId, "Suspended")
+      yield* pollUntil(ChildWorkflow, childId, "Suspended")
+      yield* ChildWorkflow.interrupt(childId)
+      const child = yield* pollUntil(ChildWorkflow, childId, "Complete")
+      assert(child._tag === "Complete" && Exit.hasInterrupts(child.exit))
+      const parent = yield* pollUntil(ParentWorkflow, parentId, "Complete")
+      assert(parent._tag === "Complete" && Exit.hasInterrupts(parent.exit))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("bounds a durable clock notification when its workflow is absent after restart", () =>
     Effect.gen(function*() {
       const clockDuration = 3000
