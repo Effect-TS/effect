@@ -1,3 +1,4 @@
+import type * as Filter from "../Filter.ts"
 import { dual, identity } from "../Function.ts"
 import type {
   Case,
@@ -310,6 +311,50 @@ export const when = <
   Ret,
   Args
 > => (self as any).add(makeWhen(makePredicate(pattern), f as any))
+
+/** @internal */
+export const whenFilter = <
+  Input,
+  Pass,
+  Fail,
+  Ret,
+  Args extends Array<any>,
+  Fn extends (_: Pass, ...args: Args) => Ret
+>(
+  filter: Filter.Filter<Input, Pass, Fail>,
+  f: Fn
+) =>
+<I, F, R extends Input, A, Pr>(
+  self: Matcher<I, F, R, A, Pr, Ret, Args>
+): Matcher<I, F, R, A | ReturnType<Fn>, Pr, Ret, Args> => {
+  // Caches the result of a successful `guard` for the `evaluate` call that
+  // follows it, so the filter runs once per match. `evaluate` consumes the
+  // cache, and re-runs the filter when called without a matching `guard`.
+  let guarded: { readonly input: unknown; readonly pass: Pass } | undefined
+  return (self as any).add(makeWhen(
+    (input) => {
+      guarded = undefined
+      const result = filter(input as Input)
+      if (Result.isFailure(result)) {
+        return false
+      }
+      guarded = { input, pass: result.success }
+      return true
+    },
+    (input, ...args) => {
+      const cached = guarded
+      guarded = undefined
+      if (cached !== undefined && Object.is(cached.input, input)) {
+        return f(cached.pass, ...args as Args)
+      }
+      const result = filter(input as Input)
+      if (Result.isFailure(result)) {
+        throw new Error("effect/Match/whenFilter: input did not match the filter")
+      }
+      return f(result.success, ...args as Args)
+    }
+  ))
+}
 
 /** @internal */
 export const whenOr = <
