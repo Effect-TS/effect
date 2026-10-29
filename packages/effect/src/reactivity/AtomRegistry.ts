@@ -441,10 +441,9 @@ class RegistryImpl implements AtomRegistry {
     if (options?.immediate) {
       f(node.value())
     } else {
-      // a listener hears the next change, which only reaches an up-to-date
-      // node. A failed build is left for the next read to report, so that the
-      // listener still hears the recovery; an error raised once the value is
-      // committed has no later read to report it, so it is rethrown
+      // build the node so the listener hears its next change. A failed build
+      // is left for the next read to report; an error raised after the value
+      // is committed has no later read to report it, so it is rethrown
       try {
         node.value()
       } catch (error) {
@@ -737,9 +736,8 @@ class NodeImpl<A> {
 
   build(): void {
     const lifetime = makeLifetime(this)
-    // a lifetime still attached to a node that needs a value belongs to a
-    // build that failed, or to one that is running and is now superseded;
-    // its finalizers run only once, so their failure is reported by this build
+    // release a failed or superseded build; its finalizers run only once, so
+    // their failure is rethrown once this build commits
     try {
       this.disposeLifetime()
     } catch (error) {
@@ -1025,7 +1023,7 @@ interface Lifetime<A> extends Atom.AtomContext {
   readonly node: NodeImpl<A>
   // the parents read so far by the build; `undefined` once the build has returned
   reads: Set<NodeImpl<any>> | undefined
-  // a failure the build rethrows once it commits: from releasing the previous
+  // rethrown once the build commits: a failure from releasing the previous
   // lifetime, or from reading a parent that still produced its value
   failure: unknown
   finalizers: Array<() => void> | undefined
