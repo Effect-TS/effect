@@ -378,9 +378,7 @@ export const makeWithStrategy = <A, E, R>(options: {
 }): Effect.Effect<Pool<A, E>, never, Scope.Scope | R> =>
   Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
     const services = yield* Effect.context<R | Scope.Scope>()
-    // Finalizers added to the outer scope after the pool run before the pool
-    // shuts down, so the pool forks into a child scope that closes in its
-    // place. The child is sequential, so background fibers stop before shutdown.
+    // A child scope keeps the pool usable in later finalizers of the outer scope
     const scope = Scope.forkUnsafe(Context.get(services, Scope.Scope))
     const acquire = Effect.updateContext(
       options.acquire,
