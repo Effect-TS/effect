@@ -1697,7 +1697,10 @@ const make = Effect.gen(function*() {
               }
               clientRequests.set(id, entry)
               respond = makeClientRespond(entry, client.write)
-              return sendOutgoing(message, false)
+              // A failed send leaves no reply or interrupt to release the entry.
+              // Only drop the local bookkeeping, as the request may have been
+              // persisted.
+              return Effect.tapError(sendOutgoing(message, false), () => Effect.sync(() => clientRequests.delete(id)))
             }
             case "Ack": {
               const requestId = Snowflake.Snowflake(options.message.requestId)
