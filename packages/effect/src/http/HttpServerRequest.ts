@@ -984,7 +984,7 @@ const rawBodyBytes = (
 const bytesFromWeb = (
   request: HttpServerRequest,
   // Evaluated inside `try`, as wrapping an unreadable body in a `Response` throws.
-  evaluate: () => globalThis.Request | globalThis.Response,
+  evaluate: () => Request | Response,
   maxBytes: number | undefined
 ): Effect.Effect<Uint8Array, HttpServerError> =>
   Effect.tryPromise({
@@ -995,8 +995,7 @@ const bytesFromWeb = (
         : await readArrayBufferLimited(source, maxBytes, signal)
       return new Uint8Array(buffer)
     },
-    catch: (cause) =>
-      requestParseError(request, undefined, cause, cause instanceof BodyTooLargeError ? "BodyTooLarge" : undefined)
+    catch: (cause) => requestParseError(request, undefined, cause)
   })
 
 const streamFromReadable = (
@@ -1013,13 +1012,12 @@ const streamFromReadable = (
 const requestParseError = (
   request: HttpServerRequest,
   description?: string,
-  cause?: unknown,
-  reason?: "BodyTooLarge"
+  cause?: unknown
 ) =>
   new HttpServerError({
     reason: new RequestParseError({
       request,
-      ...(reason === undefined ? undefined : { reason }),
+      ...(cause instanceof BodyTooLargeError ? { reason: "BodyTooLarge" } : undefined),
       ...(description === undefined ? undefined : { description }),
       ...(cause === undefined ? undefined : { cause })
     })
@@ -1039,7 +1037,7 @@ const limitStream = (
   })
 
 const bodyTooLargeError = (request: HttpServerRequest, maxBytes: number) =>
-  requestParseError(request, undefined, new BodyTooLargeError(maxBytes), "BodyTooLarge")
+  requestParseError(request, undefined, new BodyTooLargeError(maxBytes))
 
 const formDataToParts = (formData: FormData): Array<Multipart.Part> => {
   const parts: Array<Multipart.Part> = []
@@ -1138,7 +1136,7 @@ class BodyTooLargeError extends Error {
 }
 
 const readArrayBufferLimited = async (
-  source: globalThis.Request | globalThis.Response,
+  source: Request | Response,
   maxBytes: number,
   signal: AbortSignal
 ): Promise<ArrayBuffer> => {
