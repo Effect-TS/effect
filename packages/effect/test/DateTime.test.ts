@@ -594,6 +594,41 @@ describe("DateTime", () => {
       deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
     })
 
+    it("stay out of the enumerable shape when written through the public fields", () => {
+      // e.g. by another copy of effect that shares the instance
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const zoned = DateTime.makeZonedUnsafe(utc, { timeZone: "Europe/London" })
+      const parts = DateTime.toPartsUtc(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      utc.partsUtc = parts
+      zoned.partsUtc = parts
+      populate(utc)
+      populate(zoned)
+      strictEqual(DateTime.toPartsUtc(zoned), parts)
+      deepStrictEqual(Object.keys(utc), ["epochMilliseconds"])
+      deepStrictEqual(Object.keys(zoned), ["epochMilliseconds", "zone"])
+    })
+
+    it("work on non-extensible instances", () => {
+      const utc = Object.preventExtensions(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      const zoned = Object.seal(DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", { timeZone: "Europe/London" }))
+      const frozen = Object.freeze(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      const written = DateTime.toPartsUtc(DateTime.makeUnsafe("2024-07-01T12:00:00Z"))
+      utc.partsUtc = undefined
+      zoned.partsUtc = written
+      const parts = { millisecond: 0, second: 0, minute: 0, day: 1, weekDay: 1, month: 7, year: 2024 }
+      deepStrictEqual(DateTime.toPartsUtc(utc), { ...parts, hour: 12 })
+      deepStrictEqual(DateTime.toPartsUtc(frozen), { ...parts, hour: 12 })
+      deepStrictEqual(DateTime.toParts(zoned), { ...parts, hour: 13 })
+      strictEqual(DateTime.toParts(zoned), DateTime.toParts(zoned))
+      strictEqual(DateTime.toPartsUtc(zoned), written)
+    })
+
+    it("carry populated UTC parts over when zoned", () => {
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const parts = DateTime.toPartsUtc(utc)
+      strictEqual(DateTime.toPartsUtc(DateTime.setZone(utc, DateTime.zoneMakeNamedUnsafe("Europe/London"))), parts)
+    })
+
     it("do not affect equality with a fresh instance", () => {
       const make = () => DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", { timeZone: "Europe/London" })
       const populated = make()
