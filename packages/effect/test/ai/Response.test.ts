@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { assertInstanceOf, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
 import { AiError, Response, Tool, Toolkit } from "effect/ai"
+import { SchemaBinary } from "effect/encoding"
 import { TestSchema } from "effect/testing"
 
 describe("Response", () => {
@@ -235,6 +236,31 @@ describe("Response", () => {
             deepStrictEqual<unknown>(decoded, part, `decoded ${part.type}`)
           }
         }))
+    }
+  })
+
+  describe("binary codecs", () => {
+    const toolkit = Toolkit.make(
+      Tool.make("GetWeather", {
+        parameters: Schema.Struct({ city: Schema.String }),
+        success: Schema.Struct({ temperature: Schema.Number })
+      })
+    )
+
+    for (
+      const [name, makeSchema] of [
+        ["AllParts", () => Response.AllParts()],
+        ["Part", () => Response.Part()],
+        ["StreamPart", () => Response.StreamPart()],
+        ["Part with a toolkit", () => Response.Part(toolkit)]
+      ] as const
+    ) {
+      it(`${name} round trips a text part`, () => {
+        const codec = SchemaBinary.toCodec<unknown, unknown>(makeSchema())
+        const part = Response.makePart("text", { text: "hi" })
+
+        deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(part)), part)
+      })
     }
   })
 
