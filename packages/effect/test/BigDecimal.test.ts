@@ -401,6 +401,8 @@ describe("BigDecimal", () => {
     assertNone(BigDecimal.fromString("1e10001"))
     assertNone(BigDecimal.fromString("1e-10001"))
     assertNone(BigDecimal.fromString("0.1e-10000"))
+    assertNone(BigDecimal.fromString(`1.${"0".repeat(10_001)}`))
+    assertNone(BigDecimal.fromString("10e10000"))
     assertNone(BigDecimal.fromString("1e300000000"))
   })
 
@@ -418,7 +420,6 @@ describe("BigDecimal", () => {
     throwsRangeError(() => BigDecimal.scale(large, 0))
     throwsRangeError(() => BigDecimal.truncate(small))
     throwsRangeError(() => BigDecimal.round(small))
-    throwsRangeError(() => BigDecimal.round(large))
 
     assertEquals(BigDecimal.sum(BigDecimal.make(1n, -10_000), $("1")), $(`1${"0".repeat(9_999)}1`))
     assertEquals(BigDecimal.truncate(BigDecimal.make(1n, 10_000)), $("0"))
@@ -430,6 +431,8 @@ describe("BigDecimal", () => {
     assertEquals(BigDecimal.truncate(huge), huge)
     assertEquals(BigDecimal.floor(huge), huge)
     assertEquals(BigDecimal.ceil(huge), huge)
+    assertEquals(BigDecimal.round(huge), huge)
+    assertEquals(BigDecimal.round($("1e10000"), { mode: "half-even" }), $("1e10000"))
   })
 
   it("format", () => {
