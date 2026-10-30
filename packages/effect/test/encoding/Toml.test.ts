@@ -162,6 +162,40 @@ nul = "\u0000"
     assert.deepStrictEqual(Result.getOrThrow(Toml.parse("key = '''\t\r\n'''\r\n# \t\r\n")), { key: "\t\r\n" })
   })
 
+  it("parses TOML 1.1 inline tables, escapes, and times without seconds", () => {
+    assert.deepStrictEqual(
+      Result.getOrThrow(Toml.parse(String.raw`
+point = {
+  x = 1,   # inline tables may span lines, with comments and a trailing comma
+  y = 2,
+  nested = {
+    z = 3, # comment
+  },
+}
+escape = "\e[0m \x41 \xE9"
+multiline = """\x41"""
+literal = '\x41'
+time = 13:37
+local = 1979-05-27T07:32
+space = 1979-05-27 07:32
+offset = 1979-05-27T07:32Z
+`)),
+      {
+        point: { x: 1, y: 2, nested: { z: 3 } },
+        escape: "\u001B[0m A é",
+        multiline: "A",
+        literal: "\\x41",
+        time: "13:37:00",
+        local: "1979-05-27T07:32:00",
+        space: "1979-05-27T07:32:00",
+        offset: new Date("1979-05-27T07:32:00Z")
+      }
+    )
+    for (const input of [String.raw`a = "\xZ1"`, String.raw`a = "\x4"`, "a = { , }", "a = { a = 1,, }", "a = 24:00"]) {
+      assert.isTrue(Result.isFailure(Toml.parse(input)), input)
+    }
+  })
+
   it.each([
     String.raw`value = "\uD800"`,
     String.raw`value = "\uDFFF"`,
