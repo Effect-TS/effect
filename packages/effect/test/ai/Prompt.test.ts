@@ -92,6 +92,17 @@ describe("Prompt", () => {
         assert.deepStrictEqual(Schema.decodeSync(codec)(Schema.encodeSync(codec)(part)), part)
       }
     })
+
+    it("keeps the tagged JSON encoding for byte and URL file data", () => {
+      const encode = (data: Uint8Array | URL) =>
+        Schema.encodeSync(Prompt.FilePart)(Prompt.filePart({ mediaType: "image/png", data })).data
+
+      assert.deepStrictEqual(encode(new Uint8Array([1, 2, 3])), { _tag: "Uint8Array", base64: "AQID" })
+      assert.deepStrictEqual(encode(new URL("https://example.com/image.png")), {
+        _tag: "URL",
+        href: "https://example.com/image.png"
+      })
+    })
   })
 
   describe("fromResponseParts", () => {
