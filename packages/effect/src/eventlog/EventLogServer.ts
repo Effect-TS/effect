@@ -13,6 +13,7 @@ import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Arr from "../Array.ts"
 import * as Cache from "../Cache.ts"
 import * as Context from "../Context.ts"
+import * as Mac from "../crypto/Mac.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -76,6 +77,12 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
+ * `Authenticate` calls `authorizeIdentity` with the claimed public key and the
+ * presented signing public key, then verifies the signature against the
+ * presented key. Only a verified key is passed to
+ * `getOrCreateSessionAuthBinding`, and a key that differs from the identity's
+ * existing binding is rejected.
+ *
  * Use the connection's `ConnectionWrites.track` in `onWrite` and
  * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
  * `compaction` sets `HelloResponse.compaction`, advertising that the server
@@ -89,7 +96,10 @@ export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
   readonly firstSequence?: number | undefined
   readonly compaction?: boolean | undefined
-  readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
+  readonly authorizeIdentity?: (
+    publicKey: string,
+    signingPublicKey: Uint8Array<ArrayBuffer>
+  ) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
@@ -158,33 +168,40 @@ export const layerRpcHandlers = (options: {
         }
         yield* Cache.invalidate(clientChallenges, client.id)
         if (options.authorizeIdentity) {
-          yield* options.authorizeIdentity(request.publicKey)
+          yield* options.authorizeIdentity(request.publicKey, request.signingPublicKey)
         }
-        const signingPublicKey = yield* Cache.get(
-          persistedSigningPublicKeys,
-          new SessionAuthCacheKey({
-            publicKey: request.publicKey,
-            signingPublicKey: request.signingPublicKey
-          })
-        )
         const verified = yield* EventLogSessionAuth.verifySessionAuthenticateRequest({
           remoteId: options.remoteId,
           challenge,
           publicKey: request.publicKey,
-          signingPublicKey,
+          signingPublicKey: request.signingPublicKey,
           signature: request.signature,
           algorithm: request.algorithm
         }).pipe(
           Effect.catch(() => Effect.succeed(false))
         )
 
-        if (!verified) {
-          return yield* new EventLogProtocolError({
+        const verificationFailed = () =>
+          new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
             code: "Forbidden",
             message: "Session auth signature verification failed"
           })
+        if (!verified) {
+          return yield* verificationFailed()
+        }
+        // Only a verified key reaches the binding. A key other than the
+        // identity's bound key is rejected like a bad signature.
+        const boundSigningPublicKey = yield* Cache.get(
+          persistedSigningPublicKeys,
+          new SessionAuthCacheKey({
+            publicKey: request.publicKey,
+            signingPublicKey: request.signingPublicKey
+          })
+        )
+        if (!Mac.timingSafeEqual(boundSigningPublicKey, request.signingPublicKey)) {
+          return yield* verificationFailed()
         }
 
         const authenticatedIdentities = new Set(
@@ -411,6 +428,8 @@ export class AuthenticatedIdentities extends Context.Service<AuthenticatedIdenti
   "effect/eventlog/EventLogServer/AuthenticatedIdentities"
 ) {}
 
+// Keyed by `publicKey` alone: the cache holds each identity's bound signing
+// key, and `Authenticate` rejects any presented key that differs from it.
 class SessionAuthCacheKey extends Data.Class<{
   readonly publicKey: string
   readonly signingPublicKey: Uint8Array<ArrayBuffer>
