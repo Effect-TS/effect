@@ -220,17 +220,13 @@ const verifySignature = Effect.fnUntraced(function*(
  * @category cryptography
  * @since 4.1.1
  */
-export const sign = Effect.fnUntraced(signGenerator)
-
-function signGenerator<
-  K extends SigningKey,
-  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header
->(
-  payload: Uint8Array,
-  key: K,
-  header?: Header & H
-): Effect.fn.Return<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>>
-function* signGenerator(
+export const sign: {
+  <K extends SigningKey, H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header>(
+    payload: Uint8Array,
+    key: K,
+    header?: Header & H
+  ): Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>>
+} = Effect.fnUntraced(function*(
   payload: Uint8Array,
   key: SigningKey,
   header?: Header
@@ -247,7 +243,7 @@ function* signGenerator(
     signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(signFailure))
   }
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
-}
+}) as any // Each branch uses only the service its key type requires.
 
 /**
  * Verifies a compact JWS with a key. The token's `alg` must be the key's
@@ -260,13 +256,12 @@ function* signGenerator(
  * @category cryptography
  * @since 4.1.1
  */
-export const verify = Effect.fnUntraced(verifyGenerator)
-
-function verifyGenerator<K extends VerificationKey>(
-  token: string | Redacted.Redacted<string>,
-  key: K
-): Effect.fn.Return<Verified, JoseError.JoseError, KeyRequirements<K>>
-function* verifyGenerator(
+export const verify: {
+  <K extends VerificationKey>(
+    token: string | Redacted.Redacted<string>,
+    key: K
+  ): Effect.Effect<Verified, JoseError.JoseError, KeyRequirements<K>>
+} = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>,
   key: VerificationKey
 ): Effect.fn.Return<Verified, JoseError.JoseError, Requirements> {
@@ -278,7 +273,7 @@ function* verifyGenerator(
     Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
-}
+}) as any // Each branch uses only the service its key type requires.
 
 /**
  * Verifies a compact JWS with a public key resolved from the `Jwks` service by

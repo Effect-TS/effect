@@ -77,22 +77,6 @@ export interface Header {
 }
 
 /**
- * Resolves a decryption key from a parsed, unauthenticated protected header.
- *
- * **Gotchas**
- *
- * Use the header only to select a key. Its contents are authenticated only
- * after decryption succeeds.
- *
- * @stability unstable
- * @category models
- * @since 4.1.1
- */
-export type KeyResolver<E = never, R = never> = (
-  header: ProtectedHeader
-) => Effect.Effect<SecretKey<"dir">, E, R>
-
-/**
  * The protected header, plaintext, and key used to decrypt a JWE.
  *
  * @stability unstable
@@ -173,7 +157,6 @@ export const encrypt = Effect.fnUntraced(function*<
  * key selection.
  *
  * @see {@link encrypt}
- * @see {@link KeyResolver}
  *
  * @stability unstable
  * @category cryptography
@@ -181,7 +164,7 @@ export const encrypt = Effect.fnUntraced(function*<
  */
 export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
   token: string | Redacted.Redacted<string>,
-  key: SecretKey<"dir"> | KeyResolver<E, R>
+  key: SecretKey<"dir"> | ((header: ProtectedHeader) => Effect.Effect<SecretKey<"dir">, E, R>)
 ): Effect.fn.Return<Decrypted, JoseError.JoseError | E, Aead.Aead | R> {
   const [header, encryptedKey, iv, ciphertext, tag] = yield* split(token, 5)
   if (encryptedKey !== "") return yield* invalidToken("A dir token must have an empty encrypted key")

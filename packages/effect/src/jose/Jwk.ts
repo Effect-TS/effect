@@ -427,20 +427,21 @@ export const generateKeyPair = Effect.fnUntraced(function*(
  * @category constructors
  * @since 4.1.1
  */
-export const generateSecret = Effect.fnUntraced(function*(
+export const generateSecret = (
   algorithm: SecretAlgorithm,
   options?: { readonly kid?: string | undefined }
-): Effect.fn.Return<Redacted.Redacted<SecretJwk>, never, SecureRandom.SecureRandom> {
-  const random = yield* SecureRandom.SecureRandom
-  const bytes = yield* random.randomBytes(secretKeyLength(algorithm))
-  return Redacted.make({
-    kty: "oct",
-    k: Base64Url.encode(bytes),
-    alg: algorithm,
-    use: algorithm === "dir" ? "enc" : "sig",
-    ...(options?.kid === undefined ? {} : { kid: options.kid })
-  })
-})
+): Effect.Effect<Redacted.Redacted<SecretJwk>, never, SecureRandom.SecureRandom> =>
+  Effect.map(
+    Effect.flatMap(SecureRandom.SecureRandom, (random) => random.randomBytes(secretKeyLength(algorithm))),
+    (bytes) =>
+      Redacted.make({
+        kty: "oct",
+        k: Base64Url.encode(bytes),
+        alg: algorithm,
+        use: algorithm === "dir" ? "enc" : "sig",
+        ...(options?.kid === undefined ? {} : { kid: options.kid })
+      })
+  )
 
 /**
  * Imports a public JWK for an asymmetric algorithm.
@@ -611,12 +612,8 @@ export const importSecret = Effect.fnUntraced(function*<A extends SecretAlgorith
  * @category encoding
  * @since 4.1.1
  */
-export const exportPublic = Effect.fnUntraced(function*(
-  key: PublicKey
-): Effect.fn.Return<PublicJwk, JoseError> {
-  const jwk = yield* exportJwk(key.key, key.algorithm, key.kid)
-  return jwk as PublicJwk
-})
+export const exportPublic = (key: PublicKey): Effect.Effect<PublicJwk, JoseError> =>
+  Effect.map(exportJwk(key.key, key.algorithm, key.kid), (jwk) => jwk as PublicJwk)
 
 /**
  * Exports a private key as a JWK carrying its `alg`, `kid`, and `use: "sig"`.
@@ -627,12 +624,8 @@ export const exportPublic = Effect.fnUntraced(function*(
  * @category encoding
  * @since 4.1.1
  */
-export const exportPrivate = Effect.fnUntraced(function*(
-  key: PrivateKey
-): Effect.fn.Return<Redacted.Redacted<PrivateJwk>, JoseError> {
-  const jwk = yield* exportJwk(key.key, key.algorithm, key.kid)
-  return Redacted.make(jwk as PrivateJwk)
-})
+export const exportPrivate = (key: PrivateKey): Effect.Effect<Redacted.Redacted<PrivateJwk>, JoseError> =>
+  Effect.map(exportJwk(key.key, key.algorithm, key.kid), (jwk) => Redacted.make(jwk as PrivateJwk))
 
 /**
  * Exports a public key as SPKI DER bytes, or as PEM text with `format: "pem"`.

@@ -277,7 +277,7 @@ const encodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * @category cryptography
  * @since 4.1.1
  */
-export const sign = Effect.fnUntraced(function*<
+export const sign = <
   S extends Schema.Constraint,
   K extends SigningKey,
   H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Jws.Header
@@ -286,9 +286,8 @@ export const sign = Effect.fnUntraced(function*<
   claims: S["Type"],
   key: K,
   header?: Jws.Header & H
-): Effect.fn.Return<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.KeyRequirements<K>> {
-  return yield* Jws.sign(yield* encodeClaims(schema, claims), key, header)
-})
+): Effect.Effect<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Jws.KeyRequirements<K>> =>
+  Effect.flatMap(encodeClaims(schema, claims), (payload) => Jws.sign(payload, key, header))
 
 /**
  * Verifies a compact JWT with a key, checks its claims against the policy, and
@@ -421,7 +420,7 @@ export const verifyWithKeySet: <S extends Schema.Constraint>(
  * @category cryptography
  * @since 4.1.1
  */
-export const encrypt = Effect.fnUntraced(function*<
+export const encrypt = <
   S extends Schema.Constraint,
   H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Jwe.Header
 >(
@@ -429,13 +428,8 @@ export const encrypt = Effect.fnUntraced(function*<
   claims: S["Type"],
   key: SecretKey<"dir">,
   header?: Jwe.Header & H
-): Effect.fn.Return<
-  Redacted.Redacted<string>,
-  JwtError,
-  S["EncodingServices"] | Aead.Aead | SecureRandom.SecureRandom
-> {
-  return yield* Jwe.encrypt(yield* encodeClaims(schema, claims), key, header)
-})
+): Effect.Effect<Redacted.Redacted<string>, JwtError, S["EncodingServices"] | Aead.Aead | SecureRandom.SecureRandom> =>
+  Effect.flatMap(encodeClaims(schema, claims), (payload) => Jwe.encrypt(payload, key, header))
 
 /**
  * Decrypts a compact `dir`/A256GCM JWT, checks its claims against the policy,
@@ -454,7 +448,6 @@ export const encrypt = Effect.fnUntraced(function*<
  *
  * @see {@link encrypt}
  * @see {@link verify} for signed JWTs
- * @see {@link Jwe.KeyResolver}
  *
  * @stability unstable
  * @category cryptography
@@ -463,7 +456,7 @@ export const encrypt = Effect.fnUntraced(function*<
 export const decrypt = Effect.fnUntraced(function*<S extends Schema.Constraint, E = never, R = never>(
   schema: S,
   token: string | Redacted.Redacted<string>,
-  key: SecretKey<"dir"> | Jwe.KeyResolver<E, R>,
+  key: SecretKey<"dir"> | ((header: Jwe.ProtectedHeader) => Effect.Effect<SecretKey<"dir">, E, R>),
   options?: VerifyOptions
 ): Effect.fn.Return<Decrypted<S["Type"]>, JwtError | E, S["DecodingServices"] | Aead.Aead | R> {
   const policy = yield* readPolicy(options)
