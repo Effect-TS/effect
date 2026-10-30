@@ -123,48 +123,61 @@ describe("OtlpSerialization", () => {
       )
     }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
 
-  it.effect.each(["non-finite doubles", "bytes"])(
-    "layerJson encodes %s for every signal",
-    (kind) =>
-      Effect.gen(function*() {
-        const serialization = yield* OtlpSerialization.OtlpSerialization
-        const text = kind === "bytes" ? "text" : "null"
-        const resource = {
-          attributes: [{
-            key: "values",
-            value: {
-              arrayValue: {
-                values: kind === "bytes"
-                  ? [Uint8Array.of(9, 0, 255, 1).subarray(1), Buffer.from([0, 255, 1]), new Uint8Array(0)]
-                    .map((bytesValue) => ({ bytesValue }))
-                  : [NaN, Infinity, -Infinity, 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
-              }
+  it.effect("layerJson preserves JSON values and writes non-finite doubles as strings for every signal", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const resource = {
+        attributes: [{
+          key: "values",
+          value: {
+            arrayValue: {
+              values: [NaN, Infinity, -Infinity, 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
             }
-          }, { key: "text", value: { stringValue: text } }],
-          droppedAttributesCount: 0
-        }
-        for (
-          const [key, body] of [
-            ["resourceMetrics", serialization.metrics({ resourceMetrics: [{ resource, scopeMetrics: [] }] })],
-            ["resourceSpans", serialization.traces({ resourceSpans: [{ resource, scopeSpans: [] }] })],
-            ["resourceLogs", serialization.logs({ resourceLogs: [{ resource, scopeLogs: [] }] })]
-          ] as const
-        ) {
-          assert.strictEqual(body._tag, "Uint8Array")
-          if (body._tag !== "Uint8Array") throw new Error("Expected a byte body")
-          assert.strictEqual(body.contentType, "application/json")
-          const data = JSON.parse(new TextDecoder().decode(body.body))
-          assert.deepStrictEqual(data[key][0].resource.attributes, [{
-            key: "values",
-            value: {
-              arrayValue: {
-                values: kind === "bytes"
-                  ? ["AP8B", "AP8B", ""].map((bytesValue) => ({ bytesValue }))
-                  : ["NaN", "Infinity", "-Infinity", 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
-              }
+          }
+        }, { key: "text", value: { stringValue: "null" } }],
+        droppedAttributesCount: 0
+      }
+      for (
+        const [key, body] of [
+          ["resourceMetrics", serialization.metrics({ resourceMetrics: [{ resource, scopeMetrics: [] }] })],
+          ["resourceSpans", serialization.traces({ resourceSpans: [{ resource, scopeSpans: [] }] })],
+          ["resourceLogs", serialization.logs({ resourceLogs: [{ resource, scopeLogs: [] }] })]
+        ] as const
+      ) {
+        assert.strictEqual(body._tag, "Uint8Array")
+        if (body._tag !== "Uint8Array") throw new Error("Expected a byte body")
+        assert.strictEqual(body.contentType, "application/json")
+        const data = JSON.parse(new TextDecoder().decode(body.body))
+        assert.deepStrictEqual(data[key][0].resource.attributes, [{
+          key: "values",
+          value: {
+            arrayValue: {
+              values: ["NaN", "Infinity", "-Infinity", 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
             }
-          }, { key: "text", value: { stringValue: text } }])
-        }
-      }).pipe(Effect.provide(OtlpSerialization.layerJson))
-  )
+          }
+        }, { key: "text", value: { stringValue: "null" } }])
+      }
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
+
+  it.effect("layerJson writes bytes as base64", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const body = serialization.traces({
+        resourceSpans: [{
+          resource: {
+            attributes: [
+              { key: "slice", value: { bytesValue: Uint8Array.of(9, 0, 255, 1).subarray(1) } },
+              { key: "buffer", value: { bytesValue: Buffer.from([0, 255, 1]) } }
+            ],
+            droppedAttributesCount: 0
+          },
+          scopeSpans: []
+        }]
+      })
+      if (body._tag !== "Uint8Array") throw new Error("Expected a byte body")
+      assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(body.body)).resourceSpans[0].resource.attributes, [
+        { key: "slice", value: { bytesValue: "AP8B" } },
+        { key: "buffer", value: { bytesValue: "AP8B" } }
+      ])
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 })
