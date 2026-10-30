@@ -76,6 +76,35 @@ describe("Sse", () => {
     assert.deepStrictEqual(events, [{ ...input, data: "10%\n50%\ndone\n" }])
   })
 
+  it("strips CR and LF from id and event so they cannot inject fields or events", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed(Sse.encoder.write({
+      _tag: "Event",
+      id: "1\nretry: 1000",
+      event: "update\r\ndata: forged\r\rid: 2\n\n",
+      data: "real"
+    }))
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      id: "1retry: 1000",
+      event: "updatedata: forgedid: 2",
+      data: "real"
+    }])
+  })
+
+  it("strips NUL from id so the encoded id is not ignored by parsers", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed(Sse.encoder.write({ _tag: "Event", id: "1", event: "message", data: "first" }))
+    parser.feed(Sse.encoder.write({ _tag: "Event", id: "2\u00003", event: "message", data: "second" }))
+
+    assert.deepStrictEqual(events.map((event) => (event as Sse.Event).id), ["1", "23"])
+  })
+
   it("strips a UTF-8 BOM from the start of an SSE stream", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
