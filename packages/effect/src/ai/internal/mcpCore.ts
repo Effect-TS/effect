@@ -248,7 +248,8 @@ export interface ResourceTemplateRegistration {
  * @internal
  */
 export interface Resources {
-  readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
+  // Synchronous, so a caller can check skill ownership and register in one step.
+  readonly register: (registration: ResourceRegistration) => void
   readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
   readonly list: (
     invocation: McpInvocation
@@ -594,15 +595,14 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const resources: Resources = {
-    register: (registration) =>
-      Effect.sync(() => {
-        const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
-        if (index === -1) {
-          resourceRegistrations.push(registration)
-        } else {
-          resourceRegistrations[index] = registration
-        }
-      }),
+    register: (registration) => {
+      const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
+      if (index === -1) {
+        resourceRegistrations.push(registration)
+      } else {
+        resourceRegistrations[index] = registration
+      }
+    },
     registerTemplate: (registration) =>
       Effect.sync(() => {
         const index = resourceTemplateRegistrations.findIndex(

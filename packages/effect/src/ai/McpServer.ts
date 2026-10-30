@@ -108,8 +108,8 @@ interface QueuedServerNotification {
 
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
-  // Registers a resource without the check that reserves skill files for their skill.
-  readonly addResource: McpServer["Service"]["addResource"]
+  // Registers a skill's own file, skipping the check that reserves it for the skill.
+  readonly addSkillFile: McpServer["Service"]["addResource"]
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestEndpoints: number }
   readonly globalMiddleware: Array<middleware.Fn<any, any, any>>
@@ -1142,27 +1142,38 @@ export class McpServer extends Context.Service<McpServer, {
         ))
     })
 
-    const addResource: McpServer["Service"]["addResource"] = Effect.fnUntraced(function*(options) {
-      const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
-      if (existingIndex === -1) {
-        resources.push(options)
-      } else {
-        resources[existingIndex] = options
-      }
-      const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
-      yield* internalCore.resources.register({
-        descriptor: options.resource,
-        visible: visible("resources/list", options.resource.uri),
-        isVisible: isEnabled(options.annotations),
-        read: (invocation) =>
-          invoke(options.handle, invocation, {
-            method: "resources/read",
-            target: options.resource.uri,
-            payload: { uri: options.resource.uri }
-          })
+    // Checking skill ownership and both writes happen in one synchronous step,
+    // so a skill cannot claim the URI in between. Skill files skip the check.
+    const addResource = (
+      options: Parameters<McpServer["Service"]["addResource"]>[0],
+      checkOwnership: boolean
+    ): Effect.Effect<void> =>
+      Effect.suspend(() => {
+        if (checkOwnership && internalCore.skills.ownsFile(options.resource.uri)) {
+          return Effect.die(
+            new Cause.IllegalArgumentError(`Resource ${options.resource.uri} is a file of a registered skill`)
+          )
+        }
+        const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
+        if (existingIndex === -1) {
+          resources.push(options)
+        } else {
+          resources[existingIndex] = options
+        }
+        const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
+        internalCore.resources.register({
+          descriptor: options.resource,
+          visible: visible("resources/list", options.resource.uri),
+          isVisible: isEnabled(options.annotations),
+          read: (invocation) =>
+            invoke(options.handle, invocation, {
+              method: "resources/read",
+              target: options.resource.uri,
+              payload: { uri: options.resource.uri }
+            })
+        })
+        return notifications.client["notifications/resources/list_changed"]({})
       })
-      yield* notifications.client["notifications/resources/list_changed"]({})
-    })
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
@@ -1258,14 +1269,7 @@ export class McpServer extends Context.Service<McpServer, {
       get resourceTemplates() {
         return resourceTemplates
       },
-      addResource: (options) =>
-        Effect.suspend(() =>
-          internalCore.skills.ownsFile(options.resource.uri)
-            ? Effect.die(
-              new Cause.IllegalArgumentError(`Resource ${options.resource.uri} is a file of a registered skill`)
-            )
-            : addResource(options)
-        ),
+      addResource: (options) => addResource(options, true),
       addResourceTemplate: Effect.fnUntraced(
         function*({ annotations, completions, handle, routerPath, services, template }) {
           const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
@@ -1423,7 +1427,7 @@ export class McpServer extends Context.Service<McpServer, {
     })
     internalState.set(service, {
       core: internalCore,
-      addResource,
+      addSkillFile: (options) => addResource(options, false),
       notifications: notificationsQueue,
       notificationDelivery,
       globalMiddleware
@@ -3656,7 +3660,7 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
     )
 
     const registry = yield* McpServer
-    const { addResource, core, globalMiddleware } = internalState.get(registry)!
+    const { addSkillFile, core, globalMiddleware } = internalState.get(registry)!
     const services = yield* Effect.context<never>()
     const annotations = options.annotations ?? Context.empty()
     const { invoke, visible } = makeInvoke(services, globalMiddleware)
@@ -3676,7 +3680,7 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
     })
     for (const { content, resource, text } of skill.files) {
       const { uri, mimeType } = resource
-      yield* addResource({
+      yield* addSkillFile({
         resource: new Resource(resource),
         annotations,
         services,
