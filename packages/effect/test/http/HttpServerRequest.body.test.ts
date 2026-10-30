@@ -1,6 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ByteSize, Effect, Stream } from "effect"
-import { HttpClientRequest, HttpEffect, HttpIncomingMessage, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  HttpBody,
+  HttpClientRequest,
+  HttpEffect,
+  HttpIncomingMessage,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/http"
 
 const payload = "hello"
 const fromClient = () =>
@@ -9,6 +16,11 @@ const fromClient = () =>
       HttpClientRequest.setHeader("x-test", "headers-only"),
       HttpClientRequest.bodyStream(Stream.succeed(new TextEncoder().encode(payload)), { contentType: "text/plain" })
     )
+  )
+
+const fromRaw = (body: unknown) =>
+  HttpServerRequest.fromClientRequest(
+    HttpClientRequest.post("http://localhost/upload").pipe(HttpClientRequest.setBody(HttpBody.raw(body)))
   )
 
 const chunked = (chunks: ReadonlyArray<string>, close = true) =>
@@ -54,6 +66,27 @@ describe("request body", () => {
       )
       assert(error.reason._tag === "RequestParseError")
       assert.strictEqual(error.reason.reason, "BodyTooLarge")
+    }))
+
+  it.effect("fromClientRequest fails a raw body over MaxBodySize whose cancellation never settles", () =>
+    Effect.gen(function*() {
+      const error = yield* fromRaw(stalled(["12345"])).text.pipe(
+        Effect.flip,
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+      )
+      assert(error.reason._tag === "RequestParseError")
+      assert.strictEqual(error.reason.reason, "BodyTooLarge")
+    }))
+
+  it.effect("fromClientRequest fails an unreadable raw body under MaxBodySize", () =>
+    Effect.gen(function*() {
+      const web = new Request("http://localhost/upload", { method: "POST", body: "123" })
+      web.body!.getReader()
+      const error = yield* fromRaw(web).text.pipe(
+        Effect.flip,
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+      )
+      assert.strictEqual(error.reason._tag, "RequestParseError")
     }))
 
   for (const accessor of ["arrayBuffer", "text"] as const) {
