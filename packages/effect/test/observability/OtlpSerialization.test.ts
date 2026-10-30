@@ -1,7 +1,12 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { OtlpResource, OtlpSerialization } from "effect/observability"
-import { encodeAnyValue } from "effect/observability/internal/otlpProtobuf"
+import {
+  encodeAnyValue,
+  encodeHistogramDataPoint,
+  encodeNumberDataPoint,
+  encodeSummaryDataPoint
+} from "effect/observability/internal/otlpProtobuf"
 
 describe("OtlpSerialization", () => {
   const boundaries = [
@@ -73,6 +78,22 @@ describe("OtlpSerialization", () => {
     const encoded = encodeAnyValue({ intValue: -1 })
     assert.strictEqual(encoded.length, 11)
     assert.deepStrictEqual(Array.from(encoded), [0x18, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01])
+  })
+
+  it("omits absent metric start timestamps", () => {
+    const point = { attributes: [], timeUnixNano: "2" }
+    const encoded = [
+      encodeNumberDataPoint({ ...point, asInt: 1 }),
+      encodeHistogramDataPoint({ ...point, count: 1, bucketCounts: [1], explicitBounds: [] }),
+      encodeSummaryDataPoint({ ...point, count: 1, sum: 1, quantileValues: [] })
+    ]
+    const time = [0x19, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] // time_unix_nano: 2
+    const one = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    assert.deepStrictEqual(encoded.map((bytes) => Array.from(bytes)), [
+      [...time, 0x31, ...one], // as_int: 1
+      [...time, 0x21, ...one, 0x31, ...one], // count: 1, bucket_counts: [1]
+      [...time, 0x21, ...one, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f] // count: 1, sum: 1.0
+    ])
   })
 
   it.effect("layerProtobuf encodes Summary metrics", () =>
