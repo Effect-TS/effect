@@ -331,10 +331,7 @@ export interface SkillRegistration {
   // `undefined` when this skill has no directory at `uri`. Directories shared
   // by several skills, such as a common path prefix, list the union of what
   // each skill returns.
-  readonly readDirectory: (
-    uri: string,
-    invocation: McpInvocation
-  ) => Effect.Effect<ReadonlyArray<DirectoryChild> | undefined>
+  readonly directory: (uri: string) => ReadonlyArray<DirectoryChild> | undefined
 }
 
 /**
@@ -708,9 +705,8 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const children = new Map<string, DirectoryChild>()
       let found = false
       for (const registration of skillRegistrations.values()) {
-        if (!registration.isVisible(invocation.protocol)) continue
-        const own = yield* registration.readDirectory(uri, invocation)
-        if (own === undefined) continue
+        const own = registration.directory(uri)
+        if (own === undefined || !registration.isVisible(invocation.protocol)) continue
         if (
           registration.visibleInDirectories !== undefined &&
           !(yield* registration.visibleInDirectories(invocation))

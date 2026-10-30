@@ -1497,9 +1497,9 @@ export interface CacheHint {
  * `server/discover`, `tools/list`, `resources/list`,
  * `resources/templates/list` and `prompts/list`. `skills` covers the Skills
  * extension's `skills/list`, `skills/get` and `resources/directory/read`.
- * Omitted entries, and
- * `resources/read` results, keep `{ ttlMs: 0, cacheScope: "private" }`.
- * Earlier protocol revisions have no cache hints and ignore this option.
+ * Omitted entries, and `resources/read` results, keep
+ * `{ ttlMs: 0, cacheScope: "private" }`. Earlier protocol revisions have no
+ * cache hints and ignore this option.
  *
  * These are hints for clients. The server does not cache results, and
  * visibility and invocation checks still run on every request.
@@ -3676,7 +3676,7 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
           target: options.uri,
           payload: { uri: options.uri }
         }),
-      readDirectory: (uri) => Effect.succeed(skill.directories.get(uri))
+      directory: (uri) => skill.directories.get(uri)
     })
     for (const { content, resource, text } of skill.files) {
       const { uri, mimeType } = resource

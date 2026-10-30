@@ -246,8 +246,8 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * `listResources`, `listSkills` or `readResourceDirectory` scan.
  * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
  * items. `callTool`, `getPrompt`, `readResource`, `getSkill` and
- * `readSkillResource` have no
- * deadline unless their own `timeout` option is supplied.
+ * `readSkillResource` have no deadline unless their own `timeout` option is
+ * supplied.
  *
  * `extensions` selects the protocol extensions the client declares. With
  * `skills: true` it declares the Skills extension (SEP-2640) and enables
@@ -555,11 +555,11 @@ export const make: (options: {
     function*(params: { readonly skill: McpSchema.Skill; readonly uri: string }, _options?: CallOptions) {
       yield* requireSkillsOption
       const { skill, uri } = params
-      // A file missing from the manifest is a change to the skill, not a file to trust.
-      const listed = skill.resources === "dynamic"
-        ? undefined
-        : skill.resources.find((resource) => resource.uri === uri)
-      if (skill.resources === "dynamic" ? !McpSkills.isSkillFile(skill.uri, uri) : listed === undefined) {
+      // A file missing from the manifest is a change to the skill, not a file to
+      // trust. A dynamic skill has no manifest, so any file in its directory is read.
+      const manifest = skill.resources === "dynamic" ? undefined : skill.resources
+      const listed = manifest?.find((resource) => resource.uri === uri)
+      if (manifest === undefined ? !McpSkills.isSkillFile(skill.uri, uri) : listed === undefined) {
         return yield* invalid(`${uri} is not a file of the MCP skill ${skill.uri}`)
       }
       const result = yield* call<McpSchema.ReadResourceResult>("resources", "resources/read", { uri })

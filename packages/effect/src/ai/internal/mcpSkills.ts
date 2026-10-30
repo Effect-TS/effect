@@ -24,20 +24,11 @@ import * as Stateless from "./mcpSchema/v2026_07_28.ts"
  */
 export const EXTENSION_ID = "io.modelcontextprotocol/skills"
 
-/**
- * @internal
- */
-export const DIRECTORY_MIME_TYPE = "inode/directory"
+const DIRECTORY_MIME_TYPE = "inode/directory"
 
-/**
- * @internal
- */
-export const MAX_FILES_PER_SKILL = 512
-
-/**
- * @internal
- */
-export const MAX_BYTES_PER_SKILL = 16 * 1024 * 1024
+// The extension's per-skill limits, which every conforming host accepts.
+const MAX_FILES_PER_SKILL = 512
+const MAX_BYTES_PER_SKILL = 16 * 1024 * 1024
 
 /**
  * Adds the extension declaration while any skill is registered. Declaring it
@@ -268,7 +259,7 @@ export interface ServedFile {
 export interface StaticSkill {
   readonly entry: McpCore.Skill
   readonly files: ReadonlyArray<ServedFile>
-  // Directory URI to its direct children, sorted by URI.
+  // Directory URI to its direct children.
   readonly directories: ReadonlyMap<string, ReadonlyArray<McpCore.DirectoryChild>>
 }
 
@@ -361,12 +352,8 @@ export const jsonEquals = (a: unknown, b: unknown): boolean => {
     )
 }
 
-/**
- * The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
- *
- * @internal
- */
-export const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)
+// The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
+const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)
 
 /**
  * Whether `uri` addresses a file inside the skill whose `SKILL.md` is at
@@ -422,9 +409,6 @@ export const isDirectChild = (directory: string, child: string): boolean => {
 }
 
 const decodeFrontmatter = Schema.decodeUnknownEffect(PublicMcpSchema.SkillFrontmatter)
-
-const compareUris = (a: { readonly uri: string }, b: { readonly uri: string }): number =>
-  a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : 0
 
 /**
  * Validates a static skill against the extension's server requirements and
@@ -517,7 +501,7 @@ export const makeStaticSkill = (options: {
 
     const directories = new Map<string, ReadonlyArray<McpCore.DirectoryChild>>()
     for (const [directory, siblings] of children) {
-      directories.set(directory, Array.from(siblings.values()).sort(compareUris))
+      directories.set(directory, Array.from(siblings.values()))
     }
     return { entry: { uri, frontmatter, resources }, files, directories }
   })
