@@ -57,6 +57,22 @@ describe("Ndjson", () => {
       assert.deepStrictEqual(values, [1, 2, 3])
     }))
 
+  it.effect("ignoreEmptyLines skips lines containing only spaces or tabs", () =>
+    Effect.gen(function*() {
+      const input = "1\n \t\n2\n\t"
+      const fromString = yield* Stream.make(input).pipe(
+        Stream.pipeThroughChannel(Ndjson.decodeString({ ignoreEmptyLines: true })),
+        Stream.runCollect
+      )
+      const fromBytes = yield* Stream.make(encoder.encode(input)).pipe(
+        Stream.pipeThroughChannel(Ndjson.decode({ ignoreEmptyLines: true })),
+        Stream.runCollect
+      )
+
+      assert.deepStrictEqual(fromString, [1, 2])
+      assert.deepStrictEqual(fromBytes, [1, 2])
+    }))
+
   it.effect("decode fails a line over maxLineBytes before reading the rest of it", () =>
     Effect.gen(function*() {
       const { error, values } = yield* collect(
