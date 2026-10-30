@@ -6,20 +6,9 @@
  * @since 4.1.1
  */
 import * as Data from "../Data.ts"
-import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
-import * as SchemaGetter from "../SchemaGetter.ts"
+import { ElicitRequestParams, optional } from "./internal/mcpElicitation.ts"
 import type { ProtocolVersion } from "./McpProtocol.ts"
-
-const optional = <S extends Schema.Constraint>(
-  schema: S
-): Schema.decodeTo<Schema.toType<Schema.optional<S>>, Schema.optionalKey<S>> =>
-  Schema.optionalKey(schema).pipe(
-    Schema.decodeTo(Schema.toType(Schema.optional(schema)), {
-      decode: SchemaGetter.passthrough(),
-      encode: SchemaGetter.transformOptional(Option.flatMap(Option.fromUndefinedOr))
-    })
-  )
 
 // =============================================================================
 // JSON-RPC errors
@@ -316,3 +305,22 @@ export class McpReverseOperationError extends Data.TaggedError("McpReverseOperat
   readonly operation: "roots/list" | "sampling/createMessage" | "elicitation/create"
   readonly cause: unknown
 }> {}
+
+/**
+ * Error raised when an MCP elicitation request is declined or fails before
+ * accepted content is returned.
+ *
+ * **Details**
+ *
+ * The error stores the original elicitation request and, when available, the
+ * underlying cause.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.1
+ */
+export class ElicitationDeclined extends Schema.Error<ElicitationDeclined>("@effect/ai/McpSchema/ElicitationDeclined")({
+  _tag: Schema.tag("ElicitationDeclined"),
+  request: ElicitRequestParams,
+  cause: optional(Schema.Defect())
+}) {}

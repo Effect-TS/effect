@@ -60,17 +60,12 @@ import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
   CallToolResult,
-  ElicitationDeclined,
   EnabledWhen,
   GetPromptResult,
-  InternalError,
-  InvalidParams,
-  InvalidRequest,
   isParam,
   McpRequestContext,
   McpServerClient,
   McpServerClientMiddleware,
-  MethodNotFound,
   Prompt,
   Resource,
   ResourceTemplate,
@@ -85,13 +80,14 @@ import type {
   Complete,
   CompleteResult,
   GetPrompt,
-  McpErrorBase,
   Param,
   PromptArgument,
   PromptMessage,
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
+import { ElicitationDeclined, InternalError, InvalidParams, InvalidRequest, MethodNotFound } from "./McpServerError.ts"
+import type { McpErrorBase } from "./McpServerError.ts"
 import * as McpServerError from "./McpServerError.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
