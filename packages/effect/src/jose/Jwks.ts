@@ -114,17 +114,18 @@ const keyTypes: Record<AsymmetricAlgorithm, { readonly kty: string; readonly crv
   EdDSA: { kty: "OKP", crv: "Ed25519" }
 }
 
-const candidates = (keySet: KeySet, selection: Selection): ReadonlyArray<PublicJwk> => {
+// The keys that can ever be selected, computed once per key set rather than
+// on every lookup.
+const supportedKeys = (keySet: KeySet): ReadonlyArray<PublicJwk> => keySet.keys.filter(isPublicJwk)
+
+const candidates = (keys: ReadonlyArray<PublicJwk>, selection: Selection): ReadonlyArray<PublicJwk> => {
   const { crv, kty } = keyTypes[selection.algorithm]
-  // Cheap member checks first: the schema check is the expensive part and
-  // only needs to run on keys that could match.
-  return keySet.keys.filter((key): key is PublicJwk =>
+  return keys.filter((key) =>
     key.kty === kty &&
     ("crv" in key ? key.crv : undefined) === crv &&
     (selection.kid === undefined || key.kid === selection.kid) &&
     (key.alg === undefined || key.alg === selection.algorithm) &&
     (key.use === undefined || key.use === "sig") &&
-    isPublicJwk(key) &&
     (key.key_ops === undefined || key.key_ops.includes("verify"))
   )
 }
@@ -177,9 +178,10 @@ const makeImporter = () => {
  */
 export const makeLocal = (keySet: KeySet): Effect.Effect<Jwks["Service"]> =>
   Effect.sync(() => {
+    const keys = supportedKeys(keySet)
     const importKey = makeImporter()
     return Jwks.of({
-      resolve: (selection) => importKey(candidates(keySet, selection), selection.algorithm)
+      resolve: (selection) => importKey(candidates(keys, selection), selection.algorithm)
     })
   })
 
@@ -229,7 +231,7 @@ export interface RemoteOptions {
 }
 
 interface Snapshot {
-  readonly keySet: KeySet
+  readonly keys: ReadonlyArray<PublicJwk>
   readonly expiresAt: number
 }
 
@@ -341,7 +343,7 @@ export const makeRemote = Effect.fnUntraced(function*(
     if (keySet.keys.length > maxKeys) {
       return yield* unavailable(`The key set has more than ${maxKeys} keys`)
     }
-    return { keySet, expiresAt: (yield* Clock.currentTimeMillis) + timeToLive }
+    return { keys: supportedKeys(keySet), expiresAt: (yield* Clock.currentTimeMillis) + timeToLive }
   }).pipe(
     Effect.scoped,
     Effect.catchTag("HttpClientError", (cause) => Effect.fail(unavailable("The key set request failed", cause))),
@@ -383,10 +385,10 @@ export const makeRemote = Effect.fnUntraced(function*(
   const resolve = (selection: Selection) =>
     Effect.flatMap(Clock.currentTimeMillis, (now): Effect.Effect<PublicKey, JoseError.JoseError> => {
       if (closed) return closedExit
-      const lookup = (snapshot: Snapshot) => importKey(candidates(snapshot.keySet, selection), selection.algorithm)
+      const lookup = (snapshot: Snapshot) => importKey(candidates(snapshot.keys, selection), selection.algorithm)
       const current = cache
       if (current !== undefined && current.expiresAt > now) {
-        const found = candidates(current.keySet, selection)
+        const found = candidates(current.keys, selection)
         if (found.length > 0) return importKey(found, selection.algorithm)
         // An unknown key may have been rotated in. Refetch, unless cooling down.
         return Effect.flatMap(

@@ -126,18 +126,18 @@ export const split = (
  *
  * @internal
  */
-export const decodeHeader = <S extends Schema.ConstraintDecoder<unknown>>(
+export const decodeHeader = <A>(
   segment: string,
-  schema: S,
+  decode: (input: unknown) => Option.Option<A>,
   unsupported: ReadonlyArray<string>
-): Effect.Effect<S["Type"], JoseError.JoseError> => {
+): Effect.Effect<A, JoseError.JoseError> => {
   const bytes = decodeSegment(segment)
   const json = bytes === undefined ? undefined : parseJsonObject(bytes)
   if (json === undefined) return invalidToken("The protected header is not a base64url JSON object")
   for (const name of unsupported) {
     if (Object.hasOwn(json, name)) return invalidToken(`The ${name} header parameter is not supported`)
   }
-  return Option.match(Schema.decodeUnknownOption(schema)(json), {
+  return Option.match(decode(json), {
     onNone: () => invalidToken("The protected header has unsupported or malformed parameters"),
     onSome: Effect.succeed
   })

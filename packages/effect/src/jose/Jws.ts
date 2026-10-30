@@ -10,6 +10,10 @@
  * Bound untrusted token length before verification; this module does not
  * impose a token-size limit.
  *
+ * HMAC signatures run on the `Mac` service. On Node.js and Bun,
+ * `NodeCrypto.layerMac` and `BunCrypto.layerMac` compute them synchronously
+ * with `node:crypto` instead of through Web Crypto.
+ *
  * @stability unstable
  * @since 4.1.1
  */
@@ -134,6 +138,8 @@ export type Requirements = Mac.Mac | Signature.Signature
 export type KeyRequirements<K extends SigningKey | VerificationKey> = K extends SecretKey<HmacAlgorithm> ? Mac.Mac
   : Signature.Signature
 
+const decodeProtectedHeader = Schema.decodeUnknownOption(ProtectedHeader)
+
 interface Parsed {
   readonly protectedHeader: ProtectedHeader
   readonly payload: Uint8Array
@@ -150,7 +156,7 @@ export const parse = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>
 ): Effect.fn.Return<Parsed, JoseError.JoseError> {
   const [header, payload, signature] = yield* split(token, 3)
-  const protectedHeader = yield* decodeHeader(header, ProtectedHeader, ["crit", "b64"])
+  const protectedHeader = yield* decodeHeader(header, decodeProtectedHeader, ["crit", "b64"])
   const payloadBytes = decodeSegment(payload)
   const signatureBytes = decodeSegment(signature)
   if (payloadBytes === undefined || signatureBytes === undefined) {

@@ -251,14 +251,16 @@ const decodeClaims = Effect.fnUntraced(function*<
   }
 })
 
-const ClaimsJson = Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.is(RegisteredClaims)(claims)))
+const decodeClaimsJson = Schema.decodeUnknownEffect(
+  Schema.JsonObject.check(Schema.makeFilter((claims) => Schema.is(RegisteredClaims)(claims)))
+)
 
 const encodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
   claims: S["Type"]
 ): Effect.fn.Return<Uint8Array, Schema.SchemaError, S["EncodingServices"]> {
   const encoded = yield* Schema.encodeEffect(schema)(claims)
-  const json = yield* Schema.decodeUnknownEffect(ClaimsJson)(encoded)
+  const json = yield* decodeClaimsJson(encoded)
   return utf8(JSON.stringify(json))
 })
 

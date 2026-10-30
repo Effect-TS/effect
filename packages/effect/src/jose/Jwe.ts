@@ -91,6 +91,8 @@ export interface Decrypted {
 
 const tagLength = 16
 
+const decodeProtectedHeader = Schema.decodeUnknownOption(ProtectedHeader)
+
 /**
  * Encrypts plaintext as a compact JWE with a random 96-bit IV.
  *
@@ -168,7 +170,7 @@ export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
 ): Effect.fn.Return<Decrypted, JoseError.JoseError | E, Aead.Aead | R> {
   const [header, encryptedKey, iv, ciphertext, tag] = yield* split(token, 5)
   if (encryptedKey !== "") return yield* invalidToken("A dir token must have an empty encrypted key")
-  const protectedHeader = yield* decodeHeader(header, ProtectedHeader, ["crit", "zip"])
+  const protectedHeader = yield* decodeHeader(header, decodeProtectedHeader, ["crit", "zip"])
   const nonce = decodeSegment(iv)
   const data = decodeSegment(ciphertext)
   const authTag = decodeSegment(tag)
