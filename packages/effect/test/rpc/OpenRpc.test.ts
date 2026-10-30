@@ -126,6 +126,29 @@ describe("OpenRpc", () => {
     assert.isFalse(accepts(document, count, { value: 1, children: [{ value: "b", children: [] }] }))
   })
 
+  it("keeps references into shared definitions valid after Draft 7 lowering", () => {
+    const Pair = Schema.Tuple([Schema.String]).annotate({ identifier: "Pair" })
+    const First = Schema.String.check(Schema.makeFilter(() => true, {
+      representation: { id: "test/OpenRpc/First", payload: null, schemas: [Pair.ast] },
+      toJsonSchema: ({ schemas }) => ({ $ref: `${schemas[0].$ref}/prefixItems/0` })
+    }))
+    const document = OpenRpc.fromRpcGroup(
+      RpcGroup.make(Rpc.make("first", { success: Schema.Struct({ value: First }) })),
+      options
+    )
+    const result = method(document, "first").result.schema
+    assert.isTrue(accepts(document, result, { value: "a" }))
+    assert.isFalse(accepts(document, result, { value: 1 }))
+  })
+
+  it("keeps external references in descriptors", () => {
+    const External = Schema.Any.check(Schema.makeFilter((value) => typeof value === "string", {
+      toJsonSchema: () => ({ $ref: "https://example.com/string.json" })
+    }))
+    const document = OpenRpc.fromRpcGroup(RpcGroup.make(Rpc.make("external", { success: External })), options)
+    assert.strictEqual(method(document, "external").result.schema.$ref, "https://example.com/string.json")
+  })
+
   it("describes void calls with a null result and rejects scalar payloads", () => {
     const document = OpenRpc.fromRpcGroup(RpcGroup.make(Rpc.make("void")), {
       ...options,
