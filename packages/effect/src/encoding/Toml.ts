@@ -1,15 +1,15 @@
 /**
  * Parses TOML configuration files.
  *
- * The implementation covers the TOML values and table forms used by Effect's
- * configuration-file CLI primitive while avoiding a generated parser runtime.
+ * The implementation follows the TOML 1.1 specification, which is a superset
+ * of TOML 1.0, while avoiding a generated parser runtime.
  *
  * @stability unstable
  * @since 4.0.0
  */
 
 /*
- * The behavior is based on `toml` 4.1.2.
+ * The behavior is based on `toml` 4.1.2, extended to TOML 1.1.
  *
  * Copyright (c) 2012 Michelle Tilley
  *
@@ -42,9 +42,9 @@ const makeTable = (): Table => Object.create(null)
 const isTable = (value: unknown): value is Table =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date)
 const localDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
-const localTimePattern = /^(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/
+const localTimePattern = /^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/
 const numericOffsetPattern = /^[+-](\d{2}):(\d{2})$/
-const dateTimePattern = /^(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}:\d{2}(?:\.\d+)?)([Zz]|[+-]\d{2}:\d{2})?$/
+const dateTimePattern = /^(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)([Zz]|[+-]\d{2}:\d{2})?$/
 const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 const isValidDate = (date: string): boolean => {
   const [, year, month, day] = localDatePattern.exec(date)!.map(Number)
@@ -52,6 +52,8 @@ const isValidDate = (date: string): boolean => {
   const days = month === 2 && leap ? 29 : daysInMonth[month - 1]
   return month >= 1 && month <= 12 && day >= 1 && day <= days
 }
+// TOML 1.1 allows omitting seconds; `:00` is assumed
+const withSeconds = (time: string): string => time.length === 5 ? `${time}:00` : time
 const isValidTime = (time: string): boolean => {
   const [, hour, minute, second] = localTimePattern.exec(time)!.map(Number)
   return hour <= 23 && minute <= 59 && second <= 60
@@ -80,7 +82,7 @@ class TomlParser {
 
   parse(): Table {
     while (true) {
-      this.skipDocumentWhitespace()
+      this.skipWhitespace()
       if (this.done) {
         return this.root
       }
@@ -235,7 +237,7 @@ class TomlParser {
       return table
     }
 
-    const spaceSeparatedDateTime = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)/
+    const spaceSeparatedDateTime = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})?)/
       .exec(this.input.slice(this.index))
     if (spaceSeparatedDateTime !== null) {
       this.advance(spaceSeparatedDateTime[0].length)
@@ -266,7 +268,8 @@ class TomlParser {
   private parseDate(token: string): Date | string | undefined {
     const dateTime = dateTimePattern.exec(token)
     if (dateTime !== null) {
-      const [, date, time, offset] = dateTime
+      const [, date, rawTime, offset] = dateTime
+      const time = withSeconds(rawTime)
       // `Date` cannot represent a leap second, so offset date-times reject `:60`
       const offsetValid = offset === undefined || (isValidOffset(offset) && time.slice(6, 8) !== "60")
       if (!isValidDate(date) || !isValidTime(time) || !offsetValid) {
@@ -278,7 +281,8 @@ class TomlParser {
       return isValidDate(token) ? token : this.fail(`Invalid date-time '${token}'`)
     }
     if (localTimePattern.test(token)) {
-      return isValidTime(token) ? token : this.fail(`Invalid date-time '${token}'`)
+      const time = withSeconds(token)
+      return isValidTime(time) ? time : this.fail(`Invalid date-time '${token}'`)
     }
     return undefined
   }
@@ -356,13 +360,14 @@ class TomlParser {
         n: "\n",
         f: "\f",
         r: "\r",
+        e: "\u001B",
         "\"": "\"",
         "\\": "\\"
       }
       if (hasOwn.call(escapes, escape)) {
         output += escapes[escape]
-      } else if (escape === "u" || escape === "U") {
-        const length = escape === "u" ? 4 : 8
+      } else if (escape === "x" || escape === "u" || escape === "U") {
+        const length = escape === "x" ? 2 : escape === "u" ? 4 : 8
         const hex = this.input.slice(this.index, this.index + length)
         const codePoint = Number.parseInt(hex, 16)
         if (
@@ -421,13 +426,13 @@ class TomlParser {
     this.expect("[")
     const output: Array<unknown> = []
     while (true) {
-      this.skipArrayWhitespace()
+      this.skipWhitespace()
       if (this.peek() === "]") {
         this.advance()
         return output
       }
       output.push(this.parseValue())
-      this.skipArrayWhitespace()
+      this.skipWhitespace()
       if (this.peek() === "]") {
         this.advance()
         return output
@@ -439,39 +444,23 @@ class TomlParser {
   private parseInlineTable(): Table {
     this.expect("{")
     const output = makeTable()
-    this.skipInlineWhitespace()
-    if (this.peek() === "}") {
-      this.advance()
-      return output
-    }
     while (true) {
+      this.skipWhitespace()
+      if (this.peek() === "}") {
+        this.advance()
+        return output
+      }
       const keys = this.parseKeyPath("=")
       this.skipInlineWhitespace()
       this.expect("=")
       this.skipInlineWhitespace()
       this.assign(output, keys, this.parseValue())
-      this.skipInlineWhitespace()
+      this.skipWhitespace()
       if (this.peek() === "}") {
         this.advance()
         return output
       }
       this.expect(",")
-      this.skipInlineWhitespace()
-      if (this.peek() === "}") {
-        this.fail("Inline tables cannot end with a trailing comma")
-      }
-    }
-  }
-
-  private skipDocumentWhitespace(): void {
-    while (!this.done) {
-      if (/[ \t\r\n]/.test(this.peek())) {
-        this.advance()
-      } else if (this.peek() === "#") {
-        this.skipComment()
-      } else {
-        return
-      }
     }
   }
 
@@ -481,7 +470,8 @@ class TomlParser {
     }
   }
 
-  private skipArrayWhitespace(): void {
+  // Skips whitespace, newlines, and comments
+  private skipWhitespace(): void {
     while (!this.done) {
       if (/[ \t\r\n]/.test(this.peek())) {
         this.advance()
@@ -558,7 +548,8 @@ class TomlParser {
  * Returns `Result.succeed` with the parsed record, or `Result.fail` with an
  * `EncodingError` when the input is not valid TOML. Offset date-times are
  * represented by `Date`, matching the package this parser replaces. Local
- * dates and times remain strings.
+ * dates and times remain strings. Times written without seconds, which TOML
+ * 1.1 allows, are normalized to `:00`, so `13:37` parses as `"13:37:00"`.
  *
  * **Example** (Parsing a TOML document)
  *
