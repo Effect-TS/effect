@@ -19,11 +19,13 @@ import * as Result from "../../Result.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as Scope from "../../Scope.ts"
+import type * as Types from "../../Types.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
+import * as McpSkills from "./mcpSkills.ts"
 import * as McpStatefulRuntime from "./mcpStatefulRuntime.ts"
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
@@ -542,16 +544,17 @@ export const make = Effect.fnUntraced(function*(
             const presence = yield* options.core.registrationPresence
             return yield* Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
-              const capabilities: McpCore.CanonicalServerCapabilities = {
+              const capabilities: Types.Mutable<McpCore.CanonicalServerCapabilities> = {
                 completions: true,
                 logging: true,
                 ...(presence.tools ? { tools: { listChanged: true } } : {}),
                 ...(presence.resources
                   ? { resources: { listChanged: true, subscribe: httpRequest === undefined } }
                   : {}),
-                ...(presence.prompts ? { prompts: { listChanged: true } } : {}),
-                ...(options.serverInfo.extensions ? { extensions: options.serverInfo.extensions } : {})
+                ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
+              const extensions = McpSkills.declareExtension(options.serverInfo.extensions, presence.skills)
+              if (extensions !== undefined) capabilities.extensions = extensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,

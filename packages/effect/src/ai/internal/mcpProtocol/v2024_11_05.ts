@@ -10,9 +10,10 @@ import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2024_11_05.ts"
+import * as McpSkills from "../mcpSkills.ts"
 
 // Pings can arrive before initialize and do not require a client session.
-const ClientRequestRpcs = McpSchema.ClientRequestRpcs.omit("ping").middleware(
+const ClientRequestRpcs = McpSchema.ClientRequestRpcs.omit("ping").merge(McpSkills.LegacyRpcs).middleware(
   PublicMcpSchema.McpServerClientMiddleware
 ).add(McpSchema.Ping)
 
@@ -124,6 +125,7 @@ export const protocol = McpProtocol.make({
   handlerRpcs: AdapterRpcs,
   makeHandlers: (core, lifecycle) =>
     AdapterRpcs.of({
+      ...McpSkills.legacyHandlers(core),
       initialize: (request, { client }) =>
         lifecycle.initialize(McpSchema.protocolVersion, profileFromInitialize(request), client.id).pipe(
           Effect.map((result) =>

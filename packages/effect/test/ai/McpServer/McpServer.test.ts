@@ -2931,7 +2931,7 @@ describe("McpServer", () => {
               ),
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
-            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
           })
           yield* handlers["subscriptions/listen"](
             {
@@ -3005,7 +3005,7 @@ describe("McpServer", () => {
             Deferred.succeed(slowTerminated, [protocolVersion, clientId, requestId, reason]),
           supportedVersions: [McpSchema2026.protocolVersion],
           serverInfo: { name: "SubscriptionBacklogTest", version: "1.0.0" },
-          registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+          registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
         })
         const listen = (clientId: number, requestId: string) =>
           handlers["subscriptions/listen"](
