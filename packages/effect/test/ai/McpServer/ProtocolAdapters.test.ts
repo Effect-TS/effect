@@ -3,7 +3,6 @@ import * as McpCore from "effect/ai/internal/mcpCore"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
-import * as McpServerError from "effect/ai/McpServerError"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Context from "effect/Context"
@@ -395,7 +394,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       yield* server.addTool({
         tool: makeTool("internal-failure", "Fails with an internal error"),
         annotations: Context.empty(),
-        handle: () => Effect.fail(new McpServerError.InternalError({ message: "database unavailable" }))
+        handle: () => Effect.fail(new McpSchema.InternalError({ message: "database unavailable" }))
       })
       yield* server.addTool({
         tool: makeTool("arguments", "Argument normalization probe"),
@@ -1074,14 +1073,14 @@ describe("McpServer protocol adapters", () => {
           body: { jsonrpc: "2.0", id: 30, method: "tools/list", params: {} },
           headers: modernHeaders("tools/list"),
           status: 400,
-          code: McpServerError.INVALID_PARAMS_ERROR_CODE
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE
         },
         {
           name: "missing protocol header",
           body: modernRequest(31, "tools/list"),
           headers: { "Mcp-Method": "tools/list" },
           status: 400,
-          code: McpServerError.HEADER_MISMATCH_ERROR_CODE
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE
         },
         {
           name: "malformed client identity",
@@ -1091,7 +1090,7 @@ describe("McpServer protocol adapters", () => {
           }),
           headers: modernHeaders("tools/list"),
           status: 200,
-          code: McpServerError.INVALID_PARAMS_ERROR_CODE
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE
         },
         {
           name: "unsupported protocol version",
@@ -1125,7 +1124,7 @@ describe("McpServer protocol adapters", () => {
           },
           headers: modernHeaders("initialize"),
           status: 404,
-          code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE
+          code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE
         }
       ] as const
 
@@ -1154,7 +1153,7 @@ describe("McpServer protocol adapters", () => {
       const fixture = yield* makeFixture()
       const legacy = yield* initialize(fixture.post, "2025-11-25")
       const legacyError = errorOf(yield* legacy.request("tools/call", { name: MrtrTool.name, arguments: {} }))
-      assert.strictEqual(legacyError.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
+      assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
       assert.match(legacyError.message, /Client input is not supported/)
     }))
 
@@ -1167,7 +1166,7 @@ describe("McpServer protocol adapters", () => {
 
       assert.strictEqual(
         errorOf(yield* oldClient.request("prompts/get", { name: "audio-prompt" })).code,
-        McpServerError.INVALID_PARAMS_ERROR_CODE
+        McpSchema.INVALID_PARAMS_ERROR_CODE
       )
       assert.property(
         resultOf(yield* marchClient.request("prompts/get", { name: "audio-prompt" })),
@@ -1175,7 +1174,7 @@ describe("McpServer protocol adapters", () => {
       )
       assert.strictEqual(
         errorOf(yield* marchClient.request("prompts/get", { name: "resource-link-prompt" })).code,
-        McpServerError.INVALID_PARAMS_ERROR_CODE
+        McpSchema.INVALID_PARAMS_ERROR_CODE
       )
       assert.property(
         resultOf(yield* juneClient.request("prompts/get", { name: "resource-link-prompt" })),
@@ -1364,7 +1363,7 @@ describe("McpServer protocol adapters", () => {
             properties: {}
           }
         }).pipe(Effect.flip)
-        assert.instanceOf(error, McpServerError.McpReverseOperationUnsupported)
+        assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
       }
       assert.strictEqual(sends, 0)
     }).pipe(Effect.scoped))
@@ -1397,7 +1396,7 @@ describe("McpServer protocol adapters", () => {
           string,
           Effect.Effect<
             unknown,
-            McpServerError.McpReverseOperationError | McpServerError.McpReverseOperationUnsupported
+            McpSchema.McpReverseOperationError | McpSchema.McpReverseOperationUnsupported
           >
         ]
       > = [
@@ -1420,7 +1419,7 @@ describe("McpServer protocol adapters", () => {
 
       for (const [operation, effect] of operations) {
         const error = yield* effect.pipe(Effect.flip)
-        assert.instanceOf(error, McpServerError.McpReverseOperationUnsupported)
+        assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
         assert.strictEqual(error.operation, operation)
         assert.strictEqual(error.protocolVersion, protocol.protocolVersion)
       }
@@ -1499,7 +1498,7 @@ describe("McpServer protocol adapters", () => {
         })
       )
 
-      assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
+      assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
       assert.match(error.message, /audio tool content is not supported by MCP 2024-11-05/)
       assert.strictEqual(fixture.state.projectionMismatchInvocations, 1)
     }))
@@ -1530,7 +1529,7 @@ describe("McpServer protocol adapters", () => {
         jsonrpc: "2.0",
         id: 2,
         error: {
-          code: McpServerError.HEADER_MISMATCH_ERROR_CODE,
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE,
           message: "MCP-Protocol-Version header '2025-11-25' does not match negotiated protocol version '2025-06-18'"
         }
       })
@@ -2020,7 +2019,7 @@ describe("McpServer protocol adapters", () => {
       for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const error = errorOf(yield* client.request("tools/call", { name: "internal-failure" }))
-        assert.strictEqual(error.code, McpServerError.INTERNAL_ERROR_CODE)
+        assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
         assert.strictEqual(error.message, "database unavailable")
       }
     }))
@@ -2037,7 +2036,7 @@ describe("McpServer protocol adapters", () => {
         const message = yield* readJsonRpcResponse(response)
 
         assert.strictEqual(response.status, 200)
-        assert.strictEqual(errorOf(message).code, McpServerError.INTERNAL_ERROR_CODE)
+        assert.strictEqual(errorOf(message).code, McpSchema.INTERNAL_ERROR_CODE)
       }
     }))
 
