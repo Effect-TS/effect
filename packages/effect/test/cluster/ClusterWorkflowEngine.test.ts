@@ -43,6 +43,7 @@ import {
   WorkflowEngine,
   WorkflowInstance
 } from "effect/workflow/WorkflowEngine"
+import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   for (const complete of [true, false]) {
@@ -626,6 +627,86 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         )
       }).pipe(Effect.provide(context))
     }), 20_000)
+
+  for (const ackLost of [false, true]) {
+    it.effect(
+      `runs an activity once after a transient failure ${ackLost ? "acknowledging" : "saving"} its request`,
+      () =>
+        Effect.gen(function*() {
+          const workflow = Workflow.make("ActivitySaveRetry", {
+            payload: {},
+            success: Schema.Number,
+            idempotencyKey: () => "one"
+          })
+          const storage = yield* makeSharedStorage
+          let saveFailures = 0
+          let runs = 0
+          const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+            ...storage,
+            saveRequest: (envelope) => {
+              if (envelope.envelope.tag !== "activity" || saveFailures > 0) return storage.saveRequest(envelope)
+              saveFailures++
+              const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+              return ackLost ? Effect.andThen(storage.saveRequest(envelope), failure) : failure
+            }
+          })
+          yield* Effect.gen(function*() {
+            const executionId = yield* workflow.execute({}, { discard: true })
+            assert.deepStrictEqual(
+              yield* pollUntil(workflow, executionId, "Complete"),
+              new Workflow.Complete({ exit: Exit.succeed(42) })
+            )
+            assert.strictEqual(runs, 1)
+          }).pipe(Effect.provide(
+            workflow.toLayer(() =>
+              Activity.make({
+                name: "Step",
+                success: Schema.Number,
+                execute: Effect.sync(() => {
+                  runs++
+                  return 42
+                })
+              })
+            ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+          ))
+        }),
+      20_000
+    )
+  }
+
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "releases an activity request that failed to save once its retry completes",
+    () =>
+      Effect.gen(function*() {
+        const workflow = Workflow.make("ActivitySaveRelease", {
+          payload: {},
+          success: Schema.Number,
+          idempotencyKey: () => "one"
+        })
+        const storage = yield* makeSharedStorage
+        const control = new WeakRef({})
+        let failed: WeakRef<object> | undefined
+        const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+          ...storage,
+          saveRequest: (envelope) => {
+            if (envelope.envelope.tag !== "activity" || failed) return storage.saveRequest(envelope)
+            failed = new WeakRef(envelope)
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+          }
+        })
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* pollUntil(workflow, executionId, "Complete")
+          yield* collectGarbage
+          assert.isUndefined(control.deref())
+          assert.isUndefined(failed?.deref(), "the failed request must not be retained")
+        }).pipe(Effect.provide(
+          workflow.toLayer(() => Activity.make({ name: "Step", success: Schema.Number, execute: Effect.succeed(42) }))
+            .pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+        ))
+      }),
+    20_000
+  )
 
   it.effect("keeps a completed reply when an older concurrent wake resets it", () =>
     Effect.gen(function*() {
@@ -2366,71 +2447,78 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
-  it.effect("applies a persisted interrupt when a fresh owner replays a failure-suspended workflow", () =>
-    Effect.gen(function*() {
-      let attempts = 0
-      const Failing = Workflow.make("FailureInterruptedRecovery", {
-        payload: {},
-        idempotencyKey: () => "failing"
-      }).annotate(Workflow.SuspendOnFailure, true)
-      const storage = yield* makeSharedStorage
-      // The first owner records the interrupt and resets the run, but crashes
-      // before the reset run is redelivered.
-      let crashed = false
-      const crashingStorage = Layer.succeed(MessageStorage.MessageStorage, {
-        ...storage,
-        unprocessedMessages: (shardIds, options) =>
-          Effect.map(
-            storage.unprocessedMessages(shardIds, options),
-            (messages) =>
-              crashed
-                ? messages.filter((message) => message.envelope._tag !== "Request" || message.envelope.tag !== "run")
-                : messages
-          )
-      })
-      const layer = (storageLayer: Layer.Layer<MessageStorage.MessageStorage>) =>
-        Failing.toLayer(() =>
-          Activity.make({
-            name: "flaky",
-            // A retry would succeed, so a replay that runs it completes normally.
-            execute: Effect.suspend(() => ++attempts === 1 ? Effect.die("boom") : Effect.void)
-          })
-        ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
-      const executionId = yield* Failing.executionId({})
+  // Both the persisted interrupt and the replayed activity reply are read
+  // before a pending interrupt is applied.
+  for (const lookup of [{ tag: "deferred", id: "Workflow/InterruptSignal" }, { tag: "activity", id: "flaky/1" }]) {
+    it.effect(`applies a persisted interrupt when a fresh owner replays a failure-suspended workflow after a transient ${lookup.tag} lookup failure`, () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const Failing = Workflow.make("FailureInterruptedRecovery", {
+          payload: {},
+          idempotencyKey: () => "failing"
+        }).annotate(Workflow.SuspendOnFailure, true)
+        const storage = yield* makeSharedStorage
+        // The first owner records the interrupt and resets the run, but crashes
+        // before the reset run is redelivered.
+        let crashed = false
+        const crashingStorage = Layer.succeed(MessageStorage.MessageStorage, {
+          ...storage,
+          unprocessedMessages: (shardIds, options) =>
+            Effect.map(
+              storage.unprocessedMessages(shardIds, options),
+              (messages) =>
+                crashed
+                  ? messages.filter((message) => message.envelope._tag !== "Request" || message.envelope.tag !== "run")
+                  : messages
+            )
+        })
+        const layer = (storageLayer: Layer.Layer<MessageStorage.MessageStorage>) =>
+          Failing.toLayer(() =>
+            Activity.make({
+              name: "flaky",
+              // A retry would succeed, so a replay that runs it completes normally.
+              execute: Effect.suspend(() => ++attempts === 1 ? Effect.die("boom") : Effect.void)
+            })
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+        const executionId = yield* Failing.executionId({})
 
-      yield* Effect.gen(function*() {
-        yield* TestClock.adjust(1)
-        yield* Failing.execute({}, { discard: true })
-        yield* pollUntil(Failing, executionId, "Suspended")
-        crashed = true
-        yield* Failing.interrupt(executionId)
-        let result = yield* Failing.poll(executionId)
-        for (let i = 0; i < 2000 && Option.isSome(result); i++) {
+        yield* Effect.gen(function*() {
           yield* TestClock.adjust(1)
-          result = yield* Failing.poll(executionId)
-        }
-        assert(Option.isNone(result), "the interrupt must reset the run")
-      }).pipe(Effect.provide(layer(crashingStorage)))
-
-      // The fresh owner's first read of the persisted interrupt fails once.
-      let lookupFailed = false
-      const flakyStorage = Layer.succeed(MessageStorage.MessageStorage, {
-        ...storage,
-        requestIdForPrimaryKey: (options) => {
-          if (!lookupFailed && options.tag === "deferred" && options.id === "Workflow/InterruptSignal") {
-            lookupFailed = true
-            return Effect.fail(new ClusterError.PersistenceError({ cause: "transient interrupt lookup failure" }))
+          yield* Failing.execute({}, { discard: true })
+          yield* pollUntil(Failing, executionId, "Suspended")
+          crashed = true
+          yield* Failing.interrupt(executionId)
+          let result = yield* Failing.poll(executionId)
+          for (let i = 0; i < 2000 && Option.isSome(result); i++) {
+            yield* TestClock.adjust(1)
+            result = yield* Failing.poll(executionId)
           }
-          return storage.requestIdForPrimaryKey(options)
-        }
-      })
-      yield* Effect.gen(function*() {
-        const result = yield* pollUntil(Failing, executionId, "Complete")
-        assert(lookupFailed, "the interrupt lookup must fail once")
-        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit), "the replay must complete as interrupted")
-        assert.strictEqual(attempts, 1, "a fresh owner must not re-run the failed activity")
-      }).pipe(Effect.provide(layer(flakyStorage)))
-    }))
+          assert(Option.isNone(result), "the interrupt must reset the run")
+        }).pipe(Effect.provide(layer(crashingStorage)))
+
+        // The fresh owner's first lookup fails once.
+        let lookupFailed = false
+        const flakyStorage = Layer.succeed(MessageStorage.MessageStorage, {
+          ...storage,
+          requestIdForPrimaryKey: (options) => {
+            if (!lookupFailed && options.tag === lookup.tag && options.id === lookup.id) {
+              lookupFailed = true
+              return Effect.fail(new ClusterError.PersistenceError({ cause: "transient lookup failure" }))
+            }
+            return storage.requestIdForPrimaryKey(options)
+          }
+        })
+        yield* Effect.gen(function*() {
+          const result = yield* pollUntil(Failing, executionId, "Complete")
+          assert(lookupFailed, "the lookup must fail once")
+          assert(
+            result._tag === "Complete" && Exit.hasInterrupts(result.exit),
+            "the replay must complete as interrupted"
+          )
+          assert.strictEqual(attempts, 1, "a fresh owner must not re-run the failed activity")
+        }).pipe(Effect.provide(layer(flakyStorage)))
+      }))
+  }
 
   it.effect("coalesces parked child wakeups while parent cleanup is pending", () =>
     Effect.gen(function*() {
