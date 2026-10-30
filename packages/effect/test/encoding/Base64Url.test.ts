@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
+import * as EncodingError from "effect/encoding/EncodingError"
 
 describe("Base64Url", () => {
   it("encodes strings and bytes without padding", () => {
@@ -110,7 +111,11 @@ describe("Base64Url", () => {
 })
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
-  for (const result of [Base64Url.decode(raw), Base64Url.decodeString(raw)]) {
+  const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
+    Base64Url.decode(raw),
+    Base64Url.decodeString(raw)
+  ]
+  for (const result of results) {
     assert.isTrue(Result.isFailure(result), raw)
     if (Result.isFailure(result)) {
       const { input, kind, message, module } = result.failure

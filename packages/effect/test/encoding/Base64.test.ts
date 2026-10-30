@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
+import * as EncodingError from "effect/encoding/EncodingError"
 
 describe("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
@@ -127,7 +128,11 @@ describe("Base64", () => {
 })
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
-  for (const result of [Base64.decode(raw), Base64.decodeString(raw)]) {
+  const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
+    Base64.decode(raw),
+    Base64.decodeString(raw)
+  ]
+  for (const result of results) {
     assert.isTrue(Result.isFailure(result), raw)
     if (Result.isFailure(result)) {
       const { input, kind, message, module } = result.failure
