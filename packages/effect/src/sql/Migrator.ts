@@ -101,9 +101,9 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  *
  * **Details**
  *
- * `asCommand` wraps the statements that write the migrations table, so clients
- * that execute row-less statements differently, such as ClickHouse, can run
- * them as commands. It defaults to `identity`.
+ * `asCommand` wraps the statements that create the migrations table and insert
+ * into it, for clients such as ClickHouse that run row-less statements as
+ * commands. It defaults to `identity`.
  *
  * @stability unstable
  * @category constructors

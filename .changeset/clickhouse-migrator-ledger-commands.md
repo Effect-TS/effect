@@ -3,4 +3,4 @@
 "@effect/sql-clickhouse": patch
 ---
 
-Fix `ClickhouseMigrator` failing against a real ClickHouse server while creating or writing its migrations table.
+Fix `ClickhouseMigrator` failing to create its migrations table or record applied migrations, by running those statements as ClickHouse commands instead of queries. `Migrator.make` accepts an optional `asCommand` wrapper for these statements, defaulting to `identity`.
