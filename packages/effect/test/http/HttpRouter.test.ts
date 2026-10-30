@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServer, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import * as NetAddress from "effect/net/NetAddress"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -111,6 +112,94 @@ describe("HttpRouter", () => {
       const body = yield* fetchText(routes, "/admin?tab=1")
 
       assert.strictEqual(body, "/?tab=1")
+    }))
+
+  describe("toHttpEffect sub-apps", () => {
+    const Admin = HttpRouter.add("GET", "/admin/stats", HttpServerResponse.text("admin stats"))
+
+    const request = async (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, init?: RequestInit) => {
+      const { dispose, handler } = HttpRouter.toWebHandler(app, { disableLogger: true })
+      try {
+        const response = await handler(new Request("http://localhost/admin/stats", init))
+        return { status: response.status, body: await response.text() }
+      } finally {
+        await dispose()
+      }
+    }
+
+    for (
+      const { name, subApp } of [
+        { name: "only serves sub-app routes through the mount", subApp: Admin },
+        {
+          name: "only serves routes of a sub-app that provides HttpRouter.layer through the mount",
+          subApp: Admin.pipe(Layer.provide(HttpRouter.layer))
+        }
+      ]
+    ) {
+      it(name, async () => {
+        const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
+          const admin = yield* HttpRouter.toHttpEffect(subApp)
+          yield* router.add(
+            "*",
+            "/admin/*",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              if (request.headers.authorization !== "Bearer admin") {
+                return HttpServerResponse.text("unauthorized", { status: 401 })
+              }
+              return yield* Effect.orDie(admin)
+            })
+          )
+        }))
+
+        assert.deepStrictEqual(await request(app), { status: 401, body: "unauthorized" })
+        assert.deepStrictEqual(await request(app, { headers: { authorization: "Bearer admin" } }), {
+          status: 200,
+          body: "admin stats"
+        })
+      })
+    }
+
+    it("mounts a sub-app at one of its own routes", async () => {
+      const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
+        const admin = yield* HttpRouter.toHttpEffect(Admin)
+        yield* router.add("GET", "/admin/stats", Effect.orDie(admin))
+      }))
+
+      assert.deepStrictEqual(await request(app), { status: 200, body: "admin stats" })
+    })
+  })
+
+  it.effect("serve does not reuse an HttpRouter.layer memoized outside it", () =>
+    Effect.gen(function*() {
+      let serverHandler: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, any> | undefined
+      const server = HttpServer.make({
+        address: NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, 0),
+        serve: (handler) => Effect.sync(() => void (serverHandler = handler))
+      })
+      const outside = HttpRouter.add("GET", "/outside", HttpServerResponse.text("outside")).pipe(
+        Layer.provide(HttpRouter.layer)
+      )
+      const app = HttpRouter.serve(HttpRouter.add("GET", "/inside", HttpServerResponse.text("inside")), {
+        disableLogger: true,
+        disableListenLog: true
+      }).pipe(
+        Layer.provideMerge(outside),
+        Layer.provide(Layer.succeed(HttpServer.HttpServer)(server))
+      )
+      yield* Layer.build(app)
+      const status = (path: string) =>
+        serverHandler!.pipe(
+          Effect.catchCause((cause) => Effect.map(HttpServerError.causeResponse(cause), ([response]) => response)),
+          Effect.map((response) => response.status),
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request(`http://localhost${path}`))
+          )
+        )
+
+      assert.strictEqual(yield* status("/inside"), 200)
+      assert.strictEqual(yield* status("/outside"), 404)
     }))
 
   for (const ignoreDuplicateSlashes of [true, false]) {

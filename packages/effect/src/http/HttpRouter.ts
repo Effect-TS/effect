@@ -653,10 +653,18 @@ export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler.
  *
+ * The app is built with its own fresh `HttpRouter`, which also stands in for
+ * `HttpRouter.layer` if the app provides it. The routes and middleware it
+ * registers are only reachable through the returned handler, even when it is
+ * built inside another router app such as `serve` or `toWebHandler`.
+ *
  * **Gotchas**
  *
  * The layer is built with a forked `MemoMap`, so calling `toHttpEffect` twice
  * will build the same layer twice.
+ *
+ * The fresh router reads `RouterConfig` from the context where `toHttpEffect`
+ * is run, not from the `routerConfig` option of the outer server.
  *
  * @stability unstable
  * @category converting
@@ -673,14 +681,16 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.contextWith((context) => {
-    const scope = Context.get(context, Scope.Scope)
-    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
-    return Effect.map(Layer.buildWithMemoMap(Layer.provideMerge(appLayer, layer), memoMap, scope), (context) => {
-      const router = Context.get(context, HttpRouter)
-      return router.asHttpEffect()
-    })
-  }) as any
+  Effect.contextWith((context) =>
+    Effect.map(
+      Layer.buildWithMemoMap(
+        Layer.provideMerge(appLayer, layer),
+        Layer.CurrentMemoMap.forkOrCreate(context, { fresh: [layer] }),
+        Context.get(context, Scope.Scope)
+      ),
+      (context) => Context.get(context, HttpRouter).asHttpEffect()
+    )
+  ) as any
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
 
@@ -1332,6 +1342,10 @@ export const provideRequest =
  * Layers first built inside the app are private to this server. Provide
  * services that must be shared with sibling layers outside `serve`.
  *
+ * The server always builds its own `HttpRouter`, even if `HttpRouter.layer` was
+ * already built outside `serve`. Within the app, `HttpRouter.layer` resolves to
+ * the server's router.
+ *
  * **Gotchas**
  *
  * The layer is built with a forked `MemoMap`, so calling `serve` twice will
@@ -1384,7 +1398,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
       : layer
   )
   return Effect.contextWith((context) => {
-    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
+    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context, { fresh: [layer] })
     return Layer.buildWithMemoMap(layerWithRouter, memoMap, Context.get(context, Scope.Scope))
   }).pipe(
     Effect.map((context) => {
