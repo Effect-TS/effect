@@ -44,7 +44,7 @@ import * as internal from "./internal/webCrypto.ts"
 import type * as KeyFormat from "./KeyFormat.ts"
 import * as Mac from "./Mac.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { type CryptoKey as WebCryptoKey, WebCrypto } from "./WebCrypto.ts"
+import * as WebCrypto from "./WebCrypto.ts"
 
 const KeyTypeId = "~effect/crypto/KeyWrap/Key" as const
 const PrivateKeyTypeId = "~effect/crypto/KeyWrap/PrivateKey" as const
@@ -417,7 +417,7 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
   KeyWrap,
   Effect.gen(function*() {
     const random = yield* SecureRandom.SecureRandom
-    const crypto = yield* WebCrypto
+    const crypto = yield* WebCrypto.WebCrypto
     const kwCryptoKey = KeyModel.makeCache((subtle, bytes) =>
       subtle.importKey("raw", bytes as BufferSource, "AES-KW", false, ["wrapKey", "unwrapKey"])
     )
@@ -553,7 +553,7 @@ export const key = <A extends AesKw>(
  */
 export const fromCryptoKey = <A extends AesKw>(
   algorithm: A,
-  cryptoKey: WebCryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
   KeyModel.fromCryptoKey("KeyWrap", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
     type: "secret",
@@ -570,7 +570,7 @@ const rsaFromCryptoKey = <K>(
   proto: object,
   algorithm: RsaOaep,
   role: Asymmetric.Role,
-  cryptoKey: WebCryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<K, CryptoError.CryptoError> =>
   KeyModel.fromCryptoKey("KeyWrap", method, proto, algorithm, cryptoKey, {
     type: role,
@@ -597,7 +597,7 @@ const rsaFromCryptoKey = <K>(
  */
 export const privateKeyFromCryptoKey = <A extends RsaOaep>(
   algorithm: A,
-  cryptoKey: WebCryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
   rsaFromCryptoKey("privateKeyFromCryptoKey", PrivateKeyProto, algorithm, "private", cryptoKey)
 
@@ -617,7 +617,7 @@ export const privateKeyFromCryptoKey = <A extends RsaOaep>(
  */
 export const publicKeyFromCryptoKey = <A extends RsaOaep>(
   algorithm: A,
-  cryptoKey: WebCryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
   rsaFromCryptoKey("publicKeyFromCryptoKey", PublicKeyProto, algorithm, "public", cryptoKey)
 

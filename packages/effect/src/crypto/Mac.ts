@@ -23,7 +23,7 @@ import * as Digest from "./Digest.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { type CryptoKey as WebCryptoKey, WebCrypto } from "./WebCrypto.ts"
+import * as WebCrypto from "./WebCrypto.ts"
 
 const TypeId = "~effect/crypto/Mac/Key" as const
 
@@ -215,7 +215,7 @@ export const layerWebCryptoWith = (options: {
     Mac,
     Effect.gen(function*() {
       const random = yield* SecureRandom.SecureRandom
-      const crypto = yield* WebCrypto
+      const crypto = yield* WebCrypto.WebCrypto
       const cryptoKeyFor = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
         subtle.importKey("raw", bytes as BufferSource, importParams(algorithm), false, ["sign", "verify"])
       )
@@ -321,7 +321,7 @@ export const key = <A extends Algorithm>(
  */
 export const fromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: WebCryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
   KeyModel.fromCryptoKey("Mac", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
     type: "secret",
