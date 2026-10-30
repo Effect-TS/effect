@@ -550,3 +550,18 @@ it.effect("Authenticate rejects a challenge older than its time to live", () =>
     ).pipe(Effect.catch((error) => Effect.succeed(error.message)))
     assert.strictEqual(result, "Session auth challenge has expired")
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate accepts the challenge from an earlier overlapping Hello", () =>
+  Effect.gen(function*() {
+    const client = yield* makeAuthClient({
+      storage: yield* EventLogServerUnencrypted.makeStorageMemory,
+      authorization: allowAll
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Hello"]()
+
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    )
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
