@@ -385,17 +385,10 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.gen(function*() {
-    const scope = yield* Effect.scope
-    const memoMap = yield* Layer.makeMemoMap
-    const context = yield* Layer.buildWithMemoMap(
-      Layer.provideMerge(appLayer, layer),
-      memoMap,
-      scope
-    )
-    const router = Context.get(context, HttpRouter)
-    return router.asHttpEffect()
-  }) as any
+  Effect.map(
+    Layer.build(Layer.provideMerge(appLayer, layer)),
+    (context) => Context.get(context, HttpRouter).asHttpEffect()
+  ) as any
 
 /**
  * @since 1.0.0
