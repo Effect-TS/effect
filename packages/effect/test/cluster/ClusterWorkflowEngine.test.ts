@@ -627,6 +627,52 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }), 20_000)
 
+  for (const ackLost of [false, true]) {
+    it.effect(
+      `runs an activity once after a transient failure ${ackLost ? "acknowledging" : "saving"} its request`,
+      () =>
+        Effect.gen(function*() {
+          const workflow = Workflow.make("ActivitySaveRetry", {
+            payload: {},
+            success: Schema.Number,
+            idempotencyKey: () => "one"
+          })
+          const storage = yield* makeSharedStorage
+          let saveFailures = 0
+          let runs = 0
+          const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+            ...storage,
+            saveRequest: (envelope) => {
+              if (envelope.envelope.tag !== "activity" || saveFailures > 0) return storage.saveRequest(envelope)
+              saveFailures++
+              const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+              return ackLost ? Effect.andThen(storage.saveRequest(envelope), failure) : failure
+            }
+          })
+          yield* Effect.gen(function*() {
+            const executionId = yield* workflow.execute({}, { discard: true })
+            assert.deepStrictEqual(
+              yield* pollUntil(workflow, executionId, "Complete"),
+              new Workflow.Complete({ exit: Exit.succeed(42) })
+            )
+            assert.strictEqual(runs, 1)
+          }).pipe(Effect.provide(
+            workflow.toLayer(() =>
+              Activity.make({
+                name: "Step",
+                success: Schema.Number,
+                execute: Effect.sync(() => {
+                  runs++
+                  return 42
+                })
+              })
+            ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+          ))
+        }),
+      20_000
+    )
+  }
+
   it.effect("keeps a completed reply when an older concurrent wake resets it", () =>
     Effect.gen(function*() {
       const firstReset = yield* Latch.make()
