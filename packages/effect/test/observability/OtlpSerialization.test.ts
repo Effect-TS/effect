@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { OtlpResource, OtlpSerialization } from "effect/observability"
 import { encodeAnyValue } from "effect/observability/internal/otlpProtobuf"
+import { Buffer } from "node:buffer"
 
 describe("OtlpSerialization", () => {
   const boundaries = [
@@ -203,5 +204,27 @@ describe("OtlpSerialization", () => {
           }
         }, { key: "text", value: { stringValue: "null" } }])
       }
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
+
+  it.effect("layerJson writes bytes as base64", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const body = serialization.traces({
+        resourceSpans: [{
+          resource: {
+            attributes: [
+              { key: "slice", value: { bytesValue: Uint8Array.of(9, 0, 255, 1).subarray(1) } },
+              { key: "buffer", value: { bytesValue: Buffer.from([0, 255, 1]) } }
+            ],
+            droppedAttributesCount: 0
+          },
+          scopeSpans: []
+        }]
+      })
+      if (body._tag !== "Uint8Array") throw new Error("Expected a byte body")
+      assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(body.body)).resourceSpans[0].resource.attributes, [
+        { key: "slice", value: { bytesValue: "AP8B" } },
+        { key: "buffer", value: { bytesValue: "AP8B" } }
+      ])
     }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 })
