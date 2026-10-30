@@ -1532,7 +1532,13 @@ export const makeStoreSql: (
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
-  const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
+  const secondsFromNow = (seconds: number) => {
+    const rounded = Math.max(Math.ceil(seconds), 0)
+    return sql.onDialectOrElse({
+      sqlite: () => sql`strftime('%Y-%m-%d %H:%M:%f', 'now', '${sql.literal(rounded.toString())} seconds')`,
+      orElse: () => secondsOffset(rounded)
+    })
+  }
   // Deadline for a delayed offer, which must never land before the delay
   // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
   // start. mysql and sqlite clocks drop the fraction of the current second, so
@@ -1822,7 +1828,7 @@ export const makeStoreSql: (
               WHERE queue_name = ${name}
               AND state = 'pending'
               AND attempts < ${maxAttempts}
-              AND visible_at <= ${sqlNow}
+              AND visible_at <= strftime('%Y-%m-%d %H:%M:%f', 'now')
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY visible_at ASC, sequence ASC
               LIMIT ${sql.literal(size.toString())}

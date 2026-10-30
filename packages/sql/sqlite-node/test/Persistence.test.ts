@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, expect, it } from "@effect/vitest"
-import { Duration, Effect, FileSystem, Layer } from "effect"
+import { Duration, Effect, FileSystem, Layer, Schedule, Schema } from "effect"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
@@ -201,6 +201,40 @@ PersistedQueueTest.suite(
 )
 
 it.layer(ClientLayer)((it) => PersistedQueueSqlTest.suiteWith(it))
+
+it.layer(ClientLayer)("PersistedQueue retry precision", (it) => {
+  it.effect("preserves fractional seconds in retry deadlines", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const store = yield* PersistedQueue.makeStoreSql({ pollInterval: "10 millis" })
+      const factory = yield* PersistedQueue.makeFactory.pipe(
+        Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+      )
+      const queue = yield* factory.make({
+        name: "retry-precision",
+        schema: Schema.String,
+        retrySchedule: Schedule.spaced("1 second")
+      })
+      yield* queue.offer("job")
+
+      const now = sql<{ now: number }>`SELECT (julianday('now') - 2440587.5) * 86400000 AS now`
+      let before: number
+      do {
+        yield* Effect.sleep(10)
+        before = (yield* now)[0].now
+      } while (before % 1000 < 500 || before % 1000 >= 600)
+
+      assert.strictEqual(yield* queue.take(() => Effect.fail("retry")).pipe(Effect.flip), "retry")
+      const [{ deadline }] = yield* sql<{ deadline: number }>`
+        SELECT (julianday(visible_at) - 2440587.5) * 86400000 AS deadline
+        FROM effect_queue WHERE queue_name = 'retry-precision'
+      `
+      const after = (yield* now)[0].now
+      assert.isAtLeast(deadline - before, 999)
+      assert.isAtMost(deadline - after, 1001)
+      assert.strictEqual(yield* queue.take(Effect.succeed), "job")
+    }).pipe(TestClock.withLive), { timeout: 10000 })
+})
 
 it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
   it.effect("deletes expired entries in batches", () =>
