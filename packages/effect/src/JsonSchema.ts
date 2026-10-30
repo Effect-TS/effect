@@ -513,6 +513,20 @@ export function toDocumentDraft07(document: Document<"draft-2020-12">): Document
 }
 
 /**
+ * Converts a document whose definitions were relocated by
+ * {@link toMultiDocumentComponents} to Draft-07, keeping references to
+ * `#/components/schemas/...` in place.
+ *
+ * @internal
+ */
+export function toComponentsDocumentDraft07(document: Document<"draft-2020-12">): Document<"draft-07"> {
+  return {
+    dialect: "draft-07",
+    ...convertDocument(document, draft07Adapter, undefined, ["components", "schemas"])
+  }
+}
+
+/**
  * Converts a `Document<"draft-2020-12">` to a `Document<"draft-04">`.
  *
  * **When to use**
@@ -975,13 +989,19 @@ function convertSchema(root: JsonSchema, adapter: Adapter, options?: ConverterOp
 function convertDocument(
   document: Document<"draft-2020-12">,
   adapter: Adapter,
-  options?: ConverterOptions
+  options?: ConverterOptions,
+  definitionsPath?: Path
 ): { readonly schema: JsonSchema; readonly definitions: Definitions } {
   return runConverter(adapter, { ...options, trackIds: true }, (convert) => ({
     schema: convert(document.schema) as JsonSchema,
     definitions: mapObject(
       document.definitions,
-      (definition, key) => convert(definition, ["$defs", key], ["definitions", key]) as JsonSchema
+      (definition, key) =>
+        convert(
+          definition,
+          [...(definitionsPath ?? ["$defs"]), key],
+          [...(definitionsPath ?? ["definitions"]), key]
+        ) as JsonSchema
     ) as Definitions
   }))
 }
