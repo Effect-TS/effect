@@ -653,18 +653,20 @@ export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler.
  *
- * The app is built with its own fresh `HttpRouter`, so its routes and
- * middleware are only reachable through the returned handler, even when it is
- * built inside another router app such as `serve` or `toWebHandler`.
+ * The app is built with its own fresh `HttpRouter`, so the routes and
+ * middleware it registers through `HttpRouter` are only reachable through the
+ * returned handler, even when it is built inside another router app such as
+ * `serve` or `toWebHandler`.
  *
  * **Gotchas**
  *
  * The layer is built with a forked `MemoMap`, so calling `toHttpEffect` twice
  * will build the same layer twice.
  *
- * Routes registered by a layer that provides `HttpRouter.layer` itself are
- * added to the memoized router rather than the fresh one, so they are not
- * served by the returned handler.
+ * Do not provide `HttpRouter.layer` to a `toHttpEffect` app. It resolves to the
+ * memoized router, which inside `serve` or `toWebHandler` is the outer
+ * server's router, so the app's routes would be served there and skip any
+ * checks on the route that mounts the returned handler.
  *
  * The fresh router reads `RouterConfig` from the context where `toHttpEffect`
  * is run, not from the `routerConfig` option of the outer server.
