@@ -272,7 +272,7 @@ describe("Response", () => {
       ] as const
     ) {
       it(`${name} round trips a ${part.type} part`, () => {
-        const codec = SchemaBinary.toCodec<unknown, unknown>(makeSchema())
+        const codec = SchemaBinary.toCodec(makeSchema())
 
         deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(part)), part)
       })
