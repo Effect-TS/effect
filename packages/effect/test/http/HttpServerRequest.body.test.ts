@@ -68,6 +68,23 @@ describe("request body", () => {
       assert.strictEqual(error.reason.reason, "BodyTooLarge")
     }))
 
+  it.effect("fromClientRequest does not classify a propagated upstream failure as BodyTooLarge", () =>
+    Effect.gen(function*() {
+      const oversized = yield* fromClient().text.pipe(
+        Effect.flip,
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+      )
+      assert(oversized.reason._tag === "RequestParseError")
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.post("http://localhost/upload").pipe(
+          HttpClientRequest.setBody(HttpBody.stream(Stream.fail(oversized.reason.cause)))
+        )
+      )
+      const error = yield* Effect.flip(request.text)
+      assert(error.reason._tag === "RequestParseError")
+      assert.strictEqual(error.reason.reason, undefined)
+    }))
+
   it.effect("fromClientRequest fails a raw body over MaxBodySize whose cancellation never settles", () =>
     Effect.gen(function*() {
       const error = yield* fromRaw(stalled(["12345"])).text.pipe(
