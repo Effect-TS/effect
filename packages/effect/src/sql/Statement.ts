@@ -1618,8 +1618,7 @@ const withStatement = <A, X, E, R>(
 /**
  * Runs statements in order on one connection under one client span, applying
  * the current transformer and each statement's own compiler and row
- * transform. Backs driver batch APIs such as `PgClient.batch`, through the
- * connection's `executeBatch`.
+ * transform. Backs `SqlClient.batch`.
  *
  * @internal
  */
@@ -1654,7 +1653,10 @@ export const executeBatch = (
         span.attribute(ATTR_DB_QUERY_TEXT, compiled.map(([sql]) => sql).join("; "))
         return runOnConnection(fiber, span, acquirer, borrower, (connection) =>
           connection.executeBatch === undefined
-            ? Effect.die(new Error("The driver's connection does not implement executeBatch"))
+            ? Effect.forEach(
+              compiled,
+              ([sql, params], index) => connection.execute(sql, params, statements[index].transformRows)
+            )
             : Effect.map(connection.executeBatch(compiled), (results) =>
               results.map((rows, index) => {
                 const transformRows = statements[index].transformRows

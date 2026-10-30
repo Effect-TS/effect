@@ -69,11 +69,9 @@ export interface Connection {
    *
    * **Details**
    *
-   * Optional. Drivers that expose a batch API through
-   * `SqlClient.clientBatch` implement it to send the statements in one round
-   * trip.
-   *
-   * @since 4.2.0
+   * Optional. `SqlClient.batch` uses it when present, so a driver can send the
+   * statements in one round trip, and otherwise runs them one at a time with
+   * `execute` on the same connection.
    */
   readonly executeBatch?: (
     statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>

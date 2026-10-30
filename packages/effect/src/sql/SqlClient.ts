@@ -33,30 +33,6 @@ import * as Statement from "./Statement.ts"
 
 const TypeId = "~effect/sql/SqlClient"
 
-/** @internal */
-export const batchKey = "~effect/sql/SqlClient/batch" as const
-
-/**
- * Returns the client's batch runner, for drivers that expose a batch API
- * backed by `Connection.executeBatch`.
- *
- * **Details**
- *
- * The runner applies the current `Statement.CurrentTransformer` and each
- * statement's own compiler and row transform, traces the batch as one client
- * span, and runs it on the enclosing transaction's connection when there is
- * one. An empty batch succeeds with `[]` without acquiring a connection. A
- * connection without `executeBatch` dies.
- *
- * @stability unstable
- * @category constructors
- * @since 4.2.0
- */
-export const clientBatch = (client: SqlClient) =>
-  (client as any)[batchKey] as (
-    statements: ReadonlyArray<Statement.Statement<any>>
-  ) => Effect.Effect<ReadonlyArray<ReadonlyArray<any>>, SqlError>
-
 /**
  * SQL client service interface, combining the statement constructor API with
  * connection reservation, transaction handling, and reactive query helpers.
@@ -163,6 +139,52 @@ export interface SqlClient extends Constructor {
    * immediately.
    */
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
+
+  /**
+   * Runs the statements in order on one connection and returns each
+   * statement's rows.
+   *
+   * **When to use**
+   *
+   * Use to run dependent statements together, such as setting
+   * transaction-local context with `set_config(..., true)` before a query.
+   *
+   * **Details**
+   *
+   * Each statement is compiled and its rows transformed by the client that
+   * built it, and the current `Statement.CurrentTransformer` applies to each
+   * one. The batch runs under one client span, on the enclosing transaction's
+   * connection when there is one. An empty batch succeeds with `[]` without
+   * acquiring a connection.
+   *
+   * Drivers that implement `Connection.executeBatch` send the statements in
+   * one round trip. PostgreSQL runs such a batch as one implicit transaction
+   * outside `withTransaction`, so a failing statement fails the batch and
+   * nothing from it is kept. Other drivers run the statements one at a time,
+   * so wrap the batch in `withTransaction` when it must be atomic.
+   *
+   * **Example** (Setting row-level security context for one query)
+   *
+   * ```ts
+   * import { Effect } from "effect"
+   * import { SqlClient } from "effect/sql"
+   *
+   * const items = (org: string) =>
+   *   Effect.gen(function*() {
+   *     const sql = yield* SqlClient.SqlClient
+   *     const [, rows] = yield* sql.batch([
+   *       sql`SELECT set_config('app.organization_id', ${org}, true)`,
+   *       sql`SELECT * FROM item`
+   *     ])
+   *     return rows
+   *   })
+   * ```
+   *
+   * @since 4.2.0
+   */
+  readonly batch: <const S extends ReadonlyArray<Statement.Statement<any>>>(
+    statements: S
+  ) => Effect.Effect<{ readonly [K in keyof S]: Effect.Success<S[K]> }, SqlError>
 
   /**
    * Use the Reactivity service to create a reactive query.
@@ -344,7 +366,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       withTransaction,
       transactionService,
       afterCommit,
-      [batchKey]: (statements: ReadonlyArray<Statement.Statement<any>>) =>
+      batch: (statements: ReadonlyArray<Statement.Statement<any>>) =>
         Statement.executeBatch(statements, getConnection, borrower, options.spanAttributes),
       reserve: transactionAcquirer,
       driver: options.driver,
