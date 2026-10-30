@@ -10949,7 +10949,8 @@ export interface BigDecimalFromString extends decodeTo<BigDecimal, String> {
  *
  * **Gotchas**
  *
- * An empty string decodes as zero.
+ * An empty string decodes as zero. Strings with a scale outside ±10,000, such
+ * as `"1e300000000"`, are rejected.
  *
  * @see {@link BigDecimal} for validating values that are already BigDecimal values
  * @see {@link BigIntFromString} for parsing base-10 integer strings into bigint values

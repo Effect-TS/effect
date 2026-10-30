@@ -2268,10 +2268,14 @@ Expected a value between -2147483648 and 2147483647`
       const decoding = asserts.decoding()
       await decoding.succeed("0", Option.getOrThrow(BigDecimal.fromString("0")))
       await decoding.succeed("123.456", Option.getOrThrow(BigDecimal.fromString("123.456")))
+      await decoding.fail("1e300000000", `Expected a valid BigDecimal string`)
+      await decoding.fail("10e10000", `Expected a valid BigDecimal string`)
+      await decoding.succeed("1e+10000", BigDecimal.make(1n, -10_000))
 
       const encoding = asserts.encoding()
       await encoding.succeed(BigDecimal.make(0n, 0), "0")
       await encoding.succeed(BigDecimal.make(123456n, 3), "123.456")
+      await encoding.succeed(BigDecimal.make(1n, -10_000), "1e+10000")
       await encoding.fail(
         "a",
         `Expected BigDecimal`
