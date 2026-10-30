@@ -11,7 +11,8 @@ const jsoncSpace = /(?:[ \t\r\n]|\/\/[^\r\n]*|\/\*[^]*?\*\/)*/uy
 const jsonNumber = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y
 
 // The escapes JSON and JSON5 share, indexed by the character after the backslash.
-const escapes: Array<string | undefined> = []
+// A null prototype keeps absent entries from resolving to inherited properties.
+const escapes: Record<number, string | undefined> = Object.create(null)
 for (const [escape, value] of ["\"\"", "\\\\", "//", "b\b", "f\f", "n\n", "r\r", "t\t"]) {
   escapes[escape.charCodeAt(0)] = value
 }
