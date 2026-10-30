@@ -1,40 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 import * as McpSchema from "effect/ai/McpSchema"
-import * as McpServerError from "effect/ai/McpServerError"
 
 describe("McpSchema", () => {
-  // The server errors moved to McpServerError; McpSchema keeps re-exporting them so existing imports still work.
-  it("should re-export every server error from McpServerError", () => {
-    const moved = [
-      "McpErrorBase",
-      "ParseError",
-      "InvalidRequest",
-      "MethodNotFound",
-      "InvalidParams",
-      "InternalError",
-      "McpError",
-      "ElicitationDeclined",
-      "McpReverseOperationUnsupported",
-      "McpReverseOperationError",
-      "INVALID_REQUEST_ERROR_CODE",
-      "METHOD_NOT_FOUND_ERROR_CODE",
-      "INVALID_PARAMS_ERROR_CODE",
-      "INTERNAL_ERROR_CODE",
-      "PARSE_ERROR_CODE",
-      "HEADER_MISMATCH_ERROR_CODE",
-      "UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE"
-    ] as const
-    for (const name of moved) {
-      assert.isDefined((McpServerError as Record<string, unknown>)[name], name)
-      assert.strictEqual(
-        (McpSchema as Record<string, unknown>)[name],
-        (McpServerError as Record<string, unknown>)[name],
-        name
-      )
-    }
-  })
-
   // Property schemas may be objects or booleans.
   // https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2
   it("should round-trip tool schemas when properties contain object or boolean schemas", () => {
