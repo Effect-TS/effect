@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
-import * as EncodingError from "effect/encoding/EncodingError"
+import type * as EncodingError from "effect/encoding/EncodingError"
 
 describe("Base64Url", () => {
   it("encodes strings and bytes without padding", () => {

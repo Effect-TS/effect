@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
-import * as EncodingError from "effect/encoding/EncodingError"
+import type * as EncodingError from "effect/encoding/EncodingError"
 
 describe("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
