@@ -8,7 +8,11 @@ import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as EventLogSessionAuth from "effect/eventlog/EventLogSessionAuth"
 import { makeGetIdentityRootSecretMaterial } from "effect/eventlog/internal/identityRootSecretDerivation"
+import * as RpcClient from "effect/rpc/RpcClient"
+import type * as RpcMessage from "effect/rpc/RpcMessage"
+import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
+import { TestClock } from "effect/testing"
 import * as RegressionTest from "./EventLogServerUnencryptedRegressionTest.ts"
 
 RegressionTest.suite("memory", EventLogServerUnencrypted.layerStorageMemory)
@@ -493,4 +497,56 @@ it.effect("Authenticate passes the presented signing key to identity authorizati
     )
     assert.deepStrictEqual(yield* Ref.get(policyCalls), [otherSigningPublicKey, ownerSigningPublicKey])
     assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+const makeConnections = Effect.gen(function*() {
+  const handlers = yield* Layer.build(EventLogServerUnencrypted.layerRpcHandlers.pipe(
+    Layer.provide(EventLogServerUnencrypted.layerStorageMemory),
+    Layer.provide(EventLog.layerRegistry),
+    Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+      resolve: ({ storeId }) => Effect.succeed(storeId),
+      hasStore: () => Effect.succeed(true)
+    })),
+    Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, allowAll))
+  ))
+  const clients = new Map<number, (response: RpcMessage.FromServer<any>) => Effect.Effect<void>>()
+  const server = yield* RpcServer.makeNoSerialization(EventLogMessage.EventLogRemoteRpcs, {
+    onFromServer: (response) => clients.get(response.clientId)?.(response) ?? Effect.void
+  }).pipe(Effect.provideContext(handlers))
+  const connect = Effect.fnUntraced(function*(clientId: number) {
+    const client = yield* RpcClient.makeNoSerialization(EventLogMessage.EventLogRemoteRpcs, {
+      supportsAck: true,
+      onFromClient: ({ message }) => server.write(clientId, message)
+    })
+    clients.set(clientId, client.write)
+    return client.client
+  })
+  return { connect, disconnect: server.disconnect }
+})
+
+it.effect("Authenticate rejects a challenge issued to a disconnected client", () =>
+  Effect.gen(function*() {
+    const { connect, disconnect } = yield* makeConnections
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* (yield* connect(1))["EventLog.Hello"]()
+    yield* disconnect(1)
+
+    const result = yield* (yield* connect(1))["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.catch((error) => Effect.succeed(error.message)))
+    assert.strictEqual(result, "Session auth challenge has expired")
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate rejects a challenge older than its time to live", () =>
+  Effect.gen(function*() {
+    const { connect } = yield* makeConnections
+    const identity = yield* EventLog.makeIdentity
+    const client = yield* connect(1)
+    const hello = yield* client["EventLog.Hello"]()
+    yield* TestClock.adjust(EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis)
+
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.catch((error) => Effect.succeed(error.message)))
+    assert.strictEqual(result, "Session auth challenge has expired")
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
