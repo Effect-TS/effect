@@ -15,9 +15,8 @@ import {
   TransportError
 } from "../graphql/GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLProtocol, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
-import * as Headers from "../http/Headers.ts"
-import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
+import { parseRetryAfter } from "./graphqlHeaders.ts"
 
 /**
  * Builds a response error with raw data and transport metadata.
@@ -226,19 +225,16 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
     if (isStatusOk(result)) {
       return Effect.fail(fail(new DecodeError({ description: "data is null or missing without errors" })))
     }
-    return Clock.clockWith((clock) => {
-      const retryAfter = Headers.parseRetryAfter(result.headers?.["retry-after"] ?? "")
-      return Effect.fail(fail(
+    return Clock.clockWith((clock) =>
+      Effect.fail(fail(
         new TransportError({
           description: `HTTP ${result.status} response without GraphQL errors`,
           status: result.status,
           headers: result.headers,
-          retryAfter: Result.isSuccess(retryAfter)
-            ? Headers.retryAfterDelay(retryAfter.success, clock.currentTimeMillisUnsafe())
-            : undefined
+          retryAfter: parseRetryAfter(result.headers?.["retry-after"], clock.currentTimeMillisUnsafe())
         })
       ))
-    })
+    )
   }
 
   const decodeStrict = (

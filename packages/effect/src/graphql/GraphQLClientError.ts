@@ -6,11 +6,10 @@
  * @since 4.0.0
  */
 import type * as Duration from "../Duration.ts"
-import * as Headers from "../http/Headers.ts"
+import type * as Headers from "../http/Headers.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import { HeadersSchema } from "../internal/graphqlHeaders.ts"
+import { HeadersSchema, parseRetryAfter } from "../internal/graphqlHeaders.ts"
 import { hasProperty } from "../Predicate.ts"
-import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 
 const TypeId = "~effect/graphql/GraphQLClientError"
@@ -220,17 +219,6 @@ export const isFatalCloseCode = (code: number): boolean =>
   code >= 1000 && code < 2000 ? !retryableStandardCloseCodes.has(code) : fatalGraphQLWsCloseCodes.has(code)
 
 const isRetryableStatus = (status: number): boolean => status === 429 || (status >= 500 && status < 600)
-
-/**
- * Parses a `Retry-After` header value, either whole seconds or an HTTP date,
- * into a `Duration` measured from `now` (epoch milliseconds). Anything else,
- * such as `1.5` or `-1`, yields `undefined`.
- */
-const parseRetryAfter = (value: string | undefined, now: number): Duration.Duration | undefined => {
-  if (value === undefined) return undefined
-  const retryAfter = Headers.parseRetryAfter(value)
-  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
-}
 
 /**
  * The client could not get a GraphQL response from the server: a network
