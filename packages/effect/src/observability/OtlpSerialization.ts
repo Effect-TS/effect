@@ -9,8 +9,10 @@
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as Layer from "../Layer.ts"
+import * as Predicate from "../Predicate.ts"
 import * as otlpProtobuf from "./internal/otlpProtobuf.ts"
 import type { LogsData } from "./OtlpLogger.ts"
 import type { MetricsData } from "./OtlpMetrics.ts"
@@ -30,13 +32,20 @@ export class OtlpSerialization extends Context.Service<OtlpSerialization, {
   readonly logs: (data: LogsData) => HttpBody.HttpBody
 }>()("effect/observability/OtlpSerialization") {}
 
-// OTLP/JSON writes NaN and Infinity as strings, but JSON.stringify writes null
-const nonFiniteToString = (_key: string, value: unknown) =>
-  typeof value === "number" && !Number.isFinite(value) ? String(value) : value
+// OTLP/JSON writes non-finite numbers as strings and bytes as base64.
+const jsonReplacer = (_key: string, value: unknown) =>
+  typeof value === "number" && !Number.isFinite(value) ?
+    String(value) :
+    Predicate.hasProperty(value, "bytesValue") && value.bytesValue instanceof Uint8Array
+    ? { ...value, bytesValue: Base64.encode(value.bytesValue) }
+    : value
 
 const jsonBody = (data: unknown): HttpBody.HttpBody => {
   const json = JSON.stringify(data)
-  return HttpBody.text(json.includes("null") ? JSON.stringify(data, nonFiniteToString) : json, "application/json")
+  return HttpBody.text(
+    json.includes("null") || json.includes("\"bytesValue\":") ? JSON.stringify(data, jsonReplacer) : json,
+    "application/json"
+  )
 }
 
 /**
