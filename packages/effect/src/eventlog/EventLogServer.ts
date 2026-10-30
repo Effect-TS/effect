@@ -143,12 +143,12 @@ export const layerRpcHandlers = (options: {
 
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
-        // Stored on the connection so it is released when the client disconnects.
-        // An unexpired challenge is reused, so overlapping Hellos share it.
-        let pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        // Kept on the connection, so it is released when the client disconnects
+        // and shared by overlapping Hellos until `Authenticate` consumes it.
+        const now = yield* Clock.currentTimeMillis
+        let pending = getPendingChallenge(client, now)
         if (pending === undefined) {
           const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
-          const now = yield* Clock.currentTimeMillis
           // A concurrent Hello may have stored a challenge while this one was made.
           pending = getPendingChallenge(client, now) ?? {
             challenge,
@@ -174,13 +174,12 @@ export const layerRpcHandlers = (options: {
             message: "Session auth challenge has expired"
           })
         }
-        const challenge = pending.challenge
         if (options.authorizeIdentity) {
           yield* options.authorizeIdentity(request.publicKey, request.signingPublicKey)
         }
         const verified = yield* EventLogSessionAuth.verifySessionAuthenticateRequest({
           remoteId: options.remoteId,
-          challenge,
+          challenge: pending.challenge,
           publicKey: request.publicKey,
           signingPublicKey: request.signingPublicKey,
           signature: request.signature,
@@ -417,7 +416,7 @@ class ConnectionWritesState extends Context.Service<ConnectionWritesState, Conne
   "effect/eventlog/EventLogServer/ConnectionWrites"
 ) {}
 
-// The challenge from the connection's latest `Hello`, cleared by `Authenticate`.
+// The connection's unconsumed `Hello` challenge, cleared by `Authenticate`.
 const PendingChallenge = Context.Reference<
   | {
     readonly challenge: Uint8Array<ArrayBuffer>
