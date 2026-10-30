@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServer, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import * as NetAddress from "effect/net/NetAddress"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -168,6 +169,38 @@ describe("HttpRouter", () => {
       assert.deepStrictEqual(await request(app), { status: 200, body: "admin stats" })
     })
   })
+
+  it.effect("serve does not reuse an HttpRouter.layer memoized outside it", () =>
+    Effect.gen(function*() {
+      let serverHandler: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, any> | undefined
+      const server = HttpServer.make({
+        address: NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, 0),
+        serve: (handler) => Effect.sync(() => void (serverHandler = handler))
+      })
+      const outside = HttpRouter.add("GET", "/outside", HttpServerResponse.text("outside")).pipe(
+        Layer.provide(HttpRouter.layer)
+      )
+      const app = HttpRouter.serve(HttpRouter.add("GET", "/inside", HttpServerResponse.text("inside")), {
+        disableLogger: true,
+        disableListenLog: true
+      }).pipe(
+        Layer.provideMerge(outside),
+        Layer.provide(Layer.succeed(HttpServer.HttpServer)(server))
+      )
+      yield* Layer.build(app)
+      const status = (path: string) =>
+        serverHandler!.pipe(
+          Effect.catchCause((cause) => Effect.map(HttpServerError.causeResponse(cause), ([response]) => response)),
+          Effect.map((response) => response.status),
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request(`http://localhost${path}`))
+          )
+        )
+
+      assert.strictEqual(yield* status("/inside"), 200)
+      assert.strictEqual(yield* status("/outside"), 404)
+    }))
 
   for (const ignoreDuplicateSlashes of [true, false]) {
     it.effect(`preserves the local URL with ignoreDuplicateSlashes=${ignoreDuplicateSlashes}`, () =>
