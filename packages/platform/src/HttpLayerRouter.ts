@@ -354,6 +354,23 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
 export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter, make)
 
 /**
+ * Builds an application layer with a router and returns the router as an HTTP
+ * handler effect.
+ *
+ * The app is built with a new `MemoMap` and its own `HttpRouter`. Routes and
+ * middleware it registers are added only to that router, so they are only
+ * reachable through the returned handler, even when `toHttpEffect` is run
+ * inside another router app such as `serve` or `toWebHandler`.
+ *
+ * Because of the new `MemoMap`, layers provided inside `appLayer` are built for
+ * each `toHttpEffect` call and are not shared with the outer app or with other
+ * `toHttpEffect` calls. Services that `appLayer` requires but does not provide
+ * are taken from the context where `toHttpEffect` is run, so provide resources
+ * that should be shared there.
+ *
+ * The router reads `RouterConfig` from the context where `toHttpEffect` is
+ * run, not from the `routerConfig` option of the outer server.
+ *
  * @since 1.0.0
  * @category HttpRouter
  */
@@ -368,17 +385,10 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.gen(function*() {
-    const scope = yield* Effect.scope
-    const memoMap = yield* Layer.CurrentMemoMap
-    const context = yield* Layer.buildWithMemoMap(
-      Layer.provideMerge(appLayer, layer),
-      memoMap,
-      scope
-    )
-    const router = Context.get(context, HttpRouter)
-    return router.asHttpEffect()
-  }) as any
+  Effect.map(
+    Layer.build(Layer.provideMerge(appLayer, layer)),
+    (context) => Context.get(context, HttpRouter).asHttpEffect()
+  ) as any
 
 /**
  * @since 1.0.0
