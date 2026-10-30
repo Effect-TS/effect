@@ -6,11 +6,10 @@
  * @since 4.0.0
  */
 import type * as Duration from "../Duration.ts"
-import * as Headers from "../http/Headers.ts"
+import type * as Headers from "../http/Headers.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import { HeadersSchema } from "../internal/graphqlHeaders.ts"
+import { HeadersSchema, parseRetryAfter } from "../internal/graphqlHeaders.ts"
 import { hasProperty } from "../Predicate.ts"
-import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 
 const TypeId = "~effect/graphql/GraphQLClientError"
@@ -74,8 +73,9 @@ export type GraphQLError = typeof GraphQLError.Type
  * `{ partial: true }` to receive decoded `{ data, errors }` instead.
  *
  * On this error, `data` is raw. `GraphQLError.path[0]` identifies the response
- * key (or alias). Non-2xx HTTP responses with a GraphQL body also use this
- * reason rather than `TransportError`.
+ * key (or alias). Non-2xx HTTP responses with a GraphQL body and `errors`
+ * also use this reason rather than `TransportError`, even when they carry
+ * `data` and the call used `{ partial: true }`.
  *
  * `status` and `headers` are the HTTP status and response headers, as the
  * transport reported them and middleware left them. Headers use
@@ -221,26 +221,17 @@ export const isFatalCloseCode = (code: number): boolean =>
 const isRetryableStatus = (status: number): boolean => status === 429 || (status >= 500 && status < 600)
 
 /**
- * Parses a `Retry-After` header value, either whole seconds or an HTTP date,
- * into a `Duration` measured from `now` (epoch milliseconds). Anything else,
- * such as `1.5` or `-1`, yields `undefined`.
- */
-const parseRetryAfter = (value: string | undefined, now: number): Duration.Duration | undefined => {
-  if (value === undefined) return undefined
-  const retryAfter = Headers.parseRetryAfter(value)
-  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
-}
-
-/**
  * The client could not get a GraphQL response from the server: a network
- * failure, an HTTP response that is not a GraphQL response, or a closed
- * WebSocket connection.
+ * failure, an HTTP response that is not a GraphQL response, a non-2xx HTTP
+ * response whose GraphQL body has no `errors`, or a closed WebSocket
+ * connection.
  *
  * **Details**
  *
  * - `status` and `headers` are only set for an HTTP response that is not a
- *   GraphQL response. Headers use `Headers.Headers` at runtime and encode
- *   as a plain string record; decoding restores the header collection.
+ *   GraphQL response, or a non-2xx GraphQL response without `errors`.
+ *   Headers use `Headers.Headers` at runtime and encode as a plain string
+ *   record; decoding restores the header collection.
  * - `retryAfter` comes from the `Retry-After` header (whole seconds or an
  *   HTTP date) and is encoded as milliseconds. When it is set, the error is
  *   retryable at any status, unless the close code is fatal.
@@ -360,8 +351,10 @@ export class EncodeError
  *
  * **Details**
  *
- * `data: null` without `errors` also produces a `DecodeError`, since
- * `ResponseError` requires a non-empty errors array.
+ * `data: null` without `errors` also produces a `DecodeError` for a 2xx
+ * response or a result without an HTTP status, since `ResponseError`
+ * requires a non-empty errors array. On a non-2xx response it is a
+ * `TransportError`.
  *
  * @stability experimental
  * @category errors
