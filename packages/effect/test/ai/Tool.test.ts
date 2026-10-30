@@ -1633,4 +1633,8 @@ describe("unsafeSecureJsonParse", () => {
     throws(() => Tool.unsafeSecureJsonParse(`{"\\u005f_proto__":{"polluted":true}}`), error)
     throws(() => Tool.unsafeSecureJsonParse(`{"\\u0063onstructor":{"prototype":{"polluted":true}}}`), error)
   })
+
+  it("accepts Unicode-escaped constructor keys with null values", () => {
+    deepStrictEqual(Tool.unsafeSecureJsonParse(`{"\\u0063onstructor":null}`), { constructor: null })
+  })
 })
