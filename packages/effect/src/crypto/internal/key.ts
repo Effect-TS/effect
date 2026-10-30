@@ -4,6 +4,7 @@ import { format } from "../../Formatter.ts"
 import { NodeInspectSymbol } from "../../Inspectable.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as CryptoError from "../CryptoError.ts"
+import type * as WebCrypto from "../WebCrypto.ts"
 import * as internal from "./webCrypto.ts"
 
 /**
@@ -131,7 +132,7 @@ export const checkAesLength = (name: string, keyLength: number) => (algorithm: K
   return length === keyLength * 8 ? undefined : `Expected a ${keyLength * 8}-bit ${name} key, not ${length} bits`
 }
 
-const checkCryptoKey = (cryptoKey: CryptoKey, expected: ExpectedCryptoKey): string | undefined => {
+const checkCryptoKey = (cryptoKey: WebCrypto.CryptoKey, expected: ExpectedCryptoKey): string | undefined => {
   if (
     !Predicate.hasProperty(cryptoKey, "type") || !Predicate.hasProperty(cryptoKey, "algorithm") ||
     !Predicate.hasProperty(cryptoKey, "usages") || !Array.isArray(cryptoKey.usages)
@@ -162,7 +163,7 @@ const checkCryptoKey = (cryptoKey: CryptoKey, expected: ExpectedCryptoKey): stri
  *
  * @internal
  */
-export const importedAlgorithm = (algorithm: unknown, cryptoKey: CryptoKey): unknown => {
+export const importedAlgorithm = (algorithm: unknown, cryptoKey: WebCrypto.CryptoKey): unknown => {
   const modulusLength = (cryptoKey.algorithm as Partial<RsaKeyAlgorithm>).modulusLength
   return Predicate.hasProperty(algorithm, "modulusLength") && modulusLength !== undefined &&
       algorithm.modulusLength !== modulusLength
@@ -171,7 +172,8 @@ export const importedAlgorithm = (algorithm: unknown, cryptoKey: CryptoKey): unk
 }
 
 /**
- * Synchronously validates and wraps a `CryptoKey`.
+ * Synchronously validates and wraps a `CryptoKey`. The structural key only
+ * becomes the native `CryptoKey` once it passes the check.
  *
  * @internal
  */
@@ -180,13 +182,18 @@ export const fromCryptoKey = <K>(
   method: string,
   proto: object,
   algorithm: unknown,
-  cryptoKey: CryptoKey,
+  cryptoKey: WebCrypto.CryptoKey,
   expected: ExpectedCryptoKey
 ): Effect.Effect<K, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const problem = checkCryptoKey(cryptoKey, expected)
     return problem === undefined
-      ? Effect.succeed(make<K>(proto, importedAlgorithm(algorithm, cryptoKey), { _tag: "CryptoKey", cryptoKey }))
+      ? Effect.succeed(
+        make<K>(proto, importedAlgorithm(algorithm, cryptoKey), {
+          _tag: "CryptoKey",
+          cryptoKey: cryptoKey as CryptoKey
+        })
+      )
       : internal.invalidKey(module, method, problem)
   })
 

@@ -37,7 +37,7 @@ import * as Chacha from "./internal/chacha.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { WebCrypto } from "./WebCrypto.ts"
+import * as WebCrypto from "./WebCrypto.ts"
 
 const TypeId = "~effect/crypto/Aead/Key" as const
 
@@ -374,7 +374,7 @@ export const layerWebCryptoWith = (options: {
     Aead,
     Effect.gen(function*() {
       const random = yield* SecureRandom.SecureRandom
-      const crypto = yield* WebCrypto
+      const crypto = yield* WebCrypto.WebCrypto
       const cryptoKeyFor = KeyModel.makeCache((subtle, bytes) =>
         subtle.importKey("raw", bytes as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"])
       )
@@ -488,7 +488,7 @@ export const key = <A extends Algorithm>(
  */
 export const fromCryptoKey = <A extends AesGcm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
   algorithm.implementation !== undefined
     ? internal.invalidKey("Aead", "fromCryptoKey", `${algorithm.name} keys cannot be CryptoKeys`)

@@ -2,6 +2,7 @@ import * as Effect from "../../Effect.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as CryptoError from "../CryptoError.ts"
 import type * as SecureRandom from "../SecureRandom.ts"
+import type * as WebCrypto from "../WebCrypto.ts"
 import * as KeyModel from "./key.ts"
 import * as internal from "./webCrypto.ts"
 
@@ -121,7 +122,7 @@ export const fromCryptoKey = <K>(
   method: string,
   algorithm: unknown,
   role: Role,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<K, CryptoError.CryptoError> => {
   const spec = family.specOf(algorithm)
   return KeyModel.fromCryptoKey(

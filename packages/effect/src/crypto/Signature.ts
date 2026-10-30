@@ -48,7 +48,7 @@ import * as Asymmetric from "./internal/asymmetric.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { WebCrypto } from "./WebCrypto.ts"
+import * as WebCrypto from "./WebCrypto.ts"
 
 const PrivateKeyTypeId = "~effect/crypto/Signature/PrivateKey" as const
 const PublicKeyTypeId = "~effect/crypto/Signature/PublicKey" as const
@@ -513,7 +513,7 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
   Signature,
   Effect.gen(function*() {
     const random = yield* SecureRandom.SecureRandom
-    const crypto = yield* WebCrypto
+    const crypto = yield* WebCrypto.WebCrypto
     const caches = Asymmetric.makeCaches(family)
     return Signature.of({
       generateKeyPair: <A extends Algorithm>(algorithm: A) =>
@@ -630,7 +630,7 @@ export const publicKey = <
  */
 export const privateKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
   Asymmetric.fromCryptoKey(family, "privateKeyFromCryptoKey", algorithm, "private", cryptoKey)
 
@@ -650,7 +650,7 @@ export const privateKeyFromCryptoKey = <A extends Algorithm>(
  */
 export const publicKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCrypto.CryptoKey
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
   Asymmetric.fromCryptoKey(family, "publicKeyFromCryptoKey", algorithm, "public", cryptoKey)
 

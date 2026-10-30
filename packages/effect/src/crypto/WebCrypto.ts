@@ -20,6 +20,10 @@
 import * as Context from "../Context.ts"
 import * as Layer from "../Layer.ts"
 
+// The type of `globalThis.crypto`, which, unlike the global `Crypto` type,
+// every `@types/node` version declares.
+type Crypto = typeof globalThis.crypto
+
 /**
  * Reference to the WebCrypto `Crypto` object, defaulting to
  * `globalThis.crypto`.
@@ -62,3 +66,19 @@ export const WebCrypto: Context.Reference<Crypto> = Context.Reference<Crypto>("e
  * @since 4.0.0
  */
 export const layer = (crypto: Crypto): Layer.Layer<never> => Layer.succeed(WebCrypto, crypto)
+
+/**
+ * A WebCrypto `CryptoKey`, declared structurally so the `effect` declarations
+ * type-check without the DOM library and with any `@types/node` version.
+ * Keys from `crypto.subtle` and Node's `webcrypto` are assignable to it.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.1
+ */
+export interface CryptoKey {
+  readonly algorithm: { readonly name: string }
+  readonly extractable: boolean
+  readonly type: "private" | "public" | "secret"
+  readonly usages: ReadonlyArray<string>
+}
