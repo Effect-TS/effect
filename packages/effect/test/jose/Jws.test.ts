@@ -57,6 +57,11 @@ it.effect("reproduces the RFC 7520 Section 4.4 HS256 signature with the key's ki
       "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAxOGMwYWU1LTRkOWItNDcxYi1iZmQ2LWVlZjMxNGJjNzAzNyJ9" +
         `.${payload}.s0h6KThzkfBBBkLspW1h84VsJZFTsPPqMDA7g1Md7p0`
     )
+    // An explicit `kid: undefined` falls back to the key's kid.
+    assert.strictEqual(
+      Redacted.value(yield* Jws.sign(base64url(payload), key, { kid: undefined })),
+      Redacted.value(token)
+    )
   }).pipe(Effect.provide(layer)))
 
 it.effect("preserves extension headers when signing, verifying, and resolving a key", () =>
@@ -84,6 +89,13 @@ it.effect("preserves extension headers when signing, verifying, and resolving a 
     )
     const verified = yield* Jws.verifyWithKeySet(token, { algorithms: ["ES256"] }).pipe(Effect.provide(keySet))
     assert.deepStrictEqual(verified.protectedHeader, expected)
+
+    const cyclic: Record<string, unknown> = {}
+    cyclic.self = cyclic
+    assertReason(
+      yield* Jws.sign(utf8("{}"), key, { ext: cyclic } as unknown as Jws.Header).pipe(Effect.flip),
+      "InvalidArgument"
+    )
   }).pipe(Effect.provide(layer)))
 
 it.effect("interoperates with jose for every supported algorithm and carries the key id", () =>
