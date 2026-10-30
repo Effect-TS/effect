@@ -53,6 +53,7 @@ import { Headers } from "effect/http"
 import { Rpc, type RpcGroup, type RpcSerialization } from "effect/rpc"
 import { TestClock } from "effect/testing"
 import {
+  BoomError,
   CallerId,
   ContextBleedEntity,
   ContextBleedLayer,
@@ -2139,43 +2140,52 @@ describe.concurrent("Sharding", () => {
       Layer.provide(TestShardingConfig)
     ))))
 
-  it.effect("delivers a persisted reply whose save committed but reported a failure", () =>
-    Effect.gen(function*() {
-      const state = yield* TestEntityState
-      const driver = yield* MessageStorage.MemoryDriver
-      const makeClient = yield* TestEntity.client
-      yield* TestClock.adjust(1)
+  it.effect.each(
+    [
+      { rpc: "GetUser", exit: Exit.succeed(new User({ id: 1, name: "User 1" })) },
+      // A transactional failure reply is saved after the transaction ends.
+      { rpc: "FailWithTransaction", exit: Exit.fail(new BoomError({ cause: "boom" })) }
+    ] as const
+  )(
+    "delivers a persisted $rpc reply whose save committed but reported a failure",
+    ({ exit, rpc }) =>
+      Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const driver = yield* MessageStorage.MemoryDriver
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
 
-      const result = yield* makeClient("1").GetUser({ id: 1 }).pipe(Effect.forkChild)
-      yield* TestClock.adjust(5000)
-      assert.deepStrictEqual(result.pollUnsafe(), Exit.succeed(new User({ id: 1, name: "User 1" })))
-      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
-      assert.strictEqual(driver.replyIds.size, 1)
-    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      Layer.provide(Layer.effect(
-        MessageStorage.MessageStorage,
-        Effect.gen(function*() {
-          const { encoded } = yield* MessageStorage.MemoryDriver
-          const committed = new Set<string>()
-          return yield* MessageStorage.makeEncoded({
-            ...encoded,
-            // Like a lost COMMIT acknowledgement: the first exit reply is
-            // stored but reported as failed, and later saves for the same
-            // request violate UNIQUE (request_id, kind).
-            saveReply: (reply) => {
-              if (reply._tag !== "WithExit") return encoded.saveReply(reply)
-              const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "connection lost" }))
-              if (committed.has(reply.requestId)) return failure
-              committed.add(reply.requestId)
-              return Effect.andThen(encoded.saveReply(reply), failure)
-            }
+        const result = yield* makeClient("1")[rpc]({ id: 1 }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(5000)
+        assert.deepStrictEqual(result.pollUnsafe(), exit)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        assert.strictEqual(driver.replyIds.size, 1)
+      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+        Layer.provide(Layer.effect(
+          MessageStorage.MessageStorage,
+          Effect.gen(function*() {
+            const { encoded } = yield* MessageStorage.MemoryDriver
+            const committed = new Set<string>()
+            return yield* MessageStorage.makeEncoded({
+              ...encoded,
+              // Like a lost COMMIT acknowledgement: the first exit reply is
+              // stored but reported as failed, and later saves for the same
+              // request violate UNIQUE (request_id, kind).
+              saveReply: (reply) => {
+                if (reply._tag !== "WithExit") return encoded.saveReply(reply)
+                const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "connection lost" }))
+                if (committed.has(reply.requestId)) return failure
+                committed.add(reply.requestId)
+                return Effect.andThen(encoded.saveReply(reply), failure)
+              }
+            })
           })
-        })
-      )),
-      Layer.provideMerge(MessageStorage.MemoryDriver.layer),
-      Layer.provide(Snowflake.layerGenerator),
-      Layer.provide(TestShardingConfig)
-    ))))
+        )),
+        Layer.provideMerge(MessageStorage.MemoryDriver.layer),
+        Layer.provide(Snowflake.layerGenerator),
+        Layer.provide(TestShardingConfig)
+      )))
+  )
 })
 
 // Memory storage that discards replies saved inside a failed transaction, like
