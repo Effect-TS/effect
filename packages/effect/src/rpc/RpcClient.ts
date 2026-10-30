@@ -949,7 +949,7 @@ export const withHeaders: {
  * the client keeps the request and the caller's context, unless the caller is
  * interrupted, the client closes or the connection fails. A transport that
  * only delivers requests, such as a message queue, writes a void `Exit` for a
- * `discard` request once it has delivered it, and fails `send` with an
+ * `discard` request once the request is delivered, and fails `send` with an
  * `RpcClientError` for any other request.
  *
  * @stability unstable
