@@ -854,7 +854,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       }
       case "Uint8Array": {
         return maxBytes !== undefined && body.body.byteLength > maxBytes
-          ? Effect.fail(bodyTooLargeError(this, maxBytes))
+          ? Effect.fail(bodyTooLargeError(this, new BodyTooLargeError(maxBytes)))
           : Effect.succeed(body.body)
       }
       case "FormData": {
@@ -995,7 +995,10 @@ const bytesFromWeb = (
         : await readArrayBufferLimited(source, maxBytes, signal)
       return new Uint8Array(buffer)
     },
-    catch: (cause) => requestParseError(request, undefined, cause)
+    catch: (cause) =>
+      cause instanceof BodyTooLargeError
+        ? bodyTooLargeError(request, cause)
+        : requestParseError(request, undefined, cause)
   })
 
 const streamFromReadable = (
@@ -1017,7 +1020,6 @@ const requestParseError = (
   new HttpServerError({
     reason: new RequestParseError({
       request,
-      ...(cause instanceof BodyTooLargeError ? { reason: "BodyTooLarge" } : undefined),
       ...(description === undefined ? undefined : { description }),
       ...(cause === undefined ? undefined : { cause })
     })
@@ -1032,12 +1034,14 @@ const limitStream = (
     let bytes = 0
     return Stream.mapEffect(stream, (chunk) => {
       bytes += chunk.byteLength
-      return bytes > maxBytes ? Effect.fail(bodyTooLargeError(request, maxBytes)) : Effect.succeed(chunk)
+      return bytes > maxBytes
+        ? Effect.fail(bodyTooLargeError(request, new BodyTooLargeError(maxBytes)))
+        : Effect.succeed(chunk)
     })
   })
 
-const bodyTooLargeError = (request: HttpServerRequest, maxBytes: number) =>
-  requestParseError(request, undefined, new BodyTooLargeError(maxBytes))
+const bodyTooLargeError = (request: HttpServerRequest, cause: BodyTooLargeError) =>
+  new HttpServerError({ reason: new RequestParseError({ request, reason: "BodyTooLarge", cause }) })
 
 const formDataToParts = (formData: FormData): Array<Multipart.Part> => {
   const parts: Array<Multipart.Part> = []
