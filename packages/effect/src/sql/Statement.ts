@@ -31,8 +31,8 @@ import type { SqlError } from "./SqlError.ts"
  * Runtime type identifier for SQL `Fragment` values.
  *
  * @stability unstable
- * @category type IDs
- * @since 4.2.0
+ * @category Type ID
+ * @since 4.1.1
  */
 export const FragmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Fragment")
 
@@ -40,8 +40,8 @@ export const FragmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/F
  * Type of the unique symbol used to brand SQL `Fragment` values.
  *
  * @stability unstable
- * @category type IDs
- * @since 4.2.0
+ * @category Type ID
+ * @since 4.1.1
  */
 export type FragmentTypeId = typeof FragmentTypeId
 
@@ -49,8 +49,8 @@ export type FragmentTypeId = typeof FragmentTypeId
  * Runtime type identifier for SQL `Segment` values.
  *
  * @stability unstable
- * @category type IDs
- * @since 4.2.0
+ * @category Type ID
+ * @since 4.1.1
  */
 export const SegmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Segment")
 
@@ -58,8 +58,8 @@ export const SegmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Se
  * Type of the unique symbol used to brand SQL `Segment` values.
  *
  * @stability unstable
- * @category type IDs
- * @since 4.2.0
+ * @category Type ID
+ * @since 4.1.1
  */
 export type SegmentTypeId = typeof SegmentTypeId
 
