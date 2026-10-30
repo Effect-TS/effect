@@ -375,9 +375,7 @@ export const encodeNumberDataPoint = (point: {
   readonly flags?: number | undefined
 }): Uint8Array =>
   Proto.concat(
-    point.startTimeUnixNano !== undefined
-      ? Proto.fixed64Field(2, BigInt(point.startTimeUnixNano))
-      : new Uint8Array(0),
+    Proto.optionalFixed64Field(2, point.startTimeUnixNano),
     Proto.fixed64Field(3, BigInt(point.timeUnixNano)),
     point.asDouble !== undefined
       ? Proto.doubleField(4, point.asDouble)
@@ -428,9 +426,7 @@ export const encodeHistogramDataPoint = (point: {
     ...point.explicitBounds.map((bound) => Proto.doubleField(7, bound))
   )
   return Proto.concat(
-    point.startTimeUnixNano !== undefined
-      ? Proto.fixed64Field(2, BigInt(point.startTimeUnixNano))
-      : new Uint8Array(0),
+    Proto.optionalFixed64Field(2, point.startTimeUnixNano),
     Proto.fixed64Field(3, BigInt(point.timeUnixNano)),
     Proto.fixed64Field(4, BigInt(point.count)),
     point.sum !== undefined ? Proto.doubleField(5, point.sum) : new Uint8Array(0),
@@ -527,9 +523,7 @@ export const encodeSummaryDataPoint = (point: {
   readonly flags?: number | undefined
 }): Uint8Array =>
   Proto.concat(
-    point.startTimeUnixNano !== undefined
-      ? Proto.fixed64Field(2, BigInt(point.startTimeUnixNano))
-      : new Uint8Array(0),
+    Proto.optionalFixed64Field(2, point.startTimeUnixNano),
     Proto.fixed64Field(3, BigInt(point.timeUnixNano)),
     Proto.fixed64Field(4, BigInt(point.count)),
     Proto.doubleField(5, point.sum),
