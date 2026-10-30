@@ -116,13 +116,15 @@ const keyTypes: Record<AsymmetricAlgorithm, { readonly kty: string; readonly crv
 
 const candidates = (keySet: KeySet, selection: Selection): ReadonlyArray<PublicJwk> => {
   const { crv, kty } = keyTypes[selection.algorithm]
+  // Cheap member checks first: the schema check is the expensive part and
+  // only needs to run on keys that could match.
   return keySet.keys.filter((key): key is PublicJwk =>
-    isPublicJwk(key) &&
     key.kty === kty &&
     ("crv" in key ? key.crv : undefined) === crv &&
     (selection.kid === undefined || key.kid === selection.kid) &&
     (key.alg === undefined || key.alg === selection.algorithm) &&
     (key.use === undefined || key.use === "sig") &&
+    isPublicJwk(key) &&
     (key.key_ops === undefined || key.key_ops.includes("verify"))
   )
 }

@@ -68,6 +68,11 @@ try {
     (token) => Jwt.verify(Claims, token, signingKey, policy)
   )
   const verifyWithKeySet = Jws.verifyWithKeySet(rsaToken, { algorithms: ["RS256"] })
+  // A larger set where only the last key can verify the token.
+  const largeKeySet = await runtime.runPromise(Jwks.makeLocal({
+    keys: [...Array.from({ length: 63 }, (_, i) => ({ ...rsa, kid: `enc-${i}`, use: "enc" })), rsa]
+  }))
+  const verifyWithLargeKeySet = Effect.provideService(verifyWithKeySet, Jwks.Jwks, largeKeySet)
   const decrypt = Jwt.decrypt(Claims, encrypted, resolveEncryptionKey, policy)
   const importPublic = Jwk.importPublic(rsa, "RS256")
 
@@ -75,6 +80,7 @@ try {
     deepStrictEqual((await runtime.runPromise(signAndVerify)).claims, claims)
     const verified = await runtime.runPromise(verifyWithKeySet)
     strictEqual(verified.protectedHeader.alg, "RS256")
+    deepStrictEqual((await runtime.runPromise(verifyWithLargeKeySet)).payload, verified.payload)
     deepStrictEqual(JSON.parse(new TextDecoder().decode(verified.payload)), {
       iss: "joe",
       exp: 1300819380,
@@ -94,6 +100,7 @@ try {
   bench
     .add("Jwt.sign + verify HS256", () => runtime.runPromise(signAndVerify))
     .add("Jws.verifyWithKeySet RS256 cached", () => runtime.runPromise(verifyWithKeySet))
+    .add("Jws.verifyWithKeySet RS256 cached, 64 keys", () => runtime.runPromise(verifyWithLargeKeySet))
     .add("Jwt.decrypt dir/A256GCM resolver", () => runtime.runPromise(decrypt))
     .add("Jwk.importPublic RS256", () => runtime.runPromise(importPublic))
 
