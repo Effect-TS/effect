@@ -838,9 +838,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     }
     this.bytesEffect = Effect.withFiber((fiber) => {
       const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
-      return maxBodySize === undefined
-        ? this.unlimitedBytes
-        : Stream.mkUint8Array(limitStream(this, this.stream, Number(maxBodySize)))
+      return this.readBytes(maxBodySize === undefined ? undefined : Number(maxBodySize))
     }).pipe(
       Effect.cached,
       Effect.runSync
@@ -848,23 +846,25 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return this.bytesEffect
   }
 
-  private get unlimitedBytes(): Effect.Effect<Uint8Array, HttpServerError> {
+  private readBytes(maxBytes: number | undefined): Effect.Effect<Uint8Array, HttpServerError> {
     const body = this.source.body
     switch (body._tag) {
       case "Empty": {
         return Effect.succeed(new Uint8Array(0))
       }
       case "Uint8Array": {
-        return Effect.succeed(body.body)
+        return maxBytes !== undefined && body.body.byteLength > maxBytes
+          ? Effect.fail(bodyTooLargeError(this, maxBytes))
+          : Effect.succeed(body.body)
       }
       case "FormData": {
-        return bytesFromBodyInit(this, body.formData)
+        return bytesFromWeb(this, new Response(body.formData), maxBytes)
       }
       case "Stream": {
-        return Stream.mkUint8Array(this.stream)
+        return Stream.mkUint8Array(maxBytes === undefined ? this.stream : limitStream(this, this.stream, maxBytes))
       }
       case "Raw": {
-        return rawBodyBytes(this, body.body)
+        return rawBodyBytes(this, body.body, maxBytes)
       }
     }
   }
@@ -967,23 +967,31 @@ const rawBodyStream = (request: HttpServerRequest, body: unknown): Stream.Stream
   return Stream.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const rawBodyBytes = (request: HttpServerRequest, body: unknown): Effect.Effect<Uint8Array, HttpServerError> => {
+const rawBodyBytes = (
+  request: HttpServerRequest,
+  body: unknown,
+  maxBytes: number | undefined
+): Effect.Effect<Uint8Array, HttpServerError> => {
   if (body instanceof Request) {
-    return Effect.tryPromise({
-      try: () => body.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
-      catch: (cause) => requestParseError(request, undefined, cause)
-    })
+    return bytesFromWeb(request, body, maxBytes)
   }
   if (isBodyInit(body)) {
-    return bytesFromBodyInit(request, body)
+    return bytesFromWeb(request, new Response(body), maxBytes)
   }
   return Effect.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const bytesFromBodyInit = (request: HttpServerRequest, body: BodyInit): Effect.Effect<Uint8Array, HttpServerError> =>
+const bytesFromWeb = (
+  request: HttpServerRequest,
+  source: globalThis.Request | globalThis.Response,
+  maxBytes: number | undefined
+): Effect.Effect<Uint8Array, HttpServerError> =>
   Effect.tryPromise({
-    try: () => new Response(body).arrayBuffer().then((buffer) => new Uint8Array(buffer)),
-    catch: (cause) => requestParseError(request, undefined, cause)
+    try: (signal) =>
+      (maxBytes === undefined ? source.arrayBuffer() : readArrayBufferLimited(source, maxBytes, signal))
+        .then((buffer) => new Uint8Array(buffer)),
+    catch: (cause) =>
+      requestParseError(request, undefined, cause, cause instanceof BodyTooLargeError ? "BodyTooLarge" : undefined)
   })
 
 const streamFromReadable = (
@@ -1021,11 +1029,12 @@ const limitStream = (
     let bytes = 0
     return Stream.mapEffect(stream, (chunk) => {
       bytes += chunk.byteLength
-      return bytes > maxBytes
-        ? Effect.fail(requestParseError(request, `Request body exceeds ${maxBytes} bytes`, undefined, "BodyTooLarge"))
-        : Effect.succeed(chunk)
+      return bytes > maxBytes ? Effect.fail(bodyTooLargeError(request, maxBytes)) : Effect.succeed(chunk)
     })
   })
+
+const bodyTooLargeError = (request: HttpServerRequest, maxBytes: number) =>
+  requestParseError(request, undefined, new BodyTooLargeError(maxBytes), "BodyTooLarge")
 
 const formDataToParts = (formData: FormData): Array<Multipart.Part> => {
   const parts: Array<Multipart.Part> = []
@@ -1124,7 +1133,7 @@ class BodyTooLargeError extends Error {
 }
 
 const readArrayBufferLimited = async (
-  source: Request,
+  source: globalThis.Request | globalThis.Response,
   maxBytes: number,
   signal: AbortSignal
 ): Promise<ArrayBuffer> => {
