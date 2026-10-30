@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix OTLP protobuf metric serialization throwing when an optional start timestamp is absent.
+Fix `OtlpSerialization.layerProtobuf` throwing on metric data points without `startTimeUnixNano`.

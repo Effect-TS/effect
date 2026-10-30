@@ -215,7 +215,7 @@ export const optionalStringField = (
 ): Uint8Array => value !== undefined && value !== "" ? stringField(fieldNumber, value) : new Uint8Array(0)
 
 /**
- * Helper to conditionally encode a fixed64 field if defined
+ * Encodes a fixed64 field if the value is defined
  *
  * @internal
  */
