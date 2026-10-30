@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { Prompt, Response } from "effect/ai"
+import * as SchemaBinary from "effect/encoding/SchemaBinary"
 
 describe("Prompt", () => {
   describe("serialization", () => {
@@ -23,6 +24,36 @@ describe("Prompt", () => {
         Schema.decodeSync(Prompt.Prompt)(Schema.encodeSync(Prompt.Prompt)(prompt)),
         prompt
       )
+    })
+
+    it("derives and round-trips file parts with SchemaBinary", () => {
+      const fileCodec = SchemaBinary.toCodec(Prompt.FilePart)
+      const partCodec = SchemaBinary.toCodec(Prompt.Part)
+      const parts = [
+        Prompt.filePart({
+          mediaType: "application/octet-stream",
+          data: new Uint8Array([1, 2, 3])
+        }),
+        Prompt.filePart({
+          mediaType: "text/plain",
+          data: new URL("https://example.com/file.txt")
+        })
+      ]
+
+      for (const part of parts) {
+        assert.deepStrictEqual(
+          Schema.decodeUnknownSync(fileCodec)(Schema.encodeUnknownSync(fileCodec)(part)),
+          part
+        )
+        assert.deepStrictEqual(
+          Schema.decodeUnknownSync(partCodec)(Schema.encodeUnknownSync(partCodec)(part)),
+          part
+        )
+      }
+
+      for (const schema of [Response.Part(), Response.StreamPart(), Response.AllParts()]) {
+        SchemaBinary.toCodec(schema)
+      }
     })
   })
 

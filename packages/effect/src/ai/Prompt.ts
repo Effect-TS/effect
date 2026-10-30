@@ -504,9 +504,7 @@ export const FilePart: Schema.Struct<{
         Schema.Uint8Array,
         Schema.TaggedStruct<"Uint8Array", { readonly base64: Schema.Uint8ArrayFromBase64 }>
       >,
-      Schema.decodeTo<Schema.URL, Schema.TaggedStruct<"URL", { readonly href: Schema.URLFromString }>>,
-      Schema.Uint8Array,
-      Schema.URL
+      Schema.decodeTo<Schema.URL, Schema.TaggedStruct<"URL", { readonly href: Schema.URLFromString }>>
     ]
   >
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
@@ -521,8 +519,8 @@ export const FilePart: Schema.Struct<{
   type: Schema.Literal("file"),
   mediaType: Schema.String,
   fileName: Schema.optional(Schema.String),
-  // The tagged members come first so that encoding produces JSON-safe data,
-  // while the raw members keep decoding byte arrays and URLs directly
+  // Tagged members keep the encoded union uniquely identifiable for binary
+  // layouts while still encoding byte arrays and URLs as JSON-safe data.
   data: Schema.Union([
     Schema.String,
     Schema.TaggedStruct("Uint8Array", { base64: Schema.Uint8ArrayFromBase64 }).pipe(Schema.decodeTo(
@@ -538,9 +536,7 @@ export const FilePart: Schema.Struct<{
         decode: ({ href }) => href,
         encode: (href) => ({ _tag: "URL", href }) as const
       })
-    )),
-    Schema.Uint8Array,
-    Schema.URL
+    ))
   ])
 }).annotate({ identifier: "FilePart" })
 
