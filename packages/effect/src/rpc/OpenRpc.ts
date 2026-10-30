@@ -583,11 +583,11 @@ function compileSchemas(representation: SchemaRepresentation.MultiDocument): Jso
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(representation, { onExcessProperty: "error" }),
     { target: "OpenRPC" }
   )
-  return JsonSchema.toComponentsDocumentDraft07({
+  return JsonSchema.toDocumentDraft07WithDefinitionsPath({
     dialect: "draft-2020-12",
     schema: { anyOf: relocated.schemas },
     definitions: relocated.definitions
-  })
+  }, ["components", "schemas"])
 }
 
 function withMethod<A>(name: string, f: () => A): A {
