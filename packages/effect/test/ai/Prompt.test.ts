@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { Prompt, Response } from "effect/ai"
+import { SchemaBinary } from "effect/encoding"
 
 describe("Prompt", () => {
   describe("serialization", () => {
@@ -74,6 +75,33 @@ describe("Prompt", () => {
       for (const part of [parts.toolResult, parts.toolApprovalResponse]) {
         assert.strictEqual(decodeToolMessagePart(part)._tag, "Success")
       }
+    })
+  })
+
+  describe("binary codecs", () => {
+    it("round trips file data forms", () => {
+      const codec = SchemaBinary.toCodec(Prompt.FilePart)
+      for (
+        const data of [
+          "aGVsbG8=",
+          new Uint8Array([1, 2, 3]),
+          new URL("https://example.com/image.png")
+        ]
+      ) {
+        const part = Prompt.filePart({ mediaType: "image/png", data })
+        assert.deepStrictEqual(Schema.decodeSync(codec)(Schema.encodeSync(codec)(part)), part)
+      }
+    })
+
+    it("keeps the tagged JSON encoding for byte and URL file data", () => {
+      const encode = (data: Uint8Array | URL) =>
+        Schema.encodeSync(Prompt.FilePart)(Prompt.filePart({ mediaType: "image/png", data })).data
+
+      assert.deepStrictEqual(encode(new Uint8Array([1, 2, 3])), { _tag: "Uint8Array", base64: "AQID" })
+      assert.deepStrictEqual(encode(new URL("https://example.com/image.png")), {
+        _tag: "URL",
+        href: "https://example.com/image.png"
+      })
     })
   })
 

@@ -1,7 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { assertInstanceOf, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
-import { AiError, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import { SchemaBinary } from "effect/encoding"
 import { TestSchema } from "effect/testing"
 
 describe("Response", () => {
@@ -235,6 +236,46 @@ describe("Response", () => {
             deepStrictEqual<unknown>(decoded, part, `decoded ${part.type}`)
           }
         }))
+    }
+  })
+
+  describe("binary codecs", () => {
+    const toolkit = Toolkit.make(
+      Tool.make("GetWeather", {
+        parameters: Schema.Struct({ city: Schema.String }),
+        success: Schema.Struct({ temperature: Schema.Number })
+      })
+    )
+
+    const text = Response.makePart("text", { text: "hi" })
+
+    for (
+      const [name, makeSchema, part] of [
+        ["AllParts", () => Response.AllParts(), text],
+        ["Part", () => Response.Part(), text],
+        ["StreamPart", () => Response.StreamPart(), Response.makePart("text-delta", { id: "1", delta: "hi" })],
+        ["Part with a toolkit", () => Response.Part(toolkit), text],
+        [
+          "Part",
+          () => Response.Part(),
+          Response.makePart("tool-result", {
+            id: "call-1",
+            name: "Screenshot",
+            isFailure: false,
+            result: "done",
+            encodedResult: "done",
+            modelOutput: [Prompt.filePart({ mediaType: "image/png", data: new URL("https://example.com/a.png") })],
+            providerExecuted: false,
+            preliminary: false
+          })
+        ]
+      ] as const
+    ) {
+      it(`${name} round trips a ${part.type} part`, () => {
+        const codec = SchemaBinary.toCodec(makeSchema())
+
+        deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(part)), part)
+      })
     }
   })
 
