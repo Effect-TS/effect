@@ -69,6 +69,52 @@ export interface PgClient extends Client.SqlClient {
   ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
   /**
+   * Runs the statements in one extended-query cycle closed by a single `Sync`
+   * and returns each statement's rows.
+   *
+   * **When to use**
+   *
+   * Use to run dependent statements in one round trip, such as setting
+   * transaction-local context with `set_config(..., true)` before a query.
+   *
+   * **Details**
+   *
+   * Outside `withTransaction`, PostgreSQL runs the batch as one implicit
+   * transaction: transaction-local settings apply to the later statements and
+   * end with the batch, and a failing statement fails the batch and nothing
+   * from it is kept. Inside `withTransaction` the batch runs on the
+   * transaction's connection, and a failing statement aborts the transaction.
+   *
+   * Each statement is compiled and its rows transformed by the client that
+   * built it, and the current `Statement.CurrentTransformer` applies to each
+   * one. Statements are always unnamed, so they skip the prepared statement
+   * cache and a batch is never retried. On a multiplexed connection the batch
+   * is pipelined without pinning the session. An empty batch succeeds with
+   * `[]` without touching the wire.
+   *
+   * **Example** (Setting row-level security context for one query)
+   *
+   * ```ts
+   * import { PgClient } from "@effect/sql-pg"
+   * import { Effect } from "effect"
+   *
+   * const items = (org: string) =>
+   *   Effect.gen(function*() {
+   *     const sql = yield* PgClient.PgClient
+   *     const [, rows] = yield* sql.batch([
+   *       sql`SELECT set_config('app.organization_id', ${org}, true)`,
+   *       sql`SELECT * FROM item`
+   *     ])
+   *     return rows
+   *   })
+   * ```
+   *
+   * @since 4.2.0
+   */
+  readonly batch: <const S extends ReadonlyArray<Statement.Statement<any>>>(
+    statements: S
+  ) => Effect.Effect<{ readonly [K in keyof S]: Effect.Success<S[K]> }, SqlError>
+  /**
    * Returns a snapshot of connection pool occupancy. A client from `makeClient`
    * has one session that stays leased for its lifetime, so it always reports
    * `{ idle: 0, used: 1, pending: 0, min: 1, max: 1 }` whatever statements run
@@ -309,32 +355,35 @@ const makeImpl = Effect.fnUntraced(function*<R>(
   ): Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope> =>
     Effect.flatMap(listenAcquirer, (connection) => connection.listen(channel))
 
+  const client = yield* Client.make({
+    driver: "pg",
+    acquirer,
+    borrower,
+    // Postgres prepares transaction control like anything else, and a client
+    // with preparation turned off falls back to the unnamed path anyway.
+    prepareTransactionControls: true,
+    commit,
+    releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
+    transactionAcquirer,
+    compiler,
+    spanAttributes: [
+      ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
+      [ATTR_DB_SYSTEM_NAME, "postgresql"],
+      [ATTR_DB_NAMESPACE, config.database ?? config.username ?? "postgres"],
+      [ATTR_SERVER_ADDRESS, config.host ?? "localhost"],
+      [ATTR_SERVER_PORT, config.port ?? 5432]
+    ],
+    transformRows
+  })
+
   return Object.assign(
-    yield* Client.make({
-      driver: "pg",
-      acquirer,
-      borrower,
-      // Postgres prepares transaction control like anything else, and a client
-      // with preparation turned off falls back to the unnamed path anyway.
-      prepareTransactionControls: true,
-      commit,
-      releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      transactionAcquirer,
-      compiler,
-      spanAttributes: [
-        ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
-        [ATTR_DB_SYSTEM_NAME, "postgresql"],
-        [ATTR_DB_NAMESPACE, config.database ?? config.username ?? "postgres"],
-        [ATTR_SERVER_ADDRESS, config.host ?? "localhost"],
-        [ATTR_SERVER_PORT, config.port ?? 5432]
-      ],
-      transformRows
-    }),
+    client,
     {
       [TypeId]: TypeId as TypeId,
       config,
       poolStats: options.poolStats,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
+      batch: Client.clientBatch(client) as PgClient["batch"],
       listen,
       notify: (channel: string, payload: string) => {
         const channelError = validateChannelName(channel, "notify")
