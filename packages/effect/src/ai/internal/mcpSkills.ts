@@ -265,14 +265,6 @@ export interface StaticSkill {
   readonly directories: ReadonlyMap<string, ReadonlyArray<McpCore.DirectoryChild>>
 }
 
-// Scripts that skills commonly bundle, which the standard table lacks or, for
-// `.ts`, maps to MPEG transport streams.
-const SCRIPT_MIME_TYPES: ReadonlyMap<string, string> = new Map([
-  ["py", "text/x-python"],
-  ["sh", "text/x-shellscript"],
-  ["ts", "text/x-typescript"]
-])
-
 const TEXTUAL_APPLICATION_TYPES: ReadonlySet<string> = new Set([
   "application/json",
   "application/yaml",
@@ -283,9 +275,10 @@ const TEXTUAL_APPLICATION_TYPES: ReadonlySet<string> = new Set([
  * @internal
  */
 export const mimeTypeFor = (path: string): string => {
-  const extension = /\.([^./]+)$/.exec(path)?.[1]?.toLowerCase()
-  const script = extension === undefined ? undefined : SCRIPT_MIME_TYPES.get(extension)
-  return script ?? Option.getOrElse(Mime.getType(path), () => "application/octet-stream")
+  // The standard table maps `.ts` to MPEG transport streams, but a skill's
+  // `.ts` files are TypeScript scripts.
+  if (/\.ts$/i.test(path)) return "text/x-typescript"
+  return Option.getOrElse(Mime.getType(path), () => "application/octet-stream")
 }
 
 // `ignoreBOM` keeps a leading BOM in the decoded text, so re-encoding the text
