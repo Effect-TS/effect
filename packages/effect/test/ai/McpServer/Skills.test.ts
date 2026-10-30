@@ -5,7 +5,9 @@ import * as McpServer from "effect/ai/McpServer"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
+import * as Scheduler from "effect/Scheduler"
 import { createHash } from "node:crypto"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
@@ -497,6 +499,64 @@ describe("McpServer skills", () => {
         assertRejected(yield* registerAll(withPolicy, policy), /skill:\/\/refunds\/references\/policy\.md/)
         assertRejected(yield* registerAll(policy, withPolicy), /skill:\/\/refunds\/references\/policy\.md/)
       }))
+
+    // A plain resource registered concurrently can pass the ownership check and then be paused before it is
+    // stored. A gated scheduler runs that registration one step at a time, so a skill can claim the URI in
+    // that window. One of the two registrations must lose, and the public resources view must match the winner.
+    it.effect("keeps a skill file and a concurrently registered resource from both succeeding", () =>
+      Effect.gen(function*() {
+        const uri = "skill://refunds/SKILL.md"
+        const tasks: Array<() => void> = []
+        const gated: Scheduler.Scheduler = {
+          executionMode: "async",
+          shouldYield: (fiber) => fiber.currentOpCount > 2,
+          makeDispatcher: () => ({ scheduleTask: (task) => tasks.push(task), flush: () => {} })
+        }
+        const step = () => tasks.shift()?.()
+
+        const server = yield* McpServer.McpServer
+        const resourceFiber = yield* McpServer.registerResource({
+          uri,
+          name: "Replacement",
+          content: Effect.succeed("Replaced.\n")
+        }).pipe(Effect.provideService(Scheduler.Scheduler, gated), Effect.exit, Effect.forkChild)
+        while (tasks.length === 0) yield* Effect.yieldNow
+        // Step until the resource passed the ownership check, or its registration finished.
+        while (tasks.length > 0 && !server.resources.some(({ resource }) => resource.uri === uri)) step()
+
+        const skillExit = yield* Effect.exit(McpServer.registerSkill(refunds()))
+        while (tasks.length > 0) step()
+        const resourceExit = yield* Fiber.join(resourceFiber)
+
+        assert.notStrictEqual(Exit.isSuccess(resourceExit), Exit.isSuccess(skillExit))
+        const listed = server.resources.filter(({ resource }) => resource.uri === uri)
+        assert.strictEqual(listed.length, 1)
+        assert.strictEqual(listed[0].resource.name, Exit.isSuccess(skillExit) ? "refunds" : "Replacement")
+        const served = yield* server.findResource(uri).pipe(
+          Effect.provideService(
+            McpSchema.McpServerClient,
+            McpSchema.McpServerClient.of({
+              clientId: 1,
+              protocolVersion: "2025-06-18",
+              clientCapabilities: {},
+              clientInfo: { name: "test", version: "1.0.0" },
+              initializePayload: {
+                protocolVersion: "2025-06-18",
+                capabilities: {},
+                clientInfo: { name: "test", version: "1.0.0" }
+              },
+              getClient: Effect.die("not used")
+            })
+          )
+        )
+        const [content] = served.contents
+        assert.strictEqual(
+          "text" in content ? content.text : undefined,
+          Exit.isSuccess(skillExit)
+            ? skillMd("name: refunds\ndescription: Process refunds", "Refund carefully.\n")
+            : "Replaced.\n"
+        )
+      }).pipe(Effect.provide(McpServer.McpServer.layer)))
 
     // The ownership check must run when the Effect runs, not when it is constructed.
     it.effect("rejects an addResource Effect built before a skill claims its URI", () =>
