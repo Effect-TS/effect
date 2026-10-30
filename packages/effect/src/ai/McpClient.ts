@@ -19,6 +19,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Equal from "../Equal.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
@@ -578,7 +579,7 @@ export const make: (options: {
       // Verified bytes can still carry other frontmatter than the listing, and
       // hosts must not load a skill whose two descriptions differ.
       const frontmatter = McpSkills.parseFrontmatter("text" in content ? content.text : decoder.decode(bytes))
-      return frontmatter !== undefined && McpSkills.jsonEquals(frontmatter, skill.frontmatter)
+      return frontmatter !== undefined && Equal.equals(frontmatter, skill.frontmatter)
         ? result
         : yield* invalid(`The frontmatter of ${uri} differs from the frontmatter listed for the MCP skill`)
     },
