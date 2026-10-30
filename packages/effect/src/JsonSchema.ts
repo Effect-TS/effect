@@ -620,6 +620,25 @@ export function toDocumentDraft04(document: Document<"draft-2020-12">): Document
  * @since 4.0.0
  */
 export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-2020-12">): MultiDocument<"openapi-3.1"> {
+  return {
+    dialect: "openapi-3.1",
+    ...toMultiDocumentComponents(multiDocument, {
+      target: "OpenAPI 3.1",
+      checkSchema(schema) {
+        rejectKeywordCollisions(schema, OPEN_API_31_TARGET_COLLISIONS, "OpenAPI 3.1", "Draft 2020-12")
+      }
+    })
+  }
+}
+
+/** @internal */
+export function toMultiDocumentComponents(
+  multiDocument: Pick<MultiDocument<"draft-2020-12">, "schemas" | "definitions">,
+  options: {
+    readonly target: string
+    readonly checkSchema?: ((schema: JsonSchema) => void) | undefined
+  }
+): Pick<MultiDocument<"draft-2020-12">, "schemas" | "definitions"> {
   const definitionKeys = Object.keys(multiDocument.definitions)
   const keyMap = new Map<string, string>()
   const usedKeys = new Set(definitionKeys.filter((key) => VALID_OPEN_API_COMPONENTS_SCHEMAS_KEY_REGEXP.test(key)))
@@ -649,7 +668,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
     const isRootResource = createsResource(schema.$id)
     const localDefinitions = Predicate.isObject(schema.$defs) ? schema.$defs : undefined
     return transformSchema(schema, (schema, inEmbeddedResource) => {
-      rejectKeywordCollisions(schema, OPEN_API_31_TARGET_COLLISIONS, "OpenAPI 3.1", "Draft 2020-12")
+      options.checkSchema?.(schema)
       rewriteSchemaRef(schema, (reference, keyword) => {
         const path = reference.startsWith("#") ? parseUriFragment(reference) : undefined
         if (path === undefined || path[0] !== "$defs" || path.length < 2) return reference
@@ -661,7 +680,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
             Object.hasOwn(multiDocument.definitions, key) &&
             (localDefinitions === undefined || !Object.hasOwn(localDefinitions, key))
           ) {
-            unsupported(keyword, "OpenAPI 3.1", "a schema resource cannot reference the shared definitions pool")
+            unsupported(keyword, options.target, "a schema resource cannot reference the shared definitions pool")
           }
           return reference
         }
@@ -673,7 +692,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 
   const schemas = multiDocument.schemas.map((schema) => rewrite(schema, true)) as unknown as MultiDocument<
-    "openapi-3.1"
+    "draft-2020-12"
   >["schemas"]
   const definitions: Definitions = {}
   for (const key of definitionKeys) {
@@ -685,7 +704,6 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 
   return {
-    dialect: "openapi-3.1",
     schemas,
     definitions
   }
