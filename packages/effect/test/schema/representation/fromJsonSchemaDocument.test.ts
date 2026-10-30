@@ -301,6 +301,41 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
+  it("anyOf with siblings redeclaring an enum property (#10047)", () => {
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+      type: "object",
+      properties: { name: { type: "string" }, kind: { enum: ["direct", "all"] } },
+      anyOf: [
+        { properties: { name: { type: "string" } }, required: ["name"] },
+        { properties: { kind: { enum: ["direct", "all"] } }, required: ["kind"] }
+      ]
+    }))
+    const is = Schema.is(schema)
+    assert.isTrue(is({ name: "a" }))
+    assert.isTrue(is({ kind: "direct" }))
+    assert.isTrue(is({ name: "a", kind: "all" }))
+    assert.isFalse(is({}))
+    assert.isFalse(is({ kind: "other" }))
+    assert.isFalse(is({ name: 1 }))
+    assert.isFalse(is({ name: "a", kind: "other" }))
+  })
+
+  it("intersects sibling and branch enums", () => {
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+      type: "object",
+      properties: { kind: { enum: ["direct", "all"] } },
+      anyOf: [
+        { properties: { kind: { enum: ["direct", "other"] } }, required: ["kind"] },
+        { required: ["name"] }
+      ]
+    }))
+    const is = Schema.is(schema)
+    assert.isTrue(is({ kind: "direct" }))
+    assert.isFalse(is({ kind: "all" }))
+    assert.isFalse(is({ kind: "other" }))
+    assert.isTrue(is({ name: "a", kind: "all" }))
+  })
+
   it("oneOf", () => {
     assertFromJsonSchema(
       { schema: { oneOf: [{ const: "a" }, { enum: [1, 2] }] } },
@@ -2088,7 +2123,10 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("rejects distributions that duplicate a nested choice", () => {
+    it.each([
+      { title: "non-literal anyOf", schema: { anyOf: [{ type: "string" }, { type: "number" }] } },
+      { title: "literal oneOf", schema: { oneOf: [{ const: "a" }, { const: "b" }] } }
+    ])("rejects distributions that duplicate a nested $title", ({ schema }) => {
       throws(
         () =>
           toSchemaFromJsonSchemaDocument(
@@ -2103,7 +2141,7 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   type: "object",
                   properties: {
-                    value: { anyOf: [{ type: "string" }, { type: "number" }] }
+                    value: schema
                   }
                 }
               ]

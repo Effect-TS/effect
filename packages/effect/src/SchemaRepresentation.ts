@@ -3202,7 +3202,8 @@ export function fromRepresentations(
  * - Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and null
  *   are supported.
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
- *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
+ *   literal sets, which may also be duplicated across branches. Other union intersections, including cases that would
+ *   duplicate any other nested choice, are rejected.
  * - Unknown extension keywords are ignored and their semantics are not enforced.
  * - Only local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, optionally
  *   followed by a pointer below the definition. A pointer target becomes a definition keyed by its escaped tokens, such
@@ -3251,7 +3252,8 @@ export function fromJsonSchemaDocument(
  * - Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and null
  *   are supported.
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
- *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
+ *   literal sets, which may also be duplicated across branches. Other union intersections, including cases that would
+ *   duplicate any other nested choice, are rejected.
  * - Only local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, optionally
  *   followed by a pointer below the definition. A pointer target becomes a definition keyed by its escaped tokens, such
  *   as `Name/properties/field`, and is rejected if a top-level definition already uses that key. Root references and
