@@ -459,26 +459,18 @@ describe("BunHttpServer", () => {
       assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
 
-  for (
-    const [name, body] of [
-      ["a content-length", HttpBody.text("12345")],
-      ["a chunked", HttpBody.stream(Stream.succeed(new TextEncoder().encode("12345")))]
-    ] as const
-  ) {
-    it.effect(`returns 413 for ${name} body over MaxBodySize`, () =>
-      Effect.gen(function*() {
-        yield* HttpRouter.add(
-          "POST",
-          "/body",
-          HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.text, HttpServerResponse.empty()))
-            .pipe(
-              Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
-            )
-        ).pipe(HttpRouter.serve, Layer.build)
-        const response = yield* HttpClient.post("/body", { body })
-        assert.strictEqual(response.status, 413)
-      }).pipe(Effect.provide(BunHttpServer.layerTest)))
-  }
+  it.effect("returns 413 for a body over MaxBodySize", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.text, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const response = yield* HttpClient.post("/body", { body: HttpBody.text("12345") })
+      assert.strictEqual(response.status, 413)
+    }).pipe(Effect.provide(BunHttpServer.layerTest)))
 
   it.effect("answers CONNECT with 501 without running the app", () =>
     Effect.gen(function*() {

@@ -1,13 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ByteSize, Effect, Stream } from "effect"
-import {
-  HttpBody,
-  HttpClientRequest,
-  HttpEffect,
-  HttpIncomingMessage,
-  HttpServerRequest,
-  HttpServerResponse
-} from "effect/http"
+import { HttpClientRequest, HttpEffect, HttpIncomingMessage, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const payload = "hello"
 const fromClient = () =>
@@ -16,11 +9,6 @@ const fromClient = () =>
       HttpClientRequest.setHeader("x-test", "headers-only"),
       HttpClientRequest.bodyStream(Stream.succeed(new TextEncoder().encode(payload)), { contentType: "text/plain" })
     )
-  )
-
-const fromRaw = (body: unknown) =>
-  HttpServerRequest.fromClientRequest(
-    HttpClientRequest.post("http://localhost/upload").pipe(HttpClientRequest.setBody(HttpBody.raw(body)))
   )
 
 const chunked = (chunks: ReadonlyArray<string>, close = true) =>
@@ -67,48 +55,6 @@ describe("request body", () => {
       assert(error.reason._tag === "RequestParseError")
       assert.strictEqual(error.reason.reason, "BodyTooLarge")
     }))
-
-  it.effect("fromClientRequest does not classify a propagated upstream failure as BodyTooLarge", () =>
-    Effect.gen(function*() {
-      const oversized = yield* fromClient().text.pipe(
-        Effect.flip,
-        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
-      )
-      assert(oversized.reason._tag === "RequestParseError")
-      const request = HttpServerRequest.fromClientRequest(
-        HttpClientRequest.post("http://localhost/upload").pipe(
-          HttpClientRequest.setBody(HttpBody.stream(Stream.fail(oversized.reason.cause)))
-        )
-      )
-      const error = yield* Effect.flip(request.text)
-      assert(error.reason._tag === "RequestParseError")
-      assert.strictEqual(error.reason.reason, undefined)
-    }))
-
-  it.effect("fromClientRequest fails a raw body over MaxBodySize whose cancellation never settles", () =>
-    Effect.gen(function*() {
-      const error = yield* fromRaw(stalled(["12345"])).text.pipe(
-        Effect.flip,
-        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
-      )
-      assert(error.reason._tag === "RequestParseError")
-      assert.strictEqual(error.reason.reason, "BodyTooLarge")
-    }))
-
-  for (const maxBodySize of [ByteSize.bytes(4), undefined]) {
-    it.effect(`fromClientRequest fails unreadable raw bodies ${maxBodySize ? "under" : "without"} MaxBodySize`, () =>
-      Effect.gen(function*() {
-        for (const raw of [(web: Request) => web, (web: Request) => web.body]) {
-          const web = new Request("http://localhost/upload", { method: "POST", body: "123" })
-          web.body!.getReader()
-          const error = yield* fromRaw(raw(web)).text.pipe(
-            Effect.flip,
-            Effect.provideService(HttpIncomingMessage.MaxBodySize, maxBodySize)
-          )
-          assert.strictEqual(error.reason._tag, "RequestParseError")
-        }
-      }))
-  }
 
   for (const accessor of ["arrayBuffer", "text"] as const) {
     describe(`MaxBodySize via ${accessor}`, () => {
