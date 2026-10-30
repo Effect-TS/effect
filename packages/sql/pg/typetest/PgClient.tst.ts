@@ -1,7 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
-import { Config, Context, Effect, type Layer, type Scope } from "effect"
+import { Config, Context, Effect, hole, type Layer, type Scope } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import type { SqlClient, SqlError } from "effect/sql"
+import type { SqlClient, SqlError, Statement } from "effect/sql"
 import { describe, expect, it } from "tstyche"
 
 class Prefix extends Context.Service<Prefix, string>()("Prefix") {}
@@ -18,6 +18,21 @@ describe("PgClient onAcquire", () => {
     >()
     expect(PgClient.layerConfig({ onAcquire: Config.succeed(onAcquire) })).type.toBe<
       Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, Config.ConfigError | SqlError.SqlError, Prefix>
+    >()
+  })
+})
+
+describe("PgClient batch", () => {
+  it("types each result from its statement", () => {
+    const sql = hole<PgClient.PgClient>()
+    const a = hole<Statement.Statement<{ readonly a: number }>>()
+    const b = hole<Statement.Statement<{ readonly b: string }>>()
+
+    expect(sql.batch([a, b])).type.toBe<
+      Effect.Effect<
+        readonly [ReadonlyArray<{ readonly a: number }>, ReadonlyArray<{ readonly b: string }>],
+        SqlError.SqlError
+      >
     >()
   })
 })
