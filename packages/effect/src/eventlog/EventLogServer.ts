@@ -144,24 +144,29 @@ export const layerRpcHandlers = (options: {
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
         // Stored on the connection so it is released when the client disconnects.
-        const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
-        const now = yield* Clock.currentTimeMillis
-        client.annotate(PendingChallenge, {
-          challenge,
-          expiresAt: now + EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
-        })
+        // An unexpired challenge is reused, so overlapping Hellos share it.
+        let pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        if (pending === undefined) {
+          const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
+          const now = yield* Clock.currentTimeMillis
+          // A concurrent Hello may have stored a challenge while this one was made.
+          pending = getPendingChallenge(client, now) ?? {
+            challenge,
+            expiresAt: now + EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
+          }
+          client.annotate(PendingChallenge, pending)
+        }
         return new HelloResponse({
           remoteId: options.remoteId,
-          challenge,
+          challenge: pending.challenge,
           firstSequence: options.firstSequence,
           compaction: options.compaction === true ? true : undefined
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
-        const pending = Context.get(client.annotations, PendingChallenge)
+        const pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
         client.annotate(PendingChallenge, undefined)
-        const now = yield* Clock.currentTimeMillis
-        if (pending === undefined || pending.expiresAt <= now) {
+        if (pending === undefined) {
           return yield* new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
@@ -422,6 +427,11 @@ const PendingChallenge = Context.Reference<
 >("effect/eventlog/EventLogServer/PendingChallenge", {
   defaultValue: () => undefined
 })
+
+const getPendingChallenge = (client: Rpc.ServerClient, now: number) => {
+  const pending = Context.get(client.annotations, PendingChallenge)
+  return pending !== undefined && pending.expiresAt > now ? pending : undefined
+}
 
 const getConnectionWrites = (client: Rpc.ServerClient): ConnectionWrites => {
   const existing = Context.getOrUndefined(client.annotations, ConnectionWritesState)
