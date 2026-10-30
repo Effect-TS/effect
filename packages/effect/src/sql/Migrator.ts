@@ -101,19 +101,19 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  *
  * **Details**
  *
- * `asCommand` wraps the statements that create the migrations table and insert
- * into it, for clients such as ClickHouse that run row-less statements as
- * commands. It defaults to `identity`.
+ * `wrapMigrationsTableWrite` wraps the effects that create the migrations
+ * table and insert into it, for clients such as ClickHouse that run row-less
+ * statements differently from queries. It defaults to `identity`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = <RD = never>({
-  asCommand = identity,
+  wrapMigrationsTableWrite = identity,
   dumpSchema = () => Effect.void
 }: {
-  asCommand?: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  wrapMigrationsTableWrite?: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   dumpSchema?: (
     path: string,
     migrationsTable: string
@@ -131,7 +131,7 @@ export const make = <RD = never>({
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
 
-    const ensureMigrationsTable = sql.onDialectOrElse({
+    const ensureMigrationsTable: Effect.Effect<unknown, SqlError> = wrapMigrationsTableWrite(sql.onDialectOrElse({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
   CREATE TABLE ${sql(table)} (
@@ -148,12 +148,12 @@ export const make = <RD = never>({
 )`,
       clickhouse: () =>
         // sqlite's `PRIMARY KEY NOT NULL` is a syntax error here
-        asCommand(sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id Int32,
   created_at DateTime DEFAULT now(),
   name String
 ) ENGINE = MergeTree
-ORDER BY migration_id`),
+ORDER BY migration_id`,
       pg: () =>
         Effect.flatMap(
           migrationsTableExists(sql, table),
@@ -177,12 +177,12 @@ ORDER BY migration_id`),
   created_at datetime NOT NULL DEFAULT current_timestamp,
   name VARCHAR(255) NOT NULL
 )`
-    })
+    }))
 
     const insertMigrations = (
       rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
-      asCommand(
+      wrapMigrationsTableWrite(
         sql`INSERT INTO ${sql(table)} ${
           sql.insert(
             Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
