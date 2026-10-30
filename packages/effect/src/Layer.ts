@@ -519,7 +519,7 @@ export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
  *
  * **Details**
  *
- * Layers listed in the `fresh` option (since 4.1.0) are never looked up in the
+ * Layers listed in the `fresh` option (since 4.2.0) are never looked up in the
  * parent. Each is built again the first time the child uses it, then memoized
  * in the child.
  *
@@ -582,7 +582,7 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  *
  * **Details**
  *
- * Layers listed in the `fresh` option (since 4.1.0) are never looked up in the
+ * Layers listed in the `fresh` option (since 4.2.0) are never looked up in the
  * parent. Each is built again the first time the child uses it, then memoized
  * in the child.
  *
