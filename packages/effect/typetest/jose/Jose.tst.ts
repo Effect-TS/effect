@@ -91,6 +91,15 @@ describe("Jwk", () => {
     expect(Jwk.exportSpki(publicKey, options)).type.toBe<Effect.Effect<Uint8Array | string, JoseError.JoseError>>()
   })
 
+  it("does not promise PEM when the format is optional", () => {
+    // The property may be absent, in which case both exporters produce DER.
+    const maybePem: { readonly format?: "pem" | undefined } = {}
+    expect(Jwk.exportSpki(publicKey, maybePem)).type.toBe<Effect.Effect<Uint8Array | string, JoseError.JoseError>>()
+    expect(Jwk.exportPkcs8(privateKey, maybePem)).type.toBe<
+      Effect.Effect<Redacted.Redacted<Uint8Array | string>, JoseError.JoseError>
+    >()
+  })
+
   it("requires redaction for private and secret JWK thumbprint inputs", () => {
     expect(Jwk.thumbprint(publicKey)).type.toBe<Effect.Effect<string, JoseError.JoseError, Digest.Digest>>()
     expect(Jwk.thumbprint).type.not.toBeCallableWith(privateJwk)
