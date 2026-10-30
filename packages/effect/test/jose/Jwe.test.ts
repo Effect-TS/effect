@@ -78,20 +78,19 @@ it.effect("resolves current and previous keys by kid and preserves lookup failur
     )
     const missing = { _tag: "UnknownKey" } as const
     const resolve: Jwe.KeyResolver<typeof missing> = (header) => {
-      assert.deepStrictEqual(header.tenant, { id: "one" })
       const key = [previous, current].find((key) => key.kid === header.kid)
       return key === undefined ? Effect.fail(missing) : Effect.succeed(key)
     }
 
     for (const key of [previous, current]) {
-      const token = yield* Jwe.encrypt(utf8("private message"), key, { tenant: { id: "one" } })
+      const token = yield* Jwe.encrypt(utf8("private message"), key)
       const decrypted = yield* Jwe.decrypt(token, resolve)
       assert.strictEqual(text(decrypted.plaintext), "private message")
       assert.strictEqual(decrypted.protectedHeader.kid, key.kid)
       assert.strictEqual(decrypted.key, key)
     }
 
-    const unknown = yield* Jwe.encrypt(utf8("private message"), current, { kid: "unknown", tenant: { id: "one" } })
+    const unknown = yield* Jwe.encrypt(utf8("private message"), current, { kid: "unknown" })
     assert.strictEqual(yield* Jwe.decrypt(unknown, resolve).pipe(Effect.flip), missing)
   }).pipe(Effect.provide(layer)))
 

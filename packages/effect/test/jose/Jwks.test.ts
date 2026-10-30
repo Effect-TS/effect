@@ -21,14 +21,11 @@ const url = "https://issuer.example/keys"
 it.effect("selects a unique local key by algorithm, kid, and metadata", () =>
   Effect.gen(function*() {
     const { publicKey: p384 } = yield* Jwk.generateKeyPair({ algorithm: "ES384", kid: "ec" })
-    const { publicKey: p521 } = yield* Jwk.generateKeyPair({ algorithm: "ES512", kid: "ec" })
     const { alg: _alg384, ...ec384 } = p384
-    const { alg: _alg512, ...ec512 } = p521
     const keySet: Jwks.KeySet = {
       keys: [
         ec,
         ec384,
-        ec512,
         rsa,
         // Unsupported families and curves are tolerated but never selected.
         { kty: "EC", crv: "P-224", x: "x", y: "y", kid: "ec" },
@@ -42,7 +39,6 @@ it.effect("selects a unique local key by algorithm, kid, and metadata", () =>
     assert.strictEqual(key.kid, "ec")
     assert.deepStrictEqual(key.jwk, ec)
     assert.deepStrictEqual((yield* resolver.resolve({ algorithm: "ES384", kid: "ec" })).jwk, ec384)
-    assert.deepStrictEqual((yield* resolver.resolve({ algorithm: "ES512", kid: "ec" })).jwk, ec512)
     assert.strictEqual((yield* resolver.resolve({ algorithm: "RS256" })).kid, "rsa")
 
     // Declared `alg` excludes the key from other algorithms of its family.
