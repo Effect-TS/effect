@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.97.4
+
+### Patch Changes
+
+- [#10195](https://github.com/Effect-TS/effect/pull/10195) [`279d70f`](https://github.com/Effect-TS/effect/commit/279d70fe2e45e0929a1064e9a9e6f7126d24c87f) Thanks @effect-bot! - Build `HttpLayerRouter.toHttpEffect` apps with a new memo map and their own router, so sub-app routes and middleware no longer register on the outer server's router when built inside `HttpLayerRouter.serve` or `HttpLayerRouter.toWebHandler`.
+
+  Layers provided inside a `toHttpEffect` app are now built for each call instead of being shared with the outer app. Services the app requires but does not provide are still taken from the surrounding context.
+
+- Updated dependencies [[`c4b7934`](https://github.com/Effect-TS/effect/commit/c4b7934093807e5742e13dada2adf3691bd98e63)]:
+  - effect@3.22.5
+
 ## 0.97.3
 
 ### Patch Changes
