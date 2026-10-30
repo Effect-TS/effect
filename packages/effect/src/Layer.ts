@@ -507,24 +507,6 @@ class MemoMapImpl implements MemoMap {
 export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
 
 /**
- * Options for forking a `MemoMap`.
- *
- * @see {@link forkMemoMap} for forking a memo map inside `Effect`
- * @see {@link forkMemoMapUnsafe} for forking a memo map synchronously
- *
- * @stability stable
- * @category models
- * @since 4.1.0
- */
-export interface ForkMemoMapOptions {
-  /**
-   * Layers that the child memo map never looks up in its parent. Each is built
-   * again the first time the child uses it, then memoized in the child.
-   */
-  readonly fresh?: Iterable<Layer<any, any, any>> | undefined
-}
-
-/**
  * Constructs a child `MemoMap` synchronously, allowing it to reuse layers
  * already memoized in the parent while isolating any new layer allocations to
  * the child map.
@@ -537,8 +519,9 @@ export interface ForkMemoMapOptions {
  *
  * **Details**
  *
- * Layers listed in {@link ForkMemoMapOptions.fresh} are never looked up in the
- * parent.
+ * Layers listed in the `fresh` option (since 4.1.0) are never looked up in the
+ * parent. Each is built again the first time the child uses it, then memoized
+ * in the child.
  *
  * @see {@link forkMemoMap} for allocating the child memo map inside `Effect`
  * @see {@link makeMemoMapUnsafe} for creating a root memo map without a parent
@@ -549,7 +532,7 @@ export interface ForkMemoMapOptions {
  */
 export const forkMemoMapUnsafe = (
   parent: MemoMap,
-  options?: ForkMemoMapOptions | undefined
+  options?: { readonly fresh?: Iterable<Layer<any, any, any>> | undefined }
 ): MemoMap => new MemoMapImpl(parent, options?.fresh ? new Set(options.fresh) : undefined)
 
 /**
@@ -599,8 +582,9 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  *
  * **Details**
  *
- * Layers listed in {@link ForkMemoMapOptions.fresh} are never looked up in the
- * parent.
+ * Layers listed in the `fresh` option (since 4.1.0) are never looked up in the
+ * parent. Each is built again the first time the child uses it, then memoized
+ * in the child.
  *
  * @see {@link makeMemoMap} for creating a root memo map in an `Effect`
  * @see {@link forkMemoMapUnsafe} for the synchronous constructor variant
@@ -612,7 +596,7 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  */
 export const forkMemoMap = (
   parent: MemoMap,
-  options?: ForkMemoMapOptions | undefined
+  options?: { readonly fresh?: Iterable<Layer<any, any, any>> | undefined }
 ): Effect<MemoMap> => internalEffect.sync(() => forkMemoMapUnsafe(parent, options))
 
 /**
@@ -637,7 +621,7 @@ export const forkMemoMap = (
 export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("effect/Layer/CurrentMemoMap") {
   static forkOrCreate<Services>(
     self: Context.Context<Services>,
-    options?: ForkMemoMapOptions | undefined
+    options?: { readonly fresh?: Iterable<Layer<any, any, any>> | undefined }
   ): MemoMap {
     const current = Context.getOrUndefined(self, CurrentMemoMap)
     return current ? forkMemoMapUnsafe(current, options) : makeMemoMapUnsafe()
