@@ -12,7 +12,7 @@
 import * as Arr from "../Array.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import { pipe } from "../Function.ts"
+import { identity, pipe } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as Client from "./SqlClient.ts"
@@ -99,13 +99,22 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * migrations. ClickHouse runs without a transaction and records each migration
  * only after it succeeds.
  *
+ * **Details**
+ *
+ * `transformWrites` transforms only the effects that create the migrations
+ * table and insert into it, for clients such as ClickHouse that run row-less
+ * statements differently from queries. Reads of the migrations table and the
+ * migrations themselves are not transformed. It defaults to `identity`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = <RD = never>({
+  transformWrites = identity,
   dumpSchema = () => Effect.void
 }: {
+  transformWrites?: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   dumpSchema?: (
     path: string,
     migrationsTable: string
@@ -123,7 +132,7 @@ export const make = <RD = never>({
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
 
-    const ensureMigrationsTable = sql.onDialectOrElse({
+    const createMigrationsTable = transformWrites(sql.onDialectOrElse({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
   CREATE TABLE ${sql(table)} (
@@ -147,14 +156,25 @@ export const make = <RD = never>({
 ) ENGINE = MergeTree
 ORDER BY migration_id`,
       pg: () =>
-        Effect.flatMap(
-          migrationsTableExists(sql, table),
-          (exists) =>
-            exists ? Effect.void : Effect.asVoid(sql`CREATE TABLE ${sql(table)} (
+        sql`CREATE TABLE ${sql(table)} (
   migration_id integer primary key,
   created_at timestamp with time zone not null default now(),
   name text not null
-)`).pipe(
+)`,
+      orElse: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id integer PRIMARY KEY NOT NULL,
+  created_at datetime NOT NULL DEFAULT current_timestamp,
+  name VARCHAR(255) NOT NULL
+)`
+    }))
+
+    const ensureMigrationsTable = sql.onDialectOrElse({
+      pg: () =>
+        Effect.flatMap(
+          migrationsTableExists(sql, table),
+          (exists) =>
+            exists ? Effect.void : Effect.asVoid(createMigrationsTable).pipe(
               Effect.catch((error) =>
                 Effect.flatMap(
                   migrationsTableExists(sql, table),
@@ -163,22 +183,19 @@ ORDER BY migration_id`,
               )
             )
         ),
-      orElse: () =>
-        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
-  migration_id integer PRIMARY KEY NOT NULL,
-  created_at datetime NOT NULL DEFAULT current_timestamp,
-  name VARCHAR(255) NOT NULL
-)`
+      orElse: () => createMigrationsTable
     })
 
     const insertMigrations = (
       rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
-      sql`INSERT INTO ${sql(table)} ${
-        sql.insert(
-          Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
-        )
-      }`.withoutTransform
+      transformWrites(
+        sql`INSERT INTO ${sql(table)} ${
+          sql.insert(
+            Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
+          )
+        }`.withoutTransform
+      )
 
     const latestMigration = Effect.map(
       sql<{ migration_id: number; name: string; created_at: Date }>`SELECT migration_id, name, created_at FROM ${

@@ -162,9 +162,10 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.deepStrictEqual(insertCalls[1].columns, { except: ["id"] })
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("creates the ledger without sqlite ddl or BEGIN", () =>
+  it.effect("writes the ledger with commands and runs migrations as queries", () =>
     Effect.gen(function*() {
       connectImmediately = true
+      commandCalls.length = 0
       const queries: Array<string> = []
       queryImpl = (options) => {
         queries.push(String(options.query))
@@ -173,13 +174,16 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const applied = yield* ClickhouseMigrator.run({
         loader: ClickhouseMigrator.fromRecord({
-          "1_init": Effect.void
+          "1_init": client`CREATE TABLE init`
         })
       }).pipe(Effect.provideService(SqlClient.SqlClient, client))
 
+      const select = `SELECT migration_id, name, created_at FROM "effect_sql_migrations" ORDER BY migration_id DESC`
       assert.deepStrictEqual(applied, [[1, "init"]])
-      assert.match(queries[0] ?? "", /ENGINE = MergeTree/)
-      assert.notMatch(queries.join("\n"), /PRIMARY KEY NOT NULL|BEGIN/)
+      assert.deepStrictEqual(queries, [select, "CREATE TABLE init", select])
+      assert.strictEqual(commandCalls.length, 2)
+      assert.match(String(commandCalls[0].query), /ENGINE = MergeTree/)
+      assert.match(String(commandCalls[1].query), /^INSERT INTO "effect_sql_migrations"/)
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         queryImpl = undefined
@@ -190,16 +194,18 @@ describe("ClickhouseClient", { concurrent: false }, () => {
   it.effect("retries a failed migration and the ones after it on the next run", () =>
     Effect.gen(function*() {
       connectImmediately = true
-      const ledger: Array<{ migration_id: unknown; name: unknown }> = []
+      commandCalls.length = 0
       queryImpl = (options) => {
-        const query = String(options.query)
-        if (query.startsWith(`INSERT INTO "effect_sql_migrations"`)) {
-          const params = Object.values(options.query_params as Record<string, unknown>)
-          for (let i = 0; i < params.length; i += 2) {
-            ledger.unshift({ migration_id: params[i], name: params[i + 1] })
+        const ledger: Array<{ migration_id: unknown; name: unknown }> = []
+        for (const command of commandCalls) {
+          if (String(command.query).startsWith(`INSERT INTO "effect_sql_migrations"`)) {
+            const params = Object.values(command.query_params as Record<string, unknown>)
+            for (let i = 0; i < params.length; i += 2) {
+              ledger.unshift({ migration_id: params[i], name: params[i + 1] })
+            }
           }
         }
-        const data = query.startsWith("SELECT migration_id") ? ledger : []
+        const data = String(options.query).startsWith("SELECT migration_id") ? ledger : []
         return Promise.resolve({ json: () => Promise.resolve({ data }) })
       }
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
