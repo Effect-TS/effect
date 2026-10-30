@@ -406,13 +406,13 @@ describe("BigDecimal", () => {
     assertNone(BigDecimal.fromString("1e300000000"))
   })
 
-  it("arithmetic rejects scale alignment beyond 10_000", () => {
+  it("arithmetic rejects scale alignment beyond 20_000", () => {
     const throwsRangeError = (thunk: () => unknown) =>
       throws(thunk, (e) => {
         assertTrue(e instanceof RangeError)
       })
-    const large = BigDecimal.make(1n, -10_001)
-    const small = BigDecimal.make(1n, 10_001)
+    const large = BigDecimal.make(1n, -20_001)
+    const small = BigDecimal.make(1n, 20_001)
 
     throwsRangeError(() => BigDecimal.sum(large, $("1")))
     throwsRangeError(() => BigDecimal.subtract($("1"), large))
@@ -421,8 +421,11 @@ describe("BigDecimal", () => {
     throwsRangeError(() => BigDecimal.truncate(small))
     throwsRangeError(() => BigDecimal.round(small))
 
-    assertEquals(BigDecimal.sum(BigDecimal.make(1n, -10_000), $("1")), $(`1${"0".repeat(9_999)}1`))
-    assertEquals(BigDecimal.truncate(BigDecimal.make(1n, 10_000)), $("0"))
+    assertEquals(
+      BigDecimal.sum($("1e10000"), $("1e-10000")),
+      $(`1${"0".repeat(10_000)}.${"0".repeat(9_999)}1`)
+    )
+    assertEquals(BigDecimal.truncate(BigDecimal.make(1n, 20_000)), $("0"))
 
     // no alignment needed
     const huge = BigDecimal.make(1n, -300_000_000)
