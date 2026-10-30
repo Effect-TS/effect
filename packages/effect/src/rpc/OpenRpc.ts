@@ -15,6 +15,7 @@ import * as JsonSchema from "../JsonSchema.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import type * as SchemaRepresentation from "../SchemaRepresentation.ts"
+import type * as Types from "../Types.ts"
 import * as Rpc from "./Rpc.ts"
 import type * as RpcGroup from "./RpcGroup.ts"
 import * as RpcSchema from "./RpcSchema.ts"
@@ -290,7 +291,7 @@ export class ExternalDocs
  */
 export class Errors extends Context.Service<Errors, ReadonlyArray<OpenRPCError>>()("effect/rpc/OpenRpc/Errors") {}
 
-const annotationEntries = Object.entries({
+const annotationKeys = {
   summary: Summary,
   description: Description,
   tags: Tags,
@@ -298,7 +299,9 @@ const annotationEntries = Object.entries({
   deprecated: Deprecated,
   externalDocs: ExternalDocs,
   errors: Errors
-})
+}
+
+type AnnotationKey = keyof typeof annotationKeys
 
 /**
  * Builds a `Context` containing OpenRPC annotations from the supplied options.
@@ -333,23 +336,17 @@ const annotationEntries = Object.entries({
  * @category annotations
  * @since 4.0.0
  */
-export const annotations: (
-  options: {
-    readonly summary?: string | undefined
-    readonly description?: string | undefined
-    readonly tags?: ReadonlyArray<OpenRPCTag> | undefined
-    readonly examples?: ReadonlyArray<OpenRPCExamplePairing> | undefined
-    readonly deprecated?: boolean | undefined
-    readonly externalDocs?: OpenRPCExternalDocs | undefined
-    readonly errors?: ReadonlyArray<OpenRPCError> | undefined
-  }
-) => Context.Context<never> = (options) => {
+export const annotations = (
+  options: Pick<
+    OpenRPCMethod,
+    "summary" | "description" | "tags" | "examples" | "deprecated" | "externalDocs" | "errors"
+  >
+): Context.Context<never> => {
   let context = Context.empty()
-  for (const [key, tag] of annotationEntries) {
-    const value = options[key as keyof typeof options]
+  for (const key of Object.keys(annotationKeys) as Array<AnnotationKey>) {
+    const value = options[key]
     if (value !== undefined) {
-      const annotation: Context.Key<unknown, unknown> = tag
-      context = Context.add(context, annotation, value)
+      context = Context.add(context, annotationKeys[key] as Context.Key<unknown, unknown>, value)
     }
   }
   return context
@@ -363,12 +360,11 @@ export const annotations: (
  *
  * Schema generation is best-effort, as in OpenAPI; Effect decoding remains the
  * authority for custom predicates and approximated constraints. Structured
- * payloads include `x-effect-params-schema` for the complete parameter schema.
- * Streams include `x-effect-stream` and require Effect-aware tooling. Scalar
- * payloads and schemas that cannot be converted to Draft 7 throw. Errors without
- * literal codes and messages are omitted unless an `Errors` annotation is set. Custom
- * serialization codecs are not supported. Void and stream completion results
- * retain a result descriptor with a JSON null schema.
+ * payloads include `x-effect-params-schema` with the complete parameter schema,
+ * and streams include `x-effect-stream`; both require Effect-aware tooling.
+ * Scalar payloads and schemas that cannot be converted to Draft 7 throw. Errors
+ * without literal codes and messages are omitted unless an `Errors` annotation
+ * is set. Void and stream completion results have a JSON null result schema.
  *
  * **Example** (Documenting a user lookup)
  *
@@ -436,34 +432,17 @@ export function fromRpcGroup<R extends Rpc.Any>(
 
   const asts: Array<SchemaAST.AST> = []
   const register = (schema: Schema.Constraint): number => asts.push(InternalToCodec.toCodecJsonAST(schema.ast)) - 1
-  const contracts: Array<{
-    rpc: Rpc.AnyWithProps
-    payload: number
-    result: number
-    errorSchema: Schema.Constraint
-    hasPayload: boolean
-    paramStructure: OpenRPCMethod["paramStructure"]
-    parameters?: number | undefined
-    stream?: { item: number; chunk: number; error: number; cause: number } | undefined
-  }> = Array.from(
+  const contracts: Array<Contract> = Array.from(
     group.requests.values() as unknown as Iterable<Rpc.AnyWithProps>,
     (rpc) =>
       withMethod(rpc._tag, () => {
         const exit = Rpc.exitSchema(rpc)
-        // The JSON representation encodes void as null, so inspect the AST instead
-        const seen = new Set<SchemaAST.AST>()
-        let encodedPayload = SchemaAST.getLastEncoding(rpc.payloadSchema.ast)
-        while (encodedPayload._tag === "Suspend") {
-          if (seen.has(encodedPayload)) throw new Error("cyclic schema root cannot be resolved")
-          seen.add(encodedPayload)
-          encodedPayload = SchemaAST.getLastEncoding(encodedPayload.thunk())
-        }
         return {
           rpc,
           payload: register(rpc.payloadSchema),
           result: register(exit.value),
           errorSchema: exit.error,
-          hasPayload: encodedPayload._tag !== "Void" && encodedPayload._tag !== "Undefined",
+          hasPayload: hasPayload(rpc.payloadSchema.ast),
           paramStructure: "by-name",
           stream: RpcSchema.isStreamSchema(rpc.successSchema)
             ? {
@@ -541,42 +520,65 @@ export function fromRpcGroup<R extends Rpc.Any>(
           }
         }
       }
-      const explicitErrors = Context.getOrUndefined(annotations, Errors)
-      const errors = explicitErrors ?? deriveErrors(contract.errorSchema)
-      const stream = contract.stream
-      methods.push({
+      const method: Types.Mutable<OpenRPCMethod> = {
         name: rpc._tag,
         paramStructure: contract.paramStructure,
         params,
-        result: descriptor("result", schemas[contract.result], components),
-        ...annotationField(annotations, Summary, "summary"),
-        ...annotationField(annotations, Description, "description"),
-        ...annotationField(annotations, Tags, "tags"),
-        ...annotationField(annotations, Examples, "examples"),
-        ...annotationField(annotations, Deprecated, "deprecated"),
-        ...annotationField(annotations, ExternalDocs, "externalDocs"),
-        ...(errors.length === 0 && explicitErrors === undefined ? undefined : { errors }),
-        ...(contract.hasPayload ? { "x-effect-params-schema": schemas[contract.payload] } : undefined),
-        ...(stream === undefined ? undefined : {
-          "x-effect-stream": {
-            encoding: "effect-jsonrpc",
-            itemSchema: schemas[stream.item],
-            chunkSchema: schemas[stream.chunk],
-            errorSchema: schemas[stream.error],
-            causeSchema: schemas[stream.cause],
-            ackMethod: "@effect/rpc/Ack",
-            interruptMethod: "@effect/rpc/Interrupt"
-          }
-        })
-      })
+        result: descriptor("result", schemas[contract.result], components)
+      }
+      for (const key of Object.keys(annotationKeys) as Array<AnnotationKey>) {
+        const value = Context.getOrUndefined(annotations, annotationKeys[key] as Context.Key<unknown, unknown>)
+        if (value !== undefined) (method as Record<string, unknown>)[key] = value
+      }
+      if (method.errors === undefined) {
+        const errors = deriveErrors(contract.errorSchema)
+        if (errors.length > 0) method.errors = errors
+      }
+      if (contract.hasPayload) method["x-effect-params-schema"] = schemas[contract.payload]
+      const stream = contract.stream
+      if (stream !== undefined) {
+        method["x-effect-stream"] = {
+          encoding: "effect-jsonrpc",
+          itemSchema: schemas[stream.item],
+          chunkSchema: schemas[stream.chunk],
+          errorSchema: schemas[stream.error],
+          causeSchema: schemas[stream.cause],
+          ackMethod: "@effect/rpc/Ack",
+          interruptMethod: "@effect/rpc/Interrupt"
+        }
+      }
+      methods.push(method)
     })
   }
   return spec
 }
 
+interface Contract {
+  readonly rpc: Rpc.AnyWithProps
+  readonly payload: number
+  readonly result: number
+  readonly errorSchema: Schema.Constraint
+  readonly hasPayload: boolean
+  paramStructure: OpenRPCMethod["paramStructure"]
+  parameters?: number | undefined
+  readonly stream?: { item: number; chunk: number; error: number; cause: number } | undefined
+}
+
+// Void and Undefined encode to the same JSON representation as Null, so the
+// absence of parameters is decided on the encoded AST.
+function hasPayload(ast: SchemaAST.AST): boolean {
+  const seen = new Set<SchemaAST.AST>()
+  let encoded = SchemaAST.getLastEncoding(ast)
+  while (encoded._tag === "Suspend") {
+    if (seen.has(encoded)) throw new Error("cyclic schema root cannot be resolved")
+    seen.add(encoded)
+    encoded = SchemaAST.getLastEncoding(encoded.thunk())
+  }
+  return encoded._tag !== "Void" && encoded._tag !== "Undefined"
+}
+
 function compileSchemas(representation: SchemaRepresentation.MultiDocument): JsonSchema.Document<"draft-07"> {
-  // Schema-aware component relocation preserves data-valued references; lowering
-  // afterwards converts tuple syntax and rewrites pointers into components.
+  // Relocate while the document is still Draft 2020-12, then lower to Draft 7.
   const relocated = JsonSchema.toMultiDocumentComponents(
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(representation, { onExcessProperty: "error" }),
     { target: "OpenRPC" }
@@ -597,15 +599,6 @@ function withMethod<A>(name: string, f: () => A): A {
       { cause: cause }
     )
   }
-}
-
-function annotationField<A, I, K extends string>(
-  annotations: Context.Context<never>,
-  key: Context.Key<I, A>,
-  name: K
-): { [P in K]?: A } {
-  const value = Context.getOrUndefined(annotations, key)
-  return value === undefined ? {} : { [name]: value } as { [P in K]?: A }
 }
 
 function resolveRepresentation(
@@ -676,7 +669,6 @@ function descriptor(
   schema: JsonSchema.JsonSchema,
   components: Record<string, JsonSchema.JsonSchema>
 ): OpenRPCContentDescriptor {
-  // Metadata is optional, so external or nested references are left without it
   const metadata = resolveSchema(schema, components) ?? {}
   return {
     name,
@@ -695,8 +687,6 @@ function literalValues(
   if (seen.has(input)) return undefined
   const node = resolveRepresentation(input, references)
   switch (node._tag) {
-    case "Never":
-      return []
     case "Null":
       return [null]
     case "Literal":
@@ -723,8 +713,7 @@ function literalValues(
 }
 
 function deriveErrors(schema: Schema.Constraint): Array<OpenRPCError> {
-  // Mirrors RpcSerialization's JSON-RPC encoding: `Number(error.code)` or 0, and
-  // `error.message`. Errors without literal values are omitted.
+  // Mirrors the JSON-RPC serializer: `Number(error.code)`, defaulting to 0, and `error.message`.
   const errors = new Map<number, string>()
   const document = InternalToRepresentation.toRepresentation(InternalToCodec.toCodecJsonAST(schema.ast))
   const seen = new Set<SchemaRepresentation.Representation>()
