@@ -39,6 +39,7 @@ import type * as Rpc from "../rpc/Rpc.ts"
 import * as RpcClient from "../rpc/RpcClient.ts"
 import type { FromServer } from "../rpc/RpcMessage.ts"
 import * as Schedule from "../Schedule.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -60,6 +61,7 @@ import { hashString } from "./internal/hash.ts"
 import * as ActiveTeardown from "./internal/interruptors.ts"
 import { ResourceMap } from "./internal/resourceMap.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
+import * as Versions from "./internal/versions.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -239,6 +241,15 @@ interface EntityManagerState {
   status: "alive" | "closing" | "closed"
 }
 
+// A persisted request this runner can't read, with the error it fails with if
+// it waits for `unknownVersionTimeout`
+interface PausedRequest {
+  readonly message: Message.IncomingRequest<any>
+  readonly rpc: Rpc.Any
+  readonly error: VersionedSchema.VersionUnsupported
+  replySaved: boolean
+}
+
 const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
   const shardLockInterval = effectiveInterval(config)
@@ -266,6 +277,9 @@ const make = Effect.gen(function*() {
   let entityRegistrationFallbackStartMillis: number | undefined
   const entityRegistrationTimeoutMillis = Duration.toMillis(
     Duration.fromInputUnsafe(config.entityRegistrationTimeout)
+  )
+  const unknownVersionTimeoutMillis = Duration.toMillis(
+    Duration.fromInputUnsafe(config.unknownVersionTimeout ?? Duration.infinity)
   )
   const entityRegistrationTimeRemaining = () => {
     const now = clock.currentTimeMillisUnsafe()
@@ -803,6 +817,9 @@ const make = Effect.gen(function*() {
     readonly message: Message.IncomingRequest<any>
   }
   const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
+  // Pauses outlive individual storage reads, and notifications use them to
+  // move new waiters to storage before a shutting-down runner abandons them.
+  const pausedAddresses = MutableHashMap.empty<EntityAddress, PausedRequest>()
 
   const storageReadLock = Semaphore.makeUnsafe(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
@@ -836,6 +853,8 @@ const make = Effect.gen(function*() {
 
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
+
+    const warnedVersions = new Set<string>()
 
     const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -878,6 +897,72 @@ const make = Effect.gen(function*() {
         return messages.length
       })
 
+      // A request written at versions this runner can't read waits in storage
+      // for a runner that can, and the entity's later messages wait behind it.
+      // It stays claimed, so storage doesn't return it again until the claim
+      // expires: other entities aren't held up, and a runner that takes over
+      // the shard reads it.
+      const isExpired = (paused: PausedRequest) =>
+        clock.currentTimeMillisUnsafe() - Snowflake.timestamp(paused.message.envelope.requestId) >=
+          unknownVersionTimeoutMillis
+
+      // Keep the ordering barrier until both the terminal reply and the claim
+      // reset succeed. A retry of the reset must not write another reply.
+      const failPaused = Effect.fnUntraced(function*(paused: PausedRequest) {
+        const address = paused.message.envelope.address
+        if (!(yield* confirmShardLock(selfAddress, address.shardId))) return
+        if (!paused.replySaved) {
+          yield* storage.saveReply(
+            new Reply.ReplyWithContext({
+              reply: new Reply.WithExit({
+                id: snowflakeGen.nextUnsafe(),
+                requestId: paused.message.envelope.requestId,
+                exit: Exit.fail(paused.error) as any
+              }),
+              rpc: paused.rpc,
+              context: Context.empty() as any
+            })
+          )
+          paused.replySaved = true
+        }
+        yield* storage.resetAddresses([address])
+        MutableHashMap.remove(pausedAddresses, address)
+        yield* markDelivered
+      })
+
+      const pauseRequest = Effect.fnUntraced(function*(paused: PausedRequest) {
+        // This runner cannot supply the reply. Let live senders wait on storage
+        // so shutting this runner down does not interrupt their calls.
+        yield* storage.unregisterReplyHandler(paused.message.envelope.requestId)
+        const address = paused.message.envelope.address
+        MutableHashMap.set(pausedAddresses, address, paused)
+        if (isExpired(paused)) return yield* Effect.ignore(failPaused(paused))
+        const { id, requested, supported } = paused.error
+        const key = `${address.entityType}/${paused.message.envelope.tag}/${id}/${requested}`
+        if (warnedVersions.has(key)) return
+        warnedVersions.add(key)
+        return yield* Effect.logWarning(
+          `A persisted message waits for a runner that can read ${id} v${requested} (this runner reads up to v${
+            supported[id]
+          })`
+        ).pipe(Effect.annotateLogs({ address, tag: paused.message.envelope.tag }))
+      })
+
+      // Fails the requests that have waited for `unknownVersionTimeout`, and
+      // forgets those whose shard this runner no longer owns. The messages held
+      // behind a failed one are read again.
+      const expirePaused = Effect.suspend(() => {
+        const expired: Array<PausedRequest> = []
+        const forgotten: Array<EntityAddress> = []
+        MutableHashMap.forEach(pausedAddresses, (paused, address) => {
+          if (!MutableHashSet.has(acquiredShards, address.shardId)) forgotten.push(address)
+          else if (isExpired(paused)) expired.push(paused)
+        })
+        for (const address of forgotten) MutableHashMap.remove(pausedAddresses, address)
+        if (expired.length === 0) return Effect.void
+        return Effect.forEach(expired, (paused) => Effect.ignore(failPaused(paused)), { discard: true })
+      })
+
       const send = Effect.catchCause(
         Effect.suspend(() => {
           const message = messages[index]
@@ -914,6 +999,21 @@ const make = Effect.gen(function*() {
             pendingNotifications.delete(message.envelope.requestId)
             removableNotifications.delete(entry)
             entry.resume(Effect.void)
+          }
+
+          if (MutableHashMap.has(pausedAddresses, address)) {
+            return storage.unregisterReplyHandler(message.envelope.requestId)
+          } else if (message._tag === "IncomingRequest") {
+            const rpc = state.entity.protocol.requests.get(message.envelope.tag)
+            const versions = rpc && Versions.negotiate(rpc, message.envelope.headers)
+            if (versions !== undefined && versions.negotiated._tag === "Rejected") {
+              return pauseRequest({
+                message,
+                rpc,
+                error: new versions.versioning.errors.VersionUnsupported(versions.negotiated.props) as any,
+                replySaved: false
+              })
+            }
           }
 
           // The runner is at entity capacity, so messages for entities that
@@ -989,6 +1089,7 @@ const make = Effect.gen(function*() {
         yield* storageReadLock.take(1)
 
         entityManagers.forEach((state) => state.manager.clearProcessed())
+        yield* expirePaused
         if (pendingNotifications.size > 0) {
           pendingNotifications.forEach((entry) => removableNotifications.add(entry))
         }
@@ -1295,6 +1396,8 @@ const make = Effect.gen(function*() {
           message._tag === "IncomingRequest" && state.manager.isProcessingFor(message, { excludeReplies: true })
         ) {
           return Effect.fail(new AlreadyProcessingMessage({ address, envelopeId: message.envelope.requestId }))
+        } else if (message._tag === "IncomingRequest" && MutableHashMap.has(pausedAddresses, address)) {
+          return Effect.andThen(storage.unregisterReplyHandler(message.envelope.requestId), notify())
         } else if (message._tag === "IncomingRequest" && options?.waitUntilRead) {
           if (!storageEnabled) return notify()
           return Effect.callback<void, EntityNotAssignedToRunner>((resume) => {

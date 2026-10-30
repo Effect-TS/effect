@@ -11,7 +11,7 @@
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as ByteSize from "../ByteSize.ts"
-import type * as Cause from "../Cause.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
@@ -36,6 +36,7 @@ import { addRedactedNamesUnsafe } from "../http/internal/requestState.ts"
 import * as Multipart from "../http/Multipart.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import { stringOrRedacted } from "../internal/redacted.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
@@ -968,8 +969,19 @@ function handlerToHttpEffect(
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
   const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
+  const versioning = HttpApiEndpoint.getVersioning(endpoint)
 
-  const effect = applyMiddleware(
+  // A record the client's versions can't read or write is a typed error.
+  const versioned = <A, R>(
+    kind: HttpApiSchemaError["kind"],
+    effect: Effect.Effect<A, Schema.SchemaError, R>
+  ): Effect.Effect<A, unknown, R> =>
+    versioning === undefined ? HttpApiSchemaError.wrap(kind, effect) : Effect.catch(effect, (error) => {
+      const typed = InternalVersionedSchema.toTypedError(versioning, error)
+      return Effect.fail(typed ?? new HttpApiSchemaError({ kind, cause: error }))
+    })
+
+  const handled = applyMiddleware(
     group,
     endpoint,
     context,
@@ -979,6 +991,9 @@ function handlerToHttpEffect(
       const httpRequest = Context.getUnsafe(context, HttpServerRequest)
       const routeContext = Context.getUnsafe(context, HttpRouter.RouteContext)
       const query = Context.getUnsafe(context, Request.ParsedSearchParams)
+      const versions = versioning === undefined
+        ? undefined
+        : Context.get(context, InternalVersionedSchema.RequestVersions)
       const request: any = {
         request: httpRequest,
         endpoint,
@@ -1005,7 +1020,11 @@ function handlerToHttpEffect(
               encodeUpgradeHeaders === undefined
                 ? httpRequest.upgrade
                 : Effect.flatMap(
-                  HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
+                  HttpApiSchemaError.wrap(
+                    "ResponseHeaders",
+                    // records only carry their version in JSON bodies
+                    InternalVersionedSchema.outsideBodies(encodeUpgradeHeaders(options?.headers))
+                  ),
                   (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
                 )
             )
@@ -1017,7 +1036,7 @@ function handlerToHttpEffect(
           return result
         }
         if (result !== undefined) {
-          request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
+          request.payload = yield* versioned("Payload", result)
         }
       }
       let response = yield* handler(request)
@@ -1036,35 +1055,92 @@ function handlerToHttpEffect(
         responseHeaders = response.headers
         response = response.body
       }
-      const encoded = yield* HttpApiSchemaError.wrap(
+      const encoded = yield* versioned(
         "Body",
-        encodeStream?.(response, context) ??
-          (responseHeaders !== undefined ? encodeWithHeaders!.encodeBody(response) : encodeSuccess(response))
+        encodeStream?.(response, context, versions) ??
+          InternalVersionedSchema.withVersions(
+            responseHeaders !== undefined ? encodeWithHeaders!.encodeBody(response) : encodeSuccess(response),
+            versioning,
+            versions
+          )
       )
       if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
       const encodedHeaders = yield* HttpApiSchemaError.wrap(
         "ResponseHeaders",
-        encodeWithHeaders.encodeHeaders.get(encoded.status)!(responseHeaders)
+        InternalVersionedSchema.outsideBodies(encodeWithHeaders.encodeHeaders.get(encoded.status)!(responseHeaders))
       )
       return Response.setHeaders(encoded, encodedHeaders as any)
     })
-  ).pipe(
-    Effect.withErrorReporting,
-    Effect.catch((error) => {
-      if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
-      return Effect.catch(encodeError(error), (schemaError) =>
-        Respondable.isRespondable(error)
-          ? Respondable.toResponse(error)
-          : Effect.die(schemaError))
-    }),
-    Effect.provideContext(context)
   )
+
+  const respondWithError = (
+    error: unknown,
+    versions: Readonly<Record<string, number>> | undefined
+  ): Effect.Effect<HttpServerResponse, never, any> => {
+    if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
+    return Effect.catch(
+      InternalVersionedSchema.withVersions(encodeError(error), versioning, versions),
+      (schemaError) => {
+        // the error holds a value the client's versions can't represent
+        const typed = versioning === undefined
+          ? undefined
+          : InternalVersionedSchema.toTypedError(versioning, schemaError)
+        if (typed !== undefined) return respondWithError(typed, undefined)
+        return Respondable.isRespondable(error)
+          ? Respondable.toResponse(error)
+          : Effect.die(schemaError)
+      }
+    )
+  }
+
+  const run = handled.pipe(
+    Effect.withErrorReporting,
+    Effect.catch((error) =>
+      Effect.flatMap(
+        Effect.service(InternalVersionedSchema.RequestVersions),
+        (versions) => respondWithError(error, versions)
+      )
+    )
+  )
+
+  const effect = versioning === undefined
+    ? run.pipe(Effect.provideContext(context))
+    // Negotiate before middleware runs, and answer the versions the client can't
+    // use with a typed error before any handler side effects.
+    : Effect.flatMap(Effect.context<never>(), (requestContext) => {
+      const negotiated = InternalVersionedSchema.negotiate(
+        versioning,
+        Context.getUnsafe(requestContext, HttpServerRequest).headers[InternalVersionedSchema.header],
+        Context.get(requestContext, InternalVersionedSchema.DefaultVersions)
+      )
+      return Effect.andThen(
+        HttpEffect.appendPreResponseHandler((_request, response) => Effect.succeed(varyOnVersions(response))),
+        negotiated._tag === "Rejected"
+          ? respondWithError(new versioning.errors.VersionUnsupported(negotiated.props), undefined)
+          : Effect.provideService(run, InternalVersionedSchema.RequestVersions, negotiated.versions)
+      )
+    }).pipe(Effect.provideContext(context))
   if (redactedNames === undefined) return effect
   // Added before middleware and decoding run, so their failures are redacted too.
   return Effect.withFiber((fiber) => {
     addRedactedNamesUnsafe(fiber.context, redactedNames.query, redactedNames.headers)
     return effect
   })
+}
+
+// Responses depend on the versions the client asked for.
+const varyOnVersions = (response: HttpServerResponse): HttpServerResponse => {
+  const vary = response.headers.vary
+  if (
+    vary !== undefined && vary.split(",").some((name) => name.trim().toLowerCase() === InternalVersionedSchema.header)
+  ) {
+    return response
+  }
+  return Response.setHeader(
+    response,
+    "vary",
+    vary === undefined || vary === "" ? InternalVersionedSchema.header : `${vary}, ${InternalVersionedSchema.header}`
+  )
 }
 
 /**
@@ -1167,7 +1243,11 @@ const isHandlerError = (value: unknown): value is HandlerError => hasProperty(va
 
 const $HttpServerResponse = Schema.declare(Response.isHttpServerResponse)
 
-type StreamEncoder = (response: unknown, context: Context.Context<never>) =>
+type StreamEncoder = (
+  response: unknown,
+  context: Context.Context<never>,
+  versions: Readonly<Record<string, number>> | undefined
+) =>
   | Effect.Effect<HttpServerResponse, Schema.SchemaError, unknown>
   | undefined
 
@@ -1223,9 +1303,9 @@ function makeStreamEncoder(
   const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
-  const encodeBody = makeStreamBodyEncoder(streamSchema, options)
+  const encodeBody = makeStreamBodyEncoder(streamSchema, options, HttpApiEndpoint.getVersioning(endpoint))
 
-  return (response, context) => {
+  return (response, context, versions) => {
     if (!Stream.isStream(response)) {
       return hasBuffered ? undefined : new Schema.SchemaError(
         new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
@@ -1234,7 +1314,7 @@ function makeStreamEncoder(
 
     return Effect.succeed(Response.stream(
       Stream.provideContext(
-        encodeBody(response),
+        encodeBody(response, versions),
         context as Context.Context<unknown>
       ),
       { status, contentType }
@@ -1244,8 +1324,12 @@ function makeStreamEncoder(
 
 function makeStreamBodyEncoder(
   streamSchema: HttpApiSchema.StreamSchema,
-  options: SchemaAST.ParseOptions | undefined
-): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  options: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
+): (
+  stream: Stream.Stream<unknown, unknown, unknown>,
+  versions: Readonly<Record<string, number>> | undefined
+) => Stream.Stream<Uint8Array, unknown, unknown> {
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
     return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
   }
@@ -1254,24 +1338,25 @@ function makeStreamBodyEncoder(
       Schema.NonEmptyArray(Schema.toCodecJson(streamSchema.schema)),
       options
     )
-    // There is no error schema, so a bad element aborts the response
-    return (stream) =>
-      stream.pipe(
-        Stream.mapArrayEffect((elements) => Effect.orDie(encodeElements(elements))),
+    // There is no error schema, so a bad element aborts the response, after
+    // the elements before it when the client's versions can't represent it
+    return (stream, versions) =>
+      HttpApiEndpoint.encodeStreamChunks(stream, encodeElements, { versioning, versions, orDie: true }).pipe(
         Stream.pipeThroughChannel(Ndjson.encode()),
         Stream.catchIf(isNdjsonPackError, Stream.die)
       )
   }
-  const sseEncoder = makeSseEncoder(streamSchema, options)
+  const sseEncoder = makeSseEncoder(streamSchema, options, versioning)
   const keepAlive = streamSchema.keepAlive
   if (keepAlive === undefined) {
-    return (stream) => encodeSseStream(stream, sseEncoder)
+    return (stream, versions) => encodeSseStream(stream, sseEncoder, versions)
   }
   const keepAliveComments = Stream.tick(keepAlive).pipe(
     Stream.drop(1),
     Stream.map(() => keepAliveComment)
   )
-  return (stream) => Stream.merge(encodeSseStream(stream, sseEncoder), keepAliveComments, { haltStrategy: "left" })
+  return (stream, versions) =>
+    Stream.merge(encodeSseStream(stream, sseEncoder, versions), keepAliveComments, { haltStrategy: "left" })
 }
 
 const keepAliveComment = new TextEncoder().encode(": keepalive\n\n")
@@ -1311,6 +1396,7 @@ function hasBufferedSuccess(endpoint: HttpApiEndpoint.Top): boolean {
 }
 
 interface SseStreamEncoder {
+  readonly versioning: InternalVersionedSchema.Contract | undefined
   readonly sseMode: HttpApiSchema.StreamSseMode
   readonly encodeEvents: (
     input: NonEmptyReadonlyArray<unknown>
@@ -1320,10 +1406,14 @@ interface SseStreamEncoder {
 
 function makeSseEncoder<Events extends Sse.EventCodec, Error extends Schema.Constraint>(
   streamSchema: HttpApiSchema.StreamSse<Events, Error, unknown>,
-  options: SchemaAST.ParseOptions | undefined
+  options: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
 ): SseStreamEncoder {
-  const CauseSchema = Schema.toCodecJson(Schema.Cause(streamSchema.error, Schema.Defect()))
+  const CauseSchema = Schema.toCodecJson(
+    Schema.Cause(HttpApiEndpoint.sseErrorSchema(streamSchema, versioning), Schema.Defect())
+  )
   return {
+    versioning,
     sseMode: streamSchema.sseMode,
     encodeEvents: Schema.encodeUnknownEffect(Schema.Array(streamSchema.events), options) as any,
     encodeCause: Schema.encodeUnknownEffect(Schema.fromJsonString(CauseSchema), options)
@@ -1332,7 +1422,8 @@ function makeSseEncoder<Events extends Sse.EventCodec, Error extends Schema.Cons
 
 function encodeSseStream(
   stream: Stream.Stream<unknown, unknown, unknown>,
-  encoder: SseStreamEncoder
+  encoder: SseStreamEncoder,
+  versions: Readonly<Record<string, number>> | undefined
 ): Stream.Stream<Uint8Array, unknown, unknown> {
   return stream.pipe(
     encoder.sseMode === "data" ?
@@ -1342,16 +1433,32 @@ function encodeSseStream(
         data: value
       })) :
       Function.identity,
-    Stream.mapArrayEffect((chunk) => Effect.orDie(encoder.encodeEvents(chunk))),
-    Stream.catchCause((cause) => Stream.fromEffect(encodeFailureEvent(cause, encoder))),
+    (events) =>
+      HttpApiEndpoint.encodeStreamChunks(events, encoder.encodeEvents, {
+        versioning: encoder.versioning,
+        versions,
+        orDie: true
+      }),
+    Stream.catchCause((cause) => Stream.fromEffect(encodeFailureEvent(cause, encoder, versions))),
     Stream.map(renderSseEvent),
     Stream.encodeText
   )
 }
 
-function encodeFailureEvent(cause: Cause.Cause<unknown>, encoder: SseStreamEncoder) {
-  return encoder.encodeCause(cause).pipe(
-    Effect.orDie,
+function encodeFailureEvent(
+  cause: Cause.Cause<unknown>,
+  encoder: SseStreamEncoder,
+  versions: Readonly<Record<string, number>> | undefined
+) {
+  const encodeCause = (cause: Cause.Cause<unknown>) =>
+    InternalVersionedSchema.withVersions(encoder.encodeCause(cause), encoder.versioning, versions)
+  return Effect.catch(encodeCause(cause), (error) => {
+    // a typed failure holds a value the client's versions can't represent
+    const typed = encoder.versioning === undefined
+      ? undefined
+      : InternalVersionedSchema.toTypedError(encoder.versioning, error)
+    return typed === undefined ? Effect.die(error) : Effect.orDie(encodeCause(Cause.fail(typed)))
+  }).pipe(
     Effect.map((encodedCause) => ({
       id: undefined,
       event: reservedStreamFailureEvent,
@@ -1500,7 +1607,7 @@ function toWithHeadersResponseSchema(options: {
         Effect.flatMap((body) => encodeResponse(body, parseOptions)),
         Effect.flatMap((response) =>
           Effect.map(
-            Effect.mapError(encodeHeaders(pair.headers), toIssue),
+            Effect.mapError(InternalVersionedSchema.outsideBodies(encodeHeaders(pair.headers)), toIssue),
             (headers) => Response.setHeaders(response, headers as any)
           )
         )

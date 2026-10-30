@@ -15,13 +15,14 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Layer from "../Layer.ts"
-import type * as Rpc from "../rpc/Rpc.ts"
+import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcClient from "../rpc/RpcClient.ts"
 import { RpcClientError } from "../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import type { RequestId } from "../rpc/RpcMessage.ts"
 import * as RpcSchema from "../rpc/RpcSchema.ts"
 import * as Schema from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import type { Scope } from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type { Mutable, NoInfer } from "../Types.ts"
@@ -91,7 +92,11 @@ export type Mutation<Current> = Current extends Rpc.Rpc<
       readonly headers?: Headers.Input | undefined
     },
     _Success["Type"],
-    _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+    | _Error["Type"]
+    | RpcClientError
+    | _Middleware["error"]["Type"]
+    | _Middleware["~ClientError"]
+    | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>
   >
   : never
 
@@ -113,14 +118,23 @@ export type Query<Current> = Current extends Rpc.Rpc<
 > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
       Atom.PullResult<
         _A["Type"],
-        _E["Type"] | _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+        | _E["Type"]
+        | _Error["Type"]
+        | RpcClientError
+        | _Middleware["error"]["Type"]
+        | _Middleware["~ClientError"]
+        | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>
       >,
       void
     >
   : Atom.Atom<
     AsyncResult.AsyncResult<
       _Success["Type"],
-      _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+      | _Error["Type"]
+      | RpcClientError
+      | _Middleware["error"]["Type"]
+      | _Middleware["~ClientError"]
+      | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>
     >
   >
   : never
@@ -302,9 +316,14 @@ interface QueryKey {
   serializationKey: string | undefined
 }
 
-const makeErrorSchema = (rpc: Rpc.AnyWithProps): Schema.Top =>
-  Schema.Union([
+const makeErrorSchema = (rpc: Rpc.AnyWithProps): Schema.Top => {
+  // version negotiation can fail an rpc that uses versioned schemas; these go
+  // first, as in `Rpc.exitSchema`
+  const versioning = Rpc.getVersioning(rpc)
+  return Schema.Union([
+    ...(versioning === undefined ? [] : [versioning.errors.VersionUnsupported, versioning.errors.Unrepresentable]),
     rpc.errorSchema,
     ...Array.from(rpc.middlewares, (middleware) => middleware.error),
     RpcClientError
   ])
+}

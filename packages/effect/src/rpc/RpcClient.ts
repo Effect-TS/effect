@@ -27,6 +27,7 @@ import * as HttpClient from "../http/HttpClient.ts"
 import { HttpClientErrorSchema } from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as InternalRecord from "../internal/record.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -36,6 +37,7 @@ import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
@@ -167,7 +169,13 @@ export declare namespace RpcClient {
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsQueue extends true ? Effect.Effect<
           Queue.Dequeue<
             _A["Type"],
-            _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"] | Cause.Done
+            | _E["Type"]
+            | _Error["Type"]
+            | E
+            | _Middleware["error"]["Type"]
+            | _Middleware["~ClientError"]
+            | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>
+            | Cause.Done
           >,
           never,
           | Scope.Scope
@@ -178,7 +186,12 @@ export declare namespace RpcClient {
         >
       : Stream.Stream<
         _A["Type"],
-        _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"],
+        | _E["Type"]
+        | _Error["Type"]
+        | E
+        | _Middleware["error"]["Type"]
+        | _Middleware["~ClientError"]
+        | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>,
         | _Payload["EncodingServices"]
         | _Success["DecodingServices"]
         | _Error["DecodingServices"]
@@ -186,7 +199,11 @@ export declare namespace RpcClient {
       >
     : Effect.Effect<
       Discard extends true ? void : _Success["Type"],
-      (Discard extends true ? never : _Error["Type"]) | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"],
+      | (Discard extends true ? never : _Error["Type"])
+      | E
+      | _Middleware["error"]["Type"]
+      | _Middleware["~ClientError"]
+      | VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>,
       | _Payload["EncodingServices"]
       | _Success["DecodingServices"]
       | _Error["DecodingServices"]
@@ -256,6 +273,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     readonly flatten?: Flatten | undefined
   }
 ) {
+  // a group that gives two different versioned types the same id fails here,
+  // not at its first call
+  group.requests.forEach((rpc) => Rpc.getVersioning(rpc as any))
   const spanPrefix = options.spanPrefix
   const supportsAck = options?.supportsAck ?? true
   const disableTracing = options?.disableTracing ?? false
@@ -376,7 +396,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               sampled: span.sampled
             } :
             {}),
-          headers: Headers.merge(parentFiber.getRef(CurrentHeaders), headers),
+          headers: withVersionsHeader(rpc, Headers.merge(parentFiber.getRef(CurrentHeaders), headers), parentFiber),
           ...(discard ? { discard: true as const } : {})
         }
       )
@@ -491,7 +511,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             sampled: span.sampled
           } :
           {}),
-        headers: Headers.merge(fiber.getRef(CurrentHeaders), headers)
+        headers: withVersionsHeader(rpc, Headers.merge(fiber.getRef(CurrentHeaders), headers), fiber)
       }
     ).pipe(
       span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
@@ -697,9 +717,23 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           }
           entries.set(message.id, entry)
 
-          return entry.schemas.encodePayload(message.payload).pipe(
+          const versioning = Rpc.getVersioning(rpc)
+          return InternalVersionedSchema.withVersions(
+            entry.schemas.encodePayload(message.payload),
+            versioning,
+            // the versions the request's header names, so the two always agree
+            versioning === undefined
+              ? undefined
+              : InternalVersionedSchema.parseHeader(message.headers[InternalVersionedSchema.header])
+          ).pipe(
             Effect.provideContext(entry.context),
-            Effect.orDie,
+            Effect.catch((error) => {
+              // a payload the chosen versions can't represent
+              const typed = versioning === undefined
+                ? undefined
+                : InternalVersionedSchema.toTypedError(versioning, error)
+              return typed === undefined ? Effect.die(error) : Effect.fail(typed as RpcClientError)
+            }),
             Effect.flatMap((payload) => {
               // Checked after encoding, which can suspend while the client
               // starts shutting down.
@@ -829,6 +863,22 @@ interface RpcSchemas {
   readonly decodeExit: (encoded: unknown) => Effect.Effect<Exit.Exit<any, any>, Schema.SchemaError, unknown>
   readonly decodeDiscardExit: (encoded: unknown) => Effect.Effect<Exit.Exit<any, any>, Schema.SchemaError, unknown>
 }
+// The versions a call speaks, from the caller's choice, set last so client
+// headers can't contradict the versions its payload is written at.
+const withVersionsHeader = (
+  rpc: Rpc.AnyWithProps,
+  headers: Headers.Headers,
+  fiber: Fiber.Fiber<unknown, unknown>
+): Headers.Headers => {
+  const versioning = Rpc.getVersioning(rpc)
+  if (versioning === undefined) return headers
+  const versions = InternalVersionedSchema.clientVersions(
+    versioning,
+    fiber.getRef(InternalVersionedSchema.ClientVersions)
+  )
+  return Headers.set(headers, InternalVersionedSchema.header, InternalVersionedSchema.formatHeader(versions))
+}
+
 // Codecs are compiled per client, because two protocols can fill the message
 // holes with different codecs.
 const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {

@@ -19,12 +19,14 @@ import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
+import * as Formatter from "../Formatter.ts"
 import { constant, constTrue, constVoid, identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import { reportCauseUnsafe } from "../internal/effect.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -134,6 +136,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     readonly disableFatalDefects?: boolean | undefined
   }
 ) {
+  // a group that gives two different versioned types the same id fails here,
+  // not at its first call
+  group.requests.forEach((rpc) => Rpc.getVersioning(rpc as any))
   const enableTracing = options.disableTracing !== true
   const enableSpanPropagation = options.disableSpanPropagation !== true
   const supportsAck = options.disableClientAcks !== true
@@ -290,6 +295,22 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       return Effect.ensuring(write, endClient(client))
     }
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
+    const versioning = Rpc.getVersioning(rpc)
+    let versions = noVersions
+    if (versioning !== undefined) {
+      const negotiated = InternalVersionedSchema.negotiate(
+        versioning,
+        request.headers[InternalVersionedSchema.header],
+        Context.get(services, InternalVersionedSchema.DefaultVersions)
+      )
+      if (negotiated._tag === "Rejected") {
+        // the client speaks versions this server can't use
+        const write = respond(Exit.fail(new versioning.errors.VersionUnsupported(negotiated.props)))
+        if (!client.ended || client.fibers.size > 0) return write
+        return Effect.ensuring(write, endClient(client))
+      }
+      versions = negotiated.versions
+    }
     const metadata = {
       rpc,
       client: client.serverClient,
@@ -336,7 +357,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       )
     }
 
-    const withMiddleware = rpc.middlewares.size === 0
+    const middlewareAndHandler = rpc.middlewares.size === 0
       ? handler
       : isStream
       // middleware may rewrite or swallow a chunk write failure, so restore it
@@ -345,6 +366,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         (exit) => writeFailure ? Effect.failCause(writeFailure) : exit
       )
       : applyMiddleware(services, handler, metadata)
+    // middleware and the handler see the versions responses are written at
+    const withMiddleware = versioning === undefined
+      ? middlewareAndHandler
+      : Effect.provideService(middlewareAndHandler, InternalVersionedSchema.RequestVersions, versions)
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
@@ -527,6 +552,20 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     disconnect
   })
 })
+
+const noVersions: Readonly<Record<string, number>> = Object.freeze({})
+
+// The last `effect-versions` entry wins, as in `Headers.fromInput`.
+const versionsHeader = (headers: ReadonlyArray<readonly [string, string]> | undefined): string | undefined => {
+  if (!Array.isArray(headers)) return undefined
+  for (let i = headers.length - 1; i >= 0; i--) {
+    const entry = headers[i]
+    if (Array.isArray(entry) && String(entry[0]).toLowerCase() === InternalVersionedSchema.header) {
+      return entry[1]
+    }
+  }
+  return undefined
+}
 
 // Built-in JSON codecs depend only on the RPC schemas and can be shared.
 // Other factories may capture state at construction, so keep them per server.
@@ -731,7 +770,8 @@ export const make: <Rpcs extends Rpc.Any>(
             response.requestId,
             schemas,
             schemas.encodeChunk(response.values),
-            "Chunk"
+            "Chunk",
+            response.values
           )
         }
         case "Exit": {
@@ -791,6 +831,9 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
     readonly context: Context.Context<never>
     readonly collector?: Transferable.Collector["Service"] | undefined
+    readonly versioning?: InternalVersionedSchema.Contract | undefined
+    /** the versions responses to this request are written at */
+    readonly versions?: Readonly<Record<string, number>> | undefined
   }
 
   const schemasCache = new WeakMap<any, Schemas>()
@@ -801,7 +844,8 @@ export const make: <Rpcs extends Rpc.Any>(
       schemas = {
         tag: rpc._tag,
         ...rpcCodecs(codecFor, rpc),
-        context: entry.context
+        context: entry.context,
+        versioning: Rpc.getVersioning(rpc)
       }
       schemasCache.set(rpc, schemas)
     }
@@ -842,27 +886,92 @@ export const make: <Rpcs extends Rpc.Any>(
       ? { _tag: "Chunk", requestId, values: value as NonEmptyReadonlyArray<unknown> }
       : { _tag: "Exit", requestId, exit: value as ResponseExitEncoded["exit"] }
 
+  const provideEncoding = <A>(schemas: Schemas, effect: Effect.Effect<A, Schema.SchemaError>) => {
+    const collector = schemas.collector
+    return Effect.provideContext(
+      InternalVersionedSchema.withVersions(
+        collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
+        schemas.versioning,
+        schemas.versions
+      ),
+      schemas.context
+    )
+  }
+
+  // Sends the values of a chunk before the first one the client's versions
+  // can't represent, so the stream fails at that value instead of losing the
+  // values around it.
+  const sendRepresentable = (
+    client: Client,
+    requestId: RequestId,
+    schemas: Schemas,
+    values: NonEmptyReadonlyArray<unknown>
+  ) =>
+    Effect.flatMap(
+      InternalVersionedSchema.encodableCount(values, (value) => provideEncoding(schemas, schemas.encodeChunk(value))),
+      (count) => {
+        const collector = schemas.collector
+        // drop what counting collected, so only the sent values' transferables go
+        collector?.clearUnsafe()
+        if (count === 0) return Effect.void
+        return provideEncoding(schemas, schemas.encodeChunk(values.slice(0, count) as unknown as typeof values)).pipe(
+          Effect.flatMap((encoded) =>
+            send(client.id, responseEnvelope(requestId, "Chunk", encoded), collector && collector.clearUnsafe())
+          ),
+          // the values encoded one at a time, so this doesn't fail; if it does,
+          // the typed failure still ends the stream
+          Effect.ignore
+        )
+      }
+    )
+
   const handleEncode = (
     client: Client,
     requestId: RequestId,
     schemas: Schemas,
     effect: Effect.Effect<unknown, Schema.SchemaError>,
-    tag: "Chunk" | "Exit"
+    tag: "Chunk" | "Exit",
+    values?: NonEmptyReadonlyArray<unknown>
   ) => {
     const collector = schemas.collector
     let encodeFailed = false
+    // a value the client's versions can't represent
+    let unrepresentable: unknown
     // The schema encoders evaluate eagerly, so an encode that needs no
     // services is already a resolved success and can skip the effect wrappers.
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
       ? send(client.id, responseEnvelope(requestId, tag, effect.value), collector && collector.clearUnsafe())
       : Effect.flatMap(
         Effect.catch(
-          Effect.provideContext(
-            collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
-            schemas.context
-          ),
+          // a defect while encoding, such as a versioned type that wasn't negotiated
+          Effect.catchDefect(provideEncoding(schemas, effect), (defect) =>
+            Effect.withFiber((fiber) => {
+              const cause = Cause.die(
+                new Error(
+                  `Failed to encode response for RPC "${schemas.tag}": ${
+                    Predicate.isError(defect)
+                      ? defect.message
+                      : Predicate.isString(defect)
+                      ? defect
+                      : Formatter.format(defect)
+                  }`,
+                  { cause: defect }
+                )
+              )
+              reportCauseUnsafe(fiber, cause)
+              encodeFailed = true
+              return Effect.failCause(cause)
+            })),
           (error) =>
             Effect.withFiber((fiber) => {
+              unrepresentable = schemas.versioning === undefined
+                ? undefined
+                : InternalVersionedSchema.toTypedError(schemas.versioning, error)
+              if (unrepresentable !== undefined) {
+                // answered with the typed error below, so it isn't reported
+                encodeFailed = true
+                return Effect.failCause(Cause.die(error))
+              }
               const defect = Cause.die(
                 `Failed to encode response for RPC "${schemas.tag}": ${SchemaIssue.defaultFormatter(error.issue)}`
               )
@@ -878,13 +987,33 @@ export const make: <Rpcs extends Rpc.Any>(
       // An encode failure ends the request with the defect, so the request
       // span records it. Other failures stop the request as a cancellation.
       return Effect.andThen(
-        sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause)),
+        unrepresentable === undefined
+          ? sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause))
+          : Effect.andThen(
+            values === undefined ? Effect.void : sendRepresentable(client, requestId, schemas, values),
+            sendRequestFailure(client, requestId, schemas.encodeExit, unrepresentable)
+          ),
         encodeFailed
           ? Effect.failCause(cause)
           : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
       )
     })
   }
+
+  // ends a request with a typed failure from its exit schema
+  const sendRequestFailure = (
+    client: Client,
+    requestId: RequestId,
+    encodeExit: Schemas["encodeExit"],
+    error: unknown
+  ) =>
+    Effect.catchCause(
+      Effect.flatMap(
+        encodeExit(Exit.fail(error)),
+        (exit) => send(client.id, responseEnvelope(requestId, "Exit", exit))
+      ),
+      (cause) => sendDefect(client, Cause.squash(cause))
+    )
 
   const sendRequestDefect = (
     client: Client,
@@ -922,7 +1051,8 @@ export const make: <Rpcs extends Rpc.Any>(
     requestId: RequestId,
     schemas: Schemas,
     request: RequestEncoded,
-    payload: unknown
+    payload: unknown,
+    versions: Readonly<Record<string, number>> | undefined
   ) => {
     // the headers come from the wire unvalidated, and malformed input makes
     // `Headers.fromInput` throw
@@ -939,10 +1069,11 @@ export const make: <Rpcs extends Rpc.Any>(
     if (request.isNotification !== true) {
       client.schemas.set(
         requestId,
-        supportsTransferables
+        supportsTransferables || versions !== undefined
           ? {
             ...schemas,
-            collector: Transferable.makeCollectorUnsafe()
+            collector: supportsTransferables ? Transferable.makeCollectorUnsafe() : undefined,
+            versions
           }
           : schemas
       )
@@ -1000,23 +1131,46 @@ export const make: <Rpcs extends Rpc.Any>(
         const replySchemas = !isNotification && request.discard === true
           ? getDiscardSchemas(rpc as any, schemas)
           : schemas
+        const versioning = schemas.versioning
+        let versions: Readonly<Record<string, number>> | undefined
+        if (versioning !== undefined) {
+          // the client speaks versions this server can't use, so its payload
+          // isn't decoded and its handler doesn't run
+          const negotiated = InternalVersionedSchema.negotiate(
+            versioning,
+            versionsHeader(request.headers),
+            Context.get(services, InternalVersionedSchema.DefaultVersions)
+          )
+          if (negotiated._tag === "Rejected") {
+            const error = new versioning.errors.VersionUnsupported(negotiated.props)
+            return isNotification
+              ? dropNotification(String(error))
+              : sendRequestFailure(client, requestId, replySchemas.encodeExit, error)
+          }
+          versions = negotiated.versions
+        }
         const decoded = schemas.decode(request.payload)
         // The schema decoders evaluate eagerly, so a decode that needs no
         // services is already a resolved success and can skip the effect
         // wrappers.
         if (Exit.isExit(decoded) && Exit.isSuccess(decoded)) {
-          return writeDecodedRequest(client, requestId, replySchemas, request, decoded.value)
+          return writeDecodedRequest(client, requestId, replySchemas, request, decoded.value, versions)
         }
         return Effect.matchEffect(
           Effect.provideContext(decoded, schemas.context),
           {
             onFailure: (error) => {
               const reason = SchemaIssue.defaultFormatter(error.issue)
+              const typed = versioning === undefined
+                ? undefined
+                : InternalVersionedSchema.toTypedError(versioning, error)
               return isNotification
                 ? dropNotification(reason)
+                : typed !== undefined
+                ? sendRequestFailure(client, requestId, replySchemas.encodeExit, typed)
                 : sendRequestDefect(client, requestId, replySchemas.encodeExit, reason)
             },
-            onSuccess: (payload) => writeDecodedRequest(client, requestId, replySchemas, request, payload)
+            onSuccess: (payload) => writeDecodedRequest(client, requestId, replySchemas, request, payload, versions)
           }
         )
       }
