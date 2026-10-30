@@ -2093,6 +2093,7 @@ function filter(obj: any) {
 
       if (
         Object.hasOwn(node, "constructor") &&
+        node.constructor !== null &&
         Object.hasOwn(node.constructor, "prototype")
       ) {
         throw new SyntaxError("Object contains forbidden prototype property")
