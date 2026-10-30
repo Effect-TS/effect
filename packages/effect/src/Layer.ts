@@ -421,9 +421,11 @@ class MemoMapImpl implements MemoMap {
   }
 
   readonly parent: MemoMap | undefined
+  readonly fresh: ReadonlySet<Layer<any, any, any>> | undefined
 
-  constructor(parent?: MemoMap) {
+  constructor(parent?: MemoMap, fresh?: ReadonlySet<Layer<any, any, any>>) {
     this.parent = parent
+    this.fresh = fresh
   }
 
   readonly map = new Map<Layer<any, any, any>, MemoMapEntry>()
@@ -437,6 +439,7 @@ class MemoMapImpl implements MemoMap {
       memoMapObserve(local, scope)
       return local.deferred.effect ?? Deferred.await(local.deferred)
     }
+    if (this.fresh?.has(layer)) return undefined
     return this.parent?.get(layer, scope)
   }
 
@@ -504,6 +507,24 @@ class MemoMapImpl implements MemoMap {
 export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
 
 /**
+ * Options for forking a `MemoMap`.
+ *
+ * @see {@link forkMemoMap} for forking a memo map inside `Effect`
+ * @see {@link forkMemoMapUnsafe} for forking a memo map synchronously
+ *
+ * @stability stable
+ * @category models
+ * @since 4.1.0
+ */
+export interface ForkMemoMapOptions {
+  /**
+   * Layers that the child memo map never looks up in its parent. Each is built
+   * again the first time the child uses it, then memoized in the child.
+   */
+  readonly fresh?: Iterable<Layer<any, any, any>> | undefined
+}
+
+/**
  * Constructs a child `MemoMap` synchronously, allowing it to reuse layers
  * already memoized in the parent while isolating any new layer allocations to
  * the child map.
@@ -514,6 +535,11 @@ export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
  * builds should see parent memoized layers without writing newly built layers
  * back to the parent.
  *
+ * **Details**
+ *
+ * Layers listed in {@link ForkMemoMapOptions.fresh} are never looked up in the
+ * parent.
+ *
  * @see {@link forkMemoMap} for allocating the child memo map inside `Effect`
  * @see {@link makeMemoMapUnsafe} for creating a root memo map without a parent
  *
@@ -521,7 +547,10 @@ export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
  * @category constructors
  * @since 4.0.0
  */
-export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(parent)
+export const forkMemoMapUnsafe = (
+  parent: MemoMap,
+  options?: ForkMemoMapOptions | undefined
+): MemoMap => new MemoMapImpl(parent, options?.fresh ? new Set(options.fresh) : undefined)
 
 /**
  * Constructs a `MemoMap` effectfully so it can be used to build additional layers.
@@ -568,6 +597,11 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  * Use when a layer build should inherit already memoized layers from an
  * existing `MemoMap` while keeping newly memoized layers out of the parent map.
  *
+ * **Details**
+ *
+ * Layers listed in {@link ForkMemoMapOptions.fresh} are never looked up in the
+ * parent.
+ *
  * @see {@link makeMemoMap} for creating a root memo map in an `Effect`
  * @see {@link forkMemoMapUnsafe} for the synchronous constructor variant
  * @see {@link buildWithMemoMap} for building layers with an explicit memo map
@@ -576,7 +610,10 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  * @category constructors
  * @since 4.0.0
  */
-export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.sync(() => forkMemoMapUnsafe(parent))
+export const forkMemoMap = (
+  parent: MemoMap,
+  options?: ForkMemoMapOptions | undefined
+): Effect<MemoMap> => internalEffect.sync(() => forkMemoMapUnsafe(parent, options))
 
 /**
  * Context service for the current `MemoMap` used in layer construction.
@@ -598,9 +635,12 @@ export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.
  * @since 3.13.0
  */
 export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("effect/Layer/CurrentMemoMap") {
-  static forkOrCreate<Services>(self: Context.Context<Services>): MemoMap {
+  static forkOrCreate<Services>(
+    self: Context.Context<Services>,
+    options?: ForkMemoMapOptions | undefined
+  ): MemoMap {
     const current = Context.getOrUndefined(self, CurrentMemoMap)
-    return current ? forkMemoMapUnsafe(current) : makeMemoMapUnsafe()
+    return current ? forkMemoMapUnsafe(current, options) : makeMemoMapUnsafe()
   }
 }
 

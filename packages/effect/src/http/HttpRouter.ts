@@ -653,20 +653,15 @@ export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler.
  *
- * The app is built with its own fresh `HttpRouter`, so the routes and
- * middleware it registers through `HttpRouter` are only reachable through the
- * returned handler, even when it is built inside another router app such as
- * `serve` or `toWebHandler`.
+ * The app is built with its own fresh `HttpRouter`, which also stands in for
+ * `HttpRouter.layer` if the app provides it. The routes and middleware it
+ * registers are only reachable through the returned handler, even when it is
+ * built inside another router app such as `serve` or `toWebHandler`.
  *
  * **Gotchas**
  *
  * The layer is built with a forked `MemoMap`, so calling `toHttpEffect` twice
  * will build the same layer twice.
- *
- * Do not provide `HttpRouter.layer` to a `toHttpEffect` app. It resolves to the
- * memoized router, which inside `serve` or `toWebHandler` is the outer
- * server's router, so the app's routes would be served there and skip any
- * checks on the route that mounts the returned handler.
  *
  * The fresh router reads `RouterConfig` from the context where `toHttpEffect`
  * is run, not from the `routerConfig` option of the outer server.
@@ -686,9 +681,15 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.map(
-    Layer.build(Layer.provideMerge(appLayer, Layer.fresh(layer))),
-    (context) => Context.get(context, HttpRouter).asHttpEffect()
+  Effect.contextWith((context) =>
+    Effect.map(
+      Layer.buildWithMemoMap(
+        Layer.provideMerge(appLayer, layer),
+        Layer.CurrentMemoMap.forkOrCreate(context, { fresh: [layer] }),
+        Context.get(context, Scope.Scope)
+      ),
+      (context) => Context.get(context, HttpRouter).asHttpEffect()
+    )
   ) as any
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
