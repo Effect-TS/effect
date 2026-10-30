@@ -419,13 +419,16 @@ export const make = Effect.fnUntraced(function*<
                 const respond = Effect.andThen(save, complete).pipe(
                   Effect.catchTag("EntityNotAssignedToRunner", () => abandonFenced),
                   // A save can commit and still fail, e.g. when the COMMIT
-                  // acknowledgement is lost. Nothing is stored for a volatile
-                  // request, so its error is kept.
+                  // acknowledgement is lost. Volatile requests skip the lookup:
+                  // their replies are never stored, and a storage read could
+                  // stall a custom responder's failure.
                   Effect.catchTag("PersistenceError", (error) =>
-                    Effect.flatMap(
-                      hasStoredExit(request.message.envelope.requestId),
-                      (committed) => committed ? completeFromStorage : Effect.fail(error)
-                    )),
+                    persisted
+                      ? Effect.flatMap(
+                        hasStoredExit(request.message.envelope.requestId),
+                        (committed) => committed ? completeFromStorage : Effect.fail(error)
+                      )
+                      : Effect.fail(error)),
                   Effect.orDie
                 )
                 const transaction = request.transaction
