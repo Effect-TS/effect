@@ -947,10 +947,9 @@ class PinnedPgConnection implements PgConnection {
 }
 
 interface QueryOutput {
-  readonly result: Result
+  /** One result per statement in the cycle, in order. */
+  readonly results: ReadonlyArray<Result>
   readonly values: ReadonlyArray<ReadonlyArray<unknown>>
-  /** Every statement's result, in order, for a batch. */
-  readonly results: ReadonlyArray<Result> | undefined
 }
 
 const INT32_MIN = -2147483648
@@ -1059,9 +1058,9 @@ const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
 
 const emptyParams: ReadonlyArray<unknown> = []
 
-const takeResult = (output: QueryOutput): Result => output.result
+const takeResult = (output: QueryOutput): Result => output.results[0]
+const takeResults = (output: QueryOutput): ReadonlyArray<Result> => output.results
 const takeValues = (output: QueryOutput): ReadonlyArray<ReadonlyArray<unknown>> => output.values
-const takeResults = (output: QueryOutput): ReadonlyArray<Result> => output.results ?? [output.result]
 
 /**
  * The tail of every extended-query frame. `Describe` names the unnamed portal,
@@ -1122,6 +1121,20 @@ interface Plan {
  */
 type EncodeCycle = (cache: PreparedCache | undefined) => Plan
 
+/** `Parse` and `Bind` for a statement that stays unnamed. */
+const encodeUnnamedParseBind = (
+  sql: string,
+  parameters: ReadonlyArray<PgTypes.Parameter>,
+  parameterTypes: ReadonlyArray<number>,
+  encodeBind: BindEncoder
+): readonly [parse: Uint8Array, bind: Uint8Array] => {
+  const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
+  if (EffectResult.isFailure(parse)) throw parse.failure
+  const bind = encodeBind({ portal: "", statement: "", parameters })
+  if (EffectResult.isFailure(bind)) throw bind.failure
+  return [parse.success, bind.success]
+}
+
 /** The unnamed path: `Parse` / `Bind` / `Describe` / `Execute` / `Sync`. */
 const encodeUnnamed = (
   sql: string,
@@ -1129,12 +1142,9 @@ const encodeUnnamed = (
   parameterTypes: ReadonlyArray<number>,
   encodeBind: BindEncoder
 ): Plan => {
-  const parse = PgProtocol.encodeParse({ name: "", query: sql, parameterTypes })
-  if (EffectResult.isFailure(parse)) throw parse.failure
-  const bind = encodeBind({ portal: "", statement: "", parameters })
-  if (EffectResult.isFailure(bind)) throw bind.failure
+  const [parse, bind] = encodeUnnamedParseBind(sql, parameters, parameterTypes, encodeBind)
   return {
-    frame: concat([parse.success, bind.success, describeExecuteSync]),
+    frame: concat([parse, bind, describeExecuteSync]),
     closes: 0,
     parses: true,
     describes: true,
@@ -1173,11 +1183,8 @@ const encodeBatch = (
   const chunks: Array<Uint8Array> = []
   for (const statement of statements) {
     const { parameterTypes, parameters } = inferParameters(statement.params ?? emptyParams, registry)
-    const parse = PgProtocol.encodeParse({ name: "", query: statement.sql, parameterTypes })
-    if (EffectResult.isFailure(parse)) throw parse.failure
-    const bind = encodeBind({ portal: "", statement: "", parameters })
-    if (EffectResult.isFailure(bind)) throw bind.failure
-    chunks.push(parse.success, bind.success, describeExecute)
+    const [parse, bind] = encodeUnnamedParseBind(statement.sql, parameters, parameterTypes, encodeBind)
+    chunks.push(parse, bind, describeExecute)
   }
   chunks.push(sync)
   return {
@@ -1461,10 +1468,10 @@ class QueryMachine implements Consumer {
   /** Object rows, or `undefined` when the caller asked for positional ones. */
   private rows: Array<Row> | undefined
   private values: Array<ReadonlyArray<unknown>> | undefined
-  /** Statements of the batch still to complete, counting the current one. */
+  /** Statements of the cycle still to complete, counting the current one. */
   private remaining: number
-  /** The results of the batch's completed statements. */
-  private readonly results: Array<Result> | undefined
+  /** The results of the completed statements. */
+  private readonly results: Array<Result> = []
 
   private closes: number
   private phase: QueryPhase
@@ -1492,7 +1499,6 @@ class QueryMachine implements Consumer {
     this.rows = wantRows ? [] : undefined
     this.values = wantRows ? undefined : []
     this.remaining = plan.statements
-    this.results = plan.statements > 1 ? [] : undefined
     this.closes = plan.closes
     this.phase = plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
     const description = plan.description
@@ -1506,32 +1512,23 @@ class QueryMachine implements Consumer {
     return this.done
   }
 
-  private currentResult(): Result {
-    return {
+  /**
+   * Keeps the finished statement's result. The last statement of the cycle
+   * leaves only `ReadyForQuery` to wait for; a batch with statements left
+   * moves on to the next one's `Parse`.
+   */
+  private endStatement(): void {
+    this.results.push({
       command: this.command,
       rowCount: this.rowCount,
       oid: this.oid,
       rows: this.rows ?? emptyRows,
       fields: this.resultFields
-    }
-  }
-
-  private succeed(): void {
-    const result = this.currentResult()
-    this.results?.push(result)
-    this.complete(Effect.succeed({ result, values: this.values ?? emptyValues, results: this.results }))
-  }
-
-  /**
-   * Ends a statement. A batch with statements left keeps its result and moves
-   * on to the next statement's `Parse`.
-   */
-  private endStatement(): void {
+    })
     if (--this.remaining === 0) {
       this.phase = "complete"
       return
     }
-    this.results!.push(this.currentResult())
     this.rows = this.wantRows ? [] : undefined
     this.values = this.wantRows ? undefined : []
     this.fieldCount = 0
@@ -1682,7 +1679,7 @@ class QueryMachine implements Consumer {
       }
       case "ReadyForQuery":
         if (this.phase !== "complete") return this.failDesync(`Unexpected ReadyForQuery during ${this.phase}`)
-        return this.succeed()
+        return this.complete(Effect.succeed({ results: this.results, values: this.values ?? emptyValues }))
       case "CopyInResponse":
       case "CopyOutResponse":
       case "CopyBothResponse":
