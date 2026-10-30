@@ -4,6 +4,7 @@ import { format } from "../../Formatter.ts"
 import { NodeInspectSymbol } from "../../Inspectable.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as CryptoError from "../CryptoError.ts"
+import type * as WebCrypto from "../WebCrypto.ts"
 import * as internal from "./webCrypto.ts"
 
 /**
@@ -180,10 +181,12 @@ export const fromCryptoKey = <K>(
   method: string,
   proto: object,
   algorithm: unknown,
-  cryptoKey: CryptoKey,
+  key: WebCrypto.CryptoKey,
   expected: ExpectedCryptoKey
 ): Effect.Effect<K, CryptoError.CryptoError> =>
   Effect.suspend(() => {
+    // The check below validates the structural key at runtime.
+    const cryptoKey = key as CryptoKey
     const problem = checkCryptoKey(cryptoKey, expected)
     return problem === undefined
       ? Effect.succeed(make<K>(proto, importedAlgorithm(algorithm, cryptoKey), { _tag: "CryptoKey", cryptoKey }))

@@ -23,7 +23,7 @@ import * as Digest from "./Digest.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { WebCrypto } from "./WebCrypto.ts"
+import { type CryptoKey as WebCryptoKey, WebCrypto } from "./WebCrypto.ts"
 
 const TypeId = "~effect/crypto/Mac/Key" as const
 
@@ -321,7 +321,7 @@ export const key = <A extends Algorithm>(
  */
 export const fromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
   KeyModel.fromCryptoKey("Mac", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
     type: "secret",

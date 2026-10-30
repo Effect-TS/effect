@@ -48,7 +48,7 @@ import * as Asymmetric from "./internal/asymmetric.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { WebCrypto } from "./WebCrypto.ts"
+import { type CryptoKey as WebCryptoKey, WebCrypto } from "./WebCrypto.ts"
 
 const PrivateKeyTypeId = "~effect/crypto/Signature/PrivateKey" as const
 const PublicKeyTypeId = "~effect/crypto/Signature/PublicKey" as const
@@ -630,7 +630,7 @@ export const publicKey = <
  */
 export const privateKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCryptoKey
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
   Asymmetric.fromCryptoKey(family, "privateKeyFromCryptoKey", algorithm, "private", cryptoKey)
 
@@ -650,7 +650,7 @@ export const privateKeyFromCryptoKey = <A extends Algorithm>(
  */
 export const publicKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCryptoKey
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
   Asymmetric.fromCryptoKey(family, "publicKeyFromCryptoKey", algorithm, "public", cryptoKey)
 

@@ -37,7 +37,7 @@ import * as Chacha from "./internal/chacha.ts"
 import * as KeyModel from "./internal/key.ts"
 import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
-import { WebCrypto } from "./WebCrypto.ts"
+import { type CryptoKey as WebCryptoKey, WebCrypto } from "./WebCrypto.ts"
 
 const TypeId = "~effect/crypto/Aead/Key" as const
 
@@ -488,7 +488,7 @@ export const key = <A extends Algorithm>(
  */
 export const fromCryptoKey = <A extends AesGcm>(
   algorithm: A,
-  cryptoKey: CryptoKey
+  cryptoKey: WebCryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
   algorithm.implementation !== undefined
     ? internal.invalidKey("Aead", "fromCryptoKey", `${algorithm.name} keys cannot be CryptoKeys`)
