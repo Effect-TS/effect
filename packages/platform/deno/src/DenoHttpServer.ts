@@ -485,12 +485,13 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
     if (this.arrayBufferEffect) return this.arrayBufferEffect
     this.arrayBufferEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.arrayBuffer(),
-        catch: (cause) =>
-          new Error.HttpServerError({
-            reason: new Error.RequestParseError({ request: this, cause })
-          })
+      // Reuse the Web reader so that MaxBodySize is enforced.
+      Effect.mapError(ServerRequest.fromWeb(this.source).arrayBuffer, (error) => {
+        if (error.reason._tag !== "RequestParseError") return error
+        const { cause, reason } = error.reason
+        return new Error.HttpServerError({
+          reason: new Error.RequestParseError({ request: this, cause, ...(reason && { reason }) })
+        })
       })
     ))
     return this.arrayBufferEffect

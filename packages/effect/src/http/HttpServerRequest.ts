@@ -836,32 +836,37 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.bytesEffect) {
       return this.bytesEffect
     }
+    this.bytesEffect = Effect.withFiber((fiber) => {
+      const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
+      return maxBodySize === undefined
+        ? this.unlimitedBytes
+        : Stream.mkUint8Array(limitStream(this, this.stream, Number(maxBodySize)))
+    }).pipe(
+      Effect.cached,
+      Effect.runSync
+    )
+    return this.bytesEffect
+  }
+
+  private get unlimitedBytes(): Effect.Effect<Uint8Array, HttpServerError> {
     const body = this.source.body
-    let effect: Effect.Effect<Uint8Array, HttpServerError>
     switch (body._tag) {
       case "Empty": {
-        effect = Effect.succeed(new Uint8Array(0))
-        break
+        return Effect.succeed(new Uint8Array(0))
       }
       case "Uint8Array": {
-        effect = Effect.succeed(body.body)
-        break
+        return Effect.succeed(body.body)
       }
       case "FormData": {
-        effect = bytesFromBodyInit(this, body.formData)
-        break
+        return bytesFromBodyInit(this, body.formData)
       }
       case "Stream": {
-        effect = Stream.mkUint8Array(this.stream)
-        break
+        return Stream.mkUint8Array(this.stream)
       }
       case "Raw": {
-        effect = rawBodyBytes(this, body.body)
-        break
+        return rawBodyBytes(this, body.body)
       }
     }
-    this.bytesEffect = Effect.runSync(Effect.cached(effect))
-    return this.bytesEffect
   }
 
   get text(): Effect.Effect<string, HttpServerError> {
@@ -995,13 +1000,30 @@ const streamFromReadable = (
 const requestParseError = (
   request: HttpServerRequest,
   description?: string,
-  cause?: unknown
+  cause?: unknown,
+  reason?: "BodyTooLarge"
 ) =>
   new HttpServerError({
     reason: new RequestParseError({
       request,
+      ...(reason === undefined ? undefined : { reason }),
       ...(description === undefined ? undefined : { description }),
       ...(cause === undefined ? undefined : { cause })
+    })
+  })
+
+const limitStream = (
+  request: HttpServerRequest,
+  stream: Stream.Stream<Uint8Array, HttpServerError>,
+  maxBytes: number
+): Stream.Stream<Uint8Array, HttpServerError> =>
+  Stream.suspend(() => {
+    let bytes = 0
+    return Stream.mapEffect(stream, (chunk) => {
+      bytes += chunk.byteLength
+      return bytes > maxBytes
+        ? Effect.fail(requestParseError(request, `Request body exceeds ${maxBytes} bytes`, undefined, "BodyTooLarge"))
+        : Effect.succeed(chunk)
     })
   })
 
