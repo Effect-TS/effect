@@ -388,3 +388,109 @@ it.effect("Authenticate re-checks identity authorization on a cached binding", (
     assert.deepStrictEqual(yield* Ref.get(policyCalls), [identity.publicKey, identity.publicKey])
     assert.strictEqual(yield* Ref.get(bindingCalls), 1)
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+const allowAll: EventLogServerUnencrypted.EventLogServerAuthorization["Service"] = {
+  authorizeWrite: () => Effect.void,
+  authorizeRead: () => Effect.void,
+  authorizeIdentity: () => Effect.void
+}
+
+it.effect("Authenticate does not bind a signing key whose signature fails verification", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const client = yield* makeAuthClient({ storage, authorization: allowAll })
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    const request = yield* authenticate({
+      identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+      challenge: hello.challenge,
+      remoteId: hello.remoteId
+    })
+    const error = yield* client["EventLog.Authenticate"](
+      new EventLogMessage.Authenticate({ ...request, signature: new Uint8Array(64) })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+    assert.strictEqual(yield* Ref.get(bindingCalls), 0)
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate rejects a validly signed key that differs from the identity's binding", () =>
+  Effect.gen(function*() {
+    const { storage } = yield* makeRecordingStorage
+    const client = yield* makeAuthClient({ storage, authorization: allowAll })
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: hello.challenge, remoteId: hello.remoteId })
+    )
+
+    const otherHello = yield* client["EventLog.Hello"]()
+    const error = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+        challenge: otherHello.challenge,
+        remoteId: otherHello.remoteId
+      })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate passes the presented signing key to identity authorization", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const ownerSigningPublicKey = (yield* getIdentityRootSecretMaterial(owner)).signingPublicKey
+    const otherSigningPublicKey = (yield* getIdentityRootSecretMaterial(other)).signingPublicKey
+    const policyCalls = yield* Ref.make<ReadonlyArray<Uint8Array>>([])
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        ...allowAll,
+        authorizeIdentity: ({ publicKey, signingPublicKey }) =>
+          Ref.update(policyCalls, (calls) => [...calls, signingPublicKey]).pipe(
+            Effect.andThen(
+              signingPublicKey !== undefined &&
+                signingPublicKey.every((byte, index) => byte === ownerSigningPublicKey[index])
+                ? Effect.void
+                : Effect.fail(
+                  new EventLogServerUnencrypted.EventLogServerAuthError({
+                    reason: "Forbidden",
+                    publicKey,
+                    message: "Signing key not provisioned"
+                  })
+                )
+            )
+          )
+      }
+    })
+    const hello = yield* client["EventLog.Hello"]()
+    const error = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+        challenge: hello.challenge,
+        remoteId: hello.remoteId
+      })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+    assert.strictEqual(yield* Ref.get(bindingCalls), 0)
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+    assert.deepStrictEqual(yield* Ref.get(policyCalls), [otherSigningPublicKey, ownerSigningPublicKey])
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
