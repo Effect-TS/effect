@@ -8,6 +8,7 @@ import * as McpSchema2026 from "effect/ai/internal/mcpSchema/v2026_07_28"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as McpServerError from "effect/ai/McpServerError"
 import * as McpTest from "effect/ai/McpTest"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
@@ -1443,7 +1444,7 @@ describe("McpServer", () => {
           Effect.flip
         )
 
-        assertTrue(error instanceof McpSchema.InvalidParams)
+        assertTrue(error instanceof McpServerError.InvalidParams)
         assert.strictEqual(error.message, "Resource 'file:///unknown' not found")
       }))
 
@@ -1466,7 +1467,7 @@ describe("McpServer", () => {
     it.effect("should preserve a registered resource handler's typed failure", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
-        const failure = new McpSchema.InternalError({ message: "resource failed" })
+        const failure = new McpServerError.InternalError({ message: "resource failed" })
         yield* server.addResource({
           resource: new McpSchema.Resource({
             uri: "file:///failure",
@@ -1678,7 +1679,7 @@ describe("McpServer", () => {
         for (const args of [{ first: 1, second: "invalid", extra: true }, { extra: true }]) {
           const error = yield* client.callTool({ name: "NonStrictTool", arguments: args }).pipe(Effect.flip)
 
-          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
           assert.include(error.message, "[\"first\"]")
           assert.include(error.message, "[\"second\"]")
           assert.notInclude(error.message, "[\"extra\"]")
@@ -1810,7 +1811,7 @@ describe("McpServer", () => {
 
           assert.isFalse(handlerInvoked)
           assertTrue("code" in error)
-          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
           assert.include(error.message, "Invalid parameters for tool 'StrictObjectTool'")
           assert.notMatch(error.message, /AiError|ToolParameterValidationError|Toolkit/)
         }
@@ -1840,7 +1841,7 @@ describe("McpServer", () => {
           }).pipe(Effect.flip)
 
           assertTrue("code" in error)
-          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
           assert.include(error.message, "Invalid parameters for tool 'StrictObjectTool'")
           for (const path of ["[\"first\"]", "[\"second\"]", "[\"config\"][\"third\"]", "[\"config\"][\"fourth\"]"]) {
             assert.include(error.message, path)
@@ -2017,7 +2018,7 @@ describe("McpServer", () => {
 
         assert.isFalse(handlerInvoked)
         assert.isTrue("code" in error)
-        if ("code" in error) assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        if ("code" in error) assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
         assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
         assert.match(error.message, /Expected string \| undefined/)
         assert.match(error.message, /at \["signature"\]/)
@@ -2025,7 +2026,7 @@ describe("McpServer", () => {
         assert.isTrue(Cause.hasFails(reported[0]))
         assert.deepInclude(Cause.squash(reported[0]), {
           _tag: "ProtocolError",
-          code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+          code: McpServerError.INVALID_PARAMS_ERROR_CODE,
           message: error.message
         })
       }))
@@ -2344,7 +2345,7 @@ describe("McpServer", () => {
 
         assert.isTrue("code" in error)
         if ("code" in error) {
-          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.code, McpServerError.INVALID_PARAMS_ERROR_CODE)
           assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
         }
       }))
@@ -2733,7 +2734,7 @@ describe("McpServer", () => {
       strictEqual(malformedNoVersionResponse.status, 200)
       const malformedNoVersionBody = JSON.parse(yield* malformedNoVersionResponse.text)
       strictEqual(malformedNoVersionBody.id, null)
-      strictEqual(malformedNoVersionBody.error.code, McpSchema.PARSE_ERROR_CODE)
+      strictEqual(malformedNoVersionBody.error.code, McpServerError.PARSE_ERROR_CODE)
 
       const invalidRequestResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2752,7 +2753,7 @@ describe("McpServer", () => {
       strictEqual(invalidRequestNoVersionResponse.status, 200)
       const invalidRequestNoVersionBody = JSON.parse(yield* invalidRequestNoVersionResponse.text)
       strictEqual(invalidRequestNoVersionBody.id, null)
-      strictEqual(invalidRequestNoVersionBody.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+      strictEqual(invalidRequestNoVersionBody.error.code, McpServerError.INVALID_REQUEST_ERROR_CODE)
 
       const invalidInitializeResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),

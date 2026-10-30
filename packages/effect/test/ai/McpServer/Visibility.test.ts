@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as McpServerError from "effect/ai/McpServerError"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
@@ -20,7 +21,7 @@ class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUs
 class CurrentTenant extends Context.Service<CurrentTenant, string>()("test/CurrentTenant") {}
 
 class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
-  ...McpSchema.McpErrorBase.fields,
+  ...McpServerError.McpErrorBase.fields,
   _tag: Schema.tag("Unauthorized"),
   code: Schema.tag(-32001)
 }) {}
