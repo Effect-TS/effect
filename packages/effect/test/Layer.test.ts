@@ -733,6 +733,28 @@ describe("Layer", () => {
 
         assert.deepStrictEqual(arr, [acquire1, acquire2, acquire2, release2, release2, release1])
       }))
+
+    it.effect("forked memo maps build fresh layers again but reuse other parent layers", () =>
+      Effect.gen(function*() {
+        const arr: Array<string> = []
+        const freshLayer = makeLayer1(arr)
+        const sharedLayer = makeLayer2(arr)
+        const parent = yield* Layer.makeMemoMap
+        const child = yield* Layer.forkMemoMap(parent, { fresh: [freshLayer] })
+
+        const scope1 = yield* Scope.make()
+        const scope2 = yield* Scope.make()
+
+        yield* Layer.buildWithMemoMap(freshLayer, parent, scope1)
+        yield* Layer.buildWithMemoMap(sharedLayer, parent, scope1)
+        yield* Layer.buildWithMemoMap(freshLayer, child, scope2)
+        yield* Layer.buildWithMemoMap(sharedLayer, child, scope2)
+
+        yield* Scope.close(scope2, Exit.void)
+        yield* Scope.close(scope1, Exit.void)
+
+        assert.deepStrictEqual(arr, [acquire1, acquire2, acquire1, release1, release2, release1])
+      }))
   })
 
   describe("tracing", () => {

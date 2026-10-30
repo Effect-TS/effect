@@ -126,28 +126,38 @@ describe("HttpRouter", () => {
       }
     }
 
-    it("only serves sub-app routes through the mount", async () => {
-      const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
-        const admin = yield* HttpRouter.toHttpEffect(Admin)
-        yield* router.add(
-          "*",
-          "/admin/*",
-          Effect.gen(function*() {
-            const request = yield* HttpServerRequest.HttpServerRequest
-            if (request.headers.authorization !== "Bearer admin") {
-              return HttpServerResponse.text("unauthorized", { status: 401 })
-            }
-            return yield* Effect.orDie(admin)
-          })
-        )
-      }))
+    for (
+      const { name, subApp } of [
+        { name: "only serves sub-app routes through the mount", subApp: Admin },
+        {
+          name: "only serves routes of a sub-app that provides HttpRouter.layer through the mount",
+          subApp: Admin.pipe(Layer.provide(HttpRouter.layer))
+        }
+      ]
+    ) {
+      it(name, async () => {
+        const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
+          const admin = yield* HttpRouter.toHttpEffect(subApp)
+          yield* router.add(
+            "*",
+            "/admin/*",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              if (request.headers.authorization !== "Bearer admin") {
+                return HttpServerResponse.text("unauthorized", { status: 401 })
+              }
+              return yield* Effect.orDie(admin)
+            })
+          )
+        }))
 
-      assert.deepStrictEqual(await request(app), { status: 401, body: "unauthorized" })
-      assert.deepStrictEqual(await request(app, { headers: { authorization: "Bearer admin" } }), {
-        status: 200,
-        body: "admin stats"
+        assert.deepStrictEqual(await request(app), { status: 401, body: "unauthorized" })
+        assert.deepStrictEqual(await request(app, { headers: { authorization: "Bearer admin" } }), {
+          status: 200,
+          body: "admin stats"
+        })
       })
-    })
+    }
 
     it("mounts a sub-app at one of its own routes", async () => {
       const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
