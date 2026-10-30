@@ -1648,8 +1648,8 @@ export const urlFromString: Transformation<URL, string> = transformEffect<URL, s
  * **Details**
  *
  * Decoding calls `BigDecimal.fromString(s)` and fails with `InvalidValue` if
- * the string is not a valid `BigDecimal` representation. Encoding returns
- * `BigDecimal.format(bd)`.
+ * the string is not a valid `BigDecimal` representation or its scale lies
+ * outside ±10,000. Encoding returns `BigDecimal.format(bd)`.
  *
  * @stability stable
  * @category transforming

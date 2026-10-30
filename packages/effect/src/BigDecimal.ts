@@ -220,13 +220,20 @@ export const normalize = (self: BigDecimal): BigDecimal => {
       self.normalized = zero
     } else {
       const digits = `${self.value}`
-      let end = digits.length
-      while (digits[end - 1] === "0") end--
-      self.normalized = makeNormalized(BigInt(digits.slice(0, end)), self.scale - (digits.length - end))
+      const zeros = trailingZeros(digits)
+      self.normalized = makeNormalized(BigInt(digits.slice(0, digits.length - zeros)), self.scale - zeros)
     }
   }
 
   return self.normalized
+}
+
+// Counts trailing zeros of a non-zero integer string without a regex, which
+// could backtrack quadratically on long zero runs
+const trailingZeros = (digits: string): number => {
+  let end = digits.length
+  while (digits[end - 1] === "0") end--
+  return digits.length - end
 }
 
 const powerOfTen = (exponent: number): bigint => {
@@ -1336,11 +1343,10 @@ export const fromNumber = (n: number): Option.Option<BigDecimal> => {
  * **Details**
  *
  * Returns `Option.some` for valid decimal or exponent notation and
- * `Option.none` when the string cannot be parsed or would produce a scale
- * whose absolute value exceeds 10,000, before or after removing trailing
- * zeros. This applies to plain decimal strings as well as exponent notation,
- * so more than 10,000 fractional digits are rejected even when they are
- * trailing zeros. The empty string parses as zero.
+ * `Option.none` when the string cannot be parsed or its scale, before or after
+ * trailing zeros are removed, lies outside ±10,000. The limit applies to plain
+ * decimal strings too, so more than 10,000 fractional digits are rejected. The
+ * empty string parses as zero.
  *
  * **Example** (Parsing decimal strings safely)
  *
@@ -1399,18 +1405,11 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
   }
 
   const scale = offset - exp
-  if (!Number.isSafeInteger(scale) || Math.abs(scale) > MAX_SCALE) {
-    return Option.none()
-  }
-
   const value = BigInt(digits)
-  if (value !== bigint0) {
-    let end = digits.length
-    while (digits[end - 1] === "0") end--
-    // `format` writes the normalized scale, which must parse again
-    if (scale - (digits.length - end) < -MAX_SCALE) {
-      return Option.none()
-    }
+  // `format` writes the normalized scale, so it must stay within the bound too
+  const normalizedScale = value === bigint0 ? scale : scale - trailingZeros(digits)
+  if (scale > MAX_SCALE || normalizedScale < -MAX_SCALE) {
+    return Option.none()
   }
 
   return Option.some(make(value, scale))
