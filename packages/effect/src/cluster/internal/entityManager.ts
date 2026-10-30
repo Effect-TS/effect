@@ -410,8 +410,25 @@ export const make = Effect.fnUntraced(function*<
                   }
                   removeActiveRequest(Snowflake.Snowflake(response.requestId))
                 })
+                // Let callers read the saved reply instead of waiting on a
+                // handler that will never be resumed.
+                const completeFromStorage = Effect.andThen(
+                  complete,
+                  options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                )
                 const respond = Effect.andThen(save, complete).pipe(
                   Effect.catchTag("EntityNotAssignedToRunner", () => abandonFenced),
+                  // A save can commit and still fail, e.g. when the COMMIT
+                  // acknowledgement is lost. Volatile requests skip the lookup:
+                  // their replies are never stored, and a storage read could
+                  // stall a custom responder's failure.
+                  Effect.catchTag("PersistenceError", (error) =>
+                    persisted
+                      ? Effect.flatMap(
+                        hasStoredExit(request.message.envelope.requestId),
+                        (committed) => committed ? completeFromStorage : Effect.fail(error)
+                      )
+                      : Effect.fail(error)),
                   Effect.orDie
                 )
                 const transaction = request.transaction
@@ -430,16 +447,10 @@ export const make = Effect.fnUntraced(function*<
                     // A rejected save failed the transaction, rolling back the
                     // handler's writes; the request is left for the owner.
                     if (fenced) return abandonFenced
+                    // The commit can succeed despite the error.
                     return Effect.flatMap(
                       hasStoredExit(request.message.envelope.requestId),
-                      (committed) => {
-                        if (!committed) return restartFrom(outcome.cause)
-                        // Commit succeeded despite the error; let callers read the saved reply.
-                        return Effect.andThen(
-                          complete,
-                          options.storage.unregisterReplyHandler(request.message.envelope.requestId)
-                        )
-                      }
+                      (committed) => committed ? completeFromStorage : restartFrom(outcome.cause)
                     )
                   }
                   return Effect.orDie(save)
