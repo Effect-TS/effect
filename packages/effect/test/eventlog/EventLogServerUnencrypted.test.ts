@@ -452,9 +452,9 @@ it.effect("Authenticate passes the presented signing key to identity authorizati
     const { storage, bindingCalls } = yield* makeRecordingStorage
     const owner = yield* EventLog.makeIdentity
     const other = yield* EventLog.makeIdentity
-    const ownerSigningPublicKey = (yield* getIdentityRootSecretMaterial(owner)).signingPublicKey
-    const otherSigningPublicKey = (yield* getIdentityRootSecretMaterial(other)).signingPublicKey
-    const policyCalls = yield* Ref.make<ReadonlyArray<Uint8Array>>([])
+    const ownerSigningPublicKey = yield* EventLogSessionAuth.deriveSigningPublicKey(owner)
+    const otherSigningPublicKey = yield* EventLogSessionAuth.deriveSigningPublicKey(other)
+    const policyCalls = yield* Ref.make<ReadonlyArray<Uint8Array | undefined>>([])
     const client = yield* makeAuthClient({
       storage,
       authorization: {
