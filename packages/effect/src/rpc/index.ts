@@ -9,6 +9,12 @@
  * @stability unstable
  * @since 4.0.0
  */
+export * as OpenRpc from "./OpenRpc.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as Rpc from "./Rpc.ts"
 
 /**
