@@ -113,6 +113,51 @@ const ProtoTimeZoneOffset = {
   }
 }
 
+type CacheKey = "partsUtc" | "adjustedEpochMilliseconds" | "partsAdjusted"
+
+type Caches = { [K in CacheKey]?: DateTime.Zoned[K] }
+
+const cacheSlot: PropertyDescriptor = { value: undefined, enumerable: false, writable: true }
+
+// Instances sealed or frozen before their first cache write cannot receive own
+// slots, so their caches live here instead.
+const sealedCaches = new WeakMap<object, Caches>()
+
+// Until an instance has its own slots, every cache read and write, including
+// writes through the public fields from other copies of effect, reaches these
+// accessors. The first write defines all of the instance's slots at once and in
+// a fixed order, so construction avoids `Object.defineProperty` and instances
+// keep few shapes.
+const cacheAccessor = <K extends CacheKey>(key: K, slots: ReadonlyArray<CacheKey>): PropertyDescriptor => ({
+  get(this: object): Caches[K] {
+    return Object.isExtensible(this) ? undefined : sealedCaches.get(this)?.[key]
+  },
+  set(this: Caches, value: Caches[K]) {
+    if (Object.isExtensible(this)) {
+      for (const slot of slots) {
+        Object.defineProperty(this, slot, cacheSlot)
+      }
+      this[key] = value
+    } else {
+      let caches = sealedCaches.get(this)
+      if (caches === undefined) {
+        caches = {}
+        sealedCaches.set(this, caches)
+      }
+      caches[key] = value
+    }
+  }
+})
+
+const zonedSlots: ReadonlyArray<CacheKey> = ["partsUtc", "adjustedEpochMilliseconds", "partsAdjusted"]
+
+Object.defineProperty(ProtoUtc, "partsUtc", cacheAccessor("partsUtc", ["partsUtc"]))
+Object.defineProperties(ProtoZoned, {
+  partsUtc: cacheAccessor("partsUtc", zonedSlots),
+  adjustedEpochMilliseconds: cacheAccessor("adjustedEpochMilliseconds", zonedSlots),
+  partsAdjusted: cacheAccessor("partsAdjusted", zonedSlots)
+})
+
 /** @internal */
 export const makeZonedProto = (
   epochMillis: number,
@@ -122,21 +167,9 @@ export const makeZonedProto = (
   const self = Object.create(ProtoZoned)
   self.epochMilliseconds = epochMillis
   self.zone = zone
-  Object.defineProperty(self, "partsUtc", {
-    value: partsUtc,
-    enumerable: false,
-    writable: true
-  })
-  Object.defineProperty(self, "adjustedEpochMilliseconds", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
-  Object.defineProperty(self, "partsAdjusted", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
+  if (partsUtc !== undefined) {
+    self.partsUtc = partsUtc
+  }
   return self
 }
 
@@ -196,11 +229,6 @@ export const clamp: {
 const makeUtc = (epochMillis: number): DateTime.Utc => {
   const self = Object.create(ProtoUtc)
   self.epochMilliseconds = epochMillis
-  Object.defineProperty(self, "partsUtc", {
-    value: undefined,
-    enumerable: false,
-    writable: true
-  })
   return self
 }
 
@@ -654,8 +682,9 @@ export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWee
   } else if (self.partsAdjusted !== undefined) {
     return self.partsAdjusted
   }
-  self.partsAdjusted = withDate(self, dateToParts)
-  return self.partsAdjusted
+  const parts = withDate(self, dateToParts)
+  self.partsAdjusted = parts
+  return parts
 }
 
 /** @internal */
@@ -663,8 +692,9 @@ export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWith
   if (self.partsUtc !== undefined) {
     return self.partsUtc
   }
-  self.partsUtc = withDateUtc(self, dateToParts)
-  return self.partsUtc
+  const parts = withDateUtc(self, dateToParts)
+  self.partsUtc = parts
+  return parts
 }
 
 /** @internal */
