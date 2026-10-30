@@ -27,15 +27,41 @@ import * as Tracer from "../Tracer.ts"
 import type { Acquirer, Borrower, Connection, Row } from "./SqlConnection.ts"
 import type { SqlError } from "./SqlError.ts"
 
-const FragmentTypeId = "~effect/sql/Statement/Fragment"
+/**
+ * Runtime type identifier for SQL `Fragment` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export const FragmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Fragment")
 
-// Runtime-only brands checked by `isFragment` and `isSegment`. `Symbol.for`
-// shares them between copies of effect, and the `symbol` annotation keeps them
-// out of the public types so values from another copy still type check. The
-// string key above stays for the public `Fragment` type only; guards never
-// trust it, because any JSON value can carry it.
-const FragmentBrand: symbol = Symbol.for(FragmentTypeId)
-const SegmentBrand: symbol = Symbol.for("~effect/sql/Statement/Segment")
+/**
+ * Type of the unique symbol used to brand SQL `Fragment` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export type FragmentTypeId = typeof FragmentTypeId
+
+/**
+ * Runtime type identifier for SQL `Segment` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export const SegmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Segment")
+
+/**
+ * Type of the unique symbol used to brand SQL `Segment` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export type SegmentTypeId = typeof SegmentTypeId
 
 /**
  * Composable SQL fragment represented as low-level segments that can be
@@ -46,7 +72,7 @@ const SegmentBrand: symbol = Symbol.for("~effect/sql/Statement/Segment")
  * @since 4.0.0
  */
 export interface Fragment {
-  readonly [FragmentTypeId]: typeof FragmentTypeId
+  readonly [FragmentTypeId]: FragmentTypeId
   readonly segments: ReadonlyArray<Segment>
 }
 
@@ -61,7 +87,6 @@ export const fragment = (
   segments: ReadonlyArray<Segment>
 ): Fragment => ({
   [FragmentTypeId]: FragmentTypeId,
-  [FragmentBrand]: FragmentBrand,
   segments
 })
 
@@ -144,7 +169,7 @@ export const SpanPropagationEnabled = Context.Reference<boolean>("effect/sql/Spa
  * @category guards
  * @since 4.0.0
  */
-export const isFragment = (u: unknown): u is Fragment => hasProperty(u, FragmentBrand)
+export const isFragment = (u: unknown): u is Fragment => hasProperty(u, FragmentTypeId)
 
 /**
  * Creates a type guard for custom SQL segments with the specified custom kind.
@@ -184,6 +209,7 @@ export type Segment =
  * @since 4.0.0
  */
 export interface Literal {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Literal"
   readonly value: string
   readonly params?: ReadonlyArray<unknown> | undefined
@@ -198,7 +224,7 @@ export interface Literal {
  * @since 4.0.0
  */
 export const literal = (value: string, params?: ReadonlyArray<unknown> | undefined): Literal => ({
-  [SegmentBrand]: SegmentBrand,
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Literal",
   value,
   params
@@ -212,6 +238,7 @@ export const literal = (value: string, params?: ReadonlyArray<unknown> | undefin
  * @since 4.0.0
  */
 export interface Identifier {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Identifier"
   readonly value: string
 }
@@ -225,7 +252,7 @@ export interface Identifier {
  * @since 4.0.0
  */
 export const identifier = (value: string): Identifier => ({
-  [SegmentBrand]: SegmentBrand,
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Identifier",
   value
 })
@@ -239,6 +266,7 @@ export const identifier = (value: string): Identifier => ({
  * @since 4.0.0
  */
 export interface Parameter {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Parameter"
   readonly value: unknown
 }
@@ -251,7 +279,7 @@ export interface Parameter {
  * @since 4.0.0
  */
 export const parameter = (value: unknown): Parameter => ({
-  [SegmentBrand]: SegmentBrand,
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Parameter",
   value
 })
@@ -265,6 +293,7 @@ export const parameter = (value: unknown): Parameter => ({
  * @since 4.0.0
  */
 export interface ArrayHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "ArrayHelper"
   readonly value: ReadonlyArray<unknown | Fragment>
 }
@@ -277,7 +306,7 @@ export interface ArrayHelper {
  * @since 4.0.0
  */
 export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelper => ({
-  [SegmentBrand]: SegmentBrand,
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "ArrayHelper",
   value
 })
@@ -291,6 +320,7 @@ export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelp
  * @since 4.0.0
  */
 export interface RecordInsertHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordInsertHelper"
   readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   /**
@@ -301,7 +331,7 @@ export interface RecordInsertHelper {
 }
 
 const RecordInsertHelperProto = {
-  [SegmentBrand]: SegmentBrand,
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "RecordInsertHelper" as const,
   returning(this: RecordInsertHelper, sql: string | Identifier | Fragment) {
     const self = Object.create(Object.getPrototypeOf(this))
@@ -336,6 +366,7 @@ export const recordInsertHelper = (
  * @since 4.0.0
  */
 export interface RecordUpdateHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordUpdateHelper"
   readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   readonly alias: string
@@ -378,6 +409,7 @@ export const recordUpdateHelper = (
  * @since 4.0.0
  */
 export interface RecordUpdateHelperSingle {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordUpdateHelperSingle"
   readonly value: Record<string, unknown>
   readonly omit: ReadonlyArray<string>
@@ -425,6 +457,7 @@ export interface Custom<
   B = void,
   C = void
 > {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Custom"
   readonly kind: T
   readonly paramA: A
@@ -447,7 +480,7 @@ export const custom = <C extends Custom<any, any, any, any>>(
   paramA: C["paramA"],
   paramB: C["paramB"],
   paramC: C["paramC"]
-): C => ({ [SegmentBrand]: SegmentBrand, _tag: "Custom", kind, paramA, paramB, paramC } as Custom as C)
+): C => ({ [SegmentTypeId]: SegmentTypeId, _tag: "Custom", kind, paramA, paramB, paramC } as C)
 
 /**
  * Names the primitive value categories recognized by SQL statement helpers and
@@ -1421,7 +1454,6 @@ const StatementProto: Omit<
   "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows" | "borrower"
 > = {
   [FragmentTypeId]: FragmentTypeId,
-  [FragmentBrand]: FragmentBrand,
   withConnection<XA, E>(
     this: StatementImpl<any>,
     operation: string,
@@ -1612,7 +1644,7 @@ const withStatement = <A, X, E, R>(
     )
   })
 
-const isSegment = (u: unknown): u is Segment => hasProperty(u, SegmentBrand)
+const isSegment = (u: unknown): u is Segment => hasProperty(u, SegmentTypeId)
 
 function convertLiteralOrFragment(clause: string | Fragment): Array<Segment> {
   if (typeof clause === "string") {
