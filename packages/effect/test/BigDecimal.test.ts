@@ -395,6 +395,43 @@ describe("BigDecimal", () => {
     assertNone(BigDecimal.fromString(".+1"))
   })
 
+  it("fromString rejects scales beyond 10_000", () => {
+    assertSomeBigDecimal(BigDecimal.fromString("1e10000"), BigDecimal.make(1n, -10_000))
+    assertSomeBigDecimal(BigDecimal.fromString("1e-10000"), BigDecimal.make(1n, 10_000))
+    assertNone(BigDecimal.fromString("1e10001"))
+    assertNone(BigDecimal.fromString("1e-10001"))
+    assertNone(BigDecimal.fromString("0.1e-10000"))
+    assertNone(BigDecimal.fromString("1e300000000"))
+  })
+
+  it("arithmetic rejects scale alignment beyond 10_000", () => {
+    const throwsRangeError = (thunk: () => unknown) =>
+      throws(thunk, (e) => {
+        assertTrue(e instanceof RangeError)
+      })
+    const large = BigDecimal.make(1n, -10_001)
+    const small = BigDecimal.make(1n, 10_001)
+
+    throwsRangeError(() => BigDecimal.sum(large, $("1")))
+    throwsRangeError(() => BigDecimal.subtract($("1"), large))
+    throwsRangeError(() => BigDecimal.remainder(large, $("1")))
+    throwsRangeError(() => BigDecimal.scale(large, 0))
+    throwsRangeError(() => BigDecimal.truncate(small))
+    throwsRangeError(() => BigDecimal.round(small))
+    throwsRangeError(() => BigDecimal.round(large))
+
+    assertEquals(BigDecimal.sum(BigDecimal.make(1n, -10_000), $("1")), $(`1${"0".repeat(9_999)}1`))
+    assertEquals(BigDecimal.truncate(BigDecimal.make(1n, 10_000)), $("0"))
+
+    // no alignment needed
+    const huge = BigDecimal.make(1n, -300_000_000)
+    assertEquals(BigDecimal.sum(huge, $("0")), huge)
+    assertEquals(BigDecimal.scale(huge, huge.scale), huge)
+    assertEquals(BigDecimal.truncate(huge), huge)
+    assertEquals(BigDecimal.floor(huge), huge)
+    assertEquals(BigDecimal.ceil(huge), huge)
+  })
+
   it("format", () => {
     strictEqual(BigDecimal.format($("0")), "0")
     strictEqual(BigDecimal.format($("2")), "2")
