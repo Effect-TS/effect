@@ -1,5 +1,6 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, it, layer } from "@effect/vitest"
+import * as Libsql from "@libsql/client"
 import { Cause, Effect, Exit, Fiber, Layer, Option } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { SqlError } from "effect/sql/SqlError"
@@ -165,6 +166,40 @@ describe("Client", () => {
         assert.deepStrictEqual(calls, ["rollback", "next body", "commit"])
       }).pipe(Effect.provide(Reactivity.layer)))
   }
+
+  describe("batch", () => {
+    it.effect("sends the statements in one libsql batch", () =>
+      Effect.gen(function*() {
+        const sdk = Libsql.createClient({ url: ":memory:" })
+        yield* Effect.addFinalizer(() => Effect.sync(() => sdk.close()))
+        let batches = 0
+        const batch = sdk.batch.bind(sdk)
+        sdk.batch = (statements, mode) => {
+          batches++
+          return batch(statements, mode)
+        }
+        const sql = yield* LibsqlClient.make({ liveClient: sdk })
+
+        const results = yield* sql.batch([sql`SELECT ${1} AS a`, sql`SELECT ${"x"} AS b`])
+
+        assert.deepStrictEqual(results, [[{ a: 1 }], [{ b: "x" }]])
+        assert.strictEqual(batches, 1)
+      }).pipe(Effect.provide(Reactivity.layer)))
+
+    it.effect("keeps nothing from a batch when a later statement fails", () =>
+      Effect.gen(function*() {
+        const sql = yield* LibsqlClient.make({ url: ":memory:" })
+        yield* sql`CREATE TABLE batch_rollback (id INTEGER PRIMARY KEY)`
+
+        const error = yield* sql.batch([
+          sql`INSERT INTO batch_rollback VALUES (1)`,
+          sql`INSERT INTO batch_rollback VALUES (1)`
+        ]).pipe(Effect.flip)
+
+        assert.instanceOf(error, SqlError)
+        assert.deepStrictEqual(yield* sql`SELECT id FROM batch_rollback`, [])
+      }).pipe(Effect.provide(Reactivity.layer)))
+  })
 
   // Each test recreates the same tables.
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds", concurrent: false })("shared tables", (it) => {
