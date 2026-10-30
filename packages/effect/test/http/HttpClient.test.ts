@@ -901,6 +901,47 @@ Missing key
     )
   })
 
+  describe("timeout", () => {
+    it.effect("fails with a TransportError and aborts the request", () =>
+      Effect.gen(function*() {
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((_request, _url, requestSignal) => {
+          signal = requestSignal
+          return Effect.never
+        }).pipe(HttpClient.timeout("5 seconds"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("5 seconds")
+        const exit = yield* Fiber.await(fiber)
+
+        assert.isTrue(Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        strictEqual(error.reason._tag, "TransportError")
+        strictEqual(error.request.url, "http://test/")
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+        assert.include(error.message, "timed out")
+        assert.isTrue(signal!.aborted)
+      }))
+
+    it.effect("gives each retryTransient attempt a fresh budget", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.never
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.timeout("1 second"), HttpClient.retryTransient({ times: 1 }))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        strictEqual(yield* Ref.get(attempts), 2)
+        yield* TestClock.adjust("900 millis")
+        strictEqual((yield* Fiber.join(fiber)).status, 200)
+      }))
+  })
+
   describe("stream", () => {
     it.effect("aborts the request when the response stream ends early", () =>
       Effect.gen(function*() {

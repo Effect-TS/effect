@@ -1,4 +1,4 @@
-import { type Effect, type Exit, Redacted } from "effect"
+import { Effect, type Exit, Layer, Redacted } from "effect"
 import { HttpClient, type HttpClientError, HttpClientRequest, type HttpClientResponse } from "effect/http"
 import type { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { describe, expect, it } from "tstyche"
@@ -132,6 +132,21 @@ describe("HttpClient", () => {
         // @ts-expect-error Type '"both"' is not assignable to type '"errors-only" | "response-only" | "errors-and-responses" | undefined'
         HttpClient.retryTransient({ retryOn: "both" })
       )
+    })
+  })
+
+  describe("timeout", () => {
+    it("should preserve the HttpClient service type", () => {
+      expect(client.pipe(HttpClient.timeout("5 seconds"))).type.toBe<HttpClient.HttpClient>()
+      expect(HttpClient.timeout(client, "5 seconds")).type.toBe<HttpClient.HttpClient>()
+      expect(Layer.effect(HttpClient.HttpClient, Effect.map(HttpClient.HttpClient, HttpClient.timeout("5 seconds"))))
+        .type.toBe<Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient>>()
+    })
+
+    it("should preserve custom errors", () => {
+      expect(failingClient.pipe(HttpClient.timeout("5 seconds"))).type.toBe<
+        HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
+      >()
     })
   })
 
