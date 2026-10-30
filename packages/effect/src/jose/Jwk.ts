@@ -403,10 +403,9 @@ export const generateKeyPair = Effect.fnUntraced(function*(
   if (modulusLength !== undefined && (!Number.isSafeInteger(modulusLength) || modulusLength < 2048)) {
     return yield* invalidArgument("modulusLength must be an integer of at least 2048")
   }
-  const signature = yield* Signature.Signature
-  const pair = yield* signature.generateKeyPair(signatureAlgorithm(algorithm, modulusLength)).pipe(
-    Effect.mapError(cryptoFailure(`Could not generate a ${algorithm} key pair`))
-  )
+  const pair = yield* Signature.Signature.use((signature) =>
+    signature.generateKeyPair(signatureAlgorithm(algorithm, modulusLength))
+  ).pipe(Effect.mapError(cryptoFailure(`Could not generate a ${algorithm} key pair`)))
   const publicJwk = yield* exportJwk(pair.publicKey, algorithm, kid)
   const privateJwk = yield* exportJwk(pair.privateKey, algorithm, kid)
   return { publicKey: publicJwk as PublicJwk, privateKey: Redacted.make(privateJwk as PrivateJwk) }
@@ -432,7 +431,7 @@ export const generateSecret = (
   options?: { readonly kid?: string | undefined }
 ): Effect.Effect<Redacted.Redacted<SecretJwk>, never, SecureRandom.SecureRandom> =>
   Effect.map(
-    Effect.flatMap(SecureRandom.SecureRandom, (random) => random.randomBytes(secretKeyLength(algorithm))),
+    SecureRandom.SecureRandom.use((random) => random.randomBytes(secretKeyLength(algorithm))),
     (bytes) =>
       Redacted.make({
         kty: "oct",
@@ -637,14 +636,27 @@ export const exportPrivate = (key: PrivateKey): Effect.Effect<Redacted.Redacted<
  * @category encoding
  * @since 4.1.1
  */
-export const exportSpki = <F extends "der" | "pem" = "der">(
+export function exportSpki(
   key: PublicKey,
-  options?: { readonly format?: F | undefined }
-): Effect.Effect<F extends "pem" ? string : Uint8Array, JoseError> =>
-  KeyFormat.encode<KeyFormat.PublicKey, Uint8Array | string>(
+  options: { readonly format: "pem" }
+): Effect.Effect<string, JoseError>
+export function exportSpki(
+  key: PublicKey,
+  options?: { readonly format?: "der" | undefined }
+): Effect.Effect<Uint8Array, JoseError>
+export function exportSpki(
+  key: PublicKey,
+  options?: { readonly format?: "der" | "pem" | undefined }
+): Effect.Effect<Uint8Array | string, JoseError>
+export function exportSpki(
+  key: PublicKey,
+  options?: { readonly format?: "der" | "pem" | undefined }
+): Effect.Effect<Uint8Array | string, JoseError> {
+  return KeyFormat.encode<KeyFormat.PublicKey, Uint8Array | string>(
     options?.format === "pem" ? KeyFormat.pem(KeyFormat.spki) : KeyFormat.spki,
     key.key as KeyFormat.PublicKey
-  ).pipe(Effect.mapError(cryptoFailure("Could not export the SPKI key"))) as Effect.Effect<any, JoseError>
+  ).pipe(Effect.mapError(cryptoFailure("Could not export the SPKI key")))
+}
 
 /**
  * Exports a private key as redacted PKCS#8 DER bytes, or redacted PEM text with `format: "pem"`.
@@ -656,16 +668,27 @@ export const exportSpki = <F extends "der" | "pem" = "der">(
  * @category encoding
  * @since 4.1.1
  */
-export const exportPkcs8 = <F extends "der" | "pem" = "der">(
+export function exportPkcs8(
   key: PrivateKey,
-  options?: { readonly format?: F | undefined }
-): Effect.Effect<Redacted.Redacted<F extends "pem" ? string : Uint8Array>, JoseError> =>
-  KeyFormat.encode<KeyFormat.PrivateKey, Uint8Array | string>(
+  options: { readonly format: "pem" }
+): Effect.Effect<Redacted.Redacted<string>, JoseError>
+export function exportPkcs8(
+  key: PrivateKey,
+  options?: { readonly format?: "der" | undefined }
+): Effect.Effect<Redacted.Redacted<Uint8Array>, JoseError>
+export function exportPkcs8(
+  key: PrivateKey,
+  options?: { readonly format?: "der" | "pem" | undefined }
+): Effect.Effect<Redacted.Redacted<Uint8Array | string>, JoseError>
+export function exportPkcs8(
+  key: PrivateKey,
+  options?: { readonly format?: "der" | "pem" | undefined }
+): Effect.Effect<Redacted.Redacted<Uint8Array | string>, JoseError> {
+  return KeyFormat.encode<KeyFormat.PrivateKey, Uint8Array | string>(
     options?.format === "pem" ? KeyFormat.pem(KeyFormat.pkcs8) : KeyFormat.pkcs8,
     key.key as KeyFormat.PrivateKey
-  ).pipe(
-    Effect.mapBoth({ onFailure: cryptoFailure("Could not export the PKCS#8 key"), onSuccess: Redacted.make })
-  ) as Effect.Effect<any, JoseError>
+  ).pipe(Effect.mapBoth({ onFailure: cryptoFailure("Could not export the PKCS#8 key"), onSuccess: Redacted.make }))
+}
 
 /**
  * A JWK or imported key whose thumbprint can be computed. Private and secret
@@ -730,8 +753,7 @@ export const thumbprint = Effect.fnUntraced(function*(
   ) {
     return yield* invalidKey("Expected a JWK with canonical base64url key members")
   }
-  const digest = yield* Digest.Digest
-  return Base64Url.encode(yield* digest.digest(hash, utf8(JSON.stringify(required))))
+  return Base64Url.encode(yield* Digest.Digest.use((digest) => digest.digest(hash, utf8(JSON.stringify(required)))))
 })
 
 /**

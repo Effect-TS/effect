@@ -130,12 +130,9 @@ export const encrypt = Effect.fnUntraced(function*<
   header?: Header & H
 ): Effect.fn.Return<Redacted.Redacted<string>, JoseError.JoseError, Aead.Aead | SecureRandom.SecureRandom> {
   const protectedHeader = yield* encodeHeader({ alg: "dir", enc: "A256GCM" }, key.kid, header, ["crit", "zip"])
-  const random = yield* SecureRandom.SecureRandom
-  const nonce = yield* random.randomBytes(Aead.aes256Gcm.nonceLength)
-  const aead = yield* Aead.Aead
-  const sealed = yield* aead.encrypt(key.key, plaintext, { nonce, aad: utf8(protectedHeader) }).pipe(
-    Effect.mapError(cryptoFailure("Could not encrypt with the key"))
-  )
+  const nonce = yield* SecureRandom.SecureRandom.use((random) => random.randomBytes(Aead.aes256Gcm.nonceLength))
+  const sealed = yield* Aead.Aead.use((aead) => aead.encrypt(key.key, plaintext, { nonce, aad: utf8(protectedHeader) }))
+    .pipe(Effect.mapError(cryptoFailure("Could not encrypt with the key")))
   const ciphertext = Base64Url.encode(sealed.subarray(0, -tagLength))
   const tag = Base64Url.encode(sealed.subarray(-tagLength))
   return Redacted.make(`${protectedHeader}..${Base64Url.encode(nonce)}.${ciphertext}.${tag}`)
@@ -182,13 +179,13 @@ export const decrypt = Effect.fnUntraced(function*<E = never, R = never>(
   const sealed = new Uint8Array(data.length + tagLength)
   sealed.set(data)
   sealed.set(authTag, data.length)
-  const aead = yield* Aead.Aead
-  const plaintext = yield* aead.decrypt(resolvedKey.key, sealed, { nonce, aad: utf8(header) }).pipe(
-    Effect.mapError((error) =>
-      error.reason._tag === "DecryptionFailed"
-        ? new JoseError.JoseError({ reason: new JoseError.DecryptionFailed() })
-        : cryptoFailure("Could not decrypt with the key")(error)
+  const plaintext = yield* Aead.Aead.use((aead) => aead.decrypt(resolvedKey.key, sealed, { nonce, aad: utf8(header) }))
+    .pipe(
+      Effect.mapError((error) =>
+        error.reason._tag === "DecryptionFailed"
+          ? new JoseError.JoseError({ reason: new JoseError.DecryptionFailed() })
+          : cryptoFailure("Could not decrypt with the key")(error)
+      )
     )
-  )
   return { protectedHeader, plaintext, key: resolvedKey }
 })

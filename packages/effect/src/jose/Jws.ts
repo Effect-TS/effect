@@ -180,10 +180,9 @@ const verifySignature = Effect.fnUntraced(function*(
   parsed: Parsed,
   key: PublicKey
 ): Effect.fn.Return<Verified, JoseError.JoseError, Signature.Signature> {
-  const signature = yield* Signature.Signature
-  const valid = yield* signature.verify(key.key, parsed.signature, parsed.signingInput).pipe(
-    Effect.mapError(verifyFailure)
-  )
+  const valid = yield* Signature.Signature.use((signature) =>
+    signature.verify(key.key, parsed.signature, parsed.signingInput)
+  ).pipe(Effect.mapError(verifyFailure))
   return yield* authenticated(parsed, valid)
 })
 
@@ -220,13 +219,14 @@ const verifySignature = Effect.fnUntraced(function*(
  * @category cryptography
  * @since 4.1.1
  */
-export const sign: {
-  <K extends SigningKey, H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header>(
-    payload: Uint8Array,
-    key: K,
-    header?: Header & H
-  ): Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>>
-} = Effect.fnUntraced(function*(
+export const sign: <
+  K extends SigningKey,
+  H extends object & { readonly [P in keyof H]: Schema.Json | undefined } = Header
+>(
+  payload: Uint8Array,
+  key: K,
+  header?: Header & H
+) => Effect.Effect<Redacted.Redacted<string>, JoseError.JoseError, KeyRequirements<K>> = Effect.fnUntraced(function*(
   payload: Uint8Array,
   key: SigningKey,
   header?: Header
@@ -236,11 +236,11 @@ export const sign: {
   const data = utf8(signingInput)
   let signature: Uint8Array
   if (key._tag === "SecretKey") {
-    const mac = yield* Mac.Mac
-    signature = yield* mac.sign(key.key, data).pipe(Effect.mapError(signFailure))
+    signature = yield* Mac.Mac.use((mac) => mac.sign(key.key, data)).pipe(Effect.mapError(signFailure))
   } else {
-    const signer = yield* Signature.Signature
-    signature = yield* signer.sign(key.key, data).pipe(Effect.mapError(signFailure))
+    signature = yield* Signature.Signature.use((signer) => signer.sign(key.key, data)).pipe(
+      Effect.mapError(signFailure)
+    )
   }
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
 }) as any // Each branch uses only the service its key type requires.
@@ -256,20 +256,17 @@ export const sign: {
  * @category cryptography
  * @since 4.1.1
  */
-export const verify: {
-  <K extends VerificationKey>(
-    token: string | Redacted.Redacted<string>,
-    key: K
-  ): Effect.Effect<Verified, JoseError.JoseError, KeyRequirements<K>>
-} = Effect.fnUntraced(function*(
+export const verify: <K extends VerificationKey>(
+  token: string | Redacted.Redacted<string>,
+  key: K
+) => Effect.Effect<Verified, JoseError.JoseError, KeyRequirements<K>> = Effect.fnUntraced(function*(
   token: string | Redacted.Redacted<string>,
   key: VerificationKey
 ): Effect.fn.Return<Verified, JoseError.JoseError, Requirements> {
   const parsed = yield* parse(token)
   if (parsed.protectedHeader.alg !== key.algorithm) return yield* algorithmNotAllowed
   if (key._tag === "PublicKey") return yield* verifySignature(parsed, key)
-  const mac = yield* Mac.Mac
-  const valid = yield* mac.verify(key.key, parsed.signature, parsed.signingInput).pipe(
+  const valid = yield* Mac.Mac.use((mac) => mac.verify(key.key, parsed.signature, parsed.signingInput)).pipe(
     Effect.mapError(verifyFailure)
   )
   return yield* authenticated(parsed, valid)
@@ -299,8 +296,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*(
   const parsed = yield* parse(token)
   const { alg, kid } = parsed.protectedHeader
   if (!isAsymmetricAlgorithm(alg) || !options.algorithms.includes(alg)) return yield* algorithmNotAllowed
-  const jwks = yield* Jwks
-  const key = yield* jwks.resolve({ algorithm: alg, kid, protectedHeader: parsed.protectedHeader })
+  const key = yield* Jwks.use((jwks) => jwks.resolve({ algorithm: alg, kid, protectedHeader: parsed.protectedHeader }))
   if (key.algorithm !== alg) return yield* algorithmNotAllowed
   return { ...(yield* verifySignature(parsed, key)), key }
 })
