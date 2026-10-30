@@ -40,4 +40,4 @@
 "@effect/sql/Statement#Constructor":
   include: true
   replacement: "effect/sql/Statement#Constructor"
-  note: "Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as \"data\" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them."
+  note: "Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as \"data\" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them. sql.insert and sql.updateValues now require a non-empty array of rows; narrow array inputs with Array.isReadonlyArrayNonEmpty first."
