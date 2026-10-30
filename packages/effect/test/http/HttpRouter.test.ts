@@ -113,6 +113,52 @@ describe("HttpRouter", () => {
       assert.strictEqual(body, "/?tab=1")
     }))
 
+  describe("toHttpEffect sub-apps", () => {
+    const Admin = HttpRouter.add("GET", "/admin/stats", HttpServerResponse.text("admin stats"))
+
+    const request = async (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, init?: RequestInit) => {
+      const { dispose, handler } = HttpRouter.toWebHandler(app, { disableLogger: true })
+      try {
+        const response = await handler(new Request("http://localhost/admin/stats", init))
+        return { status: response.status, body: await response.text() }
+      } finally {
+        await dispose()
+      }
+    }
+
+    it("only serves sub-app routes through the mount", async () => {
+      const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
+        const admin = yield* HttpRouter.toHttpEffect(Admin)
+        yield* router.add(
+          "*",
+          "/admin/*",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            if (request.headers.authorization !== "Bearer admin") {
+              return HttpServerResponse.text("unauthorized", { status: 401 })
+            }
+            return yield* Effect.orDie(admin)
+          })
+        )
+      }))
+
+      assert.deepStrictEqual(await request(app), { status: 401, body: "unauthorized" })
+      assert.deepStrictEqual(await request(app, { headers: { authorization: "Bearer admin" } }), {
+        status: 200,
+        body: "admin stats"
+      })
+    })
+
+    it("mounts a sub-app at one of its own routes", async () => {
+      const app = HttpRouter.use(Effect.fnUntraced(function*(router) {
+        const admin = yield* HttpRouter.toHttpEffect(Admin)
+        yield* router.add("GET", "/admin/stats", Effect.orDie(admin))
+      }))
+
+      assert.deepStrictEqual(await request(app), { status: 200, body: "admin stats" })
+    })
+  })
+
   for (const ignoreDuplicateSlashes of [true, false]) {
     it.effect(`preserves the local URL with ignoreDuplicateSlashes=${ignoreDuplicateSlashes}`, () =>
       Effect.gen(function*() {
