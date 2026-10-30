@@ -3,6 +3,7 @@ import { assert, describe, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import * as Migrator from "effect/sql/Migrator"
 import { SqlClient } from "effect/sql/SqlClient"
+import * as Statement from "effect/sql/Statement"
 
 const ClientLayer = PgliteClient.layer({})
 
@@ -56,6 +57,23 @@ describe("Migrator.make", () => {
         const completed = yield* PgliteMigrator.run({ loader, table })
 
         assert.deepStrictEqual(completed, [])
+      }))
+
+    it.effect("wraps only the migrations table writes", () =>
+      Effect.gen(function*() {
+        const wrapped: Array<string> = []
+        const run = Migrator.make({
+          wrapMigrationsTableWrite: (effect) =>
+            Effect.provideService(effect, Statement.CurrentTransformer, (statement) =>
+              Effect.sync(() => {
+                wrapped.push(statement.compile()[0])
+                return statement
+              }))
+        })
+
+        yield* run({ loader: Migrator.fromRecord({ "1_first": Effect.void }), table: "wrapped_make_migrations" })
+
+        assert.deepStrictEqual(wrapped.map((sql) => sql.split(" ")[0]), ["CREATE", "INSERT"])
       }))
   })
 })
