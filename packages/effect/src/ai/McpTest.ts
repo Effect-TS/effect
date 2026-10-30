@@ -29,6 +29,7 @@ import type * as Scope from "../Scope.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import * as McpServer from "./McpServer.ts"
+import * as McpServerError from "./McpServerError.ts"
 
 /**
  * A typed in-memory MCP client connected to a running `McpServer`.
@@ -62,40 +63,40 @@ export interface Client {
    * Notifications the server sent to this client, in delivery order.
    */
   readonly notifications: Queue.Dequeue<McpSchema.ServerNotificationEncoded>
-  readonly ping: Effect.Effect<void, McpSchema.McpError>
+  readonly ping: Effect.Effect<void, McpServerError.McpError>
   readonly listTools: (
     request?: typeof McpSchema.ListTools.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.ListToolsResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.ListToolsResult, McpServerError.McpError>
   readonly callTool: (
     request: typeof McpSchema.CallTool.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.CallToolResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.CallToolResult, McpServerError.McpError>
   readonly listResources: (
     request?: typeof McpSchema.ListResources.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.ListResourcesResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.ListResourcesResult, McpServerError.McpError>
   readonly listResourceTemplates: (
     request?: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.ListResourceTemplatesResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.ListResourceTemplatesResult, McpServerError.McpError>
   readonly readResource: (
     request: typeof McpSchema.ReadResource.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, McpServerError.McpError>
   readonly subscribe: (
     request: typeof McpSchema.Subscribe.payloadSchema.Type
-  ) => Effect.Effect<void, McpSchema.McpError>
+  ) => Effect.Effect<void, McpServerError.McpError>
   readonly unsubscribe: (
     request: typeof McpSchema.Unsubscribe.payloadSchema.Type
-  ) => Effect.Effect<void, McpSchema.McpError>
+  ) => Effect.Effect<void, McpServerError.McpError>
   readonly listPrompts: (
     request?: typeof McpSchema.ListPrompts.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.ListPromptsResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.ListPromptsResult, McpServerError.McpError>
   readonly getPrompt: (
     request: typeof McpSchema.GetPrompt.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.GetPromptResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.GetPromptResult, McpServerError.McpError>
   readonly complete: (
     request: typeof McpSchema.Complete.payloadSchema.Type
-  ) => Effect.Effect<McpSchema.CompleteResult, McpSchema.McpError>
+  ) => Effect.Effect<McpSchema.CompleteResult, McpServerError.McpError>
   readonly setLevel: (
     request: typeof McpSchema.SetLevel.payloadSchema.Type
-  ) => Effect.Effect<void, McpSchema.McpError>
+  ) => Effect.Effect<void, McpServerError.McpError>
 }
 
 /**
@@ -290,7 +291,7 @@ export const makeClient: <
       return write({
         jsonrpc: "2.0",
         id: message.id,
-        error: { code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE, message: `Method not found: ${message.tag}` }
+        error: { code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE, message: `Method not found: ${message.tag}` }
       })
     }
     yield* Queue.take(toClient).pipe(

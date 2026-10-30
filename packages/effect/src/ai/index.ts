@@ -85,6 +85,12 @@ export * as McpServer from "./McpServer.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.1
+ */
+export * as McpServerError from "./McpServerError.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as McpTest from "./McpTest.ts"

@@ -7,7 +7,8 @@ import * as Effect from "../../Effect.ts"
 import type * as Headers from "../../http/Headers.ts"
 import * as LogLevel from "../../LogLevel.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
-import * as PublicMcpSchema from "../McpSchema.ts"
+import type * as PublicMcpSchema from "../McpSchema.ts"
+import * as McpServerError from "../McpServerError.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 
@@ -145,7 +146,7 @@ export const make = (): StatefulRuntime => {
       if (subscriptions === undefined) {
         return Effect.fail(
           new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+            code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE,
             message: "Resource subscriptions are not supported"
           })
         )
@@ -157,7 +158,7 @@ export const make = (): StatefulRuntime => {
       if (subscriptions === undefined) {
         return Effect.fail(
           new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+            code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE,
             message: "Resource subscriptions are not supported"
           })
         )

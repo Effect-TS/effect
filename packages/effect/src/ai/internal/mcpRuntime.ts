@@ -22,6 +22,7 @@ import type * as Scope from "../../Scope.ts"
 import type * as Types from "../../Types.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import * as McpServerError from "../McpServerError.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
@@ -66,7 +67,7 @@ const routingNameKey = (method: string): "name" | "uri" | undefined => {
 const headerMismatch = (message: string): HttpProtocolSelection => ({
   _tag: "Rejected",
   status: 400,
-  error: { code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE, message }
+  error: { code: McpServerError.HEADER_MISMATCH_ERROR_CODE, message }
 })
 
 const PingRpcs = RpcGroup.make(PublicMcpSchema.Ping)
@@ -240,7 +241,7 @@ export const make = Effect.fnUntraced(function*(
   const registry = yield* McpProtocolRegistry.make(protocols)
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
   const unsupportedProtocolVersion = (requested: string) => ({
-    code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+    code: McpServerError.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
     message: `Unsupported protocol version '${requested}'`,
     data: { supported: protocolVersions, requested }
   })
@@ -290,7 +291,7 @@ export const make = Effect.fnUntraced(function*(
           _tag: "Rejected",
           status: 400,
           error: {
-            code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+            code: McpServerError.INVALID_PARAMS_ERROR_CODE,
             message: "Required request metadata is missing"
           }
         }
@@ -303,7 +304,7 @@ export const make = Effect.fnUntraced(function*(
           _tag: "Rejected",
           status: 400,
           error: {
-            code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+            code: McpServerError.INVALID_PARAMS_ERROR_CODE,
             message: `${CLIENT_CAPABILITIES_METADATA_KEY} request metadata is required`
           }
         }
@@ -349,7 +350,7 @@ export const make = Effect.fnUntraced(function*(
         const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
         if (selected === undefined) {
           return yield* new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+            code: McpServerError.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
             message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
           })
         }
@@ -404,14 +405,14 @@ export const make = Effect.fnUntraced(function*(
         const admission = selectHttpProtocol(headers, undefined)
         // Session and protocol-header errors take precedence over parse errors.
         return admission._tag === "Rejected" &&
-            (admission.error === undefined || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
+            (admission.error === undefined || admission.error.code === McpServerError.HEADER_MISMATCH_ERROR_CODE)
           ? reject(admission.status, admission.error)
-          : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
+          : reject(200, new McpServerError.ParseError({ message: "Parse error" }))
       }
       const input = parsed.success
       if (Array.isArray(input)) {
         if (input.length === 0) {
-          return reject(400, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }))
+          return reject(400, new McpServerError.InvalidRequest({ message: "Invalid Request" }))
         }
         const admission = selectHttpProtocol(headers, input)
         if (
@@ -446,21 +447,21 @@ export const make = Effect.fnUntraced(function*(
         return reject(admission.status, admission.error, id)
       }
       if (!isRequest && !isResponse) {
-        return reject(200, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }), id)
+        return reject(200, new McpServerError.InvalidRequest({ message: "Invalid Request" }), id)
       }
       const isInitialize = Predicate.hasProperty(input, "method") && input.method === "initialize"
       const hasSession = headers[MCP_SESSION_ID_HEADER] !== undefined
       if (isInitialize && hasSession) {
         return reject(
           400,
-          new PublicMcpSchema.InvalidRequest({ message: "initialize must not include an MCP-Session-Id header" }),
+          new McpServerError.InvalidRequest({ message: "initialize must not include an MCP-Session-Id header" }),
           id
         )
       }
       if (!isInitialize && !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
         return reject(
           400,
-          stateful === undefined ? undefined : new PublicMcpSchema.InvalidRequest({
+          stateful === undefined ? undefined : new McpServerError.InvalidRequest({
             message: "MCP-Session-Id header is required; send initialize to start a session"
           }),
           id
@@ -473,7 +474,7 @@ export const make = Effect.fnUntraced(function*(
         ) ??
           admission.protocol.clientRpcs.requests.has(input.method as string))
       ) {
-        return reject(404, new PublicMcpSchema.MethodNotFound({ message: `Method not found: ${input.method}` }), id)
+        return reject(404, new McpServerError.MethodNotFound({ message: `Method not found: ${input.method}` }), id)
       }
       return {
         _tag: "Accepted",

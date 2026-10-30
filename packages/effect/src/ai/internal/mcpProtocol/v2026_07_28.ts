@@ -22,6 +22,7 @@ import * as Scope from "../../../Scope.ts"
 import type * as Types from "../../../Types.ts"
 import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
+import * as McpServerError from "../../McpServerError.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
@@ -238,7 +239,7 @@ type ProtocolError =
   | McpCore.ToolError
   | McpCore.UnsupportedByProtocol
   | McpProtocol.ProtocolError
-  | PublicMcpSchema.McpError
+  | McpServerError.McpError
   | Schema.SchemaError
 
 const matchedProtocolError = Match.type<ProtocolError>().pipe(
@@ -290,9 +291,9 @@ export const normalizeCancellation = (payload: unknown) =>
   )
 
 const unsupported = (
-  operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"]
-): PublicMcpSchema.McpReverseOperationUnsupported =>
-  new PublicMcpSchema.McpReverseOperationUnsupported({
+  operation: McpServerError.McpReverseOperationUnsupported["operation"]
+): McpServerError.McpReverseOperationUnsupported =>
+  new McpServerError.McpReverseOperationUnsupported({
     operation,
     protocolVersion: McpSchema.protocolVersion,
     reason: "MCP 2026-07-28 carries server input requests in multi round-trip results"
@@ -548,7 +549,7 @@ export const makeHandlers = (
         return yield* failWithHttpStatus(
           404,
           new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+            code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE,
             message: "Method not found"
           })
         )
@@ -638,7 +639,7 @@ export const makeHandlers = (
               return yield* failWithHttpStatus(
                 400,
                 new McpProtocol.ProtocolError({
-                  code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
+                  code: McpServerError.HEADER_MISMATCH_ERROR_CODE,
                   message: `${headerName} does not match argument '${path}'`
                 })
               )

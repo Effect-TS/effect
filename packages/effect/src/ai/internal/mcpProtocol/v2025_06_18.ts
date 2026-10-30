@@ -5,6 +5,7 @@ import * as Predicate from "../../../Predicate.ts"
 import * as Schema from "../../../Schema.ts"
 import * as Struct from "../../../Struct.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
+import * as McpServerError from "../../McpServerError.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpRuntime from "../mcpRuntime.ts"
@@ -45,10 +46,10 @@ const profileFromInitialize = (
 })
 
 const unsupported = (
-  operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
+  operation: McpServerError.McpReverseOperationUnsupported["operation"],
   reason: string
 ) =>
-  new PublicMcpSchema.McpReverseOperationUnsupported({
+  new McpServerError.McpReverseOperationUnsupported({
     operation,
     protocolVersion: McpSchema.protocolVersion,
     reason
@@ -56,7 +57,7 @@ const unsupported = (
 
 const requireCapability = (
   profile: McpCore.NegotiatedProtocolProfile,
-  operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
+  operation: McpServerError.McpReverseOperationUnsupported["operation"],
   capability: "roots" | "sampling" | "elicitation"
 ) =>
   Object.hasOwn(profile.clientCapabilities, capability) &&
