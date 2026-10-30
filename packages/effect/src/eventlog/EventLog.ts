@@ -303,6 +303,13 @@ export const layerRegistry = Layer.effect(
  * The identity is used by remote replication for authentication and by the
  * encryption service to derive signing and encryption keys.
  *
+ * **Gotchas**
+ *
+ * `publicKey` identifies the identity but is not a secret, and nothing ties it
+ * to the signing key derived from `privateKey`. A server binds the first
+ * signing key that authenticates for a `publicKey`, unless its authorization
+ * checks the presented signing key.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0

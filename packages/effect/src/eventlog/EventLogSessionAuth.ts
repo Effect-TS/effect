@@ -16,6 +16,8 @@ import { WebCrypto } from "../crypto/WebCrypto.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
+import type { Identity } from "./EventLog.ts"
+import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecretDerivation.ts"
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder("utf-8", { fatal: true })
@@ -524,3 +526,27 @@ export const verifySessionAuthenticateRequest = Effect.fnUntraced(function*(opti
     signature: options.signature
   })
 })
+
+const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial()
+
+/**
+ * Derives the Ed25519 signing public key an identity presents during session
+ * authentication.
+ *
+ * **When to use**
+ *
+ * Use when provisioning an identity to record its signing key, so that server
+ * authorization can reject any other key presented for the identity's
+ * `publicKey`.
+ *
+ * **Details**
+ *
+ * The key is derived from the identity's private key on the `WebCrypto`
+ * reference.
+ *
+ * @stability unstable
+ * @category signing
+ * @since 4.1.1
+ */
+export const deriveSigningPublicKey = (identity: Identity["Service"]): Effect.Effect<Uint8Array<ArrayBuffer>> =>
+  Effect.map(getIdentityRootSecretMaterial(identity), (material) => material.signingPublicKey)

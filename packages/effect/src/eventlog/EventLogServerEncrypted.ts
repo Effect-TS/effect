@@ -503,6 +503,11 @@ export class Storage extends Context.Service<Storage, {
    * Lowest assigned sequence (default 0). Overestimating skips entries.
    */
   readonly firstSequence?: number | undefined
+  /**
+   * Returns the signing key bound to `publicKey`, binding `signingPublicKey`
+   * when none is bound yet. The server only passes keys whose signature it
+   * has verified, and rejects a key that differs from the returned binding.
+   */
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>

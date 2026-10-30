@@ -165,8 +165,8 @@ export const layerRpcHandlers: Layer.Layer<
   return EventLogServer.layerRpcHandlers({
     remoteId,
     firstSequence: storage.firstSequence,
-    authorizeIdentity: (publicKey) =>
-      auth.authorizeIdentity({ publicKey }).pipe(
+    authorizeIdentity: (publicKey, signingPublicKey) =>
+      auth.authorizeIdentity({ publicKey, signingPublicKey }).pipe(
         Effect.mapError((error) =>
           new EventLogProtocolError({
             requestTag: "Authenticate",
@@ -318,6 +318,15 @@ export class EventLogServerAuthError extends Data.TaggedError("EventLogServerAut
  * Use to provide authorization checks for plaintext event-log writes, reads,
  * and identity authentication.
  *
+ * **Gotchas**
+ *
+ * An identity's `publicKey` is an identifier, not a secret. The server binds
+ * the first signing key that authenticates for an identity and rejects any
+ * other key afterwards. `authorizeIdentity` also receives the presented
+ * `signingPublicKey`, so a deployment that records each identity's signing key
+ * at provisioning time, with `EventLogSessionAuth.deriveSigningPublicKey`, can
+ * reject every other key, including on first use.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -334,6 +343,7 @@ export class EventLogServerAuthorization extends Context.Service<EventLogServerA
   }) => Effect.Effect<void, EventLogServerAuthError>
   readonly authorizeIdentity: (options: {
     readonly publicKey: string
+    readonly signingPublicKey: Uint8Array<ArrayBuffer>
   }) => Effect.Effect<void, EventLogServerAuthError>
 }>()("effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization") {}
 
@@ -422,6 +432,11 @@ export class Storage extends Context.Service<Storage, {
    * Lowest assigned sequence (default 0). Overestimating skips entries.
    */
   readonly firstSequence?: number | undefined
+  /**
+   * Returns the signing key bound to `publicKey`, binding `signingPublicKey`
+   * when none is bound yet. The server only passes keys whose signature it
+   * has verified, and rejects a key that differs from the returned binding.
+   */
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
