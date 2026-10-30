@@ -3614,16 +3614,14 @@ const skillFileEncoder = new TextEncoder()
 // Bytes are copied so that later changes by the caller cannot alter what is
 // served under the listed digest. `Buffer#slice` shares memory, so copy with
 // the `Uint8Array` constructor.
-const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile =>
-  typeof file === "string"
-    ? { path, content: skillFileEncoder.encode(file) }
-    : file instanceof Uint8Array
-    ? { path, content: new Uint8Array(file) }
-    : {
-      path,
-      content: typeof file.content === "string" ? skillFileEncoder.encode(file.content) : new Uint8Array(file.content),
-      mimeType: file.mimeType
-    }
+const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile => {
+  const { content, mimeType } = typeof file === "string" || file instanceof Uint8Array ? { content: file } : file
+  return {
+    path,
+    content: typeof content === "string" ? skillFileEncoder.encode(content) : new Uint8Array(content),
+    mimeType
+  }
+}
 
 /**
  * Registers an Agent Skill under the MCP Skills extension (SEP-2640).
