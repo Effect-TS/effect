@@ -12,7 +12,8 @@
  *
  * HMAC signatures run on the `Mac` service. On Node.js and Bun,
  * `NodeCrypto.layerMac` and `BunCrypto.layerMac` compute them synchronously
- * with `node:crypto` instead of through Web Crypto.
+ * with `node:crypto` instead of through Web Crypto for byte-backed keys, such
+ * as those from `Jwk.importSecret`.
  *
  * @stability unstable
  * @since 4.1.1
