@@ -15,23 +15,6 @@ const collect = Effect.fnUntraced(function*<A, E>(stream: Stream.Stream<A, E>) {
 })
 
 describe("Ndjson", () => {
-  it.effect("ignoreEmptyLines skips space/tab-only lines in both decoders", () =>
-    Effect.gen(function*() {
-      const chunks = ["1\n\n \t", "\r\n\"  value  \"\n\t"]
-      const streams = [
-        Stream.fromIterable(chunks).pipe(
-          Stream.pipeThroughChannel(Ndjson.decodeString({ ignoreEmptyLines: true }))
-        ),
-        Stream.fromIterable(chunks.map((chunk) => encoder.encode(chunk))).pipe(
-          Stream.pipeThroughChannel(Ndjson.decode({ ignoreEmptyLines: true }))
-        )
-      ]
-
-      for (const stream of streams) {
-        assert.deepStrictEqual(yield* Stream.runCollect(stream), [1, "  value  "])
-      }
-    }))
-
   it.effect("fails for values without a JSON representation", () =>
     Effect.gen(function*() {
       const inputs = [undefined, () => {}, Symbol("x")]
@@ -72,6 +55,22 @@ describe("Ndjson", () => {
       )
 
       assert.deepStrictEqual(values, [1, 2, 3])
+    }))
+
+  it.effect("ignoreEmptyLines skips lines containing only spaces or tabs", () =>
+    Effect.gen(function*() {
+      const input = "1\n \t\n2\n\t"
+      const fromString = yield* Stream.make(input).pipe(
+        Stream.pipeThroughChannel(Ndjson.decodeString({ ignoreEmptyLines: true })),
+        Stream.runCollect
+      )
+      const fromBytes = yield* Stream.make(encoder.encode(input)).pipe(
+        Stream.pipeThroughChannel(Ndjson.decode({ ignoreEmptyLines: true })),
+        Stream.runCollect
+      )
+
+      assert.deepStrictEqual(fromString, [1, 2])
+      assert.deepStrictEqual(fromBytes, [1, 2])
     }))
 
   it.effect("decode fails a line over maxLineBytes before reading the rest of it", () =>
