@@ -37,10 +37,20 @@ const TypeId = "~effect/sql/SqlClient"
 export const batchKey = "~effect/sql/SqlClient/batch" as const
 
 /**
- * Runs statements in one batch on the client's connection, for drivers that
- * expose a batch API backed by `Connection.executeBatch`.
+ * Returns the client's batch runner, for drivers that expose a batch API
+ * backed by `Connection.executeBatch`.
  *
- * @internal
+ * **Details**
+ *
+ * The runner applies the current `Statement.CurrentTransformer` and each
+ * statement's own compiler and row transform, traces the batch as one client
+ * span, and runs it on the enclosing transaction's connection when there is
+ * one. An empty batch succeeds with `[]` without acquiring a connection. A
+ * connection without `executeBatch` dies.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.2.0
  */
 export const clientBatch = (client: SqlClient) =>
   (client as any)[batchKey] as (
