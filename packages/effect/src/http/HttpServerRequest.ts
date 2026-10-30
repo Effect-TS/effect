@@ -858,7 +858,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
           : Effect.succeed(body.body)
       }
       case "FormData": {
-        return bytesFromWeb(this, new Response(body.formData), maxBytes)
+        return bytesFromWeb(this, () => new Response(body.formData), maxBytes)
       }
       case "Stream": {
         return Stream.mkUint8Array(maxBytes === undefined ? this.stream : limitStream(this, this.stream, maxBytes))
@@ -973,23 +973,28 @@ const rawBodyBytes = (
   maxBytes: number | undefined
 ): Effect.Effect<Uint8Array, HttpServerError> => {
   if (body instanceof Request) {
-    return bytesFromWeb(request, body, maxBytes)
+    return bytesFromWeb(request, () => body, maxBytes)
   }
   if (isBodyInit(body)) {
-    return bytesFromWeb(request, new Response(body), maxBytes)
+    return bytesFromWeb(request, () => new Response(body), maxBytes)
   }
   return Effect.fail(requestParseError(request, "Unsupported body type"))
 }
 
 const bytesFromWeb = (
   request: HttpServerRequest,
-  source: globalThis.Request | globalThis.Response,
+  // Evaluated inside `try`, as wrapping an unreadable body in a `Response` throws.
+  evaluate: () => globalThis.Request | globalThis.Response,
   maxBytes: number | undefined
 ): Effect.Effect<Uint8Array, HttpServerError> =>
   Effect.tryPromise({
-    try: (signal) =>
-      (maxBytes === undefined ? source.arrayBuffer() : readArrayBufferLimited(source, maxBytes, signal))
-        .then((buffer) => new Uint8Array(buffer)),
+    try: async (signal) => {
+      const source = evaluate()
+      const buffer = maxBytes === undefined
+        ? await source.arrayBuffer()
+        : await readArrayBufferLimited(source, maxBytes, signal)
+      return new Uint8Array(buffer)
+    },
     catch: (cause) =>
       requestParseError(request, undefined, cause, cause instanceof BodyTooLargeError ? "BodyTooLarge" : undefined)
   })
