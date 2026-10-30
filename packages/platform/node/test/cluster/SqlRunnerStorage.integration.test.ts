@@ -500,8 +500,7 @@ describe("SqlRunnerStorage", () => {
       )
     }, 60_000)
 
-    it.effect("acquires cleanly after a runner without shards leaves its lock connection idle", () => {
-      const shardLockExpiration = lockOperationInterval * 3
+    it.effect("acquires cleanly after the server ends the lock session of a runner without shards", () => {
       const logs: Array<string> = []
       const logger = Logger.make((options) => {
         if (options.logLevel !== "Debug" && options.logLevel !== "Trace") {
@@ -509,6 +508,7 @@ describe("SqlRunnerStorage", () => {
         }
       })
       return Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
         const storage = yield* SqlRunnerStorage.make({ prefix: "cluster" })
         const runner = Runner.make({
           address: runnerAddress1,
@@ -518,13 +518,11 @@ describe("SqlRunnerStorage", () => {
         const shard = ShardId.make("default", 1)
 
         yield* storage.register(runner, true)
-        // Without shards, only the liveness probe runs, and it uses the shared
-        // pool, so the lock connection stays idle past shardLockExpiration.
-        const idleUntil = (yield* Clock.currentTimeMillis) + shardLockExpiration * 1.5
-        while ((yield* Clock.currentTimeMillis) < idleUntil) {
-          expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
-          yield* Effect.sleep(lockOperationInterval)
-        }
+        // Stands in for idle_session_timeout ending the idle lock session.
+        // Every other session on this database is the lock session.
+        const terminated = yield* sql`SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity
+          WHERE datname = current_database() AND pid <> pg_backend_pid()`.values
+        expect(terminated).toEqual([[true]])
 
         expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
         expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
@@ -534,7 +532,7 @@ describe("SqlRunnerStorage", () => {
         // Release the advisory-lock connections before the PostgreSQL layer.
         Effect.scoped,
         Effect.provide(PgContainer.layerClientDatabase),
-        Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+        Effect.provide(ShardingConfig.layer()),
         Effect.provide(Logger.layer([logger])),
         TestClock.withLive
       )
