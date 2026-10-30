@@ -53,7 +53,7 @@ const jsonBody = (data: unknown): HttpBody.HttpBody => {
  * **Details**
  *
  * `NaN`, `Infinity` and `-Infinity` are written as the strings OTLP/JSON
- * expects, not as `null`.
+ * expects, not as `null`. `bytesValue` data is written as a base64 string.
  *
  * @stability unstable
  * @category layers
