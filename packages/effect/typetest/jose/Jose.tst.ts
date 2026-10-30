@@ -32,7 +32,9 @@ class Decode extends Context.Service<Decode, { readonly prefix: string }>()("tes
 class Encode extends Context.Service<Encode, { readonly prefix: string }>()("test/Encode") {}
 class KeyStore extends Context.Service<KeyStore, { readonly key: Jwk.SecretKey<"dir"> }>()("test/KeyStore") {}
 
-declare const resolveKey: Jwe.KeyResolver<"UnknownKey", KeyStore>
+declare const resolveKey: (
+  header: Jwe.ProtectedHeader
+) => Effect.Effect<Jwk.SecretKey<"dir">, "UnknownKey", KeyStore>
 
 const Claims = Schema.Struct({
   sub: Schema.String.pipe(Schema.decodeTo(Schema.String, {

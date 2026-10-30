@@ -77,7 +77,7 @@ it.effect("resolves current and previous keys by kid and preserves lookup failur
       "dir"
     )
     const missing = { _tag: "UnknownKey" } as const
-    const resolve: Jwe.KeyResolver<typeof missing> = (header) => {
+    const resolve = (header: Jwe.ProtectedHeader): Effect.Effect<Jwk.SecretKey<"dir">, typeof missing> => {
       const key = [previous, current].find((key) => key.kid === header.kid)
       return key === undefined ? Effect.fail(missing) : Effect.succeed(key)
     }
@@ -99,7 +99,7 @@ it.effect("rejects malformed tokens before resolving a key", () =>
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
     const [header, , iv, ciphertext, tag] = Redacted.value(yield* Jwe.encrypt(utf8("private message"), key)).split(".")
     let resolutions = 0
-    const resolve: Jwe.KeyResolver = () => {
+    const resolve = (): Effect.Effect<Jwk.SecretKey<"dir">> => {
       resolutions++
       return Effect.succeed(key)
     }
