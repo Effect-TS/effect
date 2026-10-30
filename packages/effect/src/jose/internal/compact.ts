@@ -160,8 +160,8 @@ export const encodeHeader = (
       return invalidArgument(`The ${name} header parameter is not supported`)
     }
   }
-  const value = { ...fixed, kid: header?.kid ?? kid, ...header, ...fixed }
-  value.kid = header?.kid ?? kid
+  const { kid: headerKid, ...rest } = header ?? {}
+  const value = { ...fixed, kid: headerKid ?? kid, ...rest, ...fixed }
   try {
     return Effect.succeed(Base64Url.encode(JSON.stringify(value)))
   } catch {

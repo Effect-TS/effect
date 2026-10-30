@@ -33,7 +33,7 @@ import {
 import * as JoseError from "./JoseError.ts"
 import {
   Algorithm,
-  type AsymmetricAlgorithm,
+  AsymmetricAlgorithm,
   type HmacAlgorithm,
   type PublicKey,
   type SecretKey,
@@ -166,6 +166,8 @@ export const parse = Effect.fnUntraced(function*(
 
 const signFailure = cryptoFailure("Could not sign with the key")
 const verifyFailure = cryptoFailure("Could not verify with the key")
+
+const isAsymmetricAlgorithm = Schema.is(AsymmetricAlgorithm)
 
 const algorithmNotAllowed = fail(new JoseError.AlgorithmNotAllowed())
 
@@ -301,9 +303,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*(
   if (options.algorithms.length === 0) return yield* invalidArgument("algorithms must not be empty")
   const parsed = yield* parse(token)
   const { alg, kid } = parsed.protectedHeader
-  if (alg === "HS256" || alg === "HS384" || alg === "HS512" || !options.algorithms.includes(alg)) {
-    return yield* algorithmNotAllowed
-  }
+  if (!isAsymmetricAlgorithm(alg) || !options.algorithms.includes(alg)) return yield* algorithmNotAllowed
   const jwks = yield* Jwks
   const key = yield* jwks.resolve({ algorithm: alg, kid, protectedHeader: parsed.protectedHeader })
   if (key.algorithm !== alg) return yield* algorithmNotAllowed

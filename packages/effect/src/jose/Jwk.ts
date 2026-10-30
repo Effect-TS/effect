@@ -715,7 +715,8 @@ export type ThumbprintInput = PublicJwk | Redacted.Redacted<PrivateJwk | SecretJ
  *
  * Uses SHA-256 by default; SHA-384 and SHA-512 are also supported. Only required
  * key members are hashed, so metadata does not affect the result. Asymmetric
- * private keys have the same thumbprint as their public keys.
+ * private keys have the same thumbprint as their public keys. A secret key's
+ * thumbprint is a hash of the secret, so treat it as sensitive.
  *
  * @see {@link thumbprintUri}
  *
