@@ -10,6 +10,7 @@ import * as Effect from "../../Effect.ts"
 import * as Yaml from "../../encoding/Yaml.ts"
 import * as Mime from "../../http/Mime.ts"
 import * as Option from "../../Option.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
@@ -301,9 +302,6 @@ const decodeText = (mimeType: string, content: Uint8Array): string | undefined =
   }
 }
 
-const isPlainObject = (u: unknown): u is Record<string, unknown> =>
-  typeof u === "object" && u !== null && Object.getPrototypeOf(u) === Object.prototype
-
 const isSafeRelativePath = (path: string): boolean =>
   path !== "" &&
   !path.includes("\\") &&
@@ -328,7 +326,7 @@ export const parseFrontmatter = (markdown: string): Record<string, unknown> | un
     const parsed = Yaml.parse(block)
     // The frontmatter is listed as JSON, so keep only what JSON carries:
     // `.inf` and `.nan` become `null`.
-    return isPlainObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
+    return Predicate.isObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
   } catch {
     return undefined
   }
