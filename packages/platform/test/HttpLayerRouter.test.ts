@@ -1,6 +1,15 @@
-import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpLayerRouter, HttpServer } from "@effect/platform"
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpLayerRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 import { describe, test } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Layer, Schema } from "effect"
 
 describe("HttpLayerRouter", () => {
@@ -66,6 +75,54 @@ describe("HttpLayerRouter", () => {
       const response = await handler(new Request("http://localhost:3000/"))
       const body = await response.text()
       strictEqual(body, "\"OK\"")
+    })
+  })
+
+  describe("toHttpEffect sub-apps", () => {
+    const Admin = HttpLayerRouter.add("GET", "/admin/stats", HttpServerResponse.text("admin stats"))
+
+    const request = async (app: Layer.Layer<never, never, HttpLayerRouter.HttpRouter>, init?: RequestInit) => {
+      const { dispose, handler } = HttpLayerRouter.toWebHandler(app.pipe(Layer.provide(HttpServer.layerContext)), {
+        disableLogger: true
+      })
+      try {
+        const response = await handler(new Request("http://localhost/admin/stats", init))
+        return { status: response.status, body: await response.text() }
+      } finally {
+        await dispose()
+      }
+    }
+
+    test("only serves sub-app routes through the mount", async () => {
+      const app = HttpLayerRouter.use(Effect.fnUntraced(function*(router) {
+        const admin = yield* HttpLayerRouter.toHttpEffect(Admin)
+        yield* router.add(
+          "*",
+          "/admin/*",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            if (request.headers.authorization !== "Bearer admin") {
+              return HttpServerResponse.text("unauthorized", { status: 401 })
+            }
+            return yield* Effect.orDie(admin)
+          })
+        )
+      }))
+
+      deepStrictEqual(await request(app), { status: 401, body: "unauthorized" })
+      deepStrictEqual(await request(app, { headers: { authorization: "Bearer admin" } }), {
+        status: 200,
+        body: "admin stats"
+      })
+    })
+
+    test("mounts a sub-app at one of its own routes", async () => {
+      const app = HttpLayerRouter.use(Effect.fnUntraced(function*(router) {
+        const admin = yield* HttpLayerRouter.toHttpEffect(Admin)
+        yield* router.add("GET", "/admin/stats", Effect.orDie(admin))
+      }))
+
+      deepStrictEqual(await request(app), { status: 200, body: "admin stats" })
     })
   })
 })
