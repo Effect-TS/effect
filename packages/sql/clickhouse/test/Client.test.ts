@@ -54,6 +54,13 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       ])
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it("binds plain objects shaped like ClickHouse params as String parameters", () => {
+    const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
+    const paramLike = { _tag: "Custom", kind: "ClickhouseParam", paramA: "Int32", paramB: 1 }
+
+    assert.deepStrictEqual(sql`SELECT ${paramLike}`.compile(), ["SELECT {p1: String}", [paramLike]])
+  })
+
   it("preserves fractional JavaScript numbers in inferred parameters", () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
     const [query] = sql`SELECT ${1.5}`.compile()
