@@ -765,7 +765,7 @@ export const make = Effect.gen(function*() {
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {
-          const reply = yield* Effect.orDie(requestReply({
+          const reply = yield* retryPersistence(requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
@@ -782,7 +782,7 @@ export const make = Effect.gen(function*() {
           if (!activities.has(activityId)) {
             activities.set(activityId, { activity, context: services })
           }
-          const result = yield* Effect.orDie(
+          const result = yield* retryPersistence(
             client.activity({
               name: activity.name,
               attempt,
@@ -921,6 +921,15 @@ const retryPolicy = Schedule.min([
   Schedule.exponential(200, 1.5),
   Schedule.spaced("1 minute")
 ])
+
+// A transient storage failure must not become the workflow result. Requests
+// are saved under a primary key, so a retry after a lost acknowledgement is
+// deduplicated instead of running the activity again.
+const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),
+    Effect.orDie
+  )
 
 // A cluster abandonment means this owner can no longer complete the effect, so
 // retrying it would only wait on a retired run. Re-raise it as an annotated
