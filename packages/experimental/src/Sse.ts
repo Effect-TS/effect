@@ -400,13 +400,13 @@ export const encoder: Encoder = {
       case "Event": {
         let data = ""
         if (event.id !== undefined) {
-          data += `id: ${event.id}\n`
+          data += `id: ${event.id.replace(/[\r\n\0]/g, "")}\n`
         }
         if (event.event !== "message") {
-          data += `event: ${event.event}\n`
+          data += `event: ${event.event.replace(/[\r\n]/g, "")}\n`
         }
         if (event.data !== "") {
-          data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
+          data += `data: ${event.data.replace(/\r\n|\r|\n/g, "\ndata: ")}\n`
         }
         return data + "\n"
       }
