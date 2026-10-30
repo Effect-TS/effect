@@ -213,3 +213,13 @@ export const optionalStringField = (
   fieldNumber: number,
   value: string | undefined
 ): Uint8Array => value !== undefined && value !== "" ? stringField(fieldNumber, value) : new Uint8Array(0)
+
+/**
+ * Encodes a fixed64 field if the value is defined
+ *
+ * @internal
+ */
+export const optionalFixed64Field = (
+  fieldNumber: number,
+  value: string | undefined
+): Uint8Array => value !== undefined ? fixed64Field(fieldNumber, BigInt(value)) : new Uint8Array(0)
