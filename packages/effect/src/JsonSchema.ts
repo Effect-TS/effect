@@ -506,23 +506,23 @@ export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-1
  * @since 4.0.0
  */
 export function toDocumentDraft07(document: Document<"draft-2020-12">): Document<"draft-07"> {
-  return {
-    dialect: "draft-07",
-    ...convertDocument(document, draft07Adapter)
-  }
+  return toDocumentDraft07WithDefinitionsPath(document)
 }
 
 /**
- * Converts a document whose definitions were relocated by
- * {@link toMultiDocumentComponents} to Draft-07, keeping references to
- * `#/components/schemas/...` in place.
+ * Converts to Draft-07 with definitions located at `definitionsPath`, such as
+ * `["components", "schemas"]` after {@link toMultiDocumentComponents}, so
+ * references into them stay in place. Defaults to `$defs` → `definitions`.
  *
  * @internal
  */
-export function toComponentsDocumentDraft07(document: Document<"draft-2020-12">): Document<"draft-07"> {
+export function toDocumentDraft07WithDefinitionsPath(
+  document: Document<"draft-2020-12">,
+  definitionsPath?: ReadonlyArray<string>
+): Document<"draft-07"> {
   return {
     dialect: "draft-07",
-    ...convertDocument(document, draft07Adapter, undefined, ["components", "schemas"])
+    ...convertDocument(document, draft07Adapter, undefined, definitionsPath)
   }
 }
 
