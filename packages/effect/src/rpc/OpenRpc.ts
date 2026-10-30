@@ -280,9 +280,9 @@ export class ExternalDocs
 {}
 
 /**
- * OpenRPC annotation for specifying error metadata when encoded codes or
- * messages cannot be derived from literals. Method lists replace group lists
- * and must cover all derivable codes without contradicting literal messages.
+ * OpenRPC annotation for specifying error metadata. When present, it replaces
+ * the error metadata derived from literal `code` and `message` fields. Method
+ * lists replace group lists.
  *
  * @stability unstable
  * @category services
@@ -365,8 +365,8 @@ export const annotations: (
  * authority for custom predicates and approximated constraints. Structured
  * payloads include `x-effect-params-schema` for the complete parameter schema.
  * Streams include `x-effect-stream` and require Effect-aware tooling. Scalar
- * payloads and schemas that cannot be converted to Draft 7 throw method-specific
- * errors. Dynamic error codes or messages require an `Errors` annotation. Custom
+ * payloads and schemas that cannot be converted to Draft 7 throw. Errors without
+ * literal codes and messages are omitted unless an `Errors` annotation is set. Custom
  * serialization codecs are not supported. Void and stream completion results
  * retain a result descriptor with a JSON null schema.
  *
@@ -450,14 +450,13 @@ export function fromRpcGroup<R extends Rpc.Any>(
     (rpc) =>
       withMethod(rpc._tag, () => {
         const exit = Rpc.exitSchema(rpc)
+        // The JSON representation encodes void as null, so inspect the AST instead
+        const seen = new Set<SchemaAST.AST>()
         let encodedPayload = SchemaAST.getLastEncoding(rpc.payloadSchema.ast)
-        if (encodedPayload._tag === "Suspend") {
-          const seen = new Set<SchemaAST.AST>()
-          while (encodedPayload._tag === "Suspend") {
-            if (seen.has(encodedPayload)) throw new Error("cyclic schema root cannot be resolved")
-            seen.add(encodedPayload)
-            encodedPayload = SchemaAST.getLastEncoding(encodedPayload.thunk())
-          }
+        while (encodedPayload._tag === "Suspend") {
+          if (seen.has(encodedPayload)) throw new Error("cyclic schema root cannot be resolved")
+          seen.add(encodedPayload)
+          encodedPayload = SchemaAST.getLastEncoding(encodedPayload.thunk())
         }
         return {
           rpc,
@@ -477,24 +476,8 @@ export function fromRpcGroup<R extends Rpc.Any>(
         }
       })
   )
-  const withMethodErrors = <A>(f: () => A): A => {
-    try {
-      return f()
-    } catch (cause) {
-      // Successful generation stays batched; isolate a failing method only on error.
-      for (let i = 0; i < contracts.length; i++) {
-        const contract = contracts[i]
-        const end = contracts[i + 1]?.payload ?? asts.length
-        withMethod(contract.rpc._tag, () =>
-          compileSchemas(InternalToRepresentation.toRepresentations(
-            asts.slice(contract.payload, end) as [SchemaAST.AST, ...Array<SchemaAST.AST>]
-          )))
-      }
-      throw cause
-    }
-  }
-  const representation = withMethodErrors(() =>
-    InternalToRepresentation.toRepresentations(asts as [SchemaAST.AST, ...Array<SchemaAST.AST>])
+  const representation = InternalToRepresentation.toRepresentations(
+    asts as [SchemaAST.AST, ...Array<SchemaAST.AST>]
   )
   const representations: [SchemaRepresentation.Representation, ...Array<SchemaRepresentation.Representation>] = [
     ...representation.representations
@@ -531,7 +514,7 @@ export function fromRpcGroup<R extends Rpc.Any>(
       }
     })
   }
-  const document = withMethodErrors(() => compileSchemas({ representations, references: representation.references }))
+  const document = compileSchemas({ representations, references: representation.references })
   InternalRecord.assignProperties(components, document.definitions)
   const schemas = document.schema.anyOf as Array<JsonSchema.JsonSchema>
   for (const contract of contracts) {
@@ -559,7 +542,7 @@ export function fromRpcGroup<R extends Rpc.Any>(
         }
       }
       const explicitErrors = Context.getOrUndefined(annotations, Errors)
-      const errors = deriveErrors(contract.errorSchema, explicitErrors)
+      const errors = explicitErrors ?? deriveErrors(contract.errorSchema)
       const stream = contract.stream
       methods.push({
         name: rpc._tag,
@@ -739,75 +722,35 @@ function literalValues(
   }
 }
 
-function deriveErrors(
-  schema: Schema.Constraint,
-  explicit: ReadonlyArray<OpenRPCError> | undefined
-): Array<OpenRPCError> {
-  const known = new Map<number, string | undefined>()
-  let dynamic = false
-  function remember(code: number, messages: ReadonlyArray<unknown> | undefined): void {
-    if (!Number.isInteger(code)) throw new Error(`error code ${String(code)} is not a finite integer`)
-    let entry = known.get(code)
-    let conflict = false
-    for (const message of messages ?? []) {
-      if (typeof message !== "string") throw new Error("encoded error message must be a string")
-      if (entry === undefined) entry = message
-      else if (entry !== message) conflict = true
-    }
-    if (conflict) throw new Error(`conflicting encoded messages for error code ${code}`)
-    known.set(code, entry)
-  }
+function deriveErrors(schema: Schema.Constraint): Array<OpenRPCError> {
+  // Mirrors RpcSerialization's JSON-RPC encoding: `Number(error.code)` or 0, and
+  // `error.message`. Errors without literal values are omitted.
+  const errors = new Map<number, string>()
   const document = InternalToRepresentation.toRepresentation(InternalToCodec.toCodecJsonAST(schema.ast))
   const seen = new Set<SchemaRepresentation.Representation>()
   function visit(input: SchemaRepresentation.Representation): void {
-    if (seen.has(input)) {
-      dynamic = true
-      return
-    }
+    if (seen.has(input)) return
     seen.add(input)
     const node = resolveRepresentation(input, document.references)
-    if (node._tag === "Never") return
     if (node._tag === "Union") {
       node.types.forEach(visit)
       return
     }
-    if (node._tag !== "Objects") {
-      dynamic = true
-      if (node._tag !== "Unknown" && node._tag !== "Any" && node._tag !== "Declaration") remember(0, undefined)
-      return
-    }
+    if (node._tag !== "Objects") return
     const code = node.propertySignatures.find((property) => property.name === "code")
     const message = node.propertySignatures.find((property) => property.name === "message")
+    if (message === undefined || message.isOptional) return
+    const messages = literalValues(message.type, document.references)
+    if (messages?.length !== 1 || typeof messages[0] !== "string") return
     const codes = code === undefined
       ? node.indexSignatures.length > 0 ? undefined : [0]
       : literalValues(code.type, document.references)
-    const messages = message === undefined ? undefined : literalValues(message.type, document.references)
-    if (codes === undefined || messages === undefined || message?.isOptional) dynamic = true
-    if (codes !== undefined) {
-      for (const value of codes) remember(Number(value), messages)
+    for (const value of codes ?? []) {
+      const number = Number(value)
+      if (Number.isInteger(number) && !errors.has(number)) errors.set(number, messages[0])
     }
-    if (code?.isOptional) remember(0, messages)
+    if (code?.isOptional && !errors.has(0)) errors.set(0, messages[0])
   }
   visit(document.representation)
-  if (explicit !== undefined) {
-    const errors = new Map<number, OpenRPCError>()
-    for (const error of explicit) {
-      if (!Number.isInteger(error.code) || typeof error.message !== "string") {
-        throw new Error("Errors annotations require finite integer codes and string messages")
-      }
-      if (errors.has(error.code)) throw new Error(`duplicate error code ${error.code} in Errors annotation`)
-      errors.set(error.code, error)
-    }
-    for (const [code, message] of known) {
-      const error = errors.get(code)
-      if (error === undefined) throw new Error(`Errors annotation is missing encoded error code ${code}`)
-      if (message !== undefined && message !== error.message) {
-        throw new Error(`Errors annotation contradicts the encoded message for error code ${code}`)
-      }
-    }
-    if (dynamic && errors.size === 0) throw new Error("dynamic errors require non-empty Errors metadata")
-    return Array.from(errors.values())
-  }
-  if (dynamic) throw new Error("cannot derive encoded error codes/messages; add an OpenRpc.Errors annotation")
-  return Array.from(known, ([code, message]) => ({ code, message: message! }))
+  return Array.from(errors, ([code, message]) => ({ code, message }))
 }
