@@ -1,12 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { OtlpResource, OtlpSerialization } from "effect/observability"
-import {
-  encodeAnyValue,
-  encodeHistogramDataPoint,
-  encodeNumberDataPoint,
-  encodeSummaryDataPoint
-} from "effect/observability/internal/otlpProtobuf"
+import { encodeAnyValue } from "effect/observability/internal/otlpProtobuf"
 
 describe("OtlpSerialization", () => {
   const boundaries = [
@@ -80,21 +75,52 @@ describe("OtlpSerialization", () => {
     assert.deepStrictEqual(Array.from(encoded), [0x18, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01])
   })
 
-  it("omits absent metric start timestamps", () => {
-    const point = { attributes: [], timeUnixNano: "2" }
-    const encoded = [
-      encodeNumberDataPoint({ ...point, asInt: 1 }),
-      encodeHistogramDataPoint({ ...point, count: 1, bucketCounts: [1], explicitBounds: [] }),
-      encodeSummaryDataPoint({ ...point, count: 1, sum: 1, quantileValues: [] })
-    ]
-    const time = [0x19, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] // time_unix_nano: 2
-    const one = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    assert.deepStrictEqual(encoded.map((bytes) => Array.from(bytes)), [
-      [...time, 0x31, ...one], // as_int: 1
-      [...time, 0x21, ...one, 0x31, ...one], // count: 1, bucket_counts: [1]
-      [...time, 0x21, ...one, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f] // count: 1, sum: 1.0
-    ])
-  })
+  it.effect("layerProtobuf omits absent metric start timestamps", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const point = { attributes: [], timeUnixNano: "2" }
+      const body = serialization.metrics({
+        resourceMetrics: [{
+          resource: { attributes: [], droppedAttributesCount: 0 },
+          scopeMetrics: [{
+            scope: { name: "s" },
+            metrics: [
+              { name: "g", gauge: { dataPoints: [{ ...point, asInt: 1 }] } },
+              {
+                name: "h",
+                histogram: {
+                  dataPoints: [{ ...point, count: 1, bucketCounts: [1], explicitBounds: [] }],
+                  aggregationTemporality: 2
+                }
+              },
+              { name: "s", summary: { dataPoints: [{ ...point, count: 1, sum: 1, quantileValues: [] }] } }
+            ]
+          }]
+        }]
+      })
+      assert.strictEqual(body._tag, "Uint8Array")
+      const time = [0x19, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] // time_unix_nano: 2
+      const one = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      assert.deepStrictEqual(
+        Array.from(body._tag === "Uint8Array" ? body.body : []),
+        [
+          [0x0a, 0x6e], // resource_metrics
+          [0x0a, 0x00], // resource
+          [0x12, 0x6a], // scope_metrics
+          [0x0a, 0x03, 0x0a, 0x01, 0x73], // scope { name: "s" }
+          [0x12, 0x19, 0x0a, 0x01, 0x67], // metrics { name: "g" }
+          [0x2a, 0x14, 0x0a, 0x12], // gauge.data_points
+          [...time, 0x31, ...one], // as_int: 1
+          [0x12, 0x24, 0x0a, 0x01, 0x68], // metrics { name: "h" }
+          [0x4a, 0x1f, 0x0a, 0x1b], // histogram.data_points
+          [...time, 0x21, ...one, 0x31, ...one], // count: 1, bucket_counts: [1]
+          [0x10, 0x02], // aggregation_temporality: 2
+          [0x12, 0x22, 0x0a, 0x01, 0x73], // metrics { name: "s" }
+          [0x5a, 0x1d, 0x0a, 0x1b], // summary.data_points
+          [...time, 0x21, ...one, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f] // count: 1, sum: 1.0
+        ].flat()
+      )
+    }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
 
   it.effect("layerProtobuf encodes Summary metrics", () =>
     Effect.gen(function*() {
