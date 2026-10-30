@@ -1616,9 +1616,9 @@ const withStatement = <A, X, E, R>(
   })
 
 /**
- * Runs statements in order on one connection under one client span, applying
- * the current transformer and each statement's own compiler and row
- * transform. Backs `SqlClient.batch`.
+ * Backs `SqlClient.batch`: runs the statements on one connection under one
+ * span, with each statement's compiler and row transform and the current
+ * transformer.
  *
  * @internal
  */
@@ -1629,7 +1629,7 @@ export const executeBatch = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>
 ): Effect.Effect<any, SqlError> => {
   if (statements.length === 0) return Effect.succeed([])
-  // OpenTelemetry names a multi-statement batch `BATCH` plus the span target.
+  // OpenTelemetry names multi-statement batches `BATCH <target>`.
   const isBatch = statements.length > 1
   const target = spanTarget(spanAttributes)
   const name = !isBatch ? spanName(spanAttributes) : target === undefined ? "BATCH" : `BATCH ${target}`

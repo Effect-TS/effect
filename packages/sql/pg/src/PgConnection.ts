@@ -266,22 +266,19 @@ export interface PgConnection {
     prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
-   * Runs the statements in one extended-query cycle, one write closed by a
-   * single `Sync`, and returns each statement's result. Interruption behaves
-   * as for `query`.
+   * Sends the statements in one write closed by a single `Sync` and returns
+   * each statement's result. Interruption behaves as for `query`.
    *
    * **Details**
    *
-   * Outside an explicit transaction PostgreSQL runs the cycle as one implicit
-   * transaction: transaction-local settings such as `set_config(..., true)`
-   * apply to the later statements and end with the cycle, and a failing
-   * statement fails the batch with its error, skips the rest and keeps
-   * nothing. Inside an explicit transaction a failing statement aborts it.
+   * Outside an explicit transaction the batch is one implicit transaction:
+   * transaction-local settings such as `set_config(..., true)` last until it
+   * ends, and a failing statement fails the batch and keeps nothing. Inside
+   * an explicit transaction a failing statement aborts it.
    *
-   * Statements are always unnamed, so they skip the prepared statement cache
-   * and a batch is never retried. An empty batch succeeds with `[]` without
-   * touching the session. On a multiplexed connection the cycle is pipelined
-   * like any other statement and does not pin the session.
+   * Statements are unnamed, so a batch skips the prepared statement cache and
+   * is never retried. An empty batch returns `[]` without touching the
+   * session. A multiplexed connection pipelines the batch without pinning.
    */
   readonly batch: (statements: ReadonlyArray<BatchStatement>) => Effect.Effect<ReadonlyArray<Result>, SqlError>
   /**
@@ -576,11 +573,9 @@ class PgConnectionImpl implements PgConnection {
     cache: PreparedCache | undefined
   ): Plan => encodeQuery(sql, params, this.registry, this.bindEncoder, cache)
 
-  /** The cycle for one statement, planned against whatever cache the attempt allows. */
   readonly queryCycle = (sql: string, params: ReadonlyArray<unknown>): EncodeCycle => (cache) =>
     this.encodeQuery(sql, params, cache)
 
-  /** The cycle for a batch, which never names statements. */
   readonly batchCycle = (statements: ReadonlyArray<BatchStatement>): EncodeCycle => () =>
     encodeBatch(statements, this.registry, this.bindEncoder)
 
@@ -947,7 +942,7 @@ class PinnedPgConnection implements PgConnection {
 }
 
 interface QueryOutput {
-  /** One result per statement in the cycle, in order. */
+  /** One result per statement, in order. */
   readonly results: ReadonlyArray<Result>
   readonly values: ReadonlyArray<ReadonlyArray<unknown>>
 }
@@ -1069,7 +1064,7 @@ const takeValues = (output: QueryOutput): ReadonlyArray<ReadonlyArray<unknown>> 
  */
 const sync: Uint8Array = PgProtocol.encodeSync()
 const execute: Uint8Array = PgProtocol.encodeExecute({ portal: "", maxRows: 0 })
-/** `Describe` and `Execute` for one statement of a batch, which shares a single `Sync`. */
+/** `Describe` / `Execute` for one batch statement; the batch ends with one `Sync`. */
 const describeExecute: Uint8Array = concat([PgProtocol.encodeDescribe({ target: "portal", name: "" }), execute])
 const describeExecuteSync: Uint8Array = concat([describeExecute, sync])
 
@@ -1111,17 +1106,13 @@ interface Plan {
   readonly description: Description | undefined
   /** Set by the cycle when the backend rejected the name or the cached plan. */
   stale: boolean
-  /** The statements in the cycle: more than one for a batch. */
+  /** Number of statements in the cycle. */
   readonly statements: number
 }
 
-/**
- * Plans a cycle for one attempt. The cache is the one that attempt may name
- * statements from: `undefined` on a retry, and always for a batch.
- */
+/** Plans one attempt. The cache is `undefined` on a retry and ignored by batches. */
 type EncodeCycle = (cache: PreparedCache | undefined) => Plan
 
-/** `Parse` and `Bind` for a statement that stays unnamed. */
 const encodeUnnamedParseBind = (
   sql: string,
   parameters: ReadonlyArray<PgTypes.Parameter>,
@@ -1171,9 +1162,9 @@ const inferParameters = (
 }
 
 /**
- * Builds a batch as one cycle: unnamed `Parse` / `Bind` / `Describe` /
- * `Execute` for each statement and a single `Sync`. Nothing is named, so the
- * prepared statement cache is never involved and the cycle is never retried.
+ * Unnamed `Parse` / `Bind` / `Describe` / `Execute` per statement, then one
+ * `Sync`. Nothing is named, so a batch bypasses the prepared statement cache
+ * and is never retried.
  */
 const encodeBatch = (
   statements: ReadonlyArray<BatchStatement>,
@@ -1468,9 +1459,8 @@ class QueryMachine implements Consumer {
   /** Object rows, or `undefined` when the caller asked for positional ones. */
   private rows: Array<Row> | undefined
   private values: Array<ReadonlyArray<unknown>> | undefined
-  /** Statements of the cycle still to complete, counting the current one. */
+  /** Statements left, including the current one. */
   private remaining: number
-  /** The results of the completed statements. */
   private readonly results: Array<Result> = []
 
   private closes: number
@@ -1512,11 +1502,7 @@ class QueryMachine implements Consumer {
     return this.done
   }
 
-  /**
-   * Keeps the finished statement's result. The last statement of the cycle
-   * leaves only `ReadyForQuery` to wait for; a batch with statements left
-   * moves on to the next one's `Parse`.
-   */
+  /** Saves the statement's result, then waits for `ReadyForQuery` or the next `Parse`. */
   private endStatement(): void {
     this.results.push({
       command: this.command,
@@ -1544,8 +1530,8 @@ class QueryMachine implements Consumer {
     if (this.done) return onDrained()
     this.aborted = true
     this.drainDone = onDrained
-    // Draining skips the remaining `RowDescription`s, so a later batch
-    // statement's rows would be decoded with this reader. Leave them raw.
+    // Draining skips later `RowDescription`s, so don't decode their rows
+    // with this statement's reader.
     this.conn.session.parser.readField = undefined
   }
 

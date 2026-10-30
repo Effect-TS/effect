@@ -151,17 +151,15 @@ export interface SqlClient extends Constructor {
    *
    * **Details**
    *
-   * Each statement is compiled and its rows transformed by the client that
-   * built it, and the current `Statement.CurrentTransformer` applies to each
-   * one. The batch runs under one client span, on the enclosing transaction's
-   * connection when there is one. An empty batch succeeds with `[]` without
-   * acquiring a connection.
+   * Each statement is compiled and transformed by the client that built it,
+   * and `Statement.CurrentTransformer` applies to each. The batch runs under
+   * one span, on the current transaction's connection if there is one. An
+   * empty batch returns `[]` without acquiring a connection.
    *
-   * Drivers that implement `Connection.executeBatch` send the statements in
-   * one round trip. PostgreSQL runs such a batch as one implicit transaction
-   * outside `withTransaction`, so a failing statement fails the batch and
-   * nothing from it is kept. Other drivers run the statements one at a time,
-   * so wrap the batch in `withTransaction` when it must be atomic.
+   * PostgreSQL and libSQL send the batch in one round trip and run it as one
+   * transaction outside `withTransaction`, so a failing statement keeps
+   * nothing. Other drivers run the statements one at a time; wrap the batch in
+   * `withTransaction` when it must be atomic.
    *
    * **Example** (Setting row-level security context for one query)
    *

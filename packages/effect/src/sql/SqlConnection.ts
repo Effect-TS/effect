@@ -64,14 +64,13 @@ export interface Connection {
   ) => Effect<ReadonlyArray<any>, SqlError>
 
   /**
-   * Runs compiled statements in order and returns each statement's rows,
-   * without row transforms.
+   * Runs compiled statements in order, ideally in one round trip, and returns
+   * each statement's untransformed rows.
    *
    * **Details**
    *
-   * Optional. `SqlClient.batch` uses it when present, so a driver can send the
-   * statements in one round trip, and otherwise runs them one at a time with
-   * `execute` on the same connection.
+   * Optional. Without it, `SqlClient.batch` runs the statements one at a time
+   * with `execute` on the same connection.
    */
   readonly executeBatch?: (
     statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>

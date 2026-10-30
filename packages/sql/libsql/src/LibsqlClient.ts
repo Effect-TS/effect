@@ -264,8 +264,8 @@ export const make = (
       executeBatch(statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>) {
         return Effect.map(
           Effect.tryPromise({
-            // Like `beginTransaction`, take the write lock up front. A
-            // `Transaction` is already in one and ignores the mode.
+            // Take the write lock up front, as `beginTransaction` does. A
+            // `Transaction` ignores the mode.
             try: () =>
               (this.sdk as Libsql.Client).batch(
                 statements.map(([sql, params]) => ({ sql, args: params as Array<any> })),
