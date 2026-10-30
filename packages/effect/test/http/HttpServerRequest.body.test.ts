@@ -78,16 +78,20 @@ describe("request body", () => {
       assert.strictEqual(error.reason.reason, "BodyTooLarge")
     }))
 
-  it.effect("fromClientRequest fails an unreadable raw body under MaxBodySize", () =>
-    Effect.gen(function*() {
-      const web = new Request("http://localhost/upload", { method: "POST", body: "123" })
-      web.body!.getReader()
-      const error = yield* fromRaw(web).text.pipe(
-        Effect.flip,
-        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
-      )
-      assert.strictEqual(error.reason._tag, "RequestParseError")
-    }))
+  for (const maxBodySize of [ByteSize.bytes(4), undefined]) {
+    it.effect(`fromClientRequest fails unreadable raw bodies ${maxBodySize ? "under" : "without"} MaxBodySize`, () =>
+      Effect.gen(function*() {
+        for (const raw of [(web: Request) => web, (web: Request) => web.body]) {
+          const web = new Request("http://localhost/upload", { method: "POST", body: "123" })
+          web.body!.getReader()
+          const error = yield* fromRaw(raw(web)).text.pipe(
+            Effect.flip,
+            Effect.provideService(HttpIncomingMessage.MaxBodySize, maxBodySize)
+          )
+          assert.strictEqual(error.reason._tag, "RequestParseError")
+        }
+      }))
+  }
 
   for (const accessor of ["arrayBuffer", "text"] as const) {
     describe(`MaxBodySize via ${accessor}`, () => {
