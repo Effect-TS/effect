@@ -1342,6 +1342,10 @@ export const provideRequest =
  * Layers first built inside the app are private to this server. Provide
  * services that must be shared with sibling layers outside `serve`.
  *
+ * The server always builds its own `HttpRouter`, even if `HttpRouter.layer` was
+ * already built outside `serve`. Within the app, `HttpRouter.layer` resolves to
+ * the server's router.
+ *
  * **Gotchas**
  *
  * The layer is built with a forked `MemoMap`, so calling `serve` twice will
@@ -1394,7 +1398,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
       : layer
   )
   return Effect.contextWith((context) => {
-    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
+    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context, { fresh: [layer] })
     return Layer.buildWithMemoMap(layerWithRouter, memoMap, Context.get(context, Scope.Scope))
   }).pipe(
     Effect.map((context) => {
