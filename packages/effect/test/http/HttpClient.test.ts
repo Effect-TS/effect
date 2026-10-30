@@ -940,6 +940,32 @@ Missing key
         yield* TestClock.adjust("900 millis")
         strictEqual((yield* Fiber.join(fiber)).status, 200)
       }))
+
+    it.effect("bounds the whole retry loop when applied after retryTransient", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.andThen(
+                Effect.sleep("600 millis"),
+                Effect.fail(
+                  new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+                )
+              )
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.retryTransient({ times: 1 }), HttpClient.timeout("1 second"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        const exit = fiber.pollUnsafe()
+
+        strictEqual(yield* Ref.get(attempts), 2)
+        assert.isTrue(exit !== undefined && Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+      }))
   })
 
   describe("stream", () => {
