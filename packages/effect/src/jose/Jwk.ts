@@ -403,9 +403,10 @@ export const generateKeyPair = Effect.fnUntraced(function*(
   if (modulusLength !== undefined && (!Number.isSafeInteger(modulusLength) || modulusLength < 2048)) {
     return yield* invalidArgument("modulusLength must be an integer of at least 2048")
   }
-  const pair = yield* Signature.Signature.use((signature) =>
-    signature.generateKeyPair(signatureAlgorithm(algorithm, modulusLength))
-  ).pipe(Effect.mapError(cryptoFailure(`Could not generate a ${algorithm} key pair`)))
+  const signature = yield* Signature.Signature
+  const pair = yield* signature.generateKeyPair(signatureAlgorithm(algorithm, modulusLength)).pipe(
+    Effect.mapError(cryptoFailure(`Could not generate a ${algorithm} key pair`))
+  )
   const publicJwk = yield* exportJwk(pair.publicKey, algorithm, kid)
   const privateJwk = yield* exportJwk(pair.privateKey, algorithm, kid)
   return { publicKey: publicJwk as PublicJwk, privateKey: Redacted.make(privateJwk as PrivateJwk) }
@@ -753,7 +754,8 @@ export const thumbprint = Effect.fnUntraced(function*(
   ) {
     return yield* invalidKey("Expected a JWK with canonical base64url key members")
   }
-  return Base64Url.encode(yield* Digest.Digest.use((digest) => digest.digest(hash, utf8(JSON.stringify(required)))))
+  const digest = yield* Digest.Digest
+  return Base64Url.encode(yield* digest.digest(hash, utf8(JSON.stringify(required))))
 })
 
 /**
