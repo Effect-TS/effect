@@ -114,7 +114,7 @@ export declare namespace RpcClient {
            * middleware errors and failures before the handler starts still fail the
            * call. Over HTTP and workers the call completes after the handler has
            * finished. A protocol that only delivers requests acknowledges the call
-           * itself once it has accepted the request.
+           * itself once it has delivered the request.
            */
           readonly discard?: Discard | undefined
         }
@@ -190,7 +190,7 @@ export declare namespace RpcClient {
          * middleware errors and failures before the handler starts still fail the
          * call. Over HTTP and workers the call completes after the handler has
          * finished. A protocol that only delivers requests acknowledges the call
-         * itself once it has accepted the request.
+         * itself once it has delivered the request.
          */
         readonly discard?: Discard | undefined
       }
@@ -944,12 +944,13 @@ export const withHeaders: {
  *
  * **Details**
  *
- * Every `Request` passed to `send` must end with a reply for its id: an `Exit`,
- * or a `ClientProtocolError` that lists it in `requestIds`. Until then the call
- * stays pending, and the client keeps the request and the caller's context. A
- * transport that only delivers requests, such as a message queue, meets this
- * by writing a void `Exit` for a `discard` request once the transport has
- * accepted it, and a `ClientProtocolError` for any other request.
+ * A `Request` that `send` accepts stays pending until a reply names its id: an
+ * `Exit`, or a `ClientProtocolError` that lists it in `requestIds`. Until then
+ * the client keeps the request and the caller's context, unless the caller is
+ * interrupted, the client closes or the connection fails. A transport that
+ * only delivers requests, such as a message queue, writes a void `Exit` for a
+ * `discard` request once it has delivered it, and fails `send` with an
+ * `RpcClientError` for any other request.
  *
  * @stability unstable
  * @category services
