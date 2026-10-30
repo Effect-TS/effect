@@ -62,6 +62,19 @@ export interface Connection {
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>
+
+  /**
+   * Runs compiled statements in order, ideally in one round trip, and returns
+   * each statement's untransformed rows.
+   *
+   * **Details**
+   *
+   * Optional. Without it, `SqlClient.batch` runs the statements one at a time
+   * with `execute` on the same connection.
+   */
+  readonly executeBatch?: (
+    statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>
+  ) => Effect<ReadonlyArray<ReadonlyArray<any>>, SqlError>
 }
 
 /**
