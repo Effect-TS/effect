@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Skip lines containing only spaces or tabs in `Ndjson.decode` and `Ndjson.decodeString` when `ignoreEmptyLines` is enabled.
+`Ndjson.decode` and `Ndjson.decodeString` now also skip lines containing only spaces or tabs when `ignoreEmptyLines` is enabled.

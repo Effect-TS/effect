@@ -263,7 +263,8 @@ const flushNothing = () => undefined
  * **Gotchas**
  *
  * Set `ignoreEmptyLines` to skip empty lines and lines containing only spaces
- * or tabs before calling `JSON.parse`; otherwise these lines fail as invalid JSON.
+ * or tabs before calling `JSON.parse`; otherwise these lines fail as invalid
+ * JSON.
  *
  * @stability unstable
  * @category constructors
