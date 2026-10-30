@@ -3491,6 +3491,67 @@
           ]
         }
       ]
+    },
+    {
+      "name": "encoding",
+      "fixtures": [
+        {
+          "file": "suites/encoding/fixtures/base64url.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "base64url",
+            "implementation": "effect",
+            "astTags": [],
+            "operation": "decode",
+            "path": "valid",
+            "size": 150
+          },
+          "cases": [
+            {
+              "name": "decode-small",
+              "export": "decodeSmall",
+              "scenario": "base64url-decode-small",
+              "size": 16
+            },
+            {
+              "name": "decode-jwt-signature",
+              "export": "decodeJwtSignature",
+              "scenario": "base64url-decode-jwt-signature",
+              "size": 86
+            },
+            {
+              "name": "decode-jwt-payload",
+              "export": "decodeJwtPayload",
+              "scenario": "base64url-decode-jwt-payload"
+            },
+            {
+              "name": "decode-large",
+              "export": "decodeLarge",
+              "scenario": "base64url-decode-large",
+              "size": 65536
+            },
+            {
+              "name": "decode-padded-crlf",
+              "export": "decodePaddedCrlf",
+              "scenario": "base64url-decode-padded-crlf",
+              "size": 1404
+            },
+            {
+              "name": "decode-string-jwt-payload",
+              "export": "decodeStringJwtPayload",
+              "scenario": "base64url-decode-string-jwt-payload",
+              "size": 168,
+              "operation": "decodeString"
+            },
+            {
+              "name": "decode-invalid",
+              "export": "decodeInvalid",
+              "scenario": "base64url-decode-invalid",
+              "path": "invalid"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -115,6 +115,7 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
       })
     )
   }
+  // Validating up front keeps failures as cheap as the scan, without allocating the output.
   if (!/^[-_A-Z0-9]*?={0,2}$/i.test(stripped)) {
     return Result.fail(
       new EncodingError({
@@ -125,10 +126,33 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
       })
     )
   }
-  let sanitized = length % 4 === 2 ? `${stripped}==` : length % 4 === 3 ? `${stripped}=` : stripped
-  sanitized = sanitized.replace(/-/g, "+").replace(/_/g, "/")
-  return Base64.decode(sanitized)
+  const end = !padded ? length : stripped.charCodeAt(length - 2) === 61 ? length - 2 : length - 1
+  const fullEnd = end & ~3
+  // Not `(end * 3) >> 2`: engines that allow strings over 2^31 / 3 characters would overflow int32.
+  const result = new Uint8Array(Math.floor(end * 3 / 4))
+  let j = 0
+  for (let i = 0; i < fullEnd; i += 4) {
+    const a = codes[stripped.charCodeAt(i)]
+    const b = codes[stripped.charCodeAt(i + 1)]
+    const c = codes[stripped.charCodeAt(i + 2)]
+    const d = codes[stripped.charCodeAt(i + 3)]
+    result[j++] = (a << 2) | (b >> 4)
+    result[j++] = (b << 4) | (c >> 2)
+    result[j++] = (c << 6) | d
+  }
+  // Non-zero trailing bits in the final character are ignored.
+  if (end > fullEnd) {
+    const a = codes[stripped.charCodeAt(fullEnd)]
+    const b = codes[stripped.charCodeAt(fullEnd + 1)]
+    result[j++] = (a << 2) | (b >> 4)
+    if (end - fullEnd === 3) result[j] = (b << 4) | (codes[stripped.charCodeAt(fullEnd + 2)] >> 2)
+  }
+  return Result.succeed(result)
 }
+
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+const codes = new Uint8Array(128)
+for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
 
 /**
  * Decodes a padded or unpadded URL-safe Base64 string into UTF-8 text safely.
