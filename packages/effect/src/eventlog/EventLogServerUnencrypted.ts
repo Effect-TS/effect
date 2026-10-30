@@ -325,7 +325,9 @@ export class EventLogServerAuthError extends Data.TaggedError("EventLogServerAut
  * other key afterwards. `authorizeIdentity` also receives the presented
  * `signingPublicKey`, so a deployment that records each identity's signing key
  * at provisioning time, with `EventLogSessionAuth.deriveSigningPublicKey`, can
- * reject every other key, including on first use.
+ * reject every other key, including on first use. The server always supplies
+ * `signingPublicKey`; it is optional only so that existing callers keep
+ * compiling, and a policy that checks it should reject when it is missing.
  *
  * @stability unstable
  * @category services
@@ -343,7 +345,7 @@ export class EventLogServerAuthorization extends Context.Service<EventLogServerA
   }) => Effect.Effect<void, EventLogServerAuthError>
   readonly authorizeIdentity: (options: {
     readonly publicKey: string
-    readonly signingPublicKey: Uint8Array<ArrayBuffer>
+    readonly signingPublicKey?: Uint8Array<ArrayBuffer> | undefined
   }) => Effect.Effect<void, EventLogServerAuthError>
 }>()("effect/eventlog/EventLogServerUnencrypted/EventLogServerAuthorization") {}
 
