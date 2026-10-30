@@ -145,11 +145,12 @@ export const layerRpcHandlers = (options: {
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
         // Kept on the connection, so it is released when the client disconnects
         // and shared by overlapping Hellos until `Authenticate` consumes it.
-        const now = yield* Clock.currentTimeMillis
-        let pending = getPendingChallenge(client, now)
+        let pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
         if (pending === undefined) {
           const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
-          // A concurrent Hello may have stored a challenge while this one was made.
+          // Read the clock again, as generating the challenge can suspend. A
+          // concurrent Hello may have stored a challenge in the meantime.
+          const now = yield* Clock.currentTimeMillis
           pending = getPendingChallenge(client, now) ?? {
             challenge,
             expiresAt: now + EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
