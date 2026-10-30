@@ -617,6 +617,79 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       )
       assert.deepStrictEqual(held.rows[0], { n: 1 })
     }))
+  it.effect("returns each statement's result from one batch and ends the context at Sync", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const results = yield* connection.batch([
+        { sql: "SELECT set_config('app.org', $1, true)", params: ["acme"] },
+        { sql: "SELECT current_setting('app.org', true) AS org" }
+      ])
+      assert.deepStrictEqual(results[1].rows, [{ org: "acme" }])
+      const after = yield* connection.query("SELECT coalesce(current_setting('app.org', true), '') AS org")
+      assert.deepStrictEqual(after.rows, [{ org: "" }])
+    }))
+
+  it.effect("fails a batch with the failing statement's error, keeps nothing and stays usable", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE batch_rolled_back (a int4)")
+      const error = yield* Effect.flip(connection.batch([
+        { sql: "INSERT INTO batch_rolled_back VALUES (1)" },
+        { sql: "SELECT 1/0" },
+        { sql: "INSERT INTO batch_rolled_back VALUES (2)" }
+      ]))
+      assert.propertyVal(error.reason.cause, "code", "22012")
+      assert.deepStrictEqual((yield* connection.query("SELECT count(*)::int4 AS n FROM batch_rolled_back")).rows, [{
+        n: 0
+      }])
+    }))
+
+  it.effect("runs batch statements unnamed", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const batch = [{ sql: "SELECT $1::int4 AS n", params: [1] }]
+      yield* connection.batch(batch)
+      assert.deepStrictEqual((yield* connection.batch(batch))[0].rows, [{ n: 1 }])
+      const held = yield* connection.query("SELECT count(*)::int4 AS n FROM pg_prepared_statements", [], false)
+      assert.deepStrictEqual(held.rows, [{ n: 0 }])
+    }))
+
+  it.effect("leaves a transaction aborted after a failing batch until ROLLBACK", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("BEGIN")
+      const error = yield* Effect.flip(connection.batch([
+        { sql: "SELECT set_config('app.org', $1, true)", params: ["acme"] },
+        { sql: "SELECT 1/0" }
+      ]))
+      assert.propertyVal(error.reason.cause, "code", "22012")
+      const aborted = yield* Effect.flip(connection.query("SELECT 1"))
+      assert.propertyVal(aborted.reason.cause, "code", "25P02")
+      yield* connection.query("ROLLBACK")
+      assert.deepStrictEqual((yield* connection.query("SELECT 1::int4 AS n")).rows, [{ n: 1 }])
+    }))
+
+  it.effect("keeps batch context to its own pipelined cycle", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection({ multiplex: true })
+      const scoped = (org: string) =>
+        Effect.map(
+          connection.batch([
+            { sql: "SELECT set_config('app.org', $1, true)", params: [org] },
+            { sql: "SELECT current_setting('app.org', true) AS org" }
+          ]),
+          (results) => results[1].rows[0].org
+        )
+      const plain = Effect.map(
+        connection.query("SELECT coalesce(current_setting('app.org', true), '') AS org"),
+        (result) => result.rows[0].org
+      )
+      const orgs = yield* Effect.all([scoped("a"), plain, scoped("b"), plain, scoped("c")], {
+        concurrency: "unbounded"
+      })
+      assert.deepStrictEqual(orgs, ["a", "", "b", "", "c"])
+    }))
+
   it.effect("orders ordinary statements against a stream on the same session", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()

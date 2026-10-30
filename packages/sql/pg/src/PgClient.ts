@@ -396,6 +396,12 @@ class ConnectionImpl implements Connection {
       ? Effect.map(operation, transformRows)
       : operation
   }
+  executeBatch(statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>) {
+    return Effect.map(
+      this.connection.batch(statements.map(([sql, params]) => ({ sql, params }))),
+      (results) => results.map((result) => result.rows)
+    )
+  }
   executeStream(
     sql: string,
     params: ReadonlyArray<unknown>,

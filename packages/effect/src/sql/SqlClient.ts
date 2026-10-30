@@ -141,6 +141,50 @@ export interface SqlClient extends Constructor {
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
   /**
+   * Runs the statements in order on one connection and returns each
+   * statement's rows.
+   *
+   * **When to use**
+   *
+   * Use to run dependent statements together, such as setting
+   * transaction-local context with `set_config(..., true)` before a query.
+   *
+   * **Details**
+   *
+   * Each statement is compiled and transformed by the client that built it,
+   * and `Statement.CurrentTransformer` applies to each. The batch runs under
+   * one span, on the current transaction's connection if there is one. An
+   * empty batch returns `[]` without acquiring a connection.
+   *
+   * PostgreSQL and libSQL send the batch in one round trip and run it as one
+   * transaction outside `withTransaction`, so a failing statement keeps
+   * nothing. Other drivers run the statements one at a time; wrap the batch in
+   * `withTransaction` when it must be atomic.
+   *
+   * **Example** (Setting row-level security context for one query)
+   *
+   * ```ts
+   * import { Effect } from "effect"
+   * import { SqlClient } from "effect/sql"
+   *
+   * const items = (org: string) =>
+   *   Effect.gen(function*() {
+   *     const sql = yield* SqlClient.SqlClient
+   *     const [, rows] = yield* sql.batch([
+   *       sql`SELECT set_config('app.organization_id', ${org}, true)`,
+   *       sql`SELECT * FROM item`
+   *     ])
+   *     return rows
+   *   })
+   * ```
+   *
+   * @since 4.2.0
+   */
+  readonly batch: <const S extends ReadonlyArray<Statement.Statement<any>>>(
+    statements: S
+  ) => Effect.Effect<{ readonly [K in keyof S]: Effect.Success<S[K]> }, SqlError>
+
+  /**
    * Use the Reactivity service to create a reactive query.
    */
   readonly reactive: <A, E, R>(
@@ -320,6 +364,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       withTransaction,
       transactionService,
       afterCommit,
+      batch: (statements: ReadonlyArray<Statement.Statement<any>>) =>
+        Statement.executeBatch(statements, getConnection, borrower, options.spanAttributes),
       reserve: transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {

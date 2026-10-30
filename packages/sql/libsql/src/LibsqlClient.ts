@@ -4,8 +4,9 @@
  * This module provides a {@link LibsqlClient} and the generic SQL client
  * service for `@libsql/client`. It uses Effect SQL's SQLite compiler, supports
  * managed SDK clients or caller-owned live clients, classifies libSQL and
- * SQLite failures as `SqlError`s, and provides transaction support with
- * savepoints. Streaming queries are not implemented by this driver.
+ * SQLite failures as `SqlError`s, provides transaction support with
+ * savepoints, and sends `SqlClient.batch` as one libSQL batch. Streaming
+ * queries are not implemented by this driver.
  *
  * @stability unstable
  * @since 4.0.0
@@ -259,6 +260,21 @@ export const make = (
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return this.execute(sql, params, transformRows)
+      }
+      executeBatch(statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>) {
+        return Effect.map(
+          Effect.tryPromise({
+            // Take the write lock up front, as `beginTransaction` does. A
+            // `Transaction` ignores the mode.
+            try: () =>
+              (this.sdk as Libsql.Client).batch(
+                statements.map(([sql, params]) => ({ sql, args: params as Array<any> })),
+                "write"
+              ),
+            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
+          }),
+          (results) => results.map((result) => result.rows)
+        )
       }
       executeStream() {
         return Stream.die("executeStream not implemented")

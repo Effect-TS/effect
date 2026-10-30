@@ -1341,6 +1341,8 @@ export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
 const ATTR_SQL_METHOD = "effect.sql.method"
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_OPERATION_BATCH_SIZE = "db.operation.batch.size"
 
 // the last value wins, matching the order the attributes are applied to spans
 const spanAttribute = (spanAttributes: ReadonlyArray<readonly [string, unknown]>, key: string): unknown => {
@@ -1447,19 +1449,7 @@ const StatementProto: Omit<
       }
       span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
-      const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-      const clock = propagate ? waitClock(fiber) : undefined
-      const run = clock === undefined
-        ? (connection: Connection) => f(connection, sql, params)
-        : (connection: Connection) =>
-          Effect.suspend(() => {
-            recordConnectionWait(span, clock)
-            return f(connection, sql, params)
-          })
-      const execute = this.borrower === undefined
-        ? Effect.scoped(Effect.flatMap(this.acquirer, run))
-        : this.borrower(run)
-      return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
+      return runOnConnection(fiber, span, this.acquirer, this.borrower, (connection) => f(connection, sql, params))
     })
   },
 
@@ -1576,6 +1566,42 @@ const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
     Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
   )
 
+/**
+ * Runs `f` on a connection from the borrower, or one acquired for the call.
+ * With span propagation on, the connection wait is recorded on `span` and
+ * driver spans are parented under it.
+ */
+const runOnConnection = <XA, E>(
+  fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span,
+  acquirer: Acquirer,
+  borrower: Borrower | undefined,
+  f: (connection: Connection) => Effect.Effect<XA, E>
+): Effect.Effect<XA, E | SqlError> => {
+  const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+  const clock = propagate ? waitClock(fiber) : undefined
+  const run = clock === undefined ? f : (connection: Connection) =>
+    Effect.suspend(() => {
+      recordConnectionWait(span, clock)
+      return f(connection)
+    })
+  const execute = borrower === undefined ? Effect.scoped(Effect.flatMap(acquirer, run)) : borrower(run)
+  return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
+}
+
+const applyTransformer = <A>(
+  self: StatementImpl<A>,
+  transform: Transformer,
+  fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span
+): Effect.Effect<StatementImpl<A>> =>
+  transform(
+    self,
+    make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower),
+    fiber,
+    span
+  ) as Effect.Effect<StatementImpl<A>>
+
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
   span: Tracer.Span,
@@ -1586,16 +1612,59 @@ const withStatement = <A, X, E, R>(
     if (transform === undefined) {
       return f(self, fiber)
     }
-    return Effect.flatMap(
-      transform(
-        self,
-        make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows, self.borrower),
-        fiber,
-        span
-      ) as Effect.Effect<StatementImpl<A>>,
-      (statement) => f(statement, fiber)
-    )
+    return Effect.flatMap(applyTransformer(self, transform, fiber, span), (statement) => f(statement, fiber))
   })
+
+/**
+ * Backs `SqlClient.batch`: runs the statements on one connection under one
+ * span, with each statement's compiler and row transform and the current
+ * transformer.
+ *
+ * @internal
+ */
+export const executeBatch = (
+  statements: ReadonlyArray<Statement<unknown>>,
+  acquirer: Acquirer,
+  borrower: Borrower | undefined,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>
+): Effect.Effect<any, SqlError> => {
+  if (statements.length === 0) return Effect.succeed([])
+  // OpenTelemetry names multi-statement batches `BATCH <target>`.
+  const isBatch = statements.length > 1
+  const target = spanTarget(spanAttributes)
+  const name = !isBatch ? spanName(spanAttributes) : target === undefined ? "BATCH" : `BATCH ${target}`
+  return Effect.useSpan(name, { kind: "client" }, (span) =>
+    Effect.withFiber((fiber) => {
+      const transform = fiber.getRef(CurrentTransformer)
+      const impls = statements as ReadonlyArray<StatementImpl<unknown>>
+      const resolved = transform === undefined
+        ? Effect.succeed(impls)
+        : Effect.forEach(impls, (statement) => applyTransformer(statement, transform, fiber, span))
+      return Effect.flatMap(resolved, (statements) => {
+        const compiled = statements.map((statement) => statement.compile())
+        for (const [key, value] of spanAttributes) {
+          span.attribute(key, value)
+        }
+        span.attribute(ATTR_SQL_METHOD, "executeBatch")
+        if (isBatch) {
+          span.attribute(ATTR_DB_OPERATION_NAME, "BATCH")
+          span.attribute(ATTR_DB_OPERATION_BATCH_SIZE, statements.length)
+        }
+        span.attribute(ATTR_DB_QUERY_TEXT, compiled.map(([sql]) => sql).join("; "))
+        return runOnConnection(fiber, span, acquirer, borrower, (connection) =>
+          connection.executeBatch === undefined
+            ? Effect.forEach(
+              compiled,
+              ([sql, params], index) => connection.execute(sql, params, statements[index].transformRows)
+            )
+            : Effect.map(connection.executeBatch(compiled), (results) =>
+              results.map((rows, index) => {
+                const transformRows = statements[index].transformRows
+                return transformRows === undefined ? rows : transformRows(rows)
+              })))
+      })
+    }))
+}
 
 const isSegment = (u: unknown): u is Segment => {
   if (!hasProperty(u, "_tag")) {
