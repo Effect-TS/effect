@@ -99,6 +99,12 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * migrations. ClickHouse runs without a transaction and records each migration
  * only after it succeeds.
  *
+ * **Details**
+ *
+ * `asCommand` wraps the statements that write the migrations table, so clients
+ * that execute row-less statements differently, such as ClickHouse, can run
+ * them as commands. It defaults to `identity`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
