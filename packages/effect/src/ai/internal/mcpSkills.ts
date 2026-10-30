@@ -326,24 +326,6 @@ export const parseFrontmatter = (markdown: string): Record<string, unknown> | un
   }
 }
 
-/**
- * Compares two JSON values by content, ignoring the order of object keys.
- *
- * @internal
- */
-export const jsonEquals = (a: unknown, b: unknown): boolean => {
-  if (a === b) return true
-  if (Array.isArray(a)) {
-    return Array.isArray(b) && a.length === b.length && a.every((item, index) => jsonEquals(item, b[index]))
-  }
-  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null || Array.isArray(b)) return false
-  const keys = Object.keys(a)
-  return keys.length === Object.keys(b).length &&
-    keys.every((key) =>
-      Object.hasOwn(b, key) && jsonEquals((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
-    )
-}
-
 // The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
 const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)
 

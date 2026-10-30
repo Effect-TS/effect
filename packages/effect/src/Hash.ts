@@ -140,7 +140,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         const seen = backEdges
         let h: number
         try {
-          if (symbol in self) {
+          if (isHash(self)) {
             h = (self as Hash)[symbol]()
           } else if (typeof self === "function") {
             h = random(self)
@@ -289,8 +289,9 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  *
  * **Details**
  *
- * This function determines whether a given value has the Hash symbol property,
- * indicating that it can provide its own hash value implementation.
+ * This function determines whether a given value has a function under the Hash
+ * symbol, indicating that it can provide its own hash value implementation.
+ * Data that merely carries the key, such as parsed JSON, is hashed as data.
  *
  * **Example** (Checking for Hash support)
  *
@@ -312,7 +313,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  * @category guards
  * @since 2.0.0
  */
-export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
+export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
 
 const float64 = new DataView(new ArrayBuffer(8))
 
