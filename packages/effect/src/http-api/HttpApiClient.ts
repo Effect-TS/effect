@@ -29,8 +29,10 @@ import * as HttpMethod from "../http/HttpMethod.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
@@ -96,7 +98,12 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
     infer _Value
   > ? Stream.Stream<
       _Value,
-      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+      | _Error["Type"]
+      | Extract<VersionedSchema.NegotiationErrors<_Events | _Error>, VersionedSchema.Unrepresentable>
+      | HttpClientError.HttpClientError
+      | Schema.SchemaError
+      | Sse.Retry
+      | Sse.SseError,
       never
     >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
@@ -270,6 +277,12 @@ export declare namespace Client {
     | HttpApiMiddleware.ClientError<Endpoint["~Middleware"]>
     | E
     | HttpClientError.HttpClientError
+    | VersionedSchema.NegotiationErrors<
+      | Endpoint["~Payload"]
+      | Endpoint["~Success"]
+      | Endpoint["~Error"]
+      | HttpApiMiddleware.ErrorSchema<Endpoint["~Middleware"]>
+    >
     | ([Mode] extends ["response-only"] ? never : Endpoint["~Error"]["Type"] | Schema.SchemaError),
     | R
     | PayloadR
@@ -486,7 +499,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         const streamPayloadEncoder = UndefinedOr.map(streamPayload, (schema) => ({
           contentType: schema.contentType,
-          encode: makeStreamPayloadEncoder(schema, parseOptions.payload)
+          encode: makeStreamPayloadEncoder(schema, parseOptions.payload, HttpApiEndpoint.getVersioning(endpoint))
         }))
         const encodePayload = Arr.isArrayNonEmpty(payloadSchemas) ?
           Schema.encodeUnknownEffect(
@@ -507,6 +520,18 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         )
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
+        const versioning = HttpApiEndpoint.getVersioning(endpoint)
+        // A request value the chosen versions can't represent is a typed error.
+        const encodeVersioned = <A, R>(
+          effect: Effect.Effect<A, Schema.SchemaError, R>,
+          versions: Readonly<Record<string, number>> | undefined
+        ): Effect.Effect<A, unknown, R> => {
+          const encoded = InternalVersionedSchema.withVersions(effect, versioning, versions)
+          return versioning === undefined ? encoded : Effect.catch(
+            encoded,
+            (error) => Effect.fail(InternalVersionedSchema.toTypedError(versioning, error) ?? error)
+          )
+        }
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -519,11 +544,19 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          // the versions this call speaks: this build's latest, or the caller's choice
+          const versions = versioning === undefined
+            ? undefined
+            : InternalVersionedSchema.clientVersions(versioning, yield* InternalVersionedSchema.ClientVersions)
 
           if (request !== undefined) {
             // params
             if (encodeParams !== undefined) {
-              const params = (yield* encodeParams(request.params)) as Record<string, string>
+              // records only carry their version in JSON bodies
+              const params = (yield* InternalVersionedSchema.outsideBodies(encodeParams(request.params))) as Record<
+                string,
+                string
+              >
               httpRequest = HttpClientRequest.setUrl(httpRequest, makeUrl(params))
             }
 
@@ -534,7 +567,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                 httpRequest,
                 HttpBody.stream(
                   Stream.provideContext(
-                    streamPayloadEncoder.encode(request.payload),
+                    streamPayloadEncoder.encode(request.payload, versions),
                     context as Context.Context<unknown>
                   ),
                   streamPayloadEncoder.contentType
@@ -545,11 +578,15 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                 if (request.payload instanceof FormData) {
                   httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
                 } else {
-                  const body = (yield* encodePayload(request.payload)) as HttpBody.HttpBody
+                  const body = (yield* encodeVersioned(encodePayload(request.payload), versions)) as HttpBody.HttpBody
                   httpRequest = HttpClientRequest.setBody(httpRequest, body)
                 }
               } else {
-                const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
+                const urlParams =
+                  (yield* InternalVersionedSchema.outsideBodies(encodePayload(request.payload))) as Record<
+                    string,
+                    string
+                  >
                 httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
               }
             } else if (streamPayloadEncoder !== undefined) {
@@ -560,19 +597,34 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
             // headers
             if (encodeHeaders !== undefined) {
-              const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
+              const headers = (yield* InternalVersionedSchema.outsideBodies(encodeHeaders(request.headers))) as Record<
+                string,
+                string
+              >
               httpRequest = HttpClientRequest.setHeaders(httpRequest, headers)
             }
 
             // query
             if (encodeQuery !== undefined) {
-              const query = (yield* encodeQuery(request.query)) as Record<string, string>
+              const query = (yield* InternalVersionedSchema.outsideBodies(encodeQuery(request.query))) as Record<
+                string,
+                string
+              >
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
             }
           }
 
           if (upgrade !== undefined) {
             httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
+          }
+
+          // set last, so it always matches the versions the body was written at
+          if (versions !== undefined) {
+            httpRequest = HttpClientRequest.setHeader(
+              httpRequest,
+              InternalVersionedSchema.header,
+              InternalVersionedSchema.formatHeader(versions)
+            )
           }
 
           const response = yield* executeMiddleware(
@@ -915,10 +967,16 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
       const makeUrl = compilePath(endpoint.path, endpoint.params)
       const encodeParams = endpoint.params === undefined
         ? undefined
-        : Schema.encodeSync(endpoint.params as unknown as Schema.ConstraintEncoder<unknown>, parseOptions.params)
+        : Schema.encodeSync(
+          InternalVersionedSchema.outsideBodiesSchema(endpoint.params as unknown as Schema.ConstraintEncoder<unknown>),
+          parseOptions.params
+        )
       const encodeQuery = endpoint.query === undefined
         ? undefined
-        : Schema.encodeSync(endpoint.query as unknown as Schema.ConstraintEncoder<unknown>, parseOptions.query)
+        : Schema.encodeSync(
+          InternalVersionedSchema.outsideBodiesSchema(endpoint.query as unknown as Schema.ConstraintEncoder<unknown>),
+          parseOptions.query
+        )
 
       const endpointBuilder = (request?: {
         readonly params?: unknown
@@ -1089,7 +1147,12 @@ const makeEndpointDecoder = (options: {
   for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
     const streamSchema = isWithHeadersStreamSuccess(streamSuccess) ? streamSuccess.schema : streamSuccess
     const status = HttpApiSchema.getStatusSuccessSchema(streamSuccess)
-    const decode = streamToResponse(streamSuccess, parseOptions.success, parseOptions.headers)
+    const decode = streamToResponse(
+      streamSuccess,
+      parseOptions.success,
+      parseOptions.headers,
+      HttpApiEndpoint.getVersioning(endpoint)
+    )
     for (const contentType of streamSchema.contentTypes) {
       addResponseAlternative(successAlternatives, status, contentType, decode)
     }
@@ -1225,11 +1288,12 @@ function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<StreamSuc
 function streamToResponse(
   successSchema: StreamSuccessSchema,
   options: SchemaAST.ParseOptions | undefined,
-  headersOptions: SchemaAST.ParseOptions | undefined
+  headersOptions: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
 ) {
   const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
   const streamSchema = isWithHeaders ? successSchema.schema : successSchema
-  const decodeBody = makeStreamBodyDecoder(streamSchema, options)
+  const decodeBody = makeStreamBodyDecoder(streamSchema, options, versioning)
   const toStream: ResponseDecoder = (response, sseOptions) =>
     Effect.map(Effect.context<never>(), (context) =>
       Stream.provideContext(
@@ -1248,7 +1312,8 @@ function streamToResponse(
 
 function makeStreamBodyDecoder(
   streamSchema: HttpApiSchema.StreamSchema,
-  options: SchemaAST.ParseOptions | undefined
+  options: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
 ): (
   response: HttpClientResponse.HttpClientResponse,
   sseOptions: Sse.DecodeOptions | undefined
@@ -1276,7 +1341,7 @@ function makeStreamBodyDecoder(
         Stream.mapEffect((json) => decodeElement(json))
       )
   }
-  const decoder = makeSseDecoder(streamSchema, options)
+  const decoder = makeSseDecoder(streamSchema, options, versioning)
   return (response, sseOptions) => decodeSseStream(response.stream, streamSchema, decoder(sseOptions))
 }
 
@@ -1297,13 +1362,15 @@ const ndjsonSchemaError = (error: Ndjson.NdjsonError): Schema.SchemaError =>
 
 function makeSseDecoder(
   declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
-  parseOptions: SchemaAST.ParseOptions | undefined
+  parseOptions: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
 ) {
+  const error = HttpApiEndpoint.sseErrorSchema(declaration, versioning)
   const Event = Schema.Union([
     Schema.Struct({
       id: Schema.optional(Schema.String),
       event: Schema.Literal(reservedStreamFailureEvent),
-      data: Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(declaration.error, Schema.Defect())))
+      data: Schema.fromJsonString(Schema.toCodecJson(Schema.Cause(error, Schema.Defect())))
     }),
     declaration.events
   ])
@@ -1464,15 +1531,18 @@ type StreamPayloadSchema = HttpApiSchema.StreamUint8Array | HttpApiSchema.Stream
 
 function makeStreamPayloadEncoder(
   schema: StreamPayloadSchema,
-  options: SchemaAST.ParseOptions | undefined
-): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  options: SchemaAST.ParseOptions | undefined,
+  versioning: InternalVersionedSchema.Contract | undefined
+): (
+  stream: Stream.Stream<unknown, unknown, unknown>,
+  versions: Readonly<Record<string, number>> | undefined
+) => Stream.Stream<Uint8Array, unknown, unknown> {
   if (HttpApiSchema.isStreamUint8Array(schema)) {
     return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
   }
   const encodeElements = Schema.encodeUnknownEffect(Schema.NonEmptyArray(Schema.toCodecJson(schema.schema)), options)
-  return (stream) =>
-    stream.pipe(
-      Stream.mapArrayEffect((elements) => encodeElements(elements)),
+  return (stream, versions) =>
+    HttpApiEndpoint.encodeStreamChunks(stream, encodeElements, { versioning, versions, orDie: false }).pipe(
       Stream.pipeThroughChannel(Ndjson.encode()),
       Stream.catchIf(isNdjsonPackError, Stream.die)
     )

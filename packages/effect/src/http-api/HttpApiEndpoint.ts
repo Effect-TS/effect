@@ -71,7 +71,7 @@
 import * as Arr from "../Array.ts"
 import type { Brand } from "../Brand.ts"
 import * as Context from "../Context.ts"
-import type { Effect } from "../Effect.ts"
+import * as Effect from "../Effect.ts"
 import type * as Sse from "../encoding/Sse.ts"
 import { identity, memoize } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
@@ -79,12 +79,14 @@ import * as HttpRouter from "../http/HttpRouter.ts"
 import type { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
 import type * as Multipart from "../http/Multipart.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import * as AST from "../SchemaAST.ts"
 import type * as Socket from "../socket/Socket.ts"
-import type * as Stream from "../Stream.ts"
+import * as Stream from "../Stream.ts"
 import type { Simplify } from "../Struct.ts"
 import type * as Types from "../Types.ts"
 import type * as HttpApiError from "./HttpApiError.ts"
@@ -164,8 +166,8 @@ type UpgradeRequest<Success> = [Extract<Success, HttpApiSchema.Upgrade>] extends
   : { readonly upgrade: UpgradeFunction<Extract<Success, HttpApiSchema.Upgrade>> }
 
 type UpgradeFunction<S> = S extends HttpApiSchema.Upgrade<infer _Headers> ?
-  [_Headers] extends [never] ? () => Effect<Socket.Socket>
-  : (options: { readonly headers: _Headers["Type"] }) => Effect<Socket.Socket>
+  [_Headers] extends [never] ? () => Effect.Effect<Socket.Socket>
+  : (options: { readonly headers: _Headers["Type"] }) => Effect.Effect<Socket.Socket>
   : never
 
 type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
@@ -416,8 +418,17 @@ export function getSuccessSchemas(endpoint: Top): [Schema.Top, ...Array<Schema.T
  * @internal
  */
 export function getErrorSchemas(endpoint: Top): Array<Schema.Top> {
-  const schemas = new Set<Schema.Top>(endpoint.error)
   const transform = endpoint.disableCodecs ? identity : transformResponseSchema
+  const schemas = new Set<Schema.Top>()
+  // Version negotiation can fail any endpoint that uses a versioned schema.
+  // These go first: the first member that accepts an error encodes it, and a
+  // plain user error such as `{ message: string }` accepts them too.
+  const versioning = getVersioning(endpoint)
+  if (versioning !== undefined) {
+    schemas.add(transform(versioning.errors.VersionUnsupported))
+    schemas.add(transform(versioning.errors.Unrepresentable))
+  }
+  for (const schema of endpoint.error) schemas.add(schema)
   for (const middleware of endpoint.middlewares) {
     const key = middleware as any as HttpApiMiddleware.AnyService
     for (const schema of key.error) {
@@ -425,6 +436,143 @@ export function getErrorSchemas(endpoint: Top): Array<Schema.Top> {
     }
   }
   return Array.from(schemas)
+}
+
+// The parts of a response or payload schema that are written as JSON.
+function bodyParts(schema: Schema.Top): Array<Schema.Top> {
+  if (HttpApiSchema.isWithHeaders(schema)) return bodyParts(schema.schema)
+  const withHeaders = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+  if (withHeaders !== undefined) return bodyParts(withHeaders.body)
+  if (HttpApiSchema.isStreamSse(schema)) return [schema.events as unknown as Schema.Top, schema.error]
+  if (HttpApiSchema.isStreamNdjson(schema)) return [schema.schema]
+  if (HttpApiSchema.isUpgrade(schema) || HttpApiSchema.isStreamUint8Array(schema)) return []
+  return [schema]
+}
+
+const versioningCache = new WeakMap<object, InternalVersionedSchema.Contract | null>()
+
+/**
+ * The versioned types an endpoint's bodies use, or `undefined` when it uses
+ * none and so doesn't negotiate versions. Throws when its other parts use
+ * versioned types through suspended schemas, which the check made when the
+ * endpoint was built doesn't follow. Clients, servers, `urlBuilder` and
+ * OpenAPI documents call it first, through `HttpApi.reflect`.
+ *
+ * @internal
+ */
+export function getVersioning(endpoint: Top): InternalVersionedSchema.Contract | undefined {
+  let contract = versioningCache.get(endpoint)
+  if (contract === undefined) {
+    assertVersionedInBodies(endpoint.identifier, endpoint.method, endpoint, true)
+    const response: Array<Schema.Top> = []
+    for (const schema of endpoint.success) response.push(...bodyParts(schema))
+    for (const schema of endpoint.error) response.push(...bodyParts(schema))
+    for (const middleware of endpoint.middlewares) {
+      response.push(...(middleware as any as HttpApiMiddleware.AnyService).error)
+    }
+    contract = InternalVersionedSchema.contract(getPayloadSchemas(endpoint).flatMap(bodyParts), response) ?? null
+    versioningCache.set(endpoint, contract)
+  }
+  return contract ?? undefined
+}
+
+/**
+ * Encodes the chunks of a stream body at the versions of a request. A value
+ * those versions can't represent ends the stream with that typed error, after
+ * the values before it, wherever the chunks happen to split. Other encoding
+ * failures are defects when `orDie` is set.
+ *
+ * @internal
+ */
+export function encodeStreamChunks<A, E, R, B, R2>(
+  stream: Stream.Stream<A, E, R>,
+  encode: (values: Arr.NonEmptyReadonlyArray<A>) => Effect.Effect<Arr.NonEmptyReadonlyArray<B>, Schema.SchemaError, R2>,
+  options: {
+    readonly versioning: InternalVersionedSchema.Contract | undefined
+    readonly versions: Readonly<Record<string, number>> | undefined
+    readonly orDie: boolean
+  }
+): Stream.Stream<B, unknown, R | R2> {
+  const { orDie, versioning, versions } = options
+  const encodeAt = (values: Arr.NonEmptyReadonlyArray<A>) =>
+    InternalVersionedSchema.withVersions(encode(values), versioning, versions)
+  if (versioning === undefined) {
+    return Stream.mapArrayEffect(stream, orDie ? (values) => Effect.orDie(encodeAt(values)) : encodeAt)
+  }
+  return Stream.transformPull(stream, (pull) =>
+    Effect.sync(() => {
+      // the failure to end the stream with, after the values before it
+      let failure: { readonly error: unknown } | undefined
+      return Effect.suspend(() => {
+        if (failure !== undefined) return Effect.fail(failure.error)
+        return Effect.flatMap(pull, (values) =>
+          Effect.catch(encodeAt(values), (error) => {
+            const typed = InternalVersionedSchema.toTypedError(versioning, error)
+            if (typed === undefined) return orDie ? Effect.die(error) : Effect.fail(error)
+            return Effect.flatMap(
+              InternalVersionedSchema.encodableCount(
+                values,
+                (value) => encodeAt(value as Arr.NonEmptyReadonlyArray<A>)
+              ),
+              (count) => {
+                if (count === 0) return Effect.fail(typed)
+                failure = { error: typed }
+                const encoded = encodeAt(values.slice(0, count) as unknown as Arr.NonEmptyReadonlyArray<A>)
+                return orDie ? Effect.orDie(encoded) : encoded
+              }
+            )
+          }))
+      })
+    }))
+}
+
+/**
+ * The typed failures of an SSE stream: its declared errors, and
+ * `Unrepresentable` when its endpoint uses versioned schemas. `Unrepresentable`
+ * goes first, because a plain declared error such as `{ message: string }`
+ * would accept it too.
+ *
+ * @internal
+ */
+export const sseErrorSchema = (
+  streamSchema: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
+  versioning: InternalVersionedSchema.Contract | undefined
+): Schema.Constraint =>
+  versioning === undefined
+    ? streamSchema.error
+    : Schema.Union([versioning.errors.Unrepresentable, streamSchema.error as Schema.Top])
+
+// Records carry their version in a JSON body, so versioned types can't be
+// used anywhere else.
+function assertVersionedInBodies(
+  identifier: string,
+  method: HttpMethod,
+  schemas: {
+    readonly params: Schema.Top | undefined
+    readonly query: Schema.Top | undefined
+    readonly headers: Schema.Top | undefined
+    readonly payload: PayloadMap
+    readonly success: ReadonlySet<Schema.Top>
+    readonly error: ReadonlySet<Schema.Top>
+  },
+  followSuspend: boolean
+): void {
+  const elsewhere: Array<Schema.Top | undefined> = [schemas.params, schemas.query, schemas.headers]
+  for (const { encoding, schemas: payloads } of schemas.payload.values()) {
+    if (!hasBody(method) || (encoding._tag !== "Json" && encoding._tag !== "Stream")) elsewhere.push(...payloads)
+  }
+  for (const schema of [...schemas.success, ...schemas.error]) {
+    if (HttpApiSchema.isWithHeaders(schema) || HttpApiSchema.isUpgrade(schema)) elsewhere.push(schema.headers)
+    else elsewhere.push(HttpApiSchema.getWithHeadersAnnotation(schema.ast)?.headers)
+  }
+  const found = InternalVersionedSchema.collect(elsewhere, { followSuspend })
+  if (found.size > 0) {
+    throw new Error(
+      `HttpApiEndpoint ${identifier}: versioned schemas can only be used in JSON bodies, not in params, query, headers, or other payloads, but ${
+        [...found.keys()].sort().join(", ")
+      } ${found.size === 1 ? "is" : "are"} used there`
+    )
+  }
 }
 
 /**
@@ -590,14 +738,27 @@ export type MiddlewareError<Endpoint> = HttpApiMiddleware.Error<Middleware<Endpo
 
 /**
  * Computes the full error value union for an endpoint, including the endpoint
- * error schema's type and errors introduced by middleware.
+ * error schema's type, errors introduced by middleware and, when its bodies use
+ * a versioned schema, the errors of version negotiation.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
 export type Errors<Endpoint> = Endpoint extends ConstraintRequest ?
-  Endpoint["~Error"]["Type"] | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
+    | Endpoint["~Error"]["Type"]
+    | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
+    | VersionErrors<Endpoint>
+  : never
+
+// The errors version negotiation adds to an endpoint whose bodies, or whose
+// middleware errors, use a versioned schema.
+type VersionErrors<Endpoint> = Endpoint extends ConstraintRequest ? VersionedSchema.NegotiationErrors<
+    | Endpoint["~Payload"]
+    | Endpoint["~Success"]
+    | Endpoint["~Error"]
+    | HttpApiMiddleware.ErrorSchema<Endpoint["~Middleware"]>
+  >
   : never
 
 /**
@@ -757,7 +918,7 @@ export type ErrorServicesDecode<Endpoint> = Endpoint extends ConstraintRequest ?
  */
 export type Handler<Endpoint extends Constraint, E, R> = (
   request: Simplify<Endpoint["~Request"]>
-) => Effect<
+) => Effect.Effect<
   SuccessType<Endpoint["~Success"]> | HttpServerResponse,
   Endpoint["~Error"]["Type"] | PayloadError<Payload<Endpoint>> | E,
   R
@@ -773,7 +934,7 @@ export type Handler<Endpoint extends Constraint, E, R> = (
  */
 export type HandlerRaw<Endpoint extends Constraint, E, R> = (
   request: Simplify<Endpoint["~RequestRaw"]>
-) => Effect<SuccessType<Endpoint["~Success"]> | HttpServerResponse, Endpoint["~Error"]["Type"] | E, R>
+) => Effect.Effect<SuccessType<Endpoint["~Success"]> | HttpServerResponse, Endpoint["~Error"]["Type"] | E, R>
 
 /**
  * Selects the endpoint with the specified identifier from a union of endpoints.
@@ -1297,16 +1458,22 @@ export const make = <Method extends HttpMethod>(method: Method): {
   const disableCodecs = options?.disableCodecs ?? false
   const transformProperties = disableCodecs ? identity : toCodecHttpProperties
   const payload = getPayload(options?.payload, method, disableCodecs)
-  return makeProto({
-    identifier,
-    path,
-    method,
+  const schemas = {
     params: ensureStruct(options?.params, transformProperties),
     query: ensureStruct(options?.query, transformProperties),
     headers: ensureStruct(options?.headers, transformProperties),
     payload,
     success: getSuccessResponse(options?.success, method, payload, disableCodecs),
-    error: getErrorResponse(options?.error, disableCodecs),
+    error: getErrorResponse(options?.error, disableCodecs)
+  }
+  // Suspended schemas aren't followed: endpoints are often built before the
+  // schemas they refer to are declared.
+  assertVersionedInBodies(identifier, method, schemas, false)
+  return makeProto({
+    identifier,
+    path,
+    method,
+    ...schemas,
     annotations: Context.empty(),
     middlewares: new Set(),
     disableCodecs

@@ -34,3 +34,9 @@ export * as SchemaJITCompiler from "./SchemaJITCompiler.ts"
  * @since 4.0.0
  */
 export * as VariantSchema from "./VariantSchema.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as VersionedSchema from "./VersionedSchema.ts"
