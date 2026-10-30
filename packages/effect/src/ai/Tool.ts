@@ -2054,6 +2054,9 @@ export const getStrictMode = <T extends Any>(tool: T): boolean | undefined => Co
 
 const suspectProtoRx = /"__proto__"\s*:/
 const suspectConstructorRx = /"constructor"\s*:/
+// Escaped keys (e.g. `"\u005f_proto__"`) are decoded by `JSON.parse`, so any
+// Unicode escape must also go through the full scan
+const suspectEscapeRx = /\\u/
 
 function _parse(text: string) {
   // Parse normally
@@ -2066,7 +2069,8 @@ function _parse(text: string) {
 
   if (
     suspectProtoRx.test(text) === false &&
-    suspectConstructorRx.test(text) === false
+    suspectConstructorRx.test(text) === false &&
+    suspectEscapeRx.test(text) === false
   ) {
     return obj
   }
