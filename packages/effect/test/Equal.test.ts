@@ -154,6 +154,16 @@ describe("Equal.equals", () => {
       expect(Equal.equals(obj1, obj2)).toBe(false)
     })
 
+    // The protocol keys are strings, so data can carry them without implementing the protocols.
+    it("should compare non-callable protocol keys as data", () => {
+      for (const key of [Equal.symbol, Hash.symbol]) {
+        assert.isTrue(Equal.equals({ [key]: "v1" }, { [key]: "v1" }), key)
+        assert.isFalse(Equal.equals({ [key]: "v1" }, { [key]: "v2" }), key)
+      }
+      assert.isFalse(Equal.isEqual({ [Equal.symbol]: "v1" }))
+      assert.isTrue(Equal.isEqual(new Key("a")))
+    })
+
     describe("symbol properties", () => {
       it("should return true for objects with identical symbol keys and values", () => {
         const sym1 = Symbol("test")
