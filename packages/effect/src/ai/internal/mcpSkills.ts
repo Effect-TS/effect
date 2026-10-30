@@ -15,7 +15,6 @@ import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
-import * as McpServerError from "../McpServerError.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as Legacy from "./mcpSchema/v2024_11_05.ts"
@@ -165,13 +164,13 @@ export class StatelessRpcs extends RpcGroup.make(ListSkills, GetSkill, ReadResou
 
 const methodNotFound = (method: string) =>
   new McpProtocol.ProtocolError({
-    code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE,
+    code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
     message: `Method not found: ${method}`
   })
 
 // Every skill fits on one page, so the server never issues a cursor.
 const unknownCursor = new McpProtocol.ProtocolError({
-  code: McpServerError.INVALID_PARAMS_ERROR_CODE,
+  code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
   message: "Unknown cursor"
 })
 

@@ -52,7 +52,6 @@ import {
 } from "./McpClientError.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
-import * as McpServerError from "./McpServerError.ts"
 import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
@@ -393,8 +392,7 @@ export const make: (options: {
       const reason = error.reason
       if (reason._tag !== "ProtocolError" && reason._tag !== "HttpError") return false
       const rejection = Option.getOrUndefined(decodeVersionRejection(reason.data))
-      return reason.code === McpServerError.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE &&
-        rejection?.requested === version &&
+      return reason.code === McpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE && rejection?.requested === version &&
         rejection.supported.includes(version)
     }, () => discover))
   })
@@ -1392,7 +1390,7 @@ const replyToServer = (request: McpSchema.JsonRpcRequest): McpSchema.JsonRpcResp
     : {
       jsonrpc: "2.0",
       id: request.id,
-      error: { code: McpServerError.METHOD_NOT_FOUND_ERROR_CODE, message: `Unsupported MCP method: ${request.method}` }
+      error: { code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE, message: `Unsupported MCP method: ${request.method}` }
     }
 
 const cancelled = (id: McpSchema.RequestId): McpSchema.JsonRpcNotification => ({

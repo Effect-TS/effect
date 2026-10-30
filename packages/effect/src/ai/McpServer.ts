@@ -92,7 +92,6 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
-import * as McpServerError from "./McpServerError.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -449,7 +448,7 @@ export interface Middleware<Config extends MiddlewareConfig> {
  * class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
  *
  * class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
- *   ...McpServerError.McpErrorBase.fields,
+ *   ...McpSchema.McpErrorBase.fields,
  *   _tag: Schema.tag("Unauthorized"),
  *   code: Schema.tag(-32001)
  * }) {}
@@ -653,7 +652,7 @@ class Hidden extends Data.TaggedError("effect/ai/McpServer/Hidden")<{
 }> {}
 
 const failHidden = Effect.fail(
-  new Hidden({ code: McpServerError.INVALID_PARAMS_ERROR_CODE, message: "Not found" })
+  new Hidden({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Not found" })
 ) as Effect.Effect<never>
 
 // Marks the middleware functions created by `visibility`.
@@ -1869,7 +1868,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           !response.exit.cause.some((failure) => failure._tag === "Fail")
         ) {
           return sendRequestError(clientId, response.requestId, {
-            code: McpServerError.INTERNAL_ERROR_CODE,
+            code: McpSchema.INTERNAL_ERROR_CODE,
             message: "Internal error"
           })
         }
@@ -2499,7 +2498,7 @@ const mcpStdioSerialization = (
               jsonrpc: "2.0",
               id: null,
               error: {
-                code: McpServerError.INVALID_REQUEST_ERROR_CODE,
+                code: McpSchema.INVALID_REQUEST_ERROR_CODE,
                 message: "JSON-RPC batches are not supported"
               }
             }) + "\n"
@@ -2849,7 +2848,7 @@ const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() =
 
 const isEncodedMcpFailureCause = Schema.is(Schema.TaggedStruct("Cause", {
   data: Schema.Tuple([Schema.TaggedStruct("Fail", {
-    error: Schema.toEncoded(McpServerError.McpError)
+    error: Schema.toEncoded(McpSchema.McpError)
   })])
 }))
 

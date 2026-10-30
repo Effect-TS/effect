@@ -9,8 +9,7 @@ import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
-import type * as McpSchema from "../McpSchema.ts"
-import * as McpServerError from "../McpServerError.ts"
+import * as McpSchema from "../McpSchema.ts"
 
 /**
  * @internal
@@ -162,7 +161,7 @@ export class RequestRejected extends Data.TaggedError("RequestRejected")<{
   readonly code: number
   readonly message: string
   readonly data?: unknown
-  readonly error: McpServerError.McpErrorBase
+  readonly error: McpSchema.McpErrorBase
 }> {}
 
 /**
@@ -224,7 +223,7 @@ export interface ResourceRegistration {
   readonly visible?: Visible | undefined
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpServerError.InternalError | RequestRejected>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -241,7 +240,7 @@ export interface ResourceTemplateRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    ResourceNotFound | McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -263,7 +262,7 @@ export interface Resources {
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    ResourceNotFound | McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -371,7 +370,7 @@ export interface PromptRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    PromptNotFound | McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -389,7 +388,7 @@ export interface Prompts {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    PromptNotFound | McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -432,12 +431,12 @@ export interface Completions {
     complete: (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   ) => Effect.Effect<void>
   readonly complete: (
     request: CompletionRequest,
     invocation: McpInvocation
-  ) => Effect.Effect<CompletionResult, McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected>
+  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -550,7 +549,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpServerError.InvalidParams | McpServerError.InternalError | RequestRejected>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   >()
 
   const filterList = <D>(
@@ -655,7 +654,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         : `resource/${request.reference.uriTemplate}/${request.argument.name}`
       const complete = completionRegistrations.get(key)
       if (complete === undefined) {
-        return yield* new McpServerError.InvalidParams({ message: "Unknown completion reference or argument" })
+        return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
       }
       const result = yield* complete(request, invocation)
       const values = Arr.take(result.values, 100)

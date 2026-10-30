@@ -17,7 +17,6 @@ import type * as Scope from "../../Scope.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as PublicMcpServer from "../McpServer.ts"
-import * as McpServerError from "../McpServerError.ts"
 import * as McpCore from "./mcpCore.ts"
 
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
@@ -244,8 +243,8 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
     )
     return new ProtocolError({
       code: error._tag === "ToolExecutionError"
-        ? McpServerError.INTERNAL_ERROR_CODE
-        : McpServerError.INVALID_PARAMS_ERROR_CODE,
+        ? PublicMcpSchema.INTERNAL_ERROR_CODE
+        : PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
       message
     })
   }
@@ -254,13 +253,13 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
     if (Predicate.hasProperty(error, "_tag")) {
       if (error._tag === "PromptNotFound" && Predicate.hasProperty(error, "name") && Predicate.isString(error.name)) {
         return new ProtocolError({
-          code: McpServerError.INVALID_PARAMS_ERROR_CODE,
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
           message: `Prompt '${error.name}' not found`
         })
       }
       if (error._tag === "SkillNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
         return new ProtocolError({
-          code: McpServerError.INVALID_PARAMS_ERROR_CODE,
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
           message: `Skill '${error.uri}' not found`
         })
       }
@@ -268,7 +267,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
         error._tag === "DirectoryNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)
       ) {
         return new ProtocolError({
-          code: McpServerError.INVALID_PARAMS_ERROR_CODE,
+          code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
           message: `Directory '${error.uri}' not found`
         })
       }
@@ -283,7 +282,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
     return Result.isSuccess(decoded)
       ? new ProtocolError(decoded.success)
       : new ProtocolError({
-        code: McpServerError.INTERNAL_ERROR_CODE,
+        code: PublicMcpSchema.INTERNAL_ERROR_CODE,
         message: "MCP feature handler failed"
       })
   }
@@ -297,19 +296,19 @@ const ProtocolErrorFields = Schema.Struct({
 
 const decodeProtocolErrorFields = Schema.decodeUnknownResult(ProtocolErrorFields)
 
-const isReverseOperationUnsupported = (cause: unknown): cause is McpServerError.McpReverseOperationUnsupported =>
+const isReverseOperationUnsupported = (cause: unknown): cause is PublicMcpSchema.McpReverseOperationUnsupported =>
   Predicate.isTagged(cause, "McpReverseOperationUnsupported")
 
 /**
  * @internal
  */
 export const reverseError = (
-  operation: McpServerError.McpReverseOperationError["operation"]
+  operation: PublicMcpSchema.McpReverseOperationError["operation"]
 ) =>
 (cause: unknown) =>
   isReverseOperationUnsupported(cause)
     ? cause
-    : new McpServerError.McpReverseOperationError({ operation, cause })
+    : new PublicMcpSchema.McpReverseOperationError({ operation, cause })
 
 /**
  * @internal
