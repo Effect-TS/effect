@@ -59,22 +59,6 @@ try {
   Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
   execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
 
-  // The same imports must work with older Node types, which lack a global
-  // `CryptoKey` type (see Effect-TS/effect#10196).
-  for (const version of [22, 24]) {
-    const typeRoot = Path.join(dir, `types-node-${version}`)
-    Fs.mkdirSync(typeRoot)
-    Fs.symlinkSync(
-      Fs.realpathSync(Path.join(root, "node_modules", `types-node-${version}`)),
-      Path.join(typeRoot, "node"),
-      "dir"
-    )
-    config.compilerOptions.typeRoots = [typeRoot]
-    Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
-    execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
-  }
-  config.compilerOptions.typeRoots = [Path.join(root, "node_modules", "@types")]
-
   // Even a single subpath import must work without Node ambient types or
   // an explicit ESNext.Disposable library (see Effect-TS/effect#9314).
   Fs.writeFileSync(Path.join(dir, "index.ts"), 'export * from "effect/Option"\n')
