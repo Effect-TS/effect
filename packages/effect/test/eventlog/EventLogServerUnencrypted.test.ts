@@ -582,7 +582,7 @@ it.effect("Hello measures a challenge's time to live from after it was generated
     const crypto = {
       subtle: globalThis.crypto.subtle,
       randomUUID: () => globalThis.crypto.randomUUID(),
-      getRandomValues<T extends ArrayBufferView | null>(array: T): T {
+      getRandomValues: (array: Uint8Array) => {
         if (advanceOnNextDraw) {
           advanceOnNextDraw = false
           skew += EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
