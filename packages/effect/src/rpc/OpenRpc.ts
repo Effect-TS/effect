@@ -687,6 +687,8 @@ function literalValues(
   if (seen.has(input)) return undefined
   const node = resolveRepresentation(input, references)
   switch (node._tag) {
+    case "Never":
+      return []
     case "Null":
       return [null]
     case "Literal":
