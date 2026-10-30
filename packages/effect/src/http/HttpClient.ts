@@ -1067,19 +1067,27 @@ export const retryTransient: {
  *
  * **Details**
  *
- * A timed out request is interrupted, which aborts the underlying transport,
- * and fails with an `HttpClientError` whose reason is a `TransportError` with a
- * `Cause.TimeoutError` cause. `retryTransient` treats it as transient.
+ * A timed out request is interrupted and fails with an `HttpClientError` whose
+ * reason is a `TransportError` with a `Cause.TimeoutError` cause.
+ * `retryTransient` treats it as transient. Interrupting a request aborts the
+ * underlying transport, unless the request is attached to a scope with
+ * `withScope`, in which case it stays open until the scope closes.
  *
- * The timer starts after request preprocessing and stops when the response
- * headers arrive. Composition order decides how it interacts with retries:
- * applying `timeout` before `retryTransient` gives each attempt its own
- * budget, while applying it after bounds the whole retry loop.
+ * The timer starts after request preprocessing and covers everything the
+ * wrapped client does to produce a response. For a plain client this ends when
+ * the response headers arrive, but response middleware applied before
+ * `timeout`, such as `tap` or `retryTransient`, runs inside the budget,
+ * including any body reads it performs. Composition order therefore decides
+ * how it interacts with retries: applying `timeout` before `retryTransient`
+ * gives each attempt its own budget, while applying it after bounds the whole
+ * retry loop.
  *
  * **Gotchas**
  *
- * Reading the response body is not covered. Apply a separate timeout to body
- * reads such as `response.json` or `response.stream` when needed.
+ * Body reads outside the timed client are not covered, including those made
+ * by response middleware applied after `timeout` and by consumers of the
+ * `HttpClient` service. Apply a separate timeout to body reads such as
+ * `response.json` or `response.stream` when needed.
  *
  * **Example** (Timing out each attempt)
  *
