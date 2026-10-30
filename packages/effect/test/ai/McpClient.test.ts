@@ -1145,6 +1145,24 @@ describe("McpClient skills", () => {
       }
     }))
 
+  // Frontmatter is data: keys that look like Effect's equality protocols must compare as plain strings.
+  it.effect("should read a SKILL.md whose matching frontmatter has protocol-looking keys", () =>
+    Effect.gen(function*() {
+      for (const key of ["~effect/Equal", "~effect/Hash"]) {
+        const served = `---\nname: refunds\ndescription: Process refunds\nmetadata:\n  "${key}": v1\n---\n`
+        const skill = McpSchema.Skill.make({
+          uri: "skill://refunds/SKILL.md",
+          frontmatter: { name: "refunds", description: "Process refunds", metadata: { [key]: "v1" } },
+          resources: "dynamic"
+        })
+        const { client } = yield* scriptedSkills({
+          "resources/read": () => ({ contents: [{ uri: skill.uri, text: served }] })
+        })
+        const read = yield* client.readSkillResource({ skill, uri: skill.uri })
+        assert.deepStrictEqual(read.contents, [{ uri: skill.uri, text: served }], key)
+      }
+    }))
+
   it.effect("should read a dynamic skill's files without digests, only inside its directory", () =>
     Effect.gen(function*() {
       const { client, sent } = yield* scriptedSkills({
