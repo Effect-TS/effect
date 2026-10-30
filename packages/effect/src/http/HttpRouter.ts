@@ -686,17 +686,10 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.contextWith((context) => {
-    const scope = Context.get(context, Scope.Scope)
-    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
-    return Effect.map(
-      Layer.buildWithMemoMap(Layer.provideMerge(appLayer, Layer.fresh(layer)), memoMap, scope),
-      (context) => {
-        const router = Context.get(context, HttpRouter)
-        return router.asHttpEffect()
-      }
-    )
-  }) as any
+  Effect.map(
+    Layer.build(Layer.provideMerge(appLayer, Layer.fresh(layer))),
+    (context) => Context.get(context, HttpRouter).asHttpEffect()
+  ) as any
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
 
