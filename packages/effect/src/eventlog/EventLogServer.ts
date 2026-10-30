@@ -181,27 +181,27 @@ export const layerRpcHandlers = (options: {
           Effect.catch(() => Effect.succeed(false))
         )
 
-        // Bind only a verified key, and treat a key other than the identity's
-        // bound key like a bad signature.
-        if (
-          !verified ||
-          !Mac.timingSafeEqual(
-            yield* Cache.get(
-              persistedSigningPublicKeys,
-              new SessionAuthCacheKey({
-                publicKey: request.publicKey,
-                signingPublicKey: request.signingPublicKey
-              })
-            ),
-            request.signingPublicKey
-          )
-        ) {
-          return yield* new EventLogProtocolError({
+        const verificationFailed = () =>
+          new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
             code: "Forbidden",
             message: "Session auth signature verification failed"
           })
+        if (!verified) {
+          return yield* verificationFailed()
+        }
+        // Only a verified key reaches the binding. A key other than the
+        // identity's bound key is rejected like a bad signature.
+        const boundSigningPublicKey = yield* Cache.get(
+          persistedSigningPublicKeys,
+          new SessionAuthCacheKey({
+            publicKey: request.publicKey,
+            signingPublicKey: request.signingPublicKey
+          })
+        )
+        if (!Mac.timingSafeEqual(boundSigningPublicKey, request.signingPublicKey)) {
+          return yield* verificationFailed()
         }
 
         const authenticatedIdentities = new Set(
