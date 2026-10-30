@@ -128,7 +128,8 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
   }
   const end = !padded ? length : stripped.charCodeAt(length - 2) === 61 ? length - 2 : length - 1
   const fullEnd = end & ~3
-  const result = new Uint8Array((end * 3) >> 2)
+  // Not `(end * 3) >> 2`: engines that allow strings over 2^31 / 3 characters would overflow int32.
+  const result = new Uint8Array(Math.floor(end * 3 / 4))
   let j = 0
   for (let i = 0; i < fullEnd; i += 4) {
     const a = codes[stripped.charCodeAt(i)]
