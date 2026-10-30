@@ -45,7 +45,7 @@ export const run: <R2 = never>(
   Migrator.MigrationError | SqlError,
   Client.SqlClient | R2
 > = Migrator.make({
-  wrapMigrationsTableWrite: (effect) => Effect.provideService(effect, ClientMethod, "command")
+  transformWrites: (effect) => Effect.provideService(effect, ClientMethod, "command")
 })
 
 /**
