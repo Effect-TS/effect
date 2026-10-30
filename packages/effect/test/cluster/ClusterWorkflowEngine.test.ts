@@ -43,6 +43,7 @@ import {
   WorkflowEngine,
   WorkflowInstance
 } from "effect/workflow/WorkflowEngine"
+import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   for (const complete of [true, false]) {
@@ -672,6 +673,40 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       20_000
     )
   }
+
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "releases an activity request that failed to save once its retry completes",
+    () =>
+      Effect.gen(function*() {
+        const workflow = Workflow.make("ActivitySaveRelease", {
+          payload: {},
+          success: Schema.Number,
+          idempotencyKey: () => "one"
+        })
+        const storage = yield* makeSharedStorage
+        const control = new WeakRef({})
+        let failed: WeakRef<object> | undefined
+        const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+          ...storage,
+          saveRequest: (envelope) => {
+            if (envelope.envelope.tag !== "activity" || failed) return storage.saveRequest(envelope)
+            failed = new WeakRef(envelope)
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+          }
+        })
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* pollUntil(workflow, executionId, "Complete")
+          yield* collectGarbage
+          assert.isUndefined(control.deref())
+          assert.isUndefined(failed?.deref(), "the failed request must not be retained")
+        }).pipe(Effect.provide(
+          workflow.toLayer(() => Activity.make({ name: "Step", success: Schema.Number, execute: Effect.succeed(42) }))
+            .pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+        ))
+      }),
+    20_000
+  )
 
   it.effect("keeps a completed reply when an older concurrent wake resets it", () =>
     Effect.gen(function*() {
