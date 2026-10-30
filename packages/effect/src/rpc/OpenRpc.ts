@@ -576,12 +576,12 @@ export function fromRpcGroup<R extends Rpc.Any>(
 
 function compileSchemas(representation: SchemaRepresentation.MultiDocument): JsonSchema.Document<"draft-07"> {
   // Schema-aware component relocation preserves data-valued references; lowering
-  // afterwards also converts tuple syntax inside every component to Draft 7.
+  // afterwards converts tuple syntax and rewrites pointers into components.
   const relocated = JsonSchema.toMultiDocumentComponents(
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(representation, { onExcessProperty: "error" }),
     { target: "OpenRPC" }
   )
-  return JsonSchema.toDocumentDraft07({
+  return JsonSchema.toComponentsDocumentDraft07({
     dialect: "draft-2020-12",
     schema: { anyOf: relocated.schemas },
     definitions: relocated.definitions
@@ -658,15 +658,14 @@ function parameterStructure(
 function resolveSchema(
   schema: JsonSchema.JsonSchema,
   components: Record<string, JsonSchema.JsonSchema>
-): JsonSchema.JsonSchema {
+): JsonSchema.JsonSchema | undefined {
   const seen = new Set<JsonSchema.JsonSchema>()
+  const prefix = "#/components/schemas/"
   while (typeof schema.$ref === "string") {
-    if (seen.has(schema)) throw new Error("cyclic schema root cannot be resolved")
+    if (seen.has(schema) || !schema.$ref.startsWith(prefix)) return undefined
     seen.add(schema)
-    const prefix = "#/components/schemas/"
-    if (!schema.$ref.startsWith(prefix)) throw new Error(`unresolved schema ${schema.$ref}`)
     const name = decodeURIComponent(schema.$ref.slice(prefix.length)).replace(/~1/g, "/").replace(/~0/g, "~")
-    if (!Object.hasOwn(components, name)) throw new Error(`unresolved schema ${schema.$ref}`)
+    if (!Object.hasOwn(components, name)) return undefined
     schema = components[name]
   }
   return schema
@@ -677,7 +676,8 @@ function descriptor(
   schema: JsonSchema.JsonSchema,
   components: Record<string, JsonSchema.JsonSchema>
 ): OpenRPCContentDescriptor {
-  const metadata = resolveSchema(schema, components)
+  // Metadata is optional, so external or nested references are left without it
+  const metadata = resolveSchema(schema, components) ?? {}
   return {
     name,
     schema,
