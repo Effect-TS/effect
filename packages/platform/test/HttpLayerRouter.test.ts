@@ -81,12 +81,16 @@ describe("HttpLayerRouter", () => {
   describe("toHttpEffect sub-apps", () => {
     const Admin = HttpLayerRouter.add("GET", "/admin/stats", HttpServerResponse.text("admin stats"))
 
-    const request = async (app: Layer.Layer<never, never, HttpLayerRouter.HttpRouter>, init?: RequestInit) => {
+    const request = async (
+      app: Layer.Layer<never, never, HttpLayerRouter.HttpRouter>,
+      init?: RequestInit,
+      path = "/admin/stats"
+    ) => {
       const { dispose, handler } = HttpLayerRouter.toWebHandler(app.pipe(Layer.provide(HttpServer.layerContext)), {
         disableLogger: true
       })
       try {
-        const response = await handler(new Request("http://localhost/admin/stats", init))
+        const response = await handler(new Request(`http://localhost${path}`, init))
         return { status: response.status, body: await response.text() }
       } finally {
         await dispose()
@@ -123,6 +127,18 @@ describe("HttpLayerRouter", () => {
       }))
 
       deepStrictEqual(await request(app), { status: 200, body: "admin stats" })
+    })
+
+    test("registers the same sub-app layer for each toHttpEffect call", async () => {
+      const app = HttpLayerRouter.use(Effect.fnUntraced(function*(router) {
+        const one = yield* HttpLayerRouter.toHttpEffect(Admin)
+        const two = yield* HttpLayerRouter.toHttpEffect(Admin)
+        yield* router.prefixed("/one").add("*", "/*", Effect.orDie(one))
+        yield* router.prefixed("/two").add("*", "/*", Effect.orDie(two))
+      }))
+
+      deepStrictEqual(await request(app, undefined, "/one/admin/stats"), { status: 200, body: "admin stats" })
+      deepStrictEqual(await request(app, undefined, "/two/admin/stats"), { status: 200, body: "admin stats" })
     })
   })
 })
