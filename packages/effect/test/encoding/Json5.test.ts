@@ -35,19 +35,25 @@ b', \\u0061b: 1, a\\u0062c: 2, café: true, 𐐀: 2, $_: null, /* block */ }`
     assert.strictEqual((value as Record<string, unknown>).a, 2)
   })
 
-  it("defines members as own data despite inherited setters and read-only properties", () => {
+  it("ignores members and escapes inherited from Object.prototype", () => {
     let calls = 0
-    // oxlint-disable-next-line no-extend-native -- Members must not reach inherited accessors; removed below.
+    const changed = { get: () => (calls++, "changed"), configurable: true }
+    // oxlint-disable-next-line no-extend-native -- Parsing must not reach inherited properties; removed below.
     Object.defineProperties(Object.prototype, {
       accessor: { set: () => calls++, configurable: true },
-      readonly: { value: 0, configurable: true }
+      readonly: { value: 0, configurable: true },
+      // The escape letters `q` and `u`, which a sparse lookup table would inherit.
+      113: changed,
+      117: changed
     })
     try {
       assert.deepStrictEqual(Json5.parse("{accessor: 1, readonly: [2]}"), { accessor: 1, readonly: [2] })
+      assert.strictEqual(Json5.parse(String.raw`"\q\u0061"`), "qa")
       assert.strictEqual(calls, 0)
     } finally {
-      delete (Object.prototype as Record<string, unknown>).accessor
-      delete (Object.prototype as Record<string, unknown>).readonly
+      for (const key of ["accessor", "readonly", "113", "117"]) {
+        delete (Object.prototype as Record<string, unknown>)[key]
+      }
     }
   })
 

@@ -90,12 +90,14 @@ describe("Jsonc", () => {
     )
   })
 
-  it("locates errors despite inherited setters and read-only properties", () => {
+  it("locates errors despite members and escapes inherited from Object.prototype", () => {
     let calls = 0
-    // oxlint-disable-next-line no-extend-native -- Members must not reach inherited accessors; removed below.
+    // oxlint-disable-next-line no-extend-native -- Parsing must not reach inherited properties; removed below.
     Object.defineProperties(Object.prototype, {
       accessor: { set: () => calls++, configurable: true },
-      readonly: { value: 0, configurable: true }
+      readonly: { value: 0, configurable: true },
+      // The escape letter `q`, which a sparse lookup table would inherit.
+      113: { get: () => (calls++, "changed"), configurable: true }
     })
     try {
       assert.throws(
@@ -103,10 +105,10 @@ describe("Jsonc", () => {
         SyntaxError,
         "Invalid JSONC at line 1, column 28"
       )
+      assert.throws(() => Jsonc.parse(String.raw`"\q"`), SyntaxError, "Invalid JSONC at line 1, column 3")
       assert.strictEqual(calls, 0)
     } finally {
-      delete (Object.prototype as Record<string, unknown>).accessor
-      delete (Object.prototype as Record<string, unknown>).readonly
+      for (const key of ["accessor", "readonly", "113"]) delete (Object.prototype as Record<string, unknown>)[key]
     }
   })
 
