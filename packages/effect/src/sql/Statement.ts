@@ -29,8 +29,12 @@ import type { SqlError } from "./SqlError.ts"
 
 const FragmentTypeId = "~effect/sql/Statement/Fragment"
 
-const FragmentBrand: symbol = Symbol.for("~effect/sql/Statement/Fragment")
-
+// Runtime-only brands checked by `isFragment` and `isSegment`. `Symbol.for`
+// shares them between copies of effect, and the `symbol` annotation keeps them
+// out of the public types so values from another copy still type check. The
+// string key above stays for the public `Fragment` type only; guards never
+// trust it, because any JSON value can carry it.
+const FragmentBrand: symbol = Symbol.for(FragmentTypeId)
 const SegmentBrand: symbol = Symbol.for("~effect/sql/Statement/Segment")
 
 /**
@@ -443,7 +447,7 @@ export const custom = <C extends Custom<any, any, any, any>>(
   paramA: C["paramA"],
   paramB: C["paramB"],
   paramC: C["paramC"]
-): C => ({ [SegmentBrand]: SegmentBrand, _tag: "Custom", kind, paramA, paramB, paramC } as any)
+): C => ({ [SegmentBrand]: SegmentBrand, _tag: "Custom", kind, paramA, paramB, paramC } as Custom as C)
 
 /**
  * Names the primitive value categories recognized by SQL statement helpers and
