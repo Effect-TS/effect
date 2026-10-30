@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add unstable `effect/jose` APIs for compact JWS/JWE, typed JWTs, local/remote JWKS, key generation, thumbprints, PEM/DER conversion, and JWK types usable without DOM declarations.
+Add unstable `effect/jose` modules for JWKs (generation, PEM/DER conversion and thumbprints), compact JWS and JWE, schema-typed signed and encrypted JWTs with decryption key resolvers, and local or remote JWKS resolution.
