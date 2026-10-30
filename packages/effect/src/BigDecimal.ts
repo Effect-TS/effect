@@ -5,11 +5,8 @@
  * divide, round, and format decimal values such as money, quantities, and
  * measurements.
  *
- * Parsing rejects scales beyond ±10,000, and operations that align scales
- * (such as `sum`, `subtract`, `remainder`, `scale`, and rounding) throw a
- * `RangeError` rather than build a power of ten with more than 20,000 digits.
- * Any two parsed values can be aligned, but a chain of arithmetic can still
- * produce scales that exceed these limits.
+ * Parsed scales are limited to ±10,000, and operations that align scales throw
+ * a `RangeError` when the scales differ by more than 20,000.
  *
  * @stability stable
  * @since 2.0.0
@@ -28,7 +25,7 @@ import { hasProperty } from "./Predicate.ts"
 
 const DEFAULT_PRECISION = 100
 const MAX_SCALE = 10_000
-// Lets two values parsed at opposite scale bounds be aligned
+// Allows aligning values parsed at opposite bounds
 const MAX_SCALE_ALIGNMENT = 2 * MAX_SCALE
 const FINITE_INT_REGEXP = /^[+-]?\d+$/
 
@@ -228,8 +225,6 @@ export const normalize = (self: BigDecimal): BigDecimal => {
   return self.normalized
 }
 
-// Counts trailing zeros of a non-zero integer string without a regex, which
-// could backtrack quadratically on long zero runs
 const trailingZeros = (digits: string): number => {
   let end = digits.length
   while (digits[end - 1] === "0") end--
@@ -258,7 +253,7 @@ const powerOfTen = (exponent: number): bigint => {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the scale changes by more than 20,000 digits.
+ * Throws a `RangeError` if the scale changes by more than 20,000.
  *
  * **Example** (Scaling decimal precision)
  *
@@ -307,8 +302,7 @@ export const scale: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when aligning the operands' scales would require more
- * than 20,000 decimal digits.
+ * Throws a `RangeError` if the operands' scales differ by more than 20,000.
  *
  * **Example** (Adding decimals)
  *
@@ -360,8 +354,7 @@ export const sum: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when aligning the operands' scales would require more
- * than 20,000 decimal digits.
+ * Throws a `RangeError` if the operands' scales differ by more than 20,000.
  *
  * **Example** (Adding multiple decimals)
  *
@@ -469,8 +462,7 @@ export const multiplyAll = (collection: Iterable<BigDecimal>): BigDecimal => {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when aligning the operands' scales would require more
- * than 20,000 decimal digits.
+ * Throws a `RangeError` if the operands' scales differ by more than 20,000.
  *
  * **Example** (Subtracting decimals)
  *
@@ -1090,8 +1082,7 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when aligning the operands' scales would require more
- * than 20,000 decimal digits.
+ * Throws a `RangeError` if the operands' scales differ by more than 20,000.
  *
  * **Example** (Computing remainders safely)
  *
@@ -1136,8 +1127,8 @@ export const remainder: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` if the divisor is `0`, or when aligning the operands'
- * scales would require more than 20,000 decimal digits.
+ * Throws a `RangeError` if the divisor is `0` or the operands' scales differ by
+ * more than 20,000.
  *
  * **Example** (Computing remainders unsafely)
  *
@@ -1343,10 +1334,9 @@ export const fromNumber = (n: number): Option.Option<BigDecimal> => {
  * **Details**
  *
  * Returns `Option.some` for valid decimal or exponent notation and
- * `Option.none` when the string cannot be parsed or its scale, before or after
- * trailing zeros are removed, lies outside ±10,000. The limit applies to plain
- * decimal strings too, so more than 10,000 fractional digits are rejected. The
- * empty string parses as zero.
+ * `Option.none` otherwise, including when the scale, before or after removing
+ * trailing zeros, is outside ±10,000 (for example, more than 10,000 fractional
+ * digits). The empty string parses as zero.
  *
  * **Example** (Parsing decimal strings safely)
  *
@@ -1406,7 +1396,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
 
   const scale = offset - exp
   const value = BigInt(digits)
-  // `format` writes the normalized scale, so it must stay within the bound too
+  // Keeps `format` output parseable
   const normalizedScale = value === bigint0 ? scale : scale - trailingZeros(digits)
   if (scale > MAX_SCALE || normalizedScale < -MAX_SCALE) {
     return Option.none()
@@ -1702,13 +1692,12 @@ export type RoundingMode =
  *
  * **Details**
  *
- * A value whose scale is already at or below the target scale has no digits to
- * discard and is returned unchanged, whatever the rounding mode.
+ * Values already at or below the target scale are returned unchanged.
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the value's scale exceeds the target scale by more
- * than 20,000 digits.
+ * Throws a `RangeError` if the value's scale exceeds the target scale by more
+ * than 20,000.
  *
  * **Example** (Rounding decimals)
  *
@@ -1795,8 +1784,8 @@ export const round: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the value's scale exceeds the target scale by more
- * than 20,000 digits.
+ * Throws a `RangeError` if the value's scale exceeds the target scale by more
+ * than 20,000.
  *
  * **Example** (Truncating decimals)
  *
@@ -1842,8 +1831,8 @@ export const truncate: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the value's scale exceeds the target scale by more
- * than 20,000 digits.
+ * Throws a `RangeError` if the value's scale exceeds the target scale by more
+ * than 20,000.
  *
  * @see {@link floor} for rounding toward negative infinity
  * @see {@link truncate} for rounding toward zero
@@ -1903,8 +1892,8 @@ export const digitAt: {
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the value's scale exceeds the target scale by more
- * than 20,000 digits.
+ * Throws a `RangeError` if the value's scale exceeds the target scale by more
+ * than 20,000.
  *
  * **Example** (Rounding decimals down)
  *
