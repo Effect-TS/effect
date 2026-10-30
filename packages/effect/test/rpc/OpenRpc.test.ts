@@ -239,6 +239,19 @@ describe("OpenRpc", () => {
     assert.deepStrictEqual(method(document, "explicit").errors, [{ code: 7, message: "Explicit" }])
   })
 
+  it("ignores Never members when deriving literal errors", () => {
+    const document = OpenRpc.fromRpcGroup(
+      RpcGroup.make(Rpc.make("never", {
+        error: Schema.Struct({
+          code: Schema.Union([Schema.Literal(41), Schema.Never]),
+          message: Schema.Union([Schema.Literal("Known"), Schema.suspend(() => Schema.Never)])
+        })
+      })),
+      options
+    )
+    assert.deepStrictEqual(method(document, "never").errors, [{ code: 41, message: "Known" }])
+  })
+
   it("describes streams for both stream constructors", () => {
     const Item = Schema.Struct({ value: Schema.NumberFromString }).annotate({ identifier: "StreamItem" })
     const StreamFailure = Schema.Struct({ code: Schema.Literal(21), message: Schema.Literal("Stream failed") })
