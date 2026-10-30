@@ -1,5 +1,6 @@
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Redacted, Ref, Schema } from "effect"
+import { Clock, Context, Effect, Exit, Layer, Redacted, Ref, Schema } from "effect"
+import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -565,3 +566,46 @@ it.effect("Authenticate accepts the challenge from an earlier overlapping Hello"
       yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
     )
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Hello measures a challenge's time to live from after it was generated", () =>
+  Clock.clockWith((testClock) => {
+    // The clock only advances while the challenge bytes are drawn, like a Hello
+    // fiber that is descheduled for a long time inside challenge generation.
+    let skew = 0
+    let advanceOnNextDraw = false
+    const currentTimeMillisUnsafe = () => testClock.currentTimeMillisUnsafe() + skew
+    const clock: Clock.Clock = {
+      ...testClock,
+      currentTimeMillisUnsafe,
+      currentTimeMillis: Effect.sync(currentTimeMillisUnsafe)
+    }
+    const crypto = {
+      subtle: globalThis.crypto.subtle,
+      randomUUID: () => globalThis.crypto.randomUUID(),
+      getRandomValues<T extends ArrayBufferView | null>(array: T): T {
+        if (advanceOnNextDraw) {
+          advanceOnNextDraw = false
+          skew += EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
+        }
+        return globalThis.crypto.getRandomValues(array)
+      }
+    } as typeof globalThis.crypto
+    return Effect.gen(function*() {
+      const client = yield* makeAuthClient({
+        storage: yield* EventLogServerUnencrypted.makeStorageMemory,
+        authorization: allowAll
+      })
+      const identity = yield* EventLog.makeIdentity
+      advanceOnNextDraw = true
+      const hello = yield* client["EventLog.Hello"]()
+      assert.isFalse(advanceOnNextDraw)
+
+      yield* client["EventLog.Authenticate"](
+        yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+      )
+    }).pipe(
+      Effect.provide(EventLogEncryption.layerSubtle),
+      Effect.provideService(Clock.Clock, clock),
+      Effect.provideService(WebCrypto.WebCrypto, crypto)
+    )
+  }))
