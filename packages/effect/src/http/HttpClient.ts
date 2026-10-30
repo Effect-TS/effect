@@ -1057,6 +1057,90 @@ export const retryTransient: {
 )
 
 /**
+ * Fails requests that do not receive a response within the given duration.
+ *
+ * **When to use**
+ *
+ * Use to configure a timeout once on the client, for example when providing
+ * the `HttpClient` service, while keeping the standard `HttpClientError` error
+ * model.
+ *
+ * **Details**
+ *
+ * A timed out request is interrupted and fails with an `HttpClientError` whose
+ * reason is a `TransportError` with a `Cause.TimeoutError` cause.
+ * `retryTransient` treats it as transient. Interrupting a request aborts the
+ * underlying transport, unless the request is attached to a scope with
+ * `withScope`, in which case it stays open until the scope closes.
+ *
+ * The timer starts after request preprocessing and covers everything the
+ * wrapped client does to produce a response. For a plain client this ends when
+ * the response headers arrive, but response middleware applied before
+ * `timeout`, such as `tap` or `retryTransient`, runs inside the budget,
+ * including any body reads it performs. Composition order therefore decides
+ * how it interacts with retries: applying `timeout` before `retryTransient`
+ * gives each attempt its own budget, while applying it after bounds the whole
+ * retry loop.
+ *
+ * **Gotchas**
+ *
+ * Body reads outside the timed client are not covered, including those made
+ * by response middleware applied after `timeout` and by consumers of the
+ * `HttpClient` service. Apply a separate timeout to body reads such as
+ * `response.json` or `response.stream` when needed.
+ *
+ * **Example** (Timing out each attempt)
+ *
+ * ```ts
+ * import { Effect, Layer } from "effect"
+ * import { FetchHttpClient, HttpClient } from "effect/http"
+ *
+ * const TimedHttpClient = Layer.effect(
+ *   HttpClient.HttpClient,
+ *   Effect.map(
+ *     HttpClient.HttpClient,
+ *     HttpClient.timeout("5 seconds")
+ *   )
+ * ).pipe(Layer.provide(FetchHttpClient.layer))
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.retryTransient({ times: 3 })
+ *   )
+ *   return yield* client.get("https://example.com")
+ * }).pipe(Effect.provide(TimedHttpClient))
+ * ```
+ *
+ * @stability unstable
+ * @category error handling
+ * @since 4.1.0
+ */
+export const timeout: {
+  (duration: Duration.Input): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError, R>
+  <E, R>(self: HttpClient.With<E, R>, duration: Duration.Input): HttpClient.With<E | Error.HttpClientError, R>
+} = dual(
+  2,
+  <E, R>(self: HttpClient.With<E, R>, duration: Duration.Input): HttpClient.With<E | Error.HttpClientError, R> => {
+    const decoded = Duration.fromInputUnsafe(duration)
+    const description = `timed out after ${Duration.format(decoded)}`
+    return transform(self, (effect, request) =>
+      Effect.timeoutOrElse(effect, {
+        duration: decoded,
+        orElse: () =>
+          Effect.fail(
+            new Error.HttpClientError({
+              reason: new Error.TransportError({
+                request,
+                cause: new Cause.TimeoutError(`Operation ${description}`),
+                description
+              })
+            })
+          )
+      }))
+  }
+)
+
+/**
  * Namespace containing configuration types for `withRateLimiter`.
  *
  * @stability unstable
