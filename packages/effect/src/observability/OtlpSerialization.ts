@@ -12,7 +12,6 @@ import * as Context from "../Context.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as Layer from "../Layer.ts"
-import * as Predicate from "../Predicate.ts"
 import * as otlpProtobuf from "./internal/otlpProtobuf.ts"
 import type { LogsData } from "./OtlpLogger.ts"
 import type { MetricsData } from "./OtlpMetrics.ts"
@@ -33,12 +32,12 @@ export class OtlpSerialization extends Context.Service<OtlpSerialization, {
 }>()("effect/observability/OtlpSerialization") {}
 
 // OTLP/JSON writes non-finite numbers as strings and bytes as base64.
-const jsonReplacer = (_key: string, value: unknown) =>
-  typeof value === "number" && !Number.isFinite(value) ?
-    String(value) :
-    Predicate.hasProperty(value, "bytesValue") && value.bytesValue instanceof Uint8Array
-    ? { ...value, bytesValue: Base64.encode(value.bytesValue) }
-    : value
+// The holder is read because Buffer#toJSON runs before the replacer.
+function jsonReplacer(this: Record<string, unknown>, key: string, value: unknown) {
+  if (typeof value === "number" && !Number.isFinite(value)) return String(value)
+  if (key === "bytesValue" && this[key] instanceof Uint8Array) return Base64.encode(this[key])
+  return value
+}
 
 const jsonBody = (data: unknown): HttpBody.HttpBody => {
   const json = JSON.stringify(data)
