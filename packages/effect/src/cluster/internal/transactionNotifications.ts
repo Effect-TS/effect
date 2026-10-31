@@ -1,27 +1,47 @@
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
-import type { MalformedMessage, PersistenceError } from "../ClusterError.ts"
+import { identity } from "../../Function.ts"
 
-export const Current = Context.Reference<
-  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
->("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
+// Notifications held back by the transaction in progress, run after the
+// outermost commit and dropped on rollback.
+const Current = Context.Reference<Array<Effect.Effect<void>> | undefined>(
+  "effect/cluster/MessageStorage/TransactionNotifications",
+  { defaultValue: () => undefined }
+)
 
-const defer = <E>(
-  notify: Effect.Effect<void, E>,
-  deferred: Effect.Effect<void, PersistenceError | MalformedMessage>
-): Effect.Effect<void, E> =>
+// Wraps `run` (the driver's transaction) so notifications queued inside
+// `effect` are held until the outermost commit. Nested transactions hand
+// their notifications to the enclosing one.
+export const withTransaction = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  run: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  Current.use((outer) => {
+    const notifications: Array<Effect.Effect<void>> = []
+    return Effect.tap(
+      run(Effect.provideService(effect, Current, notifications)),
+      () =>
+        outer
+          ? Effect.sync(() => {
+            outer.push(...notifications)
+          })
+          : Effect.forEach(notifications, identity, { discard: true })
+    )
+  })
+
+const defer = <E>(notify: Effect.Effect<void, E>, deferred: Effect.Effect<void>): Effect.Effect<void, E> =>
   Current.use((notifications) =>
     notifications === undefined ? notify : Effect.sync(() => {
       notifications.push(deferred)
     })
   )
 
-export const afterCommit = <E extends PersistenceError | MalformedMessage>(
-  notify: Effect.Effect<void, E>
-): Effect.Effect<void, E> => defer(notify, notify)
+// Runs `notify` now, or after the outermost commit inside a transaction. A
+// failure after the commit can no longer be returned, so it becomes a defect.
+export const afterCommit = <E>(notify: Effect.Effect<void, E>): Effect.Effect<void, E> =>
+  defer(notify, Effect.orDie(notify))
 
-// Outside a transaction the caller still sees failures. A deferred wake-up
-// runs after the commit, so its failure is dropped and the message is left
-// for the next poll.
+// Like `afterCommit`, but a failure after the commit is dropped: the message
+// is already persisted, and the next storage poll delivers it.
 export const wakeAfterCommit = <E>(notify: Effect.Effect<void, E>): Effect.Effect<void, E> =>
   defer(notify, Effect.ignore(notify))

@@ -583,21 +583,7 @@ export const make = (
       )
     return MessageStorage.of({
       ...storage,
-      // Nested transactions defer notifications to the outermost commit.
-      withTransaction: (effect) =>
-        TransactionNotifications.Current.use((outer) => {
-          const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
-          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications.Current, notifications))
-            .pipe(
-              Effect.tap(() =>
-                outer
-                  ? Effect.sync(() => {
-                    outer.push(...notifications)
-                  })
-                  : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
-              )
-            )
-        }),
+      withTransaction: (effect) => TransactionNotifications.withTransaction(effect, storage.withTransaction),
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
         return Effect.callback<void, EntityNotAssignedToRunner>((resume) => {
