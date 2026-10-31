@@ -737,44 +737,28 @@ class MiddlewareImpl {
   }
 }
 
-// The innermost middleware comes first.
+// The innermost middleware comes first. Every stack keeps its own order, and
+// stacks provided further outside, which come first in the context, run first.
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  // Each stack requires its middleware to run outermost to innermost in its
-  // own order. Merge every stack's order, preferring stacks provided further
-  // outside, which come first in the context.
-  const inner = new Map<AnyMiddlewareFn, Set<AnyMiddlewareFn>>()
-  const outerCount = new Map<AnyMiddlewareFn, number>()
+  // The middleware directly outside each middleware, outermost first.
+  const outers = new Map<AnyMiddlewareFn, Array<AnyMiddlewareFn>>()
   for (const [key, stack] of context.mapUnsafe) {
     if (!key.startsWith(middlewareKeyPrefix)) continue
     for (let i = stack.length - 1; i >= 0; i--) {
-      const fn = stack[i]
-      if (!inner.has(fn)) {
-        inner.set(fn, new Set())
-        outerCount.set(fn, 0)
-      }
-      const outer = stack[i + 1]
-      if (outer !== undefined && outer !== fn && !inner.get(outer)!.has(fn)) {
-        inner.get(outer)!.add(fn)
-        outerCount.set(fn, outerCount.get(fn)! + 1)
-      }
+      let fnOuters = outers.get(stack[i])
+      if (fnOuters === undefined) outers.set(stack[i], fnOuters = [])
+      if (i + 1 < stack.length) fnOuters.push(stack[i + 1])
     }
   }
+  const visited = new Set<AnyMiddlewareFn>()
   const outermostFirst: Array<AnyMiddlewareFn> = []
-  const remaining = new Set(inner.keys())
-  while (remaining.size > 0) {
-    let next: AnyMiddlewareFn | undefined
-    for (const fn of remaining) {
-      if (outerCount.get(fn) === 0) {
-        next = fn
-        break
-      }
-    }
-    // Stacks that order the same middleware both ways have no common order
-    next ??= remaining.values().next().value!
-    remaining.delete(next)
-    outermostFirst.push(next)
-    for (const fn of inner.get(next)!) outerCount.set(fn, outerCount.get(fn)! - 1)
+  const visit = (fn: AnyMiddlewareFn) => {
+    if (visited.has(fn)) return
+    visited.add(fn)
+    outers.get(fn)!.forEach(visit)
+    outermostFirst.push(fn)
   }
+  outers.forEach((_, fn) => visit(fn))
   return outermostFirst.reverse()
 }
 
