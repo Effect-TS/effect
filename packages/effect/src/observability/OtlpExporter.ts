@@ -14,7 +14,6 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
-import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberSet from "../FiberSet.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
@@ -265,30 +264,49 @@ export const make: (
 
   // Some runtimes stay in memory while a timer is pending.
   const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
-  const timer = yield* FiberHandle.make<void, never>()
-  const runTimer = yield* FiberHandle.runtime(timer)<never>()
-  let sleeping = false
-  const exportPeriodically = Effect.suspend(() => {
-    sleeping = true
-    return Effect.sleep(exportInterval)
-  }).pipe(
-    Effect.andThen(Effect.suspend(() => {
-      sleeping = false
-      return FiberSet.run(exportFibers, runExport)
-    })),
-    Effect.flatMap(Fiber.await),
-    Effect.repeat({ while: () => exportsEmpty || buffer.length > 0 })
-  )
-  const startTimer = () => runTimer(exportPeriodically, { onlyIfMissing: true })
+  // `timer` is set and cleared synchronously, so a push never sees a timer that has stopped.
+  // A retired timer only acts while it is still the current one.
+  const timerFibers = yield* FiberSet.make<void, never>()
+  const runTimer = yield* FiberSet.runtime(timerFibers)<never>()
+  interface Timer {
+    fiber: Fiber.Fiber<void> | undefined
+    sleeping: boolean
+  }
+  let timer: Timer | undefined
+  const exportPeriodically = (self: Timer): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      self.sleeping = true
+      return Effect.sleep(exportInterval)
+    }).pipe(
+      Effect.andThen(Effect.suspend(() => {
+        self.sleeping = false
+        return timer === self ? Effect.flatMap(FiberSet.run(exportFibers, runExport), Fiber.await) : Effect.void
+      })),
+      Effect.andThen(Effect.suspend(() => {
+        if (timer !== self) return Effect.void
+        if (exportsEmpty || buffer.length > 0) return exportPeriodically(self)
+        timer = undefined
+        return Effect.void
+      }))
+    )
+  const startTimer = () => {
+    if (timer !== undefined) return
+    const self: Timer = { fiber: undefined, sleeping: false }
+    timer = self
+    self.fiber = runTimer(exportPeriodically(self))
+  }
   if (exportsEmpty) startTimer()
 
+  // Only a sleeping timer is cancelled, so an in-flight periodic export is still awaited.
+  const cancelIdleTimer = Effect.suspend(() => {
+    if (exportsEmpty || buffer.length > 0 || timer === undefined || !timer.sleeping) return Effect.void
+    const fiber = timer.fiber!
+    timer = undefined
+    return Fiber.interrupt(fiber)
+  })
+
   const flusher = yield* Flusher
-  yield* flusher.register(runExport.pipe(
-    // Only a sleeping timer is cancelled, so an in-flight periodic export is still awaited.
-    Effect.andThen(
-      Effect.suspend(() => sleeping && buffer.length === 0 && !exportsEmpty ? FiberHandle.clear(timer) : Effect.void)
-    )
-  ))
+  yield* flusher.register(Effect.andThen(runExport, cancelIdleTimer))
 
   return {
     push(data) {
@@ -299,7 +317,7 @@ export const make: (
       }
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
-        runExportFork(runExport)
+        runExportFork(Effect.andThen(runExport, cancelIdleTimer))
       } else {
         startTimer()
       }
