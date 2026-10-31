@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@effect/platform-node": "workspace:^",
+    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^1.0.0",
