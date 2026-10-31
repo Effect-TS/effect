@@ -583,7 +583,8 @@ export const make = (
       )
     return MessageStorage.of({
       ...storage,
-      withTransaction: (effect) => TransactionNotifications.withTransaction(effect, storage.withTransaction),
+      withTransaction: (effect) =>
+        TransactionNotifications.withTransaction(effect, (effect) => storage.withTransaction(effect)),
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
         return Effect.callback<void, EntityNotAssignedToRunner>((resume) => {
