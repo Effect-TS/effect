@@ -144,60 +144,73 @@ const parseDiagnostics = (output: string) => {
   return diagnostics
 }
 
-const compileAll = Effect.gen(function*() {
-  const generated = yield* Effect.forEach(compileCases, (testCase) => Effect.exit(generateClients(testCase)))
-  const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
-  return yield* Effect.gen(function*() {
-    const files = generated.map((exit, caseIndex) =>
-      Exit.isSuccess(exit)
-        ? exit.value.map((client, clientIndex) => {
-          const path = join(directory, `Case${caseIndex}Client${clientIndex}.ts`)
-          writeFileSync(path, client)
+// Type-checks every case with one compiler run per tsconfig variant and
+// returns the diagnostics that fail each case.
+const typeCheckCases = (
+  cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
+) =>
+  Effect.gen(function*() {
+    const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
+    return yield* Effect.gen(function*() {
+      const files = cases.map(({ sources }, caseIndex) =>
+        sources.map((source, sourceIndex) => {
+          const path = join(directory, `Case${caseIndex}Client${sourceIndex}.ts`)
+          writeFileSync(path, source)
           return path
         })
-        : []
-    )
-    const variants = [true, false].filter((exactOptionalPropertyTypes) =>
-      compileCases.some(({ options }) => (options.exactOptionalPropertyTypes ?? true) === exactOptionalPropertyTypes)
-    )
-    const runs = yield* Effect.forEach(variants, (exactOptionalPropertyTypes) => {
-      const configPath = join(directory, `tsconfig.${exactOptionalPropertyTypes}.json`)
-      writeFileSync(
-        configPath,
-        JSON.stringify({
-          compilerOptions: {
-            allowImportingTsExtensions: true,
-            exactOptionalPropertyTypes,
-            lib: ["ESNext", "DOM"],
-            module: "NodeNext",
-            noEmit: true,
-            skipLibCheck: true,
-            strict: true,
-            target: "ES2022",
-            types: [],
-            verbatimModuleSyntax: true
-          },
-          files: files.filter((_, caseIndex) =>
-            (compileCases[caseIndex].options.exactOptionalPropertyTypes ?? true) === exactOptionalPropertyTypes
-          ).flat()
-        })
       )
-      return runTsc(configPath)
-    }, { concurrency: "unbounded" })
-    const diagnostics = runs.flatMap(({ output, status }) => {
-      const parsed = parseDiagnostics(output)
-      return status !== 0 && parsed.length === 0
-        ? [{ file: undefined, text: `tsc exited with ${status}` }]
-        : parsed
-    })
-    const owned = new Set(files.flat())
-    return {
-      generated,
-      files,
-      unattributed: diagnostics.filter(({ file }) => file === undefined || !owned.has(file)).map(({ text }) => text),
-      diagnostics
-    }
-  }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
+      const variants = [true, false].filter((exactOptionalPropertyTypes) =>
+        cases.some((testCase) => testCase.exactOptionalPropertyTypes === exactOptionalPropertyTypes)
+      )
+      const runs = yield* Effect.forEach(variants, (exactOptionalPropertyTypes) => {
+        const configPath = join(directory, `tsconfig.${exactOptionalPropertyTypes}.json`)
+        writeFileSync(
+          configPath,
+          JSON.stringify({
+            compilerOptions: {
+              allowImportingTsExtensions: true,
+              exactOptionalPropertyTypes,
+              lib: ["ESNext", "DOM"],
+              module: "NodeNext",
+              noEmit: true,
+              skipLibCheck: true,
+              strict: true,
+              target: "ES2022",
+              types: [],
+              verbatimModuleSyntax: true
+            },
+            files: files.filter((_, caseIndex) =>
+              cases[caseIndex].exactOptionalPropertyTypes === exactOptionalPropertyTypes
+            ).flat()
+          })
+        )
+        return runTsc(configPath)
+      }, { concurrency: "unbounded" })
+      const diagnostics = runs.flatMap(({ output, status }) => {
+        const parsed = parseDiagnostics(output)
+        return status !== 0 && parsed.length === 0
+          ? [{ file: undefined, text: `tsc exited with ${status}` }]
+          : parsed
+      })
+      const owned = new Set(files.flat())
+      // Diagnostics outside the generated clients may come from any case, so they fail every case.
+      const unattributed = diagnostics.filter(({ file }) => file === undefined || !owned.has(file)).map(({ text }) =>
+        text
+      )
+      return files.map((caseFiles) => [
+        ...diagnostics.filter(({ file }) => file !== undefined && caseFiles.includes(file)).map(({ text }) => text),
+        ...unattributed
+      ])
+    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
+  })
+
+const compileAll = Effect.gen(function*() {
+  const generated = yield* Effect.forEach(compileCases, (testCase) => Effect.exit(generateClients(testCase)))
+  const failures = yield* typeCheckCases(generated.map((exit, caseIndex) => ({
+    sources: Exit.isSuccess(exit) ? exit.value : [],
+    exactOptionalPropertyTypes: compileCases[caseIndex].options.exactOptionalPropertyTypes ?? true
+  })))
+  return { generated, failures }
 })
 
 const compiled = Effect.runSync(Effect.cached(compileAll))
@@ -211,10 +224,7 @@ const itGeneratedClientsCompile = (name: string, spec: OpenAPISpec, options: Com
       if (Exit.isFailure(generated)) {
         return yield* Effect.failCause(generated.cause)
       }
-      const files = new Set(result.files[caseIndex])
-      const own = result.diagnostics.filter(({ file }) => file !== undefined && files.has(file)).map(({ text }) => text)
-      // Diagnostics outside the generated clients may come from any case, so they fail every case.
-      assert.strictEqual([...own, ...result.unattributed].join("\n"), "")
+      assert.strictEqual(result.failures[caseIndex].join("\n"), "")
     }), compilationTimeout)
 }
 
@@ -3926,4 +3936,19 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
       }
     )
   })
+})
+
+describe("generated client type checks", () => {
+  it.effect(
+    "do not pass a case whose type errors were hidden by another case's syntax error",
+    () =>
+      Effect.gen(function*() {
+        const [, typeError] = yield* typeCheckCases([
+          { sources: ["export const broken = ;\n"], exactOptionalPropertyTypes: true },
+          { sources: ["export const value: string = 42\n"], exactOptionalPropertyTypes: true }
+        ])
+        assert.isNotEmpty(typeError)
+      }),
+    compilationTimeout
+  )
 })
