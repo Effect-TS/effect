@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve fractional seconds in SQLite PersistedQueue retry deadlines so retries do not become visible early.
+Fix SQLite-backed `PersistedQueue` jobs retrying before their scheduled delay has elapsed.
