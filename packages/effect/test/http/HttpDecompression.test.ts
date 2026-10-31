@@ -106,6 +106,22 @@ describe("HttpDecompression", () => {
       )
     }))
 
+  it("keeps a decompressed body read before modify for the modified request", async () => {
+    const response = await post(
+      makeHandler(HttpServerRequest.HttpServerRequest.use((request) =>
+        Effect.gen(function*() {
+          const first = yield* request.text
+          const modified = yield* request.modify({ url: "/modified" }).text
+          return HttpServerResponse.text(`${first},${modified}`)
+        })
+      )),
+      await compress("hello", ["gzip"]),
+      { "content-encoding": "gzip" }
+    )
+    assert.strictEqual(response.status, 200)
+    assert.strictEqual(await response.text(), "hello,hello")
+  })
+
   for (const accessor of ["json", "text", "arrayBuffer", "stream"] as const) {
     it(`decompresses a gzip body read via ${accessor} and hides the encoding headers`, async () => {
       const response = await post(

@@ -80,13 +80,17 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     return this.remoteAddressOverride ?? Option.fromNullishOr(this.source.socket?.remoteAddress)
   }
 
-  private textEffect: Effect.Effect<string, E> | undefined
+  protected bodyCache: {
+    text?: Effect.Effect<string, E>
+    arrayBuffer?: Effect.Effect<ArrayBuffer, E>
+  } = {}
+
   get text(): Effect.Effect<string, E> {
-    if (this.textEffect) {
-      return this.textEffect
+    if (this.bodyCache.text) {
+      return this.bodyCache.text
     }
-    this.textEffect = Effect.map(this.arrayBuffer, (_) => textDecoder.decode(_))
-    return this.textEffect
+    this.bodyCache.text = Effect.map(this.arrayBuffer, (_) => textDecoder.decode(_))
+    return this.bodyCache.text
   }
 
   get textUnsafe(): string {
@@ -130,12 +134,11 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     })
   }
 
-  private arrayBufferEffect: Effect.Effect<ArrayBuffer, E> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, E> {
-    if (this.arrayBufferEffect) {
-      return this.arrayBufferEffect
+    if (this.bodyCache.arrayBuffer) {
+      return this.bodyCache.arrayBuffer
     }
-    this.arrayBufferEffect = Effect.withFiber((fiber) =>
+    this.bodyCache.arrayBuffer = Effect.withFiber((fiber) =>
       NodeStream.toArrayBuffer(() => this.bodySource, {
         onError: this.onError,
         destroyOnOverflow: this.destroyOnOverflow,
@@ -145,7 +148,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       Effect.cached,
       Effect.runSync
     )
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => textDecoder.decode(_))
-    return this.arrayBufferEffect
+    this.bodyCache.text = Effect.map(this.bodyCache.arrayBuffer, (_) => textDecoder.decode(_))
+    return this.bodyCache.arrayBuffer
   }
 }

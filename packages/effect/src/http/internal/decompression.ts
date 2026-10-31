@@ -85,7 +85,9 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
       readonly protocol?: "http" | "https"
     }
   ): HttpServerRequest.HttpServerRequest {
-    return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize)
+    const request = new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize)
+    request.bodyCache = this.bodyCache
+    return request
   }
 
   get source(): object {
@@ -170,9 +172,13 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     })))
   }
 
-  private bytesEffect: Effect.Effect<Uint8Array, HttpServerError> | undefined
+  // Shared with the requests created by `modify`, so a body read through one is not lost to the others
+  private bodyCache: {
+    bytes?: Effect.Effect<Uint8Array, HttpServerError>
+    multipart?: HttpServerRequest.HttpServerRequest["multipart"]
+  } = {}
   private get bytes(): Effect.Effect<Uint8Array, HttpServerError> {
-    return this.bytesEffect ??= Effect.runSync(Effect.cached(Stream.mkUint8Array(this.stream)))
+    return this.bodyCache.bytes ??= Effect.runSync(Effect.cached(Stream.mkUint8Array(this.stream)))
   }
 
   get text(): Effect.Effect<string, HttpServerError> {
@@ -217,9 +223,8 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     )
   }
 
-  private multipartEffect: HttpServerRequest.HttpServerRequest["multipart"] | undefined
   get multipart(): HttpServerRequest.HttpServerRequest["multipart"] {
-    return this.multipartEffect ??= Effect.runSync(Effect.cached(Multipart.toPersisted(this.multipartStream)))
+    return this.bodyCache.multipart ??= Effect.runSync(Effect.cached(Multipart.toPersisted(this.multipartStream)))
   }
 
   private parseError(

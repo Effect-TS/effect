@@ -452,6 +452,16 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
+  // Shared with the requests created by `modify`, so a body read through one is not lost to the others
+  private bodyCache: {
+    text?: Effect.Effect<string, Error.HttpServerError>
+    arrayBuffer?: Effect.Effect<ArrayBuffer, Error.HttpServerError>
+    multipart?: Effect.Effect<
+      Multipart.Persisted,
+      Multipart.MultipartError,
+      Scope.Scope | FileSystem.FileSystem | Path.Path
+    >
+  } = {}
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -504,7 +514,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       readonly protocol?: "http" | "https" | undefined
     }
   ) {
-    return new BunServerRequest(
+    const request = new BunServerRequest(
       this.source,
       this.resolve,
       options.url ?? this.url,
@@ -515,6 +525,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       options.peerAddress ?? this.peerAddressOverride,
       options.protocol ?? this.protocol
     )
+    request.bodyCache = this.bodyCache
+    return request
   }
   get method(): HttpMethod {
     return this.source.method.toUpperCase() as HttpMethod
@@ -563,9 +575,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       )
   }
 
-  private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
+    return this.bodyCache.text ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
   }
 
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
@@ -597,37 +608,29 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       }))
   }
 
-  private multipartEffect:
-    | Effect.Effect<
-      Multipart.Persisted,
-      Multipart.MultipartError,
-      Scope.Scope | FileSystem.FileSystem | Path.Path
-    >
-    | undefined
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    if (this.multipartEffect) {
-      return this.multipartEffect
+    if (this.bodyCache.multipart) {
+      return this.bodyCache.multipart
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
+    this.bodyCache.multipart = Effect.runSync(Effect.cached(
       BunMultipart.persisted(this.source)
     ))
-    return this.multipartEffect
+    return this.bodyCache.multipart
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return BunMultipart.stream(this.source)
   }
 
-  private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
-    if (this.arrayBufferEffect) {
-      return this.arrayBufferEffect
+    if (this.bodyCache.arrayBuffer) {
+      return this.bodyCache.arrayBuffer
     }
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
+    this.bodyCache.arrayBuffer = Effect.runSync(Effect.cached(
       // Reuse the Web reader so that MaxBodySize is enforced.
       Effect.mapError(ServerRequest.fromWeb(this.source).arrayBuffer, (error) => {
         if (error.reason._tag !== "RequestParseError") return error
@@ -637,7 +640,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         })
       })
     ))
-    return this.arrayBufferEffect
+    return this.bodyCache.arrayBuffer
   }
 
   upgradeWith(

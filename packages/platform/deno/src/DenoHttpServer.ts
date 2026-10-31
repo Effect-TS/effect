@@ -330,6 +330,16 @@ export const layerConfig = (
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
+  // Shared with the requests created by `modify`, so a body read through one is not lost to the others
+  private bodyCache: {
+    text?: Effect.Effect<string, Error.HttpServerError>
+    arrayBuffer?: Effect.Effect<ArrayBuffer, Error.HttpServerError>
+    multipart?: Effect.Effect<
+      Multipart.Persisted,
+      Multipart.MultipartError,
+      Scope.Scope | FileSystem.FileSystem | Path.Path
+    >
+  } = {}
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -380,7 +390,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     readonly peerAddress?: Option.Option<string> | undefined
     readonly protocol?: "http" | "https" | undefined
   }) {
-    return new DenoServerRequest(
+    const request = new DenoServerRequest(
       this.source,
       this.remoteAddr,
       this.resolve,
@@ -391,6 +401,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.peerAddress ?? this.peerAddressOverride,
       options.protocol ?? this.protocol
     )
+    request.bodyCache = this.bodyCache
+    return request
   }
   get method(): HttpMethod {
     return this.source.method.toUpperCase() as HttpMethod
@@ -441,9 +453,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       )
   }
 
-  private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
+    return this.bodyCache.text ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
   }
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
@@ -467,24 +478,20 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       }))
   }
 
-  private multipartEffect:
-    | Effect.Effect<Multipart.Persisted, Multipart.MultipartError, Scope.Scope | FileSystem.FileSystem | Path.Path>
-    | undefined
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    return this.multipartEffect ??= Effect.runSync(Effect.cached(DenoMultipart.persisted(this.source)))
+    return this.bodyCache.multipart ??= Effect.runSync(Effect.cached(DenoMultipart.persisted(this.source)))
   }
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return DenoMultipart.stream(this.source)
   }
 
-  private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
-    if (this.arrayBufferEffect) return this.arrayBufferEffect
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
+    if (this.bodyCache.arrayBuffer) return this.bodyCache.arrayBuffer
+    this.bodyCache.arrayBuffer = Effect.runSync(Effect.cached(
       // Reuse the Web reader so that MaxBodySize is enforced.
       Effect.mapError(ServerRequest.fromWeb(this.source).arrayBuffer, (error) => {
         if (error.reason._tag !== "RequestParseError") return error
@@ -494,7 +501,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
         })
       })
     ))
-    return this.arrayBufferEffect
+    return this.bodyCache.arrayBuffer
   }
 
   upgradeWith(

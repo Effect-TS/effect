@@ -646,7 +646,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       readonly protocol?: "http" | "https" | undefined
     }
   ) {
-    return new ServerRequestImpl(
+    const request = new ServerRequestImpl(
       this.source,
       this.response,
       this.upgradeState,
@@ -656,6 +656,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       options.peerAddress ?? this.peerAddressOverride,
       options.protocol ?? this.protocol
     )
+    // Body reads are shared, so a body read through one view is not lost to the others
+    request.bodyCache = this.bodyCache
+    return request
   }
 
   get originalUrl(): string {
@@ -682,28 +685,30 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     return this.headersOverride
   }
 
-  private multipartEffect:
-    | Effect.Effect<
+  protected override bodyCache: {
+    text?: Effect.Effect<string, HttpServerError>
+    arrayBuffer?: Effect.Effect<ArrayBuffer, HttpServerError>
+    multipart?: Effect.Effect<
       Multipart.Persisted,
       Multipart.MultipartError,
       Scope.Scope | FileSystem.FileSystem | Path.Path
     >
-    | undefined
+  } = {}
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    if (this.multipartEffect) {
-      return this.multipartEffect
+    if (this.bodyCache.multipart) {
+      return this.bodyCache.multipart
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
+    this.bodyCache.multipart = Effect.runSync(Effect.cached(
       Effect.suspend(() => {
         this.writeContinue()
         return NodeMultipart.persisted(this.bodySource, this.source.headers)
       })
     ))
-    return this.multipartEffect
+    return this.bodyCache.multipart
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {

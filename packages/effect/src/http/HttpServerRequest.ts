@@ -516,6 +516,16 @@ const removeHost = (url: string) => {
 }
 
 class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
+  // Shared with the requests created by `modify`, so a body read through one is not lost to the others
+  private bodyCache: {
+    text?: Effect.Effect<string, HttpServerError>
+    arrayBuffer?: Effect.Effect<ArrayBuffer, HttpServerError>
+    multipart?: Effect.Effect<
+      Multipart.Persisted,
+      Multipart.MultipartError,
+      Scope.Scope | FileSystem.FileSystem | Path.Path
+    >
+  } = {}
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: Request
@@ -559,7 +569,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       readonly protocol?: "http" | "https" | undefined
     }
   ) {
-    return new ServerRequestImpl(
+    const request = new ServerRequestImpl(
       this.source,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
@@ -567,6 +577,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       options.peerAddress ?? this.peerAddressOverride,
       options.protocol ?? this.protocol
     )
+    request.bodyCache = this.bodyCache
+    return request
   }
   get method(): string {
     return this.source.method.toUpperCase()
@@ -615,9 +627,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       )
   }
 
-  private textEffect: Effect.Effect<string, HttpServerError> | undefined
   get text(): Effect.Effect<string, HttpServerError> {
-    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
+    return this.bodyCache.text ??= Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
   }
 
   get json(): Effect.Effect<Schema.Json, HttpServerError> {
@@ -648,25 +659,18 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       }))
   }
 
-  private multipartEffect:
-    | Effect.Effect<
-      Multipart.Persisted,
-      Multipart.MultipartError,
-      Scope.Scope | FileSystem.FileSystem | Path.Path
-    >
-    | undefined
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    if (this.multipartEffect) {
-      return this.multipartEffect
+    if (this.bodyCache.multipart) {
+      return this.bodyCache.multipart
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
+    this.bodyCache.multipart = Effect.runSync(Effect.cached(
       Multipart.toPersisted(this.multipartStream)
     ))
-    return this.multipartEffect
+    return this.bodyCache.multipart
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
@@ -676,12 +680,11 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     )
   }
 
-  private arrayBufferEffect: Effect.Effect<ArrayBuffer, HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    if (this.arrayBufferEffect) {
-      return this.arrayBufferEffect
+    if (this.bodyCache.arrayBuffer) {
+      return this.bodyCache.arrayBuffer
     }
-    this.arrayBufferEffect = Effect.withFiber((fiber) => {
+    this.bodyCache.arrayBuffer = Effect.withFiber((fiber) => {
       const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
       return Effect.tryPromise({
         try: (signal) =>
@@ -701,7 +704,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       Effect.cached,
       Effect.runSync
     )
-    return this.arrayBufferEffect
+    return this.bodyCache.arrayBuffer
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
@@ -723,6 +726,15 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
 }
 
 class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
+  // Shared with the requests created by `modify`, so a body read through one is not lost to the others
+  private bodyCache: {
+    bytes?: Effect.Effect<Uint8Array, HttpServerError>
+    multipart?: Effect.Effect<
+      Multipart.Persisted,
+      Multipart.MultipartError,
+      Scope.Scope | FileSystem.FileSystem | Path.Path
+    >
+  } = {}
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: HttpClientRequest.HttpClientRequest
@@ -771,7 +783,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       readonly protocol?: "http" | "https" | undefined
     }
   ) {
-    return new ClientRequestImpl(
+    const request = new ClientRequestImpl(
       this.source,
       this.originalUrl,
       options.url ?? this.url,
@@ -780,6 +792,8 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       options.peerAddress ?? this.peerAddressOverride,
       options.protocol ?? this.protocol
     )
+    request.bodyCache = this.bodyCache
+    return request
   }
 
   get method(): string {
@@ -831,19 +845,18 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     }
   }
 
-  private bytesEffect: Effect.Effect<Uint8Array, HttpServerError> | undefined
   private get bytes(): Effect.Effect<Uint8Array, HttpServerError> {
-    if (this.bytesEffect) {
-      return this.bytesEffect
+    if (this.bodyCache.bytes) {
+      return this.bodyCache.bytes
     }
-    this.bytesEffect = Effect.withFiber((fiber) => {
+    this.bodyCache.bytes = Effect.withFiber((fiber) => {
       const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
       return this.readBytes(maxBodySize === undefined ? undefined : Number(maxBodySize))
     }).pipe(
       Effect.cached,
       Effect.runSync
     )
-    return this.bytesEffect
+    return this.bodyCache.bytes
   }
 
   private readBytes(maxBytes: number | undefined): Effect.Effect<Uint8Array, HttpServerError> {
@@ -889,25 +902,18 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       }))
   }
 
-  private multipartEffect:
-    | Effect.Effect<
-      Multipart.Persisted,
-      Multipart.MultipartError,
-      Scope.Scope | FileSystem.FileSystem | Path.Path
-    >
-    | undefined
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    if (this.multipartEffect) {
-      return this.multipartEffect
+    if (this.bodyCache.multipart) {
+      return this.bodyCache.multipart
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
+    this.bodyCache.multipart = Effect.runSync(Effect.cached(
       Multipart.toPersisted(this.multipartStream)
     ))
-    return this.multipartEffect
+    return this.bodyCache.multipart
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {

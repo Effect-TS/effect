@@ -48,6 +48,33 @@ describe("HttpRouter", () => {
     }
   })
 
+  it("keeps a body read by middleware for a prefixed route", async () => {
+    const readBody = HttpRouter.middleware((httpEffect) =>
+      Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        yield* request.text
+        return yield* httpEffect
+      }), { global: true })
+    const echo = HttpServerRequest.HttpServerRequest.use((request) =>
+      Effect.map(request.text, (text) => HttpServerResponse.text(text))
+    )
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      Layer.mergeAll(
+        HttpRouter.use((router) => router.prefixed("/api").add("POST", "/echo", echo)),
+        readBody
+      ),
+      { disableLogger: true }
+    )
+
+    try {
+      const response = await handler(new Request("http://localhost/api/echo", { method: "POST", body: "hello" }))
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(await response.text(), "hello")
+    } finally {
+      await dispose()
+    }
+  })
+
   it("toWebHandler shares in-progress disposal", async () => {
     const started = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()

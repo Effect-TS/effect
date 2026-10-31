@@ -367,6 +367,22 @@ describe("HttpServer", () => {
       assert.isTrue(response.uploaded)
     }))
 
+  it.effect("keeps a body read before modify for the modified request", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serve(
+        HttpServerRequest.HttpServerRequest.use((original) =>
+          Effect.gen(function*() {
+            const first = yield* original.text
+            const modified = yield* original.modify({ url: "/modified" }).text
+            return HttpServerResponse.text(`${first},${modified}`)
+          })
+        )
+      ).pipe(Layer.build)
+      const client = yield* HttpClient.HttpClient
+      const response = yield* client.post("/", { body: HttpBody.text("hello") })
+      assert.strictEqual(yield* response.text, "hello,hello")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()
