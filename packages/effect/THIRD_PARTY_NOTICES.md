@@ -60,3 +60,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Adobe Core14 font metrics
+
+`src/internal/pdfFontMetrics.ts`, used by `src/encoding/Pdf.ts`, holds glyph
+widths, ascenders and descenders of the Helvetica, Times and Courier fonts.
+They are extracted by `scripts/pdf-font-metrics.mjs` from the Adobe Core14 AFM
+files as shipped in pdfkit 0.17.2, whose SHA-256 digests the script checks.
+The data is modified from the AFM files: only the widths of the
+WinAnsiEncoding glyphs, the ascender and the descender of each font are kept.
+No AFM file is distributed.
+
+- Helvetica: Copyright (c) 1985, 1987, 1989, 1990, 1997 Adobe Systems
+  Incorporated. All Rights Reserved.
+- Times: Copyright (c) 1985, 1987, 1989, 1990, 1993, 1997 Adobe Systems
+  Incorporated. All Rights Reserved.
+- Courier and Courier-Oblique: Copyright (c) 1989, 1990, 1991, 1992, 1993, 1997 Adobe Systems
+  Incorporated. All Rights Reserved.
+- Courier-Bold and Courier-BoldOblique: Copyright (c) 1989, 1990, 1991, 1993,
+  1997 Adobe Systems Incorporated. All Rights Reserved.
+
+### Adobe Core14 AFM files — terms of use
+
+This file and the 14 PostScript(R) AFM files it accompanies may be used,
+copied, and distributed for any purpose and without charge, with or without
+modification, provided that all copyright notices are retained; that the AFM
+files are not distributed without this file; that all modifications to this
+file or any of the AFM files are prominently noted in the modified file(s); and
+that this paragraph is not modified. Adobe Systems has no responsibility or
+obligation to support the use of the AFM files.
