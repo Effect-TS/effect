@@ -902,6 +902,17 @@ export const make: <Rpcs extends Rpc.Any>(
     request: RequestEncoded,
     payload: unknown
   ) => {
+    // the headers come from the wire unvalidated, and malformed input makes
+    // `Headers.fromInput` throw
+    let headers: Headers.Headers
+    try {
+      headers = Headers.fromInput(request.headers)
+    } catch {
+      const reason = "Invalid request headers"
+      return request.isNotification === true
+        ? dropNotification(reason)
+        : sendRequestDefect(client, requestId, schemas.encodeExit, reason)
+    }
     // nothing is encoded for a notification, and only a reply would remove its schemas
     if (request.isNotification !== true) {
       client.schemas.set(
@@ -919,7 +930,7 @@ export const make: <Rpcs extends Rpc.Any>(
     const decoded = request as Types.Mutable<RequestEncoded>
     decoded.id = requestId
     decoded.payload = payload
-    decoded.headers = Headers.fromInput(request.headers) as any
+    decoded.headers = headers as any
     return server.write(client.id, decoded as any)
   }
 
