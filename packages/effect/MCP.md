@@ -253,10 +253,8 @@ other registrations and passed to the server.
 
 A tool result is sent to the client in its JSON encoding, the same encoding its advertised
 `outputSchema` describes. For example, a `Schema.Date` field is sent as an ISO string and a
-`Schema.Void` field as `null`. A declared failure is sent as text in the JSON encoding of its
-`failure` schema, so a `Schema.BigInt` field is sent as a string. A failure that has no JSON
-encoding, such as a `Schema.Unknown` field holding a class instance, is sent as the generic tool
-error and logged.
+`Schema.Void` field as `null`. Declared failures are sent as text in the JSON encoding of their
+`failure` schema.
 
 ## Request-level dependencies
 
