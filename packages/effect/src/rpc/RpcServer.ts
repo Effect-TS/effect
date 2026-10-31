@@ -578,6 +578,18 @@ const makeDefectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs => 
 const defectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs =>
   isSharedCodecFor(codecFor) ? (sharedDefectCodecs ??= makeDefectCodecs(codecFor)) : makeDefectCodecs(codecFor)
 
+// Request headers are typed as string pairs but arrive unvalidated from the wire.
+const isRequestHeaders = (u: unknown): u is ReadonlyArray<readonly [string, string]> => {
+  if (!Array.isArray(u)) return false
+  for (let i = 0; i < u.length; i++) {
+    const entry = u[i]
+    if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string" || typeof entry[1] !== "string") {
+      return false
+    }
+  }
+  return true
+}
+
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
 // pair. Request fibers on persistent connections keep one context across
@@ -967,6 +979,14 @@ export const make: <Rpcs extends Rpc.Any>(
         const replySchemas = !isNotification && request.discard === true
           ? getDiscardSchemas(rpc as any, schemas)
           : schemas
+        // the headers come from the wire, so they are checked before they are
+        // used, whether the payload then decodes synchronously or not
+        if (!isRequestHeaders(request.headers)) {
+          const reason = "Invalid request headers"
+          return isNotification
+            ? dropNotification(reason)
+            : sendRequestDefect(client, requestId, replySchemas.encodeExit, reason)
+        }
         const decoded = schemas.decode(request.payload)
         // The schema decoders evaluate eagerly, so a decode that needs no
         // services is already a resolved success and can skip the effect
