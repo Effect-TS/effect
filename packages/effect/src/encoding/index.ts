@@ -43,7 +43,7 @@ export * as Ini from "./Ini.ts"
 
 /**
  * @stability unstable
- * @since 4.0.7
+ * @since 4.1.2
  */
 export * as Json5 from "./Json5.ts"
 
@@ -55,7 +55,7 @@ export * as JsonArray from "./JsonArray.ts"
 
 /**
  * @stability unstable
- * @since 4.0.7
+ * @since 4.1.2
  */
 export * as Jsonc from "./Jsonc.ts"
 

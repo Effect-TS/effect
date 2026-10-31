@@ -5,13 +5,15 @@
  * with `jsonc-parser` 3.3.1's default profile: JSON plus line and block comments,
  * with trailing commas disabled. One leading BOM is accepted, matching the
  * TOML and YAML parsers. Decoded values follow `JSON.parse` semantics; invalid
- * documents throw instead of returning a partial result.
+ * documents fail instead of returning a partial result.
  *
  * @stability unstable
- * @since 4.0.7
+ * @since 4.1.2
  */
 
 import * as internal from "../internal/jsonParser.ts"
+import * as Result from "../Result.ts"
+import { EncodingError } from "./EncodingError.ts"
 
 const fail = (input: string): never => {
   // Native errors differ across engines and may quote the input, so the strict parser
@@ -23,27 +25,7 @@ const fail = (input: string): never => {
 
 const lineEnd = /[\r\n]/g
 
-/**
- * Parses a JSONC document into a JavaScript value.
- *
- * **Details**
- *
- * Accepts one leading BOM and line and block comments wherever JSON permits
- * whitespace. All other syntax follows `JSON.parse`, including duplicate keys
- * and `__proto__` handling.
- *
- * **Gotchas**
- *
- * Throws a `SyntaxError` with a 1-based line and column on invalid input,
- * without including the input text. Columns count UTF-16 code units.
- * Trailing commas and JSON5 extensions are not accepted. Unlike `JSON.parse`,
- * this function has no reviver.
- *
- * @stability unstable
- * @category decoding
- * @since 4.0.7
- */
-export const parse = (input: string): unknown => {
+const parseUnsafe = (input: string): unknown => {
   // Ignore one leading BOM without shifting original-input error positions.
   if (input.charCodeAt(0) === 0xfeff) input = " " + input.slice(1)
   let slash = input.indexOf("/")
@@ -94,5 +76,51 @@ export const parse = (input: string): unknown => {
     return JSON.parse(json)
   } catch {
     return fail(input)
+  }
+}
+
+/**
+ * Parses a JSONC document into a JavaScript value.
+ *
+ * **Details**
+ *
+ * Returns `Result.succeed` with the parsed value, or `Result.fail` with an
+ * `EncodingError` when the input is not valid JSONC. Accepts one leading BOM
+ * and line and block comments wherever JSON permits whitespace. All other
+ * syntax follows `JSON.parse`, including duplicate keys and `__proto__`
+ * handling.
+ *
+ * **Gotchas**
+ *
+ * Error messages give a 1-based line and column, counted in UTF-16 code units,
+ * but do not include the input text. Trailing commas and JSON5 extensions are
+ * not accepted. Unlike `JSON.parse`, this function has no reviver.
+ *
+ * **Example** (Parsing a JSONC document)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Jsonc } from "effect/encoding"
+ *
+ * Jsonc.parse("{ \"port\": 8080 } // comment") // => Result.succeed({ port: 8080 })
+ * Result.isFailure(Jsonc.parse("{ \"port\": 8080, }")) // => true
+ * ```
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.1.2
+ */
+export const parse = (input: string): Result.Result<unknown, EncodingError> => {
+  try {
+    return Result.succeed(parseUnsafe(input))
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Jsonc",
+        kind: "Decode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
   }
 }
