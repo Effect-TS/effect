@@ -16,6 +16,7 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { flow, identity } from "../Function.ts"
+import { escapeKeySegment } from "../internal/persistence.ts"
 import * as Layer from "../Layer.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
@@ -996,6 +997,13 @@ export const layerStoreMemory: Layer.Layer<
  * Creates a Redis-backed `RateLimiterStore` using Lua scripts and the
  * configured key prefix.
  *
+ * **Details**
+ *
+ * State for a rate-limit key is stored under `<prefix><key>`, with
+ * `<prefix><key>:refill` holding token-bucket refill times and
+ * `<prefix><key>:adaptive` holding adaptive state. `%` and `:` in the key are
+ * percent-encoded so different keys never share Redis state.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -1007,6 +1015,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 ) {
   const prefix = options?.prefix ?? "ratelimiter:"
   const redis = yield* Redis.Redis
+  const redisKey = (key: string) => `${prefix}${escapeKeySegment(key)}`
 
   const fixedWindow = redis.eval(fixedWindowScript)
   const tokenBucket = redis.eval(tokenBucketScript)
@@ -1015,7 +1024,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 
   return RateLimiterStore.of({
     fixedWindow(options) {
-      const key = `${prefix}${options.key}`
+      const key = redisKey(options.key)
       const refillMillis = Duration.toMillis(options.refillRate)
       return Effect.mapError(
         Effect.map(
@@ -1032,7 +1041,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
     },
     tokenBucket(options) {
-      const key = `${prefix}${options.key}`
+      const key = redisKey(options.key)
       const lastRefillKey = `${key}:refill`
       const refillMillis = Duration.toMillis(options.refillRate)
       return Effect.clockWith((clock) =>
@@ -1060,7 +1069,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
     },
     adaptiveConsume(options) {
-      const key = `${prefix}${options.key}:adaptive`
+      const key = `${redisKey(options.key)}:adaptive`
       return Effect.map(
         Effect.mapError(
           adaptiveConsume(
@@ -1087,7 +1096,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     adaptiveFeedback(options) {
       if (options.status !== 429 || options.retryAfter === undefined) return Effect.void
       const retryAfterMillis = clampAdaptiveDurationMillis(Duration.toMillis(options.retryAfter))
-      const key = `${prefix}${options.key}:adaptive`
+      const key = `${redisKey(options.key)}:adaptive`
       return Effect.asVoid(
         Effect.mapError(
           adaptiveFeedback(
