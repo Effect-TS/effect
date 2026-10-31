@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
@@ -542,6 +543,53 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.deepStrictEqual(templates.resourceTemplates, [
           { uriTemplate: "file:///notes/{param0}", name: "Notes", annotations: {} }
         ])
+      }))
+
+    it.effect("should list resources, templates and prompts registered as plain objects", () =>
+      Effect.gen(function*() {
+        const icon = { src: "https://example.com/icon.png" }
+        const registrations = Layer.effectDiscard(Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          yield* server.addResource({
+            resource: { uri: "file:///plain", name: "Plain", icons: [icon] },
+            annotations: Context.empty(),
+            handle: Effect.succeed({ contents: [] })
+          })
+          yield* server.addResourceTemplate({
+            template: { uriTemplate: "file:///plain/{id}", name: "PlainTemplate", icons: [icon] },
+            annotations: Context.empty(),
+            routerPath: "file:///plain/:id",
+            completions: {},
+            handle: () => Effect.succeed({ contents: [] })
+          })
+          yield* server.addPrompt({
+            prompt: { name: "PlainPrompt", icons: [icon] },
+            annotations: Context.empty(),
+            completions: {},
+            handle: () => Effect.succeed({ messages: [] })
+          })
+        }))
+        const harness = yield* makeHttpHarness(registrations.pipe(Layer.provideMerge(makeServerLayer({
+          name: "PlainDescriptorsServer",
+          protocols: [protocol]
+        }))))
+        const list = Effect.fnUntraced(function*(method: string) {
+          const response = yield* harness.post(request(method, method), headers(method))
+          return Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(
+            yield* readMcpHttpResponse(response)
+          ).result
+        })
+
+        const resources = yield* list("resources/list")
+        assert.deepStrictEqual(resources.resources, [{ uri: "file:///plain", name: "Plain", icons: [icon] }])
+        const templates = yield* list("resources/templates/list")
+        assert.deepStrictEqual(templates.resourceTemplates, [{
+          uriTemplate: "file:///plain/{id}",
+          name: "PlainTemplate",
+          icons: [icon]
+        }])
+        const prompts = yield* list("prompts/list")
+        assert.deepStrictEqual(prompts.prompts, [{ name: "PlainPrompt", icons: [icon] }])
       }))
 
     // SEP-2549 cache hints are server-advertised freshness; omitted families and resource reads keep the stale default.
