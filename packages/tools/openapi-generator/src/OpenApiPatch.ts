@@ -18,6 +18,7 @@ import * as JsonPatch from "effect/JsonPatch"
 import * as JsonPointer from "effect/JsonPointer"
 import * as Path from "effect/Path"
 import * as Predicate from "effect/Predicate"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 
 // =============================================================================
@@ -410,14 +411,9 @@ const parseJsonContent = Effect.fnUntraced(function*(content: string, source: st
  * Parse content as YAML.
  */
 const parseYamlContent = Effect.fnUntraced(function*(content: string, source: string) {
-  return yield* Effect.try({
-    try: () => Yaml.parse(content) as unknown,
-    catch: (error) =>
-      new JsonPatchParseError({
-        source,
-        reason: error instanceof Error ? error.message : String(error)
-      })
-  })
+  return yield* Effect.fromResult(
+    Result.mapError(Yaml.parse(content), (error) => new JsonPatchParseError({ source, reason: error.message }))
+  )
 })
 
 /**
