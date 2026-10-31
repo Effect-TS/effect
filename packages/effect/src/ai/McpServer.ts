@@ -737,30 +737,47 @@ class MiddlewareImpl {
   }
 }
 
-// The innermost middleware comes first. Every stack keeps its own order; where
-// that leaves the order open, stacks provided further outside, which come
-// first in the context, run further outside.
+// The innermost middleware comes first. Each stack keeps its own order, and
+// where that leaves the order open, stacks provided further outside, which come
+// first in the context, run further outside. Stacks that order the same
+// middleware both ways have no common order, so insertion order decides.
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  // The middleware directly outside each middleware in each stack.
-  const outers = new Map<AnyMiddlewareFn, Array<AnyMiddlewareFn>>()
+  // The middleware directly inside each middleware, and how many of those
+  // directly outside it are still unplaced.
+  const inners = new Map<AnyMiddlewareFn, Array<AnyMiddlewareFn>>()
+  const unplacedOuters = new Map<AnyMiddlewareFn, number>()
   for (const [key, stack] of context.mapUnsafe) {
     if (!key.startsWith(middlewareKeyPrefix)) continue
-    for (let i = 0; i < stack.length; i++) {
-      let fnOuters = outers.get(stack[i])
-      if (fnOuters === undefined) outers.set(stack[i], fnOuters = [])
-      if (i + 1 < stack.length) fnOuters.push(stack[i + 1])
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const fn = stack[i]
+      if (!inners.has(fn)) {
+        inners.set(fn, [])
+        unplacedOuters.set(fn, 0)
+      }
+      const outer = stack[i + 1]
+      if (outer !== undefined && outer !== fn) {
+        inners.get(outer)!.push(fn)
+        unplacedOuters.set(fn, unplacedOuters.get(fn)! + 1)
+      }
     }
   }
-  // Places the middleware outside each middleware before the middleware itself.
-  const visited = new Set<AnyMiddlewareFn>()
+  // Repeatedly places the first middleware with nothing left to place outside it.
   const outermostFirst: Array<AnyMiddlewareFn> = []
-  const visit = (fn: AnyMiddlewareFn) => {
-    if (visited.has(fn)) return
-    visited.add(fn)
-    outers.get(fn)!.forEach(visit)
-    outermostFirst.push(fn)
+  while (unplacedOuters.size > 0) {
+    let next = unplacedOuters.keys().next().value!
+    for (const [fn, count] of unplacedOuters) {
+      if (count === 0) {
+        next = fn
+        break
+      }
+    }
+    unplacedOuters.delete(next)
+    outermostFirst.push(next)
+    for (const fn of inners.get(next)!) {
+      const count = unplacedOuters.get(fn)
+      if (count !== undefined) unplacedOuters.set(fn, count - 1)
+    }
   }
-  for (const fn of outers.keys()) visit(fn)
   return outermostFirst.reverse()
 }
 
