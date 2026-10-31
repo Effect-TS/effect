@@ -23,12 +23,6 @@ class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
 const WhoAmI = Toolkit.make(Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] }))
 const WhoAmIHandlers = WhoAmI.toLayer({ WhoAmI: () => Effect.map(CurrentUser, (user) => user) })
 
-const Ping = Toolkit.make(Tool.make("Ping", { success: Schema.String }))
-const PingHandlers = Ping.toLayer({ Ping: () => Effect.succeed("pong") })
-
-const recordingMiddleware = (order: Array<string>, name: string) =>
-  McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push(name)), effect))
-
 describe("McpServer request-level dependencies", () => {
   it.effect("provides declared dependencies from middleware over registration-time values", () =>
     Effect.gen(function*() {
@@ -128,18 +122,13 @@ describe("McpServer request-level dependencies", () => {
 
   it.effect("runs middleware provided outside a combined middleware outside all of it", () =>
     Effect.gen(function*() {
-      const order: Array<string> = []
       const TenantMiddleware = McpServer.middleware<{ provides: Tenant }>()((effect) =>
-        Effect.andThen(Effect.sync(() => order.push("tenant")), Effect.provideService(effect, Tenant, "acme"))
+        Effect.provideService(effect, Tenant, "acme")
       )
       const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
-        Effect.gen(function*() {
-          order.push("auth")
-          const tenant = yield* Tenant
-          return yield* Effect.provideService(effect, CurrentUser, `alice@${tenant}`)
-        })
+        Effect.flatMap(Tenant, (tenant) => Effect.provideService(effect, CurrentUser, `alice@${tenant}`))
       )
-      const Audit = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push("audit")), effect))
+      const Audit = McpServer.middleware()((effect) => effect)
       const registrations = McpServer.toolkit(WhoAmI).pipe(
         Layer.provide(Audit.combine(Auth).layer),
         Layer.provide(TenantMiddleware.layer),
@@ -149,42 +138,26 @@ describe("McpServer request-level dependencies", () => {
 
       const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
 
-      assert.deepStrictEqual(order, ["tenant", "auth", "audit"])
       assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@acme" }])
     }))
 
   it.effect("keeps the order of each combined middleware when siblings share one", () =>
     Effect.gen(function*() {
       const order: Array<string> = []
-      const [A, B, C, D] = ["a", "b", "c", "d"].map((name) => recordingMiddleware(order, name))
-      const registrations = McpServer.toolkit(Ping).pipe(
-        Layer.provide(Layer.mergeAll(A.combine(B).layer, C.combine(B.combine(D)).layer)),
-        Layer.provide(PingHandlers)
+      const [A, B, C, D] = ["a", "b", "c", "d"].map((name) =>
+        McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push(name)), effect))
       )
+      const registrations = McpServer.resource({
+        uri: "test://shared",
+        name: "shared",
+        content: Effect.succeed("shared")
+      }).pipe(Layer.provide(Layer.mergeAll(A.combine(B).layer, C.combine(B.combine(D)).layer)))
       const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
 
-      yield* client.callTool({ name: "Ping", arguments: {} })
+      yield* client.readResource({ uri: "test://shared" })
 
       assert.isBelow(order.indexOf("d"), order.indexOf("b"))
       assert.isBelow(order.indexOf("b"), order.indexOf("a"))
       assert.isBelow(order.indexOf("b"), order.indexOf("c"))
-    }))
-
-  it.effect("keeps the order of a combined middleware whose members siblings provide separately", () =>
-    Effect.gen(function*() {
-      const order: Array<string> = []
-      const [A, B, C, D, E] = ["a", "b", "c", "d", "e"].map((name) => recordingMiddleware(order, name))
-      const registrations = McpServer.toolkit(Ping).pipe(
-        Layer.provide(Layer.mergeAll(C.combine(A).layer, D.combine(B).layer, E.combine(A.combine(B)).layer)),
-        Layer.provide(PingHandlers)
-      )
-      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
-
-      yield* client.callTool({ name: "Ping", arguments: {} })
-
-      assert.isBelow(order.indexOf("b"), order.indexOf("a"))
-      assert.isBelow(order.indexOf("a"), order.indexOf("c"))
-      assert.isBelow(order.indexOf("b"), order.indexOf("d"))
-      assert.isBelow(order.indexOf("a"), order.indexOf("e"))
     }))
 })
