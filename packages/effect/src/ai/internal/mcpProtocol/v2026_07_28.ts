@@ -203,7 +203,7 @@ const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
   Match.exhaustive
 )
 
-// Registrations may hold plain objects of the public class shapes, icons included, so encode by their fields.
+// Registrations may be plain objects, so encode by fields.
 const icons = PublicMcpSchema.optional(Schema.Array(Schema.Struct(PublicMcpSchema.Icon.fields)))
 const PublicResource = Schema.Struct({ ...PublicMcpSchema.Resource.fields, icons })
 const PublicResourceTemplate = Schema.Struct({ ...PublicMcpSchema.ResourceTemplate.fields, icons })
