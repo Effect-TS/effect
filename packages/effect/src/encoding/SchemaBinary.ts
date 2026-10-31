@@ -946,6 +946,123 @@ export function fieldId(id: number) {
 
 const FIELD_ID_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fieldId"
 
+// Marks the check that opts a number or bigint into a fixed-width encoding.
+// It lives on a check, not the AST, so later annotations and checks keep it.
+const FIXED_WIDTH_ANNOTATION_KEY = "~effect/encoding/SchemaBinary/fixedWidth"
+
+type FixedWidthKind = "i32" | "u32" | "i64" | "u64"
+
+const BIGINT_I64_MIN = BigInt("-9223372036854775808")
+const BIGINT_I64_MAX = BigInt("9223372036854775807")
+const BIGINT_U64_MAX = BigInt("18446744073709551615")
+
+/**
+ * A 32-bit signed integer written as four little-endian bytes.
+ *
+ * **When to use**
+ *
+ * Use when values regularly need more than four bytes as a varint, such as
+ * hashes or full-range ids. Small values are cheaper as `Schema.Int`.
+ *
+ * **Details**
+ *
+ * Rejects non-integers and values outside -2147483648 through 2147483647
+ * instead of truncating them. `-0` is written as `0`.
+ *
+ * **Gotchas**
+ *
+ * Switching a field between this, {@link uint32}, `Schema.Number` or
+ * `Schema.Int` changes its encoding, so it is not a compatible evolution.
+ *
+ * **Example** (Declaring fixed-width integer fields)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { SchemaBinary } from "effect/encoding"
+ *
+ * const Packet = Schema.Struct({
+ *   version: SchemaBinary.uint32,
+ *   offset: SchemaBinary.int32,
+ *   sequence: SchemaBinary.uint64,
+ *   timestamp: SchemaBinary.int64
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const int32: Schema.Number = Schema.Number.check(
+  Schema.isInt32({ [FIXED_WIDTH_ANNOTATION_KEY]: "i32" })
+)
+
+/**
+ * A 32-bit unsigned integer written as four little-endian bytes.
+ *
+ * **Details**
+ *
+ * Rejects non-integers and values outside 0 through 4294967295 instead of
+ * wrapping them. See {@link int32} for when a fixed width pays off.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const uint32: Schema.Number = Schema.Number.check(
+  Schema.isUint32({ [FIXED_WIDTH_ANNOTATION_KEY]: "u32" })
+)
+
+/**
+ * A 64-bit signed integer, as a `bigint`, written as eight little-endian bytes.
+ *
+ * **Details**
+ *
+ * Rejects values outside -2^63 through 2^63 - 1 instead of wrapping them. As a
+ * struct field it costs one length byte more than the payload, because the
+ * eight-byte field kind belongs to floating-point numbers.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const int64: Schema.BigInt = Schema.BigInt.check(
+  Schema.isBetweenBigInt({ minimum: BIGINT_I64_MIN, maximum: BIGINT_I64_MAX }, {
+    expected: "a 64-bit integer",
+    [FIXED_WIDTH_ANNOTATION_KEY]: "i64"
+  })
+)
+
+/**
+ * A 64-bit unsigned integer, as a `bigint`, written as eight little-endian
+ * bytes.
+ *
+ * **Details**
+ *
+ * Rejects values outside 0 through 2^64 - 1 instead of wrapping them. See
+ * {@link int64} for the struct field cost.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const uint64: Schema.BigInt = Schema.BigInt.check(
+  Schema.isBetweenBigInt({ minimum: BigInt(0), maximum: BIGINT_U64_MAX }, {
+    expected: "a 64-bit unsigned integer",
+    [FIXED_WIDTH_ANNOTATION_KEY]: "u64"
+  })
+)
+
+// The fixed width the schema opted into, from any of its checks.
+function fixedWidthKind(ast: SchemaAST.AST): FixedWidthKind | undefined {
+  const checks = ast.checks
+  if (checks === undefined) return undefined
+  for (const check of checks) {
+    const kind = check.annotations?.[FIXED_WIDTH_ANNOTATION_KEY]
+    if (kind !== undefined) return kind as FixedWidthKind
+  }
+  return undefined
+}
+
 // Bit 0 selects fingerprint mode; all other flag bits are reserved.
 const ENVELOPE = 0x20 // version nibble 2, flags 0
 const ENVELOPE_FINGERPRINT = 0x21 // version nibble 2, flag bit 0
@@ -1342,6 +1459,11 @@ class Writer {
   i64(n: bigint) {
     this.ensure(8)
     this.view.setBigInt64(this.start + this.len, n, true)
+    this.len += 8
+  }
+  u64(n: bigint) {
+    this.ensure(8)
+    this.view.setBigUint64(this.start + this.len, n, true)
     this.len += 8
   }
   u32le(n: number) {
@@ -1775,6 +1897,12 @@ class Reader {
     this.pos += 8
     return value
   }
+  u64(): bigint {
+    if (this.pos + 8 > this.end) invalid("complete value", undefined, this.options)
+    const value = (this.view ?? this.dataView()).getBigUint64(this.pos, true)
+    this.pos += 8
+    return value
+  }
   u32le(): number {
     if (this.pos + 4 > this.end) invalid("complete value", undefined, this.options)
     const value = (this.view ?? this.dataView()).getUint32(this.pos, true)
@@ -1799,6 +1927,7 @@ type LeafKind =
   | "symbol"
   | "bytes"
   | "bigint"
+  | FixedWidthKind
   | "json"
   | "duration"
   | "bigDecimal"
@@ -1981,7 +2110,12 @@ function packedSize(layout: Layout): number | undefined {
       return packedSize(layout.leaf)
     case "bool":
       return 1
+    case "i32":
+    case "u32":
+      return 4
     case "int64":
+    case "i64":
+    case "u64":
       return 8
     default:
       return undefined
@@ -2292,10 +2426,15 @@ function compileLayout(root: SchemaAST.AST): CompiledLayout {
       case "Undefined":
       case "Void":
         return leaf("undefined")
-      case "Number":
+      case "Number": {
+        const fixed = fixedWidthKind(ast)
+        if (fixed === "i32" || fixed === "u32") return leaf(fixed)
         return leaf(provesInteger(ast) ? "int" : "number")
-      case "BigInt":
-        return leaf("bigint")
+      }
+      case "BigInt": {
+        const fixed = fixedWidthKind(ast)
+        return leaf(fixed === "i64" || fixed === "u64" ? fixed : "bigint")
+      }
       case "Literal":
         return literalLayout(leaf(literalKind(ast.literal)), [ast.literal])
       case "Unknown":
@@ -2659,7 +2798,7 @@ function isExact(root: SchemaAST.AST): boolean {
   const walked = new Map<SchemaAST.AST, boolean>()
   const exact = (ast: SchemaAST.AST): boolean => {
     if (
-      ast.encoding !== undefined || ast.checks !== undefined ||
+      ast.encoding !== undefined || (ast.checks !== undefined && !isFixedWidthOnly(ast)) ||
       (ast as { readonly encodingChecks?: SchemaAST.Checks }).encodingChecks !== undefined
     ) {
       return false
@@ -2720,6 +2859,13 @@ function isExact(root: SchemaAST.AST): boolean {
   return exact(root)
 }
 
+// The binary layer enforces a fixed-width check on its own, so it is exact
+// when no other check rides along.
+function isFixedWidthOnly(ast: SchemaAST.AST): boolean {
+  return ast.checks !== undefined && ast.checks.length === 1 && fixedWidthKind(ast) !== undefined &&
+    (ast._tag === "Number" || ast._tag === "BigInt")
+}
+
 // A clean Exit whose success schema is exact: the binary layer fully produces
 // and validates success exits, so only failure exits need the schema pass for
 // their cause's error and defect encodings.
@@ -2758,7 +2904,11 @@ const F = {
   exit: 22,
   cause: 23,
   causeReason: 24,
-  literal: 25
+  literal: 25,
+  i32: 26,
+  u32: 27,
+  i64: 28,
+  u64: 29
 } as const
 
 // Hash the compiled layout graph, including cycle back-edge distances.
@@ -2802,6 +2952,10 @@ function layoutFingerprint(root: Layout): bigint {
       case "symbol":
       case "bytes":
       case "bigint":
+      case "i32":
+      case "u32":
+      case "i64":
+      case "u64":
       case "json":
       case "duration":
       case "bigDecimal":
@@ -2960,12 +3114,16 @@ function matchesLayout(layout: Layout, value: unknown): boolean {
       return value === undefined
     case "number":
     case "int":
+    case "i32":
+    case "u32":
       return typeof value === "number"
     case "string":
       return typeof value === "string"
     case "symbol":
       return typeof value === "symbol"
     case "bigint":
+    case "i64":
+    case "u64":
       return typeof value === "bigint"
     case "bytes":
       return value instanceof Uint8Array
@@ -3261,6 +3419,10 @@ function valueWireCode(layout: Layout, value: unknown, options: SchemaAST.ParseO
     case "int":
       if (!Number.isSafeInteger(value)) encodeFail("an integer", value, options)
       return FIELD_WIRE_VARINT
+    // The payload write validates the value.
+    case "i32":
+    case "u32":
+      return FIELD_WIRE_FIXED32
     default:
       return FIELD_WIRE_SIZED
   }
@@ -3269,8 +3431,8 @@ function valueWireCode(layout: Layout, value: unknown, options: SchemaAST.ParseO
 function encodeWirePayload(ctx: EncodeContext, layout: Layout, value: unknown, wire: number, w: Writer) {
   const kind = wire % FIELD_WIRE_FACTOR
   switch (kind) {
-    // EMPTY and FIXED32 are decoder-side skip support only; `valueWireCode`
-    // never produces them.
+    // EMPTY is decoder-side skip support only; `valueWireCode` never produces
+    // it.
     case FIELD_WIRE_FALSE:
     case FIELD_WIRE_TRUE:
       return
@@ -3279,6 +3441,9 @@ function encodeWirePayload(ctx: EncodeContext, layout: Layout, value: unknown, w
       return
     case FIELD_WIRE_FIXED64:
       w.f64(value as number)
+      return
+    case FIELD_WIRE_FIXED32:
+      encodeValue(ctx, layout, value, w)
       return
     case FIELD_WIRE_DECIMAL: {
       const scale = Math.floor(wire / FIELD_WIRE_FACTOR)
@@ -3984,6 +4149,29 @@ function encodeValue(ctx: EncodeContext, layout: Layout, value: unknown, w: Writ
       if (typeof value !== "bigint") encodeFail("a bigint", value, ctx.options)
       w.zigzag(value)
       return
+    // `disableChecks` can bypass the range check used to select these layouts.
+    case "i32":
+      if (typeof value !== "number" || (value | 0) !== value) encodeFail("a 32-bit integer", value, ctx.options)
+      w.i32le(value)
+      return
+    case "u32":
+      if (typeof value !== "number" || value >>> 0 !== value) {
+        encodeFail("a 32-bit unsigned integer", value, ctx.options)
+      }
+      w.u32le(value)
+      return
+    case "i64":
+      if (typeof value !== "bigint" || value < BIGINT_I64_MIN || value > BIGINT_I64_MAX) {
+        encodeFail("a 64-bit integer", value, ctx.options)
+      }
+      w.i64(value)
+      return
+    case "u64":
+      if (typeof value !== "bigint" || value < BIGINT_ZERO || value > BIGINT_U64_MAX) {
+        encodeFail("a 64-bit unsigned integer", value, ctx.options)
+      }
+      w.u64(value)
+      return
     case "int64": {
       if (!matchesLayout(layout, value)) {
         encodeFail(layout.flavor === "date" ? "a Date" : "a DateTime.Utc", value, ctx.options)
@@ -4349,6 +4537,9 @@ function fieldWireMask(layout: Layout): number {
       return (1 << FIELD_WIRE_VARINT) | (1 << FIELD_WIRE_FIXED64) | (1 << FIELD_WIRE_DECIMAL)
     case "int":
       return 1 << FIELD_WIRE_VARINT
+    case "i32":
+    case "u32":
+      return 1 << FIELD_WIRE_FIXED32
     default:
       return 1 << FIELD_WIRE_SIZED
   }
@@ -4379,6 +4570,12 @@ function decodeFieldPayload(layout: Layout, wireMask: number, kind: number, r: R
     if (r.rejectUnknownFields) invalid("matching field wire kind", kind, r.options)
     skipFieldPayload(kind, r)
     return ABSENT
+  }
+  if (kind === FIELD_WIRE_FIXED32) {
+    const saved = r.enter(4)
+    const value = decodeChecked(layout, r)
+    r.exit(saved)
+    return value
   }
   if (kind !== FIELD_WIRE_SIZED) {
     const value = decodeScalarField(kind, r)
@@ -4967,6 +5164,18 @@ function decodeValueUnchecked(layout: Layout, r: Reader): unknown {
       return r.takeCopy(r.end - r.pos)
     case "bigint":
       return r.zigzag()
+    case "i32":
+      if (r.remaining !== 4) invalid("a 32-bit integer", undefined, r.options)
+      return r.i32le()
+    case "u32":
+      if (r.remaining !== 4) invalid("a 32-bit unsigned integer", undefined, r.options)
+      return r.u32le()
+    case "i64":
+      if (r.remaining !== 8) invalid("a 64-bit integer", undefined, r.options)
+      return r.i64()
+    case "u64":
+      if (r.remaining !== 8) invalid("a 64-bit unsigned integer", undefined, r.options)
+      return r.u64()
     case "int64": {
       if (r.remaining !== 8) invalid("int64", undefined, r.options)
       const millis = Number(r.i64())
