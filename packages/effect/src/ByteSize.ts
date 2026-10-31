@@ -148,22 +148,21 @@ export type FormatOptions =
 interface UnitInfo {
   readonly symbol: Unit
   readonly factor: bigint
-  readonly decimalExponent?: number
   readonly names: ReadonlyArray<string>
 }
 
 const decimalUnits: ReadonlyArray<UnitInfo> = [
   { symbol: "B", factor: bigint1, names: ["B", "byte", "bytes"] },
-  { symbol: "kB", factor: decimalBase, decimalExponent: 3, names: ["kB", "kilobyte", "kilobytes"] },
-  { symbol: "MB", factor: decimalBase ** BigInt(2), decimalExponent: 6, names: ["MB", "megabyte", "megabytes"] },
-  { symbol: "GB", factor: decimalBase ** BigInt(3), decimalExponent: 9, names: ["GB", "gigabyte", "gigabytes"] },
-  { symbol: "TB", factor: decimalBase ** BigInt(4), decimalExponent: 12, names: ["TB", "terabyte", "terabytes"] },
-  { symbol: "PB", factor: decimalBase ** BigInt(5), decimalExponent: 15, names: ["PB", "petabyte", "petabytes"] },
-  { symbol: "EB", factor: decimalBase ** BigInt(6), decimalExponent: 18, names: ["EB", "exabyte", "exabytes"] },
-  { symbol: "ZB", factor: decimalBase ** BigInt(7), decimalExponent: 21, names: ["ZB", "zettabyte", "zettabytes"] },
-  { symbol: "YB", factor: decimalBase ** BigInt(8), decimalExponent: 24, names: ["YB", "yottabyte", "yottabytes"] },
-  { symbol: "RB", factor: decimalBase ** BigInt(9), decimalExponent: 27, names: ["RB", "ronnabyte", "ronnabytes"] },
-  { symbol: "QB", factor: decimalBase ** BigInt(10), decimalExponent: 30, names: ["QB", "quettabyte", "quettabytes"] }
+  { symbol: "kB", factor: decimalBase, names: ["kB", "kilobyte", "kilobytes"] },
+  { symbol: "MB", factor: decimalBase ** BigInt(2), names: ["MB", "megabyte", "megabytes"] },
+  { symbol: "GB", factor: decimalBase ** BigInt(3), names: ["GB", "gigabyte", "gigabytes"] },
+  { symbol: "TB", factor: decimalBase ** BigInt(4), names: ["TB", "terabyte", "terabytes"] },
+  { symbol: "PB", factor: decimalBase ** BigInt(5), names: ["PB", "petabyte", "petabytes"] },
+  { symbol: "EB", factor: decimalBase ** BigInt(6), names: ["EB", "exabyte", "exabytes"] },
+  { symbol: "ZB", factor: decimalBase ** BigInt(7), names: ["ZB", "zettabyte", "zettabytes"] },
+  { symbol: "YB", factor: decimalBase ** BigInt(8), names: ["YB", "yottabyte", "yottabytes"] },
+  { symbol: "RB", factor: decimalBase ** BigInt(9), names: ["RB", "ronnabyte", "ronnabytes"] },
+  { symbol: "QB", factor: decimalBase ** BigInt(10), names: ["QB", "quettabyte", "quettabytes"] }
 ]
 
 const binaryUnits: ReadonlyArray<UnitInfo> = [
@@ -206,26 +205,31 @@ const fromNumber = (input: number): ByteSize => {
 
 const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
 
+// Multiplies a decimal quantity such as "2.01" or "4e-15" by `factor` bytes exactly, or returns `undefined` for a fractional byte result
+const scaleDecimal = (quantity: string, factor: bigint): bigint | undefined => {
+  const match = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(quantity)
+  if (match === null) return undefined
+  const fraction = match[2] ?? ""
+  const numerator = BigInt(match[1] + fraction) * factor
+  const shift = Number(match[3] ?? 0) - fraction.length
+  if (shift >= 0) return numerator * BigInt(10) ** BigInt(shift)
+  const scale = BigInt(10) ** BigInt(-shift)
+  return numerator % scale === bigint0 ? numerator / scale : undefined
+}
+
 const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
   if (typeof quantity === "bigint") {
     if (quantity < bigint0) return invalid(`expected a non-negative quantity, received ${quantity}`)
     return make(quantity * unit.factor)
   }
-  if (unit.decimalExponent === undefined) {
+  if (binaryUnits.includes(unit)) {
     // Binary factors are powers of 2, so the floating-point product is exact
     const value = quantity * Number(unit.factor)
     if (Number.isSafeInteger(value) && value >= 0) return make(BigInt(value))
   } else {
-    // SI factors make the floating-point product inexact, so scale the decimal form of the quantity exactly
-    const match = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(String(quantity))
-    if (match !== null) {
-      const fraction = match[2] ?? ""
-      const digits = BigInt(match[1] + fraction)
-      const shift = unit.decimalExponent + Number(match[3] ?? 0) - fraction.length
-      const scale = BigInt(10) ** BigInt(Math.abs(shift))
-      const value = shift < 0 ? digits / scale : digits * scale
-      if ((shift >= 0 || digits % scale === bigint0) && value <= maxSafeInteger) return make(value)
-    }
+    // SI factors make the floating-point product inexact, so scale the decimal form of the quantity instead
+    const value = scaleDecimal(String(quantity), unit.factor)
+    if (value !== undefined && value <= maxSafeInteger) return make(value)
   }
   return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
 }
@@ -246,17 +250,13 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
  * @since 4.0.0
  */
 export const fromStringUnsafe = (input: string): ByteSize => {
-  const match = /^\s*(\d+)(?:\.(\d+))?\s*([A-Za-z]+)\s*$/.exec(input)
+  const match = /^\s*(\d+(?:\.\d+)?)\s*([A-Za-z]+)\s*$/.exec(input)
   if (match === null) return invalid(`unsupported syntax ${JSON.stringify(input)}`)
-  const unit = unitsByName.get(match[3])
-  if (unit === undefined) return invalid(`unsupported unit ${JSON.stringify(match[3])}`)
-  const fraction = match[2] ?? ""
-  const scale = BigInt(10) ** BigInt(fraction.length)
-  const numerator = BigInt(match[1] + fraction) * unit.factor
-  if (numerator % scale !== bigint0) {
-    return invalid(`${JSON.stringify(input)} does not represent an integral number of bytes`)
-  }
-  return make(numerator / scale)
+  const unit = unitsByName.get(match[2])
+  if (unit === undefined) return invalid(`unsupported unit ${JSON.stringify(match[2])}`)
+  const value = scaleDecimal(match[1], unit.factor)
+  if (value === undefined) return invalid(`${JSON.stringify(input)} does not represent an integral number of bytes`)
+  return make(value)
 }
 
 /**
