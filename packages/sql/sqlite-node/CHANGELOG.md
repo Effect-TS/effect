@@ -1,5 +1,12 @@
 # @effect/sql-sqlite-node
 
+## 4.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`5216684`](https://github.com/Effect-TS/effect/commit/52166841177ca39d32cc4c06ac5fcdd660656748), [`d190d97`](https://github.com/Effect-TS/effect/commit/d190d973a7fb2ebb71bfaf1a01adbffef1833555), [`a478745`](https://github.com/Effect-TS/effect/commit/a4787453be8e4f360f0212fb0b25bc4a0e18fc72), [`69eaa29`](https://github.com/Effect-TS/effect/commit/69eaa29dfe5c33547ad12068f65d31b2123194c3), [`ef81e9d`](https://github.com/Effect-TS/effect/commit/ef81e9dbd1221ab8a9c38ce50f96129054e3b6e2), [`013fb34`](https://github.com/Effect-TS/effect/commit/013fb34f88f3451ede7e7333f205563f07716b13)]:
+  - effect@4.1.2
+
 ## 4.1.1
 
 ### Patch Changes
