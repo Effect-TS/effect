@@ -148,21 +148,22 @@ export type FormatOptions =
 interface UnitInfo {
   readonly symbol: Unit
   readonly factor: bigint
+  readonly decimalExponent?: number
   readonly names: ReadonlyArray<string>
 }
 
 const decimalUnits: ReadonlyArray<UnitInfo> = [
   { symbol: "B", factor: bigint1, names: ["B", "byte", "bytes"] },
-  { symbol: "kB", factor: decimalBase, names: ["kB", "kilobyte", "kilobytes"] },
-  { symbol: "MB", factor: decimalBase ** BigInt(2), names: ["MB", "megabyte", "megabytes"] },
-  { symbol: "GB", factor: decimalBase ** BigInt(3), names: ["GB", "gigabyte", "gigabytes"] },
-  { symbol: "TB", factor: decimalBase ** BigInt(4), names: ["TB", "terabyte", "terabytes"] },
-  { symbol: "PB", factor: decimalBase ** BigInt(5), names: ["PB", "petabyte", "petabytes"] },
-  { symbol: "EB", factor: decimalBase ** BigInt(6), names: ["EB", "exabyte", "exabytes"] },
-  { symbol: "ZB", factor: decimalBase ** BigInt(7), names: ["ZB", "zettabyte", "zettabytes"] },
-  { symbol: "YB", factor: decimalBase ** BigInt(8), names: ["YB", "yottabyte", "yottabytes"] },
-  { symbol: "RB", factor: decimalBase ** BigInt(9), names: ["RB", "ronnabyte", "ronnabytes"] },
-  { symbol: "QB", factor: decimalBase ** BigInt(10), names: ["QB", "quettabyte", "quettabytes"] }
+  { symbol: "kB", factor: decimalBase, decimalExponent: 3, names: ["kB", "kilobyte", "kilobytes"] },
+  { symbol: "MB", factor: decimalBase ** BigInt(2), decimalExponent: 6, names: ["MB", "megabyte", "megabytes"] },
+  { symbol: "GB", factor: decimalBase ** BigInt(3), decimalExponent: 9, names: ["GB", "gigabyte", "gigabytes"] },
+  { symbol: "TB", factor: decimalBase ** BigInt(4), decimalExponent: 12, names: ["TB", "terabyte", "terabytes"] },
+  { symbol: "PB", factor: decimalBase ** BigInt(5), decimalExponent: 15, names: ["PB", "petabyte", "petabytes"] },
+  { symbol: "EB", factor: decimalBase ** BigInt(6), decimalExponent: 18, names: ["EB", "exabyte", "exabytes"] },
+  { symbol: "ZB", factor: decimalBase ** BigInt(7), decimalExponent: 21, names: ["ZB", "zettabyte", "zettabytes"] },
+  { symbol: "YB", factor: decimalBase ** BigInt(8), decimalExponent: 24, names: ["YB", "yottabyte", "yottabytes"] },
+  { symbol: "RB", factor: decimalBase ** BigInt(9), decimalExponent: 27, names: ["RB", "ronnabyte", "ronnabytes"] },
+  { symbol: "QB", factor: decimalBase ** BigInt(10), decimalExponent: 30, names: ["QB", "quettabyte", "quettabytes"] }
 ]
 
 const binaryUnits: ReadonlyArray<UnitInfo> = [
@@ -210,9 +211,9 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
   }
   const factor = Number(unit.factor)
   const value = Math.round(quantity * factor)
-  const back = unit.factor % decimalBase === bigint0
-    ? Number(`${value}e-${String(unit.factor).length - 1}`)
-    : value / factor
+  const back = unit.decimalExponent === undefined
+    ? value / factor
+    : Number(`${value}e-${unit.decimalExponent}`)
   if (!Number.isSafeInteger(value) || value < 0 || back !== quantity) {
     return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
   }
