@@ -972,9 +972,10 @@ const BIGINT_U64_MAX = BigInt("18446744073709551615")
  * **Gotchas**
  *
  * Switching a field between this, {@link uint32}, `Schema.Number` or
- * `Schema.Int` changes its encoding, so it is not a compatible evolution.
- * Default-mode readers skip the other number forms as unknown fields, but a
- * signedness swap decodes the same bits as a different value.
+ * `Schema.Int` changes its encoding, so it is not a compatible evolution. In
+ * default mode the other reader can decode a different value without an error,
+ * for example after a signedness swap or inside an array of structs.
+ * Fingerprint mode rejects the layout mismatch.
  *
  * **Example** (Declaring fixed-width integer fields)
  *
