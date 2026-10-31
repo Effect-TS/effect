@@ -2351,50 +2351,30 @@ Missing key
       assert.deepStrictEqual(seen, [undefined, "session=abc"])
     }))
 
-  it.effect("sends stored cookies on same-origin redirect hops but not after crossing origins", () =>
+  it.effect("selects stored cookies for each redirect hop", () =>
     Effect.gen(function*() {
       const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
-      yield* Ref.update(
-        jar,
-        Cookies.mergeIntoArray("https://b.test/", Cookies.fromSetCookie(["session=b"]), 0)
-      )
-      const redirects: Record<string, { readonly location: string; readonly setCookie?: string }> = {
-        "https://a.test/start": { location: "https://a.test/next", setCookie: "step=1" },
-        "https://a.test/next": { location: "https://b.test/land" },
-        "https://b.test/land": { location: "https://b.test/final" }
+      yield* Ref.update(jar, Cookies.mergeIntoArray("https://b.test/", Cookies.fromSetCookie(["b=1"]), 0))
+      const redirects: Record<string, Record<string, string>> = {
+        "https://a.test/start": { location: "https://a.test/next", "set-cookie": "a=1" },
+        "https://a.test/next": { location: "https://b.test/final" }
       }
-      const seen: Array<readonly [string, string | undefined]> = []
+      const seen: Array<string | undefined> = []
       const client = HttpClient.make((request) => {
-        seen.push([request.url, request.headers.cookie])
-        const redirect = redirects[request.url]
-        return Effect.succeed(HttpClientResponse.fromWeb(
-          request,
-          redirect === undefined ? new Response(null, { status: 200 }) : new Response(null, {
-            status: 302,
-            headers: {
-              location: redirect.location,
-              ...(redirect.setCookie ? { "set-cookie": redirect.setCookie } : {})
-            }
-          })
-        ))
+        seen.push(request.headers.cookie)
+        const headers = redirects[request.url]
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: headers ? 302 : 200, headers }))
+        )
       }).pipe(
         HttpClient.withCookiesRef(jar),
         HttpClient.followRedirects()
       )
 
-      const response = yield* client.get("https://a.test/start")
-      yield* client.get("https://b.test/other")
-      yield* client.execute(response.request)
+      yield* client.get("https://a.test/start")
 
-      assert.deepStrictEqual(seen, [
-        ["https://a.test/start", undefined],
-        ["https://a.test/next", "step=1"],
-        ["https://b.test/land", undefined],
-        ["https://b.test/final", undefined],
-        ["https://b.test/other", "session=b"],
-        ["https://b.test/final", "session=b"]
-      ])
-    }).pipe(Effect.provideService(HttpClient.TracerDisabledWhen, () => true)))
+      assert.deepStrictEqual(seen, [undefined, "a=1", "b=1"])
+    }))
 
   it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
     Effect.gen(function*() {

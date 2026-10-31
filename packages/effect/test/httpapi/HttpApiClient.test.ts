@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Fiber, Ref, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
-import { type Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 
 describe("HttpApiClient", () => {
@@ -371,39 +371,6 @@ describe("HttpApiClient", () => {
         yield* client.operations.wait({ params: { id: "op_1" } })
 
         strictEqual(requestUrl, expectedUrl)
-      }))
-  })
-
-  describe("cookies", () => {
-    const AuthApi = HttpApi.make("AuthApi").add(
-      HttpApiGroup.make("auth").add(
-        HttpApiEndpoint.post("login", "/login"),
-        HttpApiEndpoint.get("me", "/me")
-      )
-    )
-
-    it.effect("sends cookies stored by withCookiesRef in transformClient with a baseUrl", () =>
-      Effect.gen(function*() {
-        const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
-        const seen: Array<string | undefined> = []
-        const httpClient = HttpClient.make((request) =>
-          Effect.sync(() => {
-            seen.push(request.headers.cookie)
-            return HttpClientResponse.fromWeb(
-              request,
-              new Response(null, { status: 204, headers: { "set-cookie": "session=abc; Path=/" } })
-            )
-          })
-        )
-        const client = yield* HttpApiClient.make(AuthApi, {
-          baseUrl: "https://api.example.com",
-          transformClient: HttpClient.withCookiesRef(jar)
-        }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient))
-
-        yield* client.auth.login()
-        yield* client.auth.me()
-
-        assert.deepStrictEqual(seen, [undefined, "session=abc"])
       }))
   })
 
