@@ -2195,10 +2195,48 @@ describe("McpServer", () => {
         assert.isUndefined(result.structuredContent)
         assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
         assert.lengthOf(reported, 1)
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        const error = Cause.squash(reported[0])
+        assertTrue(AiError.isAiError(error))
+        assert.strictEqual(error.reason._tag, "ToolResultEncodingError")
         assert.lengthOf(logged, 1)
         assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
+
+    for (const failureMode of ["error", "return"] as const) {
+      it.effect(`encodes declared failures with their JSON codec in ${failureMode} mode`, () =>
+        Effect.gen(function*() {
+          class InsufficientFunds extends Schema.TaggedError<InsufficientFunds>()("InsufficientFunds", {
+            missingCents: Schema.BigInt,
+            holds: Schema.ReadonlyMap(Schema.String, Schema.Number),
+            hint: Schema.Option(Schema.String)
+          }) {}
+          const toolkit = Toolkit.make(Tool.make("Charge", { failure: InsufficientFunds, failureMode }))
+          const client = yield* McpTest.makeClient(
+            Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
+              Layer.provide(toolkit.toLayer({
+                Charge: () =>
+                  Effect.fail(
+                    new InsufficientFunds({
+                      missingCents: 250n,
+                      holds: new Map([["card", 5]]),
+                      hint: Option.some("top up")
+                    })
+                  )
+              }))
+            ),
+            { protocols: [McpProtocol.v2025_06_18] }
+          )
+          const result = yield* client.callTool({ name: "Charge" })
+
+          assert.isTrue(result.isError)
+          assert.deepStrictEqual(JSON.parse(toolResultText(result)), {
+            _tag: "InsufficientFunds",
+            missingCents: "250",
+            holds: [["card", 5]],
+            hint: { _tag: "Some", value: "top up" }
+          })
+        }))
+    }
 
     for (
       const [origin, failureMode] of [
