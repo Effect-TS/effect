@@ -134,6 +134,22 @@ describe("DateTime", () => {
     })
   })
 
+  it("preserves the offset when rounding inside a repeated hour", () => {
+    const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:15.250Z", {
+      timeZone: "America/New_York"
+    })
+    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
+    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
+    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "second")), "2025-11-02T06:30:15.000Z")
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "second")), "2025-11-02T06:30:15.999Z")
+    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "minute")), "2025-11-02T06:30:00.000Z")
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "minute")), "2025-11-02T06:30:59.999Z")
+    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "hour")), "2025-11-02T06:00:00.000Z")
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "hour")), "2025-11-02T06:59:59.999Z")
+    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "second")), "2025-11-02T06:30:15.000Z")
+  })
+
   describe("endOf", () => {
     it("month", () => {
       const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
