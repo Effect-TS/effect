@@ -14,6 +14,7 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberSet from "../FiberSet.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
@@ -21,7 +22,6 @@ import type { HttpBody } from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
-import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
@@ -250,9 +250,6 @@ export const make: (
   const exportFibers = yield* FiberSet.make<void, never>()
   const runExportFork = yield* FiberSet.runtime(exportFibers)<never>()
 
-  const flusher = yield* Flusher
-  yield* flusher.register(runExport)
-
   yield* Scope.addFinalizer(
     scope,
     Effect.suspend(() => {
@@ -268,18 +265,30 @@ export const make: (
 
   // Some runtimes stay in memory while a timer is pending.
   const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
-  const pending = Latch.makeUnsafe(exportsEmpty)
-
-  yield* pending.await.pipe(
-    Effect.andThen(Effect.sleep(exportInterval)),
-    Effect.andThen(FiberSet.run(exportFibers, runExport)),
-    Effect.flatMap(Fiber.await),
-    Effect.andThen(Effect.sync(() => {
-      if (!exportsEmpty && buffer.length === 0) pending.closeUnsafe()
+  const timer = yield* FiberHandle.make<void, never>()
+  const runTimer = yield* FiberHandle.runtime(timer)<never>()
+  let sleeping = false
+  const exportPeriodically = Effect.suspend(() => {
+    sleeping = true
+    return Effect.sleep(exportInterval)
+  }).pipe(
+    Effect.andThen(Effect.suspend(() => {
+      sleeping = false
+      return FiberSet.run(exportFibers, runExport)
     })),
-    Effect.forever,
-    Effect.forkIn(scope)
+    Effect.flatMap(Fiber.await),
+    Effect.repeat({ while: () => exportsEmpty || buffer.length > 0 })
   )
+  const startTimer = () => runTimer(exportPeriodically, { onlyIfMissing: true })
+  if (exportsEmpty) startTimer()
+
+  const flusher = yield* Flusher
+  yield* flusher.register(runExport.pipe(
+    // Only a sleeping timer is cancelled, so an in-flight periodic export is still awaited.
+    Effect.andThen(
+      Effect.suspend(() => sleeping && buffer.length === 0 && !exportsEmpty ? FiberHandle.clear(timer) : Effect.void)
+    )
+  ))
 
   return {
     push(data) {
@@ -292,7 +301,7 @@ export const make: (
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
         runExportFork(runExport)
       } else {
-        pending.openUnsafe()
+        startTimer()
       }
     }
   }
