@@ -384,6 +384,40 @@ describe.concurrent("Runners.makeRpc", () => {
       assert.strictEqual(notified, 1)
     }).pipe(Effect.provide(layerLocalRunners())))
 
+  it.effect("a custom runner's failed send notification fails the caller only outside a transaction", () =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      let notified = 0
+      const runners = yield* Runners.make({
+        codecFor: Schema.toCodecJson as RpcSerialization.CodecFor,
+        send: () => Effect.die("unexpected send"),
+        notify: () =>
+          Effect.suspend(() => {
+            notified++
+            return Effect.fail(new ClusterError.RunnerUnavailable({ address: runnerAddress }))
+          }),
+        ping: () => Effect.void,
+        onRunnerUnavailable: () => Effect.void
+      })
+      const notify = () =>
+        runners.notify({
+          address: Option.some(runnerAddress),
+          message: makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), () => Effect.void),
+          discard: true
+        })
+      const error = yield* Effect.flip(notify())
+      assert.strictEqual(error._tag, "RunnerUnavailable")
+      yield* storage.withTransaction(Effect.gen(function*() {
+        yield* notify()
+        assert.strictEqual(notified, 1)
+      }))
+      assert.strictEqual(notified, 2)
+    }).pipe(
+      Effect.provide(layerLocalRunners()),
+      Effect.provide(ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))
+    ))
+
   it.effect("answers a fresh local request without reading or polling storage", () => {
     let reads = 0
     return Effect.gen(function*() {
