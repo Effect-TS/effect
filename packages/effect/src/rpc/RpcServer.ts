@@ -980,8 +980,9 @@ export const make: <Rpcs extends Rpc.Any>(
           ? getDiscardSchemas(rpc as any, schemas)
           : schemas
         // the headers come from the wire, so they are checked before they are
-        // used, whether the payload then decodes synchronously or not
-        if (!isRequestHeaders(request.headers)) {
+        // used, whether the payload then decodes synchronously or not. Raw
+        // clients may omit them, which means no headers.
+        if (request.headers !== undefined && !isRequestHeaders(request.headers)) {
           const reason = "Invalid request headers"
           return isNotification
             ? dropNotification(reason)
