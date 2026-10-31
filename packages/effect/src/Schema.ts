@@ -9119,6 +9119,92 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   )
 }
 /**
+ * Validates a value against `onTrue` when it satisfies `condition`, and against
+ * `onFalse` otherwise. An absent branch imposes no constraint.
+ *
+ * **Details**
+ *
+ * The condition and branches run against the type side of their schemas with
+ * the caller's parse options. Their outputs are discarded, so each branch sees
+ * the same value the filter received. A failing condition is never reported;
+ * a failing branch reports its own issue.
+ *
+ * JSON Schema:
+ * This check corresponds to `if`, `then`, and `else` in JSON Schema. Effect
+ * checks the decoded value, while JSON Schema checks the original input. A
+ * closed struct strips excess properties under the default parse options, so
+ * a closed condition can match a value with extra keys that JSON Schema would
+ * reject; use `onExcessProperty: "error"` for JSON Schema behavior.
+ * `toJsonSchemaDocument` omits this check and marks the document approximate.
+ *
+ * **Example** (Requiring a size for boxes)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   kind: Schema.String,
+ *   size: Schema.optionalKey(Schema.Finite)
+ * }).check(
+ *   Schema.isConditional(Schema.Struct({ kind: Schema.Literal("box") }), {
+ *     onTrue: Schema.Struct({ size: Schema.Finite })
+ *   })
+ * )
+ *
+ * Schema.is(schema)({ kind: "box" }) // false
+ * Schema.is(schema)({ kind: "box", size: 1 }) // true
+ * Schema.is(schema)({ kind: "other" }) // true
+ * ```
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.2.0
+ */
+export function isConditional(
+  condition: Constraint,
+  branches: { readonly onTrue?: Constraint | undefined; readonly onFalse?: Constraint | undefined },
+  annotations?: Annotations.Filter
+) {
+  const conditionAST = toType(condition).ast
+  const parseCondition = SchemaParser._issue(conditionAST)
+  const keys: Array<"onTrue" | "onFalse"> = []
+  const branchASTs: Array<SchemaAST.AST> = []
+  const parseBranch: {
+    onTrue?: ReturnType<typeof SchemaParser._issue>
+    onFalse?: ReturnType<typeof SchemaParser._issue>
+  } = {}
+  for (const key of ["onTrue", "onFalse"] as const) {
+    const branch = branches[key]
+    if (branch === undefined) continue
+    const ast = toType(branch).ast
+    keys.push(key)
+    branchASTs.push(ast)
+    parseBranch[key] = SchemaParser._issue(ast)
+  }
+  return makeFilter<unknown>(
+    (input, _ast, options) => {
+      // Only success matters for the condition, so stop at its first issue.
+      const holds = parseCondition(input, { ...options, errors: "first" }) === undefined
+      return parseBranch[holds ? "onTrue" : "onFalse"]?.(input, options) ?? true
+    },
+    {
+      expected: "a value satisfying the conditional schema",
+      representation: {
+        id: "effect/schema/isConditional",
+        payload: keys,
+        schemas: [conditionAST, ...branchASTs]
+      },
+      toCode: ({ schemas: [condition, ...branches] }) => ({
+        runtime: `Schema.isConditional(${condition.runtime}, { ${
+          keys.map((key, i) => `${key}: ${branches[i].runtime}`).join(", ")
+        } })`
+      }),
+      ...annotations
+    }
+  )
+}
+
+/**
  * Validates that all items in an array are unique according to Effect equality.
  *
  * **Details**

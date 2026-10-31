@@ -10,7 +10,7 @@ import * as InternalAnnotations from "./annotations.ts"
 import { ReferenceSlot } from "./fromRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
-type Check = Filter | FilterGroup | PropertyNames
+type Check = Filter | FilterGroup | PropertyNames | Conditional
 
 interface Filter {
   readonly _tag: "Filter"
@@ -21,6 +21,14 @@ interface Filter {
 interface PropertyNames {
   readonly _tag: "PropertyNames"
   readonly type: ImportedJsonSchemaRepresentation
+  readonly annotations?: Schema.Annotations.Filter | undefined
+}
+
+interface Conditional {
+  readonly _tag: "Conditional"
+  readonly condition: ImportedJsonSchemaRepresentation
+  readonly onTrue: ImportedJsonSchemaRepresentation | undefined
+  readonly onFalse: ImportedJsonSchemaRepresentation | undefined
   readonly annotations?: Schema.Annotations.Filter | undefined
 }
 
@@ -287,7 +295,8 @@ export function fromJsonSchemaMultiDocument(
     let schema: Schema.Top
     switch (input._tag) {
       case "Unknown":
-        return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+        schema = Schema.Json.annotate({ expected: "JSON value" })
+        break
       case "Never":
       case "Null":
       case "String":
@@ -354,7 +363,14 @@ export function fromJsonSchemaMultiDocument(
         check.annotations
       )
     }
-    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalize(check.type)) : check.filter
+    const filter = check._tag === "PropertyNames"
+      ? Schema.isPropertyNames(finalize(check.type))
+      : check._tag === "Conditional"
+      ? Schema.isConditional(finalize(check.condition), {
+        onTrue: check.onTrue === undefined ? undefined : finalize(check.onTrue),
+        onFalse: check.onFalse === undefined ? undefined : finalize(check.onFalse)
+      })
+      : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
   }
 
@@ -558,7 +574,17 @@ export function fromJsonSchemaMultiDocument(
     if (check._tag === "FilterGroup") {
       return check.checks.every((check) => satisfiesPrimitiveCheck(check, value))
     }
-    return check._tag === "Filter" && check.filter.run(value, Schema.Unknown.ast, {}) === undefined
+    return check._tag === "Conditional" ||
+      check._tag === "Filter" && check.filter.run(value, Schema.Unknown.ast, {}) === undefined
+  }
+
+  function hasConditional(check: Check): boolean {
+    return check._tag === "Conditional" || check._tag === "FilterGroup" && check.checks.some(hasConditional)
+  }
+
+  // Conditionals depend on the runtime value, so a literal keeps them.
+  function conditionalChecks(checked: Checked): ReadonlyArray<Check> {
+    return checked.checks.filter(hasConditional)
   }
 
   function satisfiesLiteral(
@@ -579,7 +605,13 @@ export function fromJsonSchemaMultiDocument(
     const satisfies = primitive._tag === "Boolean"
       ? typeof literal.literal === "boolean"
       : satisfiesLiteral(primitive, literal)
-    return satisfies ? annotateIntersection(literal, primitive, literal) : never
+    return satisfies
+      ? annotateIntersection(
+        { ...literal, checks: [...conditionalChecks(primitive), ...literal.checks] },
+        primitive,
+        literal
+      )
+      : never
   }
 
   function intersectArrays(
@@ -648,7 +680,7 @@ export function fromJsonSchemaMultiDocument(
       for (const name of scope.properties.keys()) names.add(name)
       hasFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" && scope.patterns.length === 0
       requiresFiniteKeyDomain ||= scope.additionalProperties._tag === "Never" ||
-        scope.additionalProperties._tag !== "Unknown" && (scope.hasProperties || scope.patterns.length > 0)
+        !isUnconstrained(scope.additionalProperties) && (scope.hasProperties || scope.patterns.length > 0)
     }
     const closedPattern = scopes.length === 1 && names.size === 0 &&
         scopes[0].additionalProperties._tag === "Never" && scopes[0].patterns.length === 1
@@ -708,6 +740,14 @@ export function fromJsonSchemaMultiDocument(
       path,
       ...checked
     }
+  }
+
+  function hasChecks(representation: ImportedJsonSchemaRepresentation): boolean {
+    return representation._tag !== "Reference" && representation.checks.length > 0
+  }
+
+  function isUnconstrained(representation: ImportedJsonSchemaRepresentation): boolean {
+    return representation._tag === "Unknown" && representation.checks.length === 0
   }
 
   const jsonRootTags = ["Null", "String", "Number", "Boolean", "Objects", "Arrays"] as const
@@ -804,24 +844,33 @@ export function fromJsonSchemaMultiDocument(
     if ((left.options?.mode ?? "anyOf") !== "anyOf" || (right.options?.mode ?? "anyOf") !== "anyOf") {
       return undefined
     }
-    const rightByValue = new Map<string | number | boolean | null, ImportedJsonSchemaRepresentation>()
+    // Duplicates coalesce only without checks, so a checked duplicate cannot replace an unchecked one.
+    const rightByValue = new Map<string | number | boolean | null, Array<ImportedJsonSchemaRepresentation>>()
     for (const representation of right.types) {
       const value = literalValue(representation)
       if (value === undefined) return undefined
-      const previous = rightByValue.get(value)
-      rightByValue.set(value, {
-        ...representation,
-        customAnnotations: mergeAnnotations(previous?.customAnnotations, representation.customAnnotations)
-      })
+      const matches = rightByValue.get(value)
+      const previous = matches?.at(-1)
+      if (matches === undefined) {
+        rightByValue.set(value, [representation])
+      } else if (previous !== undefined && !hasChecks(previous) && !hasChecks(representation)) {
+        matches[matches.length - 1] = {
+          ...representation,
+          customAnnotations: mergeAnnotations(previous.customAnnotations, representation.customAnnotations)
+        }
+      } else {
+        matches.push(representation)
+      }
     }
     const types: Array<ImportedJsonSchemaRepresentation> = []
     for (const representation of left.types) {
       const value = literalValue(representation)
       if (value === undefined) return undefined
-      const match = rightByValue.get(value)
-      if (match !== undefined) types.push(intersect(representation, annotate(match, right), path))
+      for (const match of rightByValue.get(value) ?? []) {
+        types.push(intersect(representation, annotate(match, right), path))
+      }
     }
-    return makeUnion(left, types)
+    return makeUnion({ ...left, checks: [...left.checks, ...right.checks] }, types)
   }
 
   function intersectUnionWithType(
@@ -917,8 +966,8 @@ export function fromJsonSchemaMultiDocument(
   ): ImportedJsonSchemaRepresentation {
     if (left._tag === "Never") return left
     if (right._tag === "Never") return right
-    if (left._tag === "Unknown") return annotateIntersection(right, left, right)
-    if (right._tag === "Unknown") return annotateIntersection(left, left, right)
+    if (left._tag === "Unknown" && left.checks.length === 0) return annotateIntersection(right, left, right)
+    if (right._tag === "Unknown" && right.checks.length === 0) return annotateIntersection(left, left, right)
     if (left._tag === "Reference") {
       // Resolve an unannotated reference first. An annotated empty definition
       // could otherwise leave the other reference unresolved during union partitioning.
@@ -933,6 +982,9 @@ export function fromJsonSchemaMultiDocument(
     if (right._tag === "Reference") {
       return annotate(intersect(left, resolveReference(right, path), path), right)
     }
+    // An unconstrained value with checks keeps them on the other side, even a union.
+    if (left._tag === "Unknown") return { ...right, ...intersectChecks(right, left) }
+    if (right._tag === "Unknown") return { ...left, ...intersectChecks(left, right) }
     if (left._tag === "Union" && right._tag === "Union") return intersectUnions(left, right, path)
     if (left._tag === "Union") return intersectUnionWithType(left, right, path, true)
     if (right._tag === "Union") return intersectUnionWithType(right, left, path, false)
@@ -988,7 +1040,7 @@ export function fromJsonSchemaMultiDocument(
           (right._tag === "String" || right._tag === "Number") && satisfiesLiteral(right, left) ||
           right._tag === "Boolean" && typeof left.literal === "boolean"
         ) {
-          return annotateIntersection(left, left, right)
+          return annotateIntersection({ ...left, checks: [...left.checks, ...conditionalChecks(right)] }, left, right)
         }
         return never
       case "Arrays": {
@@ -1027,9 +1079,7 @@ export function fromJsonSchemaMultiDocument(
     const wasInNestedResource = inNestedResource
     inNestedResource ||= !isRoot && typeof schema.$id === "string"
     for (const keyword of Object.keys(schema)) {
-      if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
       switch (keyword) {
-        case "if":
         case "$dynamicRef":
         case "contains":
         case "dependentRequired":
@@ -1113,6 +1163,15 @@ export function fromJsonSchemaMultiDocument(
         }
         representation = intersect(union, representation, [...path, mode])
       }
+    }
+    if (Object.hasOwn(schema, "if") && (Object.hasOwn(schema, "then") || Object.hasOwn(schema, "else"))) {
+      const conditional: Conditional = {
+        _tag: "Conditional",
+        condition: translateSchema(schema.if, [...path, "if"]),
+        onTrue: Object.hasOwn(schema, "then") ? translateSchema(schema.then, [...path, "then"]) : undefined,
+        onFalse: Object.hasOwn(schema, "else") ? translateSchema(schema.else, [...path, "else"]) : undefined
+      }
+      representation = intersect(representation, { _tag: "Unknown", checks: [conditional] }, path)
     }
     inNestedResource = wasInNestedResource
     return representation
