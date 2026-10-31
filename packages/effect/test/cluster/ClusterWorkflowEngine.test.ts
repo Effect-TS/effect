@@ -777,6 +777,76 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }), 30_000)
 
+  it.effect("keeps a newer activity reply when a stale Suspended reply resets the attempt", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("StaleActivityReset", {
+        payload: {},
+        success: Schema.Number,
+        idempotencyKey: () => "one"
+      })
+      const register = yield* Latch.make()
+      const staleReset = yield* Latch.make()
+      const allowStaleReset = yield* Latch.make()
+      let executions = 0
+      const activity = Activity.make({
+        name: "loser",
+        success: Schema.Number,
+        execute: Effect.sync(() => ++executions)
+      })
+      const storage = yield* makeSharedStorage
+      let activityRequestId: Snowflake.Snowflake | undefined
+      let activityResets = 0
+      // Freeze the first reset of the attempt, standing in for a stale runner
+      // that read the Suspended reply before the new owner replaced it.
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        clearReplies: (id, options) =>
+          id === activityRequestId && ++activityResets === 1
+            ? staleReset.open.pipe(
+              Effect.andThen(allowStaleReset.await),
+              Effect.andThen(storage.clearReplies(id, options))
+            )
+            : storage.clearReplies(id, options)
+      })
+      const executionId = yield* workflow.executionId({})
+      const requestId = yield* sendUnregisteredActivity(workflow._tag, executionId).pipe(Effect.provide(
+        workflow.toLayer(() => activity).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+          storageLayer: unansweredActivityStorage(storage)
+        })))
+      ))
+      activityRequestId = requestId
+      yield* Effect.addFinalizer(() => allowStaleReset.open)
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* workflow.execute({}, { discard: true })
+        yield* sharding.pollStorage
+        assert.deepStrictEqual(yield* activityReply(storage, requestId), Exit.succeed(new Workflow.Suspended({})))
+        yield* register.open
+        yield* advanceUntil(() => staleReset.isOpen(), "the replay must reset the Suspended attempt")
+        // The new owner resets the same attempt and stores its result.
+        assert.isTrue(yield* sharding.reset(requestId))
+        yield* pollStorageUntil(() => executions === 1, "the owner must run the activity")
+        assert.deepStrictEqual(
+          yield* activityReply(storage, requestId),
+          Exit.succeed(new Workflow.Complete({ exit: Exit.succeed(1) }))
+        )
+        yield* allowStaleReset.open
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed(1) })
+        )
+        assert.strictEqual(executions, 1)
+        assert.deepStrictEqual(
+          yield* activityReply(storage, requestId),
+          Exit.succeed(new Workflow.Complete({ exit: Exit.succeed(1) }))
+        )
+      }).pipe(Effect.provide(
+        workflow.toLayer(() => register.await.pipe(Effect.andThen(activity))).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+        )
+      ))
+    }))
+
   for (const entityMailboxCapacity of [2, 3]) {
     it.effect(
       `admits a required completion after an unrelated completion with mailbox capacity ${entityMailboxCapacity}`,

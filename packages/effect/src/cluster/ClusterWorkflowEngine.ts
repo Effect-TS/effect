@@ -267,7 +267,11 @@ export const make = Effect.gen(function*() {
         id: activityPrimaryKey(options.activity.name, options.attempt)
       })
       if (Option.isNone(requestId)) return
-      yield* sharding.reset(requestId.value)
+      // Reset only the Suspended reply this runner saw. If another runner has
+      // stored a newer reply, storage skips the reset and the caller reads it.
+      const reply = yield* replyForRequestId(requestId.value)
+      if (Option.isNone(reply) || !isSuspendedReply(reply.value)) return
+      yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
     },
     Effect.retry({
       times: 3,
@@ -344,7 +348,7 @@ export const make = Effect.gen(function*() {
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
-    yield* sharding.reset(requestId.value)
+    yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   }, Effect.scoped)
 
   // Subscribe to the run's next reply before reading storage, so a reply
