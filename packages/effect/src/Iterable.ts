@@ -1737,17 +1737,19 @@ export const filterMapWhile: {
   <A, B, X>(self: Iterable<A>, f: (input: A, i: number) => Result<B, X>): Iterable<B>
 } = dual(2, <A, B, X>(self: Iterable<A>, f: (input: A, i: number) => Result<B, X>) => ({
   [Symbol.iterator]() {
-    const iterator = self[Symbol.iterator]()
+    let iterator: Iterator<A> | undefined = self[Symbol.iterator]()
     let i = 0
     return {
       next() {
-        const result = iterator.next()
-        if (result.done) {
-          return { done: true, value: undefined }
-        }
-        const next = f(result.value, i++)
-        if (R.isSuccess(next)) {
-          return { done: false, value: next.success }
+        if (iterator !== undefined) {
+          const result = iterator.next()
+          if (!result.done) {
+            const next = f(result.value, i++)
+            if (R.isSuccess(next)) {
+              return { done: false, value: next.success }
+            }
+          }
+          iterator = undefined
         }
         return { done: true, value: undefined }
       }
