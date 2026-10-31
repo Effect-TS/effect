@@ -313,20 +313,17 @@ export const make = (
         (sdk) => new LibsqlConnectionImpl(sdk)
       )
     // Remote transports run each statement and transaction on its own stream.
-    // Local clients may have a single connection, so serialize access to it.
+    // Local clients may own a single connection that the SDK refuses to lend
+    // while a transaction holds it, so take turns on it instead.
     const protocol = (connection.sdk as Libsql.Client).protocol
-    const semaphore = protocol === "http" || protocol === "ws" ? undefined : yield* Semaphore.make(1)
+    const permit: Effect.Effect<void, never, Scope.Scope> = protocol === "http" || protocol === "ws"
+      ? Effect.void
+      : (yield* Semaphore.make(1)).takeScoped(1)
 
     const withTransaction = Client.makeWithTransaction({
       transactionService: LibsqlTransaction,
       spanAttributes,
-      acquireConnection: Effect.fnUntraced(function*(restore) {
-        if (semaphore) {
-          yield* restore(semaphore.take(1))
-          yield* Effect.addFinalizer(() => semaphore.release(1))
-        }
-        return yield* connection.beginTransaction
-      }),
+      acquireConnection: (restore) => Effect.andThen(restore(permit), connection.beginTransaction),
       begin: () => Effect.void, // already begun in acquireConnection
       savepoint: (conn, id) => conn.executeRaw(`SAVEPOINT effect_sql_${id};`, []),
       releaseSavepoint: (conn, id) => conn.executeRaw(`RELEASE SAVEPOINT effect_sql_${id};`, []),
@@ -337,12 +334,7 @@ export const make = (
 
     // Outside a transaction, hold the permit until the statement's scope
     // closes, so no other fiber can begin a transaction while it runs.
-    const lease = semaphore
-      ? Effect.as(
-        Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
-        connection as LibsqlConnection
-      )
-      : Effect.succeed(connection as LibsqlConnection)
+    const lease = Effect.as(permit, connection as LibsqlConnection)
     const acquirer = Effect.flatMap(
       Effect.serviceOption(LibsqlTransaction),
       Option.match({
