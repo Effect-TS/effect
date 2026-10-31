@@ -312,14 +312,19 @@ export const make = (
         ),
         (sdk) => new LibsqlConnectionImpl(sdk)
       )
-    const semaphore = yield* Semaphore.make(1)
+    // Remote transports run each statement and transaction on its own stream.
+    // Local clients may have a single connection, so serialize access to it.
+    const protocol = (connection.sdk as Libsql.Client).protocol
+    const semaphore = protocol === "http" || protocol === "ws" ? undefined : yield* Semaphore.make(1)
 
     const withTransaction = Client.makeWithTransaction({
       transactionService: LibsqlTransaction,
       spanAttributes,
       acquireConnection: Effect.fnUntraced(function*(restore) {
-        yield* restore(semaphore.take(1))
-        yield* Effect.addFinalizer(() => semaphore.release(1))
+        if (semaphore) {
+          yield* restore(semaphore.take(1))
+          yield* Effect.addFinalizer(() => semaphore.release(1))
+        }
         return yield* connection.beginTransaction
       }),
       begin: () => Effect.void, // already begun in acquireConnection
@@ -332,10 +337,12 @@ export const make = (
 
     // Outside a transaction, hold the permit until the statement's scope
     // closes, so no other fiber can begin a transaction while it runs.
-    const lease = Effect.as(
-      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
-      connection as LibsqlConnection
-    )
+    const lease = semaphore
+      ? Effect.as(
+        Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
+        connection as LibsqlConnection
+      )
+      : Effect.succeed(connection as LibsqlConnection)
     const acquirer = Effect.flatMap(
       Effect.serviceOption(LibsqlTransaction),
       Option.match({
