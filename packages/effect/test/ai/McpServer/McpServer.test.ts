@@ -2206,19 +2206,19 @@ describe("McpServer", () => {
       it.effect(`encodes declared failures with their JSON codec in ${failureMode} mode`, () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(Tool.make("Charge", {
-            failure: Schema.Struct({ missingCents: Schema.BigInt }),
+            failure: Schema.Struct({ missingCents: Schema.BigInt, retryAfter: Schema.FiniteFromString }),
             failureMode
           }))
           const client = yield* McpTest.makeClient(
             Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
-              Layer.provide(toolkit.toLayer({ Charge: () => Effect.fail({ missingCents: 250n }) }))
+              Layer.provide(toolkit.toLayer({ Charge: () => Effect.fail({ missingCents: 250n, retryAfter: 5 }) }))
             ),
             { protocols: [McpProtocol.v2025_06_18] }
           )
           const result = yield* client.callTool({ name: "Charge" })
 
           assert.isTrue(result.isError)
-          assert.strictEqual(toolResultText(result), JSON.stringify({ missingCents: "250" }))
+          assert.strictEqual(toolResultText(result), JSON.stringify({ missingCents: "250", retryAfter: "5" }))
         }))
     }
 
