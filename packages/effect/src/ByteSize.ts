@@ -204,20 +204,30 @@ const fromNumber = (input: number): ByteSize => {
   return make(BigInt(input))
 }
 
+const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
+
 const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
   if (typeof quantity === "bigint") {
     if (quantity < bigint0) return invalid(`expected a non-negative quantity, received ${quantity}`)
     return make(quantity * unit.factor)
   }
-  const factor = Number(unit.factor)
-  const value = Math.round(quantity * factor)
-  const back = unit.decimalExponent === undefined
-    ? value / factor
-    : Number(`${value}e-${unit.decimalExponent}`)
-  if (!Number.isSafeInteger(value) || value < 0 || back !== quantity) {
-    return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
+  if (unit.decimalExponent === undefined) {
+    // Binary factors are powers of 2, so the floating-point product is exact
+    const value = quantity * Number(unit.factor)
+    if (Number.isSafeInteger(value) && value >= 0) return make(BigInt(value))
+  } else {
+    // SI factors make the floating-point product inexact, so scale the decimal form of the quantity exactly
+    const match = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(String(quantity))
+    if (match !== null) {
+      const fraction = match[2] ?? ""
+      const digits = BigInt(match[1] + fraction)
+      const shift = unit.decimalExponent + Number(match[3] ?? 0) - fraction.length
+      const scale = BigInt(10) ** BigInt(Math.abs(shift))
+      const value = shift < 0 ? digits / scale : digits * scale
+      if ((shift >= 0 || digits % scale === bigint0) && value <= maxSafeInteger) return make(value)
+    }
   }
-  return make(BigInt(value))
+  return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
 }
 
 /**
