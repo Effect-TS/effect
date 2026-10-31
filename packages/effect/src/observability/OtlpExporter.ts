@@ -21,6 +21,7 @@ import type { HttpBody } from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
@@ -154,6 +155,10 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  * after unhandled failures, and flushes during scope finalization up to
  * `shutdownTimeout`.
  *
+ * The export interval starts when data is pushed to an empty buffer, so an
+ * idle exporter keeps no timer pending. An exporter with `exportEmpty` and
+ * batching disabled exports on every interval instead.
+ *
  * Optional gzip compression uses `HttpClientRequest.compressBody` before the
  * retry loop, so retries reuse the compressed bytes. Bodies smaller than 1KB
  * remain uncompressed. Compression requires runtime `CompressionStream` support;
@@ -261,19 +266,33 @@ export const make: (
     )
   )
 
-  yield* Effect.sleep(exportInterval).pipe(
+  // Some runtimes stay in memory while a timer is pending.
+  const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
+  const pending = Latch.makeUnsafe(exportsEmpty)
+
+  yield* pending.await.pipe(
+    Effect.andThen(Effect.sleep(exportInterval)),
     Effect.andThen(FiberSet.run(exportFibers, runExport)),
     Effect.flatMap(Fiber.await),
+    Effect.andThen(Effect.sync(() => {
+      if (!exportsEmpty && buffer.length === 0) pending.closeUnsafe()
+    })),
     Effect.forever,
     Effect.forkIn(scope)
   )
 
   return {
     push(data) {
-      if (disabledUntil !== undefined) return
+      if (disabledUntil !== undefined) {
+        // No interval runs while the buffer is empty, so the next push ends the disabled window.
+        if (clock.currentTimeMillisUnsafe() < disabledUntil) return
+        disabledUntil = undefined
+      }
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
         runExportFork(runExport)
+      } else {
+        pending.openUnsafe()
       }
     }
   }
