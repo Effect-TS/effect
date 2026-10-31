@@ -8971,9 +8971,10 @@ export const groupAdjacentBy: {
       let cause: Cause.Cause<E | Cause.Done> | undefined
       return Effect.catchCause(Effect.suspend(() => cause ? Effect.failCause(cause) : loop), (cause_) => {
         cause = cause_
-        const out = group
+        if (group === undefined) return Effect.failCause(cause_)
+        const out = Arr.of([currentKey, group] as const)
         group = undefined
-        return out && Arr.isArrayNonEmpty(out) ? Effect.succeed(Arr.of([currentKey, out])) : Effect.failCause(cause_)
+        return Effect.succeed(out)
       })
     })))
 
