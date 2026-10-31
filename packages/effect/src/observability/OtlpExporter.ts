@@ -154,9 +154,9 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  * after unhandled failures, and flushes during scope finalization up to
  * `shutdownTimeout`.
  *
- * The export interval starts when data is pushed to an empty buffer, so an
- * idle exporter keeps no timer pending. An exporter with `exportEmpty` and
- * batching disabled exports on every interval instead.
+ * The export interval starts with the first push and stops once an export
+ * empties the buffer, so an idle exporter keeps no timer pending. With
+ * `exportEmpty` and batching disabled, it exports on every interval instead.
  *
  * Optional gzip compression uses `HttpClientRequest.compressBody` before the
  * retry loop, so retries reuse the compressed bytes. Bodies smaller than 1KB
@@ -265,15 +265,13 @@ export const make: (
     )
   )
 
-  // Some runtimes stay in memory while a timer is pending.
-  // `timer` is set and cleared synchronously, so a push never sees a timer that has stopped.
-  // A retired timer only acts while it is still the current one.
+  // `timer` changes synchronously, and a replaced timer stops acting.
   interface Timer {
     fiber: Fiber.Fiber<void> | undefined
     sleeping: boolean
   }
   let timer: Timer | undefined
-  // Added after the shutdown finalizer, so timers are interrupted before the shutdown flush.
+  // Created after the shutdown finalizer, so timers stop before the shutdown flush.
   const timerFibers = yield* FiberSet.make<void, never>()
   const runTimer = yield* FiberSet.runtime(timerFibers)<never>()
   const exportPeriodically = Effect.fnUntraced(function*(self: Timer) {
@@ -298,7 +296,7 @@ export const make: (
   }
   if (exportsEmpty) startTimer()
 
-  // Only a sleeping timer is cancelled, so an in-flight periodic export is still awaited.
+  // A timer awaiting its export is left running, so exports stay serialized.
   const cancelIdleTimer = Effect.suspend(() => {
     if (exportsEmpty || buffer.length > 0 || timer === undefined || !timer.sleeping) return Effect.void
     const fiber = timer.fiber!
@@ -312,7 +310,7 @@ export const make: (
 
   return {
     push(data) {
-      // No interval runs while the buffer is empty, so the next push ends the disabled window.
+      // With no idle timer, the next push ends the disabled window.
       if (isDisabled()) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
