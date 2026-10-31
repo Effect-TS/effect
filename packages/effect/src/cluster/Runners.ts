@@ -185,7 +185,7 @@ export const make: (
   const notifyAfterCommit = <E>(message: Message.Outgoing<any>, notify: Effect.Effect<void, E>) => {
     const rpc = message.rpc as any as Rpc.AnyWithProps
     return Context.get(rpc.annotations, Persisted)
-      ? TransactionNotifications.afterCommit(Effect.ignore(notify))
+      ? TransactionNotifications.wakeAfterCommit(notify)
       : notify
   }
 
