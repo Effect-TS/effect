@@ -371,6 +371,59 @@ describe("Iterable", () => {
     )
   })
 
+  it("filterMapWhile stays done after failure", () => {
+    let pulls = 0
+    const indices: Array<number> = []
+    const source = {
+      [Symbol.iterator]() {
+        const iterator = [1, 2, 3][Symbol.iterator]()
+        return {
+          next() {
+            pulls++
+            return iterator.next()
+          }
+        }
+      }
+    }
+    const iterable = Iter.filterMapWhile(source, (n, i) => {
+      indices.push(i)
+      return n % 2 === 1 ? Result.succeed(n * 2) : Result.failVoid
+    })
+    const iterator = iterable[Symbol.iterator]()
+    deepStrictEqual(iterator.next(), { done: false, value: 2 })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    strictEqual(pulls, 2)
+    deepStrictEqual(indices, [0, 1])
+
+    deepStrictEqual(iterable[Symbol.iterator]().next(), { done: false, value: 2 })
+    deepStrictEqual(indices, [0, 1, 0])
+  })
+
+  it("filterMapWhile stops pulling after source exhaustion", () => {
+    for (const values of [[], [1, 2]]) {
+      let pulls = 0
+      const source = {
+        [Symbol.iterator]() {
+          const iterator = values[Symbol.iterator]()
+          return {
+            next() {
+              pulls++
+              return iterator.next()
+            }
+          }
+        }
+      }
+      const iterator = Iter.filterMapWhile(source, Result.succeed)[Symbol.iterator]()
+      for (const value of values) {
+        deepStrictEqual(iterator.next(), { done: false, value })
+      }
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      deepStrictEqual(iterator.next(), { done: true, value: undefined })
+      strictEqual(pulls, values.length + 1)
+    }
+  })
+
   it("getFailures", () => {
     deepStrictEqual(toArray(Iter.getFailures([])), [])
     deepStrictEqual(toArray(Iter.getFailures([Result.succeed(1), Result.fail("err"), Result.fail("nope")])), [
