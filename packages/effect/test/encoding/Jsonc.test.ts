@@ -1,30 +1,41 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Result } from "effect"
 import { Json5, Jsonc } from "effect/encoding"
+
+const parse = (input: string): unknown => Result.getOrThrow(Jsonc.parse(input))
+
+const failureMessage = (input: string): string => {
+  const error = Result.getOrThrow(Result.flip(Jsonc.parse(input)))
+  assert.strictEqual(error.kind, "Decode")
+  assert.strictEqual(error.module, "Jsonc")
+  assert.strictEqual(error.input, input)
+  return error.message
+}
 
 describe("Jsonc", () => {
   it("accepts comments wherever JSON accepts whitespace", () => {
     assert.deepStrictEqual(
-      Jsonc.parse(`/* before */ {
+      parse(`/* before */ {
       // property
       "a" /* key */ : /* value */ [1, /* item */ true, null],
       "nested": {"value": "ok"} /* end */
     } // after`),
       { a: [1, true, null], nested: { value: "ok" } }
     )
-    assert.strictEqual(Jsonc.parse("// comment\rtrue"), true)
-    assert.strictEqual(Jsonc.parse("// comment  still comment\r\ntrue"), true)
+    assert.strictEqual(parse("// comment\rtrue"), true)
+    assert.strictEqual(parse("// comment  still comment\r\ntrue"), true)
   })
 
   it("accepts a single leading byte order mark", () => {
-    assert.deepStrictEqual(Jsonc.parse("﻿{}"), {})
-    assert.deepStrictEqual(Jsonc.parse("\uFEFF// comment\n[1, /* comment */ true]"), [1, true])
-    assert.strictEqual(Jsonc.parse("\uFEFF\"\uFEFF\""), "\uFEFF")
-    assert.throws(() => Jsonc.parse("﻿﻿{}"), SyntaxError, "Invalid JSONC at line 1, column 2")
+    assert.deepStrictEqual(parse("﻿{}"), {})
+    assert.deepStrictEqual(parse("\uFEFF// comment\n[1, /* comment */ true]"), [1, true])
+    assert.strictEqual(parse("\uFEFF\"\uFEFF\""), "\uFEFF")
+    assert.strictEqual(failureMessage("﻿﻿{}"), "Invalid JSONC at line 1, column 2")
   })
 
   it("ends strings only at quotes after an even run of backslashes", () => {
-    assert.deepStrictEqual(Jsonc.parse(String.raw`["\" /* in */" /* out */]`), ["\" /* in */"])
-    assert.deepStrictEqual(Jsonc.parse(String.raw`["\\" /* out */]`), ["\\"])
+    assert.deepStrictEqual(parse(String.raw`["\" /* in */" /* out */]`), ["\" /* in */"])
+    assert.deepStrictEqual(parse(String.raw`["\\" /* out */]`), ["\\"])
   })
 
   it.each([
@@ -33,7 +44,7 @@ describe("Jsonc", () => {
     "\"  \"",
     "{\"__proto__\":{\"polluted\":true},\"constructor\":1,\"a\":1,\"a\":2}"
   ])("matches JSON.parse for %j", (input) => {
-    assert.deepStrictEqual(Jsonc.parse(input), JSON.parse(input))
+    assert.deepStrictEqual(parse(input), JSON.parse(input))
   })
 
   it.each([
@@ -54,8 +65,8 @@ describe("Jsonc", () => {
     " {}",
     " {}"
   ])("rejects JSON5-only syntax %j", (input) => {
-    Json5.parse(input)
-    assert.throws(() => Jsonc.parse(input), SyntaxError, /^Invalid JSONC at line \d+, column \d+$/)
+    Result.getOrThrow(Json5.parse(input))
+    assert.match(failureMessage(input), /^Invalid JSONC at line \d+, column \d+$/)
   })
 
   it.each(
@@ -83,11 +94,7 @@ describe("Jsonc", () => {
       ["UTF-16 columns after an astral character", "{\"emoji\":\"😀\",\"a\":?}", 1, 19]
     ] as const
   )("reports the original position for %s", (_, input, line, column) => {
-    assert.throws(
-      () => Jsonc.parse(input),
-      SyntaxError,
-      new RegExp(`^Invalid JSONC at line ${line}, column ${column}$`)
-    )
+    assert.strictEqual(failureMessage(input), `Invalid JSONC at line ${line}, column ${column}`)
   })
 
   it("locates errors despite members and escapes inherited from Object.prototype", () => {
@@ -100,12 +107,8 @@ describe("Jsonc", () => {
       113: { get: () => (calls++, "changed"), configurable: true }
     })
     try {
-      assert.throws(
-        () => Jsonc.parse("{\"accessor\":1,\"readonly\":2,}"),
-        SyntaxError,
-        "Invalid JSONC at line 1, column 28"
-      )
-      assert.throws(() => Jsonc.parse(String.raw`"\q"`), SyntaxError, "Invalid JSONC at line 1, column 3")
+      assert.strictEqual(failureMessage("{\"accessor\":1,\"readonly\":2,}"), "Invalid JSONC at line 1, column 28")
+      assert.strictEqual(failureMessage(String.raw`"\q"`), "Invalid JSONC at line 1, column 3")
       assert.strictEqual(calls, 0)
     } finally {
       for (const key of ["accessor", "readonly", "113"]) delete (Object.prototype as Record<string, unknown>)[key]
@@ -113,6 +116,6 @@ describe("Jsonc", () => {
   })
 
   it("locates errors beyond the JavaScript call-stack limit", () => {
-    assert.throws(() => Jsonc.parse("[".repeat(10_000) + "?"), SyntaxError, "Invalid JSONC at line 1, column 10001")
+    assert.strictEqual(failureMessage("[".repeat(10_000) + "?"), "Invalid JSONC at line 1, column 10001")
   })
 })
