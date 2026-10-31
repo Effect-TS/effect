@@ -178,6 +178,35 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
+  it.effect("starts the export interval at the first push after an idle stretch", () =>
+    Effect.gen(function*() {
+      const { attempts, httpClient } = yield* makeStatusHttpClient(200)
+      const exporter = yield* makeExporter(httpClient, { exportInterval: "10 seconds", maxBatchSize: 10 })
+
+      yield* TestClock.adjust("7 seconds")
+      exporter.push({ value: 1 })
+      yield* TestClock.adjust("3 seconds")
+      assert.strictEqual(yield* Ref.get(attempts), 0)
+
+      yield* TestClock.adjust("7 seconds")
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+    }))
+
+  it.effect("exports again once the disabled window has passed", () =>
+    Effect.gen(function*() {
+      const { attempts, httpClient } = yield* makeStatusHttpClient(400)
+      const exporter = yield* makeExporter(httpClient, { exportInterval: "1 second", maxBatchSize: 10 })
+
+      exporter.push({ value: 1 })
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("61 seconds")
+      exporter.push({ value: 2 })
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Ref.get(attempts), 2)
+    }))
+
   it.effect("allows an in-flight batch export to finish during shutdown", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
