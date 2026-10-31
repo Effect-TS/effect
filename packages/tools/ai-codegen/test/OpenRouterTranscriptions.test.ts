@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Yaml from "effect/encoding/Yaml"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 
 const operation = (operationId: string) => ({
@@ -29,9 +30,9 @@ describe("OpenRouter transcription spec patch", () => {
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const generator = yield* Generator.CodeGenerator
-      const config = Schema.decodeUnknownSync(Config.CodegenConfig)(Yaml.parse(
+      const config = Schema.decodeUnknownSync(Config.CodegenConfig)(Result.getOrThrow(Yaml.parse(
         yield* fs.readFileString(new URL("../../../ai/openrouter/codegen.yml", import.meta.url).pathname)
-      ))
+      )))
       const patches = config.patchList.filter((patch) => patch.includes("/paths/~1audio~1transcriptions/"))
       assert.strictEqual(patches.length, 1)
       const generate = (patches: ReadonlyArray<string>) =>

@@ -698,8 +698,8 @@ const fileParsers: Record<string, (content: string) => unknown> = {
   ini: (content: string) => Ini.parse(content),
   json: (content: string) => JSON.parse(content),
   toml: (content: string) => Result.getOrThrow(Toml.parse(content)),
-  yml: (content: string) => Yaml.parse(content),
-  yaml: (content: string) => Yaml.parse(content)
+  yml: (content: string) => Result.getOrThrow(Yaml.parse(content)),
+  yaml: (content: string) => Result.getOrThrow(Yaml.parse(content))
 }
 
 /**
