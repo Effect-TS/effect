@@ -190,7 +190,6 @@ export const make: (
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
-  let disabledUntil: number | undefined = undefined
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
@@ -210,14 +209,18 @@ export const make: (
   )
 
   const request = HttpClientRequest.post(options.url, { headers })
+  const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
   let buffer: Array<any> = []
+  let disabledUntil: number | undefined = undefined
+  const isDisabled = () => {
+    if (disabledUntil === undefined) return false
+    if (clock.currentTimeMillisUnsafe() < disabledUntil) return true
+    disabledUntil = undefined
+    return false
+  }
+
   const runExport = Effect.suspend(() => {
-    if (disabledUntil !== undefined && clock.currentTimeMillisUnsafe() < disabledUntil) {
-      return Effect.void
-    } else if (disabledUntil !== undefined) {
-      disabledUntil = undefined
-    }
-    if (buffer.length === 0 && (options.maxBatchSize !== "disabled" || options.exportEmpty !== true)) {
+    if (isDisabled() || (buffer.length === 0 && !exportsEmpty)) {
       return Effect.void
     }
     const items = buffer
@@ -263,32 +266,30 @@ export const make: (
   )
 
   // Some runtimes stay in memory while a timer is pending.
-  const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
   // `timer` is set and cleared synchronously, so a push never sees a timer that has stopped.
   // A retired timer only acts while it is still the current one.
-  const timerFibers = yield* FiberSet.make<void, never>()
-  const runTimer = yield* FiberSet.runtime(timerFibers)<never>()
   interface Timer {
     fiber: Fiber.Fiber<void> | undefined
     sleeping: boolean
   }
   let timer: Timer | undefined
-  const exportPeriodically = (self: Timer): Effect.Effect<void> =>
-    Effect.suspend(() => {
+  // Added after the shutdown finalizer, so timers are interrupted before the shutdown flush.
+  const timerFibers = yield* FiberSet.make<void, never>()
+  const runTimer = yield* FiberSet.runtime(timerFibers)<never>()
+  const exportPeriodically = Effect.fnUntraced(function*(self: Timer) {
+    while (true) {
       self.sleeping = true
-      return Effect.sleep(exportInterval)
-    }).pipe(
-      Effect.andThen(Effect.suspend(() => {
-        self.sleeping = false
-        return timer === self ? Effect.flatMap(FiberSet.run(exportFibers, runExport), Fiber.await) : Effect.void
-      })),
-      Effect.andThen(Effect.suspend(() => {
-        if (timer !== self) return Effect.void
-        if (exportsEmpty || buffer.length > 0) return exportPeriodically(self)
+      yield* Effect.sleep(exportInterval)
+      self.sleeping = false
+      if (timer !== self) return
+      yield* Fiber.await(yield* FiberSet.run(exportFibers, runExport))
+      if (timer !== self) return
+      if (!exportsEmpty && buffer.length === 0) {
         timer = undefined
-        return Effect.void
-      }))
-    )
+        return
+      }
+    }
+  })
   const startTimer = () => {
     if (timer !== undefined) return
     const self: Timer = { fiber: undefined, sleeping: false }
@@ -304,20 +305,18 @@ export const make: (
     timer = undefined
     return Fiber.interrupt(fiber)
   })
+  const exportNow = Effect.andThen(runExport, cancelIdleTimer)
 
   const flusher = yield* Flusher
-  yield* flusher.register(Effect.andThen(runExport, cancelIdleTimer))
+  yield* flusher.register(exportNow)
 
   return {
     push(data) {
-      if (disabledUntil !== undefined) {
-        // No interval runs while the buffer is empty, so the next push ends the disabled window.
-        if (clock.currentTimeMillisUnsafe() < disabledUntil) return
-        disabledUntil = undefined
-      }
+      // No interval runs while the buffer is empty, so the next push ends the disabled window.
+      if (isDisabled()) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
-        runExportFork(Effect.andThen(runExport, cancelIdleTimer))
+        runExportFork(exportNow)
       } else {
         startTimer()
       }
