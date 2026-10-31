@@ -2878,8 +2878,8 @@ function isExact(root: SchemaAST.AST): boolean {
 // The binary layer enforces a fixed-width check on its own, so it is exact
 // when no other check rides along.
 function isFixedWidthOnly(ast: SchemaAST.AST): boolean {
-  return ast.checks !== undefined && ast.checks.length === 1 && fixedWidthKind(ast) !== undefined &&
-    (ast._tag === "Number" || ast._tag === "BigInt")
+  return (ast._tag === "Number" || ast._tag === "BigInt") && ast.checks?.length === 1 &&
+    fixedWidthKind(ast) !== undefined
 }
 
 // A clean Exit whose success schema is exact: the binary layer fully produces
@@ -4587,12 +4587,8 @@ function decodeFieldPayload(layout: Layout, wireMask: number, kind: number, r: R
     skipFieldPayload(kind, r)
     return ABSENT
   }
-  if (kind === FIELD_WIRE_FIXED32) {
-    const saved = r.enter(4)
-    const value = decodeChecked(layout, r)
-    r.exit(saved)
-    return value
-  }
+  // Only the two 32-bit layouts accept this kind, so the payload needs no window.
+  if (kind === FIELD_WIRE_FIXED32) return layout._ === "u32" ? r.u32le() : r.i32le()
   if (kind !== FIELD_WIRE_SIZED) {
     const value = decodeScalarField(kind, r)
     if (layout._ === "literal" && !hasLiteral(layout, value)) {
