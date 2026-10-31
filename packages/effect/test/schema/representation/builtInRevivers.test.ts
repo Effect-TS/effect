@@ -787,6 +787,17 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
+  it("revives isDependentRequired", () => {
+    assertFilterReviver({
+      schema: Schema.Any.check(Schema.isDependentRequired({ a: ["b"] })),
+      id: "effect/schema/isDependentRequired",
+      payload: { dependentRequired: { a: ["b"] } },
+      reviver: SchemaRepresentation.isDependentRequiredReviver,
+      valid: { a: 1, b: 2 },
+      invalid: { a: 1 }
+    })
+  })
+
   it("persists the encoded key schema for isPropertyNames", () => {
     const names = Schema.String.check(Schema.isPattern(/^[A-Z]/))
     const check = Schema.isPropertyNames(names)

@@ -207,6 +207,17 @@ export function formatPropertyKey(name: PropertyKey): string {
 }
 
 /**
+ * Formats a property key for use in a generated object literal. A `__proto__`
+ * key is wrapped in computed-key brackets so the literal defines an own
+ * property instead of setting the prototype.
+ *
+ * @internal
+ */
+export function formatObjectLiteralKey(key: PropertyKey, formatted = formatPropertyKey(key)): string {
+  return key === "__proto__" ? `[${formatted}]` : formatted
+}
+
+/**
  * Formats an array of property keys as a bracket-notation path string.
  *
  * @internal
