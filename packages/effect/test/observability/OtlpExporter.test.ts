@@ -429,6 +429,39 @@ describe("OtlpExporter", () => {
         )
       }))
 
+    it.effect("cancels the pending export interval when a flush empties the buffer", () =>
+      Effect.gen(function*() {
+        const { attempts, httpClient } = yield* makeStatusHttpClient(200)
+        const testClock = yield* Clock.Clock
+        let pendingSleeps = 0
+        const clock: Clock.Clock = {
+          ...testClock,
+          sleep: (duration) =>
+            Effect.suspend(() => {
+              pendingSleeps++
+              return Effect.ensuring(testClock.sleep(duration), Effect.sync(() => pendingSleeps--))
+            })
+        }
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            const exporter = yield* makeExporterRaw(10).pipe(Effect.provideService(Clock.Clock, clock))
+            const flusher = yield* OtlpExporter.Flusher
+
+            exporter.push({ value: 1 })
+            yield* yieldNowN(3)
+            assert.strictEqual(pendingSleeps, 1)
+
+            yield* flusher.flush
+            yield* yieldNowN(3)
+            assert.strictEqual(yield* Ref.get(attempts), 1)
+            assert.strictEqual(pendingSleeps, 0)
+          }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+            Effect.provide(OtlpExporter.layerFlusher)
+          )
+        )
+      }))
+
     for (const filterStatus of [false, true]) {
       it.effect(`drains a 429 response before retrying${filterStatus ? " from a status-filtered client" : ""}`, () =>
         Effect.gen(function*() {
