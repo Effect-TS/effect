@@ -435,7 +435,7 @@ describe("OtlpExporter", () => {
         )
       }))
 
-    it.effect("cancels the pending export interval when a flush empties the buffer", () =>
+    it.effect("cancels the pending export interval when an export empties the buffer", () =>
       Effect.gen(function*() {
         const { attempts, httpClient } = yield* makeStatusHttpClient(200)
         const testClock = yield* Clock.Clock
@@ -450,17 +450,64 @@ describe("OtlpExporter", () => {
         }
         yield* Effect.scoped(
           Effect.gen(function*() {
-            const exporter = yield* makeExporterRaw(10).pipe(Effect.provideService(Clock.Clock, clock))
+            const exporter = yield* makeExporterRaw(2).pipe(Effect.provideService(Clock.Clock, clock))
             const flusher = yield* OtlpExporter.Flusher
 
             exporter.push({ value: 1 })
             yield* yieldNowN(3)
             assert.strictEqual(pendingSleeps, 1)
 
-            yield* flusher.flush
+            exporter.push({ value: 2 })
             yield* yieldNowN(3)
             assert.strictEqual(yield* Ref.get(attempts), 1)
             assert.strictEqual(pendingSleeps, 0)
+
+            exporter.push({ value: 3 })
+            yield* yieldNowN(3)
+            assert.strictEqual(pendingSleeps, 1)
+
+            yield* flusher.flush
+            yield* yieldNowN(3)
+            assert.strictEqual(yield* Ref.get(attempts), 2)
+            assert.strictEqual(pendingSleeps, 0)
+          }).pipe(
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+            Effect.provide(OtlpExporter.layerFlusher)
+          )
+        )
+      }))
+
+    it.effect("restarts the export interval for a push while a flush cancels it", () =>
+      Effect.gen(function*() {
+        const { attempts, httpClient } = yield* makeStatusHttpClient(200)
+        const testClock = yield* Clock.Clock
+        const cancelling = yield* Deferred.make<void>()
+        const cancelled = yield* Deferred.make<void>()
+        const clock: Clock.Clock = {
+          ...testClock,
+          sleep: (duration) =>
+            testClock.sleep(duration).pipe(
+              Effect.onInterrupt(() =>
+                Deferred.succeed(cancelling, undefined).pipe(Effect.andThen(Deferred.await(cancelled)))
+              )
+            )
+        }
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            const exporter = yield* makeExporterRaw(10).pipe(Effect.provideService(Clock.Clock, clock))
+            const flusher = yield* OtlpExporter.Flusher
+
+            exporter.push({ value: 1 })
+            yield* yieldNowN(3)
+            const flush = yield* Effect.forkChild(flusher.flush)
+            yield* Deferred.await(cancelling)
+
+            exporter.push({ value: 2 })
+            yield* Deferred.succeed(cancelled, undefined)
+            yield* Fiber.join(flush)
+
+            yield* TestClock.adjust("1 hour")
+            assert.strictEqual(yield* Ref.get(attempts), 2)
           }).pipe(
             Effect.provideService(HttpClient.HttpClient, httpClient),
             Effect.provide(OtlpExporter.layerFlusher)
