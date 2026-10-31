@@ -1,8 +1,23 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Logger,
+  Option,
+  References,
+  type Scope,
+  Semaphore,
+  Stream,
+  Tracer
+} from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
+import * as TestClock from "effect/testing/TestClock"
 
 interface StubConnection {
   readonly id: string
@@ -29,8 +44,14 @@ let harnessIdCounter = 0
  *
  * Savepoint release is opt-in, as it is for drivers: pass `true` to enable it,
  * or a `SqlError` to enable it and have it fail.
+ *
+ * `acquire` runs before the connection is handed over and `duringBegin` inside
+ * `begin`, so a test can make either take time.
  */
 const makeHarness = (options: {
+  readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]> | undefined
+  readonly acquire?: Effect.Effect<void> | undefined
+  readonly duringBegin?: Effect.Effect<void> | undefined
   readonly begin?: SqlError.SqlError | undefined
   readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
@@ -54,10 +75,13 @@ const makeHarness = (options: {
 
   const withTransaction = SqlClient.makeWithTransaction({
     transactionService,
-    spanAttributes: [],
+    spanAttributes: options.spanAttributes ?? [],
     acquireConnection: () =>
       Effect.as(
-        Effect.flatMap(record("acquireConnection"), () => Effect.addFinalizer(() => record("closeConnection"))),
+        Effect.flatMap(
+          Effect.andThen(record("acquireConnection"), options.acquire ?? Effect.void),
+          () => Effect.addFinalizer(() => record("closeConnection"))
+        ),
         conn
       ),
     begin: (_conn, statement) =>
@@ -66,7 +90,7 @@ const makeHarness = (options: {
           return Effect.fail(options.begin)
         }
         transactionActive = true
-        return Effect.void
+        return options.duringBegin ?? Effect.void
       }),
     savepoint: (_conn, id) =>
       Effect.flatMap(record(`savepoint(${id})`), () => {
@@ -178,6 +202,24 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
   )
   assert.deepStrictEqual(Cause.findErrorOption(exit.cause), Option.some(error))
 }
+
+/** Collects every span a traced effect creates, in the order they start. */
+const recording = () => {
+  const spans: Array<Tracer.NativeSpan> = []
+  const tracer = Tracer.make({
+    span(options) {
+      const span = new Tracer.NativeSpan(options)
+      spans.push(span)
+      return span
+    }
+  })
+  return { spans, tracer }
+}
+
+const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate: boolean) =>
+  effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
+
+const ATTR_WAIT_TIME = "db.client.connection.wait_time_ms"
 
 describe("SqlClient", () => {
   it.effect("interrupts a queued transaction before the connection is released without starting its body", () =>
@@ -473,6 +515,145 @@ describe("SqlClient", () => {
         assert.strictEqual(result, 1)
         assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
       }))
+
+    describe("tracing", () => {
+      it.effect("traces each transaction control as a client span of its transaction level", () =>
+        Effect.gen(function*() {
+          const harness = makeHarness({ releaseSavepoint: true, spanAttributes: [["db.namespace", "app"]] })
+          const { spans, tracer } = recording()
+          let duringBody: ReadonlyArray<readonly [string, string]> = []
+
+          yield* traced(
+            harness.withTransaction(Effect.gen(function*() {
+              duringBody = spans.map((span) => [span.name, span.status._tag])
+              yield* harness.withTransaction(Effect.void)
+              yield* Effect.exit(harness.withTransaction(Effect.fail("boom")))
+            })),
+            tracer,
+            true
+          )
+
+          // BEGIN has ended before the body runs, and COMMIT only starts after it.
+          assert.deepStrictEqual(duringBody, [["sql.transaction", "Started"], ["BEGIN app", "Ended"]])
+          const level = { "db.namespace": "app" }
+          const control = (operation: string) => ({ ...level, "db.operation.name": operation })
+          assert.deepStrictEqual(
+            spans.map((span) => [
+              span.name,
+              Option.match(span.parent, { onNone: () => -1, onSome: (parent) => spans.indexOf(parent as any) }),
+              span.kind,
+              Object.fromEntries(span.attributes)
+            ]),
+            [
+              ["sql.transaction", -1, "internal", { ...level, [ATTR_WAIT_TIME]: 0 }],
+              ["BEGIN app", 0, "client", control("BEGIN")],
+              ["sql.transaction", 0, "internal", level],
+              ["SAVEPOINT app", 2, "client", control("SAVEPOINT")],
+              ["RELEASE SAVEPOINT app", 2, "client", control("RELEASE SAVEPOINT")],
+              ["sql.transaction", 0, "internal", level],
+              ["SAVEPOINT app", 5, "client", control("SAVEPOINT")],
+              ["ROLLBACK TO SAVEPOINT app", 5, "client", control("ROLLBACK TO SAVEPOINT")],
+              ["RELEASE SAVEPOINT app", 5, "client", control("RELEASE SAVEPOINT")],
+              ["COMMIT app", 0, "client", control("COMMIT")]
+            ]
+          )
+        }))
+
+      it.effect("ends each control span with its own exit when the body or COMMIT fails", () =>
+        Effect.gen(function*() {
+          const exits = (spans: ReadonlyArray<Tracer.NativeSpan>) =>
+            spans.map((span) => [span.name, span.status._tag === "Ended" ? span.status.exit : undefined])
+
+          const rolledBack = recording()
+          yield* Effect.exit(traced(makeHarness().withTransaction(Effect.fail("boom")), rolledBack.tracer, true))
+          assert.deepStrictEqual(exits(rolledBack.spans), [
+            ["sql.transaction", Exit.fail("boom")],
+            ["BEGIN", Exit.void],
+            ["ROLLBACK", Exit.void]
+          ])
+
+          const commitError = sqlError("commit rejected")
+          const failedCommit = recording()
+          const exit = yield* Effect.exit(traced(
+            makeHarness({ commit: () => Effect.fail(commitError), onCommitFailure: () => Effect.void })
+              .withTransaction(Effect.void),
+            failedCommit.tracer,
+            true
+          ))
+          assertTypedFailure(exit, commitError)
+          assert.deepStrictEqual(exits(failedCommit.spans), [
+            ["sql.transaction", Exit.fail(commitError)],
+            ["BEGIN", Exit.void],
+            ["COMMIT", Exit.fail(commitError)],
+            ["ROLLBACK", Exit.void]
+          ])
+        }))
+
+      it.effect("creates only the transaction span without span propagation, and none without tracing", () =>
+        Effect.gen(function*() {
+          const harness = makeHarness()
+
+          const unpropagated = recording()
+          yield* traced(harness.withTransaction(Effect.void), unpropagated.tracer, false)
+          const disabled = recording()
+          yield* traced(harness.withTransaction(Effect.void), disabled.tracer, true).pipe(
+            Effect.provideService(References.TracerEnabled, false)
+          )
+
+          assert.deepStrictEqual(
+            unpropagated.spans.map((span) => [span.name, Object.fromEntries(span.attributes)]),
+            [["sql.transaction", {}]]
+          )
+          assert.deepStrictEqual(disabled.spans, [])
+        }))
+
+      it.effect("acquires under the transaction span and records the wait for the connection, not BEGIN", () =>
+        Effect.gen(function*() {
+          const acquiredUnder: Array<string | undefined> = []
+          const harness = makeHarness({
+            acquire: Effect.flatMap(Effect.option(Effect.currentSpan), (span) => {
+              acquiredUnder.push(Option.getOrUndefined(span)?.spanId)
+              return Effect.sleep("30 millis")
+            }),
+            duringBegin: Effect.sleep("20 millis")
+          })
+          const run = Effect.fnUntraced(function*(
+            transaction: Effect.Effect<void, unknown>,
+            options: { readonly propagate: boolean; readonly timing: boolean }
+          ) {
+            const { spans, tracer } = recording()
+            acquiredUnder.length = 0
+            const fiber = yield* Effect.forkChild(
+              traced(transaction, tracer, options.propagate).pipe(
+                Effect.provideService(References.TracerTimingEnabled, options.timing)
+              )
+            )
+            yield* TestClock.adjust("50 millis")
+            yield* Fiber.join(fiber)
+            const transactions = spans.filter((span) => span.name === "sql.transaction")
+            return [
+              acquiredUnder.map((spanId) => spanId === transactions[0].spanId),
+              transactions.map((span) => span.attributes.get(ATTR_WAIT_TIME))
+            ]
+          })
+          const nested = harness.withTransaction(harness.withTransaction(Effect.void))
+
+          assert.deepStrictEqual(
+            [
+              yield* run(harness.withTransaction(Effect.void), { propagate: true, timing: true }),
+              yield* run(Effect.withSpan(nested, "outer"), { propagate: true, timing: true }),
+              yield* run(Effect.withSpan(nested, "outer"), { propagate: false, timing: true }),
+              yield* run(nested, { propagate: true, timing: false })
+            ],
+            [
+              [[true], [30]],
+              [[true], [30, undefined]],
+              [[true], [undefined, undefined]],
+              [[true], [undefined, undefined]]
+            ]
+          )
+        }))
+    })
   })
 
   describe("afterCommit", () => {

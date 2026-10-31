@@ -29,6 +29,15 @@ const emptyQueryResult = Buffer.concat([
   backendMessage("Z", Buffer.from("I"))
 ])
 
+const completed = (tag: string, status: string) =>
+  Buffer.concat([
+    backendMessage("1", Buffer.alloc(0)),
+    backendMessage("2", Buffer.alloc(0)),
+    backendMessage("n", Buffer.alloc(0)),
+    backendMessage("C", Buffer.from(`${tag}\0`)),
+    backendMessage("Z", Buffer.from(status))
+  ])
+
 const waitFor = (predicate: () => boolean) =>
   Effect.promise(async () => {
     for (let i = 0; i < 100 && !predicate(); i++) {
@@ -307,18 +316,56 @@ describe("PgPool connection spans", () => {
       true
     )
   })
+
+  it.effect("reports a cold transaction's connect and control statements under its transaction span", () => {
+    const { named, tracer } = recording()
+    // A backend that accepts every BEGIN and COMMIT.
+    const stream = () => {
+      let startup = true
+      const socket = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          if (startup) {
+            startup = false
+            queueMicrotask(() => socket.push(ready))
+          } else if (chunk[0] === 0x50) {
+            const response = chunk.includes("BEGIN") ? completed("BEGIN", "T") : completed("COMMIT", "I")
+            queueMicrotask(() => socket.push(response))
+          }
+          callback()
+        }
+      })
+      return socket
+    }
+    return traced(
+      Effect.gen(function*() {
+        const sql = yield* PgClient.make({
+          username: "test",
+          database: "app",
+          maxConnections: 1,
+          prepare: false,
+          stream
+        })
+        yield* sql.withTransaction(Effect.void).pipe(Effect.withSpan("outer"))
+
+        const [transaction] = named("sql.transaction")
+        assert.deepStrictEqual(
+          ["db.connect", "BEGIN app", "COMMIT app"].map((name) =>
+            named(name).map((span) => Option.getOrThrow(span.parent).spanId)
+          ),
+          [[transaction.spanId], [transaction.spanId], [transaction.spanId]]
+        )
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(Reactivity.layer)
+      ),
+      tracer,
+      true
+    )
+  })
 })
 
 describe("PgClient failed transaction cleanup", () => {
-  const completed = (tag: string, status: string) =>
-    Buffer.concat([
-      backendMessage("1", Buffer.alloc(0)),
-      backendMessage("2", Buffer.alloc(0)),
-      backendMessage("n", Buffer.alloc(0)),
-      backendMessage("C", Buffer.from(`${tag}\0`)),
-      backendMessage("Z", Buffer.from(status))
-    ])
-
   const failed = (code: string) =>
     Buffer.concat([
       backendMessage("E", Buffer.from(`SERROR\0C${code}\0Mfailed\0\0`)),
