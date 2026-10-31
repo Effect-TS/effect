@@ -66,6 +66,15 @@ describe("ByteSize", () => {
     deepStrictEqual(ByteSize.kilobytes(1.5), ByteSize.bytes(1500))
     deepStrictEqual(ByteSize.kibibytes(0.5), ByteSize.bytes(512))
     throws(() => ByteSize.kibibytes(0.1))
+    throws(() => ByteSize.kilobytes(1.0005))
+    throws(() => ByteSize.yottabytes(9.718626485371681e-10))
+  })
+
+  it("accepts decimal quantities whose floating-point product is inexact", () => {
+    deepStrictEqual(ByteSize.kilobytes(2.01), ByteSize.bytes(2_010))
+    deepStrictEqual(ByteSize.megabytes(2.01), ByteSize.bytes(2_010_000))
+    deepStrictEqual(ByteSize.gigabytes(1.07), ByteSize.bytes(1_070_000_000))
+    deepStrictEqual(ByteSize.terabytes(0.27), ByteSize.bytes(270_000_000_000))
   })
 
   it("parses strict SI and IEC strings exactly", () => {

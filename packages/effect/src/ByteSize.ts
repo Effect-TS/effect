@@ -208,8 +208,12 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
     if (quantity < bigint0) return invalid(`expected a non-negative quantity, received ${quantity}`)
     return make(quantity * unit.factor)
   }
-  const value = quantity * Number(unit.factor)
-  if (!Number.isSafeInteger(value) || value < 0) {
+  const factor = Number(unit.factor)
+  const value = Math.round(quantity * factor)
+  const back = unit.factor % decimalBase === bigint0
+    ? Number(`${value}e-${String(unit.factor).length - 1}`)
+    : value / factor
+  if (!Number.isSafeInteger(value) || value < 0 || back !== quantity) {
     return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
   }
   return make(BigInt(value))
