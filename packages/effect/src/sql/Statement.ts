@@ -20,6 +20,7 @@ import type * as Fiber from "../Fiber.ts"
 import { constUndefined } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
+import { recordConnectionWait, waitClock } from "../internal/sql.ts"
 import { hasProperty } from "../Predicate.ts"
 import { TracerTimingEnabled } from "../References.ts"
 import * as Stream from "../Stream.ts"
@@ -153,6 +154,13 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
  * including acquisition and stream pulls, and records how long each statement
  * waited for a connection as `db.client.connection.wait_time_ms`. Defaults to
  * `false`; ignored when tracing is disabled.
+ *
+ * **Details**
+ *
+ * Transactions also get a client span for each transaction control, such as
+ * `BEGIN`, `COMMIT`, `ROLLBACK` or `SAVEPOINT`, under their
+ * `sql.transaction` span, which records how long a top-level transaction
+ * waited for its connection.
  *
  * @stability unstable
  * @category services
@@ -1386,7 +1394,6 @@ export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown
 // internal
 
 const ATTR_DB_QUERY_TEXT = "db.query.text"
-const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
 const ATTR_SQL_METHOD = "effect.sql.method"
 
 // the last value wins, matching the order the attributes are applied to spans
@@ -1495,6 +1502,8 @@ const StatementProto: Omit<
       span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+      // Measured from the span's start, so the wait also covers compiling the
+      // statement and any `CurrentTransformer` run first.
       const clock = propagate ? waitClock(fiber) : undefined
       const run = clock === undefined
         ? (connection: Connection) => f(connection, sql, params)
@@ -1610,18 +1619,6 @@ const StatementProto: Omit<
     }
   }
 }
-
-// Without span timing, the span has no start time to measure from.
-const waitClock = (fiber: Fiber.Fiber<unknown, unknown>): Clock | undefined =>
-  fiber.getRef(TracerTimingEnabled) ? fiber.getRef(Clock) : undefined
-
-// Measured from the statement span's start to the connection hand-off, so it
-// also covers compiling the statement and any `CurrentTransformer` run first.
-const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
-  span.attribute(
-    ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
-    Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
-  )
 
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
