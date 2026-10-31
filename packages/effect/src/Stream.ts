@@ -8968,12 +8968,12 @@ export const groupAdjacentBy: {
           return loop
         })
       )
-      let done = false
-      return Pull.catchDone(Effect.suspend(() => done ? Cause.done() : loop), () => {
-        done = true
+      let cause: Cause.Cause<E | Cause.Done> | undefined
+      return Effect.catchCause(Effect.suspend(() => cause ? Effect.failCause(cause) : loop), (cause_) => {
+        cause = cause_
         const out = group
         group = undefined
-        return out && Arr.isArrayNonEmpty(out) ? Effect.succeed(Arr.of([currentKey, out])) : Cause.done()
+        return out && Arr.isArrayNonEmpty(out) ? Effect.succeed(Arr.of([currentKey, out])) : Effect.failCause(cause_)
       })
     })))
 
