@@ -3476,20 +3476,137 @@ describe("fromJsonSchemaDocument", () => {
     })
   })
 
-  describe("unsupported validation keywords", () => {
-    it("not", () => {
-      throws(
-        () =>
-          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
-            type: "object",
-            properties: {
-              value: { not: { type: "string" } }
-            }
-          })),
-        `Cannot import JSON Schema keyword "not": Effect has no equivalent constraint.\n  at ["schema"]["properties"]["value"]["not"]`
+  describe("not", () => {
+    it("imports negation as a schema-backed check and exports it back as not", () => {
+      const source = { type: "string", not: { const: "forbidden" } } as const
+      assertFromJsonSchema({ schema: source }, {
+        codes: makeCode(
+          `Schema.String.check(Schema.isNot(Schema.Literal("forbidden")).annotate({ "expected": "a value not matching the negated schema" }))`,
+          `string`
+        )
+      })
+      const imported = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(source))
+      const exported = Schema.toJsonSchemaDocument(imported)
+      deepStrictEqual(exported.schema, { type: "string", not: { type: "string", enum: ["forbidden"] } })
+      for (const schema of [imported, toSchemaFromJsonSchemaDocument(exported)]) {
+        assert.isTrue(Schema.is(schema)("allowed"))
+        assert.isFalse(Schema.is(schema)("forbidden"))
+      }
+    })
+
+    it("rejects negated required keys while keeping sibling constraints (#10044)", () => {
+      const imported = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft07({
+        type: "object",
+        properties: { a: { type: "string" } },
+        not: { required: ["b"] }
+      }))
+      for (const schema of [imported, toSchemaFromJsonSchemaDocument(Schema.toJsonSchemaDocument(imported))]) {
+        assert.isTrue(Schema.is(schema)({}))
+        assert.isTrue(Schema.is(schema)({ a: "ok" }))
+        assert.isFalse(Schema.is(schema)({ b: 1 }))
+        assert.isFalse(Schema.is(schema)({ a: "ok", b: undefined }))
+        assert.isFalse(Schema.is(schema)({ a: 1 }))
+      }
+    })
+
+    it("keeps the type-conditional semantics of the negated schema", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ not: { required: ["b"] } }))
+      assert.isTrue(Schema.is(schema)({}))
+      assert.isFalse(Schema.is(schema)({ b: 1 }))
+      assert.isFalse(Schema.is(schema)("b"))
+    })
+
+    it("imports boolean negations", () => {
+      assertFromJsonSchema(
+        { schema: { type: "string", not: true } },
+        { codes: makeCode(`Schema.Never`, `never`) }
+      )
+      assertFromJsonSchema(
+        { schema: { type: "string", not: false } },
+        { codes: makeCode(`Schema.String`, `string`) }
       )
     })
 
+    it("resolves references inside the negated schema", () => {
+      const imported = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $defs: {
+          Node: {
+            type: "object",
+            properties: { tag: { const: "node" }, next: { $ref: "#/$defs/Node" } },
+            required: ["tag"]
+          }
+        },
+        not: { $ref: "#/$defs/Node" }
+      }))
+      for (const schema of [imported, toSchemaFromJsonSchemaDocument(Schema.toJsonSchemaDocument(imported))]) {
+        assert.isFalse(Schema.is(schema)({ tag: "node" }))
+        assert.isFalse(Schema.is(schema)({ tag: "node", next: { tag: "node" } }))
+        assert.isTrue(Schema.is(schema)({ tag: "node", next: { tag: "leaf" } }))
+        assert.isTrue(Schema.is(schema)({ tag: "leaf" }))
+      }
+    })
+
+    it("reports unsupported keywords inside the negated schema", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ not: { contains: { type: "string" } } })),
+        `Cannot import JSON Schema keyword "contains": Effect has no equivalent constraint.\n  at ["schema"]["not"]["contains"]`
+      )
+    })
+
+    it("rejects a negation that refers back to itself", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $defs: { A: { not: { $ref: "#/$defs/A" } } },
+            $ref: "#/$defs/A"
+          })),
+        `Definition "A" is a circular negation.\n  at ["definitions"]["A"]["not"]["$ref"]`
+      )
+    })
+
+    it("rejects negated additionalProperties next to declared properties", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            properties: { a: { type: "number" } },
+            additionalProperties: { not: { type: "number" } }
+          })),
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
+      )
+    })
+
+    it("keeps equal literal alternatives that differ only by negation", () => {
+      const plain = { const: "a" }
+      const negated = { const: "a", not: { const: "a" } }
+      for (const anyOf of [[plain, negated], [negated, plain]]) {
+        const imported = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [{ enum: ["a", "b"] }, { anyOf }]
+        }))
+        for (const schema of [imported, toSchemaFromJsonSchemaDocument(Schema.toJsonSchemaDocument(imported))]) {
+          assert.isTrue(Schema.is(schema)("a"))
+          assert.isFalse(Schema.is(schema)("b"))
+        }
+      }
+    })
+
+    it("applies a negation with alternatives to each union branch", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        allOf: [
+          { anyOf: [{ type: "object", required: ["a"] }, { type: "object", required: ["b"] }] },
+          { type: "object", not: { anyOf: [{ required: ["x"] }, { required: ["y"] }] } }
+        ]
+      }))
+      assert.isTrue(Schema.is(schema)({ a: 1 }))
+      assert.isTrue(Schema.is(schema)({ b: 1 }))
+      assert.isFalse(Schema.is(schema)({ a: 1, x: 1 }))
+      assert.isFalse(Schema.is(schema)({ b: 1, y: 1 }))
+      assert.isFalse(Schema.is(schema)({}))
+    })
+  })
+
+  describe("unsupported validation keywords", () => {
     for (
       const [keyword, value] of [
         ["$dynamicRef", "#node"],
