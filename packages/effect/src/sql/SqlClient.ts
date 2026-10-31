@@ -283,6 +283,8 @@ export declare namespace SqlClient {
 let clientIdCounter = 0
 let transactionSemaphoreIdCounter = 0
 
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+
 /**
  * Constructs a `SqlClient` from connection acquirers, a compiler, transaction
  * commands, tracing attributes, optional row transforms, and reactive query
@@ -517,8 +519,6 @@ const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
   Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
-
-const ATTR_DB_OPERATION_NAME = "db.operation.name"
 
 const makeAfterCommit =
   (transactionService: Context.Key<any, any>) =>
