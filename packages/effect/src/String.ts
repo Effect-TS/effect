@@ -249,7 +249,9 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
  * **Details**
  *
  * String search values and non-global regular expressions replace the first
- * match; global regular expressions replace every match.
+ * match; global regular expressions replace every match. The replacement is a
+ * string, which can refer to the match with `$` patterns, or a function called
+ * for each match with the arguments `String.prototype.replace` passes.
  *
  * **Example** (Replacing a substring)
  *
@@ -258,14 +260,20 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
  *
  * pipe("abc", String.replace("b", "d")) // => "adc"
  * pipe("hello world", String.replace("world", "Effect")) // => "hello Effect"
+ * pipe("a-b", String.replace(/(\w)-(\w)/, (_, a, b) => `${b}-${a}`)) // => "b-a"
  * ```
  *
  * @stability stable
  * @category transforming
  * @since 2.0.0
  */
-export const replace = (searchValue: string | RegExp, replaceValue: string) => (self: string): string =>
-  self.replace(searchValue, replaceValue)
+export const replace =
+  (searchValue: string | RegExp, replaceValue: string | ((substring: string, ...args: Array<any>) => string)) =>
+  (self: string): string =>
+    // Each branch resolves one overload of `String.prototype.replace`
+    typeof replaceValue === "string"
+      ? self.replace(searchValue, replaceValue)
+      : self.replace(searchValue, replaceValue)
 
 /**
  * Type-level representation of trimming whitespace from both ends of a string.
@@ -692,6 +700,8 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * pipe("a", String.localeCompare("b")) // => -1
  * pipe("b", String.localeCompare("a")) // => 1
  * pipe("a", String.localeCompare("a")) // => 0
+ * pipe("ä", String.localeCompare("z", "de")) // => -1
+ * pipe("ä", String.localeCompare("z", "sv")) // => 1
  * ```
  *
  * @stability stable
@@ -699,7 +709,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * @since 2.0.0
  */
 export const localeCompare =
-  (that: string, locales?: Array<string>, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
+  (that: string, locales?: Intl.LocalesArgument, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
     number.sign(self.localeCompare(that, locales, options))
 
 /**
@@ -728,7 +738,8 @@ export const match = (regExp: RegExp | string) => (self: string): Option.Option<
 
 /**
  * Returns an iterator over all regular expression matches in the string using
- * native `String.prototype.matchAll` semantics.
+ * native `String.prototype.matchAll` semantics. Each match is a
+ * `RegExpExecArray`, so its `index` and `input` are always present.
  *
  * **Example** (Iterating regular expression matches)
  *
@@ -744,7 +755,8 @@ export const match = (regExp: RegExp | string) => (self: string): Option.Option<
  * @category searching
  * @since 2.0.0
  */
-export const matchAll = (regExp: RegExp) => (self: string): IterableIterator<RegExpMatchArray> => self.matchAll(regExp)
+export const matchAll = (regExp: RegExp) => (self: string): RegExpStringIterator<RegExpExecArray> =>
+  self.matchAll(regExp)
 
 /**
  * Normalizes a string according to the specified Unicode normalization form.
@@ -837,6 +849,12 @@ export const repeat = (count: number) => (self: string): string => self.repeat(C
 /**
  * Replaces all occurrences of a substring or pattern in a string.
  *
+ * **Details**
+ *
+ * The replacement is a string, which can refer to the match with `$` patterns,
+ * or a function called for each match with the arguments
+ * `String.prototype.replaceAll` passes.
+ *
  * **Example** (Replacing all matches)
  *
  * ```ts import.meta.vitest
@@ -844,14 +862,20 @@ export const repeat = (count: number) => (self: string): string => self.repeat(C
  *
  * pipe("ababb", String.replaceAll("b", "c")) // => "acacc"
  * pipe("ababb", String.replaceAll(/ba/g, "cc")) // => "accbb"
+ * pipe("abcd", String.replaceAll(/[a-c]/g, (char) => char.toUpperCase())) // => "ABCd"
  * ```
  *
  * @stability stable
  * @category transforming
  * @since 2.0.0
  */
-export const replaceAll = (searchValue: string | RegExp, replaceValue: string) => (self: string): string =>
-  self.replaceAll(searchValue, replaceValue)
+export const replaceAll =
+  (searchValue: string | RegExp, replaceValue: string | ((substring: string, ...args: Array<any>) => string)) =>
+  (self: string): string =>
+    // Each branch resolves one overload of `String.prototype.replaceAll`
+    typeof replaceValue === "string"
+      ? self.replaceAll(searchValue, replaceValue)
+      : self.replaceAll(searchValue, replaceValue)
 
 /**
  * Returns the index of the first match for a string or regular expression safely, or
@@ -896,7 +920,7 @@ export const search: {
  * @category transforming
  * @since 2.0.0
  */
-export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: string): string =>
+export const toLocaleLowerCase = (locale?: Intl.LocalesArgument) => (self: string): string =>
   self.toLocaleLowerCase(locale)
 
 /**
@@ -915,7 +939,7 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  * @category transforming
  * @since 2.0.0
  */
-export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: string): string =>
+export const toLocaleUpperCase = (locale?: Intl.LocalesArgument) => (self: string): string =>
   self.toLocaleUpperCase(locale)
 
 /**
