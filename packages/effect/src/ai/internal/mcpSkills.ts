@@ -11,6 +11,7 @@ import * as Yaml from "../../encoding/Yaml.ts"
 import * as Mime from "../../http/Mime.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
 import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
@@ -315,11 +316,12 @@ const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
 export const parseFrontmatter = (markdown: string): Record<string, unknown> | undefined => {
   const block = FRONTMATTER.exec(markdown)?.[1]
   if (block === undefined) return undefined
+  const parsed = Yaml.parse(block)
+  if (Result.isFailure(parsed) || !Predicate.isObject(parsed.success)) return undefined
   try {
-    const parsed = Yaml.parse(block)
     // The frontmatter is listed as JSON, so keep only what JSON carries:
     // `.inf` and `.nan` become `null`.
-    return Predicate.isObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
+    return JSON.parse(JSON.stringify(parsed.success))
   } catch {
     return undefined
   }
