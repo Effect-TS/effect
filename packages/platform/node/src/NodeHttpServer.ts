@@ -94,8 +94,8 @@ import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
 import * as NodeServices from "./NodeServices.ts"
-import { NodeWS } from "./NodeSocket.ts"
 import * as NodeStream from "./NodeStream.ts"
+import * as NodeWS from "./NodeWS.ts"
 
 /**
  * Options accepted by the Node `HttpServer` constructors and layers.
@@ -125,6 +125,33 @@ export interface Options extends Net.ListenOptions {
  * server, starts listening with the supplied options, registers request and
  * upgrade handling, and closes the server during scope finalization with
  * optional graceful-shutdown control.
+ *
+ * **Details**
+ *
+ * Node's own timeouts are set on the server you create, for example
+ * `createServer({ requestTimeout: 0, headersTimeout: 60_000 })`:
+ *
+ * - `requestTimeout` (default 300 seconds) bounds receiving the whole request,
+ *   headers and body. On expiry Node answers `408`, or closes the connection
+ *   if the response has started. It is checked every
+ *   `connectionsCheckingInterval` (default 30 seconds). `0` disables it.
+ * - `headersTimeout` (default 60 seconds) bounds receiving the headers. Left
+ *   unset, it is lowered to a smaller `requestTimeout`, so `requestTimeout: 0`
+ *   alone disables both. When both are nonzero it may not exceed
+ *   `requestTimeout`.
+ * - `keepAliveTimeout` (default 5 seconds) closes connections idle between
+ *   requests.
+ * - `server.timeout`, socket inactivity, is off by default, so a quiet
+ *   response stream is never cut once the request is received.
+ *
+ * Use `Stream` and `Effect` timeouts in handlers or middleware for per-route
+ * limits on reading the body or producing the response.
+ *
+ * **Gotchas**
+ *
+ * A request counts as received once Node has parsed the whole body, so a
+ * handler that streams a response without reading a large body is still under
+ * `requestTimeout` and is cut when it expires.
  *
  * @stability unstable
  * @category constructors
@@ -559,7 +586,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
         url = target.pathname + target.search
         const headers: Http.IncomingHttpHeaders = { ...requestHeaders(source), host: target.host }
-        headersOverride = headers as Headers.Headers
+        headersOverride = Headers.fromInput(headers)
       }
     }
     this.url = url
@@ -651,7 +678,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get headers(): Headers.Headers {
-    this.headersOverride ??= requestHeaders(this.source) as Headers.Headers
+    this.headersOverride ??= Headers.fromInput(requestHeaders(this.source))
     return this.headersOverride
   }
 
@@ -762,6 +789,10 @@ export const layerHttpServices: Layer.Layer<
 /**
  * Provides a Node `HttpServer` together with the Node HTTP platform, ETag, and
  * core platform services required to serve requests.
+ *
+ * **Details**
+ *
+ * Node's timeouts are set on the server returned by `evaluate`; see `make`.
  *
  * @stability unstable
  * @category layers
@@ -882,22 +913,13 @@ const writeResponse = (
   nodeResponse: Http.ServerResponse,
   headers: Record<string, string | Array<string>>
 ): Effect.Effect<unknown, HttpServerError> => {
+  // Nothing can reach a disconnected client, and writing would throw or never finish
+  if (nodeResponse.destroyed) {
+    return cancelResponseBody(response.body)
+  }
   if (request.method === "HEAD") {
     writeHead(nodeResponse, response, headers)
-    return Effect.andThen(
-      cancelResponseBody(response.body),
-      Effect.callback<void>((resume) => {
-        let completed = false
-        const done = () => {
-          if (completed) return
-          completed = true
-          nodeResponse.off("close", done)
-          resume(Effect.void)
-        }
-        nodeResponse.once("close", done)
-        nodeResponse.end(done)
-      })
-    )
+    return Effect.andThen(cancelResponseBody(response.body), endAndAwait(nodeResponse))
   }
   if (Response.omitsBody(response)) {
     writeHead(nodeResponse, response, headers)
@@ -932,9 +954,7 @@ const writeResponse = (
           Effect.tapCause(handleCause(nodeResponse, response))
         )
       }
-      return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.body, () => resume(Effect.void))
-      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
+      return endAndAwait(nodeResponse, body.body).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "Uint8Array": {
       writeHead(nodeResponse, response, headers)
@@ -943,9 +963,9 @@ const writeResponse = (
         // Writing text directly lets Node flush headers and body together.
         return end(nodeResponse, response, body.text ?? body.body)
       }
-      return Effect.callback<void>((resume) => {
-        nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
-      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
+      return endAndAwait(nodeResponse, body.text ?? body.body).pipe(
+        Effect.tapCause(handleCause(nodeResponse, response))
+      )
     }
     case "FormData": {
       const r = new globalThis.Response(body.formData)
@@ -1111,6 +1131,26 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
   }
   return Effect.void
 }
+
+// `end`'s callback only runs on `finish`, which a disconnect replaces with `close`.
+// A response that is already destroyed emits neither.
+const endAndAwait = (nodeResponse: Http.ServerResponse, chunk?: unknown): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    if (nodeResponse.destroyed) return resume(Effect.void)
+    let completed = false
+    const done = () => {
+      if (completed) return
+      completed = true
+      nodeResponse.off("close", done)
+      resume(Effect.void)
+    }
+    nodeResponse.once("close", done)
+    if (chunk === undefined) {
+      nodeResponse.end(done)
+    } else {
+      nodeResponse.end(chunk, done)
+    }
+  })
 
 const end = (
   nodeResponse: Http.ServerResponse,

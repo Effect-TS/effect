@@ -14,6 +14,9 @@
  *   a failed one reopens it. An interrupted or `Ignored` probe frees the slot.
  * - The backoff count survives a close. It resets once the circuit has stayed
  *   closed as long as it was last open.
+ * - Calls that must always run pass `onRejection: "allow"`. The circuit
+ *   records them when it would admit them, and runs them unrecorded when it
+ *   would refuse them, as in "Recording calls that must always run" below.
  *
  * The breaker never waits. Retry rejections outside it, as in "Retrying
  * rejections" below. Put `Effect.retry` and `Effect.timeout` inside it, so it
@@ -118,8 +121,38 @@
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * **Example** (Recording calls that must always run)
+ *
+ * The write runs even while the circuit is open, and its failures still open
+ * the circuit for the reads that share the key.
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Effect } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class LedgerError extends Data.TaggedError("LedgerError") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "30 seconds"
+ *   })
+ *   const write = Effect.fail(new LedgerError()).pipe(
+ *     breaker.execute({ key: "ledger", onRejection: "allow" })
+ *   )
+ *
+ *   // The first failed write opens the circuit, and the second still runs.
+ *   yield* Effect.flip(write)
+ *   const error = yield* Effect.flip(write)
+ *   const state = yield* breaker.state("ledger")
+ *   return [error._tag, state._tag]
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => ["LedgerError", "Open"]
+ * ```
+ *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
@@ -145,7 +178,7 @@ import * as Redis from "./Redis.ts"
  *
  * @stability experimental
  * @category type IDs
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const TypeId: TypeId = "~effect/persistence/CircuitBreaker"
 
@@ -154,7 +187,7 @@ export const TypeId: TypeId = "~effect/persistence/CircuitBreaker"
  *
  * @stability experimental
  * @category type IDs
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TypeId = "~effect/persistence/CircuitBreaker"
 
@@ -168,6 +201,13 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *   an effect. By default a success is a `Success` and any failure, defects
  *   included, is a `Failure`, since a rejected `Effect.promise` only surfaces
  *   as a defect. An exit that is only interruption is always `Ignored`.
+ *   `classify` also receives `{ probe }`, which is `true` when the call is the
+ *   HalfOpen probe, so an outcome it would otherwise ignore can reopen the
+ *   circuit.
+ *   `onRejection` decides what a call does when the circuit refuses it:
+ *   `"fail"` (the default) fails it with `CircuitOpen` or `CircuitHalfOpen`,
+ *   `"allow"` runs it unrecorded. An admitted call, probe included, is
+ *   recorded as usual.
  * - `state` reads the shared state of a circuit.
  * - `transitions` emits this breaker's transitions and ends when its scope
  *   closes.
@@ -336,7 +376,7 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface CircuitBreaker {
   readonly [TypeId]: TypeId
@@ -344,13 +384,15 @@ export interface CircuitBreaker {
   readonly execute: {
     <A, E, R2 = never>(options: {
       readonly key: string
-      readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+      readonly classify?: Classifier<A, E, R2> | undefined
+      readonly onRejection?: "fail" | "allow" | undefined
     }): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
     <A, E, R, R2 = never>(
       self: Effect.Effect<A, E, R>,
       options: {
         readonly key: string
-        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
+        readonly onRejection?: "fail" | "allow" | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2>
   }
@@ -398,7 +440,7 @@ export interface CircuitBreaker {
  *
  * @stability experimental
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = Context.Service<CircuitBreaker>(
   TypeId
@@ -447,7 +489,7 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const make: (options: {
   readonly tripPolicy: TripPolicy
@@ -486,9 +528,10 @@ export const make: (options: {
 
     const execute = <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
-      { classify, key }: {
+      { classify, key, onRejection }: {
         readonly key: string
-        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+        readonly classify?: Classifier<A, E, R2> | undefined
+        readonly onRejection?: "fail" | "allow" | undefined
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
@@ -496,19 +539,20 @@ export const make: (options: {
           const admitted = yield* Effect.exit(Scope.provide(store.admit(key), admitScope))
           if (Exit.isFailure(admitted)) {
             const error = Cause.findErrorOption(admitted.cause)
-            if (
-              onStoreError === "fail" || error._tag === "None" ||
-              error.value.reason._tag !== "CircuitBreakerStoreError"
-            ) {
-              return yield* Effect.failCause(admitted.cause)
+            if (error._tag === "None") return yield* Effect.failCause(admitted.cause)
+            if (error.value.reason._tag !== "CircuitBreakerStoreError") {
+              return onRejection === "allow" && !Cause.hasDies(admitted.cause)
+                ? yield* restore(self)
+                : yield* Effect.failCause(admitted.cause)
             }
+            if (onStoreError === "fail") return yield* Effect.failCause(admitted.cause)
             yield* reportUnhandled("CircuitBreaker store unavailable, running the call unrecorded", admitted.cause)
             return yield* restore(self)
           }
           const admission = admitted.value
           yield* publish(admission.transition)
           const exit = yield* Effect.exit(restore(self))
-          const classified = yield* classifyExit(exit, classify, restore)
+          const classified = yield* classifyExit(exit, admission.probe, classify, restore)
           const outcome = Exit.isSuccess(classified) ? classified.value : ignored
           yield* store.record({
             key,
@@ -548,7 +592,7 @@ export const make: (options: {
  *
  * @stability experimental
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layer = (options: {
   readonly tripPolicy: TripPolicy
@@ -569,7 +613,8 @@ const reportUnhandled = (message: string, cause: Cause.Cause<unknown>): Effect.E
 
 const classifyExit = <A, E, R2>(
   exit: Exit.Exit<A, E>,
-  classify: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined,
+  probe: boolean,
+  classify: Classifier<A, E, R2> | undefined,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<Exit.Exit<Outcome>, never, R2> => {
   if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
@@ -579,7 +624,7 @@ const classifyExit = <A, E, R2>(
     return Effect.succeed(Exit.succeed(Exit.isSuccess(exit) ? success : failure()))
   }
   return Effect.exit(restore(Effect.suspend(() => {
-    const outcome = classify(exit)
+    const outcome = classify(exit, { probe })
     return Effect.isEffect(outcome) ? outcome : Effect.succeed(outcome)
   })))
 }
@@ -623,7 +668,7 @@ const makeOpenDuration = (
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type TripPolicy =
   | { readonly _tag: "Consecutive"; readonly failures: number }
@@ -638,7 +683,7 @@ export type TripPolicy =
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const consecutive = (failures: number): TripPolicy => {
   if (!Number.isInteger(failures) || failures < 1) {
@@ -665,7 +710,7 @@ export const consecutive = (failures: number): TripPolicy => {
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const rate = (options: {
   readonly threshold?: number | undefined
@@ -688,11 +733,31 @@ export const rate = (options: {
 }
 
 /**
+ * Function that classifies the `Exit` of an admitted call, passed as the
+ * `classify` option of `execute`.
+ *
+ * **Details**
+ *
+ * - `context.probe` is `true` when the call is the HalfOpen probe, so an
+ *   outcome the classifier ignores when the circuit is closed, such as a
+ *   rate-limited response, can count as a failure that reopens the circuit.
+ * - The result may be an `Outcome` or an effect producing one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.1
+ */
+export type Classifier<A, E, R2 = never> = (
+  exit: Exit.Exit<A, E>,
+  context: { readonly probe: boolean }
+) => Outcome | Effect.Effect<Outcome, never, R2>
+
+/**
  * Classification of a call's exit, as returned by a `classify` function.
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Outcome = Outcome.Success | Outcome.Ignored | Outcome.Failure
 
@@ -701,7 +766,7 @@ export type Outcome = Outcome.Success | Outcome.Ignored | Outcome.Failure
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export declare namespace Outcome {
   /**
@@ -709,7 +774,7 @@ export declare namespace Outcome {
    *
    * @stability experimental
    * @category models
-   * @since 4.0.6
+   * @since 4.0.7
    */
   export interface Success {
     readonly _tag: "Success"
@@ -720,7 +785,7 @@ export declare namespace Outcome {
    *
    * @stability experimental
    * @category models
-   * @since 4.0.6
+   * @since 4.0.7
    */
   export interface Ignored {
     readonly _tag: "Ignored"
@@ -732,7 +797,7 @@ export declare namespace Outcome {
    *
    * @stability experimental
    * @category models
-   * @since 4.0.6
+   * @since 4.0.7
    */
   export interface Failure {
     readonly _tag: "Failure"
@@ -745,7 +810,7 @@ export declare namespace Outcome {
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const success: Outcome = { _tag: "Success" }
 
@@ -754,7 +819,7 @@ export const success: Outcome = { _tag: "Success" }
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ignored: Outcome = { _tag: "Ignored" }
 
@@ -769,7 +834,7 @@ export const ignored: Outcome = { _tag: "Ignored" }
  *
  * @stability experimental
  * @category constructors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const failure = (options?: { readonly retryAfter?: Duration.Input | undefined }): Outcome => ({
   _tag: "Failure",
@@ -790,7 +855,7 @@ export const failure = (options?: { readonly retryAfter?: Duration.Input | undef
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type State =
   | { readonly _tag: "Closed"; readonly key: string }
@@ -813,7 +878,7 @@ export type State =
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type Transition =
   | {
@@ -831,7 +896,7 @@ export type Transition =
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CircuitOpen extends Schema.Error<CircuitOpen>("effect/persistence/CircuitBreaker/CircuitOpen")({
   _tag: Schema.tag("CircuitOpen"),
@@ -842,7 +907,7 @@ export class CircuitOpen extends Schema.Error<CircuitOpen>("effect/persistence/C
    * Public message used when an Open circuit rejects a call.
    *
    * @stability experimental
-   * @since 4.0.6
+   * @since 4.0.7
    */
   override get message(): string {
     return `Circuit open`
@@ -854,7 +919,7 @@ export class CircuitOpen extends Schema.Error<CircuitOpen>("effect/persistence/C
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CircuitHalfOpen extends Schema.Error<CircuitHalfOpen>(
   "effect/persistence/CircuitBreaker/CircuitHalfOpen"
@@ -866,7 +931,7 @@ export class CircuitHalfOpen extends Schema.Error<CircuitHalfOpen>(
    * Public message used when a HalfOpen circuit rejects a call.
    *
    * @stability experimental
-   * @since 4.0.6
+   * @since 4.0.7
    */
   override get message(): string {
     return `Circuit half-open`
@@ -878,7 +943,7 @@ export class CircuitHalfOpen extends Schema.Error<CircuitHalfOpen>(
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CircuitBreakerStoreError extends Schema.Error<CircuitBreakerStoreError>(
   "effect/persistence/CircuitBreaker/CircuitBreakerStoreError"
@@ -893,7 +958,7 @@ export class CircuitBreakerStoreError extends Schema.Error<CircuitBreakerStoreEr
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type CircuitBreakerErrorReason = CircuitOpen | CircuitHalfOpen | CircuitBreakerStoreError
 
@@ -902,7 +967,7 @@ export type CircuitBreakerErrorReason = CircuitOpen | CircuitHalfOpen | CircuitB
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const CircuitBreakerErrorReason: Schema.Union<[
   typeof CircuitOpen,
@@ -915,7 +980,7 @@ export const CircuitBreakerErrorReason: Schema.Union<[
  *
  * @stability experimental
  * @category type IDs
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const ErrorTypeId: ErrorTypeId = "~effect/persistence/CircuitBreaker/CircuitBreakerError"
 
@@ -924,7 +989,7 @@ export const ErrorTypeId: ErrorTypeId = "~effect/persistence/CircuitBreaker/Circ
  *
  * @stability experimental
  * @category type IDs
- * @since 4.0.6
+ * @since 4.0.7
  */
 export type ErrorTypeId = "~effect/persistence/CircuitBreaker/CircuitBreakerError"
 
@@ -934,7 +999,7 @@ export type ErrorTypeId = "~effect/persistence/CircuitBreaker/CircuitBreakerErro
  *
  * @stability experimental
  * @category errors
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CircuitBreakerError extends Schema.Error<CircuitBreakerError>(ErrorTypeId)({
   _tag: Schema.tag("CircuitBreakerError"),
@@ -958,7 +1023,7 @@ export class CircuitBreakerError extends Schema.Error<CircuitBreakerError>(Error
    * Marks this value as a circuit breaker error for runtime guards.
    *
    * @stability experimental
-   * @since 4.0.6
+   * @since 4.0.7
    */
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
 
@@ -987,7 +1052,7 @@ export class CircuitBreakerError extends Schema.Error<CircuitBreakerError>(Error
  *
  * @stability experimental
  * @category services
- * @since 4.0.6
+ * @since 4.0.7
  */
 export class CircuitBreakerStore extends Context.Service<CircuitBreakerStore, {
   readonly admit: (key: string) => Effect.Effect<Admission, CircuitBreakerError, Scope.Scope>
@@ -1014,7 +1079,7 @@ export class CircuitBreakerStore extends Context.Service<CircuitBreakerStore, {
  *
  * @stability experimental
  * @category models
- * @since 4.0.6
+ * @since 4.0.7
  */
 export interface Admission {
   readonly generation: number
@@ -1049,7 +1114,7 @@ interface MemoryEntry {
  *
  * @stability experimental
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layerStoreMemory = (options?: {
   readonly idleTimeToLive?: Duration.Input | undefined
@@ -1257,7 +1322,7 @@ export const layerStoreMemory = (options?: {
  *
  * @stability experimental
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layerStoreRedis = (options?: {
   readonly prefix?: string | undefined
@@ -1275,7 +1340,7 @@ export const layerStoreRedis = (options?: {
  *
  * @stability experimental
  * @category layers
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const layerStoreRedisConfig = (
   options: Config.Wrap<{

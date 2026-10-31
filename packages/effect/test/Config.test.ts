@@ -1778,6 +1778,17 @@ Expected "Infinity" | "-Infinity" | "NaN"
             expected
           )
         })
+
+        it("trims and keeps empty values when requested", async () => {
+          await assertSuccess(
+            Config.Record(Schema.String, Schema.String, "OTEL_RESOURCE_ATTRIBUTES", {
+              trim: true,
+              keepEmptyValues: true
+            }),
+            ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: " b = x ,empty=, =ignored" } }),
+            { b: "x", empty: "" }
+          )
+        })
       })
     })
 

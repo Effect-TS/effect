@@ -143,6 +143,16 @@ describe("Hash", () => {
     })
   })
 
+  // The protocol key is a string, so data can carry it without implementing the protocol.
+  it("hashes a non-callable protocol key as data", () => {
+    assert.isFalse(Hash.isHash({ [Hash.symbol]: "v1" }))
+    assert.strictEqual(Hash.hash({ [Hash.symbol]: "v1" }), Hash.hash({ [Hash.symbol]: "v1" }))
+    assert.notStrictEqual(Hash.hash({ [Hash.symbol]: "v1" }), Hash.hash({ [Hash.symbol]: "v2" }))
+    // Distinct functions hash differently as data, so equal hashes mean the protocol ran.
+    assert.isTrue(Hash.isHash({ [Hash.symbol]: () => 42 }))
+    assert.strictEqual(Hash.hash({ [Hash.symbol]: () => 42 }), Hash.hash({ [Hash.symbol]: () => 42 }))
+  })
+
   describe("floats", () => {
     it("hashes 0 and -0 the same", () => {
       assert.strictEqual(Hash.hash(0), Hash.hash(-0))

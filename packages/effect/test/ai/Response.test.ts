@@ -1,7 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { assertInstanceOf, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
-import { AiError, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import { SchemaBinary } from "effect/encoding"
 import { TestSchema } from "effect/testing"
 
 describe("Response", () => {
@@ -238,6 +239,46 @@ describe("Response", () => {
     }
   })
 
+  describe("binary codecs", () => {
+    const toolkit = Toolkit.make(
+      Tool.make("GetWeather", {
+        parameters: Schema.Struct({ city: Schema.String }),
+        success: Schema.Struct({ temperature: Schema.Number })
+      })
+    )
+
+    const text = Response.makePart("text", { text: "hi" })
+
+    for (
+      const [name, makeSchema, part] of [
+        ["AllParts", () => Response.AllParts(), text],
+        ["Part", () => Response.Part(), text],
+        ["StreamPart", () => Response.StreamPart(), Response.makePart("text-delta", { id: "1", delta: "hi" })],
+        ["Part with a toolkit", () => Response.Part(toolkit), text],
+        [
+          "Part",
+          () => Response.Part(),
+          Response.makePart("tool-result", {
+            id: "call-1",
+            name: "Screenshot",
+            isFailure: false,
+            result: "done",
+            encodedResult: "done",
+            modelOutput: [Prompt.filePart({ mediaType: "image/png", data: new URL("https://example.com/a.png") })],
+            providerExecuted: false,
+            preliminary: false
+          })
+        ]
+      ] as const
+    ) {
+      it(`${name} round trips a ${part.type} part`, () => {
+        const codec = SchemaBinary.toCodec(makeSchema())
+
+        deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(part)), part)
+      })
+    }
+  })
+
   it.effect("decodes response metadata with omitted optional fields", () =>
     Effect.gen(function*() {
       const encoded: Response.ResponseMetadataPartEncoded = {
@@ -254,8 +295,7 @@ describe("Response", () => {
       const part = Response.makePart("response-metadata", {
         id: undefined,
         modelId: undefined,
-        timestamp: undefined,
-        request: undefined
+        timestamp: undefined
       })
 
       const encoded = yield* Schema.encodeEffect(Response.ResponseMetadataPart)(part)
@@ -267,34 +307,6 @@ describe("Response", () => {
         type: "response-metadata"
       }, "encoded JSON")
       deepStrictEqual(decoded, Response.makePart("response-metadata", {}), "decoded part")
-    }))
-
-  it.effect("round trips HTTP request details with an undefined hash through JSON", () =>
-    Effect.gen(function*() {
-      const request: typeof Response.HttpRequestDetails.Type = {
-        method: "POST",
-        url: "https://example.com/v1/responses",
-        urlParams: [],
-        hash: undefined,
-        headers: {}
-      }
-
-      const encoded = yield* Schema.encodeEffect(Response.HttpRequestDetails)(request)
-      const json = JSON.parse(JSON.stringify(encoded))
-      const decoded = yield* Schema.decodeUnknownEffect(Response.HttpRequestDetails)(json)
-
-      deepStrictEqual(json, {
-        method: "POST",
-        url: "https://example.com/v1/responses",
-        urlParams: [],
-        headers: {}
-      }, "encoded JSON")
-      deepStrictEqual(decoded, {
-        method: "POST",
-        url: "https://example.com/v1/responses",
-        urlParams: [],
-        headers: {}
-      }, "decoded request")
     }))
 
   it.effect("round trips a finish part with undefined optional fields through JSON", () =>

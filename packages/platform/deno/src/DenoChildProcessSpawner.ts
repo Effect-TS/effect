@@ -25,13 +25,33 @@ import {
   makeHandle,
   ProcessId
 } from "effect/process/ChildProcessSpawner"
+import * as CommandLine from "effect/process/CommandLine"
+import * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 
+const unwrap = (value: string | Redacted.Redacted<string>): string =>
+  Redacted.isRedacted(value) ? Redacted.value(value) : value
+
+// Deno cannot pass NUL characters to a process. They are rejected before
+// spawning so that the error does not depend on Deno's message.
+const findNulCharacter = (command: ChildProcess.StandardCommand): string | undefined => {
+  if (command.command.includes("\0")) return "The command contains a NUL character"
+  const index = command.args.findIndex((arg) => unwrap(arg).includes("\0"))
+  if (index !== -1) return `Argument ${index + 1} contains a NUL character`
+  for (const [name, value] of Object.entries(command.options.env ?? {})) {
+    if (value !== undefined && unwrap(value).includes("\0")) {
+      return `The environment variable ${name} contains a NUL character`
+    }
+  }
+  return undefined
+}
+
 const commandString = (command: ChildProcess.Command): string => {
   const { commands } = flattenCommand(command)
-  return commands.map((command) => `${command.command} ${command.args.join(" ")}`).join(" | ")
+  const format = Deno.build.os === "windows" ? "windows" : "posix"
+  return commands.map((command) => CommandLine.display([command.command, ...command.args], { format })).join(" | ")
 }
 
 const toPlatformError = (
@@ -52,7 +72,7 @@ const toPlatformError = (
     module: "ChildProcess",
     method,
     pathOrDescriptor: commandString(command),
-    syscall: `${method} ${commandString(command).trim()}`,
+    syscall: `${method} ${commandString(command)}`,
     cause
   })
 }
@@ -70,13 +90,20 @@ const make = Effect.gen(function*() {
   const resolveWorkingDirectory = (options: ChildProcess.CommandOptions) =>
     options.cwd === undefined ? undefined : path.resolve(options.cwd)
 
-  const resolveEnvironment = (options: ChildProcess.CommandOptions) => {
+  const resolveEnvironment = (
+    options: ChildProcess.CommandOptions
+  ): { readonly env: Record<string, string>; readonly clearEnv: boolean } | undefined => {
     if (options.env === undefined) return undefined
-    const env: Record<string, string> = {}
+    const extend = options.extendEnv === true
+    // Deno can only add variables to the inherited environment, so removing
+    // one needs the whole environment.
+    const removes = Object.values(options.env).some((value) => value === undefined)
+    const env: Record<string, string> = extend && removes ? Deno.env.toObject() : {}
     for (const [key, value] of Object.entries(options.env)) {
-      if (value !== undefined) env[key] = value
+      if (value === undefined) delete env[key]
+      else env[key] = unwrap(value)
     }
-    return env
+    return { env, clearEnv: !extend || removes }
   }
 
   const resolveStdinOption = (options: ChildProcess.CommandOptions): ChildProcess.StdinConfig => {
@@ -258,11 +285,27 @@ const make = Effect.gen(function*() {
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")
         let isReferenced = true
 
+        if (cmd.options.shell !== undefined && cmd.options.shell !== false && cmd.args.length > 0) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: "The shell option cannot be combined with arguments; pass the whole script as the command"
+          }))
+        }
+        const nulCharacter = findNulCharacter(cmd)
+        if (nulCharacter !== undefined) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: nulCharacter
+          }))
+        }
+
         let executable = cmd.command
-        let args = cmd.args
+        let args: ReadonlyArray<string> = cmd.args.map(unwrap)
         let windowsRawArguments = false
         if (cmd.options.shell) {
-          const shellCommand = `${cmd.command} ${cmd.args.join(" ")}`
+          const shellCommand = cmd.command
           if (Deno.build.os === "windows") {
             executable = typeof cmd.options.shell === "string" ? cmd.options.shell : "cmd.exe"
             args = ["/d", "/s", "/c", shellCommand]
@@ -278,8 +321,8 @@ const make = Effect.gen(function*() {
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
           spawn(cmd, executable, args, {
             ...(cwd === undefined ? undefined : { cwd }),
-            ...(env === undefined ? undefined : { env }),
-            clearEnv: cmd.options.env !== undefined && cmd.options.extendEnv !== true,
+            ...(env === undefined ? undefined : { env: env.env }),
+            clearEnv: env?.clearEnv ?? false,
             stdin: inputToStdioOption(stdinConfig.stream),
             stdout: outputToStdioOption(stdoutConfig.stream),
             stderr: outputToStdioOption(stderrConfig.stream),

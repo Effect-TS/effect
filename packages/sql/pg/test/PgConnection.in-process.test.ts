@@ -1,6 +1,6 @@
 import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted } from "effect"
+import { Effect, Exit, Fiber, Option, Redacted, Scheduler, Scope, Stream } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -522,6 +522,43 @@ describe("PgConnection in-process server", () => {
       assert.isTrue(socket.writableEnded)
       assert.isFalse(socket.destroyed)
     }))
+
+  it.live.each(["statement", "stream"] as const)(
+    "does not start a %s while its pin is being released",
+    (kind) =>
+      Effect.gen(function*() {
+        // Each budget makes the work first yield at a later step of its admission,
+        // so the pin release lands in every gap. Budgets below 3 make no progress.
+        for (let budget = 3; budget <= 40; budget++) {
+          yield* Effect.scoped(Effect.gen(function*() {
+            let writes = 0
+            // Answers startup and never answers a statement.
+            const socket: Duplex = new Duplex({
+              read() {},
+              write(_chunk: Buffer, _encoding, callback) {
+                if (++writes === 1) {
+                  queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+                }
+                callback()
+              }
+            })
+            const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+            const scope = yield* Scope.make()
+            const pinned = yield* Scope.provide(connection.pin, scope)
+            const work = kind === "statement" ? pinned.query("SELECT 1") : Stream.runDrain(pinned.stream("SELECT 1"))
+            const fiber = yield* Effect.forkChild(Effect.provideService(work, Scheduler.MaxOpsBeforeYield, budget), {
+              startImmediately: true
+            })
+            const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+            const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("2 seconds"))
+            if (Option.isNone(closed)) socket.destroy()
+            assert.isTrue(Option.isSome(closed), `pin release waited on a ${kind} at budget ${budget}`)
+            const exit = yield* Fiber.await(fiber).pipe(Effect.timeoutOption("2 seconds"))
+            assert.isTrue(Option.isSome(exit) && Exit.isFailure(exit.value), `${kind} did not end at budget ${budget}`)
+          }))
+        }
+      })
+  )
 
   describe("TLS servername", () => {
     const cases: ReadonlyArray<{

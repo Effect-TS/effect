@@ -93,6 +93,19 @@ export const make: (
 
     const columns = Effect.sync(() => stdout.columns ?? 0)
     const rows = Effect.sync(() => stdout.rows ?? 0)
+    const size = Effect.gen(function*() {
+      const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1)
+      const onResize = () => Queue.offerUnsafe(queue, { columns: stdout.columns ?? 0, rows: stdout.rows ?? 0 })
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          stdout.off("resize", onResize)
+          Queue.endUnsafe(queue)
+        })
+      )
+      stdout.on("resize", onResize)
+      onResize()
+      return queue
+    })
 
     const readInput = Effect.gen(function*() {
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
@@ -163,6 +176,7 @@ export const make: (
     return Terminal.make({
       columns,
       rows,
+      size,
       readInput,
       readLine,
       display

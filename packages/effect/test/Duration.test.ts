@@ -8,7 +8,7 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
-import { Duration, Equal, Hash, HashSet, pipe } from "effect"
+import { Duration, Equal, Hash, HashSet, Option, pipe } from "effect"
 
 describe("Duration", () => {
   it("fromInputUnsafe", () => {
@@ -506,6 +506,89 @@ describe("Duration", () => {
     strictEqual(Duration.format(Duration.zero), `0`)
   })
 
+  describe("ISO 8601", () => {
+    it("formatIso", () => {
+      assertSome(Duration.formatIso(Duration.zero), "PT0S")
+      assertSome(Duration.formatIso(Duration.millis(-0)), "PT0S")
+      assertSome(Duration.formatIso(Duration.weeks(1)), "P7D")
+      assertSome(Duration.formatIso(Duration.hours(26)), "P1DT2H")
+      assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
+      assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
+      assertSome(Duration.formatIso(Duration.millis(86_400_001)), "P1DT0.001S")
+      assertSome(Duration.formatIso(Duration.nanos(1n)), "PT0.000000001S")
+      assertSome(Duration.formatIso(Duration.millis(-93_784_500)), "-P1DT2H3M4.5S")
+      assertNone(Duration.formatIso(Duration.infinity))
+      assertNone(Duration.formatIso(Duration.negativeInfinity))
+    })
+
+    it("fromIso", () => {
+      const valid: ReadonlyArray<readonly [string, Duration.Duration]> = [
+        ["PT0S", Duration.zero],
+        ["P0D", Duration.zero],
+        ["-PT0S", Duration.zero],
+        ["+P1D", Duration.days(1)],
+        ["-P1D", Duration.days(-1)],
+        ["P1W2D", Duration.days(9)],
+        ["PT1.5H", Duration.minutes(90)],
+        ["PT1H0.5M", Duration.seconds(3630)],
+        ["PT1,5S", Duration.millis(1500)],
+        ["PT1.123456789S", Duration.nanos(1_123_456_789n)],
+        ["-P1DT2H3M4.5S", Duration.millis(-93_784_500)],
+        ["P400D", Duration.days(400)]
+      ]
+      for (const [input, expected] of valid) {
+        const result = Duration.fromIso(input)
+        assertTrue(Option.isSome(result) && Duration.equals(result.value, expected), input)
+      }
+      const invalid = [
+        "",
+        "P",
+        "PT",
+        "-P",
+        "P1DT",
+        "P1.5D",
+        "P1.5W",
+        "PT1.5H1M",
+        "PT.5S",
+        "PT1.S",
+        "PT1.1234567891S",
+        "P1D1W",
+        "PT1S1M",
+        "P-1D",
+        " P1D",
+        "pt1s",
+        "P1Y",
+        "P1M",
+        "P1MT1H",
+        "-P1M"
+      ]
+      for (const input of invalid) {
+        assertNone(Duration.fromIso(input))
+      }
+      deepStrictEqual(Duration.fromIso("PT1.5S"), Option.some(Duration.millis(1500)))
+      deepStrictEqual(Duration.fromIso("PT0.000000001S"), Option.some(Duration.nanos(1n)))
+      deepStrictEqual(
+        Duration.fromIso("PT9007199254740.993S"),
+        Option.some(Duration.nanos(9_007_199_254_740_993_000_000n))
+      )
+    })
+
+    it("formatIso / fromIso round trip", () => {
+      const durations = [
+        Duration.nanos(1n),
+        Duration.millis(0.5),
+        Duration.minutes(90),
+        Duration.days(400),
+        Duration.millis(-1500),
+        Duration.nanos(123_456_789_012_345_678n)
+      ]
+      for (const duration of durations) {
+        const result = Duration.formatIso(duration).pipe(Option.flatMap(Duration.fromIso))
+        assertTrue(Option.isSome(result) && Duration.equals(result.value, duration), String(duration))
+      }
+    })
+  })
+
   it("parts", () => {
     deepStrictEqual(Duration.parts(Duration.infinity), {
       days: Infinity,
@@ -566,6 +649,12 @@ describe("Duration", () => {
   it("weeks", () => {
     assertTrue(Equal.equals(Duration.weeks(1), Duration.days(7)))
     assertFalse(Equal.equals(Duration.weeks(1), Duration.days(1)))
+  })
+
+  it("toMicros", () => {
+    strictEqual(Duration.millis(1).pipe(Duration.toMicros), 1000)
+    strictEqual(Duration.nanos(1n).pipe(Duration.toMicros), 0.001)
+    strictEqual(Duration.infinity.pipe(Duration.toMicros), Infinity)
   })
 
   it("toMillis", () => {

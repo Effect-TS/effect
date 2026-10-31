@@ -5,6 +5,7 @@
  */
 
 import * as Arr from "../../Array.ts"
+import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
@@ -150,6 +151,20 @@ export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtoc
 }> {}
 
 /**
+ * A request rejected outside the handler, for example by MCP middleware.
+ * Adapters send it as a JSON-RPC error with its code, message and data, never
+ * as a tool result. `error` keeps the original failure for in-process callers.
+ *
+ * @internal
+ */
+export class RequestRejected extends Data.TaggedError("RequestRejected")<{
+  readonly code: number
+  readonly message: string
+  readonly data?: unknown
+  readonly error: McpSchema.McpErrorBase
+}> {}
+
+/**
  * @internal
  */
 export type ToolError =
@@ -157,6 +172,7 @@ export type ToolError =
   | InvalidToolInput
   | InvalidToolContinuation
   | ToolExecutionError
+  | RequestRejected
 
 /**
  * @internal
@@ -166,12 +182,13 @@ export interface ToolRegistration {
   // `tool.title ?? tool.annotations?.title` at the public boundary.
   readonly descriptor: McpSchema.Tool
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
+    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
 }
@@ -184,8 +201,13 @@ export interface Tools {
     registration: ToolRegistration
   ) => Effect.Effect<void>
   readonly list: (
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
+  // Skips request-level visibility checks.
+  readonly find: (
+    name: string,
     profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
+  ) => McpSchema.Tool | undefined
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
@@ -198,9 +220,10 @@ export interface Tools {
 export interface ResourceRegistration {
   readonly descriptor: McpSchema.Resource
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -209,33 +232,123 @@ export interface ResourceRegistration {
 export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly match: (uri: string) => ReadonlyArray<string> | undefined
   readonly read: (
     uri: string,
     params: ReadonlyArray<string>,
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    McpSchema.ReadResourceResult,
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
  * @internal
  */
 export interface Resources {
-  readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
+  // Synchronous, so a caller can check skill ownership and register in one step.
+  readonly register: (registration: ResourceRegistration) => void
   readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, RequestRejected>
   readonly listTemplates: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>, RequestRejected>
   readonly read: (
     uri: string,
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
+}
+
+/**
+ * A file of a skill, with the digest and size of the bytes it is served as.
+ *
+ * @internal
+ */
+export interface SkillResource {
+  readonly uri: string
+  readonly digest: string
+  readonly size: number
+}
+
+/**
+ * A `skills/list` and `skills/get` entry. `resources` is `"dynamic"` for a
+ * skill whose content cannot carry stable digests.
+ *
+ * @internal
+ */
+export interface Skill {
+  readonly uri: string
+  readonly frontmatter: Readonly<Record<string, unknown>>
+  readonly resources: ReadonlyArray<SkillResource> | "dynamic"
+}
+
+/**
+ * A `resources/directory/read` child: a file, with the metadata
+ * `resources/list` gives it, or a subdirectory with the `inode/directory` MIME
+ * type.
+ *
+ * @internal
+ */
+export interface DirectoryChild {
+  readonly uri: string
+  readonly name: string
+  readonly description?: string | undefined
+  readonly mimeType: string
+  readonly size?: number | undefined
+}
+
+/**
+ * @internal
+ */
+export class SkillNotFound extends Data.TaggedError("SkillNotFound")<{
+  readonly uri: string
+}> {}
+
+/**
+ * @internal
+ */
+export class DirectoryNotFound extends Data.TaggedError("DirectoryNotFound")<{
+  readonly uri: string
+}> {}
+
+/**
+ * @internal
+ */
+export interface SkillRegistration {
+  readonly entry: Skill
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
+  // Hides the skill's directories on `resources/directory/read`.
+  readonly visibleInDirectories?: Visible | undefined
+  readonly get: (invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound | RequestRejected>
+  // `undefined` when this skill has no directory at `uri`. Directories shared
+  // by several skills, such as a common path prefix, list the union of what
+  // each skill returns.
+  readonly directory: (uri: string) => ReadonlyArray<DirectoryChild> | undefined
+}
+
+/**
+ * @internal
+ */
+export interface Skills {
+  // Fails when the skill's directory overlaps another skill's, or one of its
+  // files is already registered as a resource.
+  readonly register: (registration: SkillRegistration) => Effect.Effect<void, Cause.IllegalArgumentError>
+  // Whether `uri` is a file of a registered skill, which only that skill may serve.
+  readonly ownsFile: (uri: string) => boolean
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<Skill>, RequestRejected>
+  readonly get: (uri: string, invocation: McpInvocation) => Effect.Effect<Skill, SkillNotFound | RequestRejected>
+  readonly readDirectory: (
+    uri: string,
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<DirectoryChild>, DirectoryNotFound | RequestRejected>
 }
 
 /**
@@ -251,10 +364,14 @@ export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
 export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
-  ) => Effect.Effect<OperationOutcome<McpSchema.GetPromptResult>, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    OperationOutcome<McpSchema.GetPromptResult>,
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -263,15 +380,15 @@ export interface PromptRegistration {
 export interface Prompts {
   readonly register: (registration: PromptRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, RequestRejected>
   readonly get: (
     name: string,
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -314,12 +431,12 @@ export interface Completions {
     complete: (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   ) => Effect.Effect<void>
   readonly complete: (
     request: CompletionRequest,
     invocation: McpInvocation
-  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -393,11 +510,28 @@ export interface McpCore {
   readonly resources: Resources
   readonly prompts: Prompts
   readonly completions: Completions
+  readonly skills: Skills
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
+    readonly skills: boolean
   }>
+}
+
+/**
+ * Runs the request-level visibility checks of a registration on a list
+ * request, after `isVisible` passed.
+ *
+ * @internal
+ */
+export type Visible = (invocation: McpInvocation) => Effect.Effect<boolean, RequestRejected>
+
+// Whether one skill directory contains the other, or both are the same.
+const skillsOverlap = (a: string, b: string): boolean => {
+  const rootA = a.slice(0, -"/SKILL.md".length)
+  const rootB = b.slice(0, -"/SKILL.md".length)
+  return rootA === rootB || rootA.startsWith(`${rootB}/`) || rootB.startsWith(`${rootA}/`)
 }
 
 /**
@@ -408,29 +542,42 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
+  const skillRegistrations = new Map<string, SkillRegistration>()
+  const skillFiles = new Set<string>()
   const completionRegistrations = new Map<
     string,
     (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   >()
+
+  const filterList = <D>(
+    registrations: Iterable<{
+      readonly descriptor: D
+      readonly isVisible: ToolRegistration["isVisible"]
+      readonly visible?: Visible | undefined
+    }>,
+    invocation: McpInvocation
+  ): Effect.Effect<ReadonlyArray<D>, RequestRejected> =>
+    Effect.map(
+      Effect.filter(
+        Arr.filter(registrations, (entry) => entry.isVisible(invocation.protocol)),
+        (entry) => entry.visible === undefined ? Effect.succeed(true) : entry.visible(invocation)
+      ),
+      (entries) => entries.map((entry) => entry.descriptor)
+    )
 
   const tools: Tools = {
     register: (registration) =>
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
       }),
-    list: (profile) =>
-      Effect.sync(() => {
-        const descriptors: Array<McpSchema.Tool> = []
-        for (const registration of registrations.values()) {
-          if (registration.isVisible(profile)) {
-            descriptors.push(registration.descriptor)
-          }
-        }
-        return descriptors
-      }),
+    list: (invocation) => filterList(registrations.values(), invocation),
+    find: (name, profile) => {
+      const registration = registrations.get(name)
+      return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
+    },
     call: (call, invocation) =>
       Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
@@ -445,15 +592,14 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const resources: Resources = {
-    register: (registration) =>
-      Effect.sync(() => {
-        const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
-        if (index === -1) {
-          resourceRegistrations.push(registration)
-        } else {
-          resourceRegistrations[index] = registration
-        }
-      }),
+    register: (registration) => {
+      const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
+      if (index === -1) {
+        resourceRegistrations.push(registration)
+      } else {
+        resourceRegistrations[index] = registration
+      }
+    },
     registerTemplate: (registration) =>
       Effect.sync(() => {
         const index = resourceTemplateRegistrations.findIndex(
@@ -465,18 +611,8 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
           resourceTemplateRegistrations[index] = registration
         }
       }),
-    list: (profile) =>
-      Effect.sync(() =>
-        resourceRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
-    listTemplates: (profile) =>
-      Effect.sync(() =>
-        resourceTemplateRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
+    list: (invocation) => filterList(resourceRegistrations, invocation),
+    listTemplates: (invocation) => filterList(resourceTemplateRegistrations, invocation),
     read: Effect.fnUntraced(function*(uri, invocation) {
       const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
       if (resource !== undefined && resource.isVisible(invocation.protocol)) {
@@ -497,12 +633,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       Effect.sync(() => {
         promptRegistrations.set(registration.descriptor.name, registration)
       }),
-    list: (profile) =>
-      Effect.sync(() =>
-        Array.from(promptRegistrations.values())
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
+    list: (invocation) => filterList(promptRegistrations.values(), invocation),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
       if (registration === undefined || !registration.isVisible(invocation.protocol)) {
@@ -535,11 +666,67 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  const skills: Skills = {
+    register: (registration) =>
+      Effect.suspend(() => {
+        const { uri, resources } = registration.entry
+        const fail = (reason: string) => Effect.fail(new Cause.IllegalArgumentError(`Skill ${uri}: ${reason}`))
+        for (const other of skillRegistrations.keys()) {
+          if (skillsOverlap(uri, other)) return fail(`its directory overlaps the skill ${other}`)
+        }
+        const files = resources === "dynamic" ? [] : resources.map((resource) => resource.uri)
+        for (const file of files) {
+          if (resourceRegistrations.some((entry) => entry.descriptor.uri === file)) {
+            return fail(`${file} is already registered as a resource`)
+          }
+        }
+        skillRegistrations.set(uri, registration)
+        for (const file of files) skillFiles.add(file)
+        return Effect.void
+      }),
+    ownsFile: (uri) => skillFiles.has(uri),
+    list: (invocation) =>
+      filterList(
+        Array.from(skillRegistrations.values(), (registration) => ({
+          descriptor: registration.entry,
+          isVisible: registration.isVisible,
+          visible: registration.visible
+        })),
+        invocation
+      ),
+    get: (uri, invocation) =>
+      Effect.suspend(() => {
+        const registration = skillRegistrations.get(uri)
+        return registration !== undefined && registration.isVisible(invocation.protocol)
+          ? registration.get(invocation)
+          : Effect.fail(new SkillNotFound({ uri }))
+      }),
+    readDirectory: Effect.fnUntraced(function*(uri, invocation) {
+      const children = new Map<string, DirectoryChild>()
+      let found = false
+      for (const registration of skillRegistrations.values()) {
+        const own = registration.directory(uri)
+        if (own === undefined || !registration.isVisible(invocation.protocol)) continue
+        if (
+          registration.visibleInDirectories !== undefined &&
+          !(yield* registration.visibleInDirectories(invocation))
+        ) continue
+        found = true
+        for (const child of own) children.set(child.uri, child)
+      }
+      if (!found) {
+        return yield* new DirectoryNotFound({ uri })
+      }
+      return Array.from(children.values()).sort((a, b) => a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : 0)
+    })
+  }
+
   const registrationPresence = Effect.sync(() => ({
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
-    prompts: promptRegistrations.size > 0
+    prompts: promptRegistrations.size > 0,
+    skills: skillRegistrations.size > 0
   }))
 
-  return { tools, resources, prompts, completions, registrationPresence }
+  return { tools, resources, prompts, completions, skills, registrationPresence }
 })

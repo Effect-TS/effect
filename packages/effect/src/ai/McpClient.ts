@@ -1,8 +1,8 @@
 /**
  * Connects to MCP servers with scoped Effect clients.
  *
- * Clients discover tools, prompts and resources using the protocol revision selected by
- * their transport. `callTool` returns tool-reported errors as results; supplying a schema
+ * Clients discover tools, prompts, resources and Agent Skills using the protocol revision
+ * selected by their transport. `callTool` returns tool-reported errors as results; supplying a schema
  * turns them into a `ToolError` reason that retains the original result. Transport and
  * protocol failures fail the Effect. Interactive server requests, subscriptions, OAuth
  * and retries are not included.
@@ -13,11 +13,13 @@
 import * as ByteSize from "../ByteSize.ts"
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Equal from "../Equal.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
@@ -32,6 +34,7 @@ import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
+import * as McpSkills from "./internal/mcpSkills.ts"
 import {
   ClosedError,
   ConfigurationError,
@@ -49,6 +52,7 @@ import {
 } from "./McpClientError.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
+import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -84,18 +88,33 @@ export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<
 export interface McpClient {
   readonly [TypeId]: typeof TypeId
   readonly protocolVersion: ProtocolVersion
+  /** Features advertised by the remote server. */
+  readonly capabilities: McpSchema.ServerCapabilities
   readonly serverInfo: McpSchema.Implementation | undefined
   readonly instructions?: string | undefined
   /**
-   * Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools.
-   * `timeout` overrides the client's discovery deadline.
+   * Returns every tool page as one snapshot within the client's discovery bounds.
+   * `timeout` and `limits` (nonnegative integers) override those bounds, and each
+   * page stays within the transport's message size limit.
    */
   readonly listTools: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /** Returns every prompt page as one snapshot with the same bounds as `listTools`. */
   readonly listPrompts: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   /** Gets the messages for a discovered prompt. Unbounded unless `timeout` is supplied. */
   readonly getPrompt: (
@@ -107,11 +126,69 @@ export interface McpClient {
   ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   /** Returns every resource page as one snapshot with the same bounds as `listTools`. */
   readonly listResources: (
-    options?: { readonly timeout?: Duration.Input | undefined }
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   /** Reads the complete contents of a resource URI. Unbounded unless `timeout` is supplied. */
   readonly readResource: (
     params: { readonly uri: string },
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  /**
+   * Returns every skill page as one snapshot with the same bounds as `listTools`, or none
+   * when the server does not declare the Skills extension. Fails on an invalid entry, unless
+   * `onInvalidSkill` is supplied: invalid entries are then left out and each is passed to it.
+   * Requires `extensions: { skills: true }`, as do the other skill methods.
+   */
+  readonly listSkills: (
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+      readonly onInvalidSkill?:
+        | ((invalid: { readonly entry: unknown; readonly error: McpClientError }) => Effect.Effect<void>)
+        | undefined
+    }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Skill>, McpClientError>
+  /**
+   * Gets a skill by the URI of its `SKILL.md`, whether or not `listSkills` returns it.
+   * Unbounded unless `timeout` is supplied.
+   */
+  readonly getSkill: (
+    params: { readonly uri: string },
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<McpSchema.Skill, McpClientError>
+  /**
+   * Lists the direct children of a directory in a skill namespace, with the same bounds as
+   * `listTools`. Requires the server's `directoryRead` setting.
+   */
+  readonly readResourceDirectory: (
+    params: { readonly uri: string },
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  /**
+   * Reads a file of a skill and fails with a `ValidationError` unless its bytes match the
+   * SHA-256 digest and size listed in the skill's manifest, and, for `SKILL.md`, unless its
+   * YAML frontmatter equals the listed frontmatter. A skill whose `resources` is `"dynamic"`
+   * has no digests: any file inside its directory can be read, and `SKILL.md` is still
+   * checked. Files outside the manifest or directory are never requested. Unbounded unless
+   * `timeout` is supplied.
+   */
+  readonly readSkillResource: (
+    params: { readonly skill: McpSchema.Skill; readonly uri: string },
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
@@ -166,9 +243,20 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  *
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
- * deadline unless their own `timeout` option is supplied.
+ * and bounds initialization and each complete `listTools`, `listPrompts`,
+ * `listResources`, `listSkills` or `readResourceDirectory` scan.
+ * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
+ * items. `callTool`, `getPrompt`, `readResource`, `getSkill` and
+ * `readSkillResource` have no deadline unless their own `timeout` option is
+ * supplied.
+ *
+ * `extensions` selects the protocol extensions the client declares. With
+ * `skills: true` it declares the Skills extension (SEP-2640) and enables
+ * `listSkills`, `getSkill`, `readResourceDirectory` and `readSkillResource`;
+ * without it they fail with a `ConfigurationError`. They run only against a
+ * server that declares the extension too, and skill entries are checked
+ * against its rules. `readSkillResource` checks digests with SHA-256 on
+ * `crypto.subtle`.
  * Schema decoding requires the schema's services from the caller.
  *
  * @stability experimental
@@ -183,6 +271,13 @@ export const make: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: {
+    readonly maxPages?: number | undefined
+    readonly maxItems?: number | undefined
+  } | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
 }) => Effect.Effect<
   McpClient,
   McpClientError,
@@ -197,6 +292,7 @@ export const make: (options: {
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
+  const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
   const closed = yield* Deferred.make<never, McpClientError>()
   yield* Effect.addFinalizer(() =>
     Deferred.fail(closed, fail(new ClosedError({ description: "MCP client scope closed" })))
@@ -214,10 +310,12 @@ export const make: (options: {
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
+  const skillsEnabled = options.extensions?.skills === true
+  const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
     "io.modelcontextprotocol/clientInfo": clientInfo,
-    "io.modelcontextprotocol/clientCapabilities": {}
+    "io.modelcontextprotocol/clientCapabilities": clientCapabilities
   }
 
   const request = Effect.fnUntraced(function*<A>(
@@ -284,7 +382,7 @@ export const make: (options: {
     if (!modern) {
       return yield* request<InitializeResult>("initialize", {
         protocolVersion: version,
-        capabilities: {},
+        capabilities: clientCapabilities,
         clientInfo
       })
     }
@@ -334,29 +432,159 @@ export const make: (options: {
       ? Effect.fail(fail(new UnsupportedError({ description: `Server does not advertise ${kind}` })))
       : request<A>(method, params, tool)
 
+  const paginate = Effect.fnUntraced(function*<K extends string, A>(
+    label: string,
+    method: string,
+    key: K,
+    params: Record<string, unknown>,
+    limits: typeof DEFAULT_DISCOVERY_LIMITS
+  ) {
+    const items: Array<A> = []
+    const cursors = new Set<string>()
+    let cursor: string | undefined
+    for (let page = 0; page < limits.maxPages; page++) {
+      const result = yield* request<ListResult<K, A>>(method, cursor === undefined ? params : { ...params, cursor })
+      if (items.length + result[key].length > limits.maxItems) {
+        return yield* limitError(`MCP ${label} discovery exceeded its item limit`)
+      }
+      for (const item of result[key]) items.push(item)
+      if (result.nextCursor === undefined) return items
+      if (cursors.has(result.nextCursor)) {
+        return yield* limitError(`MCP ${label} discovery repeated a cursor`)
+      }
+      cursors.add(cursor = result.nextCursor)
+    }
+    return yield* limitError(`MCP ${label} discovery exceeded its page limit`)
+  })
+
   const list = <K extends Capability, A>(kind: K) =>
     Effect.fnUntraced(
-      function*(_options?: CallOptions) {
+      function*(callOptions?: DiscoveryOptions) {
+        const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
         if (capabilities[kind] === undefined) return []
-        const items: Array<A> = []
-        const cursors = new Set<string>()
-        let cursor: string | undefined
-        for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
-          const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
-          if (items.length + result[kind].length > MAX_DISCOVERY_ITEMS) {
-            return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
-          }
-          items.push(...result[kind])
-          if (result.nextCursor === undefined) return items
-          if (cursors.has(result.nextCursor)) {
-            return yield* limitError(`MCP ${kind} discovery repeated a cursor`)
-          }
-          cursors.add(cursor = result.nextCursor)
-        }
-        return yield* limitError(`MCP ${kind} discovery exceeded its page limit`)
+        return yield* paginate<K, A>(kind, `${kind}/list`, kind, {}, limits)
       },
       (effect, callOptions) => withDeadline(effect, `${kind} discovery`, callOptions?.timeout ?? timeout)
     )
+
+  // Hosts must not call the extension's methods unless the server declares it,
+  // and the extension requires the resources capability.
+  const skillsSettings = capabilities.extensions?.[McpSkills.EXTENSION_ID]
+  const servesSkills = isRecord(skillsSettings) && capabilities.resources !== undefined
+  const servesDirectories = servesSkills && isRecord(skillsSettings) && skillsSettings.directoryRead === true
+  const digest = yield* Effect.provide(Digest.Digest, Digest.layerWebCrypto)
+
+  const invalid = (description: string) => Effect.fail(fail(new ValidationError({ description })))
+  const unsupported = (description: string) => Effect.fail(fail(new UnsupportedError({ description })))
+  const requireSkillsOption = skillsEnabled ? Effect.void : Effect.fail(
+    fail(new ConfigurationError({ description: "MCP skills methods require extensions: { skills: true }" }))
+  )
+
+  const decodeSkill = Effect.fnUntraced(function*(entry: unknown) {
+    const skill = yield* decodeUnknown(McpSchema.Skill, entry) as Effect.Effect<McpSchema.Skill, McpClientError>
+    const problem = McpSkills.entryProblem(skill)
+    return problem === undefined ? skill : yield* invalid(`Invalid MCP skill ${skill.uri}: ${problem}`)
+  })
+
+  const listSkills = Effect.fnUntraced(
+    function*(options?: Parameters<McpClient["listSkills"]>[0]) {
+      yield* requireSkillsOption
+      const limits = yield* resolveDiscoveryLimits(options?.limits, discoveryLimits)
+      if (!servesSkills) return []
+      const entries = yield* paginate<"skills", unknown>("skills", "skills/list", "skills", {}, limits)
+      // A catalog that changes between pages can list a skill twice; the first entry wins.
+      const skills = new Map<string, McpSchema.Skill>()
+      for (const entry of entries) {
+        const decoded = yield* Effect.result(decodeSkill(entry))
+        if (decoded._tag === "Failure") {
+          if (options?.onInvalidSkill === undefined) return yield* Effect.fail(decoded.failure)
+          yield* options.onInvalidSkill({ entry, error: decoded.failure })
+          continue
+        }
+        if (!skills.has(decoded.success.uri)) skills.set(decoded.success.uri, decoded.success)
+      }
+      return Array.from(skills.values())
+    },
+    (effect, callOptions) => withDeadline(effect, "skills discovery", callOptions?.timeout ?? timeout)
+  )
+
+  const getSkill = Effect.fnUntraced(
+    function*(params: { readonly uri: string }, _options?: CallOptions) {
+      yield* requireSkillsOption
+      if (!servesSkills) return yield* unsupported("Server does not declare the MCP Skills extension")
+      const result = yield* request<{ readonly skill: unknown }>("skills/get", { uri: params.uri })
+      const skill = yield* decodeSkill(result.skill)
+      return skill.uri === params.uri
+        ? skill
+        : yield* invalid(`MCP server returned skill ${skill.uri} for ${params.uri}`)
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "skills/get", callOptions?.timeout)
+  )
+
+  const readResourceDirectory = Effect.fnUntraced(
+    function*(params: { readonly uri: string }, options?: DiscoveryOptions) {
+      yield* requireSkillsOption
+      const limits = yield* resolveDiscoveryLimits(options?.limits, discoveryLimits)
+      if (!servesDirectories) {
+        return yield* unsupported("Server does not declare directory reads for the MCP Skills extension")
+      }
+      const entries = yield* paginate<"resources", unknown>(
+        "directory",
+        "resources/directory/read",
+        "resources",
+        { uri: params.uri },
+        limits
+      )
+      // A directory that changes between pages can list a child twice; the first entry wins.
+      const children = new Map<string, McpSchema.Resource>()
+      for (const entry of entries) {
+        const child = yield* decodeUnknown(McpSchema.Resource, entry) as Effect.Effect<
+          McpSchema.Resource,
+          McpClientError
+        >
+        if (!McpSkills.isDirectChild(params.uri, child.uri)) {
+          return yield* invalid(`${child.uri} is not a child of the MCP directory ${params.uri}`)
+        }
+        if (!children.has(child.uri)) children.set(child.uri, child)
+      }
+      return Array.from(children.values())
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "directory discovery", callOptions?.timeout ?? timeout)
+  )
+
+  const readSkillResource = Effect.fnUntraced(
+    function*(params: { readonly skill: McpSchema.Skill; readonly uri: string }, _options?: CallOptions) {
+      yield* requireSkillsOption
+      const { skill, uri } = params
+      // A file missing from the manifest is a change to the skill, not a file to
+      // trust. A dynamic skill has no manifest, so any file in its directory is read.
+      const manifest = skill.resources === "dynamic" ? undefined : skill.resources
+      const listed = manifest?.find((resource) => resource.uri === uri)
+      if (manifest === undefined ? !McpSkills.isSkillFile(skill.uri, uri) : listed === undefined) {
+        return yield* invalid(`${uri} is not a file of the MCP skill ${skill.uri}`)
+      }
+      const result = yield* call<McpSchema.ReadResourceResult>("resources", "resources/read", { uri })
+      const [content, ...rest] = result.contents
+      if (content === undefined || rest.length > 0 || content.uri !== uri) {
+        return yield* invalid(`MCP resources/read returned other contents than ${uri}`)
+      }
+      const bytes = "text" in content ? encoder.encode(content.text) : content.blob
+      if (listed !== undefined) {
+        const actual = `sha256:${yield* digest.digestHex(Digest.sha256, bytes)}`
+        if (bytes.byteLength !== listed.size || actual !== listed.digest) {
+          return yield* invalid(`${uri} does not match the digest and size listed by the MCP skill ${skill.uri}`)
+        }
+      }
+      if (uri !== skill.uri) return result
+      // Verified bytes can still carry other frontmatter than the listing, and
+      // hosts must not load a skill whose two descriptions differ.
+      const frontmatter = McpSkills.parseFrontmatter("text" in content ? content.text : decoder.decode(bytes))
+      return frontmatter !== undefined && Equal.equals(frontmatter, skill.frontmatter)
+        ? result
+        : yield* invalid(`The frontmatter of ${uri} differs from the frontmatter listed for the MCP skill`)
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "resources/read", callOptions?.timeout)
+  )
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
 
@@ -391,6 +619,7 @@ export const make: (options: {
   return {
     [TypeId]: TypeId,
     protocolVersion: version,
+    capabilities,
     serverInfo,
     instructions,
     listTools: (callOptions) =>
@@ -412,6 +641,10 @@ export const make: (options: {
         "resources/read",
         callOptions?.timeout
       ),
+    listSkills,
+    getSkill,
+    readResourceDirectory,
+    readSkillResource,
     callTool: callTool as McpClient["callTool"]
   }
 })
@@ -421,75 +654,159 @@ export const make: (options: {
 // =============================================================================
 
 /**
- * Discovers remote tools and binds their handlers using the standard Toolkit implementation.
+ * Annotation containing the remote descriptor used to bind an MCP tool.
  *
  * **Details**
  *
- * Pass an optional prefix such as `"reports__"` to qualify model tool names.
- * Remote JSON Schemas are advertised without local schema import. Results become
- * text; tool-reported and operational failures fail the Effect. Use `Tool.make`
- * or `Tool.dynamic` with `Toolkit.make` for custom validation, approval or results.
- * Build a new toolkit to discover changes between model turns.
+ * The descriptor is server-provided and should be treated as untrusted.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.1.1
+ */
+export class ToolDescriptor
+  extends Context.Service<ToolDescriptor, McpSchema.Tool>()("effect/ai/McpClient/ToolDescriptor")
+{}
+
+/**
+ * Native tool bound to a remote MCP descriptor with configurable result and failure modes.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.1
+ */
+export type RemoteTool<
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
+> = FailureMode extends Tool.FailureMode ? Tool.Tool<string, {
+    readonly parameters: typeof Schema.Unknown
+    readonly success: {
+      readonly text: typeof Schema.String
+      readonly complete: typeof McpSchema.CallToolResult
+    }[ResultMode]
+    readonly failure: typeof McpClientError
+    readonly failureMode: FailureMode
+  }, Requirements>
+  : never
+
+/**
+ * Binds remote tools using the standard Toolkit implementation.
+ *
+ * **Details**
+ *
+ * Pass a prefix such as `"reports__"` or an options object. Tools are discovered
+ * unless an approved `tools` snapshot is supplied. Remote JSON Schemas are
+ * advertised as-is, and model tool names must be 1–64 ASCII letters, digits,
+ * underscores or hyphens. Build a new toolkit to pick up remote changes.
+ *
+ * By default results are text and failures fail the Effect.
+ * `resultMode: "complete"` returns the full `CallToolResult` and sends its
+ * content to the model as text and file parts. `failureMode: "return"` returns
+ * typed failures, including transport errors, to the model; `ToolError` keeps
+ * the failed result. Type arguments that select a non-default mode require the
+ * matching option.
+ *
+ * `timeout` bounds each tool call. `trustAnnotations` copies server hints into
+ * tool annotations but never sets approval. `transformTool` receives each
+ * annotated tool before binding and must return a tool derived from it, e.g.
+ * with `setNeedsApproval`, `annotate` or `addDependency`, keeping its name,
+ * schemas and failure mode.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
-export const toolkit: (client: McpClient, prefix?: string) => Effect.Effect<
-  Toolkit.WithHandler<
-    Record<
-      string,
-      Tool.Tool<string, {
-        readonly parameters: typeof Schema.Unknown
-        readonly success: typeof Schema.String
-        readonly failure: typeof McpClientError
-        readonly failureMode: "error"
-      }>
-    >
-  >,
-  McpClientError
-> = Effect.fnUntraced(function*(client: McpClient, prefix = "") {
-  const descriptors = yield* client.listTools()
-  const tools: Array<
-    Tool.Tool<string, {
-      readonly parameters: typeof Schema.Unknown
-      readonly success: typeof Schema.String
-      readonly failure: typeof McpClientError
-      readonly failureMode: "error"
-    }>
-  > = []
-  const handlers: Record<string, (params: unknown) => Effect.Effect<string, McpClientError>> = Object.create(null)
-
-  for (const descriptor of descriptors) {
-    const name = `${prefix}${descriptor.name}`
-    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
-      return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
+export function toolkit(
+  client: McpClient,
+  prefix?: string
+): Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpClientError>
+export function toolkit<
+  ResultMode extends "text" | "complete" = "text",
+  FailureMode extends Tool.FailureMode = "error",
+  Requirements = never
+>(
+  client: McpClient,
+  options:
+    & {
+      readonly prefix?: string | undefined
+      readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+      readonly trustAnnotations?: boolean | undefined
+      readonly timeout?: Duration.Input | undefined
+      readonly transformTool?:
+        | ((
+          tool: RemoteTool<ResultMode, FailureMode>,
+          descriptor: McpSchema.Tool
+        ) => RemoteTool<ResultMode, FailureMode, Requirements>)
+        | undefined
     }
-    tools.push(
-      Tool.dynamic(name, {
+    // A mode may be omitted only when its type is exactly the default.
+    & ([ResultMode] extends ["text"] ? { readonly resultMode?: "text" | undefined }
+      : { readonly resultMode: ResultMode })
+    & ([FailureMode] extends ["error"] ? { readonly failureMode?: "error" | undefined }
+      : { readonly failureMode: FailureMode })
+): Effect.Effect<
+  Toolkit.WithHandler<Record<string, RemoteTool<ResultMode, FailureMode, Requirements>>>,
+  McpClientError
+>
+export function toolkit(
+  client: McpClient,
+  options: string | ToolkitConfig = ""
+): Effect.Effect<Toolkit.WithHandler<any>, McpClientError> {
+  return Effect.gen(function*() {
+    const config: ToolkitConfig = typeof options === "string" ? { prefix: options } : options
+    const descriptors = config.tools ?? (yield* client.listTools())
+    const complete = config.resultMode === "complete"
+    const success = complete ? McpSchema.CallToolResult : Schema.String
+    const failureMode = config.failureMode ?? "error"
+    const tools: Array<Tool.Any> = []
+    const handlers: Record<
+      string,
+      (params: unknown) => Effect.Effect<string | McpSchema.CallToolResult, McpClientError>
+    > = Object.create(null)
+
+    for (const descriptor of descriptors) {
+      const name = `${config.prefix ?? ""}${descriptor.name}`
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
+        return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
+      }
+      const spec = {
         parameters: descriptor.inputSchema,
         description: descriptor.description,
-        success: Schema.String,
-        failure: McpClientError
-      }).annotate(Tool.Strict, false)
-    )
-    handlers[name] = Effect.fnUntraced(function*(params: unknown) {
-      const args = yield* decodeToolArguments(params).pipe(
-        Effect.mapError((cause) =>
-          fail(new ValidationError({ description: "MCP tool arguments must be a JSON object", cause }))
-        )
-      )
-      const result = yield* client.callTool({ tool: descriptor, arguments: args })
-      if (result.isError === true) {
-        return yield* fail(new ToolError({ result }))
+        success,
+        failure: McpClientError,
+        toModelOutput: complete ? toModelOutput : undefined
       }
-      return yield* toText(result)
-    })
-  }
+      // The identical branches narrow `failureMode` to a single `RemoteTool` member.
+      let tool: RemoteTool<"text" | "complete", Tool.FailureMode> = (
+        failureMode === "return"
+          ? Tool.dynamic(name, { ...spec, failureMode })
+          : Tool.dynamic(name, { ...spec, failureMode })
+      ).annotate(Tool.Strict, false).annotate(ToolDescriptor, descriptor)
+      if (config.trustAnnotations && descriptor.annotations !== undefined) {
+        tool = tool.annotate(Tool.Readonly, descriptor.annotations.readOnlyHint)
+          .annotate(Tool.Destructive, descriptor.annotations.destructiveHint)
+          .annotate(Tool.Idempotent, descriptor.annotations.idempotentHint)
+          .annotate(Tool.OpenWorld, descriptor.annotations.openWorldHint)
+        if (descriptor.annotations.title !== undefined) tool = tool.annotate(Tool.Title, descriptor.annotations.title)
+      }
+      tools.push(config.transformTool === undefined ? tool : config.transformTool(tool, descriptor))
+      handlers[name] = Effect.fnUntraced(function*(params: unknown) {
+        const args = yield* decodeToolArguments(params).pipe(
+          Effect.mapError((cause) =>
+            fail(new ValidationError({ description: "MCP tool arguments must be a JSON object", cause }))
+          )
+        )
+        const result = yield* client.callTool({ tool: descriptor, arguments: args }, { timeout: config.timeout })
+        if (result.isError === true) return yield* fail(new ToolError({ result }))
+        return complete ? result : yield* toText(result)
+      })
+    }
 
-  const toolkit = Toolkit.make(...tools)
-  return yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
-})
+    const toolkit = Toolkit.make(...tools)
+    return yield* toolkit.pipe(Effect.provideContext(yield* toolkit.toHandlers(handlers)))
+  })
+}
 
 // =============================================================================
 // Transports
@@ -687,6 +1004,13 @@ export const layerStdio: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: {
+    readonly maxPages?: number | undefined
+    readonly maxItems?: number | undefined
+  } | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly maxMessageBytes?: ByteSize.Input | undefined
@@ -921,6 +1245,13 @@ export const layerHttp: (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
+  readonly discoveryLimits?: {
+    readonly maxPages?: number | undefined
+    readonly maxItems?: number | undefined
+  } | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+  } | undefined
   readonly url: string | URL
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly headers?: Readonly<Record<string, string>> | undefined
@@ -940,8 +1271,7 @@ const TransportTypeId = "~effect/ai/McpClient/Transport" as const
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 const CLOSE_TIMEOUT = Duration.seconds(5)
-const MAX_DISCOVERY_PAGES = 100
-const MAX_DISCOVERY_ITEMS = 10_000
+const DEFAULT_DISCOVERY_LIMITS = { maxPages: 100, maxItems: 10_000 }
 const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -951,6 +1281,10 @@ type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
 type Options = Parameters<typeof make>[0]
 
 type Capability = "tools" | "prompts" | "resources"
+
+type DiscoveryOptions = NonNullable<Parameters<McpClient["listTools"]>[0]>
+
+type DiscoveryLimits = DiscoveryOptions["limits"]
 
 interface CallOptions {
   readonly timeout?: Duration.Input | undefined
@@ -968,6 +1302,19 @@ interface InitializeResult {
 type ListResult<K extends string, A> = Record<K, ReadonlyArray<A>> & { readonly nextCursor?: string }
 const fail = (reason: McpClientErrorReason) => new McpClientError({ reason })
 const limitError = (description: string) => fail(new LimitError({ description }))
+
+const resolveDiscoveryLimits = (
+  limits: DiscoveryLimits,
+  defaults: typeof DEFAULT_DISCOVERY_LIMITS
+): Effect.Effect<typeof DEFAULT_DISCOVERY_LIMITS, McpClientError> => {
+  const maxPages = limits?.maxPages ?? defaults.maxPages
+  const maxItems = limits?.maxItems ?? defaults.maxItems
+  return Number.isSafeInteger(maxPages) && maxPages >= 0 && Number.isSafeInteger(maxItems) && maxItems >= 0
+    ? Effect.succeed({ maxPages, maxItems })
+    : Effect.fail(
+      fail(new ConfigurationError({ description: "MCP discovery limits must be nonnegative safe integers" }))
+    )
+}
 
 const validationError = (cause: Schema.SchemaError) =>
   fail(new ValidationError({ description: "Invalid MCP payload", cause }))
@@ -1035,7 +1382,8 @@ const isRequest = (message: McpSchema.JsonRpcMessage): message is McpSchema.Json
 
 const isResponse = (message: McpSchema.JsonRpcMessage): message is McpSchema.JsonRpcResponse => !("method" in message)
 
-// The client advertises no capabilities, so it answers pings and declines every other server request.
+// The client advertises no capability that lets a server send it requests, so it answers pings and
+// declines every other server request.
 const replyToServer = (request: McpSchema.JsonRpcRequest): McpSchema.JsonRpcResponse =>
   request.method === "ping"
     ? { jsonrpc: "2.0", id: request.id, result: {} }
@@ -1175,6 +1523,57 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 // Internal: Toolkit
 // =============================================================================
 
+interface ToolkitConfig {
+  readonly prefix?: string | undefined
+  readonly tools?: ReadonlyArray<McpSchema.Tool> | undefined
+  readonly resultMode?: "text" | "complete" | undefined
+  readonly failureMode?: Tool.FailureMode | undefined
+  readonly trustAnnotations?: boolean | undefined
+  readonly timeout?: Duration.Input | undefined
+  readonly transformTool?:
+    | ((tool: RemoteTool<"text" | "complete", Tool.FailureMode>, descriptor: McpSchema.Tool) => Tool.Any)
+    | undefined
+}
+
+const toModelOutput = (result: McpSchema.CallToolResult): Array<Prompt.ToolModelOutputPart> => {
+  const parts: Array<Prompt.ToolModelOutputPart> = []
+  for (const block of result.content) {
+    switch (block.type) {
+      case "text": {
+        parts.push(Prompt.textPart({ text: block.text }))
+        break
+      }
+      case "image":
+      case "audio": {
+        parts.push(Prompt.filePart({ mediaType: block.mimeType, data: block.data }))
+        break
+      }
+      case "resource_link": {
+        parts.push(Prompt.textPart({ text: resourceLinkText(block) }))
+        break
+      }
+      case "resource": {
+        parts.push(
+          "text" in block.resource
+            ? Prompt.textPart({ text: block.resource.text })
+            : Prompt.filePart({
+              mediaType: block.resource.mimeType ?? "application/octet-stream",
+              data: block.resource.blob
+            })
+        )
+        break
+      }
+    }
+  }
+  if (parts.length === 0 && result.structuredContent !== undefined) {
+    parts.push(Prompt.textPart({ text: JSON.stringify(result.structuredContent) }))
+  }
+  return parts
+}
+
+const resourceLinkText = (link: McpSchema.ResourceLink) =>
+  `${link.title ?? link.name}: ${link.uri}${link.description === undefined ? "" : `\n${link.description}`}`
+
 const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClientError> => {
   const unsupported = (content: string) =>
     Effect.fail(
@@ -1188,9 +1587,7 @@ const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClie
         break
       }
       case "resource_link": {
-        parts.push(
-          `${block.title ?? block.name}: ${block.uri}${block.description === undefined ? "" : `\n${block.description}`}`
-        )
+        parts.push(resourceLinkText(block))
         break
       }
       case "resource": {

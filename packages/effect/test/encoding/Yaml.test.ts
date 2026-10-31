@@ -232,6 +232,36 @@ development:
     })
   })
 
+  // YAML 1.2.2 §8.2.1: a sequence entry's mapping is indented to its first key.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1 and js-yaml 4.3.2.
+  describe("sequence entry mappings indented past the dash", () => {
+    it.each([
+      {
+        name: "root sequence",
+        source: "-   name: a\n    age: 1\n",
+        expected: [{ name: "a", age: 1 }]
+      },
+      {
+        name: "indentless sequence",
+        source: "items:\n-   name: a\n    age: 1\n-   name: b\n    age: 2\n",
+        expected: { items: [{ name: "a", age: 1 }, { name: "b", age: 2 }] }
+      }
+    ])("parses $name", ({ source, expected }) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["two spaces", "-   name: a\n  age: 1\n"],
+      ["three spaces", "-   name: a\n   age: 1\n"]
+    ])("rejects a later key indented by %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    it("rejects a tab before the first key", () => {
+      assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
+    })
+  })
+
   // YAML 1.2.2 §§6.5–6.7 and 7.3.1–7.3.3: flow scalar folding and comments.
   // Expected values and rejection fixtures were checked with yaml 2.9.1.
   describe("multiline flow scalars", () => {
@@ -444,6 +474,41 @@ development:
     )("preserves single-document markers around a %s", (_, source, expected) => {
       assert.deepStrictEqual(Yaml.parse(source), expected)
     })
+  })
+
+  describe("merge keys", () => {
+    it("merges mappings with explicit keys and earlier sources taking precedence", () => {
+      const source = `base: &base {a: 1, b: 2}
+other: &other {b: 3, c: 4}
+block:
+  c: 5
+  <<: [*base, *other]
+flow: {<<: *other, c: 5}
+items:
+  - <<: *base
+    a: 5
+`
+      const result = Yaml.parse(source)
+      assert.deepStrictEqual(result, {
+        base: { a: 1, b: 2 },
+        other: { b: 3, c: 4 },
+        block: { a: 1, b: 2, c: 5 },
+        flow: { b: 3, c: 5 },
+        items: [{ a: 5, b: 2 }]
+      })
+      assert.deepStrictEqual(Object.keys((result as { readonly flow: object }).flow), ["b", "c"])
+    })
+
+    it("treats quoted merge keys as ordinary keys", () => {
+      assert.deepStrictEqual(Yaml.parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
+    })
+
+    it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}", "<<: {a: 1}\n<<: {b: 2}\n"])(
+      "rejects invalid merge usage in %j",
+      (source) => {
+        assert.throws(() => Yaml.parse(source), SyntaxError)
+      }
+    )
   })
 
   describe("anchors and quoted comment boundaries", () => {

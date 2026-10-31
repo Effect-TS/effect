@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
+import type * as EncodingError from "effect/encoding/EncodingError"
 
 describe("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
@@ -99,4 +100,46 @@ describe("Base64", () => {
     assert.isTrue(Result.isFailure(Base64.decode("ab=c")))
     assert.isTrue(Result.isFailure(Base64.decode("!!!!")))
   })
+
+  it("round trips every byte value", () => {
+    const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(Base64.encode(bytes))), bytes)
+  })
+
+  it("ignores non-zero trailing bits", () => {
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zh==")), new Uint8Array([102]))
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
+  })
+
+  it("rejects invalid input with both decoders", () => {
+    const length = (length: number) => `Length must be a multiple of 4, but is ${length}`
+    const misplacedPadding = "Found a '=' character, but it is not at the end"
+    assertFailure("Zg", "Zg", length(2))
+    assertFailure("Zg=", "Zg=", length(3))
+    assertFailure("Zg\r\n=", "Zg=", length(3))
+    assertFailure("Zm 9v", "Zm 9v", length(5))
+    assertFailure("Zg=v", "Zg=v", misplacedPadding)
+    assertFailure("=Zg=", "=Zg=", misplacedPadding)
+    assertFailure("====", "====", misplacedPadding)
+    for (const char of ["-", "_", "!", "{", "\u00e9"]) {
+      assertFailure(`Zm9${char}`, `Zm9${char}`, `Invalid character ${char}`)
+    }
+  })
 })
+
+const assertFailure = (raw: string, stripped: string, expected: string) => {
+  const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
+    Base64.decode(raw),
+    Base64.decodeString(raw)
+  ]
+  for (const result of results) {
+    assert.isTrue(Result.isFailure(result), raw)
+    if (Result.isFailure(result)) {
+      const { input, kind, message, module } = result.failure
+      assert.deepStrictEqual(
+        { kind, module, input, message },
+        { kind: "Decode", module: "Base64", input: stripped, message: expected }
+      )
+    }
+  }
+}

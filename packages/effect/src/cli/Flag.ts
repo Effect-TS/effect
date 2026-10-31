@@ -290,6 +290,7 @@ export const Directory = (name: string, options?: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -691,6 +692,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -776,6 +778,11 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
  *
+ * **Gotchas**
+ *
+ * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
+ * the original `MissingOption` error is returned.
+ *
  * **Example** (Falling back to prompts)
  *
  * ```ts import.meta.vitest
@@ -785,6 +792,38 @@ export const withFallbackConfig: {
  *   Flag.withFallbackPrompt(Prompt.String({ message: "Name" }))
  * )
  * name.kind // => "flag"
+ * ```
+ *
+ * **Example** (Showing an introduction before fallback prompts)
+ *
+ * The prompt can be built by an effect, which only runs when the prompt is
+ * needed. Share a cached introduction between the prompt builders and
+ * `Command.provideEffectDiscard`: it runs once, before the first prompt, and
+ * also runs when every flag is supplied. Flags declared after the first
+ * prompted flag may not have been validated yet when the introduction runs.
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect } from "effect"
+ * import { Command, Flag, Prompt } from "effect/cli"
+ *
+ * const program = Effect.gen(function*() {
+ *   const intro = yield* Effect.cached(Console.log("Welcome to demo"))
+ *
+ *   const ask = (name: string) =>
+ *     Flag.String(name).pipe(
+ *       Flag.withFallbackPrompt(
+ *         Effect.as(intro, Prompt.String({ message: `${name}?` }))
+ *       )
+ *     )
+ *
+ *   const demo = Command.make(
+ *     "demo",
+ *     { name: ask("name"), dir: ask("dir") },
+ *     (input) => Console.log(input)
+ *   ).pipe(Command.provideEffectDiscard(intro))
+ *
+ *   yield* Command.run(demo, { version: "1.0.0" })
+ * })
  * ```
  *
  * @stability unstable
@@ -842,6 +881,7 @@ export const map: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -899,6 +939,7 @@ export const mapEffect: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -1158,6 +1199,7 @@ export const orElse: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void

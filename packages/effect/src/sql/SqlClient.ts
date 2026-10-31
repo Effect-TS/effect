@@ -15,12 +15,12 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { CurrentTransactionService } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
 import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
-import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -81,14 +81,46 @@ export interface SqlClient extends Constructor {
    * client's, such as one that sets its isolation level, provide
    * `BeginTransaction`.
    *
+   * To retry serialization failures or deadlocks, wrap the outermost
+   * `withTransaction` in `Effect.retry`. Each attempt starts a fresh
+   * transaction and re-runs the whole effect, including `COMMIT`.
+   *
    * **Gotchas**
    *
    * Deferred invalidations run individually after the commit and don't join an
    * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
    * the transaction's context defers, and a fiber that outlives the
    * transaction can't defer through it, as with `afterCommit`. Transactions
-   * that don't go through `makeWithTransaction`, such as those of
-   * `@effect/sql-sqlite-do`, invalidate immediately.
+   * that don't go through `makeWithTransaction` invalidate immediately.
+   *
+   * Retrying a nested transaction only retries its savepoint, which can't
+   * recover an outer transaction the database has aborted. Since a retried
+   * effect runs more than once, keep non-transactional side effects in
+   * `afterCommit`, which discards the callbacks of a failed attempt but
+   * doesn't guarantee they run exactly once. Don't retry `ConnectionError`: a
+   * `COMMIT` that lost its connection may have committed, and retrying would
+   * apply its writes twice.
+   *
+   * **Example** (Retrying serialization failures and deadlocks)
+   *
+   * ```ts
+   * import { Effect, Schedule } from "effect"
+   * import { SqlClient } from "effect/sql"
+   *
+   * const program = Effect.gen(function*() {
+   *   const sql = yield* SqlClient.SqlClient
+   *   return yield* sql.withTransaction(
+   *     sql`UPDATE accounts SET balance = balance - 10 WHERE id = 1`
+   *   ).pipe(
+   *     Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE"),
+   *     Effect.retry({
+   *       while: (error) => error.reason._tag === "SerializationError" || error.reason._tag === "DeadlockError",
+   *       times: 5,
+   *       schedule: Schedule.exponential("10 millis").pipe(Schedule.jittered)
+   *     })
+   *   )
+   * })
+   * ```
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -136,8 +168,8 @@ export interface SqlClient extends Constructor {
    * long-running work.
    * Registering after the transaction has ended is a defect.
    *
-   * Transactions that don't go through `makeWithTransaction`, such as those
-   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   * Transactions that don't go through `makeWithTransaction` run callbacks
+   * immediately.
    */
   readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
@@ -207,9 +239,8 @@ export declare namespace SqlClient {
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
-     * Whether the transaction control statements - `BEGIN`, `COMMIT`,
-     * `ROLLBACK`, and the savepoint pair - can be prepared like any other
-     * statement.
+     * Whether the transaction control statements - `BEGIN`, `COMMIT` and
+     * `SAVEPOINT` - can be prepared like any other statement.
      *
      * **Details**
      *
@@ -217,6 +248,9 @@ export declare namespace SqlClient {
      * prepare them stops parsing them again each time. Off by default,
      * because several databases refuse to prepare transaction control at all;
      * a driver has to say that its own does not.
+     *
+     * Rollbacks and savepoint releases always run unprepared, so a prepared
+     * statement the backend has dropped cannot stop cleanup.
      */
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
@@ -275,20 +309,20 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const rollback = options.rollback ?? "ROLLBACK"
   const rollbackSavepoint = options.rollbackSavepoint ?? ((name: string) => `ROLLBACK TO SAVEPOINT ${name}`)
   const transactionAcquirer = options.transactionAcquirer ?? options.acquirer
+  const unprepared = (conn: Connection.Connection, sql: string) => conn.executeUnprepared(sql, [], undefined)
   const control = options.prepareTransactionControls === true
     ? (conn: Connection.Connection, sql: string) => conn.execute(sql, [], undefined)
-    : (conn: Connection.Connection, sql: string) => conn.executeUnprepared(sql, [], undefined)
+    : unprepared
   const isTransaction = options.isTransaction
   const cleanup = isTransaction
-    ? (conn: Connection.Connection, sql: string) => isTransaction(conn) ? control(conn, sql) : Effect.void
-    : control
+    ? (conn: Connection.Connection, sql: string) => isTransaction(conn) ? unprepared(conn, sql) : Effect.void
+    : unprepared
   const withTransaction = makeWithTransaction({
     transactionService,
     spanAttributes: options.spanAttributes,
     acquireConnection: (restore) => restore(transactionAcquirer!),
     // Unlike the client's own, a provided statement isn't fixed, so it isn't prepared.
-    begin: (conn, statement) =>
-      statement === undefined ? control(conn, beginTransaction) : conn.executeUnprepared(statement, [], undefined),
+    begin: (conn, statement) => statement === undefined ? control(conn, beginTransaction) : unprepared(conn, statement),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => cleanup(conn, releaseSavepoint(`effect_sql_${id}`))
@@ -430,13 +464,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
-  const lease = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (scope) =>
-      restore(semaphore.take(1)).pipe(
-        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-        Effect.andThen(available)
-      ))
-  )
+  const lease = Effect.uninterruptibleMask((restore) => Effect.andThen(restore(semaphore.takeScoped(1)), available))
 
   return {
     acquirer: lease,
@@ -488,14 +516,7 @@ interface AfterCommitBuffer {
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
-  Effect.catchCause(effect, (cause) =>
-    Effect.withFiber((fiber) => {
-      const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
-      if (unhandledLogLevel) {
-        return Effect.logWithLevel(unhandledLogLevel)("Unhandled error in SqlClient.afterCommit callback", cause)
-      }
-      return Effect.void
-    }))
+  Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
 
 const makeAfterCommit =
   (transactionService: Context.Key<any, any>) =>
@@ -524,6 +545,12 @@ const makeAfterCommit =
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
  * is provided.
+ *
+ * **Details**
+ *
+ * Transactions started this way are also recognized by `SqlResolver` when the
+ * caller's context has no `SqlClient`, so their requests don't share a batch
+ * with requests outside the transaction.
  *
  * @stability unstable
  * @category transactions
@@ -612,6 +639,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)

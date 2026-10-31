@@ -300,14 +300,19 @@ describe("graphqlgen --watch", () => {
         mkdirSync(p.file("src"))
         writeFileSync(p.file("src/a.graphql"), query("A", "id"))
       })
-      const initial = yield* loop.waitFor(
-        "the initial document output",
-        (out) => cycles(out).length > 0 && existsSync(p.file("src/a.graphql.ts"))
+      // The reconcile cycle replaces the pending watcher with a tree watcher on the new root.
+      // It needs no event, so it can land before the initial cycle is observed.
+      const reconciled = yield* loop.waitFor("the reconcile cycle", (out) => cycles(out).length >= 2)
+      assert.deepStrictEqual(
+        cycles(reconciled),
+        ["regenerated 2 files, deleted 0", "regenerated 0 files, deleted 0"],
+        show(reconciled)
       )
+      assert.isTrue(existsSync(p.file("src/a.graphql.ts")))
 
       yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
       yield* loop.emit(p.file("src/a.graphql"))
-      yield* loop.waitFor("the document edit", (out) => cycles(out).length > cycles(initial).length)
+      yield* loop.waitForCycle(3)
       assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), yield* generated(p.dir, p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 

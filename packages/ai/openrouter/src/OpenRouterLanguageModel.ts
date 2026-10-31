@@ -16,7 +16,7 @@ import * as IdGenerator from "effect/ai/IdGenerator"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
 import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import { addGenAIAnnotations } from "effect/ai/Telemetry"
 import * as Tool from "effect/ai/Tool"
@@ -26,10 +26,8 @@ import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import type * as Schema from "effect/Schema"
@@ -946,7 +944,11 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
-            const text = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+            const text = Predicate.isNotUndefined(part.modelOutput)
+              ? Prompt.toolModelOutputToText(part.modelOutput)
+              : typeof part.result === "string"
+              ? part.result
+              : JSON.stringify(part.result)
             const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
 
             messages.push({
@@ -970,16 +972,6 @@ const prepareMessages = Effect.fnUntraced(
 // =============================================================================
 // HTTP Details
 // =============================================================================
-
-const buildHttpRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest
-): typeof Response.HttpRequestDetails.Type => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
-})
 
 const buildHttpResponseDetails = (
   response: HttpClientResponse.HttpClientResponse
@@ -1008,8 +1000,7 @@ const makeResponse = Effect.fnUntraced(
       type: "response-metadata",
       id: rawResponse.id,
       modelId: rawResponse.model,
-      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt)),
-      request: buildHttpRequestDetails(response.request)
+      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt))
     })
 
     const choice = rawResponse.choices[0]
@@ -1260,8 +1251,7 @@ const makeStreamResponse = Effect.fnUntraced(
             type: "response-metadata",
             id: event.id,
             modelId: event.model,
-            timestamp: DateTime.formatIso(timestamp),
-            request: buildHttpRequestDetails(response.request)
+            timestamp: DateTime.formatIso(timestamp)
           })
           responseMetadataEmitted = true
         }
@@ -1823,11 +1813,29 @@ const tryJsonSchema = <S extends Schema.Constraint>(
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer }),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
+    catch: (error) => toolParametersError(tool, error, method)
+  }).pipe(Effect.filterOrFail(
+    // A raw JSON Schema given to a dynamic tool is sent unchanged
+    (jsonSchema) =>
+      jsonSchema.type === "object" || Array.isArray(jsonSchema.anyOf) ||
+      (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    (jsonSchema) =>
+      toolParametersError(
+        tool,
+        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(jsonSchema)}`,
+        method
+      )
+  ))
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service

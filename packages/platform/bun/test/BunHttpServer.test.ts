@@ -1,11 +1,14 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
@@ -302,6 +305,29 @@ describe("BunHttpServer", () => {
       }).pipe(Effect.provide(BunHttpServer.layerTest)), 5000)
   }
 
+  it.live("keeps quiet response streams open unless an idle timeout is configured", () =>
+    Effect.gen(function*() {
+      const quietStream = Effect.fnUntraced(function*(idleTimeout?: number) {
+        const server = yield* BunHttpServer.make({
+          hostname: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "100 millis",
+          ...(idleTimeout === undefined ? {} : { idleTimeout })
+        })
+        yield* server.serve(Effect.succeed(HttpServerResponse.stream(Stream.concat(
+          Stream.succeed(new TextEncoder().encode("a")),
+          // Longer than Bun's 10 second default idle timeout plus its timer granularity.
+          Stream.fromEffect(Effect.as(Effect.sleep("15 seconds"), new TextEncoder().encode("b")))
+        ))))
+        return yield* Effect.exit(fetchText(NetAddress.formatUrlUnsafe(server.address)))
+      })
+      const [omitted, explicit] = yield* Effect.all([Effect.scoped(quietStream()), Effect.scoped(quietStream(1))], {
+        concurrency: "unbounded"
+      })
+      assert.deepStrictEqual(omitted, Exit.succeed("ab"))
+      assert.isTrue(Exit.hasDies(explicit))
+    }).pipe(Effect.timeout("25 seconds")), 30000)
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
@@ -432,6 +458,19 @@ describe("BunHttpServer", () => {
       assert.strictEqual(unixServer.address._tag === "UnixPathAddress" ? unixServer.address.path : undefined, path)
       assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
+
+  it.effect("returns 413 for a body over MaxBodySize", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.text, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const response = yield* HttpClient.post("/body", { body: HttpBody.text("12345") })
+      assert.strictEqual(response.status, 413)
+    }).pipe(Effect.provide(BunHttpServer.layerTest)))
 
   it.effect("answers CONNECT with 501 without running the app", () =>
     Effect.gen(function*() {

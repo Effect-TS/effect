@@ -1,4 +1,4 @@
-import { type Effect, type Exit, Redacted } from "effect"
+import { Effect, type Exit, Layer, Redacted } from "effect"
 import { HttpClient, type HttpClientError, HttpClientRequest, type HttpClientResponse } from "effect/http"
 import type { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { describe, expect, it } from "tstyche"
@@ -135,6 +135,21 @@ describe("HttpClient", () => {
     })
   })
 
+  describe("timeout", () => {
+    it("should preserve the HttpClient service type", () => {
+      expect(client.pipe(HttpClient.timeout("5 seconds"))).type.toBe<HttpClient.HttpClient>()
+      expect(HttpClient.timeout(client, "5 seconds")).type.toBe<HttpClient.HttpClient>()
+      expect(Layer.effect(HttpClient.HttpClient, Effect.map(HttpClient.HttpClient, HttpClient.timeout("5 seconds"))))
+        .type.toBe<Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient>>()
+    })
+
+    it("should preserve custom errors", () => {
+      expect(failingClient.pipe(HttpClient.timeout("5 seconds"))).type.toBe<
+        HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
+      >()
+    })
+  })
+
   describe("withRateLimiter", () => {
     it("should support data-last and data-first usage", () => {
       const options = {
@@ -181,11 +196,12 @@ describe("HttpClient", () => {
       >()
     })
 
-    it("should infer the exit and delegate to circuitBreakerClassifier", () => {
+    it("should infer the exit and probe context and delegate to circuitBreakerClassifier", () => {
       const delegated = HttpClient.withCircuitBreaker(client, {
         breaker,
-        classify: (exit) => {
+        classify: (exit, { probe }) => {
           expect(exit).type.toBe<Exit.Exit<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>>()
+          expect(probe).type.toBe<boolean>()
           expect(HttpClient.circuitBreakerClassifier(exit)).type.toBe<Effect.Effect<CircuitBreaker.Outcome>>()
           return HttpClient.circuitBreakerClassifier(exit)
         }

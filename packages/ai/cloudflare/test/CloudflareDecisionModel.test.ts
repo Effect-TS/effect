@@ -183,24 +183,33 @@ describe("CloudflareDecisionModel", () => {
       }).pipe(Effect.provide(layer(invalid))))
   }
 
-  it.effect("sends byte arrays, base64 strings, and data URLs as images", () => {
+  it.effect("sends byte arrays, base64 strings, and data URLs as images listed by reference in the state", () => {
     const dataUrl = "data:image/webp;base64,UklGRg=="
+    const Screenshots = Decision.make({
+      input: Schema.Struct({ message: Schema.String, shots: Schema.Array(Decision.Image) }),
+      decisions: Triage.decisions
+    })
+    const shots = [
+      { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
+      { mediaType: "image/jpeg", data: "/9j/4AAQ" },
+      { mediaType: "image/webp", data: new URL(dataUrl) }
+    ]
     return Effect.gen(function*() {
-      const result = yield* DecisionModel.decide(Triage, {
-        input,
-        images: [
-          { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
-          { mediaType: "image/jpeg", data: "/9j/4AAQ" },
-          { mediaType: "image/webp", data: new URL(dataUrl) }
-        ]
-      })
+      const result = yield* DecisionModel.decide(Screenshots, { input: { ...input, shots } })
       assert.strictEqual(result.answers.urgent.probability, 0.99)
     }).pipe(
       Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
       Effect.provide(clientLayer(answers, (request) => {
         assert.strictEqual(request.body._tag, "Uint8Array")
         if (request.body._tag === "Uint8Array") {
-          assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).images, [
+          const body = JSON.parse(new TextDecoder().decode(request.body.body))
+          const [png, jpeg, webp] = JSON.parse(body.state.slice(body.state.indexOf("{"))).shots
+          assert.strictEqual(
+            body.state,
+            `Image 1: ${png}\nImage 2: ${jpeg}\nImage 3: ${webp}\n\n` +
+              JSON.stringify({ ...input, shots: [png, jpeg, webp] })
+          )
+          assert.deepStrictEqual(body.images, [
             { content_type: "image/png", base64: "iVBORw==" },
             { content_type: "image/jpeg", base64: "/9j/4AAQ" },
             dataUrl
@@ -212,10 +221,10 @@ describe("CloudflareDecisionModel", () => {
 
   it.effect("rejects remote image URLs without sending a request", () => {
     let requests = 0
+    const Photo = Decision.make({ input: Schema.Struct({ photo: Decision.Image }), decisions: Triage.decisions })
     return Effect.gen(function*() {
-      const error = yield* Effect.flip(DecisionModel.decide(Triage, {
-        input,
-        images: [{ mediaType: "image/png", data: new URL("https://example.com/cat.png") }]
+      const error = yield* Effect.flip(DecisionModel.decide(Photo, {
+        input: { photo: { mediaType: "image/png", data: new URL("https://example.com/cat.png") } }
       }))
       assert.strictEqual(error.reason._tag, "InvalidUserInputError")
       assert.strictEqual(requests, 0)

@@ -948,6 +948,24 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* TestConsole.errorLines, [])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should show help for invalid global flag values", () =>
+      Effect.gen(function*() {
+        const Region = GlobalFlag.Setting("region")({
+          flag: Flag.Literals("region", ["us", "eu"]).pipe(Flag.withDefault("us"))
+        })
+        const deploy = Command.make("deploy").pipe(Command.withGlobalFlags([Region]))
+        const runCommand = Command.runWith(Command.make("app").pipe(Command.withSubcommands([deploy])), {
+          version: "1.0.0"
+        })
+
+        for (const flag of ["completions", "log-level", "region"]) {
+          const error = yield* Effect.flip(runCommand(["deploy", `--${flag}`, "bad"]))
+          assert.instanceOf(error, CliError.ShowHelp)
+          assert.deepStrictEqual(error.commandPath, ["app", "deploy"])
+          assert.instanceOf(error.errors[0], CliError.InvalidValue)
+        }
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should propagate handler errors from run", () =>
       Effect.gen(function*() {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
@@ -2174,7 +2192,7 @@ describe("Command", () => {
 
         const runCmd = Command.runWith(cmd, { version: "1.0.0" })
 
-        yield* runCmd(["--verbose", "a.txt", "b.txt", "--verbose", "c.txt"])
+        yield* runCmd(["a.txt", "b.txt", "--verbose", "c.txt"])
 
         assert.deepStrictEqual(captured, [{ files: ["a.txt", "b.txt", "c.txt"], verbose: true }])
       }).pipe(Effect.provide(TestLayer)))

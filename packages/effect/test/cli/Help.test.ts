@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
-import { Argument, CliOutput, Command, Flag } from "effect/cli"
+import { Argument, CliOutput, Command, Flag, GlobalFlag } from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import { TestConsole } from "effect/testing"
@@ -37,6 +37,17 @@ const runCommand = Effect.fnUntraced(
     return output.join("\n")
   }
 )
+
+const runSharedFlagsApp = Command.runWith(
+  Command.make("app").pipe(
+    Command.withSharedFlags({ profile: Flag.String("profile") }),
+    Command.withSubcommands([Command.make("deploy", { target: Flag.String("target") })])
+  ),
+  { version: "1.0.0" }
+)
+
+const withFormatter = (options: Parameters<typeof CliOutput.defaultFormatter>[0]) =>
+  Effect.provide(Layer.merge(TestLayer, CliOutput.layer(CliOutput.defaultFormatter({ colors: false, ...options }))))
 
 describe("CliOutput.displayWidth", () => {
   it("measures terminal cells", () => {
@@ -257,6 +268,59 @@ describe("Command help output", () => {
       expect(errorText + helpText).not.toContain("experimental-foo")
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("summary replaces inherited and global flags with a pointer to the root help", () =>
+    Effect.gen(function*() {
+      yield* runSharedFlagsApp(["deploy", "--help"])
+      const deployHelp = (yield* TestConsole.logLines).join("\n")
+
+      expect(deployHelp).toContain("--target")
+      expect(deployHelp).toContain("Run 'app --help' for inherited flags")
+      expect(deployHelp).toContain("Run 'app --help' for global flags")
+      expect(deployHelp).not.toContain("--profile")
+      expect(deployHelp).not.toContain("--log-level")
+    }).pipe(withFormatter({ inheritedFlags: "summary", globalFlags: "summary" })))
+
+  it.effect("none omits inherited and global flags, but the root help keeps its own and global flags", () =>
+    Effect.gen(function*() {
+      yield* runSharedFlagsApp(["--help"])
+      const rootHelp = (yield* TestConsole.logLines).join("\n")
+      yield* runSharedFlagsApp(["deploy", "--help"])
+      const deployHelp = (yield* TestConsole.logLines).join("\n").slice(rootHelp.length)
+
+      expect(rootHelp).toContain("--profile")
+      expect(rootHelp).toContain("GLOBAL FLAGS")
+      expect(rootHelp).toContain("--log-level")
+      expect(deployHelp).toContain("--target")
+      expect(deployHelp).not.toContain("--profile")
+      expect(deployHelp).not.toContain("--log-level")
+      expect(deployHelp).not.toContain("Run 'app --help'")
+    }).pipe(withFormatter({ inheritedFlags: "none", globalFlags: "none" })))
+
+  it.effect("global flag summary points at the nearest command that declares global flags", () =>
+    Effect.gen(function*() {
+      const Region = GlobalFlag.Setting("region")({ flag: Flag.String("region").pipe(Flag.optional) })
+      const run = Command.runWith(
+        Command.make("app").pipe(
+          Command.withSubcommands([
+            Command.make("admin").pipe(
+              Command.withGlobalFlags([Region]),
+              Command.withSubcommands([Command.make("leaf")])
+            )
+          ])
+        ),
+        { version: "1.0.0" }
+      )
+
+      yield* run(["admin", "--help"])
+      const adminHelp = (yield* TestConsole.logLines).join("\n")
+      yield* run(["admin", "leaf", "--help"])
+      const leafHelp = (yield* TestConsole.logLines).join("\n").slice(adminHelp.length)
+
+      expect(adminHelp).toContain("--region")
+      expect(leafHelp).not.toContain("--region")
+      expect(leafHelp).toContain("Run 'app admin --help' for global flags")
+    }).pipe(withFormatter({ globalFlags: "summary" })))
+
   it.effect("hides unlisted subcommands from help output", () =>
     Effect.gen(function*() {
       const visible = Command.make("visible").pipe(
@@ -394,12 +458,14 @@ describe("Command help output", () => {
           destination file    Destination path
 
         FLAGS
-          --debug, -d              Enable debug logging
-          --config, -c file        Path to configuration file
-          --quiet, -q              Suppress non-error output
           --recursive, -r          Copy directories recursively
           --force, -f              Overwrite existing files
           --buffer-size integer    Buffer size in KB
+
+        INHERITED FLAGS
+          --debug, -d          Enable debug logging
+          --config, -c file    Path to configuration file
+          --quiet, -q          Suppress non-error output
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information
@@ -425,12 +491,14 @@ describe("Command help output", () => {
           files... string    Files to remove
 
         FLAGS
+          --recursive, -r    Remove directories and contents
+          --force, -f        Force removal without prompts
+          --verbose, -v      Explain what is being done
+
+        INHERITED FLAGS
           --debug, -d          Enable debug logging
           --config, -c file    Path to configuration file
           --quiet, -q          Suppress non-error output
-          --recursive, -r      Remove directories and contents
-          --force, -f          Force removal without prompts
-          --verbose, -v        Explain what is being done
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information
@@ -453,13 +521,15 @@ describe("Command help output", () => {
           mycli admin users list [flags]
 
         FLAGS
+          --format string    Output format (json, table, csv)
+          --active           Show only active users
+          --verbose, -v      Show detailed information
+
+        INHERITED FLAGS
           --debug, -d          Enable debug logging
           --config, -c file    Path to configuration file
           --quiet, -q          Suppress non-error output
           --sudo               Run with elevated privileges
-          --format string      Output format (json, table, csv)
-          --active             Show only active users
-          --verbose, -v        Show detailed information
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information
@@ -486,12 +556,14 @@ describe("Command help output", () => {
           email string       Email address (optional) (optional)
 
         FLAGS
+          --role string    User role (admin, user, guest)
+          --notify, -n     Send notification email
+
+        INHERITED FLAGS
           --debug, -d          Enable debug logging
           --config, -c file    Path to configuration file
           --quiet, -q          Suppress non-error output
           --sudo               Run with elevated privileges
-          --role string        User role (admin, user, guest)
-          --notify, -n         Send notification email
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information
@@ -514,11 +586,13 @@ describe("Command help output", () => {
           mycli admin config <subcommand> [flags]
 
         FLAGS
-          --debug, -d             Enable debug logging
-          --config, -c file       Path to configuration file
-          --quiet, -q             Suppress non-error output
-          --sudo                  Run with elevated privileges
           --profile, -p string    Configuration profile to use
+
+        INHERITED FLAGS
+          --debug, -d          Enable debug logging
+          --config, -c file    Path to configuration file
+          --quiet, -q          Suppress non-error output
+          --sudo               Run with elevated privileges
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information
@@ -548,12 +622,14 @@ describe("Command help output", () => {
           key=value... string    Configuration key-value pairs
 
         FLAGS
-          --debug, -d               Enable debug logging
-          --config, -c file         Path to configuration file
-          --quiet, -q               Suppress non-error output
-          --sudo                    Run with elevated privileges
-          --profile, -p string      Configuration profile to use
           --config-file, -f file    Write to specific config file
+
+        INHERITED FLAGS
+          --debug, -d             Enable debug logging
+          --config, -c file       Path to configuration file
+          --quiet, -q             Suppress non-error output
+          --sudo                  Run with elevated privileges
+          --profile, -p string    Configuration profile to use
 
         GLOBAL FLAGS
           --help, -h                                                          Show help information

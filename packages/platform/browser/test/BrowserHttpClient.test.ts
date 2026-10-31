@@ -122,6 +122,17 @@ describe("BrowserHttpClient", () => {
       }]
     }))))
 
+  it.effect("urlParamsBody preserves leading question marks", () =>
+    Effect.gen(function*() {
+      const response = yield* HttpClient.get("http://localhost/form")
+      assert.deepStrictEqual([...yield* response.urlParamsBody], [["??name", "value"], ["next", "ok"]])
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost/form", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "??name=value&next=ok"
+      }]
+    }))))
+
   it.effect("decodes an XHR response as FormData", () =>
     Effect.gen(function*() {
       const formData = yield* HttpClient.get("http://localhost/form").pipe(

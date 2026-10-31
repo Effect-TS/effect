@@ -512,6 +512,12 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(conflicts, idStrings([future, local]))
     }))
 
+  it("makeEntryIdUnsafe increases strictly, and encodes an explicit msecs exactly", () => {
+    const ids = Array.from({ length: 2000 }, () => Buffer.from(EventJournal.makeEntryIdUnsafe()).toString("hex"))
+    assert.isTrue(ids.every((id, i) => i === 0 || ids[i - 1] < id))
+    assert.strictEqual(EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe({ msecs: 1000 })), 1000)
+  })
+
   it.effect("relays an imported entry to another remote", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory

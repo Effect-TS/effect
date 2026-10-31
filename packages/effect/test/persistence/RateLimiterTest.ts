@@ -102,6 +102,19 @@ export const suite = (
         assert.approximately(Duration.toMillis(results[2].delay), 60_000, 1_000)
         assert.deepStrictEqual(results.map((result) => result.remaining), [0.25, -0.5, -1.25])
       }))
+
+    it.effect("store caps a zero limit and leaves an undefined limit uncapped", () =>
+      Effect.gen(function*() {
+        const store = yield* RateLimiter.RateLimiterStore
+        const opts = { key: "fixed-window-zero-limit", tokens: 1, refillRate: Duration.minutes(1), limit: 0 }
+
+        assert.deepStrictEqual(yield* store.fixedWindow(opts), [1, 0])
+        assert.deepStrictEqual(yield* store.fixedWindow(opts), [1, 0])
+        assert.deepStrictEqual(
+          yield* store.fixedWindow({ ...opts, key: "fixed-window-undefined-limit", limit: undefined }),
+          [1, 60_000]
+        )
+      }))
   })
 
   it.layer(layer, { timeout: "30 seconds", concurrent: false })(`RateLimiter token-bucket timing (${name})`, (it) => {
@@ -355,6 +368,46 @@ export const suite = (
         assert.strictEqual(Duration.toMillis(result.delay), 61_000)
         assert.strictEqual(result.remaining, -2)
         assert.strictEqual(Duration.toMillis(result.resetAfter), 361_000)
+      }))
+  })
+
+  it.layer(layer, { timeout: "30 seconds", concurrent: false })(`RateLimiter key isolation (${name})`, (it) => {
+    it.effect("a key ending in :refill does not refill another key's token bucket", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        const consume = (key: string) =>
+          limiter.consume({ algorithm: "token-bucket", key, limit: 3, window: "3 seconds" }).pipe(Effect.match({
+            onSuccess: (result) => result.remaining,
+            onFailure: (error) => error.reason._tag
+          }))
+        yield* TestClock.adjust("1 hour")
+
+        const drained = yield* Effect.forEach([0, 1, 2, 3], () => consume("isolation-refill"))
+        const first = yield* consume("isolation-refill:refill")
+        // Let any 1ms Redis TTL set by the first call lapse.
+        yield* TestClock.withLive(Effect.sleep("10 millis"))
+        const second = yield* consume("isolation-refill:refill")
+        const after = yield* consume("isolation-refill")
+
+        assert.deepStrictEqual({ drained, neighbour: [first, second], after }, {
+          drained: [2, 1, 0, "RateLimitExceeded"],
+          neighbour: [2, 1],
+          after: "RateLimitExceeded"
+        })
+      }))
+
+    it.effect("a key ending in :adaptive does not share another key's adaptive state", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ key: "isolation-adaptive:adaptive", limit: 10, window: "1 minute" })
+        const result = yield* limiter.adaptiveConsume({
+          key: "isolation-adaptive",
+          tokens: 1,
+          fallbackLimit: 10,
+          fallbackWindow: Duration.minutes(1)
+        })
+
+        assert.strictEqual(result.phase, "inactive")
       }))
   })
 }

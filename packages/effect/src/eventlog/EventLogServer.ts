@@ -12,7 +12,9 @@
 import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Arr from "../Array.ts"
 import * as Cache from "../Cache.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Mac from "../crypto/Mac.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -21,7 +23,6 @@ import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
@@ -76,8 +77,16 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
+ * `Authenticate` calls `authorizeIdentity` with the claimed public key and the
+ * presented signing public key, then verifies the signature against the
+ * presented key. Only a verified key is passed to
+ * `getOrCreateSessionAuthBinding`, and a key that differs from the identity's
+ * existing binding is rejected.
+ *
  * Use the connection's `ConnectionWrites.track` in `onWrite` and
  * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
+ * `compaction` sets `HelloResponse.compaction`, advertising that the server
+ * also serves `EventLogCompactionRpcs`.
  *
  * @stability unstable
  * @category layers
@@ -86,7 +95,11 @@ export const layerAuthMiddleware: Layer.Layer<
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
   readonly firstSequence?: number | undefined
-  readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
+  readonly compaction?: boolean | undefined
+  readonly authorizeIdentity?: (
+    publicKey: string,
+    signingPublicKey: Uint8Array<ArrayBuffer>
+  ) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
@@ -106,12 +119,7 @@ export const layerRpcHandlers = (options: {
   Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>> | EventLogAuthentication
 > =>
   EventLogRemoteRpcs.toLayer(Effect.gen(function*() {
-    const clientChallenges = yield* Cache.make({
-      lookup: (_clientId: number) => Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge),
-      capacity: Number.MAX_SAFE_INTEGER,
-      timeToLive: EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
-    })
-    let chunkedIdCounter = 0
+    const toFrames = makeFramer()
 
     const persistedSigningPublicKeys = yield* Cache.makeWith(
       (key: SessionAuthCacheKey) =>
@@ -135,16 +143,31 @@ export const layerRpcHandlers = (options: {
 
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
-        const challenge = yield* Cache.get(clientChallenges, client.id)
+        // Kept on the connection, so it is released when the client disconnects
+        // and shared by overlapping Hellos until `Authenticate` consumes it.
+        let pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        if (pending === undefined) {
+          const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
+          // Read the clock again, as generating the challenge can suspend. A
+          // concurrent Hello may have stored a challenge in the meantime.
+          const now = yield* Clock.currentTimeMillis
+          pending = getPendingChallenge(client, now) ?? {
+            challenge,
+            expiresAt: now + EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
+          }
+          client.annotate(PendingChallenge, pending)
+        }
         return new HelloResponse({
           remoteId: options.remoteId,
-          challenge,
-          firstSequence: options.firstSequence
+          challenge: pending.challenge,
+          firstSequence: options.firstSequence,
+          compaction: options.compaction === true ? true : undefined
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
-        const challenge = Option.getOrNull(yield* Cache.getOption(clientChallenges, client.id))
-        if (!challenge) {
+        const pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        client.annotate(PendingChallenge, undefined)
+        if (pending === undefined) {
           return yield* new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
@@ -152,35 +175,41 @@ export const layerRpcHandlers = (options: {
             message: "Session auth challenge has expired"
           })
         }
-        yield* Cache.invalidate(clientChallenges, client.id)
         if (options.authorizeIdentity) {
-          yield* options.authorizeIdentity(request.publicKey)
+          yield* options.authorizeIdentity(request.publicKey, request.signingPublicKey)
         }
-        const signingPublicKey = yield* Cache.get(
-          persistedSigningPublicKeys,
-          new SessionAuthCacheKey({
-            publicKey: request.publicKey,
-            signingPublicKey: request.signingPublicKey
-          })
-        )
         const verified = yield* EventLogSessionAuth.verifySessionAuthenticateRequest({
           remoteId: options.remoteId,
-          challenge,
+          challenge: pending.challenge,
           publicKey: request.publicKey,
-          signingPublicKey,
+          signingPublicKey: request.signingPublicKey,
           signature: request.signature,
           algorithm: request.algorithm
         }).pipe(
           Effect.catch(() => Effect.succeed(false))
         )
 
-        if (!verified) {
-          return yield* new EventLogProtocolError({
+        const verificationFailed = () =>
+          new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
             code: "Forbidden",
             message: "Session auth signature verification failed"
           })
+        if (!verified) {
+          return yield* verificationFailed()
+        }
+        // Only a verified key reaches the binding. A key other than the
+        // identity's bound key is rejected like a bad signature.
+        const boundSigningPublicKey = yield* Cache.get(
+          persistedSigningPublicKeys,
+          new SessionAuthCacheKey({
+            publicKey: request.publicKey,
+            signingPublicKey: request.signingPublicKey
+          })
+        )
+        if (!Mac.timingSafeEqual(boundSigningPublicKey, request.signingPublicKey)) {
+          return yield* verificationFailed()
         }
 
         const authenticatedIdentities = new Set(
@@ -229,12 +258,7 @@ export const layerRpcHandlers = (options: {
           startSequence: request.startSequence,
           writes: getConnectionWrites(client)
         }).pipe(
-          Stream.mapArray(Arr.flatMap((data): NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
-            if (data.byteLength <= ChunkedMessage.chunkSize) {
-              return [new SingleMessage({ data })]
-            }
-            return ChunkedMessage.split(chunkedIdCounter++, data)
-          })),
+          Stream.mapArray(Arr.flatMap(toFrames)),
           Stream.catchCause((_) =>
             Stream.fail(
               new EventLogProtocolError({
@@ -393,6 +417,22 @@ class ConnectionWritesState extends Context.Service<ConnectionWritesState, Conne
   "effect/eventlog/EventLogServer/ConnectionWrites"
 ) {}
 
+// The connection's unconsumed `Hello` challenge, cleared by `Authenticate`.
+const PendingChallenge = Context.Reference<
+  | {
+    readonly challenge: Uint8Array<ArrayBuffer>
+    readonly expiresAt: number
+  }
+  | undefined
+>("effect/eventlog/EventLogServer/PendingChallenge", {
+  defaultValue: () => undefined
+})
+
+const getPendingChallenge = (client: Rpc.ServerClient, now: number) => {
+  const pending = Context.get(client.annotations, PendingChallenge)
+  return pending !== undefined && pending.expiresAt > now ? pending : undefined
+}
+
 const getConnectionWrites = (client: Rpc.ServerClient): ConnectionWrites => {
   const existing = Context.getOrUndefined(client.annotations, ConnectionWritesState)
   if (existing !== undefined) return existing
@@ -412,6 +452,8 @@ export class AuthenticatedIdentities extends Context.Service<AuthenticatedIdenti
   "effect/eventlog/EventLogServer/AuthenticatedIdentities"
 ) {}
 
+// Keyed by `publicKey` alone: the cache holds each identity's bound signing
+// key, and `Authenticate` rejects any presented key that differs from it.
 class SessionAuthCacheKey extends Data.Class<{
   readonly publicKey: string
   readonly signingPublicKey: Uint8Array<ArrayBuffer>
@@ -422,6 +464,22 @@ class SessionAuthCacheKey extends Data.Class<{
   [Hash.symbol]() {
     return Hash.string(this.publicKey)
   }
+}
+
+/**
+ * Frames one encoded message for a response stream: a `SingleMessage` when it
+ * fits, or the pieces of a `ChunkedMessage` with the next id otherwise.
+ *
+ * @internal
+ */
+export const makeFramer = (): (
+  data: Uint8Array<ArrayBuffer>
+) => NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
+  let chunkedIdCounter = 0
+  return (data) =>
+    data.byteLength <= ChunkedMessage.chunkSize
+      ? [new SingleMessage({ data })]
+      : ChunkedMessage.split(chunkedIdCounter++, data)
 }
 
 const constEmptyPrivateKey = Redacted.make(new Uint8Array(32))

@@ -19,7 +19,7 @@ import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
-import type * as Exit from "../Exit.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
@@ -281,6 +281,9 @@ const make = Effect.gen(function*() {
   // shards still held by this runner while their entities stop and their locks
   // are released
   const releasingShards = MutableHashSet.empty<ShardId>()
+  // runners that joined after the first assignment, kept out of the hash rings
+  // until the healthy set settles (see `runnerJoinDebounce`)
+  const pendingRunners = MutableHashSet.empty<Runner>()
   // The releasing gauge reports to the metric registry and attributes the
   // layer was built with.
   const updateReleasingShardsGauge = () =>
@@ -290,6 +293,24 @@ const make = Effect.gen(function*() {
     updateReleasingShardsGauge()
   }
   const activeShardsLatch = yield* Latch.make(false)
+
+  // Applies the result of a lock refresh: refreshed shards it did not return,
+  // and returned shards no longer assigned to this runner, move from
+  // `acquiredShards` to `releasingShards`. Shards acquired during the refresh
+  // are absent from its response, so only the refreshed ones are considered.
+  const releaseLostShards = (refreshed: ReadonlyArray<ShardId>, acquired: ReadonlyArray<ShardId>) => {
+    for (const shardId of refreshed) {
+      if (
+        MutableHashSet.has(acquiredShards, shardId) &&
+        (!acquired.includes(shardId) || !MutableHashSet.has(selfShards, shardId))
+      ) {
+        MutableHashSet.remove(acquiredShards, shardId)
+        MutableHashSet.add(releasingShards, shardId)
+      }
+    }
+    updateShardGauges()
+    if (MutableHashSet.size(releasingShards) > 0) activeShardsLatch.openUnsafe()
+  }
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
   // open once the handoff has released every shard lock
@@ -593,6 +614,13 @@ const make = Effect.gen(function*() {
           continue
         }
 
+        // While joins are pending the assignments are about to change, so take
+        // no new shards; otherwise a shard released for a joining runner could
+        // be taken here and handed off again. Publishing reopens the latch.
+        if (MutableHashSet.size(pendingRunners) > 0) {
+          continue
+        }
+
         // if a shard has been assigned to this runner, we acquire it
         const unacquiredShards = MutableHashSet.empty<ShardId>()
         for (const shardId of selfShards) {
@@ -617,13 +645,16 @@ const make = Effect.gen(function*() {
           Effect.ignore,
           Effect.timeoutOption(shardLockInterval)
         )
-        // A forced release can start while `acquire` is in flight, so re-check
-        // it here as well as before acquiring.
+        // A forced release or a pending join can begin while `acquire` is in
+        // flight, so re-check both. Shards locked meanwhile are released
+        // without running anything on them.
         const forcedReleasePending = forcedShardReleasePending()
+        const joinsPending = MutableHashSet.size(pendingRunners) > 0
         for (const shardId of acquired) {
           if (
             !shardLocksHealthyLatch.isOpen() ||
             forcedReleasePending ||
+            joinsPending ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
           ) {
@@ -690,27 +721,12 @@ const make = Effect.gen(function*() {
       return Effect.logInfo("Shard lock storage has recovered")
     })
 
-    const refreshShardLocks = Effect.gen(function*() {
+    const refreshShardLocks = Effect.suspend(() => {
       const refreshed = [...acquiredShards, ...releasingShards]
-      const acquired = yield* runnerStorage.refresh(selfAddress, refreshed)
-      // Shards acquired during the request are absent from its response.
-      for (const shardId of refreshed) {
-        if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
-          MutableHashSet.remove(acquiredShards, shardId)
-          MutableHashSet.add(releasingShards, shardId)
-        }
-      }
-      for (let i = 0; i < acquired.length; i++) {
-        const shardId = acquired[i]
-        if (!MutableHashSet.has(selfShards, shardId)) {
-          MutableHashSet.remove(acquiredShards, shardId)
-          MutableHashSet.add(releasingShards, shardId)
-        }
-      }
-      updateShardGauges()
-      if (MutableHashSet.size(releasingShards) > 0) {
-        yield* activeShardsLatch.open
-      }
+      return Effect.map(
+        runnerStorage.refresh(selfAddress, refreshed),
+        (acquired) => releaseLostShards(refreshed, acquired)
+      )
     }).pipe(
       Effect.retry({
         times: 5,
@@ -1412,10 +1428,33 @@ const make = Effect.gen(function*() {
     ClusterMetrics.runnersHealthy.updateUnsafe(BigInt(1), Context.empty())
   }
 
+  // Kept outside the loop so a restart after a storage failure does not drop
+  // this state and publish pending joins early.
+  const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
+  let nextRunners = MutableHashMap.empty<Runner, boolean>()
+  const healthyRunners = MutableHashSet.empty<Runner>()
+  const joinDebounce = Duration.toMillis(Duration.fromInputUnsafe(config.runnerJoinDebounce))
+  // when the first pending join and the latest pending change were observed
+  let pendingSince = 0
+  let pendingChangedAt = 0
+  // the initial assignment never waits, even if this runner ends up with no shards
+  let assignmentsPublished = false
+  // stays set until the assignments are actually recomputed
+  let changed = false
+
+  const addToRings = (runner: Runner) => {
+    for (let i = 0; i < runner.groups.length; i++) {
+      const group = runner.groups[i]
+      let ring = hashRings.get(group)
+      if (!ring) {
+        ring = HashRing.make()
+        hashRings.set(group, ring)
+      }
+      HashRing.add(ring, runner.address, { weight: runner.weight })
+    }
+  }
+
   yield* Effect.gen(function*() {
-    const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
-    let nextRunners = MutableHashMap.empty<Runner, boolean>()
-    const healthyRunners = MutableHashSet.empty<Runner>()
     const withTimeout = Effect.timeout(Duration.seconds(5))
 
     while (true) {
@@ -1430,7 +1469,7 @@ const make = Effect.gen(function*() {
       }
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
-      let changed = false
+      const now = clock.currentTimeMillisUnsafe()
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
         MutableHashMap.set(nextRunners, runner, healthy)
@@ -1442,30 +1481,54 @@ const make = Effect.gen(function*() {
           }
           continue
         }
-        changed = true
         MutableHashSet.add(healthyRunners, runner)
         MutableHashMap.remove(allRunners, runner)
-        for (let j = 0; j < runner.groups.length; j++) {
-          const group = runner.groups[j]
-          let ring = hashRings.get(group)
-          if (!ring) {
-            ring = HashRing.make()
-            hashRings.set(group, ring)
+        if (joinDebounce > 0 && assignmentsPublished) {
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            pendingSince = now
           }
-          HashRing.add(ring, runner.address, { weight: runner.weight })
+          pendingChangedAt = now
+          MutableHashSet.add(pendingRunners, runner)
+          continue
         }
+        changed = true
+        addToRings(runner)
       }
 
       // Remove runners that are no longer present or healthy
       MutableHashMap.forEach(allRunners, (_, runner) => {
-        changed = true
         MutableHashMap.remove(allRunners, runner)
         MutableHashSet.remove(healthyRunners, runner)
         runFork(runnersService.onRunnerUnavailable(runner.address))
+        // A pending runner owns no shards, so its departure only restarts the
+        // quiet period instead of publishing the other joins mid-burst.
+        if (MutableHashSet.has(pendingRunners, runner)) {
+          MutableHashSet.remove(pendingRunners, runner)
+          pendingChangedAt = now
+          if (MutableHashSet.size(pendingRunners) === 0) {
+            // let the acquisition loop take the shards it was holding off on
+            activeShardsLatch.openUnsafe()
+          }
+          return
+        }
+        changed = true
         for (let i = 0; i < runner.groups.length; i++) {
           HashRing.remove(hashRings.get(runner.groups[i])!, runner.address)
         }
       })
+
+      // Publish pending joins once the healthy set has settled, the cap is
+      // reached, or the assignments are recomputed anyway.
+      if (
+        MutableHashSet.size(pendingRunners) > 0 &&
+        (changed || now - pendingChangedAt >= joinDebounce || now - pendingSince >= joinDebounce * 4)
+      ) {
+        changed = true
+        for (const runner of pendingRunners) {
+          addToRings(runner)
+        }
+        MutableHashSet.clear(pendingRunners)
+      }
 
       // swap allRunners and nextRunners
       const prevRunners = allRunners
@@ -1480,6 +1543,8 @@ const make = Effect.gen(function*() {
 
       // Recompute shard assignments if the set of healthy runners has changed.
       if (changed) {
+        changed = false
+        assignmentsPublished = true
         MutableHashSet.clear(selfShards)
         hashRings.forEach((ring, group) => {
           const newAssignments = HashRing.getShards(ring, config.shardsPerGroup)
@@ -1616,18 +1681,26 @@ const make = Effect.gen(function*() {
                   envelope as any
                 )
               })
-              if (!options.discard) {
-                const entry: ClientRequestEntry = {
-                  rpc: rpc as any,
-                  context: fiber.context,
-                  message
-                }
-                clientRequests.set(id, entry)
-                respond = makeClientRespond(entry, client.write)
-              } else {
+              if (options.message.discard === true) {
                 respond = clientRespondDiscard
+                // a discarded call is acknowledged once its message is sent
+                const requestId = options.message.id
+                return Effect.flatMap(
+                  sendOutgoing(message, true),
+                  () => client.write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
+                )
               }
-              return sendOutgoing(message, options.discard)
+              const entry: ClientRequestEntry = {
+                rpc: rpc as any,
+                context: fiber.context,
+                message
+              }
+              clientRequests.set(id, entry)
+              respond = makeClientRespond(entry, client.write)
+              // A failed send leaves no reply or interrupt to release the entry.
+              // Only drop the local bookkeeping, as the request may have been
+              // persisted.
+              return Effect.tapError(sendOutgoing(message, false), () => Effect.sync(() => clientRequests.delete(id)))
             }
             case "Ack": {
               const requestId = Snowflake.Snowflake(options.message.requestId)
@@ -1899,6 +1972,42 @@ const make = Effect.gen(function*() {
   const reaper = yield* EntityReaper
   const entityManagerLatches = new Map<string, Latch.Latch>()
 
+  // This runner's view of its shards lags lock storage by up to one refresh,
+  // or longer while the process is paused. So the final reply of a persisted
+  // request is stored only once a refresh of its shard's lock confirms it.
+  // Anything short of that, including a refresh that failed, timed out, was
+  // interrupted, or never started because shutdown closed the scope, leaves
+  // the reply for the shard's next owner. Concurrent writers on a shard share
+  // one refresh, which outlives an interrupted writer. Entities draining from
+  // a released shard still hold its lock.
+  const pendingLockChecks = new Map<ShardId, Fiber.Fiber<boolean>>()
+  const confirmShardLock = (runnerAddress: RunnerAddress, shardId: ShardId): Effect.Effect<boolean> =>
+    Effect.suspend(() => {
+      if (!MutableHashSet.has(acquiredShards, shardId) && !MutableHashSet.has(releasingShards, shardId)) {
+        return Effect.succeed(false)
+      }
+      const pending = pendingLockChecks.get(shardId)
+      const check = pending ? Effect.succeed(pending) : runnerStorage.refresh(runnerAddress, [shardId]).pipe(
+        Effect.map((acquired) => {
+          releaseLostShards([shardId], acquired)
+          return acquired.includes(shardId)
+        }),
+        Effect.timeoutOption(shardLockInterval),
+        Effect.map(Option.getOrElse(() => false)),
+        Effect.catch(() => Effect.succeed(false)),
+        Effect.forkIn(shardingScope, { startImmediately: true }),
+        Effect.map((fiber) => {
+          pendingLockChecks.set(shardId, fiber)
+          fiber.addObserver(() => pendingLockChecks.delete(shardId))
+          return fiber
+        })
+      )
+      return Effect.flatMap(
+        check,
+        (fiber) => Effect.map(Fiber.await(fiber), (exit) => exit._tag === "Success" && exit.value)
+      )
+    })
+
   const registerEntity: Sharding["Service"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
       const runnerAddress = getRunnerAddress()
@@ -1917,7 +2026,8 @@ const make = Effect.gen(function*() {
         runnerAddress,
         residency,
         sharding,
-        abandonUndelivered
+        abandonUndelivered,
+        isShardOwned: (shardId) => confirmShardLock(runnerAddress, shardId)
       }).pipe(
         Effect.provideContext(services.pipe(
           // Registration overrides construction fallbacks, except for runner-owned services.

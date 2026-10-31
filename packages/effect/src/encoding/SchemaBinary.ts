@@ -80,6 +80,7 @@ const codecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
 const fingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
 const directCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
 const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
+const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
 
 /**
  * Derives a compact binary codec from a schema.
@@ -132,6 +133,27 @@ export function toCodec<S extends Schema.Constraint>(schema: S, options?: Option
     trusted
   )
   cache.set(schema, codec)
+  return codec
+}
+
+/**
+ * Derives the default-mode {@link toCodec} codec, except that decoding rejects
+ * struct fields the schema does not know instead of skipping them.
+ *
+ * @internal
+ */
+export function toCodecStrict<S extends Schema.Constraint>(schema: S): toCodec<S> {
+  const cached = strictCodecCache.get(schema)
+  if (cached !== undefined) return cached
+  const { exact, layout, recursive, target } = compileTarget(schema)
+  const trusted: Trusted | undefined = exact ? { value: undefined } : undefined
+  const codec = assembleCodec<S>(
+    trusted === undefined ? target : withTrustedDecode(target, trusted, !recursive),
+    layout,
+    strictMode,
+    trusted
+  )
+  strictCodecCache.set(schema, codec)
   return codec
 }
 
@@ -571,7 +593,7 @@ function makeParser<T>(
           issuePathLen = 0
           const bodyStart = pos + headerLen
           indexSignatures.beginFrame()
-          body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode.positional, dict)
+          body.reset(buf, bodyStart, bodyStart + frameLen, parseOptions, indexSignatures, mode, dict)
           const value = decodeFrameBody(layout, body, mode)
           out.push((decodeEncoded === undefined ? value : decodeEncoded(value)) as T)
         } catch (e) {
@@ -1515,6 +1537,7 @@ class Reader {
   options: SchemaAST.ParseOptions = SchemaAST.defaultParseOptions
   indexSignatures: IndexSignatureCache | undefined
   positional = false
+  rejectUnknownFields = false
   // Handed to the row-run field's immediate consumer, then cleared.
   intern: Array<unknown> | undefined
   // String tables shared by every frame on one connection; `undefined` for a
@@ -1526,7 +1549,7 @@ class Reader {
     end: number,
     options: SchemaAST.ParseOptions,
     indexSignatures: IndexSignatureCache | undefined,
-    positional: boolean,
+    mode: Mode,
     dict: DictRead | undefined
   ) {
     this.nesting = 0
@@ -1536,7 +1559,8 @@ class Reader {
     this.end = end
     this.options = options
     this.indexSignatures = indexSignatures
-    this.positional = positional
+    this.positional = mode.positional
+    this.rejectUnknownFields = mode.rejectUnknownFields
     this.intern = undefined
     this.dict = dict
   }
@@ -1550,6 +1574,7 @@ class Reader {
     this.options = SchemaAST.defaultParseOptions
     this.indexSignatures = undefined
     this.positional = false
+    this.rejectUnknownFields = false
     this.intern = undefined
     this.dict = undefined
   }
@@ -2882,6 +2907,7 @@ function fingerprintBytes(lo: number, hi: number): Uint8Array {
 
 interface Mode {
   readonly positional: boolean
+  readonly rejectUnknownFields: boolean
   readonly envelope: number
   readonly expectedEnvelope: string
   readonly fingerprint: Uint8Array
@@ -2889,15 +2915,19 @@ interface Mode {
 
 const defaultMode: Mode = {
   positional: false,
+  rejectUnknownFields: false,
   envelope: ENVELOPE,
   expectedEnvelope: "version 2 envelope, flags 0",
   fingerprint: new Uint8Array(8)
 }
 
+const strictMode: Mode = { ...defaultMode, rejectUnknownFields: true }
+
 function fingerprintMode(layout: Layout): Mode {
   const fingerprint = layoutFingerprint(layout)
   return {
     positional: true,
+    rejectUnknownFields: false,
     envelope: ENVELOPE_FINGERPRINT,
     expectedEnvelope: "version 2 envelope, flags 1",
     fingerprint: fingerprintBytes(
@@ -4249,6 +4279,7 @@ function decodeExtraPair(
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature === undefined) {
+    if (r.rejectUnknownFields) invalid("a key matching an index signature", key, r.options)
     skipFieldPayload(kind, r)
     return
   }
@@ -4345,6 +4376,7 @@ function decodeScalarField(kind: number, r: Reader): unknown {
 
 function decodeFieldPayload(layout: Layout, wireMask: number, kind: number, r: Reader): unknown {
   if ((wireMask & (1 << kind)) === 0) {
+    if (r.rejectUnknownFields) invalid("matching field wire kind", kind, r.options)
     skipFieldPayload(kind, r)
     return ABSENT
   }
@@ -4401,6 +4433,7 @@ function decodeStruct(layout: StructLayout, r: Reader): unknown {
       if (field !== undefined) cursor = field.index + 1
     }
     if (field === undefined) {
+      if (r.rejectUnknownFields) invalid("a known field id", id, r.options)
       if (seenUnknown === undefined) seenUnknown = new Set()
       else if (seenUnknown.has(id)) invalid("unique field ids", undefined, r.options)
       seenUnknown.add(id)
@@ -4620,6 +4653,7 @@ function decodeRunRow(
       } else {
         slot = struct.byId.get(id)
         if (slot === undefined) {
+          if (r.rejectUnknownFields) invalid("a known field id", id, r.options)
           if (seenIds === undefined) seenIds = new Set([id])
           else if (seenIds.has(id)) invalid("unique field ids", undefined, r.options)
           else seenIds.add(id)
@@ -4817,6 +4851,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
     const tag = r.u32le()
     const variant = layout.byTag.get(tag)
     if (variant === undefined) {
+      if (r.rejectUnknownFields) invalid("known union member", tag, r.options)
       r.take(r.remaining)
       return ABSENT
     }
@@ -4831,6 +4866,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
   }
   const member = layout.byKind.get(kind)
   if (member === undefined) {
+    if (r.rejectUnknownFields) invalid("known union member", kind, r.options)
     r.take(r.remaining)
     return ABSENT
   }
@@ -5064,7 +5100,7 @@ function decodeOneShot(
   const r = pooledReader ?? new Reader()
   const pooled = r === pooledReader
   if (pooled) pooledReader = undefined
-  r.reset(bytes, 0, bytes.length, options, undefined, mode.positional, undefined)
+  r.reset(bytes, 0, bytes.length, options, undefined, mode, undefined)
   const savedPathLen = issuePathLen
   issuePathLen = 0
   try {

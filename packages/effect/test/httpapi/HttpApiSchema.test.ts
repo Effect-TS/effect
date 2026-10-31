@@ -88,6 +88,23 @@ describe("HttpApiSchema", () => {
         { id: undefined, event: "user.created", data: { id: "123" } }
       )
     })
+
+    it("encodes data with its JSON codec", () => {
+      const Data = Schema.Struct({ at: Schema.Date, total: Schema.BigInt })
+      const stream = HttpApiSchema.StreamSse({ data: Data })
+      const encode = Schema.encodeUnknownSync(stream.events)
+      const decode = Schema.decodeUnknownSync(stream.events)
+      const data = "{\"at\":\"1970-01-01T00:00:00.000Z\",\"total\":\"1\"}"
+
+      assert.deepStrictEqual(
+        encode({ event: "tick", data: { at: new Date(0), total: 1n } }),
+        { event: "tick", data }
+      )
+      assert.deepStrictEqual(
+        decode({ event: "tick", data }),
+        { event: "tick", data: { at: new Date(0), total: 1n } }
+      )
+    })
   })
 
   describe("StreamUint8Array", () => {
@@ -112,6 +129,31 @@ describe("HttpApiSchema", () => {
       })
 
       assert.strictEqual(stream.contentType, "application/custom-binary")
+    })
+
+    it("stores a list of content types with the first as the default", () => {
+      const stream = HttpApiSchema.StreamUint8Array({
+        contentType: ["application/vnd.docker.raw-stream", "application/vnd.docker.multiplexed-stream"]
+      })
+
+      assert.strictEqual(stream.contentType, "application/vnd.docker.raw-stream")
+      assert.deepStrictEqual(stream.contentTypes, [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ])
+      assert.deepStrictEqual(HttpApiSchema.StreamUint8Array().contentTypes, ["application/octet-stream"])
+    })
+
+    it("rejects empty and duplicate content type lists", () => {
+      assert.throws(() => HttpApiSchema.StreamUint8Array({ contentType: [] }), /content type/i)
+      assert.throws(
+        () =>
+          HttpApiSchema.StreamNdjson({
+            schema: Schema.Number,
+            contentType: ["application/json", "Application/JSON; charset=utf-8"]
+          }),
+        /content type/i
+      )
     })
   })
 

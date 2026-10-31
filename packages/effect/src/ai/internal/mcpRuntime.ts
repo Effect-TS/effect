@@ -6,6 +6,7 @@
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
+import * as SecureRandom from "../../crypto/SecureRandom.ts"
 import * as Effect from "../../Effect.ts"
 import type * as Headers from "../../http/Headers.ts"
 import { appendPreResponseHandlerUnsafe } from "../../http/HttpEffect.ts"
@@ -18,11 +19,13 @@ import * as Result from "../../Result.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
 import type * as Scope from "../../Scope.ts"
+import type * as Types from "../../Types.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
+import * as McpSkills from "./mcpSkills.ts"
 import * as McpStatefulRuntime from "./mcpStatefulRuntime.ts"
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
@@ -138,6 +141,7 @@ export interface HandlerInstallationOptions {
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<PublicMcpSchema.Icon> | undefined
     readonly extensions?: NonNullable<PublicMcpSchema.ServerCapabilities["extensions"]> | undefined
+    readonly cacheHints?: McpProtocol.CacheHints | undefined
   }
 }
 
@@ -185,7 +189,8 @@ export interface ServerRuntimeShape {
     clientId: number,
     headers: Headers.Headers,
     notification: McpCore.ServerNotification,
-    fallbackLogLevel: LogLevel.LogLevel
+    fallbackLogLevel: LogLevel.LogLevel,
+    listChangeRevision: number | undefined
   ) => boolean
   readonly installHandlers: (
     options: HandlerInstallationOptions
@@ -506,8 +511,8 @@ export const make = Effect.fnUntraced(function*(
           })
       ),
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
-    canDeliver: (clientId, headers, notification, fallback) =>
-      stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,
+    canDeliver: (clientId, headers, notification, fallback, listChangeRevision) =>
+      stateful?.canDeliver(clientId, headers, notification, fallback, listChangeRevision) ?? true,
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
@@ -539,16 +544,17 @@ export const make = Effect.fnUntraced(function*(
             const presence = yield* options.core.registrationPresence
             return yield* Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
-              const capabilities: McpCore.CanonicalServerCapabilities = {
+              const capabilities: Types.Mutable<McpCore.CanonicalServerCapabilities> = {
                 completions: true,
                 logging: true,
                 ...(presence.tools ? { tools: { listChanged: true } } : {}),
                 ...(presence.resources
                   ? { resources: { listChanged: true, subscribe: httpRequest === undefined } }
                   : {}),
-                ...(presence.prompts ? { prompts: { listChanged: true } } : {}),
-                ...(options.serverInfo.extensions ? { extensions: options.serverInfo.extensions } : {})
+                ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
+              const extensions = McpSkills.declareExtension(options.serverInfo.extensions, presence.skills)
+              if (extensions !== undefined) capabilities.extensions = extensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,
@@ -561,10 +567,11 @@ export const make = Effect.fnUntraced(function*(
                 protocol: protocol as PublicMcpProtocol.ProtocolAdapter,
                 supportsResourceSubscriptions: httpRequest === undefined &&
                   capabilities.resources?.subscribe === true,
-                logLevel: options.defaultLogLevel
+                logLevel: options.defaultLogLevel,
+                listChangeRevision: options.getListChangeRevision?.() ?? 0
               }
               if (httpRequest !== undefined) {
-                const sessionId = crypto.randomUUID()
+                const sessionId = SecureRandom.uuidV4Unsafe()
                 stateful.registerHttp(sessionId, registration)
                 appendPreResponseHandlerUnsafe(
                   fiber.context,

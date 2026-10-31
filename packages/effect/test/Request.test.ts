@@ -8,6 +8,7 @@ import { Persistable, Persistence } from "effect/persistence"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -903,4 +904,24 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "1")
       assert.deepStrictEqual(batches, [[1]])
     }))
+
+  // Bun does not expose `gc` through V8 flags.
+  it.effect.skipIf(process.versions.bun !== undefined)(
+    "batches do not retain completed requests",
+    () =>
+      Effect.gen(function*() {
+        let reference!: WeakRef<GetNameById>
+        yield* Effect.request(
+          new GetNameById({ id: 0 }),
+          Resolver.make<GetNameById>((entries) =>
+            Effect.sync(() => {
+              reference = new WeakRef(entries[0].request)
+              entries[0].completeUnsafe(Exit.succeed(""))
+            })
+          )
+        )
+        yield* collectGarbage
+        assert.isUndefined(reference.deref())
+      })
+  )
 })

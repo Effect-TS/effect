@@ -12,6 +12,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
+import { gzipSync } from "node:zlib"
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` })
 const object = (properties: Record<string, unknown>, required: ReadonlyArray<string> = []) => ({
@@ -352,6 +353,24 @@ describe("SpecFetcher", () => {
         HttpClient.HttpClient,
         HttpClient.make((request) =>
           Effect.succeed(HttpClientResponse.fromWeb(request, new Response("Not Found", { status: 404 })))
+        )
+      )),
+      Layer.provide(NodeServices.layer)
+    ))))
+
+  it.effect("decompresses a gzipped spec URL", () =>
+    Effect.gen(function*() {
+      const fetcher = yield* SpecFetcher.SpecFetcher
+      const spec = yield* fetcher.fetch(Config.SpecSource.Url("https://example.com/openapi.json.gz"), "anthropic")
+      assert.deepStrictEqual(spec, { openapi: "3.1.0", paths: {} })
+    }).pipe(Effect.provide(SpecFetcher.layer.pipe(
+      Layer.provide(Layer.succeed(
+        HttpClient.HttpClient,
+        HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            new Response(gzipSync(JSON.stringify({ openapi: "3.1.0", paths: {} })))
+          ))
         )
       )),
       Layer.provide(NodeServices.layer)

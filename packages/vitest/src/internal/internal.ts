@@ -231,6 +231,11 @@ const collectTasks = (tasks: ReadonlyArray<CollectedTask>, acc: Array<V.TestCont
   return acc
 }
 
+const runsMoreThanOnce = (task: V.TestContext["task"]) => {
+  const retry = typeof task.retry === "number" ? task.retry : task.retry?.count
+  return (retry ?? 0) > 0 || (task.repeats ?? 0) > 0
+}
+
 const registerProp = <ExtraContext, A>(
   it: V.TestAPI<ExtraContext>,
   name: string,
@@ -416,6 +421,9 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     }
 
     const blockTaskSet = new Set(blockTasks)
+    // Vitest runs hooks once per retry and repeat attempt, so a test's last
+    // attempt cannot be counted. Blocks with such tests are released by `afterAll`.
+    const releaseAfterLastTest = !blockTasks.some(runsMoreThanOnce)
     let remaining = blockTasks.length
 
     V.beforeEach(
@@ -424,12 +432,14 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
         if (!blockTaskSet.has(task)) {
           return
         }
-        onTestFinished(() => {
-          remaining--
-          if (remaining === 0) {
-            return closeScope()
-          }
-        })
+        if (releaseAfterLastTest) {
+          onTestFinished(() => {
+            remaining--
+            if (remaining === 0) {
+              return closeScope()
+            }
+          })
+        }
         return runPromise(Effect.asVoid(contextEffect), { signal })
       },
       hookTimeout(options?.timeout)

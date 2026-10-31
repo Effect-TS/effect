@@ -13,9 +13,14 @@ const makeQueue = Effect.fnUntraced(function*(tableName: string, pollInterval: D
   return yield* factory.make({ name: tableName, schema: Schema.String })
 })
 
+// allowed lag of the database clock, far below the half-second and
+// multi-second errors these tests guard against
+const clockTolerance = 100
+
 // Delayed-offer timing checks that depend on how each SQL dialect reads the
-// database clock. They run against the real clock, which the database shares
-// when it runs on the same host. The tests run one at a time, since a
+// database clock. They measure with the test process's clock, which the
+// database clock can trail by a few milliseconds: SQL Server's SYSDATETIME()
+// advances in coarse ticks, for example. The tests run one at a time, since a
 // transaction on a single-connection database would hold up the other test's
 // offer.
 export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) => {
@@ -37,7 +42,7 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
         yield* queue.offer("delayed", { delay: "1 second" })
         yield* queue.take(Effect.succeed)
 
-        assert.isAtLeast((yield* Clock.currentTimeMillis) - offeredAt, 1000)
+        assert.isAtLeast((yield* Clock.currentTimeMillis) - offeredAt, 1000 - clockTolerance)
       }).pipe(TestClock.withLive), { timeout: 30000 })
 
     it.effect("measures the delay from an offer made inside a transaction", () =>
@@ -54,7 +59,7 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
         }).pipe(sql.withTransaction)
         yield* queue.take(Effect.succeed)
 
-        assert.isAtLeast((yield* Clock.currentTimeMillis) - offeredAt, 3000)
+        assert.isAtLeast((yield* Clock.currentTimeMillis) - offeredAt, 3000 - clockTolerance)
       }).pipe(TestClock.withLive), { timeout: 30000 })
 
     it.effect("wakes a waiting taker once an offer made inside a transaction commits", () =>

@@ -1430,6 +1430,47 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       assert.deepStrictEqual(Array.from(chunks, (chunk) => Array.from(chunk)), [[1, 2], [3]])
     }))
 
+  it.effect("sends the first listed stream content type unless a declared header selects another", () =>
+    Effect.gen(function*() {
+      const Logs = HttpApiSchema.StreamUint8Array({
+        contentType: ["application/vnd.docker.raw-stream", "application/vnd.docker.multiplexed-stream"]
+      })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("raw", "/raw", { success: Logs }),
+          HttpApiEndpoint.get("multiplexed", "/multiplexed", {
+            success: HttpApiSchema.WithHeaders(Logs, {
+              "content-type": Schema.Literals([
+                "application/vnd.docker.raw-stream",
+                "application/vnd.docker.multiplexed-stream"
+              ])
+            })
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers
+            .handle("raw", () => Effect.succeed(Stream.make(new Uint8Array([1]))))
+            .handle("multiplexed", () =>
+              Effect.succeed(HttpApiSchema.withHeaders({
+                body: Stream.make(new Uint8Array([2])),
+                headers: { "content-type": "application/vnd.docker.multiplexed-stream" as const }
+              })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+      const raw = yield* client.test.raw({ responseMode: "response-only" })
+      const multiplexed = yield* client.test.multiplexed({})
+      const chunks = yield* Stream.runCollect(multiplexed.body)
+
+      assert.strictEqual(raw.headers["content-type"], "application/vnd.docker.raw-stream")
+      assert.deepStrictEqual(multiplexed.headers, { "content-type": "application/vnd.docker.multiplexed-stream" })
+      assert.deepStrictEqual(Array.from(chunks, (chunk) => Array.from(chunk)), [[2]])
+    }))
+
   it.effect("renders successful StreamSse events incrementally with the declared content type", () =>
     Effect.gen(function*() {
       const Events = Schema.Struct({
@@ -1781,6 +1822,41 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
             `HttpApiEndpoint "${identifier}" not found in HttpApiGroup "users"`
           )
         }
+      }
+    }))
+
+  it.effect("rejects endpoints that share a method and path", () =>
+    Effect.gen(function*() {
+      const Stats = Schema.Struct({ cpu: Schema.Number })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("stats").add(
+          HttpApiEndpoint.get("once", "/stats", {
+            query: { stream: Schema.Literal(false) },
+            success: Stats
+          }),
+          HttpApiEndpoint.get("stream", "/stats", {
+            query: { stream: Schema.Literal(true) },
+            success: HttpApiSchema.StreamNdjson({ schema: Stats })
+          })
+        )
+      )
+      const exit = yield* Effect.exit(HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(Api).pipe(
+          Layer.provide(HttpApiBuilder.group(Api, "stats", (handlers) =>
+            handlers
+              .handle("once", () => Effect.succeed({ cpu: 1 }))
+              .handle("stream", () => Effect.succeed(Stream.make({ cpu: 1 })))))
+        )
+      ))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause)
+        assert.instanceOf(error, Error)
+        assert.strictEqual(
+          error.message,
+          `HttpApiEndpoint "stats.stream" (GET /stats) has the same method and path as "stats.once". Declare one endpoint whose query, headers, payload or success schemas cover each variant instead.`
+        )
       }
     }))
 
@@ -2144,6 +2220,43 @@ describe("HttpApiBuilder streaming payloads", () => {
       const withParameters = await handler(post("/upload", "Application/X-NDJSON; charset=utf-8", `{"n":1}\n`))
       assert.strictEqual(withParameters.status, 200)
       assert.strictEqual(await withParameters.json(), 1)
+    })
+  })
+
+  it("accepts each listed content type for byte and NDJSON stream payloads", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("bytes", "/bytes", {
+          payload: HttpApiSchema.StreamUint8Array({ contentType: ["application/x-tar", "application/gzip"] }),
+          success: Schema.Number
+        }),
+        HttpApiEndpoint.post("ndjson", "/ndjson", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item, contentType: ["application/jsonl", "application/json"] }),
+          success: Schema.Number
+        })
+      )
+    )
+    const groups = HttpApiBuilder.group(api, "test", (handlers) =>
+      handlers
+        .handle("bytes", ({ payload }) =>
+          Effect.map(Stream.runCollect(payload), (chunks) =>
+            chunks.reduce((n, chunk) => n + chunk.length, 0)))
+        .handle("ndjson", ({ payload }) =>
+          Effect.map(Stream.runCollect(payload), (items) => items.length)))
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      for (const contentType of ["application/x-tar", "application/gzip"]) {
+        const response = await handler(post("/bytes", contentType, new Blob([new Uint8Array(3)]).stream()))
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(await response.json(), 3)
+      }
+      for (const contentType of ["application/jsonl", "application/json"]) {
+        const response = await handler(post("/ndjson", contentType, `{"n":1}\n{"n":2}\n`))
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(await response.json(), 2)
+      }
+      assert.strictEqual((await handler(post("/bytes", "application/octet-stream", "abc"))).status, 415)
+      assert.strictEqual((await handler(post("/ndjson", "application/x-ndjson", `{"n":1}\n`))).status, 415)
     })
   })
 })

@@ -59,7 +59,7 @@ const findAnnotation = (content: string): { pattern: string; offset: number } | 
 }
 
 const parseAnnotation = (line: string): string | undefined => {
-  const match = line.match(/^\/\/\s*@barrel(?:\((.+?)\))?/)
+  const match = line.match(/^\/\/\s*@barrel(?:\((.+)\))?/)
   if (!match) {
     return undefined
   }

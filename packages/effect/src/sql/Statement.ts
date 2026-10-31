@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Arr from "../Array.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -26,7 +27,41 @@ import * as Tracer from "../Tracer.ts"
 import type { Acquirer, Borrower, Connection, Row } from "./SqlConnection.ts"
 import type { SqlError } from "./SqlError.ts"
 
-const FragmentTypeId = "~effect/sql/Statement/Fragment"
+/**
+ * Runtime type identifier for SQL `Fragment` values.
+ *
+ * @stability unstable
+ * @category Type ID
+ * @since 4.1.1
+ */
+export const FragmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Fragment")
+
+/**
+ * Type of the unique symbol used to brand SQL `Fragment` values.
+ *
+ * @stability unstable
+ * @category Type ID
+ * @since 4.1.1
+ */
+export type FragmentTypeId = typeof FragmentTypeId
+
+/**
+ * Runtime type identifier for SQL `Segment` values.
+ *
+ * @stability unstable
+ * @category Type ID
+ * @since 4.1.1
+ */
+export const SegmentTypeId: unique symbol = Symbol.for("~effect/sql/Statement/Segment")
+
+/**
+ * Type of the unique symbol used to brand SQL `Segment` values.
+ *
+ * @stability unstable
+ * @category Type ID
+ * @since 4.1.1
+ */
+export type SegmentTypeId = typeof SegmentTypeId
 
 /**
  * Composable SQL fragment represented as low-level segments that can be
@@ -37,7 +72,7 @@ const FragmentTypeId = "~effect/sql/Statement/Fragment"
  * @since 4.0.0
  */
 export interface Fragment {
-  readonly [FragmentTypeId]: typeof FragmentTypeId
+  readonly [FragmentTypeId]: FragmentTypeId
   readonly segments: ReadonlyArray<Segment>
 }
 
@@ -146,7 +181,7 @@ export const isFragment = (u: unknown): u is Fragment => hasProperty(u, Fragment
 export const isCustom = <A extends Custom<any, any, any, any>>(
   kind: A["kind"]
 ) =>
-(u: unknown): u is A => hasProperty(u, "_tag") && u._tag === "Custom" && (u as any).kind === kind
+(u: unknown): u is A => isSegment(u) && u._tag === "Custom" && u.kind === kind
 
 /**
  * Union of low-level segment types that make up a SQL `Fragment`.
@@ -174,6 +209,7 @@ export type Segment =
  * @since 4.0.0
  */
 export interface Literal {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Literal"
   readonly value: string
   readonly params?: ReadonlyArray<unknown> | undefined
@@ -188,6 +224,7 @@ export interface Literal {
  * @since 4.0.0
  */
 export const literal = (value: string, params?: ReadonlyArray<unknown> | undefined): Literal => ({
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Literal",
   value,
   params
@@ -201,6 +238,7 @@ export const literal = (value: string, params?: ReadonlyArray<unknown> | undefin
  * @since 4.0.0
  */
 export interface Identifier {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Identifier"
   readonly value: string
 }
@@ -214,6 +252,7 @@ export interface Identifier {
  * @since 4.0.0
  */
 export const identifier = (value: string): Identifier => ({
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Identifier",
   value
 })
@@ -227,6 +266,7 @@ export const identifier = (value: string): Identifier => ({
  * @since 4.0.0
  */
 export interface Parameter {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Parameter"
   readonly value: unknown
 }
@@ -239,6 +279,7 @@ export interface Parameter {
  * @since 4.0.0
  */
 export const parameter = (value: unknown): Parameter => ({
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "Parameter",
   value
 })
@@ -252,6 +293,7 @@ export const parameter = (value: unknown): Parameter => ({
  * @since 4.0.0
  */
 export interface ArrayHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "ArrayHelper"
   readonly value: ReadonlyArray<unknown | Fragment>
 }
@@ -264,6 +306,7 @@ export interface ArrayHelper {
  * @since 4.0.0
  */
 export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelper => ({
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "ArrayHelper",
   value
 })
@@ -277,8 +320,9 @@ export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelp
  * @since 4.0.0
  */
 export interface RecordInsertHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordInsertHelper"
-  readonly value: ReadonlyArray<Record<string, unknown>>
+  readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   /**
    * @internal
    */
@@ -287,6 +331,7 @@ export interface RecordInsertHelper {
 }
 
 const RecordInsertHelperProto = {
+  [SegmentTypeId]: SegmentTypeId,
   _tag: "RecordInsertHelper" as const,
   returning(this: RecordInsertHelper, sql: string | Identifier | Fragment) {
     const self = Object.create(Object.getPrototypeOf(this))
@@ -305,7 +350,7 @@ const RecordInsertHelperProto = {
  * @since 4.0.0
  */
 export const recordInsertHelper = (
-  value: ReadonlyArray<Record<string, unknown>>
+  value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
 ): RecordInsertHelper =>
   Object.assign(Object.create(RecordInsertHelperProto), {
     value,
@@ -321,8 +366,9 @@ export const recordInsertHelper = (
  * @since 4.0.0
  */
 export interface RecordUpdateHelper {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordUpdateHelper"
-  readonly value: ReadonlyArray<Record<string, unknown>>
+  readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   readonly alias: string
   /**
    * @internal
@@ -345,7 +391,7 @@ const RecordUpdateHelperProto = {
  * @since 4.0.0
  */
 export const recordUpdateHelper = (
-  value: ReadonlyArray<Record<string, unknown>>,
+  value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>,
   alias: string
 ): RecordUpdateHelper =>
   Object.assign(Object.create(RecordUpdateHelperProto), {
@@ -363,6 +409,7 @@ export const recordUpdateHelper = (
  * @since 4.0.0
  */
 export interface RecordUpdateHelperSingle {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "RecordUpdateHelperSingle"
   readonly value: Record<string, unknown>
   readonly omit: ReadonlyArray<string>
@@ -410,6 +457,7 @@ export interface Custom<
   B = void,
   C = void
 > {
+  readonly [SegmentTypeId]: SegmentTypeId
   readonly _tag: "Custom"
   readonly kind: T
   readonly paramA: A
@@ -432,7 +480,7 @@ export const custom = <C extends Custom<any, any, any, any>>(
   paramA: C["paramA"],
   paramB: C["paramB"],
   paramC: C["paramC"]
-): C => ({ _tag: "Custom", kind, paramA, paramB, paramC } as C)
+): C => ({ [SegmentTypeId]: SegmentTypeId, _tag: "Custom", kind, paramA, paramB, paramC } as C)
 
 /**
  * Names the primitive value categories recognized by SQL statement helpers and
@@ -502,7 +550,7 @@ export interface Constructor {
 
   readonly insert: {
     (
-      value: ReadonlyArray<Record<string, unknown>>
+      value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
     ): RecordInsertHelper
     (value: Record<string, unknown>): RecordInsertHelper
   }
@@ -524,7 +572,7 @@ export interface Constructor {
    * transforms.
    */
   readonly updateValues: (
-    value: ReadonlyArray<Record<string, unknown>>,
+    value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>,
     alias: string
   ) => RecordUpdateHelper
 
@@ -631,7 +679,7 @@ export const make = (
       in: in_,
       insert(value: any) {
         return recordInsertHelper(
-          Array.isArray(value) ? value : [value]
+          Array.isArray(value) ? value as Arr.NonEmptyArray<Record<string, unknown>> : [value]
         )
       },
       update(value: any, omit: any) {
@@ -1596,24 +1644,7 @@ const withStatement = <A, X, E, R>(
     )
   })
 
-const isSegment = (u: unknown): u is Segment => {
-  if (!hasProperty(u, "_tag")) {
-    return false
-  }
-  switch (u._tag) {
-    case "Literal":
-    case "Parameter":
-    case "ArrayHelper":
-    case "RecordInsertHelper":
-    case "RecordUpdateHelper":
-    case "RecordUpdateHelperSingle":
-    case "Identifier":
-    case "Custom":
-      return true
-    default:
-      return false
-  }
-}
+const isSegment = (u: unknown): u is Segment => hasProperty(u, SegmentTypeId)
 
 function convertLiteralOrFragment(clause: string | Fragment): Array<Segment> {
   if (typeof clause === "string") {

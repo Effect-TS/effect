@@ -18,7 +18,8 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-  Multipart
+  Multipart,
+  UrlParams
 } from "effect/http"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
@@ -152,12 +153,29 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       })
     })
   ),
+  HttpRouter.route(
+    "POST",
+    "/question-form",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      return HttpServerResponse.text(`?${UrlParams.toString(yield* request.urlParamsBody)}`, {
+        contentType: "application/x-www-form-urlencoded"
+      })
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
   HttpRouter.route("GET", "/large", Effect.succeed(HttpServerResponse.text(largeResponseBody))),
   HttpRouter.route("GET", "/hang", Effect.never),
-  HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
+  HttpRouter.route(
+    "GET",
+    "/redirect",
+    Effect.succeed(HttpServerResponse.text("redirecting", {
+      status: 302,
+      headers: { location: "/redirected" }
+    }))
+  ),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
   HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 }))),
   HttpRouter.route(
@@ -215,6 +233,15 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
           body: HttpBody.text("\uFEFF{\"a\":1}", "application/json")
         })
         assert.deepStrictEqual(yield* response.json, { a: 1 })
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("request and response urlParamsBody preserve a leading question mark", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.post("/question-form", {
+          body: HttpBody.text("?name=value", "application/x-www-form-urlencoded")
+        })
+        // the server echoes its parsed key behind another raw question mark
+        assert.deepStrictEqual([...yield* response.urlParamsBody], [["??name", "value"]])
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name !== "fetch") {
@@ -410,6 +437,35 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   })
 })
 
+it.live("followRedirects releases redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
+
+it.live("followRedirects releases scoped redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.withScope, HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.scoped,
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
+
 it.live("releases an immediately failing form data stream and connection before layer teardown", () => {
   const server = Http.createServer((request) => {
     request.on("error", () => {})
@@ -453,6 +509,56 @@ it.live("releases an immediately failing form data stream and connection before 
   }).pipe(
     Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
     Effect.provide(layer)
+  )
+})
+
+it.live("returns TransportError when a form data file stream cannot be created", () =>
+  Effect.gen(function*() {
+    class ThrowingFile extends File {
+      override stream(): never {
+        throw new Error("file stream failed")
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new ThrowingFile([], "notes.txt"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.flip)
+    assert.strictEqual(error.reason._tag, "TransportError")
+  }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  ))))
+
+it.live("reads backpressured form data files on demand and releases them on interruption", () => {
+  const server = Http.createServer((request) => request.pause())
+  let read = 0
+  let stream: ReadableStream | undefined
+  class LargeFile extends File {
+    override stream() {
+      return stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+        pull(controller) {
+          if (read === 64 * 1024 * 1024) return controller.close()
+          read += 64 * 1024
+          controller.enqueue(new Uint8Array(64 * 1024))
+        }
+      })
+    }
+  }
+  return Effect.gen(function*() {
+    const formData = new FormData()
+    formData.append("file", new LargeFile([], "large.bin"))
+    yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.timeout("1 second"), Effect.ignore)
+    // The server never reads the upload, so only socket buffers should fill.
+    assert.isBelow(read, 16 * 1024 * 1024)
+    yield* Effect.sync(() => stream?.locked).pipe(
+      Effect.repeat({ while: (locked) => locked !== false, schedule: Schedule.spaced("10 millis") }),
+      Effect.timeout("1 second")
+    )
+  }).pipe(
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(HttpServer.layerTestClient.pipe(
+      Layer.provide(NodeClient.layerNodeHttp),
+      Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+    ))
   )
 })
 

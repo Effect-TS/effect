@@ -11,10 +11,10 @@
  * `layer`, `layerWith`, `make`, and `makeEncoded` run the migrations before
  * building the storage. To run migrations with a different connection, such as
  * a schema owner in a deploy step, use `layerMigrations` there and
- * `layerStorage` in the runtime.
+ * `layerStorage` or `makeEncodedStorage` in the runtime.
  *
  * Request deduplication keys that exceed the 255-character `message_id`
- * column are hashed with the `Crypto` service before they are written, so
+ * column are hashed with the `Digest.Digest` service before they are written, so
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
@@ -23,12 +23,10 @@
  */
 // eslint-disable effect/no-bigint-literals
 import * as Arr from "../Array.ts"
-import * as Crypto from "../Crypto.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
-import * as Hex from "../encoding/Hex.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
-import type * as PlatformError from "../PlatformError.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
@@ -66,6 +64,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * tables, including the migration history table.
  *
  * @see {@link make} for the decoded `MessageStorage` constructor
+ * @see {@link makeEncodedStorage} for construction without migrations
  *
  * @stability unstable
  * @category constructors
@@ -76,16 +75,49 @@ export const makeEncoded: (options?: {
 }) => Effect.Effect<
   MessageStorage.Encoded,
   never,
-  SqlClient.SqlClient | Crypto.Crypto
+  SqlClient.SqlClient | Digest.Digest
 > = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
 
-const makeEncodedStorage = Effect.fnUntraced(function*(
-  options: {
+/**
+ * Creates a SQL-backed encoded message storage driver without running migrations
+ * or executing startup SQL.
+ *
+ * **When to use**
+ *
+ * Use when composing a custom encoded adapter with a runtime SQL connection
+ * that does not have schema-management privileges.
+ *
+ * **Details**
+ *
+ * The optional `prefix` controls the message and reply table names; when omitted,
+ * `cluster` is used.
+ *
+ * **Gotchas**
+ *
+ * Run `layerMigrations` separately with the same prefix before using the driver.
+ * This constructor does not create tables or check that the schema is up to date.
+ *
+ * @see {@link makeEncoded} for construction that runs migrations
+ * @see {@link layerMigrations} for running migrations separately
+ * @see {@link layerStorage} for providing decoded storage without migrations
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const makeEncodedStorage: (options?: {
+  readonly prefix?: string | undefined
+}) => Effect.Effect<
+  MessageStorage.Encoded,
+  never,
+  SqlClient.SqlClient | Digest.Digest
+> = Effect.fnUntraced(function*(
+  options?: {
     readonly prefix?: string | undefined
-  } | undefined
+  }
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-  const crypto = yield* Crypto.Crypto
+  const digest = yield* Digest.Digest
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
@@ -108,10 +140,10 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   // birthday bound). Digests never contain "/" while composed keys always do,
   // so the two encodings cannot collide.
   const encoder = new TextEncoder()
-  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string> =>
     primaryKey.length <= 255
       ? Effect.succeed(primaryKey)
-      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Hex.encode)
+      : digest.digestHex(Digest.sha256, encoder.encode(primaryKey))
 
   const messageIdEnforcesWidth = sql.onDialectOrElse({
     mssql: () => true,
@@ -525,7 +557,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
+        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError>
         if (primaryKey !== null) {
           insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
             const row = envelopeToRow(envelope, messageId, deliverAt)
@@ -811,7 +843,7 @@ export const make: (options?: {
 }) => Effect.Effect<
   MessageStorage.MessageStorage["Service"],
   never,
-  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
+  SqlClient.SqlClient | Snowflake.Generator | Digest.Digest
 > = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
@@ -1165,7 +1197,7 @@ export const layerMigrations = (options: {
  */
 export const layerStorage = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Digest.Digest> =>
   Layer.effect(
     MessageStorage.MessageStorage,
     Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
@@ -1188,7 +1220,7 @@ export const layerStorage = (options: {
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Digest.Digest> =>
   layerStorage(options).pipe(
     Layer.provide(layerMigrations(options))
   )
@@ -1210,7 +1242,7 @@ export const layerWith = (options: {
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
   never,
-  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
+  SqlClient.SqlClient | ShardingConfig | Digest.Digest
 > = layerWith({})
 
 // -------------------------------------------------------------------------------------------------

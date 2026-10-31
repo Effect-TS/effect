@@ -130,10 +130,11 @@ export const xb3: FromHeaders = (headers) => {
   }))
 }
 
-const w3cTraceId = /^[0-9a-f]{32}$/i
-const w3cSpanId = /^[0-9a-f]{16}$/i
+const w3cTraceId = /^[0-9a-f]{32}$/
+const w3cSpanId = /^[0-9a-f]{16}$/
+const w3cTraceFlags = /^[0-9a-f]{2}$/
 
-const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/i
+const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/
 const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(traceId) && w3cSpanId.test(spanId)
 
 /**
@@ -141,7 +142,8 @@ const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(tra
  *
  * **Details**
  *
- * Only version `00` headers with valid trace and span identifiers are accepted.
+ * Only version `00` headers with valid trace and span identifiers and trace
+ * flags are accepted.
  *
  * @stability unstable
  * @category decoding
@@ -160,6 +162,7 @@ export const w3c: FromHeaders = (headers) => {
     case "00": {
       if (
         w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false ||
+        w3cTraceFlags.test(flags) === false ||
         traceId === "00000000000000000000000000000000" || spanId === "0000000000000000"
       ) {
         return Option.none()

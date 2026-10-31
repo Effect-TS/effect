@@ -5,7 +5,9 @@
  * the current process. The layer reads the same variables through
  * `ConfigProvider`, plus the TTY state of `Stdio`. Unless a
  * `CliOutput.Formatter` is provided, the built-in help, version, and error
- * output of `Command` follows `canColor`.
+ * output of `Command` follows `canColor`. Fallback prompts added with
+ * `Flag.withFallbackPrompt` or `Argument.withFallbackPrompt` only run when
+ * `canPrompt` is `true`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -25,8 +27,9 @@ import * as Stdio from "../Stdio.ts"
  * `canColor` says whether styling will be rendered rather than stored as
  * bytes. `canAnimate` says whether output is being watched, so pacing means
  * something. `canPrompt` says whether a question can be asked and answered.
- * Only `canColor` is read by the built-in `Command` output; the other two are
- * for application code that renders its own output.
+ * The built-in `Command` output reads `canColor`, and fallback prompts for
+ * missing flags and arguments are skipped when `canPrompt` is `false`.
+ * `canAnimate` is for application code that renders its own output.
  *
  * @stability unstable
  * @category models

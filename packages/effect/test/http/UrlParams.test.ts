@@ -54,6 +54,12 @@ describe("UrlParams", () => {
         names: undefined,
         expected: "/path?%73ig=REDACTED&Sig=REDACTED&sig&page=1"
       },
+      {
+        url: "/file?X-Amz-Credential=a&X-Amz-Expires=60&X-Amz-Security-Token=b&X-Amz-Signature=c",
+        names: undefined,
+        expected:
+          "/file?X-Amz-Credential=REDACTED&X-Amz-Expires=60&X-Amz-Security-Token=REDACTED&X-Amz-Signature=REDACTED"
+      },
       { url: "/path/@user?page=a@b", names: undefined, expected: "/path/@user?page=a@b" },
       {
         url: "https://user:password@api.test/path",

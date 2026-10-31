@@ -16,7 +16,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
-import { ConflictIndex } from "./internal/conflicts.ts"
+import { type ConflictGroup, ConflictIndex } from "./internal/conflicts.ts"
 
 type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
 
@@ -315,12 +315,18 @@ export const make = (options?: {
 
     const insertEntries = SqlSchema.void({
       Request: EntryRowArray,
-      execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+      execute: (entries) =>
+        forEachChunk(
+          entries,
+          entryColumns,
+          (chunk) => sql`INSERT INTO ${entryTableSql} ${sql.insert(chunk)} ON CONFLICT DO NOTHING`
+        )
     })
     const insertSources = (entries: ReadonlyArray<EventJournal.Entry>, remoteId: EventJournal.RemoteId) =>
-      sql`INSERT INTO ${sourcesTableSql} ${
-        sql.insert(entries.map((entry) => ({ entry_id: entry.id, remote_id: remoteId })))
-      } ON CONFLICT DO NOTHING`
+      forEachChunk(entries, 2, (chunk) => {
+        const rows = Arr.map(chunk, (entry) => ({ entry_id: entry.id, remote_id: remoteId }))
+        return sql`INSERT INTO ${sourcesTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
+      })
     // Serialize writers so checkpoints cannot skip out-of-order commits.
     // Lock before callbacks in both paths to avoid projection-row deadlocks.
     const lockWriters = sql.onDialectOrElse({
@@ -328,9 +334,10 @@ export const make = (options?: {
       orElse: () => Effect.void
     })
     const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>) =>
-      sql`INSERT INTO ${sequenceTableSql} ${
-        sql.insert(entries.map((entry) => ({ entry_id: entry.id })))
-      } ON CONFLICT DO NOTHING`
+      forEachChunk(entries, 1, (chunk) => {
+        const rows = Arr.map(chunk, (entry) => ({ entry_id: entry.id }))
+        return sql`INSERT INTO ${sequenceTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
+      })
 
     const decodeCursorRows = Schema.decodeUnknownEffect(CursorRowArray)
 
@@ -361,24 +368,12 @@ export const make = (options?: {
 
       yield* lockWriters
 
-      const existingIds = new Set<string>()
-      if (entries.length > 0) {
-        yield* sql`SELECT id FROM ${entryTableSql} WHERE ${
-          sql.in(
-            "id",
-            entries.map((entry) => entry.id)
-          )
-        }`.pipe(
-          Effect.flatMap(decodeEntryIdRows),
-          Effect.tap((rows) =>
-            Effect.sync(() => {
-              for (const row of rows) {
-                existingIds.add(Uuid.stringify(row.id))
-              }
-            })
-          )
-        )
-      }
+      const existingRows = yield* forEachChunk(
+        entries,
+        1,
+        (chunk) => sql`SELECT id FROM ${entryTableSql} WHERE ${sql.in("id", chunk.map((entry) => entry.id))}`
+      ).pipe(Effect.flatMap(decodeEntryIdRows))
+      const existingIds = new Set(existingRows.map((row) => Uuid.stringify(row.id)))
       // Overlapping batches can repeat an entry; the first copy wins.
       const incomingIds = new Set<string>()
       const uncommitted = options.entries.filter((entry) => {
@@ -396,27 +391,38 @@ export const make = (options?: {
 
       if (Arr.isReadonlyArrayNonEmpty(compacted)) {
         const index = new ConflictIndex(compacted)
-        const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
-        // Match the hash index; exact predicates below rule out hash collisions.
-        const hashed = sql.onDialectOrElse({
-          pg: () => [
-            sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))})`,
-            sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
-          ],
-          orElse: () => []
-        })
-        const conflicts = sql.and([
-          ...hashed,
-          sql.in("event", index.events),
-          sql.in("primary_key", primaryKeys),
-          // A coarse filter: the index compares ids exactly.
-          sql`timestamp >= ${index.oldestMillis}`
-        ])
-        const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts}`.pipe(
-          Effect.flatMap(decodeEntryRows),
+        const conflicts = (groups: ReadonlyArray<ConflictGroup>) => {
+          const events = Array.from(new Set(groups.map((group) => group.event)))
+          const primaryKeys = Array.from(new Set(groups.map((group) => group.primaryKey)))
+          return sql`SELECT * FROM ${entryTableSql} WHERE ${
+            sql.and([
+              // Match the hash index; exact predicates below rule out hash collisions.
+              ...sql.onDialectOrElse({
+                pg: () => [
+                  sql`md5(event) IN (${sql.csv(events.map((event) => sql`md5(${event})`))})`,
+                  sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
+                ],
+                orElse: () => []
+              }),
+              sql.in("event", events),
+              sql.in("primary_key", primaryKeys),
+              // A coarse filter: the index compares ids exactly.
+              sql`timestamp >= ${index.oldestMillis}`
+            ])
+          }`
+        }
+        // Each group binds its event and key, twice on PostgreSQL, and one
+        // parameter is left for the timestamp.
+        const groupsPerChunk = Math.floor((maxParameters - 1) / sql.onDialectOrElse({ pg: () => 4, orElse: () => 2 }))
+        const stored = yield* Effect.forEach(Arr.chunksOf(index.groups(), groupsPerChunk), conflicts).pipe(
+          Effect.flatMap((rows) => decodeEntryRows(rows.flat())),
           Effect.map(toEntries)
         )
+        // Chunks can share an event and a key, so a row can be returned twice.
+        const added = new Set<string>()
         for (const entry of stored) {
+          if (added.has(entry.idString)) continue
+          added.add(entry.idString)
           index.add(entry)
         }
         yield* options.effect(index.toBatch())
@@ -485,7 +491,7 @@ export const make = (options?: {
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
       ),
       entriesById: (ids) =>
-        ids.length === 0 ? Effect.succeed([]) : sql`SELECT * FROM ${entryTableSql} WHERE ${sql.in("id", ids)}`.pipe(
+        forEachChunk(ids, 1, (chunk) => sql`SELECT * FROM ${entryTableSql} WHERE ${sql.in("id", chunk)}`).pipe(
           withTracerDisabled,
           Effect.flatMap(decodeEntryRows),
           Effect.map((rows) => {
@@ -641,6 +647,7 @@ const EntryRow = Schema.Struct({
 })
 
 const EntryRowArray = Schema.Array(EntryRow)
+const entryColumns = Object.keys(EntryRow.fields).length
 const decodeUploadBounds = Schema.decodeUnknownEffect(Schema.Tuple([
   Schema.Struct({ checkpoint: SqlNatural, latest: SqlNatural })
 ]))
@@ -667,6 +674,22 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
 const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
+
+// Statements bind at most this many parameters: Cloudflare Durable Object
+// SQLite's per-statement limit, the lowest of the supported databases.
+const maxParameters = 100
+
+// Runs `f` in order over chunks of `values`, each binding `parametersPerValue`
+// parameters per value, and concatenates the rows.
+const forEachChunk = <A, B, E, R>(
+  values: ReadonlyArray<A>,
+  parametersPerValue: number,
+  f: (chunk: Arr.NonEmptyReadonlyArray<A>) => Effect.Effect<ReadonlyArray<B>, E, R>
+): Effect.Effect<Array<B>, E, R> =>
+  Effect.map(
+    Effect.forEach(Arr.chunksOf(values, Math.floor(maxParameters / parametersPerValue)), f),
+    (rows) => rows.flat()
+  )
 
 // Preserve callback errors without wrapping them as journal SQL errors.
 class CallbackFailure<E> {

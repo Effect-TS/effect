@@ -46,6 +46,16 @@ describe("request body", () => {
       assert.strictEqual(yield* request.text, payload)
     }))
 
+  it.effect("fromClientRequest fails buffered reads over MaxBodySize", () =>
+    Effect.gen(function*() {
+      const error = yield* fromClient().text.pipe(
+        Effect.flip,
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+      )
+      assert(error.reason._tag === "RequestParseError")
+      assert.strictEqual(error.reason.reason, "BodyTooLarge")
+    }))
+
   for (const accessor of ["arrayBuffer", "text"] as const) {
     describe(`MaxBodySize via ${accessor}`, () => {
       const handler = HttpEffect.toWebHandler(

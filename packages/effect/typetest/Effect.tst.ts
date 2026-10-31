@@ -834,6 +834,29 @@ describe("Effect.unwrapReason", () => {
   })
 })
 
+describe("Effect.fnUntraced", () => {
+  it("with self", () => {
+    const fn = Effect.fnUntraced({ self: { value: 1 } }, function*(amount: number) {
+      return yield* Effect.fail(this.value + amount)
+    })
+    expect(fn).type.toBe<(amount: number) => Effect.Effect<never, number, never>>()
+  })
+
+  it("with self and pipe arguments", () => {
+    const fn = Effect.fnUntraced(
+      { self: { value: 1 } },
+      function*(amount: number) {
+        return this.value + amount
+      },
+      Effect.map((x) => {
+        expect(x).type.toBe<number>()
+        return String(x)
+      })
+    )
+    expect(fn).type.toBe<(amount: number) => Effect.Effect<string, never, never>>()
+  })
+})
+
 describe("Effect.fn", () => {
   it("with a span, generator", () => {
     const fn = Effect.fn("span")(function*() {

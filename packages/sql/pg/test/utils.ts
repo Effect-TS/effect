@@ -3,7 +3,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { Clock, Context, Data, Effect, Layer, Redacted, type Scope, String } from "effect"
 import * as Fs from "node:fs"
 import { inspect } from "node:util"
-import { getContainerRuntimeClient } from "testcontainers"
+import { getContainerRuntimeClient, Wait } from "testcontainers"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
@@ -100,10 +100,21 @@ export const releasePgContainer = Effect.fnUntraced(
   Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
 )
 
+// PostgreSqlContainer also waits for listening ports, probing them with
+// `docker exec` calls that have no timeout. In Deno CI one probe never exited,
+// stalling startup past the 30s hook limit while the container was healthy.
+// Its pg_isready health check already requires a TCP listener on localhost.
+export const pgWaitStrategy = () => Wait.forHealthCheck()
+
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:14-alpine").start()),
+      try: () =>
+        lifecycle(
+          "new",
+          "container-start",
+          () => new PostgreSqlContainer("postgres:14-alpine").withWaitStrategy(pgWaitStrategy()).start()
+        ),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
     releasePgContainer

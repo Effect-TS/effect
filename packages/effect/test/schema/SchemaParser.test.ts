@@ -420,6 +420,24 @@ describe("SchemaParser", () => {
       Cause.die(new Error("defect"))
     )
   describe("make", () => {
+    it("rejects valid fields when a class-level check fails", () => {
+      class CheckedError extends Schema.TaggedError<CheckedError>()("CheckedError", {
+        code: Schema.Number
+      }) {}
+      const schema = CheckedError.check(
+        Schema.makeFilter(({ code }) => code > 0, { expected: "positive code" })
+      )
+      const make = SchemaParser.make(schema)
+      const valid = new CheckedError({ code: 1 })
+      const invalid = new CheckedError({ code: 0 })
+
+      strictEqual(make(valid), valid)
+
+      throws(() => make(invalid), (error) => {
+        assertSchemaIssueError(error, "Expected positive code")
+      })
+    })
+
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
       throws(() => SchemaParser.make(schema)(null as any), (e) => {

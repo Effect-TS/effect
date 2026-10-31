@@ -120,6 +120,12 @@ export interface PgPool {
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E | SqlError, R>
   readonly invalidate: (connection: PgConnection.PgConnection) => Effect.Effect<void>
+  /**
+   * Returns a snapshot of session occupancy. Counts sessions rather than
+   * statements, so a multiplexed session shared by many fibers counts once. A
+   * session that has just failed can show as idle until the pool removes it.
+   */
+  readonly stats: Effect.Effect<Pool.Stats>
 }
 
 /**
@@ -335,7 +341,9 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     get,
     reserve,
     use,
-    invalidate: (connection) => Pool.invalidate(pool, connectionInternals(connection).base as PgConnection.PgConnection)
+    invalidate: (connection) =>
+      Pool.invalidate(pool, connectionInternals(connection).base as PgConnection.PgConnection),
+    stats: Pool.stats(pool)
   }
   return pgPool
 })

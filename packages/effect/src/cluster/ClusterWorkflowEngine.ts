@@ -535,14 +535,15 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
+                    // Abandoned runs never wake the parent; another owner replays them.
+                    const resumeParent = parent && !parent.detached && !instance.abandoned
+                      ? ensureSuccess(sendResumeParent(parent, executionId))
+                      : Effect.void
                     if (
                       !instance.suspended &&
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      const resumeParent = parent && !parent.detached
-                        ? ensureSuccess(sendResumeParent(parent, executionId))
-                        : Effect.void
                       if (exit._tag === "Success" || !Cause.hasInterruptsOnly(exit.cause)) {
                         return resumeParent
                       }
@@ -568,9 +569,13 @@ export const make = Effect.gen(function*() {
                         }
                         instance.suspended = false
                         instance.interrupted = true
-                        return Effect.andThen(
-                          Effect.ignore(clearClock({ workflow, executionId })),
-                          Effect.withFiber<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
+                        // The interrupt completes the run, so wake the parent
+                        // to observe it.
+                        return Effect.ignore(clearClock({ workflow, executionId })).pipe(
+                          Effect.andThen(resumeParent),
+                          Effect.andThen(
+                            Effect.withFiber<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
+                          )
                         )
                       }),
                       Effect.orDie
@@ -760,7 +765,7 @@ export const make = Effect.gen(function*() {
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {
-          const reply = yield* Effect.orDie(requestReply({
+          const reply = yield* retryPersistence(requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
@@ -777,7 +782,7 @@ export const make = Effect.gen(function*() {
           if (!activities.has(activityId)) {
             activities.set(activityId, { activity, context: services })
           }
-          const result = yield* Effect.orDie(
+          const result = yield* retryPersistence(
             client.activity({
               name: activity.name,
               attempt,
@@ -815,25 +820,28 @@ export const make = Effect.gen(function*() {
           if (exit) {
             return Option.some(exit)
           }
-          return yield* requestReply({
+          const requestId = yield* requestIdFor({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          }).pipe(
-            Effect.map((reply) => {
-              if (Option.isNone(reply)) {
-                return Option.none<Exit.Exit<unknown, unknown>>()
-              }
-              const decoded = decodeDeferredWithExit(reply.value as any)
-              return Option.some(
-                decoded.exit._tag === "Success"
-                  ? decoded.exit.value
-                  : decoded.exit
-              )
-            })
-          )
+          })
+          if (Option.isNone(requestId)) {
+            return Option.none<Exit.Exit<unknown, unknown>>()
+          }
+          const reply = yield* replyForRequestId(requestId.value)
+          if (Option.isSome(reply)) {
+            return Option.some(deferredReplyExit(reply.value))
+          }
+          // The first completion saved under the deferred name wins, so a
+          // request the owner has not processed yet already holds the result.
+          const [request] = yield* storage.unprocessedMessagesById([requestId.value])
+          if (request?.envelope._tag === "Request") {
+            return Option.some(decodeDeferredPayload(request.envelope.payload).exit)
+          }
+          // It was processed after the first read, so its reply is stored now.
+          return Option.map(yield* replyForRequestId(requestId.value), deferredReplyExit)
         })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
@@ -914,10 +922,23 @@ const retryPolicy = Schedule.min([
   Schedule.spaced("1 minute")
 ])
 
+// A transient storage failure must not become the workflow result. Requests
+// are saved under a primary key, so a retry after a lost acknowledgement is
+// deduplicated instead of running the activity again.
+const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),
+    Effect.orDie
+  )
+
+// A cluster abandonment means this owner can no longer complete the effect, so
+// retrying it would only wait on a retired run. Re-raise it as an annotated
+// interrupt, so the activation can unwind and its shard can be released.
 const ensureSuccess = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.sandbox,
-    Effect.retry(retryPolicy),
+    Effect.retry({ schedule: retryPolicy, while: (cause) => !ClusterAbandon.isCause(cause) }),
+    Effect.catchIf(ClusterAbandon.isCause, () => ClusterAbandon.interrupt),
     Effect.orDie
   )
 
@@ -977,6 +998,11 @@ const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>)
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended" && reply.exit.value.failed === true
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
+const decodeDeferredPayload = Schema.decodeUnknownSync(Schema.toCodecJson(DeferredRpc.payloadSchema))
+const deferredReplyExit = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>): Exit.Exit<unknown, unknown> => {
+  const decoded = decodeDeferredWithExit(reply as any)
+  return decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
+}
 
 const ResumeRpc = Rpc.make("resume", {
   // Older persisted resume envelopes have an empty payload and use the empty key.

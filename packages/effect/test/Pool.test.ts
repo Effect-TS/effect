@@ -8,6 +8,26 @@ const waitUntil = (predicate: () => boolean) =>
   Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(predicate)), { until: (done) => done })
 
 describe("Pool", () => {
+  it.effect("admits requests in FIFO order when a borrower immediately reacquires", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("connection"), size: 1 })
+      let asked = 0
+      const admitted: Array<number> = []
+      const use = Effect.scoped(Effect.gen(function*() {
+        const ticket = asked++
+        yield* Pool.get(pool)
+        admitted.push(ticket)
+        yield* Effect.sleep("10 millis")
+      }))
+      const chained = yield* Effect.forkChild(Effect.repeat(use, { times: 2 }))
+      const others = yield* Effect.forEach([1, 2, 3], (at) => Effect.forkChild(Effect.delay(use, at)))
+
+      yield* TestClock.adjust("100 millis")
+      yield* Fiber.join(chained)
+      yield* Fiber.joinAll(others)
+      deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
+    }))
+
   it.effect("preallocates pool items", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
@@ -66,6 +86,32 @@ describe("Pool", () => {
       yield* Scope.close(borrower, Exit.void)
       yield* Fiber.join(closing)
       deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
+    }))
+
+  it.effect("a later finalizer of the pool's scope can get an item after idle items expire", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const scope = yield* Scope.make()
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.sync(() => ++acquired),
+        min: 0,
+        max: 1,
+        timeToLive: "1 second"
+      }).pipe(Scope.provide(scope))
+      let result: Exit.Exit<number> | undefined
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.scoped(Pool.get(pool)).pipe(Effect.exit, Effect.map((exit) => (result = exit)))
+      )
+      yield* Effect.scoped(Pool.get(pool))
+      yield* TestClock.adjust("2 seconds")
+
+      // Finalizers are uninterruptible: bound the wait by polling, and detach
+      // the close so a hang cannot block the test's cleanup.
+      const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      assert.isDefined(closing.pollUnsafe(), "Scope.close did not return")
+      deepStrictEqual(result, Exit.succeed(2))
     }))
 
   it.effect("defects don't prevent cleanup", () =>
@@ -1321,4 +1367,69 @@ describe("Pool", () => {
         }
       }))
   }
+
+  describe("stats", () => {
+    it.effect("counts leased items rather than borrowers, and parked waiters as pending", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 2, concurrency: 2 })
+        yield* waitUntil(() => acquired === 2)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 2, used: 0, pending: 0, min: 2, max: 2 })
+
+        const leases = yield* Scope.fork(yield* Effect.scope)
+        yield* Scope.provide(Pool.get(pool), leases)
+        yield* Scope.provide(Pool.get(pool), leases)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 2, max: 2 })
+        yield* Scope.provide(Pool.get(pool), leases)
+        yield* Scope.provide(Pool.get(pool), leases)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, pending: 0, min: 2, max: 2 })
+
+        const waiter = yield* Scope.fork(yield* Effect.scope)
+        const fiber = yield* Scope.provide(Pool.get(pool), waiter).pipe(Effect.forkChild({ startImmediately: true }))
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, pending: 1, min: 2, max: 2 })
+
+        yield* Scope.close(leases, Exit.void)
+        yield* Fiber.join(fiber)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 2, max: 2 })
+        yield* Scope.close(waiter, Exit.void)
+      }))
+
+    it.effect("counts a reserved item as used after its borrowers return", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
+        const lease = yield* Scope.fork(yield* Effect.scope)
+        const reservation = yield* Scope.fork(yield* Effect.scope)
+        yield* Scope.provide(Pool.get(pool), lease)
+        yield* Scope.provide(Pool.reserve(pool, "resource"), reservation)
+        yield* Scope.close(lease, Exit.void)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 1, pending: 0, min: 1, max: 1 })
+        yield* Scope.close(reservation, Exit.void)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 1, max: 1 })
+      }))
+
+    it.effect("counts an invalidated item as used until its last borrower returns", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 1 })
+        const lease = yield* Scope.fork(yield* Effect.scope)
+        const item = yield* Scope.provide(Pool.get(pool), lease)
+        yield* Pool.invalidate(pool, item)
+        yield* waitUntil(() => acquired === 2)
+        // The invalidated session is still open, so both count against `max`.
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 1, max: 1 })
+        yield* Scope.close(lease, Exit.void)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 1, max: 1 })
+      }))
+
+    it.effect("does not count failed acquisitions", () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const pool = yield* Pool.make({
+          acquire: Effect.suspend(() => ++attempts === 2 ? Effect.fail("boom") : Effect.succeed(attempts)),
+          size: 2
+        })
+        yield* waitUntil(() => pool.state.items.size === 2)
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 2, max: 2 })
+      }))
+  })
 })

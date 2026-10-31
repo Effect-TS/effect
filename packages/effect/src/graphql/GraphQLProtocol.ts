@@ -486,7 +486,10 @@ export const makeHttp: {
  * (or `null`). Media types match case-insensitively. Anything else
  * is a `TransportError` with the response `status` and `headers`, and a
  * `Retry-After` header (whole seconds or an HTTP date, measured from when the
- * response arrived) becomes `retryAfter`.
+ * response arrived) becomes `retryAfter`. A non-2xx GraphQL response is passed
+ * to the client, which never treats it as a success: it fails with a
+ * `ResponseError` when the body has `errors`, and with a `TransportError`
+ * carrying the same metadata otherwise.
  *
  * A subscription is a `POST` with `Accept: text/event-stream`. Each `next`
  * event is emitted with the response headers but no status, and the stream

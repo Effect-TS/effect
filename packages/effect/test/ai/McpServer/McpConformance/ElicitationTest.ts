@@ -77,7 +77,7 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
   )
 
 export const suite = (
-  protocol: McpProtocol.ProtocolAdapter<McpProtocol.StatefulProtocolVersion>,
+  protocol: McpProtocol.ProtocolAdapter<McpProtocol.StatefulProtocolVersion, McpProtocol.StatefulRuntimeDescriptor>,
   layer: McpConformanceLayer
 ) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {

@@ -13,6 +13,9 @@ import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
+// oxlint-disable-next-line @typescript-eslint/no-require-imports
+const Ajv2020 = require("ajv/dist/2020")
+
 const decodeTools = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
 const decodeCallTool = Schema.decodeUnknownEffect(McpSchema.CallToolResult)
 const decodeJsonSchema2020Tools = Schema.decodeUnknownEffect(Schema.Struct({
@@ -277,11 +280,11 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               method: "tools/call",
               params: { name: "DefectTool", arguments: {} }
             })
-            const result = yield* test.decodeError(response)
+            // Checked before schema decoding, which would accept extra members such as `_tag`.
+            const message = (yield* readMcpHttpResponse(response)) as { readonly error: unknown }
 
-            assert.strictEqual(result.error.code, McpSchema.INTERNAL_ERROR_CODE)
-            assert.strictEqual(result.error.message, "Internal error")
-            assert.notMatch(JSON.stringify(result), /private defect details/)
+            assert.deepStrictEqual(message.error, { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" })
+            assert.notMatch(JSON.stringify(message), /private defect details/)
           }))
 
         it.effect.skipIf(protocol.protocolVersion === "2024-11-05")(
@@ -337,6 +340,42 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 const result = yield* callTool("StructuredTool")
                 assert.deepStrictEqual(result.structuredContent, { value: "structured" })
               }))
+
+            // Toolkit results are carried in their JSON-encoded form, which the advertised output schema describes.
+            for (
+              const [name, structuredContent] of [
+                ["VoidFieldTool", { reply: null, version: 1 }],
+                ["DateFieldTool", { at: "1970-01-01T00:00:00.000Z" }],
+                ["OptionalFieldTool", { note: null }],
+                ["NaNFieldTool", { value: "NaN" }]
+              ] as const
+            ) {
+              it.effect(`should return JSON structured content when ${name} encodes a non-JSON value`, () =>
+                Effect.gen(function*() {
+                  const test = yield* McpConformance
+                  const initialized = yield* test.initialize({ server: "features" })
+                  yield* test.notifyInitialized(initialized)
+                  const listed = yield* test.send(initialized, {
+                    jsonrpc: "2.0",
+                    id: 2,
+                    method: "tools/list",
+                    params: {}
+                  }).pipe(
+                    Effect.flatMap(test.decodeResult),
+                    Effect.flatMap((message) => decodeTools(message.result))
+                  )
+                  const outputSchema = listed.tools.find((tool) => tool.name === name)?.outputSchema
+                  assert.isDefined(outputSchema)
+
+                  const { result } = yield* callToolWire(name)
+
+                  assert.strictEqual(result.isError, false)
+                  assert.deepStrictEqual(result.structuredContent, structuredContent)
+                  assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify(structuredContent) }])
+                  const validate = new Ajv2020.default({ strict: false }).compile(outputSchema)
+                  assertTrue(validate(result.structuredContent))
+                }))
+            }
           }
         )
 

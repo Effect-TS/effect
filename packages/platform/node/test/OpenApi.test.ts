@@ -1098,6 +1098,20 @@ describe("OpenAPI spec", () => {
           assert.strictEqual(spec.paths["/a"].post?.responses["200"], undefined)
         })
 
+        it("Upgrade with an ordinary success", () => {
+          const Api = HttpApi.make("api")
+            .add(
+              HttpApiGroup.make("group")
+                .add(
+                  HttpApiEndpoint.post("a", "/a", {
+                    success: [HttpApiSchema.Upgrade({ protocol: "tcp" }), HttpApiSchema.Empty(200)]
+                  })
+                )
+            )
+          const spec = OpenApi.fromApi(Api)
+          assert.deepStrictEqual(Object.keys(spec.paths["/a"].post?.responses ?? {}).sort(), ["101", "200"])
+        })
+
         it("StreamUint8Array with annotated status", () => {
           const Api = HttpApi.make("api")
             .add(

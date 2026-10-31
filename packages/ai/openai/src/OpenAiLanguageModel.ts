@@ -22,7 +22,6 @@ import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -932,52 +931,8 @@ const prepareMessages = Effect.fnUntraced(
               }
 
               case "file": {
-                const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
-                if (part.mediaType.startsWith("image/")) {
-                  const detail = getImageDetail(part)
-                  const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
-
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint })
-                  } else {
-                    const imageUrl = part.data instanceof URL
-                      ? part.data.toString()
-                      : part.data instanceof Uint8Array
-                      ? `data:${mediaType};base64,${Base64.encode(part.data)}`
-                      : /^(data:|https?:\/\/)/i.test(part.data)
-                      ? part.data
-                      : `data:${mediaType};base64,${part.data}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint })
-                  }
-                } else if (part.mediaType === "application/pdf") {
-                  if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_file", file_id: part.data, ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Base64.encode(part.data)
-                    const fileName = part.fileName ?? `part-${index}.pdf`
-                    const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({
-                      type: "input_file",
-                      filename: fileName,
-                      file_data: fileData,
-                      ...promptCacheBreakpoint
-                    })
-                  }
-                } else {
-                  return yield* AiError.make({
-                    module: "OpenAiLanguageModel",
-                    method: "prepareMessages",
-                    reason: new AiError.InvalidRequestError({
-                      description: `Detected unsupported media type for file: '${part.mediaType}'`
-                    })
-                  })
-                }
+                content.push(yield* prepareFilePart(part, index, config))
+                break
               }
             }
           }
@@ -1370,7 +1325,9 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
+              output: Predicate.isUndefined(part.modelOutput)
+                ? typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+                : yield* prepareToolResultOutput(part.modelOutput, config),
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
@@ -1387,16 +1344,6 @@ const prepareMessages = Effect.fnUntraced(
 // =============================================================================
 // HTTP Details
 // =============================================================================
-
-const buildHttpRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest
-): typeof Response.HttpRequestDetails.Type => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
-})
 
 const buildHttpResponseDetails = (
   response: HttpClientResponse.HttpClientResponse
@@ -1494,8 +1441,7 @@ const makeResponse = Effect.fnUntraced(
       type: "response-metadata",
       id: rawResponse.id,
       modelId: rawResponse.model as string,
-      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt)),
-      request: buildHttpRequestDetails(response.request)
+      timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt))
     })
 
     for (const part of rawResponse.output) {
@@ -1996,8 +1942,7 @@ const makeStreamResponse = Effect.fnUntraced(
               type: "response-metadata",
               id: event.response.id,
               modelId: event.response.model,
-              timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt)),
-              request: buildHttpRequestDetails(response.request)
+              timestamp: DateTime.formatIso(DateTime.fromDateUnsafe(createdAt))
             })
             break
           }
@@ -3119,6 +3064,81 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   return { tools, toolChoice }
 })
 
+const prepareToolResultOutput = Effect.fnUntraced(function*(
+  modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
+  config: typeof Config.Service
+): Effect.fn.Return<string | Array<typeof OpenAiSchema.InputContent.Encoded>, AiError.AiError> {
+  if (modelOutput.length === 0) {
+    return ""
+  }
+  const output: Array<typeof OpenAiSchema.InputContent.Encoded> = []
+  for (let index = 0; index < modelOutput.length; index++) {
+    const part = modelOutput[index]
+    output.push(
+      part.type === "text"
+        ? { type: "input_text", text: part.text, ...getPromptCacheBreakpoint(part) }
+        : yield* prepareFilePart(part, index, config)
+    )
+  }
+  return output
+})
+
+const prepareFilePart = Effect.fnUntraced(function*(
+  part: Prompt.FilePart,
+  index: number,
+  config: typeof Config.Service
+): Effect.fn.Return<typeof OpenAiSchema.InputContent.Encoded, AiError.AiError> {
+  const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
+
+  if (part.mediaType.startsWith("image/")) {
+    const detail = getImageDetail(part)
+    const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
+
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      return { type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint }
+    }
+
+    const imageUrl = part.data instanceof URL
+      ? part.data.toString()
+      : part.data instanceof Uint8Array
+      ? `data:${mediaType};base64,${Base64.encode(part.data)}`
+      : /^(data:|https?:\/\/)/i.test(part.data)
+      ? part.data
+      : `data:${mediaType};base64,${part.data}`
+    return { type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint }
+  }
+
+  if (part.mediaType === "application/pdf") {
+    if (typeof part.data === "string" && isFileId(part.data, config)) {
+      return { type: "input_file", file_id: part.data, ...promptCacheBreakpoint }
+    }
+
+    if (part.data instanceof URL || (typeof part.data === "string" && /^https?:\/\//i.test(part.data))) {
+      return { type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint }
+    }
+
+    const fileData = part.data instanceof Uint8Array
+      ? `data:application/pdf;base64,${Base64.encode(part.data)}`
+      : /^data:/i.test(part.data)
+      ? part.data
+      : `data:application/pdf;base64,${part.data}`
+    return {
+      type: "input_file",
+      filename: part.fileName ?? `part-${index}.pdf`,
+      file_data: fileData,
+      ...promptCacheBreakpoint
+    }
+  }
+
+  return yield* AiError.make({
+    module: "OpenAiLanguageModel",
+    method: "prepareMessages",
+    reason: new AiError.InvalidRequestError({
+      description: `Detected unsupported media type for file: '${part.mediaType}'`
+    })
+  })
+})
+
 // =============================================================================
 // Utilities
 // =============================================================================
@@ -3178,10 +3198,17 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer: toCodecOpenAI }),
-    catch: (error) => unsupportedSchemaError(error, method)
+    catch: (error) => toolParametersError(tool, error, method)
   })
 
 const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {

@@ -7,7 +7,7 @@ import * as Fish from "effect/cli/internal/completions/fish"
 import * as PowerShell from "effect/cli/internal/completions/powershell"
 import * as Zsh from "effect/cli/internal/completions/zsh"
 import { execFileSync, spawnSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
@@ -146,6 +146,44 @@ const choicesHelperSource = (script: string): string => {
 const linesWith = (script: string, needle: string): string =>
   script.split("\n").filter((line) => line.includes(needle)).map((line) => line.trim()).join("\n")
 
+/** `script` arguments that run `command` on a pseudo-terminal. */
+const scriptArgs = (command: string): Array<string> =>
+  process.platform === "linux" ? ["-qec", command, "/dev/null"] : ["-q", "/dev/null", ...command.split(" ")]
+
+const hasReadline = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -W x"]).status === 0 &&
+  spawnSync("script", scriptArgs("bash --noprofile --norc -c true")).status === 0
+
+/**
+ * Type `line`, a tab and Enter into interactive Bash in a directory of
+ * `process` fixtures, and return the arguments `process` receives.
+ */
+const replayBashCompletion = (line: string): Array<string> => {
+  const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
+  try {
+    mkdirSync(join(directory, "project files"))
+    writeFileSync(join(directory, "project.txt"), "")
+    writeFileSync(join(directory, "report data.txt"), "")
+    writeFileSync(join(directory, "report.txt"), "")
+    writeFileSync(
+      join(directory, "rc.bash"),
+      [Bash.generate("process", fromCommand(withPaths)), `process() { printf '<%s>\\n' "$@"; }`, `PS1='$ ' TMOUT=1`]
+        .join("\n")
+    )
+    // Ctrl-D exits, or ends a quote left open; TMOUT exits once input runs out.
+    return spawnSync("script", scriptArgs("bash --noprofile --rcfile rc.bash -i"), {
+      cwd: directory,
+      encoding: "utf8",
+      env: { ...process.env, HOME: directory },
+      input: `${line}\t\n\x04exit\n`,
+      timeout: 10_000
+    }).stdout
+      .split(/\r?\n/)
+      .flatMap((text) => text.startsWith("<") && text.endsWith(">") ? [text.slice(1, -1).replace(directory, "~")] : [])
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Bash completions
 // ---------------------------------------------------------------------------
@@ -248,16 +286,14 @@ describe("Bash completions", () => {
     assert.include(script, "--no-loud")
   })
 
-  it("uses compgen -f for file-type flags", () => {
-    const desc = fromCommand(withPaths)
-    const script = Bash.generate("process", desc)
-    assert.include(script, "compgen -f")
+  it.skipIf(!hasReadline)("completes paths containing spaces as one argument", () => {
+    assert.deepStrictEqual(replayBashCompletion("process --input report\\ d"), ["--input", "report data.txt"])
+    assert.deepStrictEqual(replayBashCompletion("process --output-dir pro"), ["--output-dir", "project files"])
   })
 
-  it("uses compgen -d for directory-type flags", () => {
-    const desc = fromCommand(withPaths)
-    const script = Bash.generate("process", desc)
-    assert.include(script, "compgen -d")
+  it.skipIf(!hasReadline)("keeps an expandable or quoted directory as typed", () => {
+    assert.deepStrictEqual(replayBashCompletion("process --input $HOME/report\\ d"), ["--input", "~/report data.txt"])
+    assert.deepStrictEqual(replayBashCompletion(`process --input "./"rep`), ["--input", "./report"])
   })
 
   it("inlines choice values for choice flags", () => {
@@ -921,6 +957,25 @@ describe("Completions", () => {
     const script = Completions.generate("greet", "powershell", desc)
     assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'greet'`)
   })
+
+  it("derives a zsh script from a Command tree without running its handlers", () => {
+    const handler = () => {
+      throw new Error("command handler should not run")
+    }
+    const cli = Command.make("server", {}, handler).pipe(
+      Command.withSubcommands([
+        Command.make("start", { port: Flag.Int("port") }, handler)
+      ])
+    )
+
+    const descriptor = Completions.fromCommand(cli)
+    assert.deepStrictEqual(descriptor.subcommands.map((subcommand) => subcommand.name), ["start"])
+
+    const script = Completions.generate("server", "zsh", descriptor)
+    assert.include(script, "#compdef server")
+    assert.include(script, "_server_start()")
+    assert.include(script, "--port")
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -963,9 +1018,6 @@ describe("Completions integration", () => {
     assert.include(script, "_mycli_admin_users_create()")
     assert.include(script, "_mycli_admin_config_set()")
     assert.include(script, "_mycli_admin_config_get()")
-
-    // File completion for copy command
-    assert.include(script, "compgen -f")
   })
 
   it("generates valid zsh script for ComprehensiveCli", () => {

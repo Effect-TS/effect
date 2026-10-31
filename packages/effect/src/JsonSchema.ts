@@ -1221,6 +1221,7 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
       case "unevaluatedItems":
         unsupported(key, "Draft-07", "the target dialect has no equivalent")
       case "required":
+      case "enum":
         if (Array.isArray(value) && value.length === 0) break
         InternalRecord.assignProperty(out, key, value)
         break
@@ -1245,6 +1246,8 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
 
   convertDependencies(source, out, context, "draft-07")
   convertLegacyId(source, out, "$id", "Draft-07")
+
+  if (Array.isArray(source.enum) && source.enum.length === 0) appendAllOf(out, { not: {} })
 
   convertReference(out, reference, context)
 

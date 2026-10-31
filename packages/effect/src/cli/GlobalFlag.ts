@@ -21,7 +21,6 @@ import * as CliOutput from "./CliOutput.ts"
 import type * as Command from "./Command.ts"
 import * as Completions_ from "./Completions.ts"
 import * as Flag from "./Flag.ts"
-import * as CommandDescriptor from "./internal/completions/descriptor.ts"
 import * as HelpInternal from "./internal/help.ts"
 
 /* ========================================================================== */
@@ -249,7 +248,7 @@ export const Completions: Action<Option.Option<Completions_.Shell>> = Action({
   ),
   run: Effect.fnUntraced(function*(shell, { command }) {
     if (Option.isNone(shell)) return
-    const descriptor = CommandDescriptor.fromCommand(command)
+    const descriptor = Completions_.fromCommand(command)
     yield* Console.log(
       Completions_.generate(command.name, shell.value, descriptor)
     )

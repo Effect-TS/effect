@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Context, Deferred, Effect, Fiber, Layer, Option, Queue, type Scope, Stream } from "effect"
+import { Array, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, type Scope, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -12,10 +12,12 @@ import * as EventLogSessionAuth from "effect/eventlog/EventLogSessionAuth"
 import { makeGetIdentityRootSecretMaterial } from "effect/eventlog/internal/identityRootSecretDerivation"
 import type * as Rpc from "effect/rpc/Rpc"
 import * as RpcClient from "effect/rpc/RpcClient"
+import * as RpcClientError from "effect/rpc/RpcClientError"
 import type * as RpcGroup from "effect/rpc/RpcGroup"
 import type { FromServer } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
+import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
 
 describe("EventLogRemote", () => {
@@ -157,6 +159,36 @@ describe("EventLogRemote", () => {
 
       request.resume(Effect.void)
       yield* Fiber.join(writeFiber)
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("makeEncrypted authenticates an existing identity with its bound signing key", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHarness(EventLogRemote.makeEncrypted)
+      // Servers persist the first signing key seen for a public key, so the
+      // key derived from an existing identity must not change.
+      const identity = EventLog.decodeIdentityString(
+        "eyJwdWJsaWNLZXkiOiJldmVudGxvZy1jb21wYXQiLCJwcml2YXRlS2V5IjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOD0ifQ"
+      )
+
+      yield* harness.remote.write({
+        identity,
+        storeId: defaultStoreId,
+        entries: [makeEntry()]
+      }).pipe(Effect.forkScoped)
+
+      const auth = yield* harness.take
+      assert(auth._tag === "EventLog.Authenticate")
+      const payload = auth.request as Rpc.Payload<typeof EventLogMessage.AuthenticateRpc>
+      assert.deepStrictEqual(
+        payload.signingPublicKey,
+        Uint8Array.from(
+          "166a4b5a7f8c32a6517e2a37208bcb2d02926d4c49edda85134b80547234b090".match(/../g)!,
+          (byte) => parseInt(byte, 16)
+        )
+      )
+      assert.isTrue(
+        yield* EventLogSessionAuth.verifySessionAuthenticateRequest({ remoteId, challenge, ...payload })
+      )
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })
 
@@ -470,6 +502,174 @@ describe("EventLogRemote write acknowledgements", () => {
       }, {
         acks: delivered.map(({ entry, remoteSequence }) => ({ entryId: entry.id, sequence: remoteSequence })),
         nextForWriter: marker.idString
+      })
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+})
+
+const CompactionRpcs = EventLogMessage.EventLogRemoteRpcs.merge(EventLogMessage.EventLogCompactionRpcs)
+type CompactionRpcs = RpcGroup.Rpcs<typeof CompactionRpcs>
+
+// The memory storage without its compaction sub-service, like a third-party
+// storage that predates compaction.
+const layerStorageWithoutCompaction = Layer.effect(EventLogServerEncrypted.Storage)(
+  Effect.map(EventLogServerEncrypted.makeStorageMemory, ({ compaction: _, ...storage }) => storage)
+)
+
+// An encrypted server on memory storage, serving both RPC groups.
+const makeCompactionServer = Effect.fnUntraced(function*(
+  storage: Layer.Layer<EventLogServerEncrypted.Storage> = EventLogServerEncrypted.layerStorageMemoryWith({
+    compaction: { thresholdFloor: 1 }
+  })
+) {
+  const handlers = yield* Layer.build(EventLogServerEncrypted.layerRpcHandlers.pipe(Layer.provide(storage)))
+  const connections = new Map<number, (response: FromServer<CompactionRpcs>) => Effect.Effect<void>>()
+  const server = yield* RpcServer.makeNoSerialization(CompactionRpcs, {
+    onFromServer: (response) => connections.get(response.clientId)!(response)
+  }).pipe(Effect.provide(handlers))
+  let nextClientId = 0
+
+  // `dropPart` replaces the response to that Part request, counted from 0 in
+  // send order, with the failure a closed socket gives it.
+  const connect = Effect.fnUntraced(function*(identity: EventLog.Identity["Service"], options?: {
+    readonly dropPart?: number | undefined
+  }) {
+    const clientId = nextClientId++
+    const parts: Array<EventLogMessage.ChunkedMessage> = []
+    let dropped: unknown = undefined
+    const { client, write } = yield* RpcClient.makeNoSerialization(CompactionRpcs, {
+      supportsAck: true,
+      onFromClient: ({ message }) => {
+        if (message._tag === "Request" && message.tag === "EventLog.CompactionPart") {
+          const payload = message.payload as Rpc.Payload<typeof EventLogMessage.CompactionPartRpc>
+          if (parts.push(payload.chunk) - 1 === options?.dropPart) dropped = message.id
+        }
+        return server.write(clientId, message)
+      }
+    })
+    connections.set(clientId, (response) =>
+      response._tag === "Exit" && response.requestId === dropped
+        ? write({
+          ...response,
+          exit: Exit.fail(
+            new RpcClientError.RpcClientError({ reason: new Socket.SocketCloseError({ code: 1006 }) })
+          ) as any
+        })
+        : write(response))
+    const remote = yield* EventLogRemote.makeEncrypted.pipe(
+      Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
+      Effect.provide(EventLog.layerRegistry)
+    )
+    yield* remote.whenAuthenticated(Effect.void).pipe(Effect.provideService(EventLog.Identity, identity))
+    return { remote, parts }
+  })
+
+  return { connect }
+})
+
+const entryFields = (entry: EventJournal.Entry) => ({
+  id: entry.idString,
+  event: entry.event,
+  primaryKey: entry.primaryKey,
+  payload: entry.payload
+})
+
+// Writes `entries`, lets them pass the default 24 hour lag, opens a stage and
+// fetches its whole input.
+const beginWith = Effect.fnUntraced(function*(
+  writer: EventLogRemote.EventLogRemote["Service"],
+  identity: EventLog.Identity["Service"],
+  entries: ReadonlyArray<EventJournal.Entry>
+) {
+  const compaction = writer.compaction ?? assert.fail("expected the remote to support compaction")
+  yield* writer.write({ identity, storeId: defaultStoreId, entries })
+  yield* TestClock.adjust("26 hours")
+  const begun = yield* compaction.begin({ identity, storeId: defaultStoreId })
+  assert(begun._tag === "Started", `expected Started, got ${begun._tag}`)
+  const stage = { ...begun, identity, storeId: defaultStoreId }
+  const headers = yield* Stream.runCollect(compaction.input(stage))
+  const input = yield* Stream.runCollect(compaction.fetch(stage, headers.map((header) => header.sequence)))
+  assert.deepStrictEqual(input.map(({ entry }) => entry.idString), entries.map((entry) => entry.idString))
+  return { compaction, stage, input: input.map(({ entry }) => entry) }
+})
+
+const kb = 1024
+
+describe("EventLogRemote compaction", () => {
+  it.effect("is absent when the server does not advertise compaction", () =>
+    Effect.gen(function*() {
+      const server = yield* makeCompactionServer(layerStorageWithoutCompaction)
+      const { remote } = yield* server.connect(yield* EventLog.makeIdentity)
+
+      assert.isUndefined(remote.compaction)
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("uploads kept entries in segments of about 512 KB, splitting an oversized one, with their original bytes", () =>
+    Effect.gen(function*() {
+      const server = yield* makeCompactionServer()
+      const identity = yield* EventLog.makeIdentity
+      const writer = yield* server.connect(identity)
+      const entries = [
+        makeEntry({ primaryKey: "dropped" }),
+        makeEntry({ payloadSize: 200 * kb }),
+        makeEntry({ payloadSize: 200 * kb }),
+        makeEntry({ payloadSize: 200 * kb }),
+        makeEntry({ payloadSize: 600 * kb }),
+        makeEntry()
+      ]
+      const { compaction, input, stage } = yield* beginWith(writer.remote, identity, entries)
+
+      const kept = input.slice(1)
+      const { segmentCount } = yield* compaction.upload(stage, kept)
+      const committed = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
+      const reader = yield* server.connect(identity)
+      const changes = yield* reader.remote.changes({
+        identity,
+        storeId: defaultStoreId,
+        startSequence: reader.remote.firstSequence ?? 0
+      })
+      const served = yield* Queue.takeN(changes, kept.length)
+
+      // Each 200 KB entry fills its own batch. Two of them fit in one segment,
+      // the 600 KB batch is a segment of its own split in two, and the last
+      // small batch doesn't fit after it.
+      const pieces = new Map<number, number>()
+      for (const part of writer.parts) pieces.set(part.id, (pieces.get(part.id) ?? 0) + 1)
+      assert.deepStrictEqual({
+        segmentCount,
+        pieces: [...pieces].sort(([a], [b]) => a - b),
+        largestPiece: Math.max(...writer.parts.map((part) => part.data.byteLength)),
+        committed
+      }, {
+        segmentCount: 4,
+        pieces: [[0, 1], [1, 1], [2, 2], [3, 1]],
+        largestPiece: EventLogMessage.ChunkedMessage.chunkSize,
+        committed: "Committed"
+      })
+      assert.deepStrictEqual(served.map(({ entry }) => entryFields(entry)), entries.slice(1).map(entryFields))
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("resends a whole segment after a dropped connection", () =>
+    Effect.gen(function*() {
+      const server = yield* makeCompactionServer()
+      const identity = yield* EventLog.makeIdentity
+      // The response to the piece that completes the segment is lost.
+      const writer = yield* server.connect(identity, { dropPart: 1 })
+      const { compaction, input, stage } = yield* beginWith(writer.remote, identity, [
+        makeEntry({ primaryKey: "dropped" }),
+        makeEntry({ payloadSize: 600 * kb })
+      ])
+
+      const { segmentCount } = yield* compaction.upload(stage, input.slice(1))
+      const committed = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
+
+      assert.deepStrictEqual({
+        segmentCount,
+        pieces: writer.parts.map((part) => `${part.id}:${part.part[0]}/${part.part[1]}`).sort(),
+        committed
+      }, {
+        segmentCount: 1,
+        pieces: ["0:0/2", "0:0/2", "0:1/2", "0:1/2"],
+        committed: "Committed"
       })
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })

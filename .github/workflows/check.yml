@@ -39,26 +39,53 @@ jobs:
             exit 1
           fi
 
-  types:
-    name: Types
+  # Each type check takes several minutes on a slow runner, so they run in
+  # parallel instead of sharing one job's timeout.
+  types-matrix:
+    name: Types (${{ matrix.name }})
     runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Check
+            deno: ""
+            command: pnpm check
+          - name: Deno
+            deno: v2.9.6
+            command: deno check .
+          - name: Tests
+            deno: ""
+            command: pnpm test-types --target '>=5.9'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.6
-      - run: pnpm check
+          deno-version: ${{ matrix.deno }}
+      - run: ${{ matrix.command }}
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
-      - run: deno check .
-      - run: pnpm test-types --target '>=5.9'
-        env:
           TSTYCHE_FETCH_TIMEOUT: "120"
+
+  # Keeps the required `Types` status check covering every job above.
+  types:
+    name: Types
+    needs: types-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
+    steps:
+      - name: Check type jobs
+        if: needs.types-matrix.result != 'success'
+        run: |
+          echo "Type checks finished with result: ${{ needs.types-matrix.result }}"
+          exit 1
 
   build:
     name: Build
@@ -201,6 +228,21 @@ jobs:
           name: deno-pg-lifecycle-${{ github.run_attempt }}
           path: ${{ runner.temp }}/pg-lifecycle
           if-no-files-found: warn
+
+  test-node-minimum:
+    name: Test (Node 22.19.0 minimum)
+    runs-on: namespace-profile-linux-default
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+        with:
+          node-version: 22.19.0
+      - name: Test
+        run: pnpm vitest run --project @effect/platform-node --max-concurrency=10
 
   doctest:
     name: Test (Documentation)

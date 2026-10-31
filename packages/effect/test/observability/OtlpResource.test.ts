@@ -35,6 +35,29 @@ describe("OtlpResource", () => {
         )
       ))
 
+    it.effect("trims OTEL_RESOURCE_ATTRIBUTES entries and keeps empty values", () =>
+      Effect.gen(function*() {
+        const resource = yield* OtlpResource.fromConfig()
+
+        assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
+          "service.name": "env-service",
+          message: "hello world",
+          empty: "",
+          a: "1"
+        })
+      }).pipe(
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnv({
+            env: {
+              OTEL_SERVICE_NAME: "env-service",
+              OTEL_RESOURCE_ATTRIBUTES: "message = hello%20world ,empty=,novalue, =ignored,a=1"
+            }
+          })
+        )
+      ))
+
     it.effect("uses explicit service options before attributes and environment variables", () =>
       Effect.gen(function*() {
         const resource = yield* OtlpResource.fromConfig({

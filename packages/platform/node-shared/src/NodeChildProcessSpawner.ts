@@ -39,7 +39,7 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import type * as PlatformError from "effect/PlatformError"
+import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as ChildProcess from "effect/process/ChildProcess"
 import type { ChildProcessHandle } from "effect/process/ChildProcessSpawner"
@@ -50,6 +50,8 @@ import {
   makeHandle,
   ProcessId
 } from "effect/process/ChildProcessSpawner"
+import * as CommandLine from "effect/process/CommandLine"
+import * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
@@ -71,11 +73,26 @@ const toPlatformError = (
   command: ChildProcess.Command
 ): PlatformError.PlatformError => {
   const { commands } = flattenCommand(command)
-  const commandStr = commands.reduce((acc, curr) => {
-    const cmd = `${curr.command} ${curr.args.join(" ")}`
-    return acc.length === 0 ? cmd : `${acc} | ${cmd}`
-  }, "")
+  const format = globalThis.process.platform === "win32" ? "windows" : "posix"
+  const commandStr = commands.map((cmd) => CommandLine.display([cmd.command, ...cmd.args], { format })).join(" | ")
   return handleErrnoException("ChildProcess", method)(error, [commandStr])
+}
+
+const unwrap = (value: string | Redacted.Redacted<string>): string =>
+  Redacted.isRedacted(value) ? Redacted.value(value) : value
+
+// Node's own NUL check throws an error that includes the value, so NUL is
+// rejected here to keep Redacted values out of errors.
+const findNulCharacter = (command: ChildProcess.StandardCommand): string | undefined => {
+  if (command.command.includes("\0")) return "The command contains a NUL character"
+  const index = command.args.findIndex((arg) => unwrap(arg).includes("\0"))
+  if (index !== -1) return `Argument ${index + 1} contains a NUL character`
+  for (const [name, value] of Object.entries(command.options.env ?? {})) {
+    if (value !== undefined && unwrap(value).includes("\0")) {
+      return `The environment variable ${name} contains a NUL character`
+    }
+  }
+  return undefined
 }
 
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
@@ -162,9 +179,13 @@ const make = Effect.gen(function*() {
   )
 
   const resolveEnvironment = (options: ChildProcess.CommandOptions) => {
-    return options.extendEnv
-      ? { ...globalThis.process.env, ...options.env }
-      : options.env
+    if (options.env === undefined) return undefined
+    const env: Record<string, string | undefined> = options.extendEnv === true ? { ...globalThis.process.env } : {}
+    for (const [key, value] of Object.entries(options.env)) {
+      if (value === undefined) delete env[key]
+      else env[key] = unwrap(value)
+    }
+    return env
   }
 
   const inputToStdioOption = (input: ChildProcess.CommandInput | undefined): NodeChildProcess.IOType | undefined =>
@@ -286,50 +307,81 @@ const make = Effect.gen(function*() {
     const inputSinks = new Map<number, Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>>()
     const outputStreams = new Map<number, Stream.Stream<Uint8Array, PlatformError.PlatformError>>()
 
+    const setupInput = (
+      fd: number,
+      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
+    ) =>
+      Effect.suspend(() => {
+        let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
+        if (nodeStream && "write" in nodeStream) {
+          handleInputErrors(nodeStream)
+          sink = NodeSink.fromWritable({
+            evaluate: () => nodeStream,
+            onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
+          })
+        }
+
+        if (stream) {
+          return Effect.map(runInputStream(stream, sink, inputFailure), () => {
+            inputSinks.set(fd, sink)
+          })
+        }
+
+        inputSinks.set(fd, sink)
+        return Effect.void
+      })
+
+    const setupOutput = (
+      fd: number,
+      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      sink: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
+    ) => {
+      let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
+      if (nodeStream && "read" in nodeStream) {
+        const passThrough = new PassThrough()
+        // Retain errors raised before anyone reads, e.g. a failed write on a
+        // duplex fd, so they neither go uncaught nor leave later readers hanging
+        let error: unknown = undefined
+        passThrough.on("error", (cause) => {
+          error ??= cause
+        })
+        nodeStream.on("error", (cause) => passThrough.destroy(cause))
+        nodeStream.pipe(passThrough)
+        const onError = (cause: unknown) => toPlatformError(`fromReadable(fd${fd})`, toError(cause), command)
+        stream = Stream.suspend(() =>
+          error === undefined
+            ? NodeStream.fromReadable({ evaluate: () => passThrough, onError })
+            : Stream.fail(onError(error))
+        )
+      }
+
+      if (sink) {
+        stream = Stream.transduce(stream, sink)
+      }
+
+      outputStreams.set(fd, stream)
+    }
+
     for (const { config, fd } of additionalFds) {
       const nodeStream = childProcess.stdio[fd]
 
       switch (config.type) {
         case "input": {
-          // Create a sink to write to for input file descriptors
-          let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
-          if (nodeStream && "write" in nodeStream) {
-            handleInputErrors(nodeStream)
-            sink = NodeSink.fromWritable({
-              evaluate: () => nodeStream,
-              onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
-            })
-          }
-
-          // If user provided a stream, pipe it into the sink
-          if (config.stream) {
-            yield* runInputStream(config.stream, sink, inputFailure)
-          }
-
-          inputSinks.set(fd, sink)
-
+          yield* setupInput(fd, nodeStream, config.stream)
           break
         }
         case "output": {
-          // Create a stream to read from for output file descriptors
-          let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
-          if (nodeStream && "read" in nodeStream) {
-            const passThrough = new PassThrough()
-            nodeStream.on("error", (error) => passThrough.destroy(error))
-            nodeStream.pipe(passThrough)
-            stream = NodeStream.fromReadable({
-              evaluate: () => passThrough,
-              onError: (error) => toPlatformError(`fromReadable(fd${fd})`, toError(error), command)
-            })
+          setupOutput(fd, nodeStream, config.sink)
+          break
+        }
+        case "duplex": {
+          // Keep writing possible after the child closes its write side.
+          if (nodeStream && "allowHalfOpen" in nodeStream) {
+            nodeStream.allowHalfOpen = true
           }
-
-          // If user provided a sink, transduce the stream through it
-          if (config.sink) {
-            stream = Stream.transduce(stream, config.sink)
-          }
-
-          outputStreams.set(fd, stream)
-
+          setupOutput(fd, nodeStream, config.sink)
+          yield* setupInput(fd, nodeStream, config.stream)
           break
         }
       }
@@ -425,10 +477,16 @@ const make = Effect.gen(function*() {
       const deferred = Deferred.makeUnsafe<ExitCodeWithSignal>()
       const handle = NodeChildProcess.spawn(
         command.command,
-        command.args,
+        command.args.map(unwrap),
         spawnOptions
       )
       handle.on("error", (error) => {
+        // Node copies the arguments into `spawnargs`.
+        if (command.args.some(Redacted.isRedacted)) {
+          Object.assign(error, {
+            spawnargs: [command.command, ...command.args.map((arg) => Redacted.isRedacted(arg) ? "<redacted>" : arg)]
+          })
+        }
         resume(Effect.fail(toPlatformError("spawn", error, command)))
       })
       handle.on("exit", (...args) => {
@@ -591,6 +649,21 @@ const make = Effect.gen(function*() {
   > = Effect.fnUntraced(function*(cmd) {
     switch (cmd._tag) {
       case "StandardCommand": {
+        if (cmd.options.shell !== undefined && cmd.options.shell !== false && cmd.args.length > 0) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: "The shell option cannot be combined with arguments; pass the whole script as the command"
+          }))
+        }
+        const nulCharacter = findNulCharacter(cmd)
+        if (nulCharacter !== undefined) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: nulCharacter
+          }))
+        }
         const stdinConfig = resolveStdinOption(cmd.options)
         const stdoutConfig = resolveOutputOption(cmd.options, "stdout")
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")
@@ -722,12 +795,16 @@ const make = Effect.gen(function*() {
             if (Predicate.isNotUndefined(fd)) {
               const fdName = ChildProcess.fdName(fd) as `fd${number}`
               const existingFds = command.options.additionalFds ?? {}
+              const existingFd = existingFds[fdName]
+              const fdConfig: ChildProcess.AdditionalFdConfig = existingFd?.type === "duplex"
+                ? { ...existingFd, stream: sourceStream }
+                : { type: "input", stream: sourceStream }
               handles.push(
                 yield* spawnCommand(ChildProcess.make(command.command, command.args, {
                   ...command.options,
                   additionalFds: {
                     ...existingFds,
-                    [fdName]: { type: "input" as const, stream: sourceStream }
+                    [fdName]: fdConfig
                   }
                 }))
               )

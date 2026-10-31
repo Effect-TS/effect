@@ -849,6 +849,30 @@ export const days = (days: number): Duration => make(days * 86_400_000)
 export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
 
 /**
+ * Converts a Duration to microseconds.
+ *
+ * **Example** (Converting durations to microseconds)
+ *
+ * ```ts import.meta.vitest
+ * import { Duration } from "effect"
+ *
+ * Duration.toMicros(Duration.millis(5)) // => 5000
+ * Duration.toMicros(Duration.nanos(123n)) // => 0.123
+ * ```
+ *
+ * @stability stable
+ * @category getters
+ * @since 4.1.0
+ */
+export const toMicros = (self: Input): number =>
+  match(fromInputUnsafe(self), {
+    onMillis: (millis) => millis * 1_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 1_000),
+    onInfinity: () => Infinity,
+    onNegativeInfinity: () => -Infinity
+  })
+
+/**
  * Converts a Duration to milliseconds.
  *
  * **Example** (Converting durations to milliseconds)
@@ -1868,6 +1892,122 @@ export const format = (self: Duration): string => {
   }
 
   return pieces.join(" ")
+}
+
+/**
+ * Formats a `Duration` as an ISO 8601 duration string.
+ *
+ * **Details**
+ *
+ * The duration is balanced into days (24 hours), hours, minutes and seconds,
+ * with up to nine fractional second digits. Weeks, months and years are never
+ * produced. Negative durations get a leading `-`, zero is `"PT0S"` and
+ * infinite durations return `Option.none()`.
+ *
+ * **Example** (Formatting durations as ISO 8601)
+ *
+ * ```ts import.meta.vitest
+ * import { Duration, Option } from "effect"
+ *
+ * Duration.formatIso(Duration.minutes(90)) // => Option.some("PT1H30M")
+ * Duration.formatIso(Duration.millis(-1500)) // => Option.some("-PT1.5S")
+ * Duration.formatIso(Duration.hours(26)) // => Option.some("P1DT2H")
+ * Duration.formatIso(Duration.infinity) // => Option.none()
+ * ```
+ *
+ * @see {@link fromIso} for parsing ISO 8601 duration strings
+ *
+ * @stability stable
+ * @category converting
+ * @since 4.1.0
+ */
+export const formatIso = (self: Duration): Option.Option<string> => {
+  if (!isFinite(self)) {
+    return Option.none()
+  }
+  const n = toNanosUnsafe(self)
+  const a = n < bigint0 ? -n : n
+  const days = a / bigintNanosPerDay
+  const hours = a % bigintNanosPerDay / bigintNanosPerHour
+  const minutes = a % bigintNanosPerHour / bigintNanosPerMinute
+  const seconds = a % bigintNanosPerMinute / bigint1e9
+  const fraction = a % bigint1e9
+
+  let time = ""
+  if (hours !== bigint0) time += `${hours}H`
+  if (minutes !== bigint0) time += `${minutes}M`
+  if (fraction !== bigint0) {
+    time += `${seconds}.${fraction.toString().padStart(9, "0").replace(/0+$/, "")}S`
+  } else if (seconds !== bigint0) {
+    time += `${seconds}S`
+  }
+
+  let out = n < bigint0 ? "-P" : "P"
+  if (days !== bigint0) out += `${days}D`
+  if (time !== "") out += `T${time}`
+  return Option.some(out === "P" ? "PT0S" : out)
+}
+
+const DURATION_ISO_REGEXP =
+  /^([+-])?P(?!$)(?:(\d+)W)?(?:(\d+)D)?(?:T(?!$)(?:(\d+)(?:[.,](\d{1,9}))?H)?(?:(\d+)(?:[.,](\d{1,9}))?M)?(?:(\d+)(?:[.,](\d{1,9}))?S)?)?$/
+
+// `scale` is the number of nanoseconds in one unit
+const parseIsoComponent = (whole: string | undefined, fraction: string | undefined, scale: bigint): bigint =>
+  (whole === undefined ? bigint0 : BigInt(whole) * scale) +
+  (fraction === undefined ? bigint0 : BigInt(fraction.padEnd(9, "0")) * (scale / bigint1e9))
+
+/**
+ * Parses an ISO 8601 duration string into a `Duration`.
+ *
+ * **Details**
+ *
+ * Accepts an optional `+` or `-` sign followed by weeks (`W`), days (`D`),
+ * hours (`H`), minutes (`M`) and seconds (`S`). A day is 24 hours and a week
+ * is 7 days. Only the last time component may have a fraction, of up to nine
+ * digits, separated by `.` or `,`.
+ *
+ * **Gotchas**
+ *
+ * Years (`Y`) and months (`M` before `T`) are rejected because they have no
+ * fixed length. Fractional weeks and days are rejected.
+ *
+ * **Example** (Parsing ISO 8601 durations)
+ *
+ * ```ts import.meta.vitest
+ * import { Duration, Option } from "effect"
+ *
+ * Duration.fromIso("PT1H30M") // => Option.some(Duration.minutes(90))
+ * Duration.fromIso("-PT1.5S") // => Option.some(Duration.millis(-1500))
+ * Duration.fromIso("P1W2D") // => Option.some(Duration.days(9))
+ * Duration.fromIso("P1M") // => Option.none()
+ * ```
+ *
+ * @see {@link formatIso} for formatting a `Duration` as an ISO 8601 string
+ *
+ * @stability stable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const fromIso = (input: string): Option.Option<Duration> => {
+  const match = DURATION_ISO_REGEXP.exec(input)
+  if (match === null) {
+    return Option.none()
+  }
+  const [, sign, w, d, h, hf, m, mf, s, sf] = match
+  // a fraction is only allowed on the last time component
+  if ((hf !== undefined && (m !== undefined || s !== undefined)) || (mf !== undefined && s !== undefined)) {
+    return Option.none()
+  }
+  const total = parseIsoComponent(w, undefined, bigintNanosPerWeek) +
+    parseIsoComponent(d, undefined, bigintNanosPerDay) +
+    parseIsoComponent(h, hf, bigintNanosPerHour) +
+    parseIsoComponent(m, mf, bigintNanosPerMinute) +
+    parseIsoComponent(s, sf, bigint1e9)
+  const signed = sign === "-" ? -total : total
+  const ms = Number(signed / bigint1e6)
+  return Option.some(
+    signed % bigint1e6 === bigint0 && Number.isSafeInteger(ms) ? millis(ms) : nanos(signed)
+  )
 }
 
 /**

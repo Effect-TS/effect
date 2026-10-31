@@ -16,6 +16,10 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
   return { runtime, Type }
 }
 
+function formatObjectLiteralKey(key: PropertyKey, formatted = formatPropertyKey(key)): string {
+  return key === "__proto__" ? `[${formatted}]` : formatted
+}
+
 function renderEmittableAnnotation(input: unknown): string | undefined {
   if (
     input === null ||
@@ -43,7 +47,7 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
   for (const [key, value] of Object.entries(input)) {
     const rendered = renderEmittableAnnotation(value)
     if (rendered === undefined) return undefined
-    entries.push(`${formatPropertyKey(key)}: ${rendered}`)
+    entries.push(`${formatObjectLiteralKey(key)}: ${rendered}`)
   }
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`
 }
@@ -63,7 +67,7 @@ function renderAnnotations(
   for (const [key, value] of Object.entries(annotations)) {
     if (InternalAnnotations.annotationExcludedKeys.has(key)) continue
     const rendered = renderEmittableAnnotation(value)
-    if (rendered !== undefined) entries.push(`${formatPropertyKey(key)}: ${rendered}`)
+    if (rendered !== undefined) entries.push(`${formatObjectLiteralKey(key)}: ${rendered}`)
   }
   return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`
 }
@@ -499,7 +503,7 @@ export function toCodeDocument(
           if (property.isMutable) runtime = `Schema.mutableKey(${runtime})`
           if (property.isOptional) runtime = `Schema.optionalKey(${runtime})`
           runtime += runtimeAnnotate(property.annotations, "annotateKey")
-          const runtimeName = property.name === "__proto__" ? `[${name}]` : name
+          const runtimeName = formatObjectLiteralKey(property.name, name)
           const typeName = `${property.isMutable ? "" : "readonly "}${name}${property.isOptional ? "?" : ""}`
           return {
             code: makeCode(`${runtimeName}: ${runtime}`, `${typeName}: ${type.Type}`)

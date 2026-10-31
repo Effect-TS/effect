@@ -29,7 +29,6 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
-import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
 
 const TypeId = "~effect/ScopedCache"
@@ -363,12 +362,9 @@ const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknow
 
 // Expiry and capacity eviction report cleanup failures without failing unrelated readers.
 const closeEvicted = <A, E>(entry: Entry<A, E>): Effect.Effect<void> =>
-  effect.catchCause(Scope.close(entry.scope, effect.exitVoid), reportUnhandledError)
-
-const reportUnhandledError = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
-  core.withFiber((fiber) => {
-    const level = fiber.getRef(UnhandledLogLevel)
-    return level ? effect.logWithLevel(level)("Unhandled error in ScopedCache finalizer", cause) : effect.void
+  effect.ignoreCause(Scope.close(entry.scope, effect.exitVoid), {
+    log: "Unhandled",
+    message: "Unhandled error in ScopedCache finalizer"
   })
 
 const checkCapacity = <K, A, E>(
@@ -832,7 +828,7 @@ export const keys = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Effe
         keys.push(key)
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0 ? effect.succeed(keys) : effect.as(effect.fiberAwaitAll(fibers), keys)
@@ -897,7 +893,7 @@ export const entries = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.E
         }
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0

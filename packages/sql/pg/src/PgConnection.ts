@@ -20,6 +20,7 @@ import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
 import type * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
+import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import { AuthenticationError, ConnectionError, SqlError, type SqlErrorReason, UnknownError } from "effect/sql/SqlError"
@@ -73,7 +74,8 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * unless explicitly disabled through `ssl` options.
  *
  * Prepared statements are enabled by default and limited by
- * `preparedStatementCacheSize`. Disable them for statement-mode poolers or
+ * `preparedStatementCacheSize`. Disable them for poolers that drop named
+ * statements, such as PgBouncer with `max_prepared_statements = 0`, or for
  * workloads that generate unique SQL. Streams always use unnamed statements.
  *
  * With `multiplex` enabled, unpinned queries from multiple fibers are
@@ -222,7 +224,7 @@ export interface PgConnection {
    * After release, queries, streams and listeners through the returned
    * connection fail, and its `interrupt` does nothing. Releasing a pin with
    * an in-flight statement or an open listener closes the session and fails
-   * any listener queues.
+   * any listener queues, as does leaving a transaction the pin began aborted.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -264,7 +266,8 @@ export interface PgConnection {
   /**
    * Registers a channel listener and returns its notification queue after
    * PostgreSQL confirms `LISTEN`. The session stays pinned until the scope
-   * closes, when it runs `UNLISTEN` and shuts down the queue. PostgreSQL
+   * closes, when it runs `UNLISTEN` and shuts down the queue. A session that
+   * does not confirm `UNLISTEN` within 5 seconds is closed. PostgreSQL
    * registration errors fail the acquiring effect.
    * Connection failures after registration fail the queue with the original
    * `SqlError`. Intentional scope closure interrupts consumers.
@@ -363,6 +366,7 @@ const abortDrainGraceMillis = 10
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
+const unlistenTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
 const streamPauseThreshold = 512
@@ -388,6 +392,8 @@ class PgConnectionImpl implements PgConnection {
   deadWith: SqlError | undefined
   closed = false
   cancelPending = false
+  /** Reported by the latest `ReadyForQuery`. */
+  transactionStatus: PgProtocol.TransactionStatus = "I"
   readonly channels = new Map<string, Set<Queue.Queue<Notification, SqlError>>>()
   readonly retireHooks = new Set<() => void>()
   /** Queued but not yet written; drained into `pipelineInFlight` on flush. */
@@ -446,6 +452,7 @@ class PgConnectionImpl implements PgConnection {
         if (message.fields.code === queryCanceledCode) this.cancelPending = false
         break
       case "ReadyForQuery":
+        this.transactionStatus = message.status
         if (this.cancelPending) {
           this.cancelPending = false
           this.retire()
@@ -773,7 +780,9 @@ class PgConnectionImpl implements PgConnection {
         Effect.suspend(() => {
           view.released = true
           this.pinned = false
-          return this.wire.takeIfAvailable(1)
+          // An `UNLISTEN` that took the wire before the release is bounded by its
+          // own timeout, so wait for it rather than treating it as leaked work.
+          return view.unlistening > 0 ? Effect.as(this.wire.take(1), true) : this.wire.takeIfAvailable(1)
         }),
         (idle) => {
           // Retire rather than wait indefinitely for leaked work to finish.
@@ -781,6 +790,13 @@ class PgConnectionImpl implements PgConnection {
             this.fatal(connectionQueryError(
               new Error("Pinned connection released with work outstanding"),
               "PgConnection: Pinned connection released with work outstanding"
+            ))
+          } else if (view.startedIdle && this.transactionStatus === "E") {
+            // A failed cleanup, such as a cancelled `ROLLBACK`, leaves every later
+            // statement failing. A transaction open before the pin is its caller's.
+            this.fatal(connectionQueryError(
+              new Error("Pinned connection released in an aborted transaction"),
+              "PgConnection: Pinned connection released in an aborted transaction"
             ))
           }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
@@ -836,11 +852,15 @@ class PinnedPgConnection implements PgConnection {
   readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>
   released = false
   listeners = 0
+  unlistening = 0
+  /** No transaction was open when the pin took the session. */
+  readonly startedIdle: boolean
 
   constructor(base: PgConnectionImpl) {
     this.base = base
     this[internalsKey] = base[internalsKey]
     this.pin = Effect.succeed(this)
+    this.startedIdle = base.transactionStatus === "I"
   }
 
   // Check the lease under the wire permit so queued work cannot run after release.
@@ -1692,7 +1712,6 @@ const streamRows = (
       Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
       scope
     )
-    if (conn.deadWith !== undefined) return yield* conn.deadWith
     if (pinned.released) return yield* pinReleasedError()
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
@@ -1856,7 +1875,8 @@ const streamRows = (
     yield* Scope.addFinalizer(
       scope,
       Effect.suspend(() => {
-        if (done) return Effect.void
+        // A dead session has nothing left to drain.
+        if (done || conn.deadWith !== undefined) return Effect.void
         aborted = true
         const drain = drainAborted(conn, "Stream cancellation timed out", (onDrained) => {
           drainDone = onDrained
@@ -1866,6 +1886,9 @@ const streamRows = (
       })
     )
 
+    // Checked as the consumer is registered: a session that dies any earlier
+    // has no consumer to tell through `onFatal`.
+    if (conn.deadWith !== undefined) return yield* conn.deadWith
     conn.consumer = { onMessage, onBatchEnd, onFatal }
     parser.readField = undefined
     // @effect-diagnostics-next-line tryCatchInEffectGen:off
@@ -1920,10 +1943,7 @@ const listenChannel = (
             current.delete(queue)
             if (current.size > 0) return Queue.shutdown(queue)
             conn.channels.delete(channel)
-            const unlisten = conn.deadWith === undefined
-              ? Effect.ignore(pinned.query(`UNLISTEN ${identifier}`))
-              : Effect.void
-            return Effect.andThen(unlisten, Queue.shutdown(queue))
+            return Effect.andThen(unlisten(conn, pinned, identifier), Queue.shutdown(queue))
           })
         )
         yield* pinned.query(`LISTEN ${identifier}`)
@@ -1933,6 +1953,43 @@ const listenChannel = (
       )
     })
   )
+
+/**
+ * Runs `UNLISTEN` and closes the session if PostgreSQL does not answer in time.
+ * The timer starts once the wire is free, so a long statement on the same
+ * pinned session does not count against it. Nothing is sent once the session
+ * is dead or its pin released, as the session may already have a new owner.
+ * A pin released while `UNLISTEN` holds the wire waits for it to finish, so
+ * the count moves together with the permit: the fiber cannot yield between
+ * taking the wire and counting, or between uncounting and returning it.
+ */
+const unlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection, identifier: string): Effect.Effect<void> =>
+  Effect.uninterruptible(Effect.flatMap(
+    withoutYield(Effect.flatMap(conn.wire.take(1), () =>
+      Effect.sync(() => {
+        pinned.unlistening++
+      }))),
+    () => {
+      if (conn.deadWith !== undefined || pinned.released) return releaseUnlisten(conn, pinned)
+      const timeout = setTimeout(
+        () => conn.fatal(connectionQueryError(new Error("UNLISTEN timed out"), "PgConnection: UNLISTEN timed out")),
+        unlistenTimeoutMillis
+      )
+      return Effect.ensuring(
+        Effect.ignore(conn.cycleOwned(`UNLISTEN ${identifier}`, emptyParams, true, conn.prepared)),
+        Effect.andThen(Effect.sync(() => clearTimeout(timeout)), releaseUnlisten(conn, pinned))
+      )
+    }
+  ))
+
+const releaseUnlisten = (conn: PgConnectionImpl, pinned: PinnedPgConnection): Effect.Effect<void> =>
+  withoutYield(Effect.suspend(() => {
+    pinned.unlistening--
+    return Effect.asVoid(conn.wire.release(1))
+  }))
+
+const withoutYield = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.provideService(effect, Scheduler.PreventSchedulerYield, true)
 
 const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Effect<void> =>
   Effect.callback<void>((resume) => {

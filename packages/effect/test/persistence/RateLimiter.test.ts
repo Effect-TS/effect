@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect } from "effect"
 import { RateLimiter } from "effect/persistence"
+import { makeMemoryStore } from "effect/persistence/RateLimiter"
 import { TestClock } from "effect/testing"
 import * as RateLimiterTest from "./RateLimiterTest.ts"
 
@@ -58,6 +59,25 @@ describe(`RateLimiter`, () => {
 
           const result = yield* limiter.consume({ ...options, tokens: 4 })
           assert.strictEqual(result.remaining, 0)
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+      it.effect("rejects positive token requests with a zero limit", () =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          const options = { algorithm, key: "zero-limit", limit: 0, window: "1 minute" } as const
+          const error = yield* Effect.flip(limiter.consume({ ...options, onExceeded: "fail" }))
+          if (error.reason._tag !== "RateLimitExceeded") {
+            throw new Error("Expected RateLimitExceeded")
+          }
+          assert.strictEqual(error.reason.remaining, 0)
+
+          const result = yield* limiter.consume({ ...options, onExceeded: "delay" })
+          assert.deepStrictEqual(result.delay, Duration.infinity)
+          assert.deepStrictEqual(result.resetAfter, Duration.infinity)
+
+          const query = yield* limiter.consume({ ...options, onExceeded: "delay", tokens: 0 })
+          assert.deepStrictEqual(query.delay, Duration.zero)
+          assert.deepStrictEqual(query.resetAfter, Duration.zero)
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
     })
   }
@@ -1010,5 +1030,39 @@ describe(`RateLimiter`, () => {
       }).pipe(
         Effect.provide(RateLimiter.layerStoreMemory)
       ))
+  })
+
+  describe("memory store retention", () => {
+    it.effect("keeps state until it expires, then reclaims it while idle", () =>
+      Effect.gen(function*() {
+        const memory = yield* makeMemoryStore
+        const limiter = yield* Effect.provideService(RateLimiter.make, RateLimiter.RateLimiterStore, memory.store)
+        // One token of delay-mode debt: fully refilled after three minutes.
+        yield* limiter.consume({
+          algorithm: "token-bucket",
+          onExceeded: "delay",
+          key: "bucket",
+          limit: 2,
+          window: "2 minutes",
+          tokens: 3
+        })
+
+        yield* TestClock.adjust("2 minutes")
+        assert.strictEqual(memory.size, 1)
+
+        yield* TestClock.adjust("2 minutes")
+        assert.strictEqual(memory.size, 0)
+      }).pipe(Effect.scoped))
+
+    it.effect("starts an expired token bucket fresh before the next sweep", () =>
+      Effect.gen(function*() {
+        const limiter = yield* RateLimiter.make
+        yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 second" })
+
+        // Past the bucket's expiry, before any sweep: a new configuration starts fresh.
+        yield* TestClock.adjust("2 seconds")
+        const result = yield* limiter.consume({ algorithm: "token-bucket", key: "bucket", limit: 1, window: "1 hour" })
+        assert.strictEqual(result.remaining, 0)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
   })
 })

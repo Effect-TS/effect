@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import {
   Cause,
   Context,
@@ -1624,5 +1624,17 @@ describe("Dynamic", () => {
       })().annotate(Tool.Strict, false)
       strictEqual(Tool.getStrictMode(tool), false)
     })
+  })
+})
+
+describe("unsafeSecureJsonParse", () => {
+  it("rejects Unicode-escaped prototype keys", () => {
+    const error = new SyntaxError("Object contains forbidden prototype property")
+    throws(() => Tool.unsafeSecureJsonParse(`{"\\u005f_proto__":{"polluted":true}}`), error)
+    throws(() => Tool.unsafeSecureJsonParse(`{"\\u0063onstructor":{"prototype":{"polluted":true}}}`), error)
+  })
+
+  it("accepts Unicode-escaped constructor keys with null values", () => {
+    deepStrictEqual(Tool.unsafeSecureJsonParse(`{"\\u0063onstructor":null}`), { constructor: null })
   })
 })

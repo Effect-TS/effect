@@ -1,6 +1,5 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
-import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
-import { NodeWS } from "@effect/platform-node/NodeSocket"
+import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest, NodeWS } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
@@ -10,6 +9,7 @@ import { constVoid } from "effect/Function"
 import {
   Cookies,
   FetchHttpClient,
+  Headers,
   HttpBody,
   HttpClient,
   HttpClientRequest,
@@ -516,6 +516,29 @@ describe("HttpServer", () => {
       assert.match(result.json, /"url":"http:\/\/[^/"]+\/inspect\?token=REDACTED&sig=sig-visible"/)
       assert.include(result.formatted, "/inspect?token=REDACTED&sig=sig-visible")
       assert.notInclude(result.formatted, "token-secret")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("redacts configured headers when inspecting requests", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/inspect",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          return yield* HttpServerResponse.json({
+            json: JSON.stringify(request.headers),
+            formatted: Formatter.format(request.headers)
+          })
+        }).pipe(Effect.provideService(Headers.CurrentRedactedNames, ["x-secret"]))
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const result = (yield* HttpClient.get("/inspect", { headers: { "x-secret": "header-secret" } }).pipe(
+        Effect.flatMap((response) => response.json)
+      )) as { readonly json: string; readonly formatted: string }
+
+      assert.include(result.json, `"x-secret":"<redacted>"`)
+      assert.notInclude(result.json, "header-secret")
+      assert.notInclude(result.formatted, "header-secret")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("schemaJson applies a JSON reviver", () =>
@@ -1044,6 +1067,47 @@ describe("HttpServer", () => {
       yield* completed.await
 
       assert.strictEqual(closeListenerRemovals, 1)
+    }))
+
+  it.live.each([
+    { body: "Uint8Array", event: "close", response: () => HttpServerResponse.uint8Array(new Uint8Array(1024)) },
+    { body: "Raw", event: "aborted", response: () => HttpServerResponse.raw(new Uint8Array(1024)) }
+  ])("completes a $body response sent on $event after a disconnect", ({ event, response }) =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      // A stuck uninterruptible request fiber would block the server's shutdown
+      yield* Effect.addFinalizer(() => Effect.forkDetach(Scope.close(scope, Exit.void)))
+      const received = yield* Latch.make()
+      const sent = yield* Deferred.make<HttpServerResponse.HttpServerResponse, unknown>()
+      yield* HttpRouter.add(
+        "GET",
+        "/",
+        Effect.gen(function*() {
+          const incoming = NodeHttpServerRequest.toIncomingMessage(yield* HttpServerRequest.HttpServerRequest)
+          yield* received.open
+          // Node emits the request's `aborted` before it marks the response destroyed
+          yield* Effect.callback<void>((resume) => {
+            if (incoming.socket.destroyed) return resume(Effect.void)
+            ;(event === "aborted" ? incoming : incoming.socket).once(event, () => resume(Effect.void))
+          })
+          return response()
+        }),
+        { uninterruptible: true }
+      ).pipe(
+        (app) =>
+          HttpRouter.serve(app, { middleware: (app) => Effect.onExit(app, (exit) => Deferred.done(sent, exit)) }),
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.buildWithScope(scope)
+      )
+      const socket = Net.connect({ port: tcpPort(server), host: "127.0.0.1" }, () => {
+        socket.write("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+      })
+      socket.on("error", constVoid)
+      yield* received.await
+      socket.destroy()
+      const res = yield* Deferred.await(sent).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(res.status, 200)
     }))
 
   it.effect("returns none when a late remoteAddress read finds no socket", () =>

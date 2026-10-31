@@ -2,7 +2,21 @@ import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { PgClient } from "@effect/sql-pg"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Latch, Layer, Redacted, Result, Schedule } from "effect"
+import {
+  Cause,
+  Clock,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  FileSystem,
+  Latch,
+  Layer,
+  Logger,
+  Redacted,
+  Result,
+  Schedule
+} from "effect"
 import {
   ClusterError,
   MessageStorage,
@@ -36,7 +50,7 @@ const AppClient = Layer.unwrap(
 )
 
 const asApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layer, Snowflake.layerGenerator])
+  Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layerDigest, Snowflake.layerGenerator])
 
 const assertMigrationDefect = (exit: Exit.Exit<unknown, unknown>) => {
   assert(Exit.isFailure(exit))
@@ -163,8 +177,9 @@ describe("SqlRunnerStorage", () => {
 
         const expectRecovery = Effect.fnUntraced(function*() {
           restoreConnection(partitioned)
+          // the replacement session lost the previous session's lock, so recovery reacquires it
           expect(
-            yield* storage.refresh(runnerAddress1, shards).pipe(
+            yield* storage.acquire(runnerAddress1, shards).pipe(
               Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
             )
           ).toEqual(shards)
@@ -235,8 +250,9 @@ describe("SqlRunnerStorage", () => {
         expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
 
         restoreConnection(partitioned)
+        // the replacement session lost the previous session's lock, so recovery reacquires it
         expect(
-          yield* storage.refresh(runnerAddress1, shards).pipe(
+          yield* storage.acquire(runnerAddress1, shards).pipe(
             Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
           )
         ).toEqual(shards)
@@ -324,8 +340,9 @@ describe("SqlRunnerStorage", () => {
         restoreConnection(partitioned)
         yield* waitUntil(() => partitioned.reservedConnections > reserved)
 
+        // the replacement session lost the previous session's lock, so recovery reacquires it
         expect(
-          yield* storage.refresh(runnerAddress1, shards).pipe(
+          yield* storage.acquire(runnerAddress1, shards).pipe(
             Effect.retry({ times: 5, schedule: Schedule.spaced(20) })
           )
         ).toEqual(shards)
@@ -448,6 +465,175 @@ describe("SqlRunnerStorage", () => {
         Effect.provide(PgContainer.layerClientDatabase),
         Effect.provide(ShardingConfig.layer())
       ), 60_000)
+
+    it.effect("releases a frozen runner's advisory shard locks after shardLockExpiration", () => {
+      const shardLockExpiration = lockOperationInterval * 3
+      return Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const shard = ShardId.make("default", 1)
+
+        expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+        // storageA freezes: it stops refreshing, but its lock session stays open
+        const frozenAt = yield* Clock.currentTimeMillis
+        expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+
+        yield* storageB.acquire(runnerAddress2, [shard]).pipe(
+          Effect.repeat({
+            until: (acquired) => acquired.length > 0,
+            schedule: Schedule.spaced(100)
+          }),
+          Effect.timeoutOrElse({
+            duration: shardLockExpiration * 3,
+            orElse: () => Effect.die("the frozen runner still holds its advisory shard lock")
+          })
+        )
+        const elapsed = (yield* Clock.currentTimeMillis) - frozenAt
+        assert.isAtLeast(elapsed, shardLockExpiration * 0.9)
+        assert.isBelow(elapsed, shardLockExpiration * 2)
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect("acquires cleanly after the server ends the lock session of a runner without shards", () => {
+      const logs: Array<string> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel !== "Debug" && options.logLevel !== "Trace") {
+          logs.push(Logger.formatJson.log(options))
+        }
+      })
+      return Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storage = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const runner = Runner.make({
+          address: runnerAddress1,
+          groups: ["default"],
+          weight: 1
+        })
+        const shard = ShardId.make("default", 1)
+
+        yield* storage.register(runner, true)
+        // Stands in for idle_session_timeout ending the idle lock session.
+        // Every other session on this database is the lock session.
+        const terminated = yield* sql`SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity
+          WHERE datname = current_database() AND pid <> pg_backend_pid()`.values
+        expect(terminated).toEqual([[true]])
+
+        expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+        expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
+        yield* storage.release(runnerAddress1, shard)
+        expect(logs).toEqual([])
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer()),
+        Effect.provide(Logger.layer([logger])),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    it.effect(
+      "restores idle_session_timeout before returning the lock connection to the pool",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+
+          const lockPid = yield* Effect.gen(function*() {
+            const storage = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const shard = ShardId.make("default", 1)
+            expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+            const holders = yield* sql`SELECT DISTINCT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND granted
+            AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`.values
+            expect(holders).toHaveLength(1)
+            return Number(holders[0][0])
+          }).pipe(Effect.scoped)
+
+          // Hold pooled connections until the pool hands out the former lock connection.
+          const [timeout, resetTimeout] = yield* Effect.gen(function*() {
+            for (let i = 0; i < 10; i++) {
+              const conn = yield* sql.reserve
+              const [[pid, setting, resetVal]] = yield* conn.executeValues(
+                "SELECT pg_backend_pid(), setting, reset_val FROM pg_settings WHERE name = 'idle_session_timeout'",
+                []
+              )
+              if (Number(pid) === lockPid) return [setting, resetVal]
+            }
+            return yield* Effect.die("the pool did not hand out the former lock connection")
+          }).pipe(Effect.scoped)
+          expect(timeout).toEqual(resetTimeout)
+        }).pipe(
+          Effect.provide(PgContainer.layerClientDatabase),
+          Effect.provide(ShardingConfig.layer())
+        ),
+      60_000
+    )
+
+    it.effect("reports a shard lost when a failed acquisition replaces the lock session holding it", () => {
+      const partitioned = makePartitionState()
+      return Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" }).pipe(
+          Effect.provide(wrapReservedConnections(partitioned, true))
+        )
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const held = ShardId.make("default", 1)
+        const other = ShardId.make("default", 2)
+
+        expect(yield* storageA.acquire(runnerAddress1, [held])).toEqual([held])
+        // the connection is lost while acquiring another shard, taking the
+        // session's lock on the held shard with it
+        partitioned.failNextQueries = 1
+        yield* storageA.acquire(runnerAddress1, [other]).pipe(Effect.exit)
+
+        yield* acquireHandoff(storageB, held, lockOperationInterval * 10)
+        expect(yield* refreshLikeSharding(storageA, held)).toEqual([])
+      }).pipe(
+        // Release the advisory-lock connections before the PostgreSQL layer.
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClientDatabase),
+        Effect.provide(ShardingConfig.layer(partitionConfig)),
+        TestClock.withLive
+      )
+    }, 60_000)
+
+    for (const acquireFirst of [true, false]) {
+      it.effect(
+        `a resumed frozen runner reports a shard lost after it was handed off (${
+          acquireFirst ? "acquire" : "refresh"
+        } first)`,
+        () => {
+          const shardLockExpiration = lockOperationInterval * 3
+          return Effect.gen(function*() {
+            const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+            const held = ShardId.make("default", 1)
+            const other = ShardId.make("default", 2)
+
+            expect(yield* storageA.acquire(runnerAddress1, [held])).toEqual([held])
+            // storageA freezes until the shard has passed through storageB
+            yield* acquireHandoff(storageB, held, shardLockExpiration * 3)
+
+            if (acquireFirst) {
+              yield* storageA.acquire(runnerAddress1, [other]).pipe(Effect.exit)
+            }
+            expect(yield* refreshLikeSharding(storageA, held)).toEqual([])
+          }).pipe(
+            // Release the advisory-lock connections before the PostgreSQL layer.
+            Effect.scoped,
+            Effect.provide(PgContainer.layerClientDatabase),
+            Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+            TestClock.withLive
+          )
+        },
+        60_000
+      )
+    }
 
     it.effect(
       "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
@@ -574,6 +760,43 @@ describe("SqlRunnerStorage", () => {
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
 
+      it.effect("releases a shard reacquired after releasing all shards", () =>
+        Effect.gen(function*() {
+          const storage = yield* SqlRunnerStorage.make({})
+          const shards = [ShardId.make("default", 12)]
+
+          yield* storage.releaseAll(runnerAddress1)
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          // Refreshing must not take the lock a second time.
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual(shards)
+          yield* storage.release(runnerAddress1, shards[0])
+
+          const other = yield* SqlRunnerStorage.make({})
+          expect(yield* other.acquire(runnerAddress2, shards)).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
+      it.effect("refresh reports a shard lost after it was handed off", () =>
+        Effect.gen(function*() {
+          const storage = yield* SqlRunnerStorage.make({})
+          const other = yield* SqlRunnerStorage.make({})
+          const shards = [ShardId.make("default", 11)]
+
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          yield* storage.release(runnerAddress1, shards[0])
+          expect(yield* other.acquire(runnerAddress2, shards)).toEqual(shards)
+          yield* other.release(runnerAddress2, shards[0])
+
+          // Refreshing must not take back a lock that is no longer held.
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual([])
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: label.endsWith("(no advisory)") }))
+        ))
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
@@ -596,6 +819,115 @@ describe("SqlRunnerStorage", () => {
             expect(yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`).toEqual(rows)
             expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
           }))
+      }
+
+      if (label === "mysql" || label === "vitess") {
+        // MySQL session timeouts are whole seconds.
+        const shardLockExpiration = lockOperationInterval * 3
+
+        // vtgate ignores SET SESSION wait_timeout and keeps its own lock
+        // connection alive, so behind Vitess a frozen runner keeps its locks.
+        if (label === "mysql") {
+          it.effect(
+            "releases a frozen runner's named shard locks after shardLockExpiration",
+            () =>
+              Effect.gen(function*() {
+                const storageA = yield* SqlRunnerStorage.make({ prefix: "frozen" })
+                const storageB = yield* SqlRunnerStorage.make({ prefix: "frozen" })
+                const shard = ShardId.make("default", 1)
+
+                expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+                // storageA freezes: it stops refreshing, but its lock connection stays open
+                const frozenAt = yield* Clock.currentTimeMillis
+                expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+
+                yield* storageB.acquire(runnerAddress2, [shard]).pipe(
+                  Effect.repeat({
+                    until: (acquired) => acquired.length > 0,
+                    schedule: Schedule.spaced(100)
+                  }),
+                  Effect.timeoutOrElse({
+                    duration: shardLockExpiration * 3,
+                    orElse: () => Effect.die("the frozen runner still holds its named shard lock")
+                  })
+                )
+                const elapsed = (yield* Clock.currentTimeMillis) - frozenAt
+                assert.isAtLeast(elapsed, shardLockExpiration * 0.9)
+                assert.isBelow(elapsed, shardLockExpiration * 2)
+              }).pipe(
+                Effect.scoped,
+                Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+                TestClock.withLive
+              ),
+            60_000
+          )
+
+          it.effect(
+            "restores wait_timeout before returning the lock connection to the pool",
+            () =>
+              Effect.gen(function*() {
+                const sql = yield* SqlClient.SqlClient
+                const [[defaultTimeout]] = yield* sql`SELECT @@GLOBAL.wait_timeout`.values
+
+                const lockConnectionId = yield* Effect.gen(function*() {
+                  const storage = yield* SqlRunnerStorage.make({ prefix: "pooled" })
+                  const shard = ShardId.make("default", 1)
+                  expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+                  const [[id]] = yield* sql`SELECT IS_USED_LOCK(${`pooled.${shard.toString()}`})`.values
+                  return Number(id)
+                }).pipe(Effect.scoped)
+
+                // The pool hands out the connection released last first.
+                const [[id, timeout]] = yield* sql.reserve.pipe(
+                  Effect.flatMap((conn) => conn.executeValues("SELECT CONNECTION_ID(), @@SESSION.wait_timeout", [])),
+                  Effect.scoped
+                )
+                expect(Number(id)).toEqual(lockConnectionId)
+                expect(Number(timeout)).toEqual(Number(defaultTimeout))
+              }).pipe(
+                Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+                TestClock.withLive
+              ),
+            60_000
+          )
+        }
+
+        it.effect("acquires cleanly after a runner without shards leaves its lock connection idle", () => {
+          const logs: Array<string> = []
+          const logger = Logger.make((options) => {
+            if (options.logLevel !== "Debug" && options.logLevel !== "Trace") {
+              logs.push(Logger.formatJson.log(options))
+            }
+          })
+          return Effect.gen(function*() {
+            const storage = yield* SqlRunnerStorage.make({ prefix: "idle" })
+            const runner = Runner.make({
+              address: runnerAddress1,
+              groups: ["default"],
+              weight: 1
+            })
+            const shard = ShardId.make("default", 1)
+
+            yield* storage.register(runner, true)
+            // Without shards, only the liveness probe runs, and it uses the shared
+            // pool, so the lock connection stays idle past shardLockExpiration.
+            const idleUntil = (yield* Clock.currentTimeMillis) + shardLockExpiration * 1.5
+            while ((yield* Clock.currentTimeMillis) < idleUntil) {
+              expect(yield* storage.refresh(runnerAddress1, [])).toEqual([])
+              yield* Effect.sleep(lockOperationInterval)
+            }
+
+            expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+            expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
+            yield* storage.release(runnerAddress1, shard)
+            expect(logs).toEqual([])
+          }).pipe(
+            Effect.scoped,
+            Effect.provide(ShardingConfig.layer({ shardLockExpiration })),
+            Effect.provide(Logger.layer([logger])),
+            TestClock.withLive
+          )
+        }, 60_000)
       }
     })
   })
@@ -685,6 +1017,32 @@ const partitionDiagnostics = (partitioned: PartitionState) =>
     `usable=${partitioned.usableConnections}`
   ].join(", ")
 
+// Another runner takes the shard once it becomes free and hands it off again,
+// so it is free when the previous owner next checks it.
+const acquireHandoff = Effect.fnUntraced(function*(
+  storage: RunnerStorage.RunnerStorage["Service"],
+  shard: ShardId.ShardId,
+  timeout: number
+) {
+  yield* storage.acquire(runnerAddress2, [shard]).pipe(
+    Effect.repeat({
+      until: (acquired) => acquired.length > 0,
+      schedule: Schedule.spaced(100)
+    }),
+    Effect.timeoutOrElse({
+      duration: timeout,
+      orElse: () => Effect.die("the previous owner still holds the shard lock")
+    })
+  )
+  yield* storage.release(runnerAddress2, shard)
+})
+
+// Sharding retries a failed refresh before acting on its result.
+const refreshLikeSharding = (storage: RunnerStorage.RunnerStorage["Service"], shard: ShardId.ShardId) =>
+  storage.refresh(runnerAddress1, [shard]).pipe(
+    Effect.retry({ times: 5, schedule: Schedule.spaced(50) })
+  )
+
 const waitUntil = Effect.fnUntraced(
   function*(predicate: () => boolean) {
     while (!predicate()) {
@@ -698,6 +1056,10 @@ const waitUntil = Effect.fnUntraced(
 )
 
 const blackholeReservedConnection = (partitioned: PartitionState, resumePending: boolean) =>
+  wrapReservedConnections(partitioned, resumePending).pipe(Layer.provide(PgContainer.layerClientDatabase))
+
+// Wraps the reserved connections of the SqlClient in context.
+const wrapReservedConnections = (partitioned: PartitionState, resumePending: boolean) =>
   Layer.effect(
     SqlClient.SqlClient,
     Effect.gen(function*() {
@@ -775,7 +1137,7 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       })
       return client
     })
-  ).pipe(Layer.provide(PgContainer.layerClientDatabase))
+  )
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

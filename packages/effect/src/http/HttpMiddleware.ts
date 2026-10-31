@@ -44,6 +44,7 @@ import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -135,19 +136,6 @@ export declare namespace HttpMiddleware {
  */
 export const make = <M extends HttpMiddleware>(middleware: M): M => middleware
 
-const stripSearchAndHash = (url: string): string => {
-  const queryIndex = url.indexOf("?")
-  const hashIndex = url.indexOf("#")
-
-  if (queryIndex === -1) {
-    return hashIndex === -1 ? url : url.slice(0, hashIndex)
-  }
-  if (hashIndex === -1) {
-    return url.slice(0, queryIndex)
-  }
-  return url.slice(0, Math.min(queryIndex, hashIndex))
-}
-
 /**
  * Runs an effect with HTTP response logging disabled for the current server request.
  *
@@ -232,7 +220,7 @@ export const logger: <E, R>(
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
     const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
-    const path = stripSearchAndHash(request.url)
+    const path = internalUrlParams.stripSearchAndHash(request.url)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (state?.loggerDisabled) {
@@ -278,11 +266,18 @@ export const isTracerDisabledUnsafe = (
 
 // OpenTelemetry requires failed server spans for 5xx responses.
 const responseSpanExit = (
+  fiber: Fiber.Fiber<unknown, unknown>,
   request: HttpServerRequest,
   response: HttpServerResponse
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
+  }
+  // The message is path-only, but exporters can still read `error.request.url`
+  // after the request-scoped redacted names are gone.
+  const url = UrlParams.redactUrl(request.url, fiber.getRef(UrlParams.CurrentRedactedNames))
+  if (url !== request.url) {
+    request = request.modify({ url })
   }
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
@@ -319,7 +314,7 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(request, exit.value))
+        span.end(endTime, responseSpanExit(fiber, request, exit.value))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
@@ -333,10 +328,10 @@ export const tracer: <E, R>(
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
           ? Exit.failCause(cause.value)
-          : responseSpanExit(request, response)
+          : responseSpanExit(fiber, request, response)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(request, response)
+        spanExit = responseSpanExit(fiber, request, response)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)

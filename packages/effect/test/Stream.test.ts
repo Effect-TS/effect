@@ -1174,7 +1174,7 @@ describe("Stream", () => {
       }))
 
     describe("ignore", () => {
-      type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity }
+      type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled" }
 
       const makeTestLogger = () => {
         const capturedLogs: Array<{
@@ -1188,7 +1188,11 @@ describe("Stream", () => {
       }
 
       const runIgnore = Effect.fnUntraced(
-        function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
+        function*(
+          options?: IgnoreOptions,
+          currentLogLevel: LogLevel.Severity = "Info",
+          unhandledLogLevel?: LogLevel.Severity
+        ) {
           const { capturedLogs, testLogger } = makeTestLogger()
           const program = options === undefined
             ? Stream.fail("boom").pipe(Stream.ignore, Stream.runDrain)
@@ -1196,7 +1200,8 @@ describe("Stream", () => {
           yield* program.pipe(
             Effect.provide(Logger.layer([testLogger])),
             Effect.provideService(References.MinimumLogLevel, "Trace"),
-            Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+            Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+            Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
           )
           return capturedLogs
         }
@@ -1227,6 +1232,14 @@ describe("Stream", () => {
           const logs = yield* runIgnore({ log: "Error" }, "Warn")
           assert.strictEqual(logs.length, 1)
           assert.strictEqual(logs[0].logLevel, "Error")
+          assertCauseFail(logs[0].cause, "boom")
+        }))
+
+      it.effect("logs with the unhandled level when log is Unhandled", () =>
+        Effect.gen(function*() {
+          const logs = yield* runIgnore({ log: "Unhandled" }, "Info", "Warn")
+          assert.strictEqual(logs.length, 1)
+          assert.strictEqual(logs[0].logLevel, "Warn")
           assertCauseFail(logs[0].cause, "boom")
         }))
     })
@@ -1620,6 +1633,28 @@ describe("Stream", () => {
           Stream.runCollect
         )
         assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
+      }))
+
+    it.effect("groupByKey - groups end when the upstream ends", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.groupByKey((n) => n % 2 === 0 ? "even" : "odd"),
+          Stream.mapEffect(([key, group]) => Effect.map(Stream.runCollect(group), (values) => [key, values] as const)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [["odd", [1, 3, 5]], ["even", [2, 4]]])
+      }))
+
+    it.effect("groupByKey - groups end when the upstream fails", () =>
+      Effect.gen(function*() {
+        const exit = yield* Stream.make(1, 2, 3).pipe(
+          Stream.concat(Stream.fail("boom")),
+          Stream.groupByKey((n) => n % 2),
+          Stream.mapEffect(([, group]) => Stream.runCollect(group)),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("boom"))
       }))
   })
 
@@ -2109,6 +2144,17 @@ describe("Stream", () => {
       ]
       assert.deepStrictEqual(rechunked, expected)
       assert.deepStrictEqual(groupedResults, expected)
+    }))
+
+  it.effect("rechunk emits buffered elements before failing", () =>
+    Effect.gen(function*() {
+      const result = yield* Stream.make(1, 2, 3).pipe(
+        Stream.concat(Stream.fail("Ouch")),
+        Stream.rechunk(10),
+        Stream.catch((error) => Stream.make(error)),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(result, [1, 2, 3, "Ouch"])
     }))
 
   describe("transduce", () => {

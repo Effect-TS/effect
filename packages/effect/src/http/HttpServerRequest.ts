@@ -32,10 +32,11 @@ import * as Headers from "./Headers.ts"
 import * as HttpBody from "./HttpBody.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
-import { hasBody, type HttpMethod } from "./HttpMethod.ts"
+import { hasBody } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as lazyStream from "./internal/lazyStream.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -90,7 +91,11 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
   readonly source: object
   readonly url: string
   readonly originalUrl: string
-  readonly method: HttpMethod
+  /**
+   * The uppercase request method as received, which may be a method outside
+   * the known `HttpMethod` literals (for example `"PROPFIND"`).
+   */
+  readonly method: string
   readonly cookies: ReadonlyRecord<string, string>
 
   readonly multipart: Effect.Effect<
@@ -563,8 +568,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       options.protocol ?? this.protocol
     )
   }
-  get method(): HttpMethod {
-    return this.source.method.toUpperCase() as HttpMethod
+  get method(): string {
+    return this.source.method.toUpperCase()
   }
   get originalUrl() {
     return this.source.url
@@ -612,27 +617,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
 
   private textEffect: Effect.Effect<string, HttpServerError> | undefined
   get text(): Effect.Effect<string, HttpServerError> {
-    if (this.textEffect) {
-      return this.textEffect
-    }
-    this.textEffect = Effect.withFiber((fiber) =>
-      fiber.getRef(HttpIncomingMessage.MaxBodySize) === undefined
-        ? Effect.tryPromise({
-          try: () => this.source.text(),
-          catch: (cause) =>
-            new HttpServerError({
-              reason: new RequestParseError({
-                request: this,
-                cause
-              })
-            })
-        })
-        : Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
-    ).pipe(
-      Effect.cached,
-      Effect.runSync
-    )
-    return this.textEffect
+    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
   }
 
   get json(): Effect.Effect<Schema.Json, HttpServerError> {
@@ -650,9 +635,9 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
@@ -797,7 +782,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     )
   }
 
-  get method(): HttpMethod {
+  get method(): string {
     return this.source.method
   }
 
@@ -851,32 +836,37 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.bytesEffect) {
       return this.bytesEffect
     }
+    this.bytesEffect = Effect.withFiber((fiber) => {
+      const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
+      return this.readBytes(maxBodySize === undefined ? undefined : Number(maxBodySize))
+    }).pipe(
+      Effect.cached,
+      Effect.runSync
+    )
+    return this.bytesEffect
+  }
+
+  private readBytes(maxBytes: number | undefined): Effect.Effect<Uint8Array, HttpServerError> {
     const body = this.source.body
-    let effect: Effect.Effect<Uint8Array, HttpServerError>
     switch (body._tag) {
       case "Empty": {
-        effect = Effect.succeed(new Uint8Array(0))
-        break
+        return Effect.succeed(new Uint8Array(0))
       }
       case "Uint8Array": {
-        effect = Effect.succeed(body.body)
-        break
+        return maxBytes !== undefined && body.body.byteLength > maxBytes
+          ? Effect.fail(bodyTooLargeError(this, new BodyTooLargeError(maxBytes)))
+          : Effect.succeed(body.body)
       }
       case "FormData": {
-        effect = bytesFromBodyInit(this, body.formData)
-        break
+        return bytesFromWeb(this, () => new Response(body.formData), maxBytes)
       }
       case "Stream": {
-        effect = Stream.mkUint8Array(this.stream)
-        break
+        return Stream.mkUint8Array(maxBytes === undefined ? this.stream : limitStream(this, this.stream, maxBytes))
       }
       case "Raw": {
-        effect = rawBodyBytes(this, body.body)
-        break
+        return rawBodyBytes(this, body.body, maxBytes)
       }
     }
-    this.bytesEffect = Effect.runSync(Effect.cached(effect))
-    return this.bytesEffect
   }
 
   get text(): Effect.Effect<string, HttpServerError> {
@@ -892,9 +882,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.bytes, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) => requestParseError(this, undefined, cause)
       }))
   }
@@ -977,23 +967,38 @@ const rawBodyStream = (request: HttpServerRequest, body: unknown): Stream.Stream
   return Stream.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const rawBodyBytes = (request: HttpServerRequest, body: unknown): Effect.Effect<Uint8Array, HttpServerError> => {
+const rawBodyBytes = (
+  request: HttpServerRequest,
+  body: unknown,
+  maxBytes: number | undefined
+): Effect.Effect<Uint8Array, HttpServerError> => {
   if (body instanceof Request) {
-    return Effect.tryPromise({
-      try: () => body.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
-      catch: (cause) => requestParseError(request, undefined, cause)
-    })
+    return bytesFromWeb(request, () => body, maxBytes)
   }
   if (isBodyInit(body)) {
-    return bytesFromBodyInit(request, body)
+    return bytesFromWeb(request, () => new Response(body), maxBytes)
   }
   return Effect.fail(requestParseError(request, "Unsupported body type"))
 }
 
-const bytesFromBodyInit = (request: HttpServerRequest, body: BodyInit): Effect.Effect<Uint8Array, HttpServerError> =>
+const bytesFromWeb = (
+  request: HttpServerRequest,
+  // Evaluated inside `try`, as wrapping an unreadable body in a `Response` throws.
+  evaluate: () => Request | Response,
+  maxBytes: number | undefined
+): Effect.Effect<Uint8Array, HttpServerError> =>
   Effect.tryPromise({
-    try: () => new Response(body).arrayBuffer().then((buffer) => new Uint8Array(buffer)),
-    catch: (cause) => requestParseError(request, undefined, cause)
+    try: async (signal) => {
+      const source = evaluate()
+      const buffer = maxBytes === undefined
+        ? await source.arrayBuffer()
+        : await readArrayBufferLimited(source, maxBytes, signal)
+      return new Uint8Array(buffer)
+    },
+    catch: (cause) =>
+      cause instanceof BodyTooLargeError
+        ? bodyTooLargeError(request, cause)
+        : requestParseError(request, undefined, cause)
   })
 
 const streamFromReadable = (
@@ -1019,6 +1024,24 @@ const requestParseError = (
       ...(cause === undefined ? undefined : { cause })
     })
   })
+
+const limitStream = (
+  request: HttpServerRequest,
+  stream: Stream.Stream<Uint8Array, HttpServerError>,
+  maxBytes: number
+): Stream.Stream<Uint8Array, HttpServerError> =>
+  Stream.suspend(() => {
+    let bytes = 0
+    return Stream.mapEffect(stream, (chunk) => {
+      bytes += chunk.byteLength
+      return bytes > maxBytes
+        ? Effect.fail(bodyTooLargeError(request, new BodyTooLargeError(maxBytes)))
+        : Effect.succeed(chunk)
+    })
+  })
+
+const bodyTooLargeError = (request: HttpServerRequest, cause: BodyTooLargeError) =>
+  new HttpServerError({ reason: new RequestParseError({ request, reason: "BodyTooLarge", cause }) })
 
 const formDataToParts = (formData: FormData): Array<Multipart.Part> => {
   const parts: Array<Multipart.Part> = []
@@ -1117,7 +1140,7 @@ class BodyTooLargeError extends Error {
 }
 
 const readArrayBufferLimited = async (
-  source: Request,
+  source: Request | Response,
   maxBytes: number,
   signal: AbortSignal
 ): Promise<ArrayBuffer> => {

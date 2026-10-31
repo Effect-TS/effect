@@ -791,6 +791,7 @@ export declare namespace All {
  * const terminal = Terminal.make({
  *   columns: Effect.succeed(80),
  *   rows: Effect.succeed(24),
+ *   size: Effect.die("unused"),
  *   readInput: Effect.succeed({} as never),
  *   readLine: Effect.die("unused"),
  *   display: () => Effect.void

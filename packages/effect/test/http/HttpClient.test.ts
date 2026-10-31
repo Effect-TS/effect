@@ -9,6 +9,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Option,
   Redacted,
   Ref,
   Schedule,
@@ -746,6 +747,20 @@ Missing key
         assert.strictEqual(redirected.headers.authorization, "Bearer secret")
       }))
 
+    it.effect("follows the location without re-encoding its query", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(
+          302,
+          "https://origin.test/dest?q=caf%E9&sig=a%20b&flag#new"
+        )
+        yield* client.get("https://origin.test/start", { urlParams: { old: "1" }, hash: "old" })
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.url, "https://origin.test/dest?q=caf%E9&sig=a%20b&flag")
+        assert.strictEqual(UrlParams.toString(redirected.urlParams), "")
+        assert.deepStrictEqual(redirected.hash, Option.some("new"))
+      }))
+
     it.effect("returns the redirect response when the location is invalid", () =>
       Effect.gen(function*() {
         const { client, requests } = yield* makeRedirectClient(302, "http://exa mple.com/")
@@ -761,6 +776,11 @@ Missing key
         const { client, requests } = yield* makeRedirectClient(303, "/destination")
         yield* HttpClientRequest.post("https://origin.test/start").pipe(
           HttpClientRequest.bodyText("payload"),
+          HttpClientRequest.setHeaders({
+            "content-encoding": "identity",
+            "content-language": "en",
+            "content-location": "/original"
+          }),
           client.execute
         )
 
@@ -769,6 +789,9 @@ Missing key
         assert.strictEqual(redirected.body._tag, "Empty")
         assert.isUndefined(redirected.headers["content-type"])
         assert.isUndefined(redirected.headers["content-length"])
+        assert.isUndefined(redirected.headers["content-encoding"])
+        assert.isUndefined(redirected.headers["content-language"])
+        assert.isUndefined(redirected.headers["content-location"])
       }))
 
     it.effect.each([301, 302])("switches POST to GET on %s redirects", (status) =>
@@ -796,6 +819,28 @@ Missing key
         assert.strictEqual(redirected.method, "PUT")
         assert.strictEqual(redirected.body._tag, "Uint8Array")
       }))
+  })
+
+  it("classifies transient responses and errors", () => {
+    const request = HttpClientRequest.get("http://test/")
+    const responses = [200, 404, 408, 429, 500, 501, 502, 503, 504].map((status) =>
+      HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    )
+    const statusErrors = responses.map((response) =>
+      new HttpClientError.HttpClientError({ reason: new HttpClientError.StatusCodeError({ request, response }) })
+    )
+    const expected = [false, false, true, true, true, false, true, true, true]
+    assert.deepStrictEqual(responses.map(HttpClient.isTransientResponse), expected)
+    assert.deepStrictEqual(statusErrors.map(HttpClient.isTransientError), expected)
+    assert.deepStrictEqual(
+      [
+        new Cause.TimeoutError(),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.EncodeError({ request }) }),
+        new Error("boom")
+      ].map(HttpClient.isTransientError),
+      [true, true, false, false]
+    )
   })
 
   describe("retryTransient", () => {
@@ -854,6 +899,73 @@ Missing key
           strictEqual((yield* Fiber.join(fiber)).status, 200)
         })
     )
+  })
+
+  describe("timeout", () => {
+    it.effect("fails with a TransportError and aborts the request", () =>
+      Effect.gen(function*() {
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((_request, _url, requestSignal) => {
+          signal = requestSignal
+          return Effect.never
+        }).pipe(HttpClient.timeout("5 seconds"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("5 seconds")
+        const exit = yield* Fiber.await(fiber)
+
+        assert.isTrue(Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        strictEqual(error.reason._tag, "TransportError")
+        strictEqual(error.request.url, "http://test/")
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+        assert.include(error.message, "timed out")
+        assert.isTrue(signal!.aborted)
+      }))
+
+    it.effect("gives each retryTransient attempt a fresh budget", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.never
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.timeout("1 second"), HttpClient.retryTransient({ times: 1 }))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        strictEqual(yield* Ref.get(attempts), 2)
+        yield* TestClock.adjust("900 millis")
+        strictEqual((yield* Fiber.join(fiber)).status, 200)
+      }))
+
+    it.effect("bounds the whole retry loop when applied after retryTransient", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.andThen(
+                Effect.sleep("600 millis"),
+                Effect.fail(
+                  new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+                )
+              )
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.retryTransient({ times: 1 }), HttpClient.timeout("1 second"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        const exit = fiber.pollUnsafe()
+
+        strictEqual(yield* Ref.get(attempts), 2)
+        assert.isTrue(exit !== undefined && Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+      }))
   })
 
   describe("stream", () => {
@@ -2165,6 +2277,57 @@ Missing key
         assert.deepStrictEqual(yield* Ref.get(hosts), ["down.test:8080", "up.test"])
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
+
+  it.effect("sends stored response cookies only to the matching host", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const host = new URL(request.url).hostname
+          const setCookie = host === "api.example.com"
+            ? "session=secret"
+            : "session=attacker"
+          return Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            new Response(null, { status: 200, headers: { "set-cookie": setCookie } })
+          ))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+
+      assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
+    }))
+
+  it.effect("stores cookies using the final response host and default path", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          const source = new Response(null, { headers: { "set-cookie": "session=final" } })
+          Object.defineProperty(source, "url", { value: "https://login.example.com/auth/callback" })
+          return Effect.succeed(HttpClientResponse.fromWeb(request, source))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/start")
+
+      const stored = yield* Ref.get(jar)
+      const now = yield* Clock.currentTimeMillis
+      assert.strictEqual(
+        Cookies.toRequestCookieHeader(stored, "https://login.example.com/auth/next", now),
+        "session=final"
+      )
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://api.example.com/start", now), undefined)
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://login.example.com/other", now), undefined)
+    }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
