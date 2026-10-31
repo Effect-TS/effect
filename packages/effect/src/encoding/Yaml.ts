@@ -35,6 +35,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+import * as Result from "../Result.ts"
+import { EncodingError } from "./EncodingError.ts"
+
 type YamlRecord = Record<string, unknown>
 
 type Line = {
@@ -697,25 +700,7 @@ class YamlParser {
   }
 }
 
-/**
- * Parses one YAML document into JavaScript values.
- *
- * **Details**
- *
- * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
- * decoded while date-like values remain strings.
- *
- * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
- * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
- * keys take precedence over merged keys, earlier merge sources over later
- * ones, and a mapping may contain only one merge key. Quote the key (`"<<"`)
- * to keep it as an ordinary key.
- *
- * @stability unstable
- * @category decoding
- * @since 4.0.0
- */
-export const parse = (input: string): unknown => {
+const parseDocument = (input: string): unknown => {
   const source = input.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n")
   const lines = source.split("\n").map((raw, index): Line => {
     const indentation = /^( *)/.exec(raw)![1].length
@@ -729,4 +714,51 @@ export const parse = (input: string): unknown => {
     }
   })
   return new YamlParser(lines).parse()
+}
+
+/**
+ * Parses one YAML document into JavaScript values.
+ *
+ * **Details**
+ *
+ * Returns `Result.succeed` with the parsed value, or `Result.fail` with an
+ * `EncodingError` when the input is not valid YAML or uses an unsupported
+ * feature.
+ *
+ * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
+ * decoded while date-like values remain strings.
+ *
+ * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
+ * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
+ * keys take precedence over merged keys, earlier merge sources over later
+ * ones, and a mapping may contain only one merge key. Quote the key (`"<<"`)
+ * to keep it as an ordinary key.
+ *
+ * **Example** (Parsing a YAML document)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Yaml } from "effect/encoding"
+ *
+ * Yaml.parse("port: 8080") // => Result.succeed({ port: 8080 })
+ * Result.isFailure(Yaml.parse("port: [8080")) // => true
+ * ```
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.0
+ */
+export const parse = (input: string): Result.Result<unknown, EncodingError> => {
+  try {
+    return Result.succeed(parseDocument(input))
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Yaml",
+        kind: "Decode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
 }
