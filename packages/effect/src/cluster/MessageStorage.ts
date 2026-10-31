@@ -30,6 +30,7 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
+import * as TransactionNotifications from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -223,8 +224,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   /**
    * Wraps requests in storage transactions.
    *
-   * `WithExit` replies saved in a transaction notify callers after the outermost
-   * commit; stream chunks notify immediately. Replies saved in a failed
+   * `WithExit` replies and discarded sends saved in a transaction notify after
+   * the outermost commit; stream chunks notify immediately. Replies saved in a failed
    * transaction must be discarded. The wrapper may fail only with the wrapped
    * effect's own failure or a defect.
    */
@@ -532,10 +533,6 @@ export type EncodedRepliesOptions<A> = {
   readonly cursor: Option.Option<A>
 }
 
-const TransactionNotifications = Context.Reference<
-  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
->("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
-
 /**
  * Wraps a concrete message storage implementation with reply-handler management.
  *
@@ -588,17 +585,18 @@ export const make = (
       ...storage,
       // Nested transactions defer notifications to the outermost commit.
       withTransaction: (effect) =>
-        TransactionNotifications.use((outer) => {
+        TransactionNotifications.Current.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
-          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
-            Effect.tap(() =>
-              outer
-                ? Effect.sync(() => {
-                  outer.push(...notifications)
-                })
-                : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
+          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications.Current, notifications))
+            .pipe(
+              Effect.tap(() =>
+                outer
+                  ? Effect.sync(() => {
+                    outer.push(...notifications)
+                  })
+                  : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
+              )
             )
-          )
         }),
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
@@ -671,11 +669,7 @@ export const make = (
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
           if (persisted.reply._tag !== "WithExit") return notify
-          return TransactionNotifications.use((notifications) =>
-            notifications === undefined ? notify : Effect.sync(() => {
-              notifications.push(notify)
-            })
-          )
+          return TransactionNotifications.afterCommit(notify)
         })
       }
     })
@@ -1114,13 +1108,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         // Memory has no transaction isolation. Publish terminal replies at the
         // outer commit boundary, before their queued handler notifications, so
         // reply readers cannot deliver a success that may still be rolled back.
-        return TransactionNotifications.use((notifications) =>
-          reply_._tag === "WithExit" && notifications
-            ? Effect.sync(() => {
-              notifications.push(save)
-            })
-            : save
-        )
+        return reply_._tag === "WithExit" ? TransactionNotifications.afterCommit(save) : save
       },
       clearReplies: (id, options) =>
         Effect.sync(() => {

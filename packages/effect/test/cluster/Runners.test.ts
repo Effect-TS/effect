@@ -363,6 +363,48 @@ describe.concurrent("Runners.makeRpc", () => {
     }))))
   })
 
+  it.effect("notifies a discarded persisted send only after its transaction commits", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      let notified = 0
+      const notifyLocal = runners.notifyLocal({
+        message: makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), () => Effect.void),
+        discard: true,
+        notify: () =>
+          Effect.sync(() => {
+            notified++
+          })
+      })
+      yield* storage.withTransaction(Effect.gen(function*() {
+        yield* notifyLocal
+        assert.strictEqual(notified, 0)
+      }))
+      assert.strictEqual(notified, 1)
+    }).pipe(Effect.provide(layerLocalRunners())))
+
+  it.effect("drops the notification of a discarded persisted send on rollback", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      let notified = 0
+      yield* runners.notifyLocal({
+        message: makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), () => Effect.void),
+        discard: true,
+        notify: () =>
+          Effect.sync(() => {
+            notified++
+          })
+      }).pipe(
+        Effect.andThen(Effect.fail("rollback")),
+        storage.withTransaction,
+        Effect.flip
+      )
+      assert.strictEqual(notified, 0)
+    }).pipe(Effect.provide(layerLocalRunners())))
+
   it.effect("answers a fresh local request without reading or polling storage", () => {
     let reads = 0
     return Effect.gen(function*() {
