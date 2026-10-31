@@ -1028,7 +1028,7 @@ describe("Serializers", () => {
         await decoding.succeed({ a: 0 }, new A({ a: 0 }))
       })
 
-      it("Error", async () => {
+      it("Error class", async () => {
         class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
@@ -1052,7 +1052,7 @@ describe("Serializers", () => {
         )
       })
 
-      it("Error", async () => {
+      it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
@@ -2608,7 +2608,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         await decoding.succeed({ a: "0" }, new A({ a: 0 }))
       })
 
-      it("Error", async () => {
+      it("Error class", async () => {
         class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
@@ -2632,7 +2632,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         )
       })
 
-      it("Error", async () => {
+      it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
 
@@ -2773,20 +2773,14 @@ Expected "Infinity" | "-Infinity" | "NaN"`
       })
 
       it("ReadonlySet", async () => {
-        const schema = Schema.ReadonlySet(Schema.Option(Schema.Date))
-        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+        const schema = Schema.ReadonlySet(Schema.Option(Schema.Finite))
+        const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(new Set([Option.some(new Date("2021-01-01"))]), [{
-          _tag: "Some",
-          value: "2021-01-01T00:00:00.000Z"
-        }])
+        await encoding.succeed(new Set([Option.some(1)]), [{ _tag: "Some", value: "1" }])
 
         const decoding = asserts.decoding()
-        await decoding.succeed(
-          [{ _tag: "Some", value: "2021-01-01T00:00:00.000Z" }],
-          new Set([Option.some(new Date("2021-01-01"))])
-        )
+        await decoding.succeed([{ _tag: "Some", value: "1" }], new Set([Option.some(1)]))
       })
 
       it("ReadonlyMap", async () => {

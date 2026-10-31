@@ -438,7 +438,7 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
-  it("runtime replacement", async () => {
+  it("runtime replacement via a layer initial value", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get))
     const r = AtomRegistry.make({
       initialValues: [Atom.initialValue(counterRuntime.layer, CounterTest)]
@@ -448,7 +448,7 @@ describe("Atom", { concurrent: false }, () => {
     expect(result.value).toEqual(10)
   })
 
-  it("runtime replacement", async () => {
+  it("fnSync replacement via an initial value", async () => {
     const count = Atom.fnSync<number, number>((x) => x, { initialValue: 0 })
     const r = AtomRegistry.make({ initialValues: [Atom.initialValue(count, 10)] })
     const result = r.get(count)
@@ -1905,7 +1905,7 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(r.get(atom), Result.succeed(123))
   })
 
-  it("SubscriptionRef", async () => {
+  it("SubscriptionRef reflects updates made to the ref", async () => {
     vitest.useRealTimers()
     const ref = SubscriptionRef.make(123).pipe(Effect.runSync)
     const atom = Atom.subscriptionRef(ref)
@@ -1915,7 +1915,7 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(r.get(atom), 124)
   })
 
-  it("SubscriptionRef", async () => {
+  it("SubscriptionRef writes registry sets to the ref", async () => {
     vitest.useRealTimers()
     const ref = SubscriptionRef.make(0).pipe(Effect.runSync)
     const atom = Atom.subscriptionRef(ref)

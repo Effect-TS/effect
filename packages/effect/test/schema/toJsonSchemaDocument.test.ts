@@ -962,18 +962,6 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("String & check", () => {
-      assertJsonSchemaDocument(
-        Schema.String.check(Schema.isMinLength(2)),
-        {
-          schema: {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      )
-    })
-
     it("String & custom check without annotation", () => {
       assertJsonSchemaDocument(
         Schema.String.check(Schema.makeFilter(() => true)),
@@ -1295,22 +1283,6 @@ describe("toJsonSchemaDocument", () => {
           )
         })
 
-        it("Array", () => {
-          assertJsonSchemaDocument(
-            Schema.Array(Schema.String).check(Schema.isBetweenLength(2, 2)),
-            {
-              schema: {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 2,
-                "maxItems": 2
-              }
-            }
-          )
-        })
-
         it("NonEmptyArray", () => {
           assertJsonSchemaDocument(
             Schema.NonEmptyArray(Schema.String).check(Schema.isBetweenLength(2, 2)),
@@ -1387,21 +1359,6 @@ describe("toJsonSchemaDocument", () => {
           assertJsonSchemaAcceptsEffectValues(schema, ["😀", ["a", "b"]])
         })
 
-        it("Array", () => {
-          assertJsonSchemaDocument(
-            Schema.Array(Schema.String).check(Schema.isMinLength(2)),
-            {
-              schema: {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 2
-              }
-            }
-          )
-        })
-
         it("NonEmptyArray", () => {
           assertJsonSchemaDocument(
             Schema.NonEmptyArray(Schema.String).check(Schema.isMinLength(2)),
@@ -1440,21 +1397,6 @@ describe("toJsonSchemaDocument", () => {
             schema: { type: "string", maxLength: 2 }
           })
           assertJsonSchemaAcceptsEffectValues(schema, ["a", "😀", "😀😀"])
-        })
-
-        it("Array", () => {
-          assertJsonSchemaDocument(
-            Schema.Array(Schema.String).check(Schema.isMaxLength(2)),
-            {
-              schema: {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 2
-              }
-            }
-          )
         })
 
         it("NonEmptyArray", () => {

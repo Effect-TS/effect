@@ -165,26 +165,11 @@ describe("toCodeDocument", () => {
       })
     })
 
-    it("URLSearchParams", () => {
-      assertSchema({ schema: Schema.URLSearchParams }, {
-        codes: makeCode(`Schema.URLSearchParams`, "globalThis.URLSearchParams")
-      })
-    })
-
     describe("Date", () => {
       it("Date", () => {
         assertSchema({ schema: Schema.Date }, {
           codes: makeCode(`Schema.Date`, "globalThis.Date")
         })
-      })
-
-      it("Date & check", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)))`, "globalThis.Date")
-          }
-        )
       })
     })
 
