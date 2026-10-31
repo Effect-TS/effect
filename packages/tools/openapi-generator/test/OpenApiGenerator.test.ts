@@ -146,10 +146,10 @@ const parseDiagnostics = (output: string) => {
 
 // Type-checks every case with one compiler run per tsconfig variant and
 // returns the diagnostics that fail each case.
-const typeCheckCases = (
-  cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
-) =>
-  Effect.gen(function*() {
+const typeCheckCases = Effect.fnUntraced(
+  function*(
+    cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
+  ) {
     const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
     return yield* Effect.gen(function*() {
       const files = cases.map(({ sources }, caseIndex) =>
@@ -202,7 +202,8 @@ const typeCheckCases = (
         ...unattributed
       ])
     }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
-  })
+  }
+)
 
 const compileAll = Effect.gen(function*() {
   const generated = yield* Effect.forEach(compileCases, (testCase) => Effect.exit(generateClients(testCase)))
