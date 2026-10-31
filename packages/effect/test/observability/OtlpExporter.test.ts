@@ -178,7 +178,7 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
-  it.effect("starts the export interval at the first push after an idle stretch", () =>
+  it.effect("starts the export interval at the first push after each idle stretch", () =>
     Effect.gen(function*() {
       const { attempts, httpClient } = yield* makeStatusHttpClient(200)
       const exporter = yield* makeExporter(httpClient, { exportInterval: "10 seconds", maxBatchSize: 10 })
@@ -190,6 +190,14 @@ describe("OtlpExporter", () => {
 
       yield* TestClock.adjust("7 seconds")
       assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("7 seconds")
+      exporter.push({ value: 2 })
+      yield* TestClock.adjust("3 seconds")
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("7 seconds")
+      assert.strictEqual(yield* Ref.get(attempts), 2)
     }))
 
   it.effect("exports again once the disabled window has passed", () =>
