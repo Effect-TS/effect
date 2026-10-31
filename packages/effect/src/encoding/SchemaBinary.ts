@@ -973,6 +973,8 @@ const BIGINT_U64_MAX = BigInt("18446744073709551615")
  *
  * Switching a field between this, {@link uint32}, `Schema.Number` or
  * `Schema.Int` changes its encoding, so it is not a compatible evolution.
+ * Default-mode readers skip the other number forms as unknown fields, but a
+ * signedness swap decodes the same bits as a different value.
  *
  * **Example** (Declaring fixed-width integer fields)
  *
@@ -1021,6 +1023,14 @@ export const uint32: Schema.Number = Schema.Number.check(
  * struct field it costs one length byte more than the payload, because the
  * eight-byte field kind belongs to floating-point numbers.
  *
+ * **Gotchas**
+ *
+ * Switching a field between this, {@link uint64} or `Schema.BigInt` is not a
+ * compatible evolution. All three are length-prefixed struct fields, and eight
+ * bytes can be valid for each, so a default-mode reader may decode the other
+ * form as a different value without an error. Fingerprint mode rejects the
+ * layout mismatch.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -1040,6 +1050,11 @@ export const int64: Schema.BigInt = Schema.BigInt.check(
  *
  * Rejects values outside 0 through 2^64 - 1 instead of wrapping them. See
  * {@link int64} for the struct field cost.
+ *
+ * **Gotchas**
+ *
+ * Switching a field between this, {@link int64} or `Schema.BigInt` can decode
+ * as a different value without an error in default mode; see {@link int64}.
  *
  * @stability unstable
  * @category schemas
