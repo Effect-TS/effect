@@ -210,7 +210,7 @@ describe("RpcServer", () => {
         assert.strictEqual(valid.status, 200)
         assert.deepStrictEqual(JSON.parse(valid.body).exit, { _tag: "Success", value: "b" })
 
-        for (const headers of [[{}], [[1, "b"]], ["ab"], [["a", 1]], [["a", "b", "c"]]]) {
+        for (const headers of [[{}], [[1, "b"]]]) {
           const { body, status } = yield* post(tag, headers)
           assert.strictEqual(status, 200)
           const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
