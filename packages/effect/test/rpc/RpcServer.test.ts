@@ -210,7 +210,7 @@ describe("RpcServer", () => {
         assert.strictEqual(valid.status, 200)
         assert.deepStrictEqual(JSON.parse(valid.body).exit, { _tag: "Success", value: "b" })
 
-        for (const headers of [[{}], [[1, "b"]]]) {
+        for (const headers of [[{}], [[1, "b"]], ["ab"], [["a", 1]], [["a", "b", "c"]]]) {
           const { body, status } = yield* post(tag, headers)
           assert.strictEqual(status, 200)
           const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
@@ -377,7 +377,8 @@ describe("RpcServer", () => {
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(
-              new TextEncoder().encode(`{"_tag":"Request","id":1,"tag":"hello","payload":{},"headers":[]}\n`)
+              // raw clients may omit the headers field, which means no headers
+              new TextEncoder().encode(`{"_tag":"Request","id":1,"tag":"hello","payload":{}}\n`)
             ).pipe(Stream.concat(Stream.fromEffect(Deferred.await(closeStdin)).pipe(Stream.drain))),
             stdout: () =>
               Sink.forEach((data) =>
@@ -682,6 +683,7 @@ describe("RpcServer", () => {
         { jsonrpc: "2.0", method: "wait", params: {} },
         { jsonrpc: "2.0", method: "missing", params: {} },
         { jsonrpc: "2.0", method: "ping", params: { n: "not a number" } },
+        { jsonrpc: "2.0", method: "ping", params: { n: 1 }, headers: [{}] },
         ping
       ], 2)
       assert.deepStrictEqual(output, [pong])
