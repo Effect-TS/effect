@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
-import { Array, Deferred, Effect, Exit, Fiber, FiberMap, Option, pipe, Ref, Scope } from "effect"
+import { Array, Deferred, Effect, Equal, Exit, Fiber, FiberMap, HashSet, Option, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 const makeWorker = Effect.gen(function*() {
@@ -18,6 +18,15 @@ const makeWorker = Effect.gen(function*() {
 })
 
 describe("FiberMap", () => {
+  it.effect("compares distinct instances by reference", () =>
+    Effect.gen(function*() {
+      const a = yield* FiberMap.make<string>()
+      const b = yield* FiberMap.make<string>()
+      assert.isTrue(Equal.equals(a, a))
+      assert.isFalse(Equal.equals(a, b))
+      assert.strictEqual(HashSet.size(HashSet.make(a, b)), 2)
+    }))
+
   it.effect("closing the scope waits for asynchronous cleanup of a replaced fiber", () =>
     Effect.gen(function*() {
       const events: Array<string> = []

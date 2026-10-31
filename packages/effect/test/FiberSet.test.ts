@@ -1,9 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
-import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope } from "effect"
+import { Array, Deferred, Effect, Equal, Exit, Fiber, FiberSet, HashSet, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("FiberSet", () => {
+  it.effect("compares distinct instances by reference", () =>
+    Effect.gen(function*() {
+      const a = yield* FiberSet.make()
+      const b = yield* FiberSet.make()
+      assert.isTrue(Equal.equals(a, a))
+      assert.isFalse(Equal.equals(a, b))
+      assert.strictEqual(HashSet.size(HashSet.make(a, b)), 2)
+    }))
+
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberSet.make()

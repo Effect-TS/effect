@@ -1,9 +1,11 @@
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
+import * as Hash from "../Hash.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as RcRef from "../RcRef.ts"
 import * as Scope from "../Scope.ts"
@@ -54,6 +56,14 @@ class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
 
   pipe() {
     return pipeArguments(this, arguments)
+  }
+
+  [Equal.symbol](that: unknown): boolean {
+    return this === that
+  }
+
+  [Hash.symbol](): number {
+    return Hash.random(this)
   }
 
   state: State<A> = stateEmpty

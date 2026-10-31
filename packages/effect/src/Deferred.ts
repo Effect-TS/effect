@@ -10,8 +10,10 @@
  */
 import type * as Cause from "./Cause.ts"
 import type { Effect } from "./Effect.ts"
+import * as Equal from "./Equal.ts"
 import type * as Exit from "./Exit.ts"
 import { dual, identity, type LazyArg } from "./Function.ts"
+import * as Hash from "./Hash.ts"
 import * as core from "./internal/core.ts"
 import * as internalEffect from "./internal/effect.ts"
 import * as Option from "./Option.ts"
@@ -115,6 +117,12 @@ const DeferredProto = {
   [TypeId]: {
     _A: identity,
     _E: identity
+  },
+  [Equal.symbol](that: unknown): boolean {
+    return this === that
+  },
+  [Hash.symbol](): number {
+    return Hash.random(this)
   },
   pipe() {
     return pipeArguments(this, arguments)

@@ -12,10 +12,12 @@
 import * as Cause from "./Cause.ts"
 import * as Deferred from "./Deferred.ts"
 import * as Effect from "./Effect.ts"
+import * as Equal from "./Equal.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
 import * as Filter from "./Filter.ts"
 import { constVoid, dual } from "./Function.ts"
+import * as Hash from "./Hash.ts"
 import type * as Inspectable from "./Inspectable.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
 import * as internalEffect from "./internal/effect.ts"
@@ -94,6 +96,12 @@ export const isFiberSet = (u: unknown): u is FiberSet<unknown, unknown> => Predi
 
 const Proto = {
   [TypeId]: TypeId,
+  [Equal.symbol](that: unknown): boolean {
+    return this === that
+  },
+  [Hash.symbol](): number {
+    return Hash.random(this)
+  },
   [Symbol.iterator](this: FiberSet<unknown, unknown>) {
     if (this.state._tag === "Closed") {
       return Iterable.empty()

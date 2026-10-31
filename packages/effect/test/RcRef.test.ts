@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Logger, References } from "effect"
+import { Cause, Equal, HashSet, Logger, References } from "effect"
 import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
@@ -13,6 +13,16 @@ import * as Scope from "effect/Scope"
 import { TestClock } from "effect/testing"
 
 describe("RcRef", () => {
+  it.effect("compares distinct instances by reference", () =>
+    Effect.gen(function*() {
+      const acquire = Effect.succeed("foo")
+      const a = yield* RcRef.make({ acquire })
+      const b = yield* RcRef.make({ acquire })
+      assert.isTrue(Equal.equals(a, a))
+      assert.isFalse(Equal.equals(a, b))
+      assert.strictEqual(HashSet.size(HashSet.make(a, b)), 2)
+    }))
+
   it.effect("deallocation", () =>
     Effect.gen(function*() {
       let acquired = 0

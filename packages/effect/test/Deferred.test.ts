@@ -1,11 +1,23 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Fiber, Option } from "effect"
+import { Deferred, Equal, Fiber, HashSet, Option } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("Deferred", () => {
+  it.effect("compares distinct deferreds by reference", () =>
+    Effect.gen(function*() {
+      const a = yield* Deferred.make<number>()
+      const b = yield* Deferred.make<number>()
+      assert.isTrue(Equal.equals(a, a))
+      assert.isFalse(Equal.equals(a, b))
+      assert.strictEqual(HashSet.size(HashSet.make(a, b)), 2)
+      yield* Deferred.succeed(a, 1)
+      yield* Deferred.succeed(b, 1)
+      assert.isFalse(Equal.equals(a, b))
+    }))
+
   describe("success", () => {
     it.effect("succeed - should propagate the value", () =>
       Effect.gen(function*() {
