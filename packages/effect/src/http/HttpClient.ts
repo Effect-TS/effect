@@ -1958,13 +1958,10 @@ export const tapRequest: {
  *
  * Response cookies are merged into the ref with `Cookies.mergeIntoArray` for
  * the response URL. When each request is sent, `Cookies.toRequestCookieHeader`
- * selects the cookies for the request URL and sets them as the `cookie` header,
- * so request transformations applied after `withCookiesRef`, such as
- * `HttpClientRequest.prependUrl`, are taken into account. When
- * `followRedirects` is applied after `withCookiesRef`, each redirect hop gets
- * the cookies for its URL until the chain crosses an origin; after that no
- * stored cookies are sent for the rest of the chain. Expiry uses the current
- * `Clock`.
+ * selects the cookies for its final URL, after any later request
+ * transformations such as `HttpClientRequest.prependUrl`, and sets them as the
+ * `cookie` header. When `followRedirects` is applied after `withCookiesRef`,
+ * this happens for every redirect hop. Expiry uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
@@ -1986,14 +1983,11 @@ export const withCookiesRef: {
             Effect.map(Ref.get(ref), (cookies) => {
               const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
               const header = Cookies.toRequestCookieHeader(cookies, request.url, now)
-              if (header === undefined || Fiber.getCurrent()!.getRef(CookiesRefSuppressed)) {
-                return request
-              }
+              if (header === undefined) return request
               const withCookies = HttpClientRequest.setHeader(request, "cookie", header)
+              // Keep the `withScope` controller on the new request
               const controller = scopedRequests.get(request)
-              if (controller !== undefined) {
-                scopedRequests.set(withCookies, controller)
-              }
+              if (controller !== undefined) scopedRequests.set(withCookies, controller)
               return withCookies
             }))),
           (response) => {
@@ -2076,18 +2070,15 @@ export const followRedirects: {
     (request) => {
       const loop = (
         request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>,
-        redirects: number,
-        crossedOrigin: boolean
+        redirects: number
       ): Effect.Effect<HttpClientResponse.HttpClientResponse, E, R> =>
         Effect.suspend(() => {
           let currentRequest: HttpClientRequest.HttpClientRequest | undefined
-          const send = self.postprocess(Effect.map(request, (request) => {
-            currentRequest = request
-            return request
-          }))
           return Effect.flatMap(
-            // Cookies stripped at an origin change stay stripped for the rest of the chain
-            crossedOrigin ? Effect.provideService(send, CookiesRefSuppressed, true) : send,
+            self.postprocess(Effect.map(request, (request) => {
+              currentRequest = request
+              return request
+            })),
             (response) => {
               if (
                 response.status < 300 || response.status >= 400 || !response.headers.location ||
@@ -2112,8 +2103,7 @@ export const followRedirects: {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-language")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-location")
               }
-              const crossesOrigin = url.origin !== new URL(response.request.url).origin
-              if (crossesOrigin) {
+              if (url.origin !== new URL(response.request.url).origin) {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
@@ -2132,12 +2122,12 @@ export const followRedirects: {
               // Abort the discarded response to release its connection without reading the body
               return Effect.andThen(
                 Effect.sync(() => responseControllers.get(response)?.abort()),
-                loop(Effect.succeed(nextRequest), redirects + 1, crossedOrigin || crossesOrigin)
+                loop(Effect.succeed(nextRequest), redirects + 1)
               )
             }
           )
         })
-      return loop(request, 0, false)
+      return loop(request, 0)
     },
     self.preprocess
   ))
@@ -2271,10 +2261,6 @@ const responseRegistry = (() => {
 })()
 
 const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
-
-const CookiesRefSuppressed = Context.Reference<boolean>("effect/http/HttpClient/CookiesRefSuppressed", {
-  defaultValue: () => false
-})
 
 const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
 
