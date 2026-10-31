@@ -356,6 +356,24 @@ describe("MessageStorage", () => {
         expect(JSON.stringify(stored)).toContain("MalformedMessage")
       }).pipe(Effect.provide(MemoryLayer)))
   })
+
+  describe("make", () => {
+    it.effect("calls the storage's withTransaction as a method", () =>
+      Effect.gen(function*() {
+        const driver = {
+          ...(yield* MessageStorage.MessageStorage),
+          saveReply: <R extends Rpc.Any>(reply: Reply.ReplyWithContext<R>) => Effect.succeed(reply),
+          transactions: 0,
+          withTransaction<A, E, R>(effect: Effect.Effect<A, E, R>) {
+            this.transactions++
+            return effect
+          }
+        }
+        const storage = yield* MessageStorage.make(driver)
+        yield* storage.withTransaction(Effect.void)
+        assert.strictEqual(driver.transactions, 1)
+      }).pipe(Effect.provide(MemoryLayer)))
+  })
 })
 
 export const GetUserRpc = Rpc.make("GetUser", {

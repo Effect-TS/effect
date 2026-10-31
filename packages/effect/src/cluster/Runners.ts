@@ -32,6 +32,7 @@ import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
+import * as TransactionNotifications from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -179,6 +180,14 @@ export const make: (
   const { codecFor, ...serviceOptions } = options
 
   const requestIdRewrites = new Map<Snowflake.Snowflake, Snowflake.Snowflake>()
+
+  // A message saved in a transaction is invisible to readers until the commit.
+  const notifyAfterCommit = <E>(message: Message.Outgoing<any>, notify: Effect.Effect<void, E>) => {
+    const rpc = message.rpc as any as Rpc.AnyWithProps
+    return Context.get(rpc.annotations, Persisted)
+      ? TransactionNotifications.wakeAfterCommit(notify)
+      : notify
+  }
 
   function notifyWith<E>(
     message: Message.Outgoing<any>,
@@ -471,7 +480,7 @@ export const make: (
       const { discard, message } = options_
       return notifyWith(message, (message, duplicate) => {
         if (discard || message._tag === "OutgoingEnvelope") {
-          return options.notify(options_)
+          return notifyAfterCommit(message, options.notify(options_))
         } else if (!duplicate && Option.isSome(options_.address)) {
           return Effect.catch(
             options.send({
@@ -499,7 +508,7 @@ export const make: (
       }
       return notifyWith(message, (message) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
-          return notifyEntity(message)
+          return notifyAfterCommit(message, notifyEntity(message))
         }
         return Effect.andThen(
           notifyEntity(message),
