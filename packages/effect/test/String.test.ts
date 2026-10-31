@@ -169,6 +169,11 @@ describe("String", () => {
     it("returns unchanged if no match", () => {
       strictEqual(pipe("abc", S.replace("z", "x")), "abc")
     })
+
+    it("replaces with a function", () => {
+      strictEqual(pipe("a-b c-d", S.replace(/(\w)-(\w)/, (_, a, b) => `${b}-${a}`)), "b-a c-d")
+      strictEqual(pipe("abab", S.replace("b", (match) => match.toUpperCase())), "aBab")
+    })
   })
 
   describe("trim", () => {
@@ -403,6 +408,13 @@ describe("String", () => {
       strictEqual(pipe("b", S.localeCompare("a")), 1)
       strictEqual(pipe("a", S.localeCompare("a")), 0)
     })
+
+    it("compares under the given locales", () => {
+      strictEqual(pipe("ä", S.localeCompare("z", "de")), -1)
+      strictEqual(pipe("ä", S.localeCompare("z", "sv")), 1)
+      strictEqual(pipe("ä", S.localeCompare("z", new Intl.Locale("sv"))), 1)
+      strictEqual(pipe("ä", S.localeCompare("z", ["sv", "de"])), 1)
+    })
   })
 
   describe("match", () => {
@@ -421,6 +433,13 @@ describe("String", () => {
     it("returns all matches", () => {
       const result = Array.from(pipe("hello world", S.matchAll(/l/g)))
       strictEqual(result.length, 3)
+    })
+
+    it("returns each match with its index and input", () => {
+      deepStrictEqual(
+        Array.from(pipe("hello world", S.matchAll(/l/g)), (match) => [match[0], match.index, match.input]),
+        [["l", 2, "hello world"], ["l", 3, "hello world"], ["l", 9, "hello world"]]
+      )
     })
   })
 
@@ -482,6 +501,11 @@ describe("String", () => {
     it("replaces all occurrences with regex", () => {
       strictEqual(pipe("ababb", S.replaceAll(/b/g, "c")), "acacc")
     })
+
+    it("replaces all occurrences with a function", () => {
+      strictEqual(pipe("abcd", S.replaceAll(/[a-c]/g, (char) => char.toUpperCase())), "ABCd")
+      strictEqual(pipe("abab", S.replaceAll("b", (match) => match.toUpperCase())), "aBaB")
+    })
   })
 
   describe("search", () => {
@@ -511,6 +535,11 @@ describe("String", () => {
       strictEqual(pipe("\u0130", S.toLocaleLowerCase("tr")), "i")
       strictEqual(pipe("I", S.toLocaleLowerCase("tr")), "\u0131")
     })
+
+    it("accepts an Intl.Locale or a list of locales", () => {
+      strictEqual(pipe("I", S.toLocaleLowerCase(new Intl.Locale("tr"))), "\u0131")
+      strictEqual(pipe("I", S.toLocaleLowerCase(["tr"])), "\u0131")
+    })
   })
 
   describe("toLocaleUpperCase", () => {
@@ -521,6 +550,11 @@ describe("String", () => {
     it("applies locale-specific rules", () => {
       strictEqual(pipe("i\u0307", S.toLocaleUpperCase("lt-LT")), "I")
       strictEqual(pipe("i", S.toLocaleUpperCase("tr")), "\u0130")
+    })
+
+    it("accepts an Intl.Locale or a list of locales", () => {
+      strictEqual(pipe("i", S.toLocaleUpperCase(new Intl.Locale("tr"))), "\u0130")
+      strictEqual(pipe("i", S.toLocaleUpperCase(["tr"])), "\u0130")
     })
   })
 
