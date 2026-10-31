@@ -205,7 +205,7 @@ const fromNumber = (input: number): ByteSize => {
 
 const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
 
-// Multiplies a decimal quantity such as "2.01" or "4e-15" by `factor` bytes exactly, or returns `undefined` for a fractional byte result
+// Exactly multiplies a decimal such as "2.01" or "4e-15" by `factor`, or `undefined` for a fractional byte result
 const scaleDecimal = (quantity: string, factor: bigint): bigint | undefined => {
   const match = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(quantity)
   if (match === null) return undefined
@@ -223,11 +223,11 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
     return make(quantity * unit.factor)
   }
   if (binaryUnits.includes(unit)) {
-    // Binary factors are powers of 2, so the floating-point product is exact
+    // Binary factors are powers of 2, so the float product is exact
     const value = quantity * Number(unit.factor)
     if (Number.isSafeInteger(value) && value >= 0) return make(BigInt(value))
   } else {
-    // SI factors make the floating-point product inexact, so scale the decimal form of the quantity instead
+    // SI factors are inexact as floats, so scale the shortest decimal form instead
     const value = scaleDecimal(String(quantity), unit.factor)
     if (value !== undefined && value <= maxSafeInteger) return make(value)
   }
