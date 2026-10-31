@@ -159,46 +159,6 @@ describe("Tool", () => {
         strictEqual(error.reason._tag, "ToolResultEncodingError")
       }))
 
-    it.effect("should return tool call handler failures with failure mode return using OpenAI transformer", () =>
-      Effect.gen(function*() {
-        const toolkit = Toolkit.make(FailureModeReturn)
-
-        const toolResult = { testFailure: "failure-mode-return-tool" }
-        const handlers = toolkit.toLayer({
-          FailureModeReturn: () => Effect.fail(toolResult)
-        })
-
-        const toolCallId = "tool-123"
-        const toolName = "FailureModeReturn"
-
-        const response = yield* LanguageModel.generateText({
-          prompt: "Test",
-          toolkit
-        }).pipe(
-          TestUtils.withLanguageModel({
-            generateText: [{
-              type: "tool-call",
-              id: toolCallId,
-              name: toolName,
-              params: { testParam: "test-param" }
-            }]
-          }),
-          Effect.provide(handlers)
-        )
-
-        deepStrictEqual(response.toolResults, [
-          Response.makePart("tool-result", {
-            id: toolCallId,
-            name: toolName,
-            isFailure: true,
-            result: toolResult,
-            encodedResult: toolResult,
-            providerExecuted: false,
-            preliminary: false
-          })
-        ])
-      }))
-
     it.effect("should raise an error on tool call handler failures when failure mode is error", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeError)

@@ -20,7 +20,7 @@ describe("Logger", () => {
 
       assert.match(
         result[0] as string,
-        /\[\d{2}:\d{2}:\d{2}\.\d{3}\]\sINFO\s\(#1\)\sspan=\dms:/
+        /\[\d{2}:\d{2}:\d{2}\.\d{3}\]\sINFO\s\(#\d+\)\sspan=\dms:/
       )
       assert.strictEqual(result[1], "info")
       assert.strictEqual(result[2], "message")

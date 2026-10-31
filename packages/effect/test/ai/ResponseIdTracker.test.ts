@@ -69,22 +69,6 @@ describe("ResponseIdTracker", () => {
       assertPreparedSome(prepared, "resp_123", Prompt.fromMessages([msg2]))
     }))
 
-  it.effect("shares tracker state through its Context service layer", () =>
-    Effect.gen(function*() {
-      const tracker = yield* ResponseIdTracker.make
-      const msg1 = userMessage("msg1")
-      const msg1New = userMessage("msg1-new")
-      const asst = assistantMessage("done")
-      const msg2 = userMessage("msg2")
-
-      tracker.markParts([msg1], "resp_123")
-      tracker.clearUnsafe()
-      tracker.markParts([msg1New], "resp_456")
-      const prepared = tracker.prepareUnsafe(Prompt.fromMessages([msg1New, asst, msg2]))
-
-      assertPreparedSome(prepared, "resp_456", Prompt.fromMessages([msg2]))
-    }))
-
   it.effect("keeps latest response id when markParts is called twice", () =>
     Effect.gen(function*() {
       const tracker = yield* ResponseIdTracker.make

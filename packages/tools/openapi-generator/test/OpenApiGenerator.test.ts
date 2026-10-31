@@ -1,6 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import * as HttpClient from "effect/http/HttpClient"
@@ -8,12 +9,12 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-// These integration checks start a fresh TypeScript compiler under CI load.
+// The first compile check starts the shared TypeScript compiler runs under CI load.
 const compilationTimeout = 60_000
 
 const assertRuntime = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
@@ -80,14 +81,19 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
   }
 }, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
-function assertGeneratedClientsCompile(
-  spec: OpenAPISpec,
-  options: {
-    readonly exactOptionalPropertyTypes?: boolean | undefined
-    readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
-    readonly usage?: string | undefined
-  } = {}
-) {
+interface CompileOptions {
+  readonly exactOptionalPropertyTypes?: boolean | undefined
+  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly usage?: string | undefined
+}
+
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
+
+// Every case is registered while the file is collected, so a single compiler
+// run per tsconfig variant can check all generated clients.
+const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: CompileOptions }> = []
+
+const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
     format: "httpclient" | "httpclient-type-only",
     layer: typeof OpenApiGenerator.layerTransformerSchema
@@ -97,52 +103,138 @@ function assertGeneratedClientsCompile(
       return yield* generator.generate(spec, { name: "TestClient", format })
     }).pipe(Effect.provide(layer))
 
-  return Effect.gen(function*() {
-    const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
-    const clients = yield* Effect.all(formats.map((format) =>
-      generate(
-        format,
-        format === "httpclient"
-          ? OpenApiGenerator.layerTransformerSchema
-          : OpenApiGenerator.layerTransformerTs
-      )
-    ))
+  const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
+  return Effect.all(formats.map((format) =>
+    generate(
+      format,
+      format === "httpclient"
+        ? OpenApiGenerator.layerTransformerSchema
+        : OpenApiGenerator.layerTransformerTs
+    ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
+  ))
+}
+
+const runTsc = (configPath: string) =>
+  Effect.callback<{ readonly status: number | null; readonly output: string }>((resume) => {
+    const child = spawn(join(repositoryRoot, "node_modules/.bin/tsc"), ["-p", configPath, "--pretty", "false"], {
+      cwd: repositoryRoot
+    })
+    let output = ""
+    child.stdout.on("data", (chunk) => output += chunk)
+    child.stderr.on("data", (chunk) => output += chunk)
+    child.on("error", (error) => resume(Effect.die(error)))
+    child.on("close", (status) => resume(Effect.succeed({ status, output })))
+    return Effect.sync(() => child.kill())
+  })
+
+// Each diagnostic starts on an unindented line; indented lines continue the
+// previous diagnostic.
+const parseDiagnostics = (output: string) => {
+  const diagnostics: Array<string> = []
+  for (const line of output.split(/\r?\n/)) {
+    if (line === "") continue
+    if (/^\s/.test(line) && diagnostics.length > 0) {
+      diagnostics[diagnostics.length - 1] += `\n${line}`
+      continue
+    }
+    diagnostics.push(line)
+  }
+  return diagnostics
+}
+
+// Type-checks every case with one compiler run per tsconfig variant and
+// returns the diagnostics that fail each case. A syntax error in one file makes
+// tsc skip semantic checks for the whole program, so a failed run cannot show
+// which cases are clean; each of its cases is then checked on its own.
+const typeCheckCases = Effect.fnUntraced(
+  function*(
+    cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
+  ) {
     const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
-    try {
-      const files = clients.map((client, index) => {
-        const path = join(directory, `Client${index}.ts`)
-        writeFileSync(path, `${client}\n${options.usage ?? ""}`)
-        return path
-      })
-      const configPath = join(directory, "tsconfig.json")
-      writeFileSync(
-        configPath,
-        JSON.stringify({
-          compilerOptions: {
-            allowImportingTsExtensions: true,
-            exactOptionalPropertyTypes: options.exactOptionalPropertyTypes ?? true,
-            lib: ["ESNext", "DOM"],
-            module: "NodeNext",
-            noEmit: true,
-            skipLibCheck: true,
-            strict: true,
-            target: "ES2022",
-            types: [],
-            verbatimModuleSyntax: true
-          },
-          files
+    return yield* Effect.gen(function*() {
+      const files = cases.map(({ sources }, caseIndex) =>
+        sources.map((source, sourceIndex) => {
+          const path = join(directory, `Case${caseIndex}Client${sourceIndex}.ts`)
+          writeFileSync(path, source)
+          return path
         })
       )
-      const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
-      const result = spawnSync(join(repositoryRoot, "node_modules/.bin/tsc"), ["-p", configPath, "--pretty", "false"], {
-        cwd: repositoryRoot,
-        encoding: "utf8"
-      })
-      assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
-    } finally {
-      rmSync(directory, { recursive: true, force: true })
-    }
-  })
+      // Returns every diagnostic of one compiler run, or an empty list when it succeeds.
+      const check = (name: string, exactOptionalPropertyTypes: boolean, caseIndexes: ReadonlyArray<number>) => {
+        const configPath = join(directory, `tsconfig.${name}.json`)
+        writeFileSync(
+          configPath,
+          JSON.stringify({
+            compilerOptions: {
+              allowImportingTsExtensions: true,
+              exactOptionalPropertyTypes,
+              lib: ["ESNext", "DOM"],
+              module: "NodeNext",
+              noEmit: true,
+              skipLibCheck: true,
+              strict: true,
+              target: "ES2022",
+              types: [],
+              verbatimModuleSyntax: true
+            },
+            files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
+          })
+        )
+        return runTsc(configPath).pipe(Effect.map(({ output, status }) => {
+          if (status === 0) return []
+          const diagnostics = parseDiagnostics(output)
+          return diagnostics.length === 0 ? [`tsc exited with ${status}`] : diagnostics
+        }))
+      }
+      const failures: Array<ReadonlyArray<string>> = cases.map(() => [])
+      const variants = [true, false].map((exactOptionalPropertyTypes) => ({
+        exactOptionalPropertyTypes,
+        caseIndexes: cases.flatMap((testCase, caseIndex) =>
+          testCase.exactOptionalPropertyTypes === exactOptionalPropertyTypes ? [caseIndex] : []
+        )
+      })).filter(({ caseIndexes }) => caseIndexes.length > 0)
+      yield* Effect.forEach(variants, ({ caseIndexes, exactOptionalPropertyTypes }) =>
+        Effect.gen(function*() {
+          const batch = yield* check(String(exactOptionalPropertyTypes), exactOptionalPropertyTypes, caseIndexes)
+          if (batch.length === 0) return
+          const isolated = yield* Effect.forEach(
+            caseIndexes,
+            (caseIndex) => check(`case${caseIndex}`, exactOptionalPropertyTypes, [caseIndex]),
+            { concurrency: 4 }
+          )
+          // If every case compiles alone, the failure comes from combining them, so it fails every case.
+          const combined = isolated.every((diagnostics) => diagnostics.length === 0)
+          caseIndexes.forEach((caseIndex, i) => {
+            failures[caseIndex] = combined ? batch : isolated[i]
+          })
+        }), { concurrency: "unbounded", discard: true })
+      return failures
+    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
+  }
+)
+
+const compileAll = Effect.gen(function*() {
+  const generated = yield* Effect.forEach(compileCases, (testCase) => Effect.exit(generateClients(testCase)))
+  const failures = yield* typeCheckCases(generated.map((exit, caseIndex) => ({
+    sources: Exit.isSuccess(exit) ? exit.value : [],
+    exactOptionalPropertyTypes: compileCases[caseIndex].options.exactOptionalPropertyTypes ?? true
+  })))
+  return { generated, failures }
+})
+
+const compiled = Effect.runSync(Effect.cached(compileAll))
+
+const itGeneratedClientsCompile = (name: string, spec: OpenAPISpec, options: CompileOptions = {}) => {
+  const caseIndex = compileCases.push({ spec, options }) - 1
+  it.effect(name, () =>
+    Effect.gen(function*() {
+      const result = yield* compiled
+      const generated = result.generated[caseIndex]
+      if (Exit.isFailure(generated)) {
+        return yield* Effect.failCause(generated.cause)
+      }
+      assert.strictEqual(result.failures[caseIndex].join("\n"), "")
+    }), compilationTimeout)
 }
 
 const assertHttpApiIncludes = Effect.fnUntraced(function*(
@@ -722,8 +814,7 @@ const cookieParameterSpec: OpenAPISpec = {
   tags: [{ name: "Greeting" }]
 }
 
-// spawnSync blocks this worker, so compilation must not consume another test's deadline.
-describe("OpenApiGenerator", { concurrent: false }, () => {
+describe("OpenApiGenerator", () => {
   describe("schema", () => {
     it.effect("get operation", () =>
       assertRuntime(
@@ -1521,11 +1612,7 @@ export const TestClientError = <Tag extends string, E>(
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
 
-    it.effect(
-      "emits compilable clients for schema-backed and type-only formats",
-      () => assertGeneratedClientsCompile(responseMatchingSpec),
-      compilationTimeout
-    )
+    itGeneratedClientsCompile("emits compilable clients for schema-backed and type-only formats", responseMatchingSpec)
   })
 
   describe("httpapi", () => {
@@ -3372,35 +3459,35 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   describe("regression", () => {
     for (const format of ["httpclient", "httpclient-type-only"] as const) {
       for (const exactOptionalPropertyTypes of [true, false]) {
-        it.effect(
+        itGeneratedClientsCompile(
           `preserves includeResponse success types (${format}, exactOptionalPropertyTypes=${exactOptionalPropertyTypes})`,
-          () =>
-            assertGeneratedClientsCompile({
-              openapi: "3.1.0",
-              info: { title: "Value", version: "1.0.0" },
-              components: { schemas: {}, securitySchemes: {} },
-              security: [],
-              tags: [],
-              paths: {
-                "/value": {
-                  get: {
-                    operationId: "getValue",
-                    parameters: [],
-                    security: [],
-                    tags: ["Value"],
-                    responses: {
-                      "200": {
-                        description: "Value",
-                        content: { "application/json": { schema: { type: "string" } } }
-                      }
+          {
+            openapi: "3.1.0",
+            info: { title: "Value", version: "1.0.0" },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [],
+            paths: {
+              "/value": {
+                get: {
+                  operationId: "getValue",
+                  parameters: [],
+                  security: [],
+                  tags: ["Value"],
+                  responses: {
+                    "200": {
+                      description: "Value",
+                      content: { "application/json": { schema: { type: "string" } } }
                     }
                   }
                 }
               }
-            }, {
-              formats: [format],
-              exactOptionalPropertyTypes,
-              usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+            }
+          },
+          {
+            formats: [format],
+            exactOptionalPropertyTypes,
+            usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 type WithResponse = [string, HttpClientResponse.HttpClientResponse]
@@ -3433,40 +3520,36 @@ export type OptionalBoolean = Assert<Equal<Effect.Success<typeof optionalBoolean
 export type NullableConfig = Assert<Equal<Effect.Success<typeof nullableConfigResult>, string | WithResponse>>
 export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalConfigResult>, string | WithResponse>>
 `
-            }),
-          compilationTimeout
+          }
         )
       }
 
-      it.effect(
-        `preserves HttpClient error and requirement types (${format})`,
-        () =>
-          assertGeneratedClientsCompile({
-            openapi: "3.1.0",
-            info: { title: "Channels", version: "1.0.0" },
-            components: { schemas: {}, securitySchemes: {} },
-            security: [],
-            tags: [],
-            paths: Object.fromEntries(
-              [
-                ["/value", "getValue", "application/json"],
-                ["/download", "download", "application/octet-stream"],
-                ...(format === "httpclient" ? [["/events", "events", "text/event-stream"]] : [])
-              ].map(([path, operationId, contentType]) => [path, {
-                get: {
-                  operationId,
-                  parameters: [],
-                  security: [],
-                  tags: ["Channels"],
-                  responses: {
-                    "200": { description: "OK", content: { [contentType]: { schema: { type: "string" } } } }
-                  }
-                }
-              }])
-            )
-          }, {
-            formats: [format],
-            usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+      itGeneratedClientsCompile(`preserves HttpClient error and requirement types (${format})`, {
+        openapi: "3.1.0",
+        info: { title: "Channels", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: Object.fromEntries(
+          [
+            ["/value", "getValue", "application/json"],
+            ["/download", "download", "application/octet-stream"],
+            ...(format === "httpclient" ? [["/events", "events", "text/event-stream"]] : [])
+          ].map(([path, operationId, contentType]) => [path, {
+            get: {
+              operationId,
+              parameters: [],
+              security: [],
+              tags: ["Channels"],
+              responses: {
+                "200": { description: "OK", content: { [contentType]: { schema: { type: "string" } } } }
+              }
+            }
+          }])
+        )
+      }, {
+        formats: [format],
+        usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 interface CustomError { readonly _tag: "CustomError" }
@@ -3484,16 +3567,14 @@ export type ValueServices = Assert<Equal<Effect.Services<typeof value>, CustomSe
 export type DownloadError = Assert<Equal<Stream.Error<typeof download>, CustomError | HttpClientError.HttpClientError>>
 export type DownloadServices = Assert<Equal<Stream.Services<typeof download>, CustomService>>
 ${
-              format === "httpclient"
-                ? `const events = client.eventsSse()
+          format === "httpclient"
+            ? `const events = client.eventsSse()
 export type EventsError = Assert<CustomError | HttpClientError.HttpClientError extends Stream.Error<typeof events> ? true : false>
 export type EventsServices = Assert<CustomService extends Stream.Services<typeof events> ? true : false>
 `
-                : ""
-            }`
-          }),
-        compilationTimeout
-      )
+            : ""
+        }`
+      })
     }
 
     it.effect("quotes static path text with and without parameters", () => {
@@ -3528,18 +3609,13 @@ export type EventsServices = Assert<CustomService extends Stream.Services<typeof
       ])
     })
 
-    it.effect(
-      "types required cookie parameters as operation params",
-      () =>
-        assertGeneratedClientsCompile(cookieParameterSpec, {
-          usage: `declare const client: TestClient
+    itGeneratedClientsCompile("types required cookie parameters as operation params", cookieParameterSpec, {
+      usage: `declare const client: TestClient
 export const withLocale = client.getGreeting({ params: { locale: "en-US" } })
 // @ts-expect-error the locale cookie is required
 export const withoutLocale = client.getGreeting({ params: {} })
 `
-        }),
-      compilationTimeout
-    )
+    })
 
     it.effect("sends cookie parameters with the request", () =>
       Effect.gen(function*() {
@@ -3619,44 +3695,43 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.notInclude(result, "refPrefs")
       }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
-    it.effect("emits compilable clients when schema examples are invalid", () =>
-      assertGeneratedClientsCompile({
-        openapi: "3.0.3",
-        info: {
-          title: "Invalid examples API",
-          version: "1.0.0"
-        },
-        paths: {
-          "/triggers": {
-            get: {
-              operationId: "getTriggers",
-              parameters: [],
-              responses: {
-                200: {
-                  description: "OK",
-                  content: {
-                    "application/json": {
-                      schema: {
-                        type: "array",
-                        items: { type: "string" },
-                        example: "create"
-                      }
+    itGeneratedClientsCompile("emits compilable clients when schema examples are invalid", {
+      openapi: "3.0.3",
+      info: {
+        title: "Invalid examples API",
+        version: "1.0.0"
+      },
+      paths: {
+        "/triggers": {
+          get: {
+            operationId: "getTriggers",
+            parameters: [],
+            responses: {
+              200: {
+                description: "OK",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "array",
+                      items: { type: "string" },
+                      example: "create"
                     }
                   }
                 }
-              },
-              tags: ["Triggers"],
-              security: []
-            }
+              }
+            },
+            tags: ["Triggers"],
+            security: []
           }
-        },
-        components: {
-          schemas: {},
-          securitySchemes: {}
-        },
-        security: [],
-        tags: [{ name: "Triggers" }]
-      } as unknown as OpenAPISpec), compilationTimeout)
+        }
+      },
+      components: {
+        schemas: {},
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [{ name: "Triggers" }]
+    } as unknown as OpenAPISpec)
 
     it.effect("runtime warnings do not report additional-tags-dropped outside httpapi", () =>
       assertRuntimeStableWithWarnings(
@@ -3711,97 +3786,89 @@ export const withoutLocale = client.getGreeting({ params: {} })
         }
       ]))
 
-    it.effect("emits compilable open objects with optional properties", () =>
-      assertGeneratedClientsCompile(
-        {
-          openapi: "3.1.0",
-          info: {
-            title: "Open object regression API",
-            version: "1.0.0"
-          },
-          paths: {
-            "/widget": {
-              get: {
-                operationId: "getWidget",
-                parameters: [],
-                responses: {
-                  200: {
-                    description: "OK",
-                    content: {
-                      "application/json": {
-                        schema: {
-                          type: "object",
-                          properties: {
-                            optionalValue: {
-                              type: "string"
-                            }
-                          },
-                          additionalProperties: true
+    itGeneratedClientsCompile("emits compilable open objects with optional properties", {
+      openapi: "3.1.0",
+      info: {
+        title: "Open object regression API",
+        version: "1.0.0"
+      },
+      paths: {
+        "/widget": {
+          get: {
+            operationId: "getWidget",
+            parameters: [],
+            responses: {
+              200: {
+                description: "OK",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        optionalValue: {
+                          type: "string"
                         }
-                      }
+                      },
+                      additionalProperties: true
                     }
                   }
-                },
-                tags: ["Widgets"],
-                security: []
+                }
               }
-            }
-          },
-          components: {
-            schemas: {},
-            securitySchemes: {}
-          },
-          security: [],
-          tags: []
-        },
-        {
-          exactOptionalPropertyTypes: false,
-          formats: ["httpclient"]
+            },
+            tags: ["Widgets"],
+            security: []
+          }
         }
-      ), compilationTimeout)
+      },
+      components: {
+        schemas: {},
+        securitySchemes: {}
+      },
+      security: [],
+      tags: []
+    }, {
+      exactOptionalPropertyTypes: false,
+      formats: ["httpclient"]
+    })
 
-    it.effect("types multipart binary fields as File | Blob for generated clients", () =>
-      assertGeneratedClientsCompile(
-        multipartSpec({
-          type: "object",
-          properties: { file: { type: "string", format: "binary" } },
-          required: ["file"],
-          additionalProperties: false
-        }),
-        {
-          usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
+    itGeneratedClientsCompile(
+      "types multipart binary fields as File | Blob for generated clients",
+      multipartSpec({
+        type: "object",
+        properties: { file: { type: "string", format: "binary" } },
+        required: ["file"],
+        additionalProperties: false
+      }),
+      {
+        usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
 export const withBlob: UploadRequestFormData = { file: new Blob([]) }
 // @ts-expect-error Binary multipart fields do not accept strings.
 export const withString: UploadRequestFormData = { file: "upload.txt" }
 `
-        }
-      ), compilationTimeout)
+      }
+    )
 
-    it.effect(
+    itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",
-      () =>
-        assertGeneratedClientsCompile(
-          multipartSpec({ $ref: "#/components/schemas/Node" }, {
-            Node: {
-              type: "object",
-              properties: {
-                file: { type: "string", format: "binary" },
-                child: { $ref: "#/components/schemas/Node" }
-              },
-              required: ["file"],
-              additionalProperties: false
-            }
-          }),
-          {
-            usage: `const file = new File([], "upload.txt")
+      multipartSpec({ $ref: "#/components/schemas/Node" }, {
+        Node: {
+          type: "object",
+          properties: {
+            file: { type: "string", format: "binary" },
+            child: { $ref: "#/components/schemas/Node" }
+          },
+          required: ["file"],
+          additionalProperties: false
+        }
+      }),
+      {
+        usage: `const file = new File([], "upload.txt")
 const blob = new Blob([])
 export const payload: UploadRequestFormData = { file, child: { file: blob, child: { file } } }
 // @ts-expect-error Recursive binary fields do not accept strings.
 export const withString: UploadRequestFormData = { file, child: { file: "upload.txt" } }
 `
-          }
-        ),
-      compilationTimeout
+      }
     )
 
     for (
@@ -3862,24 +3929,35 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
         ]
       ))
 
-    it.effect(
+    itGeneratedClientsCompile(
       "types multipart binary arrays as File | Blob arrays for generated clients",
-      () =>
-        assertGeneratedClientsCompile(
-          multipartSpec({
-            type: "object",
-            properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
-            required: ["files"],
-            additionalProperties: false
-          }),
-          {
-            usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
+      multipartSpec({
+        type: "object",
+        properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
+        required: ["files"],
+        additionalProperties: false
+      }),
+      {
+        usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
 // @ts-expect-error Binary multipart arrays do not accept strings.
 export const withString: UploadRequestFormData = { files: ["upload.txt"] }
 `
-          }
-        ),
-      compilationTimeout
+      }
     )
   })
+})
+
+describe("generated client type checks", () => {
+  it.effect(
+    "do not pass a case whose type errors were hidden by another case's syntax error",
+    () =>
+      Effect.gen(function*() {
+        const [, typeError] = yield* typeCheckCases([
+          { sources: ["export const broken = ;\n"], exactOptionalPropertyTypes: true },
+          { sources: ["export const value: string = 42\n"], exactOptionalPropertyTypes: true }
+        ])
+        assert.isNotEmpty(typeError)
+      }),
+    compilationTimeout
+  )
 })

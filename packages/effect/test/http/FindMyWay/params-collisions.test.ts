@@ -63,7 +63,7 @@ it("node with longer static suffix should have higher priority", () => {
   assert.strictEqual(router.find("GET", "/foo/value.png.png")?.handler, 2)
 })
 
-it("node with longer static suffix should have higher priority", () => {
+it("node with longer static suffix should have higher priority when registered first", () => {
   const router = Router.make<number>()
 
   router.on("GET", "/foo/:bar.png.png", 2)

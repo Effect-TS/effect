@@ -9,6 +9,8 @@ import { pgWaitStrategy, releasePgContainer } from "./utils.ts"
 // Less than the existing 30s integration hook limit, including all retry attempts.
 const cleanupBudget = "25 seconds"
 const testTimeout = 28_000
+// Bounds each wait attempt; the fake daemon answers a healthy wait well within it.
+const releaseOptions = { waitTimeout: "1 second" } as const
 
 describe("PostgreSQL container lifecycle", () => {
   const requests = new Map<string, Array<string>>()
@@ -123,7 +125,7 @@ describe("PostgreSQL container lifecycle", () => {
 
   it.live("retries an interrupted wait response before removing the container", () =>
     Effect.gen(function*() {
-      const result = yield* releasePgContainer(container("retry-succeeds")).pipe(
+      const result = yield* releasePgContainer(container("retry-succeeds"), releaseOptions).pipe(
         Effect.exit,
         Effect.timeoutOption(cleanupBudget)
       )
@@ -139,7 +141,7 @@ describe("PostgreSQL container lifecycle", () => {
     "surfaces repeated interrupted waits within the cleanup budget without removing",
     () =>
       Effect.gen(function*() {
-        const result = yield* releasePgContainer(container("always-interrupted")).pipe(
+        const result = yield* releasePgContainer(container("always-interrupted"), releaseOptions).pipe(
           Effect.exit,
           Effect.timeoutOption(cleanupBudget)
         )
@@ -163,7 +165,9 @@ describe("PostgreSQL container lifecycle", () => {
   // run with it during afterAll.
   it.effect("bounds a hung wait under the test services used by it.layer", () =>
     Effect.gen(function*() {
-      const fiber = yield* Effect.forkChild(releasePgContainer(container("wait-hangs")).pipe(Effect.exit))
+      const fiber = yield* Effect.forkChild(
+        releasePgContainer(container("wait-hangs"), releaseOptions).pipe(Effect.exit)
+      )
       const result = yield* Fiber.join(fiber).pipe(Effect.timeoutOption(cleanupBudget), TestClock.withLive)
       assert.isTrue(Option.isSome(result), "teardown hung instead of reporting exhausted retries")
       if (Option.isNone(result)) return yield* Fiber.interrupt(fiber)

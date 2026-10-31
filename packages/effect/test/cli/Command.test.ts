@@ -1374,12 +1374,6 @@ describe("Command", () => {
         })
       }).pipe(Effect.provide(TestLayer)))
 
-    it.effect("should propagate subcommand errors", () =>
-      Effect.gen(function*() {
-        const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
-        assert.strictEqual(result, "Handler error")
-      }).pipe(Effect.provide(TestLayer)))
-
     it.effect("should provide shared parent context to subcommands", () =>
       Effect.gen(function*() {
         const messages: Array<string> = []

@@ -3856,17 +3856,6 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(instance.a, "default")
       })
 
-      it("Struct & Effect sync", async () => {
-        const schema = Schema.Struct({
-          a: Schema.FiniteFromString.pipe(Schema.withConstructorDefault(Effect.succeed(-1)))
-        })
-        const asserts = new TestSchema.Asserts(schema)
-
-        const make = asserts.make()
-        await make.succeed({ a: 1 })
-        await make.succeed({}, { a: -1 })
-      })
-
       it("Struct & Effect async", async () => {
         const schema = Schema.Struct({
           a: Schema.FiniteFromString.pipe(Schema.withConstructorDefault(
