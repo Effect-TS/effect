@@ -2869,6 +2869,17 @@ describe("Stream", () => {
     }))
 
   describe("groupAdjacentBy", () => {
+    it.effect("emits the buffered group before failing", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.fromArrays([1, 1, 2], [2]).pipe(
+          Stream.concat(Stream.fail("Ouch")),
+          Stream.groupAdjacentBy((n) => n),
+          Stream.catch((error) => Stream.make(error)),
+          Stream.runCollect
+        )
+        deepStrictEqual(result, [[1, [1, 1]], [2, [2, 2]], "Ouch"])
+      }))
+
     it.effect("one big chunk", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
