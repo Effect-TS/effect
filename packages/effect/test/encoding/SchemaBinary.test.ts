@@ -550,6 +550,149 @@ describe("SchemaBinary", () => {
     })
   })
 
+  describe("fixed-width integers", () => {
+    const packet = () =>
+      Schema.Struct({
+        version: SchemaBinary.uint32,
+        offset: SchemaBinary.int32,
+        sequence: SchemaBinary.uint64,
+        timestamp: SchemaBinary.int64
+      })
+    const packets = [
+      { version: 0, offset: -(2 ** 31), sequence: 0n, timestamp: -(2n ** 63n) },
+      { version: 2 ** 32 - 1, offset: 2 ** 31 - 1, sequence: 2n ** 64n - 1n, timestamp: 2n ** 63n - 1n },
+      { version: 1, offset: -1, sequence: 1n, timestamp: -1n }
+    ]
+    const ones = [1, 0, 0, 0, 0, 0, 0, 0]
+    const allSet = [255, 255, 255, 255, 255, 255, 255, 255]
+
+    it("writes little-endian four and eight byte payloads", () => {
+      assert.deepStrictEqual([...encode(SchemaBinary.uint32, 1)], [5, 0x20, 1, 0, 0, 0])
+      assert.deepStrictEqual([...encode(SchemaBinary.int32, -1)], [5, 0x20, 255, 255, 255, 255])
+      assert.deepStrictEqual([...encode(SchemaBinary.uint64, 1n)], [9, 0x20, ...ones])
+      assert.deepStrictEqual([...encode(SchemaBinary.int64, -1n)], [9, 0x20, ...allSet])
+      // signedness is the schema's reading of the same bits
+      assert.deepStrictEqual([...encode(SchemaBinary.uint64, 2n ** 64n - 1n)], [9, 0x20, ...allSet])
+      for (const value of [0, 1, 2 ** 32 - 1]) sameNumber(roundtrip(SchemaBinary.uint32, value), value)
+      for (const value of [-(2 ** 31), -1, 0, 2 ** 31 - 1]) sameNumber(roundtrip(SchemaBinary.int32, value), value)
+      for (const value of [0n, 1n, 2n ** 64n - 1n]) assert.strictEqual(roundtrip(SchemaBinary.uint64, value), value)
+      for (const value of [-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n]) {
+        assert.strictEqual(roundtrip(SchemaBinary.int64, value), value)
+      }
+      const short32 = SchemaBinary.toCodec(SchemaBinary.uint32)
+      assert.match(schemaError(() => Schema.decodeUnknownSync(short32)(Uint8Array.of(3, 0x20, 1, 0))).message, /32/)
+      const short64 = SchemaBinary.toCodec(SchemaBinary.int64)
+      assert.match(
+        schemaError(() => Schema.decodeUnknownSync(short64)(Uint8Array.of(5, 0x20, 1, 0, 0, 0))).message,
+        /64/
+      )
+    })
+
+    it("tags struct fields fixed32 and keeps eight byte integers length-prefixed", () => {
+      const Packet = packet()
+      // length, envelope, tag 1 * 8 + fixed32, payload
+      const Fixed32 = Schema.Struct({ n: SchemaBinary.uint32.pipe(SchemaBinary.fieldId(1)) })
+      assert.deepStrictEqual([...encode(Fixed32, { n: 1 })], [6, 0x20, 14, 1, 0, 0, 0])
+      // fixed64 belongs to f64, so eight byte integers ride the sized kind
+      const Sized64 = Schema.Struct({ n: SchemaBinary.int64.pipe(SchemaBinary.fieldId(1)) })
+      assert.deepStrictEqual([...encode(Sized64, { n: 1n })], [11, 0x20, 8, 8, ...ones])
+      for (const value of packets) assert.deepStrictEqual(roundtrip(Packet, value), value)
+      // extra checks and annotations keep the opt-in
+      const Narrowed = SchemaBinary.uint32.annotate({ description: "small" }).check(Schema.isLessThan(10))
+      assert.deepStrictEqual([...encode(Narrowed, 1)], [5, 0x20, 1, 0, 0, 0])
+    })
+
+    it("rejects out-of-range and non-integer values instead of wrapping, with or without the schema pass", () => {
+      const Packet = packet()
+      const cases: ReadonlyArray<readonly [Schema.Top, ReadonlyArray<unknown>]> = [
+        [SchemaBinary.uint32, [-1, 2 ** 32, 1.5, Number.NaN, "1", 1n]],
+        [SchemaBinary.int32, [-(2 ** 31) - 1, 2 ** 31, 0.5]],
+        [SchemaBinary.uint64, [-1n, 2n ** 64n, 1]],
+        [SchemaBinary.int64, [-(2n ** 63n) - 1n, 2n ** 63n, 1]]
+      ]
+      for (const [schema, values] of cases) {
+        const codec = SchemaBinary.toCodec(schema as Schema.Codec<unknown>)
+        for (const value of values) {
+          schemaError(() => Schema.encodeUnknownSync(codec)(value))
+          schemaError(() => Schema.encodeUnknownSync(codec, { disableChecks: true })(value))
+        }
+      }
+      const codec = SchemaBinary.toCodec(SchemaBinary.uint32)
+      assert.match(
+        schemaError(() => Schema.encodeUnknownSync(codec, { disableChecks: true })(2 ** 32)).message,
+        /32-bit|integer/
+      )
+      // the binary layer validates these on its own, so the schema pass is redundant
+      assert.doesNotThrow(() => SchemaBinary.encoder(Packet, { dictionary: true }))
+    })
+
+    it("never reads another number form as a fixed-width integer, or the reverse", () => {
+      const Number_ = Schema.Struct({ n: Schema.Number })
+      // varint, decimal and f64 forms of a plain number field
+      for (const n of [1, 1.5, Math.PI]) {
+        const bytes = encode(Number_, { n })
+        for (const Reader of [Schema.Struct({ n: SchemaBinary.int32 }), Schema.Struct({ n: SchemaBinary.int64 })]) {
+          const error = schemaError(() => Schema.decodeUnknownSync(SchemaBinary.toCodec(Reader))(bytes))
+          assert.match(error.message, /Missing key/)
+          assert.include(error.message, "n")
+        }
+      }
+      const fixed32 = encode(Schema.Struct({ n: SchemaBinary.uint32 }), { n: 1 })
+      const fixed64 = encode(Schema.Struct({ n: SchemaBinary.int64 }), { n: 1n })
+      for (const Reader of [Number_, Schema.Struct({ n: Schema.Int }), Schema.Struct({ n: Schema.BigInt })]) {
+        const codec = SchemaBinary.toCodec(Reader)
+        schemaError(() => Schema.decodeUnknownSync(codec)(fixed32))
+        schemaError(() => Schema.decodeUnknownSync(codec)(fixed64))
+      }
+      // an optional reader skips the unknown shape like any other evolution
+      const Optional = Schema.Struct({ n: Schema.optionalKey(Schema.Number) })
+      assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Optional))(fixed32), {})
+      assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Optional))(fixed64), {})
+    })
+
+    it("packs uniform arrays and row runs without per-element framing", () => {
+      const Packet = packet()
+      // length, envelope, count, packed payloads
+      const uint32s = [10, 0x20, 2, 1, 0, 0, 0, 2, 0, 0, 0]
+      assert.deepStrictEqual([...encode(Schema.Array(SchemaBinary.uint32), [1, 2])], uint32s)
+      assert.deepStrictEqual([...encode(Schema.Array(SchemaBinary.uint64), [1n])], [10, 0x20, 1, ...ones])
+      const int32s = [-(2 ** 31), -1, 0, 2 ** 31 - 1]
+      assert.deepStrictEqual(roundtrip(Schema.Array(SchemaBinary.int32), int32s), int32s)
+      const int64s = [-(2n ** 63n), -1n, 0n, 2n ** 63n - 1n]
+      assert.deepStrictEqual(roundtrip(Schema.Array(SchemaBinary.int64), int64s), int64s)
+      assert.deepStrictEqual(roundtrip(Schema.Array(SchemaBinary.uint32), []), [])
+
+      assert.deepStrictEqual(roundtrip(Schema.Array(Packet), packets), packets)
+      assert.deepStrictEqual(roundtripFingerprint(Schema.Array(Packet), packets), packets)
+      // the row shape is declared once, so later rows all cost the same
+      const one = encode(Schema.Array(Packet), packets.slice(0, 1)).length
+      const two = encode(Schema.Array(Packet), packets.slice(0, 2)).length
+      const three = encode(Schema.Array(Packet), packets).length
+      assert.strictEqual(three - two, two - one)
+    })
+
+    it("fills positional fingerprint slots and tells the four widths apart", () => {
+      const Packet = packet()
+      const Pair = Schema.Struct({
+        a: SchemaBinary.uint32.pipe(SchemaBinary.fieldId(1)),
+        b: SchemaBinary.int64.pipe(SchemaBinary.fieldId(2))
+      })
+      assert.strictEqual(fingerprintFrame(Pair, { a: 1, b: 1n }).payload, [1, 0, 0, 0, ...ones].join(","))
+      for (const value of packets) assert.deepStrictEqual(roundtripFingerprint(Packet, value), value)
+      const fingerprints = new Set([
+        fingerprintOf(SchemaBinary.uint32, 1),
+        fingerprintOf(SchemaBinary.int32, 1),
+        fingerprintOf(Schema.Int, 1),
+        fingerprintOf(Schema.Number, 1),
+        fingerprintOf(SchemaBinary.uint64, 1n),
+        fingerprintOf(SchemaBinary.int64, 1n),
+        fingerprintOf(Schema.BigInt, 1n),
+        fingerprintOf(Schema.Date, new Date(1))
+      ])
+      assert.strictEqual(fingerprints.size, 8)
+    })
+  })
+
   describe("schema evolution", () => {
     it("skips unknown fields, accepts field reorder, and leaves missing optionals absent", () => {
       const Writer = Schema.Struct({ a: Schema.Number, extra: Schema.String, b: Schema.String })
