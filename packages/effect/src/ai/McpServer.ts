@@ -3081,7 +3081,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
-    // Results are sent in their JSON encoding, which the advertised `outputSchema` describes.
+    // MCP content is JSON, so results and declared failures go through their JSON codec.
     const encodeJson = (schema: Schema.Constraint) => {
       const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema)) as (
         value: unknown
@@ -3099,8 +3099,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           }))
     }
     const encodeFailure = encodeJson(tool.failureSchema)
-    // The Toolkit has already encoded these results, so only their JSON conversion runs here.
-    const encodeEncodedFailure = encodeJson(Schema.toEncoded(tool.failureSchema))
+    // Successes and "return"-mode failures arrive already encoded by the Toolkit; only their JSON conversion runs here.
+    const encodeReturnedFailure = encodeJson(Schema.toEncoded(tool.failureSchema))
     const encodeStructured = encodeJson(Schema.toEncoded(tool.successSchema))
     const failureResult = (encoded: unknown) =>
       new CallToolResult({ isError: true, content: toolResultContent(encoded) })
@@ -3183,7 +3183,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
             return result.failureOrigin === "handler"
-              ? Effect.map(encodeEncodedFailure(result.encodedResult), failureResult)
+              ? Effect.map(encodeReturnedFailure(result.encodedResult), failureResult)
               : Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
