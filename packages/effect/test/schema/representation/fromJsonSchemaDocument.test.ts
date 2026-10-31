@@ -3355,17 +3355,52 @@ describe("fromJsonSchemaDocument", () => {
       })
     })
 
-    it("rejects open pattern scopes", () => {
+    it("imports open patterns with unknown unmatched values (#10048)", async () => {
+      const document = JsonSchema.fromSchemaDraft07({
+        type: "object",
+        properties: { name: { type: "string" } },
+        patternProperties: { "^x-": { type: "string" } }
+      })
+      const imported = toSchemaFromJsonSchemaDocument(document)
+      assertCode(imported, {
+        codes: makeCode(
+          `Schema.StructWithRest(Schema.Struct({ "name": Schema.optionalKey(Schema.String) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).check(Schema.isPatternProperties(new globalThis.RegExp("^x-", "u"), Schema.String).annotate({ "expected": "an object whose properties matching the RegExp ^x- satisfy the schema" }))`,
+          `{ readonly "name"?: string } & { readonly [x: string]: Schema.Json }`
+        )
+      })
+      const asserts = new TestSchema.Asserts(imported as unknown as Schema.ConstraintDecoder<unknown>)
+      const decoding = asserts.decoding()
+      const strictDecoding = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+      const valid = { name: "build", "x-note": "ok", extra: 42 }
+      await decoding.succeed(valid)
+      await strictDecoding.succeed(valid)
+      await decoding.fail({ "x-note": 42 }, `Expected string\n  at ["x-note"]`)
+    })
+
+    it("applies every overlapping open pattern to a matching key", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        patternProperties: { "^a": { type: "string" }, "a$": { minLength: 2 } }
+      }))
+      const is = Schema.is(schema)
+      assert.isTrue(is({ aa: "ok", b: 1 }))
+      assert.isFalse(is({ aa: 1 }))
+      assert.isFalse(is({ aa: "x" }))
+    })
+
+    it("imports open pattern scopes", () => {
       for (const additional of [{}, { additionalProperties: true }, { additionalProperties: {} }] as const) {
         const schema = {
           type: "object",
           patternProperties: { "^a": { type: "number" } },
           ...additional
         } as const
-        throws(
-          () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
-          `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
-        )
+        assertFromJsonSchema({ schema }, {
+          codes: makeCode(
+            `Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isPatternProperties(new globalThis.RegExp("^a", "u"), Schema.Finite).annotate({ "expected": "an object whose properties matching the RegExp ^a satisfy the schema" }))`,
+            `{ readonly [x: string]: Schema.Json }`
+          )
+        })
         assertFromJsonSchema({ schema, options: { patterns: "ignore" } }, {
           codes: makeCode(
             `Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))`,
@@ -3375,31 +3410,29 @@ describe("fromJsonSchemaDocument", () => {
       }
     })
 
-    it("rejects open patterns with fixed properties", () => {
-      throws(
-        () =>
-          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-            type: "object",
-            properties: { a: { type: "string" } },
-            patternProperties: { "^a$": { minLength: 2 } }
-          })),
-        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
-      )
+    it("applies open patterns to matching fixed properties", async () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { a: { type: "string" } },
+        patternProperties: { "^a$": { minLength: 2 } }
+      }))
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.succeed({ a: "ok", b: 1 })
+      await decoding.fail({ a: "x" }, `Expected a string with at least 2 code points\n  at ["a"]`)
     })
 
-    it("rejects nested open pattern scopes with their source paths", () => {
+    it("imports nested open pattern scopes", () => {
       const open = { type: "object", patternProperties: { "^a": { type: "number" } } } as const
-      const cases: ReadonlyArray<readonly [JsonSchema.JsonSchema, string]> = [
-        [{ type: "array", items: open }, `["schema"]["items"]`],
-        [{ type: "object", properties: { values: open } }, `["schema"]["properties"]["values"]`],
-        [{ anyOf: [{ type: "string" }, open] }, `["schema"]["anyOf"][1]`],
-        [{ $ref: "#/$defs/Values", $defs: { Values: open } }, `["definitions"]["Values"]`]
+      const cases: ReadonlyArray<readonly [JsonSchema.JsonSchema, unknown, unknown]> = [
+        [{ type: "array", items: open }, [{ a: 1, b: "x" }], [{ a: "x" }]],
+        [{ type: "object", properties: { values: open } }, { values: { a: 1, b: "x" } }, { values: { a: "x" } }],
+        [{ anyOf: [{ type: "string" }, open] }, { a: 1, b: "x" }, { a: "x" }],
+        [{ $ref: "#/$defs/Values", $defs: { Values: open } }, { a: 1, b: "x" }, { a: "x" }]
       ]
-      for (const [schema, path] of cases) {
-        throws(
-          () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
-          `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ${path}`
-        )
+      for (const [schema, valid, invalid] of cases) {
+        const is = Schema.is(toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)))
+        assert.isTrue(is(valid))
+        assert.isFalse(is(invalid))
       }
     })
 
