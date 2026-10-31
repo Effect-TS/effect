@@ -737,19 +737,21 @@ class MiddlewareImpl {
   }
 }
 
-// The innermost middleware comes first. Every stack keeps its own order, and
-// stacks provided further outside, which come first in the context, run first.
+// The innermost middleware comes first. Every stack keeps its own order; where
+// that leaves the order open, stacks provided further outside, which come
+// first in the context, run further outside.
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  // The middleware directly outside each middleware, outermost first.
+  // The middleware directly outside each middleware in each stack.
   const outers = new Map<AnyMiddlewareFn, Array<AnyMiddlewareFn>>()
   for (const [key, stack] of context.mapUnsafe) {
     if (!key.startsWith(middlewareKeyPrefix)) continue
-    for (let i = stack.length - 1; i >= 0; i--) {
+    for (let i = 0; i < stack.length; i++) {
       let fnOuters = outers.get(stack[i])
       if (fnOuters === undefined) outers.set(stack[i], fnOuters = [])
       if (i + 1 < stack.length) fnOuters.push(stack[i + 1])
     }
   }
+  // Places the middleware outside each middleware before the middleware itself.
   const visited = new Set<AnyMiddlewareFn>()
   const outermostFirst: Array<AnyMiddlewareFn> = []
   const visit = (fn: AnyMiddlewareFn) => {
@@ -758,7 +760,7 @@ const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddle
     outers.get(fn)!.forEach(visit)
     outermostFirst.push(fn)
   }
-  outers.forEach((_, fn) => visit(fn))
+  for (const fn of outers.keys()) visit(fn)
   return outermostFirst.reverse()
 }
 
