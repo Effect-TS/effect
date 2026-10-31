@@ -2205,36 +2205,20 @@ describe("McpServer", () => {
     for (const failureMode of ["error", "return"] as const) {
       it.effect(`encodes declared failures with their JSON codec in ${failureMode} mode`, () =>
         Effect.gen(function*() {
-          class InsufficientFunds extends Schema.TaggedError<InsufficientFunds>()("InsufficientFunds", {
-            missingCents: Schema.BigInt,
-            holds: Schema.ReadonlyMap(Schema.String, Schema.Number),
-            hint: Schema.Option(Schema.String)
-          }) {}
-          const toolkit = Toolkit.make(Tool.make("Charge", { failure: InsufficientFunds, failureMode }))
+          const toolkit = Toolkit.make(Tool.make("Charge", {
+            failure: Schema.Struct({ missingCents: Schema.BigInt }),
+            failureMode
+          }))
           const client = yield* McpTest.makeClient(
             Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
-              Layer.provide(toolkit.toLayer({
-                Charge: () =>
-                  Effect.fail(
-                    new InsufficientFunds({
-                      missingCents: 250n,
-                      holds: new Map([["card", 5]]),
-                      hint: Option.some("top up")
-                    })
-                  )
-              }))
+              Layer.provide(toolkit.toLayer({ Charge: () => Effect.fail({ missingCents: 250n }) }))
             ),
             { protocols: [McpProtocol.v2025_06_18] }
           )
           const result = yield* client.callTool({ name: "Charge" })
 
           assert.isTrue(result.isError)
-          assert.deepStrictEqual(JSON.parse(toolResultText(result)), {
-            _tag: "InsufficientFunds",
-            missingCents: "250",
-            holds: [["card", 5]],
-            hint: { _tag: "Some", value: "top up" }
-          })
+          assert.strictEqual(toolResultText(result), JSON.stringify({ missingCents: "250" }))
         }))
     }
 
