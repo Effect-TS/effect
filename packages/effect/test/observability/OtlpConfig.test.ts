@@ -49,6 +49,28 @@ describe("Otlp.layerFromConfig", () => {
       }))
     ))
 
+  it.effect("exports every signal when only the endpoint is set", () =>
+    Effect.gen(function*() {
+      yield* Effect.log("default log")
+      yield* Metric.update(Metric.counter("otel_default_counter"), 1)
+      yield* Effect.void.pipe(Effect.withSpan("default-span"))
+
+      yield* TestClock.adjust("1 second")
+
+      const requests = yield* MockHttpClient.requests
+      assert.isDefined(findRequest(requests, "http://collector.example/v1/logs"))
+      assert.isDefined(findRequest(requests, "http://collector.example/v1/metrics"))
+      assert.isDefined(findRequest(requests, "http://collector.example/v1/traces"))
+    }).pipe(
+      Effect.provide(testLayer({
+        OTEL_SERVICE_NAME: "otel-config-test",
+        OTEL_EXPORTER_OTLP_ENDPOINT: "http://collector.example",
+        OTEL_BLRP_MAX_EXPORT_BATCH_SIZE: "1",
+        OTEL_BSP_MAX_EXPORT_BATCH_SIZE: "1",
+        OTEL_METRIC_EXPORT_INTERVAL: "1000"
+      }))
+    ))
+
   it.effect("does not install exporters when OTEL_SDK_DISABLED is true", () =>
     Effect.gen(function*() {
       yield* Effect.log("disabled log")

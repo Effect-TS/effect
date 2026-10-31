@@ -199,6 +199,9 @@ export const layer: (options: {
  *
  * **Details**
  *
+ * Spans are exported only when a traces endpoint is configured.
+ * `OTEL_TRACES_EXPORTER` defaults to `otlp`; set it to `none` to disable spans.
+ *
  * Compression accepts "gzip" or "none".
  * `OTEL_EXPORTER_OTLP_TRACES_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses

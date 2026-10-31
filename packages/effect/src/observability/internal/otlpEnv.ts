@@ -32,5 +32,5 @@ export const endpoint = (signal: Signal) =>
 
 export const exporters = (signal: Signal) =>
   exporterList(`OTEL_${signal}_EXPORTER`).pipe(
-    Config.withDefault<ReadonlyArray<string>>([])
+    Config.withDefault<ReadonlyArray<string>>(["otlp"])
   )

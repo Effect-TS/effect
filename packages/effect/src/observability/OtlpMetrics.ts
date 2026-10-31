@@ -434,6 +434,10 @@ export const layer = (options: {
  *
  * **Details**
  *
+ * Metrics are exported only when a metrics endpoint is configured.
+ * `OTEL_METRICS_EXPORTER` defaults to `otlp`; set it to `none` to disable
+ * metrics.
+ *
  * Compression accepts "gzip" or "none".
  * `OTEL_EXPORTER_OTLP_METRICS_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses

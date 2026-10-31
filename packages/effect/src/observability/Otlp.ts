@@ -112,6 +112,10 @@ export const layer = (options: {
  *
  * **Details**
  *
+ * Each signal is exported only when its endpoint is configured. Its
+ * `OTEL_*_EXPORTER` variable defaults to `otlp`; set it to `none` to disable
+ * that signal.
+ *
  * The layer provides the `OtlpExporter.Flusher` shared by all enabled signals.
  * It is provided even when configuration disables every signal, in which case
  * `flush` is a no-op.
