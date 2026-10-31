@@ -11,7 +11,7 @@ import type * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
 import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 // The first compile check starts the shared TypeScript compiler runs under CI load.
@@ -127,25 +127,25 @@ const runTsc = (configPath: string) =>
     return Effect.sync(() => child.kill())
   })
 
-// Diagnostics start with `path(line,col): ` when tsc can attribute them to a
-// file; indented lines continue the previous diagnostic.
+// Each diagnostic starts on an unindented line; indented lines continue the
+// previous diagnostic.
 const parseDiagnostics = (output: string) => {
-  const diagnostics: Array<{ readonly file: string | undefined; text: string }> = []
+  const diagnostics: Array<string> = []
   for (const line of output.split(/\r?\n/)) {
     if (line === "") continue
-    const previous = diagnostics[diagnostics.length - 1]
-    if (/^\s/.test(line) && previous !== undefined) {
-      previous.text += `\n${line}`
+    if (/^\s/.test(line) && diagnostics.length > 0) {
+      diagnostics[diagnostics.length - 1] += `\n${line}`
       continue
     }
-    const match = /^(.+?)\(\d+,\d+\): /.exec(line)
-    diagnostics.push({ file: match === null ? undefined : resolve(repositoryRoot, match[1]), text: line })
+    diagnostics.push(line)
   }
   return diagnostics
 }
 
 // Type-checks every case with one compiler run per tsconfig variant and
-// returns the diagnostics that fail each case.
+// returns the diagnostics that fail each case. A syntax error in one file makes
+// tsc skip semantic checks for the whole program, so a failed run cannot show
+// which cases are clean; each of its cases is then checked on its own.
 const typeCheckCases = Effect.fnUntraced(
   function*(
     cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
@@ -159,11 +159,9 @@ const typeCheckCases = Effect.fnUntraced(
           return path
         })
       )
-      const variants = [true, false].filter((exactOptionalPropertyTypes) =>
-        cases.some((testCase) => testCase.exactOptionalPropertyTypes === exactOptionalPropertyTypes)
-      )
-      const runs = yield* Effect.forEach(variants, (exactOptionalPropertyTypes) => {
-        const configPath = join(directory, `tsconfig.${exactOptionalPropertyTypes}.json`)
+      // Returns every diagnostic of one compiler run, or an empty list when it succeeds.
+      const check = (name: string, exactOptionalPropertyTypes: boolean, caseIndexes: ReadonlyArray<number>) => {
+        const configPath = join(directory, `tsconfig.${name}.json`)
         writeFileSync(
           configPath,
           JSON.stringify({
@@ -179,28 +177,38 @@ const typeCheckCases = Effect.fnUntraced(
               types: [],
               verbatimModuleSyntax: true
             },
-            files: files.filter((_, caseIndex) =>
-              cases[caseIndex].exactOptionalPropertyTypes === exactOptionalPropertyTypes
-            ).flat()
+            files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
           })
         )
-        return runTsc(configPath)
-      }, { concurrency: "unbounded" })
-      const diagnostics = runs.flatMap(({ output, status }) => {
-        const parsed = parseDiagnostics(output)
-        return status !== 0 && parsed.length === 0
-          ? [{ file: undefined, text: `tsc exited with ${status}` }]
-          : parsed
-      })
-      const owned = new Set(files.flat())
-      // Diagnostics outside the generated clients may come from any case, so they fail every case.
-      const unattributed = diagnostics.filter(({ file }) => file === undefined || !owned.has(file)).map(({ text }) =>
-        text
-      )
-      return files.map((caseFiles) => [
-        ...diagnostics.filter(({ file }) => file !== undefined && caseFiles.includes(file)).map(({ text }) => text),
-        ...unattributed
-      ])
+        return runTsc(configPath).pipe(Effect.map(({ output, status }) => {
+          if (status === 0) return []
+          const diagnostics = parseDiagnostics(output)
+          return diagnostics.length === 0 ? [`tsc exited with ${status}`] : diagnostics
+        }))
+      }
+      const failures: Array<ReadonlyArray<string>> = cases.map(() => [])
+      const variants = [true, false].map((exactOptionalPropertyTypes) => ({
+        exactOptionalPropertyTypes,
+        caseIndexes: cases.flatMap((testCase, caseIndex) =>
+          testCase.exactOptionalPropertyTypes === exactOptionalPropertyTypes ? [caseIndex] : []
+        )
+      })).filter(({ caseIndexes }) => caseIndexes.length > 0)
+      yield* Effect.forEach(variants, ({ caseIndexes, exactOptionalPropertyTypes }) =>
+        Effect.gen(function*() {
+          const batch = yield* check(String(exactOptionalPropertyTypes), exactOptionalPropertyTypes, caseIndexes)
+          if (batch.length === 0) return
+          const isolated = yield* Effect.forEach(
+            caseIndexes,
+            (caseIndex) => check(`case${caseIndex}`, exactOptionalPropertyTypes, [caseIndex]),
+            { concurrency: 4 }
+          )
+          // If every case compiles alone, the failure comes from combining them, so it fails every case.
+          const combined = isolated.every((diagnostics) => diagnostics.length === 0)
+          caseIndexes.forEach((caseIndex, i) => {
+            failures[caseIndex] = combined ? batch : isolated[i]
+          })
+        }), { concurrency: "unbounded", discard: true })
+      return failures
     }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
   }
 )
