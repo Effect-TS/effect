@@ -171,6 +171,57 @@ describe("RpcServer", () => {
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
 
+  it.effect("fails requests with malformed headers, whether the payload decodes synchronously or not", () =>
+    Effect.gen(function*() {
+      const success = Schema.String
+      const group = RpcGroup.make(
+        Rpc.make("sync", { payload: Schema.Struct({}), success }),
+        Rpc.make("async", {
+          payload: Schema.Struct({
+            page: Schema.Finite.pipe(Schema.withDecodingDefaultType(Effect.as(Effect.yieldNow, 1)))
+          }),
+          success
+        })
+      )
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({
+              sync: (_, { headers }) => Effect.succeed(headers["x-a"]),
+              async: (_, { headers }) => Effect.succeed(headers["x-a"])
+            }),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      const post = (tag: string, headers: unknown) =>
+        Effect.promise(async () => {
+          const response = await handler(
+            new Request("http://test/rpc", {
+              method: "POST",
+              body: JSON.stringify({ _tag: "Request", id: "1", tag, payload: {}, headers }) + "\n"
+            })
+          )
+          return { status: response.status, body: await response.text() }
+        })
+
+      for (const tag of ["sync", "async"]) {
+        const valid = yield* post(tag, [["X-A", "b"]])
+        assert.strictEqual(valid.status, 200)
+        assert.deepStrictEqual(JSON.parse(valid.body).exit, { _tag: "Success", value: "b" })
+
+        for (const headers of [[{}], [[1, "b"]]]) {
+          const { body, status } = yield* post(tag, headers)
+          assert.strictEqual(status, 200)
+          const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
+          assert.strictEqual(response._tag, "Exit")
+          assert.strictEqual(response.requestId, "1")
+          assert.strictEqual(response.exit._tag, "Failure")
+          assert.strictEqual((response.exit as any).cause[0]._tag, "Die")
+        }
+      }
+    }))
+
   it.effect("decodes payloads with the ParseOptions annotation", () =>
     Effect.gen(function*() {
       const batches: Array<ReadonlyArray<number>> = []
