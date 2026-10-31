@@ -203,18 +203,12 @@ const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
   Match.exhaustive
 )
 
-// Registrations may be plain objects, so encode by fields.
-const icons = PublicMcpSchema.optional(Schema.Array(Schema.Struct(PublicMcpSchema.Icon.fields)))
-const PublicResource = Schema.Struct({ ...PublicMcpSchema.Resource.fields, icons })
-const PublicResourceTemplate = Schema.Struct({ ...PublicMcpSchema.ResourceTemplate.fields, icons })
-const PublicPrompt = Schema.Struct({ ...PublicMcpSchema.Prompt.fields, icons })
-
-const projectResource = (resource: PublicMcpSchema.Resource) =>
-  McpProtocol.transcode(PublicResource, McpSchema.Resource, resource)
+// Registrations may be plain objects, so encode with the wire struct.
+const projectResource = (resource: PublicMcpSchema.Resource) => Schema.encodeEffect(McpSchema.Resource)(resource)
 const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTemplate) =>
-  McpProtocol.transcode(PublicResourceTemplate, McpSchema.ResourceTemplate, resourceTemplate)
+  Schema.encodeEffect(McpSchema.ResourceTemplate)(resourceTemplate)
 
-const projectPrompt = (prompt: PublicMcpSchema.Prompt) => McpProtocol.transcode(PublicPrompt, McpSchema.Prompt, prompt)
+const projectPrompt = (prompt: PublicMcpSchema.Prompt) => Schema.encodeEffect(McpSchema.Prompt)(prompt)
 
 const projectTool = (tool: PublicMcpSchema.Tool) => McpProtocol.transcode(PublicMcpSchema.Tool, McpSchema.Tool, tool)
 
