@@ -303,6 +303,20 @@ describe("Iterable", () => {
     deepStrictEqual(toArray(as), [5, 4, 3, 2, 1])
   })
 
+  it("unfold stays done after completion", () => {
+    let calls = 0
+    const as = Iter.unfold(0, (n) => {
+      calls++
+      return calls === 2 ? Option.none() : Option.some([n, n + 1])
+    })
+    const iterator = as[Symbol.iterator]()
+    deepStrictEqual(iterator.next(), { done: false, value: 0 })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    strictEqual(calls, 2)
+    deepStrictEqual(as[Symbol.iterator]().next(), { done: false, value: 0 })
+  })
+
   it("map", () => {
     deepStrictEqual(
       pipe([1, 2, 3], Iter.map((n) => n * 2), toArray),
