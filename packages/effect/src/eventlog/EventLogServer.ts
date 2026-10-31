@@ -12,6 +12,7 @@
 import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Arr from "../Array.ts"
 import * as Cache from "../Cache.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Mac from "../crypto/Mac.ts"
 import * as Data from "../Data.ts"
@@ -22,7 +23,6 @@ import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
@@ -119,11 +119,6 @@ export const layerRpcHandlers = (options: {
   Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>> | EventLogAuthentication
 > =>
   EventLogRemoteRpcs.toLayer(Effect.gen(function*() {
-    const clientChallenges = yield* Cache.make({
-      lookup: (_clientId: number) => Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge),
-      capacity: Number.MAX_SAFE_INTEGER,
-      timeToLive: EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
-    })
     const toFrames = makeFramer()
 
     const persistedSigningPublicKeys = yield* Cache.makeWith(
@@ -148,17 +143,31 @@ export const layerRpcHandlers = (options: {
 
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
-        const challenge = yield* Cache.get(clientChallenges, client.id)
+        // Kept on the connection, so it is released when the client disconnects
+        // and shared by overlapping Hellos until `Authenticate` consumes it.
+        let pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        if (pending === undefined) {
+          const challenge = yield* Effect.orDie(EventLogSessionAuth.makeSessionAuthChallenge)
+          // Read the clock again, as generating the challenge can suspend. A
+          // concurrent Hello may have stored a challenge in the meantime.
+          const now = yield* Clock.currentTimeMillis
+          pending = getPendingChallenge(client, now) ?? {
+            challenge,
+            expiresAt: now + EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
+          }
+          client.annotate(PendingChallenge, pending)
+        }
         return new HelloResponse({
           remoteId: options.remoteId,
-          challenge,
+          challenge: pending.challenge,
           firstSequence: options.firstSequence,
           compaction: options.compaction === true ? true : undefined
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
-        const challenge = Option.getOrNull(yield* Cache.getOption(clientChallenges, client.id))
-        if (!challenge) {
+        const pending = getPendingChallenge(client, yield* Clock.currentTimeMillis)
+        client.annotate(PendingChallenge, undefined)
+        if (pending === undefined) {
           return yield* new EventLogProtocolError({
             requestTag: "Authenticate",
             publicKey: request.publicKey,
@@ -166,13 +175,12 @@ export const layerRpcHandlers = (options: {
             message: "Session auth challenge has expired"
           })
         }
-        yield* Cache.invalidate(clientChallenges, client.id)
         if (options.authorizeIdentity) {
           yield* options.authorizeIdentity(request.publicKey, request.signingPublicKey)
         }
         const verified = yield* EventLogSessionAuth.verifySessionAuthenticateRequest({
           remoteId: options.remoteId,
-          challenge,
+          challenge: pending.challenge,
           publicKey: request.publicKey,
           signingPublicKey: request.signingPublicKey,
           signature: request.signature,
@@ -408,6 +416,22 @@ const makeStreamKey = (publicKey: string, storeId: StoreId): string => `${public
 class ConnectionWritesState extends Context.Service<ConnectionWritesState, ConnectionWrites>()(
   "effect/eventlog/EventLogServer/ConnectionWrites"
 ) {}
+
+// The connection's unconsumed `Hello` challenge, cleared by `Authenticate`.
+const PendingChallenge = Context.Reference<
+  | {
+    readonly challenge: Uint8Array<ArrayBuffer>
+    readonly expiresAt: number
+  }
+  | undefined
+>("effect/eventlog/EventLogServer/PendingChallenge", {
+  defaultValue: () => undefined
+})
+
+const getPendingChallenge = (client: Rpc.ServerClient, now: number) => {
+  const pending = Context.get(client.annotations, PendingChallenge)
+  return pending !== undefined && pending.expiresAt > now ? pending : undefined
+}
 
 const getConnectionWrites = (client: Rpc.ServerClient): ConnectionWrites => {
   const existing = Context.getOrUndefined(client.annotations, ConnectionWritesState)
