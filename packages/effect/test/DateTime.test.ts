@@ -150,6 +150,20 @@ describe("DateTime", () => {
     strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "second")), "2025-11-02T06:30:15.000Z")
   })
 
+  it("clips fractional milliseconds when rounding", () => {
+    for (const timeZone of [undefined, "UTC", "America/New_York", "Australia/Lord_Howe", 0]) {
+      const initial = timeZone === undefined
+        ? DateTime.makeUnsafe(0)
+        : DateTime.makeZonedUnsafe(0, { timeZone })
+      const input = DateTime.addDuration(initial, 0.5)
+      for (const round of [DateTime.startOf, DateTime.endOf, DateTime.nearest]) {
+        for (const part of ["millisecond", "second", "minute", "hour"] as const) {
+          strictEqual(DateTime.toEpochMillis(round(input, part)), DateTime.toEpochMillis(round(initial, part)))
+        }
+      }
+    }
+  })
+
   describe("endOf", () => {
     it("month", () => {
       const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")

@@ -1059,13 +1059,12 @@ const mutateForRounding = (
   part: DateTime.DateTime.UnitSingular,
   f: (date: Date) => void
 ): DateTime.DateTime => {
-  if (part === "millisecond") return self
   if (
     self._tag === "Utc" || self.zone._tag === "Offset" ||
-    (part !== "second" && part !== "minute" && part !== "hour")
+    (part !== "millisecond" && part !== "second" && part !== "minute" && part !== "hour")
   ) return mutate(self, f)
   const date = toDate(self)
-  const offset = date.getTime() - self.epochMilliseconds
+  const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
   f(date)
   const adjustedMillis = date.getTime()
   const result = makeZonedProto(adjustedMillis - offset, self.zone)
@@ -1192,6 +1191,7 @@ export const nearest: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime.DateTime =>
   mutateForRounding(self, part, (date) => {
+    if (part === "millisecond") return
     const millis = date.getTime()
     const start = new Date(millis)
     startOfDate(start, part, options)
