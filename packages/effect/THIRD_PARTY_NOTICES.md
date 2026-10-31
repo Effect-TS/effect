@@ -60,3 +60,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Standard PDF font metrics
+
+The glyph widths and vertical metrics in
+[src/internal/pdfFonts.ts](src/internal/pdfFonts.ts), used by
+`src/encoding/Pdf.ts` to measure text, are extracted from the Adobe Core 14 AFM
+files. The files were taken from
+[foliojs/pdfkit](https://github.com/foliojs/pdfkit/tree/d63a78eab1d960c2afba17da46c4a851e7fddd88/lib/font/data),
+commit `d63a78eab1d960c2afba17da46c4a851e7fddd88`; the source file records their
+SHA-256 digests. Modification: only the widths of the WinAnsiEncoding glyphs of
+the Helvetica, Times and Courier fonts, and their Ascender and Descender values,
+are kept. No AFM file is distributed.
+
+### Adobe Core 14 AFM files
+
+Copyright (c) 1985, 1987, 1989, 1990, 1991, 1992, 1993, 1997 Adobe Systems
+Incorporated. All Rights Reserved.
+
+This file and the 14 PostScript(R) AFM files it accompanies may be used, copied,
+and distributed for any purpose and without charge, with or without
+modification, provided that all copyright notices are retained; that the AFM
+files are not distributed without this file; that all modifications to this file
+or any of the AFM files are prominently noted in the modified file(s); and that
+this paragraph is not modified. Adobe Systems has no responsibility or
+obligation to support the use of the AFM files.

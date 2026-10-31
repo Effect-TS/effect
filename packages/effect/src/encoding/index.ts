@@ -54,6 +54,12 @@ export * as JsonArray from "./JsonArray.ts"
 export * as Ndjson from "./Ndjson.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.0
+ */
+export * as Pdf from "./Pdf.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
