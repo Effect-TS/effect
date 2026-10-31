@@ -36,6 +36,7 @@ const makeExporter = (
     readonly shutdownTimeout?: Duration.Input
     readonly body?: (data: Array<any>) => HttpBody.HttpBody
     readonly headers?: Headers.Input | undefined
+    readonly flusher?: OtlpExporter.Flusher["Service"]
   }
 ) =>
   OtlpExporter.make({
@@ -48,7 +49,9 @@ const makeExporter = (
     shutdownTimeout: options?.shutdownTimeout ?? "1 second"
   }).pipe(
     Effect.provideService(HttpClient.HttpClient, httpClient),
-    Effect.provide(OtlpExporter.layerFlusher)
+    options?.flusher
+      ? Effect.provideService(OtlpExporter.Flusher, options.flusher)
+      : Effect.provide(OtlpExporter.layerFlusher)
   )
 
 const makeExporterRaw = (
@@ -153,20 +156,23 @@ describe("OtlpExporter", () => {
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const { httpClient, releases, started } = yield* makeControlledHttpClient(3)
+      const flusher = yield* OtlpExporter.Flusher.pipe(Effect.provide(OtlpExporter.layerFlusher))
       const exporter = yield* makeExporter(httpClient, {
         exportInterval: "1 second",
-        maxBatchSize: "disabled"
+        maxBatchSize: "disabled",
+        flusher
       }).pipe(Scope.provide(scope))
 
       exporter.push({ value: 1 })
       yield* TestClock.adjust("1 second")
       yield* Deferred.await(started[0])
 
+      yield* flusher.flush
+      exporter.push({ value: 2 })
       yield* TestClock.adjust("1 second")
       assert.isFalse(yield* Deferred.isDone(started[1]))
 
       yield* Deferred.succeed(releases[0], undefined)
-      exporter.push({ value: 2 })
       yield* TestClock.adjust("1 second")
       yield* Deferred.await(started[1])
 
