@@ -1,5 +1,21 @@
 # effect
 
+## 4.1.2
+
+### Patch Changes
+
+- [#10217](https://github.com/Effect-TS/effect/pull/10217) [`5216684`](https://github.com/Effect-TS/effect/commit/52166841177ca39d32cc4c06ac5fcdd660656748) Thanks @devangpratap! - Fix `ByteSize` decimal unit constructors such as `megabytes(2.01)` throwing or returning the wrong byte count, and reject fractional-byte quantities instead of rounding them.
+
+- [#10226](https://github.com/Effect-TS/effect/pull/10226) [`d190d97`](https://github.com/Effect-TS/effect/commit/d190d973a7fb2ebb71bfaf1a01adbffef1833555) Thanks @tim-smart! - Fix `ClusterWorkflowEngine` letting a runner that lost its shard delete a newer activity result, which could run the activity again and change the workflow's history.
+
+- [#10211](https://github.com/Effect-TS/effect/pull/10211) [`a478745`](https://github.com/Effect-TS/effect/commit/a4787453be8e4f360f0212fb0b25bc4a0e18fc72) Thanks @effect-bot! - Keep `EventLogServer` session auth challenges on their RPC connection, so a challenge is released when its client disconnects instead of being retained by the server after an unauthenticated disconnect.
+
+- [#10221](https://github.com/Effect-TS/effect/pull/10221) [`69eaa29`](https://github.com/Effect-TS/effect/commit/69eaa29dfe5c33547ad12068f65d31b2123194c3) Thanks @clean99! - Fix `Iterable.filterMapWhile` iterators yielding values or pulling from the source after they have returned `done`.
+
+- [#10210](https://github.com/Effect-TS/effect/pull/10210) [`ef81e9d`](https://github.com/Effect-TS/effect/commit/ef81e9dbd1221ab8a9c38ce50f96129054e3b6e2) Thanks @effect-bot! - Fix `RateLimiter.layerStoreRedis` sharing state between different keys. A key ending in `:refill` or `:adaptive` no longer reads or writes another key's token-bucket refill time or adaptive state.
+
+- [#10223](https://github.com/Effect-TS/effect/pull/10223) [`013fb34`](https://github.com/Effect-TS/effect/commit/013fb34f88f3451ede7e7333f205563f07716b13) Thanks @effect-bot! - Fix `RpcServer` returning an empty HTTP 500 for requests with malformed headers; such requests now fail with a defect `Exit`, and malformed notifications are dropped.
+
 ## 4.1.1
 
 ### Patch Changes
