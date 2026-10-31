@@ -144,6 +144,9 @@ export const layer = (options: {
  *
  * **Details**
  *
+ * Logs are exported when a logs endpoint is set and `OTEL_LOGS_EXPORTER`,
+ * which defaults to `otlp`, includes `otlp`.
+ *
  * Compression accepts "gzip" or "none".
  * `OTEL_EXPORTER_OTLP_LOGS_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
