@@ -227,7 +227,7 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
     const value = quantity * Number(unit.factor)
     if (Number.isSafeInteger(value) && value >= 0) return make(BigInt(value))
   } else {
-    // SI factors are inexact as floats, so scale the shortest decimal form instead
+    // Scale the shortest decimal form to avoid floating-point rounding
     const value = scaleDecimal(String(quantity), unit.factor)
     if (value !== undefined && value <= maxSafeInteger) return make(value)
   }
