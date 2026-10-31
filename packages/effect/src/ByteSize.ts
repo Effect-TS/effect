@@ -203,16 +203,35 @@ const fromNumber = (input: number): ByteSize => {
   return make(BigInt(input))
 }
 
+const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
+
+// Exactly multiplies a decimal such as "2.01" or "4e-15" by `factor`, or `undefined` for a fractional byte result
+const scaleDecimal = (quantity: string, factor: bigint): bigint | undefined => {
+  const match = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(quantity)
+  if (match === null) return undefined
+  const fraction = match[2] ?? ""
+  const numerator = BigInt(match[1] + fraction) * factor
+  const shift = Number(match[3] ?? 0) - fraction.length
+  if (shift >= 0) return numerator * BigInt(10) ** BigInt(shift)
+  const scale = BigInt(10) ** BigInt(-shift)
+  return numerator % scale === bigint0 ? numerator / scale : undefined
+}
+
 const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
   if (typeof quantity === "bigint") {
     if (quantity < bigint0) return invalid(`expected a non-negative quantity, received ${quantity}`)
     return make(quantity * unit.factor)
   }
-  const value = quantity * Number(unit.factor)
-  if (!Number.isSafeInteger(value) || value < 0) {
-    return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
+  if (binaryUnits.includes(unit)) {
+    // Binary factors are powers of 2, so the float product is exact
+    const value = quantity * Number(unit.factor)
+    if (Number.isSafeInteger(value) && value >= 0) return make(BigInt(value))
+  } else {
+    // Scale the shortest decimal form to avoid floating-point rounding
+    const value = scaleDecimal(String(quantity), unit.factor)
+    if (value !== undefined && value <= maxSafeInteger) return make(value)
   }
-  return make(BigInt(value))
+  return invalid(`expected an exact non-negative safe-integer byte result, received ${quantity} ${unit.symbol}`)
 }
 
 /**
@@ -231,17 +250,13 @@ const fromQuantity = (quantity: number | bigint, unit: UnitInfo): ByteSize => {
  * @since 4.0.0
  */
 export const fromStringUnsafe = (input: string): ByteSize => {
-  const match = /^\s*(\d+)(?:\.(\d+))?\s*([A-Za-z]+)\s*$/.exec(input)
+  const match = /^\s*(\d+(?:\.\d+)?)\s*([A-Za-z]+)\s*$/.exec(input)
   if (match === null) return invalid(`unsupported syntax ${JSON.stringify(input)}`)
-  const unit = unitsByName.get(match[3])
-  if (unit === undefined) return invalid(`unsupported unit ${JSON.stringify(match[3])}`)
-  const fraction = match[2] ?? ""
-  const scale = BigInt(10) ** BigInt(fraction.length)
-  const numerator = BigInt(match[1] + fraction) * unit.factor
-  if (numerator % scale !== bigint0) {
-    return invalid(`${JSON.stringify(input)} does not represent an integral number of bytes`)
-  }
-  return make(numerator / scale)
+  const unit = unitsByName.get(match[2])
+  if (unit === undefined) return invalid(`unsupported unit ${JSON.stringify(match[2])}`)
+  const value = scaleDecimal(match[1], unit.factor)
+  if (value === undefined) return invalid(`${JSON.stringify(input)} does not represent an integral number of bytes`)
+  return make(value)
 }
 
 /**
