@@ -294,8 +294,7 @@ export const make = Effect.fnUntraced(function*<
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
-    // Restart backoff for this activation. Consecutive defects advance it, and
-    // a completed request drops it so the next defect starts over.
+    // Per-activation restart backoff, reset when a request completes.
     let restartStep: Effect.Success<typeof newRestartStep> | undefined
     const restartDelay = Effect.gen(function*() {
       restartStep ??= yield* newRestartStep

@@ -144,24 +144,18 @@ export class Sharding extends Context.Service<Sharding, {
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly mailboxMetrics?: boolean | undefined
       /**
-       * Whether a handler defect fails only its request instead of restarting
-       * the entity.
-       *
-       * By default a defect is fatal: the entity is rebuilt after a
-       * `defectRetryPolicy` delay and its in-flight requests are replayed. With
-       * this option the defect is returned as the request's failure and the
-       * entity keeps running.
+       * When `true`, a handler defect fails only its request instead of
+       * restarting the entity and replaying its in-flight requests.
        */
       readonly disableFatalDefects?: boolean | undefined
       /**
-       * Delays between entity restarts after a fatal defect, and between retries
-       * of a failed handler construction.
+       * Schedule for restarting an entity after a defect and for retrying failed
+       * handler construction.
        *
-       * Each entity keeps its own backoff: consecutive defects advance it and
-       * completing a request resets it. Once the policy ends the default policy
-       * (500 ms, growing by 1.5 up to 10 seconds) takes over, so a finite policy
-       * never stops restarts. Use `disableFatalDefects` to keep defects from
-       * restarting the entity.
+       * Backoff is tracked per entity and resets once a request completes.
+       * When the policy ends, the default (500 ms growing by 1.5x, capped at 10
+       * seconds) continues, so restarts never stop; use `disableFatalDefects` to
+       * avoid them.
        */
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
       readonly spanAttributes?: Record<string, string> | undefined

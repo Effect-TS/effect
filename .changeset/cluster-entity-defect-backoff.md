@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix cluster entity defect restarts sharing one backoff across all entities of a type; each entity now backs off on its own and resets once it completes a request.
+Fix cluster entity defect restart backoff being shared by all entities of a type and never resetting.
