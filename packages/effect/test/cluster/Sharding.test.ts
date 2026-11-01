@@ -5588,3 +5588,61 @@ describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: 
       }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
     }))
 })
+
+// --- Persisted message compatibility across deployments ---
+
+// The deployment that produced the messages: a changed payload schema and an
+// RPC that older runners do not know.
+const NewerCompatibilityEntity = Entity.make("CompatibilityEntity", [
+  Rpc.make("Add", { payload: { n: Schema.String } }),
+  Rpc.make("Remove")
+]).annotateRpcs(ClusterSchema.Persisted, true)
+
+// The older deployment still consuming the same storage.
+const OlderCompatibilityEntity = Entity.make("CompatibilityEntity", [
+  Rpc.make("Add", { payload: { n: Schema.Number } })
+]).annotateRpcs(ClusterSchema.Persisted, true)
+
+const OlderCompatibilitySharding = OlderCompatibilityEntity.toLayer({
+  Add: () => Effect.void
+}).pipe(Layer.provideMerge(UnregisteredSharding({})))
+
+type NewerCompatibilityClient = ReturnType<Effect.Success<typeof NewerCompatibilityEntity.client>>
+
+// A persisted request the running deployment cannot decode must stay in
+// storage for a compatible runner, be reported, and not answer the caller
+// with a terminal defect.
+const leavesRequestForCompatibleRunner = (
+  send: (client: NewerCompatibilityClient) => Effect.Effect<unknown, unknown>
+) => {
+  const warnings: Array<string> = []
+  const logger = Logger.make((options) => {
+    if (options.logLevel === "Warn" || options.logLevel === "Error") {
+      warnings.push(Logger.formatJson.log(options))
+    }
+  })
+  return Effect.gen(function*() {
+    const driver = yield* MessageStorage.MemoryDriver
+    const client = (yield* NewerCompatibilityEntity.client)("1")
+    const fiber = yield* send(client).pipe(Effect.forkChild)
+    yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+
+    assert.strictEqual(driver.journal.length, 1)
+    assert.strictEqual(driver.unprocessed.size, 1, "the request is left for a compatible runner")
+    assert.strictEqual(driver.replyIds.size, 0, "no terminal reply is stored")
+    assert.isUndefined(fiber.pollUnsafe(), "the caller keeps waiting for a compatible runner")
+    assert.lengthOf(warnings, 1)
+    assert.include(warnings[0], "CompatibilityEntity")
+  }).pipe(
+    Effect.provide(OlderCompatibilitySharding),
+    Effect.provide(Logger.layer([logger]))
+  )
+}
+
+describe("Sharding persisted message compatibility", () => {
+  it.effect("leaves a persisted request with an incompatible payload for a compatible runner", () =>
+    leavesRequestForCompatibleRunner((client) => client.Add({ n: "x" })))
+
+  it.effect("leaves a persisted request for an unknown RPC for a compatible runner", () =>
+    leavesRequestForCompatibleRunner((client) => client.Remove()))
+})
