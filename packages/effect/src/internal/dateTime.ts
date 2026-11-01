@@ -1062,8 +1062,10 @@ const mutateRounding = (
 ): DateTime.DateTime => {
   if (
     self._tag === "Utc" || self.zone._tag === "Offset" ||
-    (part !== "millisecond" && part !== "second" && part !== "minute" && part !== "hour")
-  ) return mutate(self, f, { disambiguation })
+    part === "day" || part === "week" || part === "month" || part === "year"
+  ) {
+    return mutate(self, f, { disambiguation })
+  }
   // keep the original offset when it is still valid, so rounding inside a
   // repeated hour stays in the same occurrence of that hour
   const date = toDate(self)
@@ -1071,9 +1073,9 @@ const mutateRounding = (
   f(date)
   const adjustedMillis = date.getTime()
   const result = makeZonedProto(adjustedMillis - offset, self.zone)
-  return toDate(result).getTime() === adjustedMillis
+  return zonedOffset(result) === offset
     ? result
-    : makeZonedFromAdjusted(adjustedMillis, self.zone, "compatible")
+    : makeZonedFromAdjusted(adjustedMillis, self.zone, disambiguation)
 }
 
 const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
