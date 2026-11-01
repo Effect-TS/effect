@@ -14,6 +14,7 @@ import {
   Ref,
   Schedule,
   Schema,
+  Scope,
   Stream
 } from "effect"
 import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
@@ -2327,6 +2328,78 @@ Missing key
       )
       assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://api.example.com/start", now), undefined)
       assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://login.example.com/other", now), undefined)
+    }))
+
+  it.effect("sends stored cookies when the URL is prepended after withCookiesRef", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.make((request) => {
+        seen.push(request.headers.cookie)
+        return Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response(null, { status: 200, headers: { "set-cookie": "session=abc; Path=/" } })
+        ))
+      }).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.mapRequest(HttpClientRequest.prependUrl("https://api.example.com"))
+      )
+
+      yield* client.post("/login")
+      yield* client.get("/me")
+
+      assert.deepStrictEqual(seen, [undefined, "session=abc"])
+    }))
+
+  it.effect("selects stored cookies for each redirect hop", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      yield* Ref.update(jar, Cookies.mergeIntoArray("https://b.test/", Cookies.fromSetCookie(["b=1"]), 0))
+      const redirects: Record<string, Record<string, string>> = {
+        "https://a.test/start": { location: "https://a.test/next", "set-cookie": "a=1" },
+        "https://a.test/next": { location: "https://b.test/final" }
+      }
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.make((request) => {
+        seen.push(request.headers.cookie)
+        const headers = redirects[request.url]
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: headers ? 302 : 200, headers }))
+        )
+      }).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.followRedirects()
+      )
+
+      yield* client.get("https://a.test/start")
+
+      assert.deepStrictEqual(seen, [undefined, "a=1", "b=1"])
+    }))
+
+  it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      yield* Ref.update(
+        jar,
+        Cookies.mergeIntoArray("https://api.example.com/", Cookies.fromSetCookie(["session=abc"]), 0)
+      )
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        Effect.andThen(
+          Deferred.succeed(started, signal),
+          Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
+        )
+      ).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.withScope
+      )
+
+      const scope = yield* Scope.make()
+      yield* client.get("https://api.example.com/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
