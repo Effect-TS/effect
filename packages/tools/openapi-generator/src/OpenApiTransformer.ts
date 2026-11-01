@@ -93,20 +93,22 @@ const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
   const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
   if (operation.urlParams.length > 0) {
     const props = operation.urlParams.map((param) => {
-      const value = `${paramsAccessor}["${param}"]`
-      return `"${param}": ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
+      const value = `${paramsAccessor}[${JSON.stringify(param)}]`
+      return `${JSON.stringify(param)}: ${
+        operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value
+      } as any`
     })
     pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
   }
   if (operation.headers.length > 0) {
     const props = operation.headers.map(
-      (param) => `"${param}": ${paramsAccessor}["${param}"] ?? undefined`
+      (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}] ?? undefined`
     )
     pipeline.push(`HttpClientRequest.setHeaders({ ${props.join(", ")} })`)
   }
   if (operation.cookies.length > 0) {
     const props = operation.cookies.map(
-      (param) => `"${param}": ${paramsAccessor}["${param}"]`
+      (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}]`
     )
     pipeline.push(`HttpClientRequest.setHeaders({ "cookie": __cookieHeader({ ${props.join(", ")} }) })`)
   }
@@ -205,7 +207,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}"`
+    const methodKey = `readonly ${JSON.stringify(operation.id)}`
     return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
   }
 
@@ -234,7 +236,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}Sse"`
+    const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
     const parameters = args.join(", ")
     const value = responses.sseSchemaMode === "event"
       ? responses.sseSchema
@@ -268,7 +270,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}Stream"`
+    const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
     const parameters = args.join(", ")
     const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
@@ -363,7 +365,7 @@ export const make = <E, R>(
     const responses = operation.httpClientResponses
     const params = [
       ...operation.pathIds,
-      `options: Parameters<${name}["${operation.id}"]>[${operation.pathIds.length}]`
+      `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
     ].join(", ")
 
     const pipeline: Array<string> = []
@@ -403,7 +405,7 @@ export const make = <E, R>(
     }))`)
 
     return (
-      `"${operation.id}": (${params}) => ` +
+      `${JSON.stringify(operation.id)}: (${params}) => ` +
       requestToImpl(operation, pipeline)
     )
   }
@@ -432,7 +434,7 @@ export const make = <E, R>(
     pipeline.push(`${responses.sseSchemaMode === "event" ? "sseEventRequest" : "sseRequest"}(${responses.sseSchema})`)
 
     return (
-      `"${operation.id}Sse": (${params}) => ` +
+      `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
       requestToImpl(operation, pipeline, true)
     )
   }
@@ -460,7 +462,7 @@ export const make = <E, R>(
     pipeline.push(`binaryRequest`)
 
     return (
-      `"${operation.id}Stream": (${params}) => ` +
+      `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
       requestToImpl(operation, pipeline, true)
     )
   }
@@ -590,7 +592,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}"`
+    const methodKey = `readonly ${JSON.stringify(operation.id)}`
     return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
   }
 
@@ -619,7 +621,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}Sse"`
+    const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
     const parameters = args.join(", ")
     const returnType = `Stream.Stream<${responses.sseSchema}, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
@@ -649,7 +651,7 @@ ${clientErrorSource(name)}`
     }
 
     const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly "${operation.id}Stream"`
+    const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
     const parameters = args.join(", ")
     const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
@@ -756,7 +758,7 @@ export const make = <E, R>(
     const responses = operation.httpClientResponses
     const params = [
       ...operation.pathIds,
-      `options: Parameters<${name}["${operation.id}"]>[${operation.pathIds.length}]`
+      `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
     ].join(", ")
 
     const pipeline: Array<string> = []
@@ -796,7 +798,7 @@ export const make = <E, R>(
     pipeline.push(`onRequest(${configAccessor})(${requestArgs.join(", ")})`)
 
     return (
-      `"${operation.id}": (${params}) => ` +
+      `${JSON.stringify(operation.id)}: (${params}) => ` +
       requestToImpl(operation, pipeline)
     )
   }
@@ -824,7 +826,7 @@ export const make = <E, R>(
     pipeline.push(`sseRequest`)
 
     return (
-      `"${operation.id}Sse": (${params}) => ` +
+      `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
       requestToImpl(operation, pipeline, true)
     )
   }
@@ -852,7 +854,7 @@ export const make = <E, R>(
     pipeline.push(`binaryRequest`)
 
     return (
-      `"${operation.id}Stream": (${params}) => ` +
+      `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
       requestToImpl(operation, pipeline, true)
     )
   }
