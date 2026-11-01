@@ -12124,24 +12124,77 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
 
-const netAddressFromString = <S extends Constraint, E extends { readonly message: string }>(
+const stringTransformation = <A, E extends { readonly message: string }>(
+  parse: (input: string) => Result_.Result<A, E>,
+  format: (value: A) => string
+): SchemaTransformation.Transformation<A, string> =>
+  SchemaTransformation.transformEffect({
+    decode: (input, options) =>
+      Effect.mapErrorEager(
+        Effect.fromResult(parse(input)),
+        (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options)
+      ),
+    encode: (value) => Effect.succeed(format(value))
+  })
+
+const netAddressFromString = <S extends Constraint>(
   declaration: S,
-  parse: (input: string) => Result_.Result<S["Encoded"], E>,
-  encode: (value: S["Encoded"]) => string,
+  transformation: SchemaTransformation.Transformation<S["Encoded"], string>,
   identifier: string
-) =>
-  String.pipe(decodeTo(
-    declaration,
-    SchemaTransformation.transformEffect({
-      decode: (input, options) => {
-        const result = parse(input)
-        return Result_.isSuccess(result)
-          ? Effect.succeed(result.success)
-          : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
-      },
-      encode: (value) => Effect.succeed(encode(value))
-    })
-  )).annotate({ identifier })
+) => String.pipe(decodeTo(declaration, transformation)).annotate({ identifier })
+
+// Some net schemas share their name with their module (e.g. `IpInterface`),
+// so a namespace import would collide with the generated declaration.
+const netToCode = (name: string) => () => ({
+  runtime: `Schema.${name}`,
+  Type: `Schema.${name}["Type"]`
+})
+
+const netIntArbitrary = (minimum: number, maximum: number) => Int.check(isBetween({ minimum, maximum }))
+const NetOctetArbitrary = netIntArbitrary(0, 255)
+const NetSegmentArbitrary = netIntArbitrary(0, 0xffff)
+const netPrefixLengthArbitrary = (maximum: number) => netIntArbitrary(0, maximum)
+
+const netIpv4Octets = (first: Int = NetOctetArbitrary, second: Int = NetOctetArbitrary) =>
+  Tuple([first, second, NetOctetArbitrary, NetOctetArbitrary])
+
+const netIpv6Segments = (first: Int = NetSegmentArbitrary) =>
+  Tuple([
+    first,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary
+  ])
+
+const netIpArbitrary = <S extends Constraint & { readonly Type: NetAddress_.IpAddressInput }>(input: S) => () =>
+  linkDecoding<NetAddress_.IpAddress>()(
+    input,
+    SchemaGetter.transform((input: NetAddress_.IpAddressInput) => Result_.getOrThrow(NetAddress_.ipFromInput(input)))
+  )
+
+const netMacArbitrary = (firstOctet: (octet: number) => number) => () =>
+  linkDecoding<NetAddress_.MacAddress>()(
+    Tuple([
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary
+    ]),
+    SchemaGetter.transform(([first, ...rest]) =>
+      Result_.getOrThrow(NetAddress_.macAddressFromOctets([firstOctet(first), ...rest]))
+    )
+  )
+
+const macAddressFromString = stringTransformation(NetAddress_.macAddressFromString, NetAddress_.formatMacAddress)
+const ipv4AddressFromString = stringTransformation(NetAddress_.ipv4FromString, NetAddress_.formatIp)
+const ipv6AddressFromString = stringTransformation(NetAddress_.ipv6FromString, NetAddress_.formatIp)
+const ipAddressFromString = stringTransformation(NetAddress_.ipFromString, NetAddress_.formatIp)
 
 /**
  * Type-level representation of {@link MacAddress}.
@@ -12157,12 +12210,30 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
 /**
  * Schema for already-constructed MAC address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as a lowercase
+ * colon-separated string.
+ *
+ * @see {@link MacAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
-  identifier: "MacAddress"
+  identifier: "MacAddress",
+  representation: {
+    id: "effect/schema/MacAddress",
+    payload: null
+  },
+  toCode: netToCode("MacAddress"),
+  toCodecArbitrary: netMacArbitrary((octet) => octet),
+  toCodecJson: () =>
+    link<NetAddress_.MacAddress>()(
+      String,
+      macAddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatMacAddress
 })
 
 /**
@@ -12185,8 +12256,7 @@ export interface MacAddressFromString extends decodeTo<MacAddress, String> {
  */
 export const MacAddressFromString: MacAddressFromString = netAddressFromString(
   MacAddress,
-  NetAddress_.macAddressFromString,
-  NetAddress_.formatMacAddress,
+  macAddressFromString,
   "MacAddressFromString"
 )
 
@@ -12204,12 +12274,29 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
 /**
  * Schema for already-constructed IPv4 address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as a dotted-decimal string.
+ *
+ * @see {@link Ipv4AddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
-  identifier: "Ipv4Address"
+  identifier: "Ipv4Address",
+  representation: {
+    id: "effect/schema/Ipv4Address",
+    payload: null
+  },
+  toCode: netToCode("Ipv4Address"),
+  toCodecArbitrary: netIpArbitrary(netIpv4Octets()),
+  toCodecJson: () =>
+    link<NetAddress_.Ipv4Address>()(
+      String,
+      ipv4AddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatIp
 })
 
 /**
@@ -12232,8 +12319,7 @@ export interface Ipv4AddressFromString extends decodeTo<Ipv4Address, String> {
  */
 export const Ipv4AddressFromString: Ipv4AddressFromString = netAddressFromString(
   Ipv4Address,
-  NetAddress_.ipv4FromString,
-  NetAddress_.formatIp,
+  ipv4AddressFromString,
   "Ipv4AddressFromString"
 )
 
@@ -12251,12 +12337,29 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
 /**
  * Schema for already-constructed IPv6 address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as an RFC 5952 string.
+ *
+ * @see {@link Ipv6AddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
-  identifier: "Ipv6Address"
+  identifier: "Ipv6Address",
+  representation: {
+    id: "effect/schema/Ipv6Address",
+    payload: null
+  },
+  toCode: netToCode("Ipv6Address"),
+  toCodecArbitrary: netIpArbitrary(netIpv6Segments()),
+  toCodecJson: () =>
+    link<NetAddress_.Ipv6Address>()(
+      String,
+      ipv6AddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatIp
 })
 
 /**
@@ -12279,8 +12382,7 @@ export interface Ipv6AddressFromString extends decodeTo<Ipv6Address, String> {
  */
 export const Ipv6AddressFromString: Ipv6AddressFromString = netAddressFromString(
   Ipv6Address,
-  NetAddress_.ipv6FromString,
-  NetAddress_.formatIp,
+  ipv6AddressFromString,
   "Ipv6AddressFromString"
 )
 
@@ -12298,12 +12400,33 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
 /**
  * Schema for already-constructed IPv4 or IPv6 address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as a canonical string.
+ *
+ * @see {@link IpAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
-  identifier: "IpAddress"
+  identifier: "IpAddress",
+  representation: {
+    id: "effect/schema/IpAddress",
+    payload: null
+  },
+  toCode: netToCode("IpAddress"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.IpAddress>()(
+      Union([Ipv4Address, Ipv6Address]),
+      SchemaGetter.passthrough()
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.IpAddress>()(
+      String,
+      ipAddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatIp
 })
 
 /**
@@ -12326,17 +12449,52 @@ export interface IpAddressFromString extends decodeTo<IpAddress, String> {
  */
 export const IpAddressFromString: IpAddressFromString = netAddressFromString(
   IpAddress,
-  NetAddress_.ipFromString,
-  NetAddress_.formatIp,
+  ipAddressFromString,
   "IpAddressFromString"
 )
 
-const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
+// `toCodecArbitrary` replaces the base declaration's generator so that values
+// are generated inside the refined set instead of being filtered out of it.
+const netAddressRefinement = <S extends Top & { readonly "Rebuild": S }, T extends S["Type"]>(
   schema: S,
   guard: (value: S["Type"]) => value is T,
   expected: string,
-  identifier: string
-): refine<T, S> => refine(guard, { expected })(schema).annotate({ identifier })
+  identifier: string,
+  toCodecArbitrary?: () => SchemaAST.Link
+): refine<T, S> =>
+  refine(guard, { expected })(
+    toCodecArbitrary === undefined ? schema : schema.rebuild(SchemaAST.annotate(schema.ast, { toCodecArbitrary }))
+  ).annotate({ identifier })
+
+const ipMulticastArbitrary = netIpArbitrary(
+  Union([netIpv4Octets(netIntArbitrary(224, 239)), netIpv6Segments(netIntArbitrary(0xff00, 0xffff))])
+)
+const macMulticastArbitrary = netMacArbitrary((octet) => octet | 0x01)
+const macUnicastArbitrary = netMacArbitrary((octet) => octet & 0xfe)
+const ipv4BroadcastArbitrary = netIpArbitrary(Literal("255.255.255.255"))
+const macBroadcastArbitrary = () =>
+  linkDecoding<NetAddress_.MacAddress>()(
+    Literal("ff:ff:ff:ff:ff:ff"),
+    SchemaGetter.transform(NetAddress_.macAddressFromStringUnsafe)
+  )
+const ipLoopbackArbitrary = netIpArbitrary(Union([netIpv4Octets(netIntArbitrary(127, 127)), Literal("::1")]))
+const ipLinkLocalArbitrary = netIpArbitrary(
+  Union([
+    netIpv4Octets(netIntArbitrary(169, 169), netIntArbitrary(254, 254)),
+    netIpv6Segments(netIntArbitrary(0xfe80, 0xfebf))
+  ])
+)
+const ipUnspecifiedArbitrary = netIpArbitrary(Literals(["0.0.0.0", "::"]))
+const ipv4PrivateArbitrary = netIpArbitrary(
+  Union([
+    netIpv4Octets(netIntArbitrary(10, 10)),
+    netIpv4Octets(netIntArbitrary(172, 172), netIntArbitrary(16, 31)),
+    netIpv4Octets(netIntArbitrary(192, 192), netIntArbitrary(168, 168))
+  ])
+)
+const ipv6UniqueLocalArbitrary = netIpArbitrary(netIpv6Segments(netIntArbitrary(0xfc00, 0xfdff)))
+const macLocallyAdministeredArbitrary = netMacArbitrary((octet) => octet | 0x02)
+const macUniversallyAdministeredArbitrary = netMacArbitrary((octet) => octet & 0xfd)
 
 /**
  * Type-level representation of {@link IpMulticastAddress}.
@@ -12360,7 +12518,8 @@ export const IpMulticastAddress: IpMulticastAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isMulticast,
   "a multicast address",
-  "IpMulticastAddress"
+  "IpMulticastAddress",
+  ipMulticastArbitrary
 )
 
 /**
@@ -12398,7 +12557,8 @@ export const IpMulticastAddressFromString: IpMulticastAddressFromString = netAdd
   IpAddressFromString,
   NetAddress_.isMulticast,
   "a multicast address",
-  "IpMulticastAddressFromString"
+  "IpMulticastAddressFromString",
+  ipMulticastArbitrary
 )
 
 /**
@@ -12423,7 +12583,8 @@ export const MacMulticastAddress: MacMulticastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMulticast,
   "a multicast address",
-  "MacMulticastAddress"
+  "MacMulticastAddress",
+  macMulticastArbitrary
 )
 
 /**
@@ -12450,7 +12611,8 @@ export const MacMulticastAddressFromString: MacMulticastAddressFromString = netA
   MacAddressFromString,
   NetAddress_.isMulticast,
   "a multicast address",
-  "MacMulticastAddressFromString"
+  "MacMulticastAddressFromString",
+  macMulticastArbitrary
 )
 
 /**
@@ -12527,7 +12689,8 @@ export const MacUnicastAddress: MacUnicastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMacUnicast,
   "a unicast address",
-  "MacUnicastAddress"
+  "MacUnicastAddress",
+  macUnicastArbitrary
 )
 
 /**
@@ -12554,7 +12717,8 @@ export const MacUnicastAddressFromString: MacUnicastAddressFromString = netAddre
   MacAddressFromString,
   NetAddress_.isMacUnicast,
   "a unicast address",
-  "MacUnicastAddressFromString"
+  "MacUnicastAddressFromString",
+  macUnicastArbitrary
 )
 
 /**
@@ -12581,7 +12745,8 @@ export const Ipv4BroadcastAddress: Ipv4BroadcastAddress = netAddressRefinement(
   Ipv4Address,
   NetAddress_.isBroadcast,
   "a broadcast address",
-  "Ipv4BroadcastAddress"
+  "Ipv4BroadcastAddress",
+  ipv4BroadcastArbitrary
 )
 
 /**
@@ -12608,7 +12773,8 @@ export const Ipv4BroadcastAddressFromString: Ipv4BroadcastAddressFromString = ne
   Ipv4AddressFromString,
   NetAddress_.isBroadcast,
   "a broadcast address",
-  "Ipv4BroadcastAddressFromString"
+  "Ipv4BroadcastAddressFromString",
+  ipv4BroadcastArbitrary
 )
 
 /**
@@ -12633,7 +12799,8 @@ export const MacBroadcastAddress: MacBroadcastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMacBroadcast,
   "a broadcast address",
-  "MacBroadcastAddress"
+  "MacBroadcastAddress",
+  macBroadcastArbitrary
 )
 
 /**
@@ -12660,7 +12827,8 @@ export const MacBroadcastAddressFromString: MacBroadcastAddressFromString = netA
   MacAddressFromString,
   NetAddress_.isMacBroadcast,
   "a broadcast address",
-  "MacBroadcastAddressFromString"
+  "MacBroadcastAddressFromString",
+  macBroadcastArbitrary
 )
 
 /**
@@ -12685,7 +12853,8 @@ export const IpLoopbackAddress: IpLoopbackAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isLoopback,
   "a loopback address",
-  "IpLoopbackAddress"
+  "IpLoopbackAddress",
+  ipLoopbackArbitrary
 )
 
 /**
@@ -12712,7 +12881,8 @@ export const IpLoopbackAddressFromString: IpLoopbackAddressFromString = netAddre
   IpAddressFromString,
   NetAddress_.isLoopback,
   "a loopback address",
-  "IpLoopbackAddressFromString"
+  "IpLoopbackAddressFromString",
+  ipLoopbackArbitrary
 )
 
 /**
@@ -12737,7 +12907,8 @@ export const IpLinkLocalAddress: IpLinkLocalAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isLinkLocal,
   "a link-local address",
-  "IpLinkLocalAddress"
+  "IpLinkLocalAddress",
+  ipLinkLocalArbitrary
 )
 
 /**
@@ -12764,7 +12935,8 @@ export const IpLinkLocalAddressFromString: IpLinkLocalAddressFromString = netAdd
   IpAddressFromString,
   NetAddress_.isLinkLocal,
   "a link-local address",
-  "IpLinkLocalAddressFromString"
+  "IpLinkLocalAddressFromString",
+  ipLinkLocalArbitrary
 )
 
 /**
@@ -12789,7 +12961,8 @@ export const IpUnspecifiedAddress: IpUnspecifiedAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isUnspecified,
   "an unspecified address",
-  "IpUnspecifiedAddress"
+  "IpUnspecifiedAddress",
+  ipUnspecifiedArbitrary
 )
 
 /**
@@ -12816,7 +12989,8 @@ export const IpUnspecifiedAddressFromString: IpUnspecifiedAddressFromString = ne
   IpAddressFromString,
   NetAddress_.isUnspecified,
   "an unspecified address",
-  "IpUnspecifiedAddressFromString"
+  "IpUnspecifiedAddressFromString",
+  ipUnspecifiedArbitrary
 )
 
 /**
@@ -12841,7 +13015,8 @@ export const Ipv4PrivateAddress: Ipv4PrivateAddress = netAddressRefinement(
   Ipv4Address,
   NetAddress_.isPrivate,
   "a private address",
-  "Ipv4PrivateAddress"
+  "Ipv4PrivateAddress",
+  ipv4PrivateArbitrary
 )
 
 /**
@@ -12868,7 +13043,8 @@ export const Ipv4PrivateAddressFromString: Ipv4PrivateAddressFromString = netAdd
   Ipv4AddressFromString,
   NetAddress_.isPrivate,
   "a private address",
-  "Ipv4PrivateAddressFromString"
+  "Ipv4PrivateAddressFromString",
+  ipv4PrivateArbitrary
 )
 
 /**
@@ -12895,7 +13071,8 @@ export const Ipv6UniqueLocalAddress: Ipv6UniqueLocalAddress = netAddressRefineme
   Ipv6Address,
   NetAddress_.isUniqueLocal,
   "a unique-local address",
-  "Ipv6UniqueLocalAddress"
+  "Ipv6UniqueLocalAddress",
+  ipv6UniqueLocalArbitrary
 )
 
 /**
@@ -12922,7 +13099,8 @@ export const Ipv6UniqueLocalAddressFromString: Ipv6UniqueLocalAddressFromString 
   Ipv6AddressFromString,
   NetAddress_.isUniqueLocal,
   "a unique-local address",
-  "Ipv6UniqueLocalAddressFromString"
+  "Ipv6UniqueLocalAddressFromString",
+  ipv6UniqueLocalArbitrary
 )
 
 /**
@@ -12949,7 +13127,8 @@ export const MacLocallyAdministeredAddress: MacLocallyAdministeredAddress = netA
   MacAddress,
   NetAddress_.isMacLocallyAdministered,
   "a locally administered address",
-  "MacLocallyAdministeredAddress"
+  "MacLocallyAdministeredAddress",
+  macLocallyAdministeredArbitrary
 )
 
 /**
@@ -12976,7 +13155,8 @@ export const MacLocallyAdministeredAddressFromString: MacLocallyAdministeredAddr
   MacAddressFromString,
   NetAddress_.isMacLocallyAdministered,
   "a locally administered address",
-  "MacLocallyAdministeredAddressFromString"
+  "MacLocallyAdministeredAddressFromString",
+  macLocallyAdministeredArbitrary
 )
 
 /**
@@ -13003,7 +13183,8 @@ export const MacUniversallyAdministeredAddress: MacUniversallyAdministeredAddres
   MacAddress,
   NetAddress_.isMacUniversallyAdministered,
   "a universally administered address",
-  "MacUniversallyAdministeredAddress"
+  "MacUniversallyAdministeredAddress",
+  macUniversallyAdministeredArbitrary
 )
 
 /**
@@ -13031,7 +13212,8 @@ export const MacUniversallyAdministeredAddressFromString: MacUniversallyAdminist
     MacAddressFromString,
     NetAddress_.isMacUniversallyAdministered,
     "a universally administered address",
-    "MacUniversallyAdministeredAddressFromString"
+    "MacUniversallyAdministeredAddressFromString",
+    macUniversallyAdministeredArbitrary
   )
 
 /**
@@ -13045,15 +13227,40 @@ export interface Ipv4Interface extends declare<IpInterface_.Ipv4Interface> {
   readonly "Rebuild": Ipv4Interface
 }
 
+const ipv4InterfaceFromString = stringTransformation(IpInterface_.ipv4FromString, IpInterface_.format)
+const ipv6InterfaceFromString = stringTransformation(IpInterface_.ipv6FromString, IpInterface_.format)
+const ipInterfaceFromString = stringTransformation(IpInterface_.fromString, IpInterface_.format)
+
 /**
  * Schema for already-constructed IPv4 interface address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
+ *
+ * @see {@link Ipv4InterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface, {
-  identifier: "Ipv4Interface"
+  identifier: "Ipv4Interface",
+  representation: {
+    id: "effect/schema/Ipv4Interface",
+    payload: null
+  },
+  toCode: netToCode("Ipv4Interface"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpInterface_.Ipv4Interface>()(
+      Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
+      SchemaGetter.transform(([address, prefixLength]) => IpInterface_.makeUnsafe(address, prefixLength))
+    ),
+  toCodecJson: () =>
+    link<IpInterface_.Ipv4Interface>()(
+      String,
+      ipv4InterfaceFromString
+    ),
+  toFormatter: () => IpInterface_.format
 })
 
 /**
@@ -13076,8 +13283,7 @@ export interface Ipv4InterfaceFromString extends decodeTo<Ipv4Interface, String>
  */
 export const Ipv4InterfaceFromString: Ipv4InterfaceFromString = netAddressFromString(
   Ipv4Interface,
-  IpInterface_.ipv4FromString,
-  IpInterface_.format,
+  ipv4InterfaceFromString,
   "Ipv4InterfaceFromString"
 )
 
@@ -13095,12 +13301,33 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
 /**
  * Schema for already-constructed IPv6 interface address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
+ *
+ * @see {@link Ipv6InterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface, {
-  identifier: "Ipv6Interface"
+  identifier: "Ipv6Interface",
+  representation: {
+    id: "effect/schema/Ipv6Interface",
+    payload: null
+  },
+  toCode: netToCode("Ipv6Interface"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpInterface_.Ipv6Interface>()(
+      Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
+      SchemaGetter.transform(([address, prefixLength]) => IpInterface_.makeUnsafe(address, prefixLength))
+    ),
+  toCodecJson: () =>
+    link<IpInterface_.Ipv6Interface>()(
+      String,
+      ipv6InterfaceFromString
+    ),
+  toFormatter: () => IpInterface_.format
 })
 
 /**
@@ -13123,8 +13350,7 @@ export interface Ipv6InterfaceFromString extends decodeTo<Ipv6Interface, String>
  */
 export const Ipv6InterfaceFromString: Ipv6InterfaceFromString = netAddressFromString(
   Ipv6Interface,
-  IpInterface_.ipv6FromString,
-  IpInterface_.format,
+  ipv6InterfaceFromString,
   "Ipv6InterfaceFromString"
 )
 
@@ -13142,12 +13368,33 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
 /**
  * Schema for already-constructed IPv4 or IPv6 interface address values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
+ *
+ * @see {@link IpInterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
-  identifier: "IpInterface"
+  identifier: "IpInterface",
+  representation: {
+    id: "effect/schema/IpInterface",
+    payload: null
+  },
+  toCode: netToCode("IpInterface"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpInterface_.IpInterface>()(
+      Union([Ipv4Interface, Ipv6Interface]),
+      SchemaGetter.passthrough()
+    ),
+  toCodecJson: () =>
+    link<IpInterface_.IpInterface>()(
+      String,
+      ipInterfaceFromString
+    ),
+  toFormatter: () => IpInterface_.format
 })
 
 /**
@@ -13170,8 +13417,7 @@ export interface IpInterfaceFromString extends decodeTo<IpInterface, String> {
  */
 export const IpInterfaceFromString: IpInterfaceFromString = netAddressFromString(
   IpInterface,
-  IpInterface_.fromString,
-  IpInterface_.format,
+  ipInterfaceFromString,
   "IpInterfaceFromString"
 )
 
@@ -13186,15 +13432,40 @@ export interface Ipv4Network extends declare<IpNetwork_.Ipv4Network> {
   readonly "Rebuild": Ipv4Network
 }
 
+const ipv4NetworkFromString = stringTransformation(IpNetwork_.ipv4FromString, IpNetwork_.format)
+const ipv6NetworkFromString = stringTransformation(IpNetwork_.ipv6FromString, IpNetwork_.format)
+const ipNetworkFromString = stringTransformation(IpNetwork_.fromString, IpNetwork_.format)
+
 /**
  * Schema for already-constructed canonical IPv4 network prefixes.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a network in CIDR notation.
+ *
+ * @see {@link Ipv4NetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
-  identifier: "Ipv4Network"
+  identifier: "Ipv4Network",
+  representation: {
+    id: "effect/schema/Ipv4Network",
+    payload: null
+  },
+  toCode: netToCode("Ipv4Network"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpNetwork_.Ipv4Network>()(
+      Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
+      SchemaGetter.transform(([address, prefixLength]) => IpNetwork_.fromAddressUnsafe(address, prefixLength))
+    ),
+  toCodecJson: () =>
+    link<IpNetwork_.Ipv4Network>()(
+      String,
+      ipv4NetworkFromString
+    ),
+  toFormatter: () => IpNetwork_.format
 })
 
 /**
@@ -13217,8 +13488,7 @@ export interface Ipv4NetworkFromString extends decodeTo<Ipv4Network, String> {
  */
 export const Ipv4NetworkFromString: Ipv4NetworkFromString = netAddressFromString(
   Ipv4Network,
-  IpNetwork_.ipv4FromString,
-  IpNetwork_.format,
+  ipv4NetworkFromString,
   "Ipv4NetworkFromString"
 )
 
@@ -13236,12 +13506,33 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
 /**
  * Schema for already-constructed canonical IPv6 network prefixes.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a network in CIDR notation.
+ *
+ * @see {@link Ipv6NetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
-  identifier: "Ipv6Network"
+  identifier: "Ipv6Network",
+  representation: {
+    id: "effect/schema/Ipv6Network",
+    payload: null
+  },
+  toCode: netToCode("Ipv6Network"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpNetwork_.Ipv6Network>()(
+      Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
+      SchemaGetter.transform(([address, prefixLength]) => IpNetwork_.fromAddressUnsafe(address, prefixLength))
+    ),
+  toCodecJson: () =>
+    link<IpNetwork_.Ipv6Network>()(
+      String,
+      ipv6NetworkFromString
+    ),
+  toFormatter: () => IpNetwork_.format
 })
 
 /**
@@ -13264,8 +13555,7 @@ export interface Ipv6NetworkFromString extends decodeTo<Ipv6Network, String> {
  */
 export const Ipv6NetworkFromString: Ipv6NetworkFromString = netAddressFromString(
   Ipv6Network,
-  IpNetwork_.ipv6FromString,
-  IpNetwork_.format,
+  ipv6NetworkFromString,
   "Ipv6NetworkFromString"
 )
 
@@ -13283,12 +13573,33 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
 /**
  * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a network in CIDR notation.
+ *
+ * @see {@link IpNetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
-  identifier: "IpNetwork"
+  identifier: "IpNetwork",
+  representation: {
+    id: "effect/schema/IpNetwork",
+    payload: null
+  },
+  toCode: netToCode("IpNetwork"),
+  toCodecArbitrary: () =>
+    linkDecoding<IpNetwork_.IpNetwork>()(
+      Union([Ipv4Network, Ipv6Network]),
+      SchemaGetter.passthrough()
+    ),
+  toCodecJson: () =>
+    link<IpNetwork_.IpNetwork>()(
+      String,
+      ipNetworkFromString
+    ),
+  toFormatter: () => IpNetwork_.format
 })
 
 /**
@@ -13311,8 +13622,7 @@ export interface IpNetworkFromString extends decodeTo<IpNetwork, String> {
  */
 export const IpNetworkFromString: IpNetworkFromString = netAddressFromString(
   IpNetwork,
-  IpNetwork_.fromString,
-  IpNetwork_.format,
+  ipNetworkFromString,
   "IpNetworkFromString"
 )
 
@@ -13327,15 +13637,56 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
   readonly "Rebuild": InetAddressV4
 }
 
+const inetAddressFromString = stringTransformation(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
+const inetAddressFamilyFromString = <A extends NetAddress_.InetAddress>(
+  guard: (address: NetAddress_.InetAddress) => address is A,
+  message: string
+) =>
+  stringTransformation<A, NetAddress_.NetAddressError>(
+    (input) =>
+      Result_.flatMap(
+        NetAddress_.inetAddressFromString(input),
+        (address) =>
+          guard(address) ? Result_.succeed(address) : Result_.fail(new NetAddress_.NetAddressError({ input, message }))
+      ),
+    NetAddress_.formatInet
+  )
+const inetAddressV4FromString = inetAddressFamilyFromString(
+  NetAddress_.isInetAddressV4,
+  "expected an IPv4 address:port"
+)
+const inetAddressV6FromString = inetAddressFamilyFromString(NetAddress_.isInetAddressV6, "expected [IPv6]:port")
+
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as `address:port`.
+ *
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4, {
-  identifier: "InetAddressV4"
+  identifier: "InetAddressV4",
+  representation: {
+    id: "effect/schema/InetAddressV4",
+    payload: null
+  },
+  toCode: netToCode("InetAddressV4"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.InetAddressV4>()(
+      Tuple([Ipv4Address, Port]),
+      SchemaGetter.transform(([address, port]) => Result_.getOrThrow(NetAddress_.inetAddressV4(address, port)))
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.InetAddressV4>()(
+      String,
+      inetAddressV4FromString
+    ),
+  toFormatter: () => NetAddress_.formatInet
 })
 
 /**
@@ -13352,12 +13703,35 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
 /**
  * Schema for already-constructed resolved IPv6 internet addresses.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as `[address]:port`.
+ *
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6, {
-  identifier: "InetAddressV6"
+  identifier: "InetAddressV6",
+  representation: {
+    id: "effect/schema/InetAddressV6",
+    payload: null
+  },
+  toCode: netToCode("InetAddressV6"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.InetAddressV6>()(
+      Tuple([Ipv6Address, Port, Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))]),
+      SchemaGetter.transform(([address, port, scopeId]) =>
+        Result_.getOrThrow(NetAddress_.inetAddressV6(address, port, { scopeId }))
+      )
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.InetAddressV6>()(
+      String,
+      inetAddressV6FromString
+    ),
+  toFormatter: () => NetAddress_.formatInet
 })
 
 /**
@@ -13374,12 +13748,34 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
 /**
  * Schema for already-constructed resolved internet addresses.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as `address:port` or
+ * `[address]:port`.
+ *
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
-  identifier: "InetAddress"
+  identifier: "InetAddress",
+  representation: {
+    id: "effect/schema/InetAddress",
+    payload: null
+  },
+  toCode: netToCode("InetAddress"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.InetAddress>()(
+      Union([InetAddressV4, InetAddressV6]),
+      SchemaGetter.passthrough()
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.InetAddress>()(
+      String,
+      inetAddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatInet
 })
 
 /**
@@ -13402,8 +13798,7 @@ export interface InetAddressFromString extends decodeTo<InetAddress, String> {
  */
 export const InetAddressFromString: InetAddressFromString = netAddressFromString(
   InetAddress,
-  NetAddress_.inetAddressFromString,
-  NetAddress_.formatInet,
+  inetAddressFromString,
   "InetAddressFromString"
 )
 
@@ -13418,17 +13813,42 @@ export interface UnixPathAddress extends declare<NetAddress_.UnixPathAddress> {
   readonly "Rebuild": UnixPathAddress
 }
 
+const unixPathAddressFromString = SchemaTransformation.transform<NetAddress_.UnixPathAddress, string>({
+  decode: NetAddress_.unixPathAddress,
+  encode: (address) => address.path
+})
+
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an address as its raw path.
+ *
+ * @see {@link UnixPathAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
-export const UnixPathAddress: UnixPathAddress = declare(
-  NetAddress_.isUnixPathAddress,
-  { identifier: "UnixPathAddress" }
-)
+export const UnixPathAddress: UnixPathAddress = declare(NetAddress_.isUnixPathAddress, {
+  identifier: "UnixPathAddress",
+  representation: {
+    id: "effect/schema/UnixPathAddress",
+    payload: null
+  },
+  toCode: netToCode("UnixPathAddress"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.UnixPathAddress>()(
+      String,
+      SchemaGetter.transform(NetAddress_.unixPathAddress)
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.UnixPathAddress>()(
+      String,
+      unixPathAddressFromString
+    ),
+  toFormatter: () => (address) => address.path
+})
 
 /**
  * Type-level representation of {@link UnixPathAddressFromString}.
@@ -13448,13 +13868,11 @@ export interface UnixPathAddressFromString extends decodeTo<UnixPathAddress, Str
  * @category schemas
  * @since 4.0.0
  */
-export const UnixPathAddressFromString: UnixPathAddressFromString = String.pipe(decodeTo(
+export const UnixPathAddressFromString: UnixPathAddressFromString = netAddressFromString(
   UnixPathAddress,
-  SchemaTransformation.transform({
-    decode: NetAddress_.unixPathAddress,
-    encode: (address) => address.path
-  })
-)).annotate({ identifier: "UnixPathAddressFromString" })
+  unixPathAddressFromString,
+  "UnixPathAddressFromString"
+)
 
 /**
  * Type-level representation of {@link SocketAddress}.
@@ -13467,15 +13885,56 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
   readonly "Rebuild": SocketAddress
 }
 
+const unixSocketAddressPrefix = "unix://"
+
+const socketAddressFromString = stringTransformation<NetAddress_.SocketAddress, NetAddress_.NetAddressError>(
+  (input) =>
+    input.startsWith(unixSocketAddressPrefix)
+      ? Result_.succeed(NetAddress_.unixPathAddress(input.slice(unixSocketAddressPrefix.length)))
+      : Result_.mapError(
+        NetAddress_.inetAddressFromString(input),
+        (error) =>
+          new NetAddress_.NetAddressError({
+            input,
+            message: `${error.message}; Unix-domain addresses must start with ${unixSocketAddressPrefix}`
+          })
+      ),
+  (address) =>
+    address._tag === "UnixPathAddress" ? NetAddress_.formatUnixPath(address) : NetAddress_.formatInet(address)
+)
+
 /**
  * Schema for already-constructed portable concrete socket addresses.
+ *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode an internet address like
+ * {@link InetAddress} and a Unix-domain address as `unix://<path>`. Unlike
+ * {@link UnixPathAddress}, the prefix keeps a path such as `127.0.0.1:80`
+ * distinct from an internet address.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress, {
-  identifier: "SocketAddress"
+  identifier: "SocketAddress",
+  representation: {
+    id: "effect/schema/SocketAddress",
+    payload: null
+  },
+  toCode: netToCode("SocketAddress"),
+  toCodecArbitrary: () =>
+    linkDecoding<NetAddress_.SocketAddress>()(
+      Union([InetAddress, UnixPathAddress]),
+      SchemaGetter.passthrough()
+    ),
+  toCodecJson: () =>
+    link<NetAddress_.SocketAddress>()(
+      String,
+      socketAddressFromString
+    ),
+  toFormatter: () => NetAddress_.formatSocketAddress
 })
 
 /**
@@ -13503,7 +13962,15 @@ export interface DomainName extends brand<String, "~effect/net/Host/DomainName">
  * @since 4.0.0
  */
 export const DomainName: DomainName = String.check(
-  makeFilter(Host_.isDomainName, { expected: "a normalized domain name" })
+  makeFilter(Host_.isDomainName, {
+    expected: "a normalized domain name",
+    arbitraryConstraint: {
+      patterns: [{
+        source: "^(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\\.){0,3}[a-z_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\\.?$",
+        flags: ""
+      }]
+    }
+  })
 ).pipe(brand("~effect/net/Host/DomainName")).annotate({ identifier: "DomainName" })
 
 /**
@@ -13527,8 +13994,7 @@ export interface DomainNameFromString extends decodeTo<DomainName, String> {
  */
 export const DomainNameFromString: DomainNameFromString = netAddressFromString(
   DomainName,
-  Host_.domainNameFromString,
-  (name) => name,
+  stringTransformation<string, NetAddress_.NetAddressError>(Host_.domainNameFromString, (name) => name),
   "DomainNameFromString"
 )
 
@@ -13551,7 +14017,16 @@ export interface ScopedIpv6Literal extends brand<String, "~effect/net/NetAddress
  * @since 4.0.0
  */
 export const ScopedIpv6Literal: ScopedIpv6Literal = String.check(
-  makeFilter(NetAddress_.isScopedIpv6Literal, { expected: "a canonical scoped IPv6 literal" })
+  makeFilter(NetAddress_.isScopedIpv6Literal, {
+    expected: "a canonical scoped IPv6 literal",
+    arbitraryConstraint: {
+      patterns: [{
+        source:
+          "^(?:(?:[1-9a-f][0-9a-f]{0,3}:){7}|fe80::)[1-9a-f][0-9a-f]{0,3}%(?:0|[1-9][0-9]{0,8}|[a-z][a-z0-9]{0,7})$",
+        flags: ""
+      }]
+    }
+  })
 ).pipe(brand("~effect/net/NetAddress/ScopedIpv6Literal")).annotate({ identifier: "ScopedIpv6Literal" })
 
 /**
@@ -13575,8 +14050,10 @@ export interface ScopedIpv6LiteralFromString extends decodeTo<ScopedIpv6Literal,
  */
 export const ScopedIpv6LiteralFromString: ScopedIpv6LiteralFromString = netAddressFromString(
   ScopedIpv6Literal,
-  NetAddress_.scopedIpv6LiteralFromString,
-  (literal) => literal,
+  stringTransformation<string, NetAddress_.NetAddressError>(
+    NetAddress_.scopedIpv6LiteralFromString,
+    (literal) => literal
+  ),
   "ScopedIpv6LiteralFromString"
 )
 
@@ -13638,15 +14115,39 @@ export interface HostPort extends declare<Host_.HostPort> {
   readonly "Rebuild": HostPort
 }
 
+const hostPortFromString = stringTransformation(Host_.hostPortFromString, Host_.formatHostPort)
+
 /**
  * Schema for already-constructed unresolved host and port values.
  *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a value as `host:port` or
+ * `[IPv6]:port`.
+ *
+ * @see {@link HostPortFromString}
  * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
 export const HostPort: HostPort = declare(Host_.isHostPort, {
-  identifier: "HostPort"
+  identifier: "HostPort",
+  representation: {
+    id: "effect/schema/HostPort",
+    payload: null
+  },
+  toCode: netToCode("HostPort"),
+  toCodecArbitrary: () =>
+    linkDecoding<Host_.HostPort>()(
+      Tuple([Host, Port]),
+      SchemaGetter.transform(([host, port]) => Host_.hostPortUnsafe(host, port))
+    ),
+  toCodecJson: () =>
+    link<Host_.HostPort>()(
+      String,
+      hostPortFromString
+    ),
+  toFormatter: () => Host_.formatHostPort
 })
 
 /**
@@ -13670,8 +14171,7 @@ export interface HostPortFromString extends decodeTo<HostPort, String> {
  */
 export const HostPortFromString: HostPortFromString = netAddressFromString(
   HostPort,
-  Host_.hostPortFromString,
-  Host_.formatHostPort,
+  hostPortFromString,
   "HostPortFromString"
 )
 
@@ -17056,18 +17556,6 @@ export function Result<A extends Constraint, E extends Constraint>(
 // SemVer schemas
 // -----------------------------------------------------------------------------
 
-const semVerStringTransformation = <A>(
-  parse: (input: string) => Result_.Result<A, SemVer_.SemVerError>,
-  format: (value: A) => string
-): SchemaTransformation.Transformation<A, string> =>
-  SchemaTransformation.transformEffect({
-    decode: (input, options) =>
-      Effect.mapErrorEager(
-        Effect.fromResult(parse(input)),
-        (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options)
-      ),
-    encode: (value) => Effect.succeed(format(value))
-  })
 // Alphanumeric identifiers contain at least one non-digit.
 const SemVerCoreArbitrary = Struct({
   major: Natural,
@@ -17075,7 +17563,7 @@ const SemVerCoreArbitrary = Struct({
   patch: Natural,
   prerelease: ArraySchema(Union([Natural, String.check(isPattern(/^[0-9]*[A-Za-z-][0-9A-Za-z-]*$/))]))
 })
-const semVerFromString = semVerStringTransformation(SemVer_.parse, SemVer_.format)
+const semVerFromString = stringTransformation(SemVer_.parse, SemVer_.format)
 const SemVerString = String.annotate({ expected: "a string that will be decoded as a SemVer" })
 /**
  * Type-level representation of {@link SemVer}.
@@ -17156,7 +17644,7 @@ export interface SemVerFromString extends decodeTo<SemVer, String> {
 export const SemVerFromString: SemVerFromString = SemVerString.pipe(
   decodeTo(SemVer, semVerFromString)
 )
-const semVerRangeFromString = semVerStringTransformation(SemVerRange_.parse, SemVerRange_.format)
+const semVerRangeFromString = stringTransformation(SemVerRange_.parse, SemVerRange_.format)
 const SemVerRangeString = String.annotate({ expected: "a string that will be decoded as a SemVer range" })
 /**
  * Type-level representation of {@link SemVerRange}.
