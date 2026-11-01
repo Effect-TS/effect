@@ -2362,11 +2362,14 @@ describe.concurrent("Sharding defect recovery", () => {
       yield* Effect.gen(function*() {
         const client = yield* entity.client
         // sleeps woken by one adjustment still observe their exact wake times
-        const run = (entityId: string, id: string, dies: number) =>
-          Effect.raceFirst(client(entityId).run({ id, dies }), Effect.forever(TestClock.adjust(100)))
-        yield* run("a", "a1", 2)
-        yield* run("b", "b1", 1)
-        yield* run("a", "a2", 1)
+        const advance = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          Effect.raceFirst(effect, Effect.forever(TestClock.adjust(100)))
+        // `b` defects while `a` is still recovering
+        yield* advance(Effect.all([
+          client("a").run({ id: "a1", dies: 2 }),
+          client("b").run({ id: "b1", dies: 1 })
+        ], { concurrency: "unbounded" }))
+        yield* advance(client("a").run({ id: "a2", dies: 1 }))
         // consecutive defects of one entity keep backing off
         assert.deepStrictEqual(gaps("a1"), [500, 750])
         // another entity of the same type starts from the first delay
