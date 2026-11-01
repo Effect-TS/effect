@@ -489,7 +489,8 @@ development:
           "separation whitespace after markers and directives",
           "a: 1\n... \t\n%YAML\t1.2 \n---\nb: 2\n",
           [{ a: 1 }, { b: 2 }]
-        ]
+        ],
+        ["byte order marks in document prefixes", "1\n...\n\uFEFF---\n2\n...\n\uFEFF%YAML 1.2\n---\n3\n", [1, 2, 3]]
       ] as const
     )("parses a stream of %s with parseAll and rejects it in parse", (_, source, expected) => {
       assert.deepStrictEqual(parseAll(source), expected)
@@ -546,7 +547,9 @@ development:
       ["a YAML directive with extra parameters", "%YAML 1.2 x\n---\na\n"],
       ["a TAG directive", "%TAG !e! tag:example.com,2000:\n---\na: 1\n"],
       ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"],
-      ["content after an end marker following a mapping", "a: 1\n... trailing: 2\n"]
+      ["content after an end marker following a mapping", "a: 1\n... trailing: 2\n"],
+      ["a non-separation character after an end marker", "a: 1\n... \u00A0\n"],
+      ["an unsupported YAML version after a byte order mark", "1\n...\n\uFEFF%YAML 1.1\n---\na: yes\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
       failureMessage(source, Yaml.parseAll)
