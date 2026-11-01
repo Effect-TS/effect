@@ -118,10 +118,10 @@ export const layer = (options: {
  * To export all three signals:
  *
  * ```sh
- * OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
- * OTEL_TRACES_EXPORTER=otlp
- * OTEL_METRICS_EXPORTER=otlp
- * OTEL_LOGS_EXPORTER=otlp
+ * export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+ * export OTEL_TRACES_EXPORTER=otlp
+ * export OTEL_METRICS_EXPORTER=otlp
+ * export OTEL_LOGS_EXPORTER=otlp
  * ```
  *
  * The layer provides the `OtlpExporter.Flusher` shared by all enabled signals.
