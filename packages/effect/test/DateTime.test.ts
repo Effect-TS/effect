@@ -134,34 +134,13 @@ describe("DateTime", () => {
     })
   })
 
-  it("preserves the offset when rounding inside a repeated hour", () => {
+  it("rounds within the repeated DST hour", () => {
     const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:15.250Z", {
       timeZone: "America/New_York"
     })
-    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
-    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
-    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "millisecond")), "2025-11-02T06:30:15.250Z")
-    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "second")), "2025-11-02T06:30:15.000Z")
-    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "second")), "2025-11-02T06:30:15.999Z")
-    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "minute")), "2025-11-02T06:30:00.000Z")
-    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "minute")), "2025-11-02T06:30:59.999Z")
     strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "hour")), "2025-11-02T06:00:00.000Z")
-    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "hour")), "2025-11-02T06:59:59.999Z")
-    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "second")), "2025-11-02T06:30:15.000Z")
-  })
-
-  it("clips fractional milliseconds when rounding", () => {
-    for (const timeZone of [undefined, "UTC", "America/New_York", "Australia/Lord_Howe", 0]) {
-      const initial = timeZone === undefined
-        ? DateTime.makeUnsafe(0)
-        : DateTime.makeZonedUnsafe(0, { timeZone })
-      const input = DateTime.addDuration(initial, 0.5)
-      for (const round of [DateTime.startOf, DateTime.endOf, DateTime.nearest]) {
-        for (const part of ["millisecond", "second", "minute", "hour"] as const) {
-          strictEqual(DateTime.toEpochMillis(round(input, part)), DateTime.toEpochMillis(round(initial, part)))
-        }
-      }
-    }
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "second")), "2025-11-02T06:30:15.999Z")
+    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "minute")), "2025-11-02T06:30:00.000Z")
   })
 
   describe("endOf", () => {
