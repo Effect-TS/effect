@@ -157,10 +157,8 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
  *
  * **Details**
  *
- * Transactions also get a client span for each transaction control, such as
- * `BEGIN`, `COMMIT`, `ROLLBACK` or `SAVEPOINT`, under their
- * `sql.transaction` span, and a top-level transaction records how long it
- * waited for its connection.
+ * A top-level transaction also records how long it waited for its
+ * connection on its `sql.transaction` span.
  *
  * @stability unstable
  * @category services

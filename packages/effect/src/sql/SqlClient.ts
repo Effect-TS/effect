@@ -10,7 +10,6 @@
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
-import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
@@ -554,11 +553,11 @@ const makeAfterCommit =
  * caller's context has no `SqlClient`, so their requests don't share a batch
  * with requests outside the transaction.
  *
- * With `Statement.SpanPropagationEnabled`, each callback below except
- * `acquireConnection` runs in its own client span under the
- * `sql.transaction` span, named after the operation and the target derived
- * from `spanAttributes`, such as `COMMIT mydb`. A top-level transaction also
- * records how long `acquireConnection` took as
+ * Each callback below except `acquireConnection` is traced like a statement,
+ * in its own client span under the `sql.transaction` span, named after the
+ * operation and the target derived from `spanAttributes`, such as
+ * `COMMIT mydb`. With `Statement.SpanPropagationEnabled`, a top-level
+ * transaction also records how long `acquireConnection` took as
  * `db.client.connection.wait_time_ms`, so work a driver does there, such as
  * starting the transaction, counts as waiting for the connection.
  *
@@ -620,25 +619,22 @@ export const makeWithTransaction = <I, S>(options: {
             }
             const services = fiber.context
             const reactivity = Context.getOrUndefined(services, Reactivity)
-            const clock = fiber.getRef(Clock)
             const propagate = fiber.cache.tracerEnabled && fiber.getRef(Statement.SpanPropagationEnabled)
             const waitedClock = propagate ? waitClock(fiber) : undefined
             // Runs a transaction control in a span of its own, so a failure ends
             // that span with the control's own exit.
-            const control = propagate
-              ? (operation: string, effect: Effect.Effect<void, SqlError>) =>
-                Effect.useSpan(
-                  target === undefined ? operation : `${operation} ${target}`,
-                  { kind: "client", parent: span },
-                  (controlSpan) => {
-                    for (const [key, value] of options.spanAttributes) {
-                      controlSpan.attribute(key, value)
-                    }
-                    controlSpan.attribute(ATTR_DB_OPERATION_NAME, operation)
-                    return effect
+            const control = (operation: string, effect: Effect.Effect<void, SqlError>) =>
+              Effect.useSpan(
+                target === undefined ? operation : `${operation} ${target}`,
+                { kind: "client", parent: span },
+                (controlSpan) => {
+                  for (const [key, value] of options.spanAttributes) {
+                    controlSpan.attribute(key, value)
                   }
-                )
-              : (_operation: string, effect: Effect.Effect<void, SqlError>) => effect
+                  controlSpan.attribute(ATTR_DB_OPERATION_NAME, operation)
+                  return effect
+                }
+              )
             const connOption = Context.getOption(services, options.transactionService)
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
@@ -686,7 +682,6 @@ export const makeWithTransaction = <I, S>(options: {
                         let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
-                            span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
                             const commit = control("COMMIT", options.commit(conn))
                             effect = onCommitFailure
@@ -698,11 +693,9 @@ export const makeWithTransaction = <I, S>(options: {
                                 }))
                               : commit
                           } else {
-                            span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
                           }
                         } else {
-                          span.event("effect.sql.transaction.rollback", clock.currentTimeNanosUnsafe())
                           effect = Effect.orDie(
                             id > 0
                               ? control("ROLLBACK TO SAVEPOINT", options.rollbackSavepoint(conn, id))
