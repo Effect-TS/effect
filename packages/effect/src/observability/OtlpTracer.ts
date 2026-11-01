@@ -199,6 +199,12 @@ export const layer: (options: {
  *
  * **Details**
  *
+ * Traces are exported only when an endpoint is set, through
+ * `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`, and
+ * `OTEL_TRACES_EXPORTER` includes `otlp`. Unlike the OpenTelemetry SDK
+ * specification, `OTEL_TRACES_EXPORTER` has no default, so leaving it unset
+ * disables traces.
+ *
  * Compression accepts "gzip" or "none".
  * `OTEL_EXPORTER_OTLP_TRACES_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
