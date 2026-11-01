@@ -433,7 +433,7 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined) return documents
       if (isDocumentMarker(line) && !isDocumentStart(line)) {
-        if (line.text !== "...") this.fail(line, "Unexpected content after document end marker")
+        if (line.text.trimEnd() !== "...") this.fail(line, "Unexpected content after document end marker")
         this.index++
         prefix = true
         continue
@@ -456,7 +456,7 @@ class YamlParser {
       this.skipIgnored()
       const line = this.lines[this.index]
       if (line === undefined || line.indent !== 0 || !line.text.startsWith("%")) break
-      const [name, ...parameters] = line.text.slice(1).split(/[ \t]+/)
+      const [name, ...parameters] = line.text.slice(1).trimEnd().split(/[ \t]+/)
       if (name === "YAML") {
         if (version) this.fail(line, "Duplicate %YAML directive")
         if (parameters.length !== 1 || parameters[0] !== "1.2") {
@@ -478,7 +478,8 @@ class YamlParser {
     const start = this.lines[this.index]
     if (isDocumentStart(start)) {
       this.index++
-      const content = start.text.slice(3).trimStart()
+      // Strip the comment after the marker, so quotes and flow openers are read as token starts.
+      const content = stripComment(start.raw.slice(3).trimStart())
       if (content.length > 0) {
         // Block collections start on the line after the marker.
         if (isSequenceEntry(content) || mappingSeparator(content) !== -1) {
@@ -508,7 +509,7 @@ class YamlParser {
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent) return mapping.output
+      if (line === undefined || line.indent < indent || isDocumentMarker(line)) return mapping.output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       const separator = mappingSeparator(line.text)
       if (separator === -1) return mapping.output
@@ -538,7 +539,7 @@ class YamlParser {
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent) return output
+      if (line === undefined || line.indent < indent || isDocumentMarker(line)) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) return output
       this.index++
@@ -572,7 +573,7 @@ class YamlParser {
     if (text.length === 0) {
       this.skipIgnored()
       const next = this.lines[this.index]
-      if (next === undefined) return null
+      if (next === undefined || isDocumentMarker(next)) return null
       if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent)
       if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
         return this.parseSequence(parentIndent)
