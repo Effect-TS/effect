@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Yaml from "effect/encoding/Yaml"
+import * as YAML from "yaml"
 
 const parse = (input: string): unknown => Result.getOrThrow(Yaml.parse(input))
 
@@ -566,6 +567,188 @@ items:
         parse("descriptions: [\"Deploy # now\", 'Verify # later'] # end\n"),
         { descriptions: ["Deploy # now", "Verify # later"] }
       )
+    })
+  })
+
+  describe("stringify", () => {
+    // `yaml` is the reference implementation the module tracks; it checks the
+    // output is valid YAML with the intended meaning, independent of `parse`.
+    const oracle = (output: string): unknown => YAML.parse(output)
+
+    it("prints scalars, nested collections, and empty collections", () => {
+      const value = {
+        name: "effect",
+        enabled: true,
+        nothing: null,
+        ratio: 0.5,
+        tags: ["a", "b"],
+        empty: {},
+        none: [],
+        nested: { list: [{ id: 1 }, { id: 2, roles: ["admin"] }] }
+      }
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(
+        output,
+        `name: effect
+enabled: true
+nothing: null
+ratio: 0.5
+tags:
+  - a
+  - b
+empty: {}
+none: []
+nested:
+  list:
+    - id: 1
+    - id: 2
+      roles:
+        - admin
+`
+      )
+      assert.deepStrictEqual(oracle(output), value)
+    })
+
+    it("round-trips nested sequences and root scalars through the reference parser", () => {
+      for (const value of [[[1, 2], [], [[null]]], "text", 42, null, true]) {
+        assert.deepStrictEqual(oracle(Result.getOrThrow(Yaml.stringify(value))), value)
+      }
+    })
+
+    it.each([
+      ["plain text", "plain text"],
+      ["1.5.0", "1.5.0"],
+      ["true", "\"true\""],
+      ["1", "\"1\""],
+      ["1_000", "\"1_000\""],
+      ["0x1F", "\"0x1F\""],
+      ["~", "\"~\""],
+      ["", "\"\""],
+      ["- a", "\"- a\""],
+      ["a: b", "\"a: b\""],
+      ["a #b", "\"a #b\""],
+      [" x", "\" x\""],
+      ["x ", "\"x \""],
+      ["---", "\"---\""]
+    ])("prints %j as %s so it re-parses as the same string", (value, expected) => {
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(output, `${expected}\n`)
+      assert.strictEqual(oracle(output), value)
+    })
+
+    it("quotes mapping keys that would re-parse as other types", () => {
+      const value = { "true": 1, "1": 2, "a: b": 3, "": 4 }
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(output, "\"1\": 2\n\"true\": 1\n\"a: b\": 3\n\"\": 4\n")
+      assert.deepStrictEqual(oracle(output), value)
+    })
+
+    it.each([
+      ["clipped", "first\nsecond\n", "|\n  first\n  second\n"],
+      ["stripped", "first\nsecond", "|-\n  first\n  second\n"],
+      ["kept", "first\n\n\n", "|+\n  first\n\n\n"],
+      ["with blank lines", "first\n\nthird\n", "|\n  first\n\n  third\n"],
+      ["with trailing spaces", "first \nsecond", "\"first \\nsecond\"\n"]
+    ])("prints a multiline string %s as a literal block scalar when it is representable", (_, value, expected) => {
+      const output = Result.getOrThrow(Yaml.stringify({ text: value }))
+      assert.strictEqual(output, `text: ${expected}`)
+      assert.deepStrictEqual(oracle(output), { text: value })
+    })
+
+    it("prints non-finite numbers and negative zero so they round-trip", () => {
+      const value = [Infinity, -Infinity, NaN, -0, 1e21]
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(output, "- .inf\n- -.inf\n- .nan\n- -0.0\n- 1e+21\n")
+      assert.deepStrictEqual(oracle(output), value)
+    })
+
+    it("omits undefined properties, prints undefined items as null, and applies toJSON", () => {
+      const value = {
+        skipped: undefined,
+        items: [undefined, 1],
+        date: new Date("2024-01-02T03:04:05.000Z"),
+        custom: { toJSON: () => ({ replaced: true }) },
+        [Symbol("ignored")]: 1
+      }
+      assert.strictEqual(
+        Result.getOrThrow(Yaml.stringify(value)),
+        "items:\n  - null\n  - 1\ndate: 2024-01-02T03:04:05.000Z\ncustom:\n  replaced: true\n"
+      )
+    })
+
+    it("indents nested collections by the indent option", () => {
+      assert.strictEqual(
+        Result.getOrThrow(Yaml.stringify({ a: { b: [1, { c: 2 }] } }, { indent: 4 })),
+        "a:\n    b:\n        - 1\n        - c: 2\n"
+      )
+    })
+
+    it.each([
+      ["a root undefined", undefined, "value"],
+      ["a bigint", { n: 1n }, "value.n"],
+      ["a function", { handlers: [() => 1] }, "value.handlers[0]"],
+      ["a symbol", { s: Symbol("s") }, "value.s"],
+      ["a Map", { m: new Map() }, "value.m"],
+      ["a class instance without toJSON", {
+        d: new (class Point {
+          x = 1
+        })()
+      }, "value.d"]
+    ])("fails with the path of %s", (_, value, path) => {
+      const result = Yaml.stringify(value)
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.strictEqual(result.failure.module, "Yaml")
+        assert.strictEqual(result.failure.kind, "Encode")
+        assert.strictEqual(result.failure.input, value)
+        assert.include(result.failure.message, path)
+      }
+    })
+
+    it("fails with the path of a cycle and prints shared references inline", () => {
+      const cyclic: { items: Array<unknown> } = { items: [] }
+      cyclic.items.push(cyclic)
+      const result = Yaml.stringify(cyclic)
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.include(result.failure.message, "value.items[0]")
+      }
+
+      const shared = { port: 1 }
+      assert.strictEqual(
+        Result.getOrThrow(Yaml.stringify([shared, shared])),
+        "- port: 1\n- port: 1\n"
+      )
+    })
+  })
+
+  describe("stringifyAll", () => {
+    it("prints a document stream the reference parser reads back", () => {
+      const documents = [{ a: 1 }, null, ["x"], "---"]
+      const output = Result.getOrThrow(Yaml.stringifyAll(documents))
+      assert.strictEqual(output, "a: 1\n---\nnull\n---\n- x\n---\n\"---\"\n")
+      assert.deepStrictEqual(
+        YAML.parseAllDocuments(output).map((document) => document.toJS()),
+        documents
+      )
+    })
+
+    it("prints an empty stream as an empty string and forwards the indent option", () => {
+      assert.strictEqual(Result.getOrThrow(Yaml.stringifyAll([])), "")
+      assert.strictEqual(
+        Result.getOrThrow(Yaml.stringifyAll(new Set([{ a: [1] }]), { indent: 4 })),
+        "a:\n    - 1\n"
+      )
+    })
+
+    it("fails with the document index of an unsupported value", () => {
+      const result = Yaml.stringifyAll([1, { n: 2n }])
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.strictEqual(result.failure.module, "Yaml")
+        assert.strictEqual(result.failure.kind, "Encode")
+        assert.include(result.failure.message, "value[1].n")
+      }
     })
   })
 })

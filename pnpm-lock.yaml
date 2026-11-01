@@ -377,6 +377,9 @@ importers:
       valibot:
         specifier: ^1.5.0
         version: 1.5.0(typescript@7.0.2)
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
 
   packages/opentelemetry:
     dependencies:
