@@ -682,6 +682,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         label: "a durable clock",
         matches: (request: Message.OutgoingRequest<any>) =>
           request.envelope.address.entityType === "Workflow/-/DurableClock",
+        deadline: (request: Message.OutgoingRequest<any>) =>
+          DateTime.toEpochMillis((request.envelope.payload as { readonly wakeUp: DateTime.Utc }).wakeUp),
         body: DurableClock.sleep({ name: "Wait", duration: "100 millis", inMemoryThreshold: 0 }).pipe(
           Effect.as("done")
         )
@@ -712,13 +714,22 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             })
             const storage = yield* makeSharedStorage
             let saveFailures = 0
+            // The deadline requested by the first save, and the one storage keeps.
+            let requested: number | undefined
+            let persisted: number | undefined
             const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
               ...storage,
               saveRequest: (request) => {
-                if (!save.matches(request) || saveFailures > 0) return storage.saveRequest(request)
+                if (!save.matches(request)) return storage.saveRequest(request)
+                requested ??= save.deadline?.(request)
+                const saved = Effect.map(storage.saveRequest(request), (result) => {
+                  if (result._tag === "Success") persisted = save.deadline?.(request)
+                  return result
+                })
+                if (saveFailures > 0) return saved
                 saveFailures++
                 const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
-                return ackLost ? Effect.andThen(storage.saveRequest(request), failure) : failure
+                return ackLost ? Effect.andThen(saved, failure) : failure
               }
             })
             yield* Effect.gen(function*() {
@@ -728,6 +739,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
                 new Workflow.Complete({ exit: Exit.succeed("done") })
               )
               assert.strictEqual(saveFailures, 1)
+              if (save.deadline) {
+                assert.strictEqual(persisted, requested, "a retried save must not move the clock's deadline")
+              }
             }).pipe(Effect.provide(
               workflow.toLayer(() => save.body).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
             ))
