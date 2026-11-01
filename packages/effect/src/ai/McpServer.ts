@@ -3106,40 +3106,40 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
-    const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as (
-      error: unknown
-    ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
-    const declaredFailureResult = (error: unknown) =>
-      error instanceof Error && error.message !== ""
-        ? Effect.succeed(toolErrorResult(error.message))
-        : Effect.map(encodeFailure(error), (encoded) =>
-          new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
-    // `structuredContent` must be JSON and match the advertised `outputSchema`, which is derived from the JSON codec.
-    // The Toolkit has already encoded the result, so only the JSON conversion of its encoded form runs here.
-    const encodeStructured = Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.toEncoded(tool.successSchema))) as (
-      result: unknown
-    ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
-    const successResult = (result: unknown) =>
-      encodeStructured(result).pipe(
-        Effect.mapError((cause) =>
+    // MCP content is JSON, so results and declared failures go through their JSON codec.
+    const encodeJson = (schema: Schema.Constraint) => {
+      const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema)) as (
+        value: unknown
+      ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
+      return (toolResult: unknown) =>
+        Effect.mapError(encode(toolResult), (cause) =>
           AiError.make({
             module: "McpServer",
             method: "registerToolkit",
             reason: new AiError.ToolResultEncodingError({
               toolName: tool.name,
-              toolResult: result,
+              toolResult,
               description: cause.message
             })
-          })
-        ),
-        Effect.map((structuredContent) =>
-          new CallToolResult({
-            isError: false,
-            structuredContent,
-            content: toolResultContent(structuredContent)
-          })
-        )
-      )
+          }))
+    }
+    const encodeFailure = encodeJson(tool.failureSchema)
+    // Successes and "return"-mode failures arrive already encoded by the Toolkit; only their JSON conversion runs here.
+    const encodeReturnedFailure = encodeJson(Schema.toEncoded(tool.failureSchema))
+    const encodeStructured = encodeJson(Schema.toEncoded(tool.successSchema))
+    const failureResult = (encoded: unknown) =>
+      new CallToolResult({ isError: true, content: toolResultContent(encoded) })
+    const declaredFailureResult = (error: unknown) =>
+      error instanceof Error && error.message !== ""
+        ? Effect.succeed(toolErrorResult(error.message))
+        : Effect.map(encodeFailure(error), failureResult)
+    const successResult = (result: unknown) =>
+      Effect.map(encodeStructured(result), (structuredContent) =>
+        new CallToolResult({
+          isError: false,
+          structuredContent,
+          content: toolResultContent(structuredContent)
+        }))
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -3208,9 +3208,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
             return result.failureOrigin === "handler"
-              ? Effect.succeed(
-                new CallToolResult({ isError: true, content: toolResultContent(result.encodedResult) })
-              )
+              ? Effect.map(encodeReturnedFailure(result.encodedResult), failureResult)
               : Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
