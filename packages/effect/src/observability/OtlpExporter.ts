@@ -11,7 +11,6 @@
  */
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
-import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -270,17 +269,17 @@ export const make: (
   // `armed` is open while there is something to export. It changes in the
   // same synchronous step as the buffer check, so a push is never stranded.
   const armed = yield* Latch.make(exportsEmpty)
-  let wake = Deferred.makeUnsafe<void>()
+  const wake = yield* Latch.make()
   const disarmIfEmpty = Effect.sync(() => {
     if (exportsEmpty || buffer.length > 0 || !armed.closeUnsafe()) return
-    Deferred.doneUnsafe(wake, Effect.void)
+    wake.openUnsafe()
   })
   // Forked after the shutdown finalizer, so the loop stops before the shutdown flush.
   yield* Effect.gen(function*() {
     while (true) {
-      wake = Deferred.makeUnsafe<void>()
+      wake.closeUnsafe()
       yield* armed.await
-      yield* Effect.race(Effect.sleep(exportInterval), Deferred.await(wake))
+      yield* Effect.race(Effect.sleep(exportInterval), wake.await)
       yield* Fiber.await(yield* FiberSet.run(exportFibers, runExport))
       yield* disarmIfEmpty
     }
