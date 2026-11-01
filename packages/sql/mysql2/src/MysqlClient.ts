@@ -259,18 +259,14 @@ export const make = (
         const conn = this.conn
         return this.permit.withPermit(Effect.callback<unknown, SqlError>((resume) => {
           const operation = method === "query" ? "executeUnprepared" : "execute"
-          let settled = false
-          let onSettled: (() => void) | undefined
+          const settlement = new Settlement()
           ;(conn as any)[method]({
             sql,
             values,
             rowsAsArray
           }, (cause: unknown | null, results: unknown, _fields: any) => {
-            settled = true
-            if (onSettled !== undefined) {
-              // Interrupted: the result is dropped and the canceller resumes.
-              return onSettled()
-            }
+            // Once interrupted, the result is dropped.
+            if (!settlement.settle()) return
             if (cause) {
               resume(
                 Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", operation) }))
@@ -279,11 +275,7 @@ export const make = (
               resume(Effect.succeed(results))
             }
           })
-          return Effect.suspend(() =>
-            settled ? Effect.void : cancelStatement(connectionOptions, conn, (f) => {
-              onSettled = f
-            })
-          )
+          return Effect.suspend(() => cancelStatement(connectionOptions, conn, settlement))
         }))
       }
 
@@ -531,25 +523,55 @@ const escape = Statement.defaultEscape("`")
 const cancelTimeoutMillis = 5000
 
 /**
+ * Whether a statement has settled, shared by its completion callback and its
+ * cancellation.
+ */
+class Settlement {
+  settled = false
+  cancelling = false
+  onSettled: (() => void) | undefined = undefined
+
+  /**
+   * Records that the statement has settled. Returns `true` when the caller
+   * handles the outcome, and `false` when it was already recorded or a
+   * cancellation is waiting for it.
+   */
+  settle(): boolean {
+    if (this.settled) return false
+    this.settled = true
+    if (!this.cancelling) return true
+    this.onSettled?.()
+    return false
+  }
+}
+
+/**
  * Stops the statement running on `conn` and waits until it is safe to release
  * the connection.
  *
+ * Calling this marks the statement as being cancelled straight away, so a
+ * settlement from then on belongs to the cancellation, even if it happens
+ * before the returned effect runs. If the statement has already settled,
+ * nothing is killed.
+ *
  * `KILL QUERY` goes over a one-off connection, because the pool may have no
  * free slot. The returned effect completes once the kill attempt has finished
- * and `onSettled` has been called for the statement, so a late kill can never
- * reach a statement from the connection's next borrower. Kill failures are
- * ignored. If both do not happen within `cancelTimeoutMillis`, the connection
- * is destroyed, which removes it from the pool.
+ * and the statement has settled, so a late kill can never reach another
+ * statement on the connection. Kill failures are ignored. If both do not happen
+ * within `cancelTimeoutMillis`, the connection is destroyed, which removes it
+ * from the pool.
  */
 const cancelStatement = (
   connectionOptions: Mysql.ConnectionOptions,
   conn: Mysql.PoolConnection,
-  registerOnSettled: (onSettled: () => void) => void
-): Effect.Effect<void> =>
-  Effect.callback<void>((resume) => {
+  settlement: Settlement
+): Effect.Effect<void> => {
+  if (settlement.settled) return Effect.void
+  settlement.cancelling = true
+  return Effect.callback<void>((resume) => {
+    if (settlement.settled) return resume(Effect.void)
     let done = false
     let killed = false
-    let settled = false
     const kill = Mysql.createConnection({ ...connectionOptions })
     const finish = () => {
       if (done) return
@@ -565,13 +587,13 @@ const cancelStatement = (
     kill.on("error", () => {})
     ;(kill as any).query("KILL QUERY ?", [conn.threadId], () => {
       killed = true
-      if (settled) finish()
+      if (settlement.settled) finish()
     })
-    registerOnSettled(() => {
-      settled = true
+    settlement.onSettled = () => {
       if (killed) finish()
-    })
+    }
   })
+}
 
 function queryStream(
   connectionOptions: Mysql.ConnectionOptions,
@@ -596,28 +618,21 @@ function queryStream(
     const query = command.stream()
     // The command, unlike its stream, reports when the server is done with the
     // statement, even after the stream has been destroyed.
-    let settled = false
-    let onSettled: (() => void) | undefined
+    const settlement = new Settlement()
     const settle = () => {
-      if (settled) return
-      settled = true
-      if (onSettled === undefined) Effect.runSync(release)
-      else onSettled()
+      if (settlement.settle()) Effect.runSync(release)
     }
     command.once("end", settle)
     command.once("error", settle)
     yield* Effect.addFinalizer(() =>
       Effect.suspend(() => {
-        if (settled) return Effect.void
+        if (settlement.settled) return Effect.void
         // Destroying the stream resumes a paused connection, so the remaining
         // rows are read and discarded while the statement is killed. Rows that
         // were already buffered are replayed synchronously and can settle the
         // statement before `destroy` returns.
         query.destroy()
-        if (settled) return Effect.void
-        return cancelStatement(connectionOptions, conn, (f) => {
-          onSettled = f
-        })
+        return cancelStatement(connectionOptions, conn, settlement)
       })
     )
 
