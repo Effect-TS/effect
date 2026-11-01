@@ -101,7 +101,12 @@ describe("Jsonc", () => {
     let calls = 0
     // oxlint-disable-next-line no-extend-native -- Parsing must not reach inherited properties; removed below.
     Object.defineProperties(Object.prototype, {
-      accessor: { set: () => calls++, configurable: true },
+      accessor: {
+        set: () => {
+          calls++
+        },
+        configurable: true
+      },
       readonly: { value: 0, configurable: true },
       // The escape letter `q`, which a sparse lookup table would inherit.
       113: { get: () => (calls++, "changed"), configurable: true }

@@ -18,14 +18,31 @@ export const recordToAttributes = (record: Record<string, unknown>): Otel.Attrib
   return attributes
 }
 
+/**
+ * The attribute values produced by `unknownToAttributeValue`.
+ *
+ * `@opentelemetry/api` 1.10 widened `AttributeValue` to `unknown`, so this
+ * keeps the concrete primitive shape that both `AttributeValue` and the logs
+ * `AnyValue` accept.
+ *
+ * @internal
+ */
+export type PrimitiveAttributeValue =
+  | string
+  | number
+  | boolean
+  | Array<string>
+  | Array<number>
+  | Array<boolean>
+
 /** @internal */
-export const unknownToAttributeValue = (value: unknown): Otel.AttributeValue => {
+export const unknownToAttributeValue = (value: unknown): PrimitiveAttributeValue => {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return value
   } else if (typeof value === "bigint") {
     return value.toString()
   } else if (Array.isArray(value) && isHomogeneousPrimitiveArray(value)) {
-    return value.slice() as Otel.AttributeValue
+    return value.slice()
   }
   return Inspectable.toStringUnknown(value)
 }
