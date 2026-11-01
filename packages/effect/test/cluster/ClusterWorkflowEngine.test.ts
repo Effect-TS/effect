@@ -674,6 +674,91 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     )
   }
 
+  const RetrySignal = DurableDeferred.make("RetrySignal")
+  const savesDeferred = (envelope: Message.OutgoingRequest<any>) => envelope.envelope.tag === "deferred"
+  const durableSaveRetryCases = [
+    {
+      name: "a durable clock",
+      saves: (envelope: Message.OutgoingRequest<any>) =>
+        envelope.envelope.address.entityType === "Workflow/-/DurableClock",
+      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "1 second", inMemoryThreshold: 0 }), 42)
+    },
+    {
+      name: "a durable race winner",
+      saves: savesDeferred,
+      body: DurableDeferred.raceAll({
+        name: "Race",
+        success: Schema.Number,
+        error: Schema.Never,
+        effects: [Effect.succeed(42), Effect.never]
+      })
+    },
+    {
+      name: "a token completion",
+      saves: savesDeferred,
+      body: Effect.as(DurableDeferred.await(RetrySignal), 42),
+      external: "registered" as const
+    },
+    {
+      name: "a token completion from a runner without the workflow",
+      saves: savesDeferred,
+      body: Effect.as(DurableDeferred.await(RetrySignal), 42),
+      external: "unregistered" as const
+    }
+  ]
+  for (const { body, external, name, saves } of durableSaveRetryCases) {
+    for (const ackLost of [false, true]) {
+      it.effect(
+        `completes ${name} after a transient failure ${ackLost ? "acknowledging" : "saving"} it`,
+        () =>
+          Effect.gen(function*() {
+            const workflow = Workflow.make("DurableSaveRetry", {
+              payload: {},
+              success: Schema.Number,
+              idempotencyKey: () => "one"
+            })
+            const storage = yield* makeSharedStorage
+            let saveFailures = 0
+            const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+              ...storage,
+              saveRequest: (envelope) => {
+                if (!saves(envelope) || saveFailures > 0) return storage.saveRequest(envelope)
+                saveFailures++
+                const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+                return ackLost ? Effect.andThen(storage.saveRequest(envelope), failure) : failure
+              }
+            })
+            yield* Effect.gen(function*() {
+              const engine = yield* WorkflowEngine
+              const executionId = yield* workflow.executionId({})
+              const complete = DurableDeferred.done(RetrySignal, {
+                token: DurableDeferred.tokenFromExecutionId(RetrySignal, { workflow, executionId }),
+                exit: Exit.void
+              }).pipe(Effect.forkChild({ startImmediately: true }))
+              let caller: Fiber.Fiber<void> | undefined
+              if (external === "unregistered") caller = yield* complete
+              yield* engine.register(workflow, () => body)
+              yield* workflow.execute({}, { discard: true })
+              if (external === "registered") {
+                caller = yield* Effect.andThen(pollUntil(workflow, executionId, "Suspended"), complete)
+              }
+              assert.deepStrictEqual(
+                yield* pollUntil(workflow, executionId, "Complete"),
+                new Workflow.Complete({ exit: Exit.succeed(42) })
+              )
+              if (caller) {
+                // A stored completion can wake the workflow before the caller's retry runs.
+                yield* TestClock.adjust("1 minute")
+                yield* Fiber.join(caller)
+              }
+              assert.strictEqual(saveFailures, 1)
+            }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer })))
+          }),
+        20_000
+      )
+    }
+  }
+
   it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
     "releases an activity request that failed to save once its retry completes",
     () =>
