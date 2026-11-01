@@ -869,7 +869,7 @@ export const make = Effect.gen(function*() {
         }
         const workflow = workflows.get(workflowName)
         if (workflow) {
-          return yield* Effect.orDie(sendDiscard({
+          return yield* retryPersistence(sendDiscard({
             rpc: DeferredRpc,
             address: entityAddressFor({
               workflow,
@@ -883,7 +883,7 @@ export const make = Effect.gen(function*() {
           }))
         }
         const client = yield* RcMap.get(clientsPartial, workflowName)
-        return yield* Effect.orDie(
+        return yield* retryPersistence(
           client(executionId).deferred({
             name: deferredName,
             exit
@@ -913,7 +913,7 @@ export const make = Effect.gen(function*() {
             }
           })
         ),
-        Effect.orDie
+        retryPersistence
       )
     }
   })
