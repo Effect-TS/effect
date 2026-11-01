@@ -24,6 +24,8 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as JsonPointer from "effect/JsonPointer"
+import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -3284,8 +3286,23 @@ const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
       throw error
     }
     // Anthropic's schema restrictions (e.g. no recursion) only apply to strict tools
-    return Tool.getJsonSchema(tool)
+    return resolveRootReference(Tool.getJsonSchema(tool))
   }
+}
+
+// A root schema with an identifier is generated as a top-level `$ref`. Inline
+// the referenced definition so the root is an object schema, keeping `$defs`
+// because a recursive root refers back to its own definition.
+const resolveRootReference = (jsonSchema: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+  const { $defs, $ref } = jsonSchema
+  if (typeof $ref !== "string" || !Predicate.isObject($defs)) {
+    return jsonSchema
+  }
+  const path = JsonPointer.parseUriFragment($ref)
+  if (path === undefined || path.length !== 2 || path[0] !== "$defs" || !Object.hasOwn($defs, path[1])) {
+    return jsonSchema
+  }
+  return { ...($defs as JsonSchema.Definitions)[path[1]], $defs }
 }
 
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>
@@ -3321,7 +3338,9 @@ const getToolParamsCodec = <S extends Schema.Constraint>(schema: S) => {
   try {
     return toCodecAnthropic(schema).codec
   } catch {
-    return undefined
+    // The request used the plain JSON Schema (non-strict tools only), which
+    // describes the JSON codec of the parameters
+    return Schema.toCodecJson(schema)
   }
 }
 
@@ -3347,11 +3366,6 @@ const transformToolCallParams = Effect.fnUntraced(function*(
   }
 
   const codec = getToolParamsCodec(tool.parametersSchema)
-  if (Predicate.isUndefined(codec)) {
-    // The request used the plain JSON Schema (non-strict tools only), so the
-    // parameters need no Anthropic-specific normalization.
-    return toolParams
-  }
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
