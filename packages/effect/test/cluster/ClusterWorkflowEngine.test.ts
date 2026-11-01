@@ -1865,6 +1865,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         })
       }).pipe(Effect.provide(layer))
 
+      // Each owner registers with its own RunnerStorage as machine id 0, so on the
+      // same TestClock millisecond its snowflakes would repeat the previous owner's.
+      yield* TestClock.adjust(1)
+
       // A later completion wakes the new owner, whose replay must keep `idle`.
       yield* Effect.gen(function*() {
         yield* DurableDeferred.succeed(text, {
