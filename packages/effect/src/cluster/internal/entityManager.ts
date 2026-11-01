@@ -118,6 +118,8 @@ export type EntityState = {
     transaction?: RequestTransaction | undefined
     /** Set when an interrupt arrives while no handlers are ready. */
     interrupted?: boolean | undefined
+    /** The handler generation the remembered interrupt was last sent to. */
+    interruptSentTo?: EntityState["write"] | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -303,13 +305,31 @@ export const make = Effect.fnUntraced(function*<
       yield* restartStep(void 0)
     })
 
+    // An interrupted request is not run again. The server answers the
+    // interrupt as it would for a request without a running handler. Each
+    // generation receives it at most once, and the flag stays so a later
+    // generation still applies it if this one fails first.
+    const writeInterrupt = (
+      request: {
+        readonly message: Message.IncomingRequestLocal<any>
+        interruptSentTo?: EntityState["write"] | undefined
+      },
+      write: EntityState["write"]
+    ): Effect.Effect<void> => {
+      if (request.interruptSentTo === write) return Effect.void
+      request.interruptSentTo = write
+      return write(0, interruptEnvelope(request))
+    }
+
     // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
       for (const request of activeRequests.values()) {
         if (!request.delivered) continue
         request.sentExit = false
-        yield* write(0, dispatchEnvelope(request), requestWriteOptions(request))
+        yield* request.interrupted
+          ? writeInterrupt(request, write)
+          : write(0, requestEnvelope(request), requestWriteOptions(request))
       }
     })
 
@@ -544,7 +564,7 @@ export const make = Effect.fnUntraced(function*<
       if (write === undefined) return Effect.void
       const interrupts: Array<Effect.Effect<void>> = []
       for (const request of activeRequests.values()) {
-        if (request.interrupted) interrupts.push(write(0, interruptEnvelope(request)))
+        if (request.interrupted) interrupts.push(writeInterrupt(request, write))
       }
       return Effect.all(interrupts, { discard: true })
     })
@@ -599,7 +619,7 @@ export const make = Effect.fnUntraced(function*<
           const request = activeRequests.get(Snowflake.Snowflake(message.id))
           if (!request) return Effect.void
           request.delivered = true
-          return write(clientId, request.interrupted ? interruptEnvelope(request) : message, writeOptions)
+          return request.interrupted ? writeInterrupt(request, write) : write(clientId, message, writeOptions)
         })
       },
       activeRequests,
@@ -1055,14 +1075,6 @@ const interruptEnvelope = (entry: {
   requestId: entry.message.envelope.requestId as any,
   interruptors: []
 })
-
-// An interrupted request is not run again. The server answers the interrupt
-// as it would for a request without a running handler.
-const dispatchEnvelope = (entry: {
-  readonly message: Message.IncomingRequestLocal<any>
-  readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
-  readonly interrupted?: boolean | undefined
-}): Parameters<EntityState["write"]>[1] => entry.interrupted ? interruptEnvelope(entry) : requestEnvelope(entry)
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
