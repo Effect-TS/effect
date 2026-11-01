@@ -72,6 +72,26 @@ describe("Otlp.layerFromConfig", () => {
         OTEL_METRIC_EXPORT_INTERVAL: "1000"
       }))
     ))
+
+  it.effect("does not install exporters when only the endpoint is set", () =>
+    Effect.gen(function*() {
+      yield* Effect.log("endpoint-only log")
+      yield* Metric.update(Metric.counter("otel_endpoint_only_counter"), 1)
+      yield* Effect.void.pipe(Effect.withSpan("endpoint-only-span"))
+
+      yield* TestClock.adjust("1 second")
+
+      const requests = yield* MockHttpClient.requests
+      assert.deepStrictEqual(requests, [])
+    }).pipe(
+      Effect.provide(testLayer({
+        OTEL_SERVICE_NAME: "otel-config-test",
+        OTEL_EXPORTER_OTLP_ENDPOINT: "http://collector.example",
+        OTEL_BLRP_MAX_EXPORT_BATCH_SIZE: "1",
+        OTEL_BSP_MAX_EXPORT_BATCH_SIZE: "1",
+        OTEL_METRIC_EXPORT_INTERVAL: "1000"
+      }))
+    ))
 })
 
 interface CapturedRequest {
