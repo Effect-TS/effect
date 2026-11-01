@@ -19,6 +19,7 @@ import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
+import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import {
@@ -240,6 +241,11 @@ export const make = (
 
     class ConnectionImpl implements Connection {
       readonly conn: Mysql.PoolConnection
+      // A transaction or reserved connection can be shared by several fibers.
+      // Each statement or stream holds this permit from before its command is
+      // queued until it has settled, so `KILL QUERY` only ever reaches the
+      // statement that was interrupted.
+      readonly permit = Semaphore.makeUnsafe(1)
       constructor(conn: Mysql.PoolConnection) {
         this.conn = conn
       }
@@ -251,7 +257,7 @@ export const make = (
         method: "execute" | "query" = defaultMethod
       ) {
         const conn = this.conn
-        return Effect.callback<unknown, SqlError>((resume) => {
+        return this.permit.withPermit(Effect.callback<unknown, SqlError>((resume) => {
           const operation = method === "query" ? "executeUnprepared" : "execute"
           let settled = false
           let onSettled: (() => void) | undefined
@@ -278,7 +284,7 @@ export const make = (
               onSettled = f
             })
           )
-        })
+        }))
       }
 
       private run(
@@ -324,7 +330,7 @@ export const make = (
         params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
-        const stream = queryStream(connectionOptions, this.conn, sql, params)
+        const stream = queryStream(connectionOptions, this.conn, this.permit, sql, params)
         return transformRows
           ? Stream.mapArray(stream, (_) => transformRows(_) as any)
           : stream
@@ -570,10 +576,13 @@ const cancelStatement = (
 function queryStream(
   connectionOptions: Mysql.ConnectionOptions,
   conn: Mysql.PoolConnection,
+  permit: Semaphore.Semaphore,
   sql: string,
   params?: ReadonlyArray<any>
 ) {
   return asyncPauseResume<any, SqlError>(Effect.fnUntraced(function*(emit) {
+    // Released after the finalizer below, once the statement has settled.
+    yield* permit.takeScoped(1)
     const command = (conn as any).query(sql, params)
     const query = command.stream()
     // The command, unlike its stream, reports when the server is done with the
@@ -590,8 +599,11 @@ function queryStream(
       Effect.suspend(() => {
         if (settled) return Effect.void
         // Destroying the stream resumes a paused connection, so the remaining
-        // rows are read and discarded while the statement is killed.
+        // rows are read and discarded while the statement is killed. Rows that
+        // were already buffered are replayed synchronously and can settle the
+        // statement before `destroy` returns.
         query.destroy()
+        if (settled) return Effect.void
         return cancelStatement(connectionOptions, conn, (f) => {
           onSettled = f
         })
