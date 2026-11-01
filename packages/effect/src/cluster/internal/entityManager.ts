@@ -53,8 +53,14 @@ export interface EntityManager {
     message: Message.IncomingLocal<R>
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
+  /**
+   * With `persisted`, a request read from storage that this runner cannot
+   * decode, or whose RPC it does not know, is left in storage for a compatible
+   * runner instead of being answered with a terminal defect.
+   */
   readonly send: (
-    message: Message.Incoming<any>
+    message: Message.Incoming<any>,
+    options?: { readonly persisted?: boolean | undefined }
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
@@ -900,24 +906,40 @@ export const make = Effect.fnUntraced(function*<
     isResidentUnsafe: (address) => entities.hasUnsafe(address),
     residentAddressesUnsafe: () => entities.keysUnsafe(),
     sendLocal,
-    send: (message) =>
+    send: (message, options) =>
       decodeMessage(message).pipe(
         Effect.matchEffect({
           onFailure: (cause) => {
             if (message._tag === "IncomingEnvelope") {
               return Effect.die(new MalformedMessage({ cause }))
             }
-            return Effect.orDie(message.respond(
-              new Reply.ReplyWithContext({
-                reply: new Reply.WithExit({
-                  id: snowflakeGen.nextUnsafe(),
-                  requestId: message.envelope.requestId,
-                  exit: Exit.die(new MalformedMessage({ cause }))
-                }),
-                rpc: entityRpcs.get(message.envelope.tag)!,
-                context: context as any
-              })
-            ))
+            const rpc = entityRpcs.get(message.envelope.tag)
+            const persisted = options?.persisted === true
+            const report = reportUndecodable(message, rpc === undefined ? "unknown_rpc" : "schema_mismatch", persisted)
+            // Leave the request unanswered and claimed: the claim expiring, or
+            // another runner acquiring the shard, makes it eligible again.
+            if (persisted) return report
+            const defect = new MalformedMessage({ cause })
+            return Effect.andThen(
+              report,
+              Effect.orDie(message.respond(
+                rpc === undefined
+                  ? Reply.ReplyWithContext.fromDefect({
+                    id: snowflakeGen.nextUnsafe(),
+                    requestId: message.envelope.requestId,
+                    defect
+                  })
+                  : new Reply.ReplyWithContext({
+                    reply: new Reply.WithExit({
+                      id: snowflakeGen.nextUnsafe(),
+                      requestId: message.envelope.requestId,
+                      exit: Exit.die(defect)
+                    }),
+                    rpc,
+                    context: context as any
+                  })
+              ))
+            )
           },
           onSuccess: (decoded) => {
             if (decoded._tag === "IncomingEnvelope") {
@@ -956,6 +978,38 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.exponential(500, 1.5),
   Schedule.spaced("10 seconds")
 ])
+
+// Counts requests the runner could not decode, tagged with the entity type and
+// the reason only, to keep the series low-cardinality.
+const undecodableRequests = Metric.counter("effect_cluster_undecodable_requests", {
+  description: "Incoming entity requests that could not be decoded, by entity type and reason",
+  incremental: true
+})
+
+// The decode failure is not logged, as it can contain payload values.
+const reportUndecodable = (
+  message: Message.IncomingRequest<any>,
+  reason: "unknown_rpc" | "schema_mismatch",
+  persisted: boolean
+) => {
+  const envelope = message.envelope
+  return Effect.logWarning(
+    persisted
+      ? "Could not decode persisted request, leaving it for a compatible runner"
+      : "Could not decode request"
+  ).pipe(
+    Effect.annotateLogs({
+      entityType: envelope.address.entityType,
+      entityId: envelope.address.entityId,
+      tag: envelope.tag,
+      requestId: String(envelope.requestId),
+      reason
+    }),
+    Effect.andThen(
+      Metric.update(Metric.withAttributes(undecodableRequests, { type: envelope.address.entityType, reason }), 1)
+    )
+  )
+}
 
 const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) => {
   const decodeRequest = Effect.fnUntracedEager(function*(

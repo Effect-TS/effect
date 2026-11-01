@@ -797,6 +797,8 @@ const make = Effect.gen(function*() {
 
   const storageReadLatch = yield* Latch.make(true)
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
+  // Messages read from storage stay there when this runner cannot decode them.
+  const persistedSend = { persisted: true } as const
 
   type PendingNotification = {
     resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
@@ -934,7 +936,7 @@ const make = Effect.gen(function*() {
             }
             return Effect.void
           }
-          return Effect.tap(state.manager.send(message), markDelivered)
+          return Effect.tap(state.manager.send(message, persistedSend), markDelivered)
         }),
         (cause) => {
           const message = messages[index]
@@ -1168,11 +1170,11 @@ const make = Effect.gen(function*() {
               const interrupt = message._tag === "IncomingRequest" &&
                 resumptionState.interrupts.get(message.envelope.requestId)
               return interrupt ?
-                Effect.flatMap(state.manager.send(message), () => {
+                Effect.flatMap(state.manager.send(message, persistedSend), () => {
                   resumptionState.interrupts.delete(message.envelope.requestId)
                   return state.manager.send(interrupt)
                 }) :
-                state.manager.send(message)
+                state.manager.send(message, persistedSend)
             }),
             {
               MailboxFull: () => Effect.delay(sendWithRetry, config.sendRetryInterval),
