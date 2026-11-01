@@ -10,12 +10,11 @@
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
-import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
-import { CurrentTransactionService } from "../internal/sql.ts"
+import { CurrentTransactionService, recordConnectionWait, waitClock } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -282,6 +281,8 @@ export declare namespace SqlClient {
 
 let clientIdCounter = 0
 let transactionSemaphoreIdCounter = 0
+
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
 
 /**
  * Constructs a `SqlClient` from connection acquirers, a compiler, transaction
@@ -552,6 +553,14 @@ const makeAfterCommit =
  * caller's context has no `SqlClient`, so their requests don't share a batch
  * with requests outside the transaction.
  *
+ * Each callback below except `acquireConnection` is traced like a statement,
+ * in its own client span under the `sql.transaction` span, named after the
+ * operation and the target derived from `spanAttributes`, such as
+ * `COMMIT mydb`. With `Statement.SpanPropagationEnabled`, a top-level
+ * transaction also records how long `acquireConnection` took as
+ * `db.client.connection.wait_time_ms`, so work a driver does there, such as
+ * starting the transaction, counts as waiting for the connection.
+ *
  * @stability unstable
  * @category transactions
  * @since 4.0.0
@@ -592,6 +601,7 @@ export const makeWithTransaction = <I, S>(options: {
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
   const afterCommit = makeAfterCommit(options.transactionService)
+  const target = Statement.spanTarget(options.spanAttributes)
   const deferInvalidations = (reactivity: Reactivity): Reactivity => {
     const invalidate = (keys: Parameters<Reactivity["invalidate"]>[0]) =>
       afterCommit(Effect.sync(() => reactivity.invalidateUnsafe(keys)))
@@ -609,13 +619,32 @@ export const makeWithTransaction = <I, S>(options: {
             }
             const services = fiber.context
             const reactivity = Context.getOrUndefined(services, Reactivity)
-            const clock = fiber.getRef(Clock)
+            const propagate = fiber.cache.tracerEnabled && fiber.getRef(Statement.SpanPropagationEnabled)
+            const waitedClock = propagate ? waitClock(fiber) : undefined
+            // Runs a transaction control in a span of its own, so a failure ends
+            // that span with the control's own exit.
+            const control = (operation: string, effect: Effect.Effect<void, SqlError>) =>
+              Effect.useSpan(
+                target === undefined ? operation : `${operation} ${target}`,
+                { kind: "client", parent: span },
+                (controlSpan) => {
+                  for (const [key, value] of options.spanAttributes) {
+                    controlSpan.attribute(key, value)
+                  }
+                  controlSpan.attribute(ATTR_DB_OPERATION_NAME, operation)
+                  return effect
+                }
+              )
             const connOption = Context.getOption(services, options.transactionService)
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
               : Effect.flatMap(Scope.make(), (scope) =>
                 Scope.provide(options.acquireConnection(restore), scope).pipe(
-                  Effect.map((conn) => [scope, conn] as const),
+                  Effect.provideService(Tracer.ParentSpan, span),
+                  Effect.map((conn) => {
+                    if (waitedClock !== undefined) recordConnectionWait(span, waitedClock)
+                    return [scope, conn] as const
+                  }),
                   Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
                 ))
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
@@ -625,12 +654,16 @@ export const makeWithTransaction = <I, S>(options: {
               open: true
             }
             let committed = false
+            const start = (conn: S) =>
+              id === 0
+                ? control("BEGIN", options.begin(conn, fiber.getRef(BeginTransaction)))
+                : control("SAVEPOINT", options.savepoint(conn, id))
             const transaction = Effect.flatMap(
               conn,
               (
                 [scope, conn]
               ) =>
-                (id === 0 ? options.begin(conn, fiber.getRef(BeginTransaction)) : options.savepoint(conn, id)).pipe(
+                start(conn).pipe(
                   Effect.flatMap(() => {
                     const level = [conn, id] as const
                     afterCommitBuffers.set(level, buffer)
@@ -649,30 +682,31 @@ export const makeWithTransaction = <I, S>(options: {
                         let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
-                            span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
+                            const commit = control("COMMIT", options.commit(conn))
                             effect = onCommitFailure
-                              ? Effect.catchCause(options.commit(conn), (commitCause) =>
-                                Effect.matchCauseEffect(onCommitFailure(conn), {
+                              ? Effect.catchCause(commit, (commitCause) =>
+                                Effect.matchCauseEffect(control("ROLLBACK", onCommitFailure(conn)), {
                                   onFailure: (cleanupCause) =>
                                     Effect.failCause(failuresToDefects(Cause.combine(commitCause, cleanupCause))),
                                   onSuccess: () => Effect.failCause(commitCause)
                                 }))
-                              : options.commit(conn)
+                              : commit
                           } else {
-                            span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
                           }
                         } else {
-                          span.event("effect.sql.transaction.rollback", clock.currentTimeNanosUnsafe())
                           effect = Effect.orDie(
                             id > 0
-                              ? options.rollbackSavepoint(conn, id)
-                              : options.rollback(conn)
+                              ? control("ROLLBACK TO SAVEPOINT", options.rollbackSavepoint(conn, id))
+                              : control("ROLLBACK", options.rollback(conn))
                           )
                         }
                         if (id > 0 && options.releaseSavepoint) {
-                          effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
+                          effect = Effect.andThen(
+                            effect,
+                            Effect.orDie(control("RELEASE SAVEPOINT", options.releaseSavepoint(conn, id)))
+                          )
                         }
                         return Effect.flatMap(effect, () => {
                           committed = Exit.isSuccess(exit)
