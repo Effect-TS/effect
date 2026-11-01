@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`27d644e4b6f3dc02e5e2a06e8ce2b912595772c9`)
+Head: `775bfc84c9` (`775bfc84c90ad855e363d1a21253cfeb81095988`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -738,7 +738,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `effect/StreamHaltStrategy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Streamable` -> `none`: Removed in v4 with no direct replacement. Instead of extending Streamable.Class, expose the underlying stream as a value (e.g. a property or method built with Stream.suspend).
 - `effect/Subscribable`: No single module replacement; follow the curated per-API guidance below.
-- `effect/Supervisor`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TArray`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TDeferred` -> `effect/TxDeferred`
 - `effect/TMap` -> `effect/TxHashMap`
@@ -3591,6 +3590,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Generated.StopConfiguration` -> `Generated.StopConfiguration`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.SubmitToolOutputsRunRequest` -> `Generated.SubmitToolOutputsRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+
+- `Generated.Summary`: TODO: needs guidance
 
 - `Generated.SummaryTextContent` -> `Generated.SummaryTextContent`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -10256,7 +10257,7 @@ Arbitrary.schema(schema)
 
 - `Effect.summarized` -> `Effect.gen`: Run the summary Effect before and after the target Effect and combine the two measurements explicitly. Adapt arguments and imports to the v4 API.
 
-- `Effect.supervised` -> `FiberSet`: Track explicitly forked Fibers in a scoped `FiberSet` instead of installing a runtime Supervisor. Adapt arguments and imports to the v4 API.
+- `Effect.supervised` -> `Effect.withSupervisor`: `Effect.withSupervisor` adds a Supervisor for an effect, but now runs the effect in a new child fiber and joins it, so the effect's own fiber is observed too. To track fibers you fork yourself, use a scoped `FiberSet`.
 
 - `Effect.tagMetrics` -> `Metric.withAttributes`: Convert key/value tags to metric attributes. Adapt arguments and imports to the v4 API.
 
@@ -11274,7 +11275,7 @@ FastCheck.uuid({ version: 4 })
 
 - `Fiber.pretty` -> `none`: Runtime fiber pretty-printing was removed; format the public id and polled Exit explicitly.
 
-- `Fiber.roots` -> `none`: The runtime no longer exposes a global root-fiber registry; track application fibers explicitly.
+- `Fiber.roots` -> `none`: The runtime no longer exposes a global root-fiber registry; track application fibers explicitly, or install a `Supervisor.Supervisor` at the runtime with `Supervisor.layer` to discover them.
 
 - `Fiber.scoped` -> `Fiber.runIn`: Register the Fiber in an explicit Scope with Fiber.runIn; acquire the current Scope when migrating the old effectful form.
 
@@ -11282,7 +11283,7 @@ FastCheck.uuid({ version: 4 })
 
 - `Fiber.succeed` -> `Effect.runFork(Effect.succeed(value))`: Synthetic Fiber constructors were removed; run the corresponding Effect when a Fiber handle is required.
 
-- `Fiber.unsafeRoots` -> `none`: The runtime no longer exposes a global root-fiber registry; track application fibers explicitly.
+- `Fiber.unsafeRoots` -> `none`: The runtime no longer exposes a global root-fiber registry; track application fibers explicitly, or install a `Supervisor.Supervisor` at the runtime with `Supervisor.layer` to discover them.
 
 - `Fiber.void` -> `Effect.runFork(Effect.void)`: Synthetic Fiber constants were removed; run Effect.void when a completed Fiber\<void\> is required.
 
@@ -11404,7 +11405,7 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.currentSchedulingPriority` -> `none`: The ambient scheduling-priority FiberRef was removed; use explicit scheduler operations where priority is needed.
 
-- `FiberRef.currentSupervisor` -> `none`: The Supervisor and ambient supervisor FiberRef APIs were removed; track fibers explicitly with FiberSet or FiberMap.
+- `FiberRef.currentSupervisor` -> `Supervisor.Supervisor`: `Supervisor.Supervisor` is the reference. A fiber reads it once, when it is created; providing it directly replaces the Supervisor in place, while `Supervisor.layer` and `Effect.withSupervisor` add to it.
 
 - `FiberRef.currentTracerEnabled` -> `References.TracerEnabled`: Built-in FiberRefs are now Context.Reference values; yield the reference or provide it with Effect.provideService.
 
@@ -13985,6 +13986,8 @@ Schema.toFormatter(schema)
 
 - `STM.mergeAll` -> `Effect.reduce`: Reduce the input Effects sequentially and combine each produced value with the accumulator.
 
+- `STM.negate`: TODO: needs guidance
+
 - `STM.none` -> `Effect.matchEffect + Option.match`: Recreate the Option success/error shuffle explicitly; no dedicated helper remains.
 
 - `STM.option` -> `Effect.option`: The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
@@ -16270,23 +16273,25 @@ switch (strategy) {
 
 ### `effect/Supervisor`
 
-- `Supervisor.AbstractSupervisor` -> `none`: The ambient Supervisor abstraction and runtime event hooks were removed.
+- `Supervisor.AbstractSupervisor` -> `Supervisor.Supervisor`: Implement the `Supervisor.Supervisor` interface with an object literal or a class; there is no abstract base class.
 
-- `Supervisor.Supervisor` -> `none`: Ambient fiber supervision was removed; use structured concurrency or explicit FiberSet and FiberMap tracking.
+- `Supervisor.Supervisor` -> `Supervisor.Supervisor`: Now a plain interface with four required methods, `onStart`, `onEnd`, `onBlock` and `onUnblock`, and no `value` or `zip`. `onSuspend`/`onResume` became `onBlock`/`onUnblock`, which fire only when a fiber waits, never when it yields. There is no `onEffect`: use `Tracer.context` for per-operation interposition. `Supervisor.Supervisor` is also the reference that installs one.
 
 - `Supervisor.Supervisor.Variance` -> `none`: The Supervisor abstraction and its variance marker were removed.
 
 - `Supervisor.SupervisorTypeId` -> `none`: The Supervisor abstraction and its type identifier were removed.
 
-- `Supervisor.addSupervisor` -> `none`: Layer-installed ambient supervision was removed; use structured concurrency and explicit FiberSet or FiberMap tracking.
+- `Supervisor.addSupervisor` -> `Supervisor.layer`: `Supervisor.layer` adds a Supervisor to the one in place, as `addSupervisor` did. Under a built `ManagedRuntime` it observes the root fibers; under `Layer.launch` or a platform `runMain` only forks, so use `Effect.withSupervisor` around `main`.
 
-- `Supervisor.fibersIn` -> `FiberSet`: Use a scoped FiberSet and explicitly run or add fibers; it does not ambiently observe every descendant.
+- `Supervisor.fibersIn` -> `FiberSet`: Use a scoped FiberSet and explicitly run or add fibers. To observe every descendant instead, install a `Supervisor.Supervisor` and keep a set in `onStart`/`onEnd`.
 
 - `Supervisor.fromEffect` -> `none`: The Supervisor abstraction and its effect-valued observation hook were removed.
 
-- `Supervisor.none` -> `none`: The Supervisor abstraction was removed; normal structured concurrency needs no no-op supervisor.
+- `Supervisor.none` -> `undefined`: There is no no-op Supervisor: `undefined` means none. Provide `undefined` to `Supervisor.Supervisor` to opt a region's forks out.
 
-- `Supervisor.unsafeTrack` -> `FiberSet`: Use scoped FiberSet.make and explicitly run or add fibers; there is no unsafe unscoped ambient tracker.
+- `Supervisor.track` -> `none`: There is no built-in tracking Supervisor. Keep a `Set` of fibers in `onStart`/`onEnd` of a `Supervisor.Supervisor` (holding them weakly if they may block forever), or use `FiberSet` for fibers you fork yourself.
+
+- `Supervisor.unsafeTrack` -> `none`: There is no built-in tracking Supervisor. Keep a `Set` of fibers in `onStart`/`onEnd` of a `Supervisor.Supervisor`, or use `FiberSet` for fibers you fork yourself.
 
 ### `effect/Symbol`
 
