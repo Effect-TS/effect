@@ -222,18 +222,21 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Deletes up to `limit` completed requests of an entity type with their
-   * messages and replies, returning how many requests were deleted.
+   * Deletes up to `limit` completed requests of an entity type in the given
+   * shards with their messages and replies, returning how many requests were
+   * deleted.
    *
    * **Details**
    *
    * A request is eligible when its final `WithExit` reply has an id timestamp
    * before `completedBefore`, in Unix milliseconds. Requests without a final
-   * reply, including ones reset by `clearReplies`, are kept. A request sent
-   * again with the same primary key after deletion is saved as a new request.
+   * reply, including ones reset by `clearReplies`, are kept. An empty
+   * `shardIds` deletes nothing. A request sent again with the same primary key
+   * after deletion is saved as a new request.
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string
+    readonly shardIds: Iterable<ShardId.ShardId>
     readonly completedBefore: number
     readonly limit: number
   }) => Effect.Effect<number, PersistenceError>
@@ -507,9 +510,9 @@ export type Encoded = {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Deletes up to `limit` completed requests of an entity type with every
-   * message and reply sharing their request id, returning how many requests
-   * were deleted.
+   * Deletes up to `limit` completed requests of an entity type in the given
+   * shards with every message and reply sharing their request id, returning
+   * how many requests were deleted.
    *
    * **Details**
    *
@@ -519,6 +522,7 @@ export type Encoded = {
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string
+    readonly shardIds: Arr.NonEmptyArray<string>
     readonly completedBefore: number
     readonly limit: number
   }) => Effect.Effect<number, PersistenceError>
@@ -833,7 +837,11 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     resetRequests: (requestIds) => requestIds.length === 0 ? Effect.void : encoded.resetRequests(requestIds),
     resetAddresses: (addresses) => addresses.length === 0 ? Effect.void : encoded.resetAddresses(addresses),
     clearAddress: encoded.clearAddress,
-    deleteProcessed: encoded.deleteProcessed,
+    deleteProcessed: (options) => {
+      const shardIds = Array.from(options.shardIds, (id) => id.toString())
+      if (!Arr.isArrayNonEmpty(shardIds)) return Effect.succeed(0)
+      return encoded.deleteProcessed({ ...options, shardIds })
+    },
     resetShards: (shardIds) => {
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.void
@@ -1260,14 +1268,16 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             journal.splice(i, 1)
           }
         }),
-      deleteProcessed: ({ completedBefore, entityType, limit }) =>
+      deleteProcessed: ({ completedBefore, entityType, limit, shardIds }) =>
         Effect.sync(() => {
           const deleted = new Set<string>()
           for (const [requestId, entry] of requests) {
             if (deleted.size >= limit) break
+            const address = entry.envelope.address
             const exit = entry.replies.find((reply) => reply._tag === "WithExit")
             if (
-              entry.envelope.address.entityType === entityType && exit !== undefined &&
+              address.entityType === entityType && exit !== undefined &&
+              shardIds.includes(ShardId.make(address.shardId.group, address.shardId.id).toString()) &&
               Snowflake.timestamp(Snowflake.Snowflake(exit.id)) < completedBefore
             ) {
               deleted.add(requestId)
