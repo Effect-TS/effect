@@ -6431,8 +6431,10 @@ validation or a lossless round trip:
   index and catch-all would produce incompatible TypeScript index signatures. This includes `additionalProperties`
   set to `true`, `{}`, or omitted. An intersection with a closed object can still be imported when it reduces the
   result to a finite set of properties.
-- `minProperties`, `maxProperties`, and `propertyNames` use the existing checks on the decoded object, after excess
-  properties have been stripped. No separate validation of the original object is added.
+- `minProperties`, `maxProperties`, `propertyNames`, and `dependentRequired` use the existing checks on the decoded
+  object, after excess properties have been stripped. No separate validation of the original object is added.
+  `dependentRequired` uses `Schema.isDependentRequired`, which checks own property membership. Draft 07
+  `dependencies` entries that list property names import the same way after `JsonSchema.fromSchemaDraft07`.
 - String `minLength` and `maxLength` count Unicode code points through `Schema.isMinCodePoints` and
   `Schema.isMaxCodePoints`, except that `minLength: 1` uses the equivalent non-empty check `Schema.isMinLength(1)`.
 - `integer` uses `Schema.isInt` and rejects integers outside JavaScript's safe integer range.
@@ -6443,7 +6445,7 @@ An Effect struct exported with `additionalProperties: true` therefore imports wi
 even if the original struct had none. The imported decoder retains additional properties that the original decoder
 would strip. Use the imported schema's actual checks and parse options when reasoning about validation.
 
-Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`,
+Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentSchemas`,
 active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying
 the unsupported keyword. Inactive conditional keywords and `minContains` / `maxContains` without
 `contains` have no validation effect and are ignored. Unknown extension keywords are ignored by default and their
