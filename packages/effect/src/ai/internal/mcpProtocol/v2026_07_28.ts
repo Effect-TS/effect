@@ -203,13 +203,12 @@ const projectContent = Match.type<PublicMcpSchema.ContentBlock>().pipe(
   Match.exhaustive
 )
 
-const projectResource = (resource: PublicMcpSchema.Resource) =>
-  McpProtocol.transcode(PublicMcpSchema.Resource, McpSchema.Resource, resource)
+// Registrations may be plain objects, so encode with the wire struct.
+const projectResource = (resource: PublicMcpSchema.Resource) => Schema.encodeEffect(McpSchema.Resource)(resource)
 const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTemplate) =>
-  McpProtocol.transcode(PublicMcpSchema.ResourceTemplate, McpSchema.ResourceTemplate, resourceTemplate)
+  Schema.encodeEffect(McpSchema.ResourceTemplate)(resourceTemplate)
 
-const projectPrompt = (prompt: PublicMcpSchema.Prompt) =>
-  McpProtocol.transcode(PublicMcpSchema.Prompt, McpSchema.Prompt, prompt)
+const projectPrompt = (prompt: PublicMcpSchema.Prompt) => Schema.encodeEffect(McpSchema.Prompt)(prompt)
 
 const projectTool = (tool: PublicMcpSchema.Tool) => McpProtocol.transcode(PublicMcpSchema.Tool, McpSchema.Tool, tool)
 
