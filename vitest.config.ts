@@ -51,6 +51,8 @@ export const exclude = [
   "**/test/utils/**",
   "**/test/cluster-integration/**",
   ...(!integrationTestsEnabled ? ["**/*.integration.test.{ts,tsx}"] : []),
+  // effect/docker supports Node only
+  ...(!isNode ? ["**/test/docker/**"] : []),
   "**/*.d.ts",
   "**/*.config.*",
   "**/vitest.*"
@@ -224,6 +226,7 @@ export default defineConfig({
       ...project("@effect/bundle", "packages/tools/bundle"),
       ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
+      ...project("@effect/docker-codegen", "packages/tools/docker-codegen", isNode),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
       ...project("@effect/npm-promote", "packages/tools/npm-promote"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),

@@ -1,0 +1,58 @@
+{
+  "name": "@effect/docker-codegen",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "description": "Generates the effect/docker Schemas from the Docker Engine API document",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/tools/docker-codegen"
+  },
+  "sideEffects": [],
+  "bin": {
+    "effect-docker-codegen": "./src/bin.ts"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./*": "./src/*.ts",
+    "./bin": null,
+    "./main": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map"
+  ],
+  "publishConfig": {
+    "provenance": true,
+    "bin": {
+      "effect-docker-codegen": "./dist/bin.js"
+    },
+    "exports": {
+      "./package.json": "./package.json",
+      "./*": "./dist/*.js",
+      "./bin": null,
+      "./main": null
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/openapi-generator": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^",
+    "swagger2openapi": "^7.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/swagger2openapi": "^7.0.4"
+  }
+}
