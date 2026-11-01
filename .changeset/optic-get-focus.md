@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `Optic.getFocus`, which returns an optic's focus or failure together with its path from the root, including the source index of each traversal element.
+Add experimental `Optic.getFocus`, which returns an optic's focus, or the failing step's input and issue, together with the path from the root; traversals also report the source path of each focused element.

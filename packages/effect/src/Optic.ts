@@ -337,8 +337,6 @@ type Step = PrimitiveStep | PathNode | CheckNode<any> | EachNode
 
 type Node = ReadonlyArray<Step>
 
-type Path = ReadonlyArray<Segment>
-
 const opaqueSegment: Segment = { _tag: "Opaque" }
 
 function keySegment(key: PropertyKey): Segment {
@@ -368,11 +366,13 @@ class PathNode {
   readonly _tag = "PathNode"
   readonly kind = "Lens"
   readonly path: ReadonlyArray<PropertyKey>
+  readonly segments: ReadonlyArray<Segment>
   readonly get: (s: any) => any
   readonly set: (a: any, s?: any) => any
 
   constructor(path: ReadonlyArray<PropertyKey>) {
     this.path = path
+    this.segments = path.map(keySegment)
     this.get = (s) => {
       let out = s
       for (let i = 0; i < path.length; i++) {
@@ -401,6 +401,7 @@ class CheckNode<T> {
   readonly checks: readonly [SchemaAST.Check<T>, ...Array<SchemaAST.Check<T>>]
   readonly get: (s: T) => Result.Result<T, SchemaIssue.Issue>
   readonly set = identity
+  readonly segments: ReadonlyArray<Segment> = []
 
   constructor(checks: readonly [SchemaAST.Check<T>, ...Array<SchemaAST.Check<T>>]) {
     this.checks = checks
@@ -411,12 +412,12 @@ class CheckNode<T> {
 class EachNode {
   readonly _tag = "EachNode"
   readonly kind = "Optional"
-  readonly inner: Optional<any, any>
+  readonly inner: OptionalImpl<any, any>
   readonly get: (as: ReadonlyArray<any>) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
   readonly set: (bs: ReadonlyArray<any>, as?: any) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
 
   constructor(inner: Optional<any, any>) {
-    this.inner = inner
+    this.inner = inner as OptionalImpl<any, any>
     // GET: collect focused Bs
     this.get = (as) => {
       const bs: Array<any> = []
@@ -1501,10 +1502,11 @@ export const getFocus: {
     ({ location, value }) => ({ value, path: location.path, elements: location.elements?.map((e) => e.path) })
   ))
 
-// For a traversal's collected array, `elements` holds the location of each
-// element, including the elements of any nested traversal
+// A traversal's collected array has no location in the source: `elements`
+// holds the location of each collected element instead, and a step into the
+// array is opaque.
 type Location = {
-  readonly path: Path
+  readonly path: ReadonlyArray<Segment>
   readonly elements: ReadonlyArray<Location> | undefined
 }
 
@@ -1513,53 +1515,35 @@ function focusNode(
   s: any,
   location: Location
 ): Result.Result<{ readonly value: any; readonly location: Location }, FocusFailure> {
-  let { elements, path } = location
-  // After a traversal the focus is the collected array, which has no location
-  // in the source: a step into it is opaque
-  const append = (segment: Segment) => {
-    path = [...path, elements === undefined ? segment : opaqueSegment]
-    elements = undefined
-  }
+  const path = location.path.slice()
+  let elements = location.elements
   for (let i = 0; i < node.length; i++) {
     const step = node[i]
-    switch (step._tag) {
-      case "PathNode": {
-        s = step.get(s)
-        for (let j = 0; j < step.path.length; j++) append(keySegment(step.path[j]))
-        break
-      }
-      case "CheckNode": {
-        const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
-        if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
-        s = result.success
-        break
-      }
-      case "PrimitiveNode": {
-        if (hasFailingGet(step.kind)) {
-          const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
-          if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
-          s = result.success
-        } else {
-          s = step.get(s)
+    if (step._tag === "EachNode") {
+      const values: Array<any> = []
+      const locations: Array<Location> = []
+      for (let j = 0; j < s.length; j++) {
+        const base = elements?.[j] ?? { path: [...path, keySegment(j)], elements: undefined }
+        const result = focusNode(step.inner.node, s[j], base)
+        if (Result.isSuccess(result)) {
+          values.push(result.success.value)
+          locations.push(result.success.location)
         }
-        for (let j = 0; j < step.segments.length; j++) append(step.segments[j])
-        break
       }
-      case "EachNode": {
-        const values: Array<any> = []
-        const locations: Array<Location> = []
-        for (let j = 0; j < s.length; j++) {
-          const base = elements?.[j] ?? { path: [...path, keySegment(j)], elements: undefined }
-          const result = focusNode((step.inner as OptionalImpl<any, any>).node, s[j], base)
-          if (Result.isSuccess(result)) {
-            values.push(result.success.value)
-            locations.push(result.success.location)
-          }
-        }
-        s = values
-        elements = locations
-        break
-      }
+      s = values
+      elements = locations
+      continue
+    }
+    if (hasFailingGet(step.kind)) {
+      const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
+      if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
+      s = result.success
+    } else {
+      s = step.get(s)
+    }
+    for (let j = 0; j < step.segments.length; j++) {
+      path.push(elements === undefined ? step.segments[j] : opaqueSegment)
+      elements = undefined
     }
   }
   return Result.succeed({ value: s, location: { path, elements } })
