@@ -923,9 +923,9 @@ const retryPolicy = Schedule.min([
   Schedule.spaced("1 minute")
 ])
 
-// A transient storage failure must not become the workflow result. Requests
-// are saved under a primary key, so a retry after a lost acknowledgement is
-// deduplicated instead of running the activity again.
+// A transient storage failure must not become the workflow result. Activity,
+// clock and deferred requests are saved under a primary key, so a retry after
+// a lost acknowledgement is deduplicated instead of stored twice.
 const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),
