@@ -1054,6 +1054,29 @@ export const subtract: {
   return add(self, newParts)
 })
 
+const mutateRounding = (
+  self: DateTime.DateTime,
+  part: DateTime.DateTime.UnitSingular,
+  f: (date: Date) => void,
+  disambiguation: DateTime.Disambiguation = "compatible"
+): DateTime.DateTime => {
+  if (
+    self._tag === "Utc" || self.zone._tag === "Offset" ||
+    part === "day" || part === "week" || part === "month" || part === "year"
+  ) {
+    return mutate(self, f, { disambiguation })
+  }
+  // keep the input's offset so rounding stays in the same occurrence of a repeated hour
+  const date = toDate(self)
+  const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
+  f(date)
+  const adjustedMillis = date.getTime()
+  const result = makeZonedProto(adjustedMillis - offset, self.zone)
+  return zonedOffset(result) === offset
+    ? result
+    : makeZonedFromAdjusted(adjustedMillis, self.zone, disambiguation)
+}
+
 const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }) => {
@@ -1105,7 +1128,7 @@ export const startOf: {
   }): A
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutate(self, (date) => startOfDate(date, part, options)))
+}): DateTime.DateTime => mutateRounding(self, part, (date) => startOfDate(date, part, options)))
 
 const endOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
@@ -1158,7 +1181,7 @@ export const endOf: {
   }): A
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutate(self, (date) => endOfDate(date, part, options)))
+}): DateTime.DateTime => mutateRounding(self, part, (date) => endOfDate(date, part, options), "later"))
 
 /** @internal */
 export const nearest: {
@@ -1171,7 +1194,7 @@ export const nearest: {
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime.DateTime =>
-  mutate(self, (date) => {
+  mutateRounding(self, part, (date) => {
     if (part === "millisecond") return
     const millis = date.getTime()
     const start = new Date(millis)

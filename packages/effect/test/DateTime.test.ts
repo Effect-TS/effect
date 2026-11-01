@@ -134,6 +134,22 @@ describe("DateTime", () => {
     })
   })
 
+  it("rounds within the repeated DST hour", () => {
+    const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:15.250Z", {
+      timeZone: "America/New_York"
+    })
+    strictEqual(DateTime.formatIso(DateTime.startOf(secondOneThirty, "hour")), "2025-11-02T06:00:00.000Z")
+    strictEqual(DateTime.formatIso(DateTime.endOf(secondOneThirty, "second")), "2025-11-02T06:30:15.999Z")
+    strictEqual(DateTime.formatIso(DateTime.nearest(secondOneThirty, "minute")), "2025-11-02T06:30:00.000Z")
+  })
+
+  it("rounds calendar units to the whole day across DST", () => {
+    const havanaNoon = DateTime.makeZonedUnsafe("2025-11-02T17:00:00.000Z", { timeZone: "America/Havana" })
+    strictEqual(DateTime.formatIso(DateTime.startOf(havanaNoon, "day")), "2025-11-02T04:00:00.000Z")
+    const santiagoNoon = DateTime.makeZonedUnsafe("2025-04-05T15:00:00.000Z", { timeZone: "America/Santiago" })
+    strictEqual(DateTime.formatIso(DateTime.endOf(santiagoNoon, "day")), "2025-04-06T03:59:59.999Z")
+  })
+
   describe("endOf", () => {
     it("month", () => {
       const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
