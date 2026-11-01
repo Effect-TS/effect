@@ -883,7 +883,8 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
   >
 > =>
   suspend(() => {
-    // Copied when the effect runs, so a Supervisor can read the fibers again
+    // Read once, when the effect runs: the Supervisor gets this array, and a
+    // one-shot iterable is not consumed twice
     const fibers = Array.from(self as Iterable<any>) as Array<FiberImpl>
     return callbackBlocked(fibers, (resume) => {
       const exits: Array<Exit.Exit<any, any>> = []
