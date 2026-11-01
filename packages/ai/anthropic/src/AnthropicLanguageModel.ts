@@ -3290,19 +3290,24 @@ const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
   }
 }
 
-// A root schema with an identifier is generated as a top-level `$ref`. Inline
-// the referenced definition so the root is an object schema, keeping `$defs`
+// A root schema with an identifier is generated as a top-level `$ref`, which
+// may point to another reference (e.g. an identified suspend). Follow the chain
+// to its concrete schema so the root is an object schema, keeping `$defs`
 // because a recursive root refers back to its own definition.
-const resolveRootReference = (jsonSchema: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+const resolveRootReference = (
+  jsonSchema: JsonSchema.JsonSchema,
+  visited: Set<string> = new Set()
+): JsonSchema.JsonSchema => {
   const { $defs, $ref } = jsonSchema
-  if (typeof $ref !== "string" || !Predicate.isObject($defs)) {
+  if (typeof $ref !== "string" || !Predicate.isObject($defs) || visited.has($ref)) {
     return jsonSchema
   }
+  visited.add($ref)
   const path = JsonPointer.parseUriFragment($ref)
   if (path === undefined || path.length !== 2 || path[0] !== "$defs" || !Object.hasOwn($defs, path[1])) {
     return jsonSchema
   }
-  return { ...($defs as JsonSchema.Definitions)[path[1]], $defs }
+  return resolveRootReference({ ...($defs as JsonSchema.Definitions)[path[1]], $defs }, visited)
 }
 
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>
