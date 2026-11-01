@@ -1,9 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore } from "effect"
+import { Duration, Effect, Exit, Fiber, Latch, Option, PartitionedSemaphore, Scope, Semaphore } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
 describe("Semaphore", () => {
+  it("isSemaphore accepts a Semaphore and rejects anything else", () => {
+    assert.isTrue(Semaphore.isSemaphore(Semaphore.makeUnsafe(1)))
+    for (const value of [Latch.makeUnsafe(), PartitionedSemaphore.makeUnsafe({ permits: 1 }), {}, null]) {
+      assert.isFalse(Semaphore.isSemaphore(value))
+    }
+  })
+
   it.effect("take admits requests in FIFO order when a holder immediately reacquires", () =>
     Effect.gen(function*() {
       const sem = yield* Semaphore.make(1)

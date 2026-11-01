@@ -725,7 +725,7 @@ const makeWaiter = <A, E>(): Waiter<A, E> => {
 }
 
 const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effect<void, E> =>
-  internal.callback((resume) => {
+  internal.callbackBlocked(self, (resume) => {
     const state = self.state
     if (
       state.isShuttingDown ||

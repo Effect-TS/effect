@@ -28,6 +28,7 @@ import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Scheduler from "../Scheduler.ts"
 import type * as Scope from "../Scope.ts"
+import type * as Supervisor from "../Supervisor.ts"
 import * as Tracer from "../Tracer.ts"
 import type {
   Concurrency,
@@ -515,13 +516,17 @@ const captureAsyncContext = (): AsyncContext | undefined =>
   AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
 /** @internal */
+export const SupervisorKey = "effect/Supervisor"
+
+/** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
     context: Context.Context<never>,
-    interruptible: boolean = true
+    interruptible: boolean = true,
+    parent?: FiberImpl<any, any>
   ) {
     this.setContext(context)
     this.id = ++fiberIdStore.id
@@ -538,6 +543,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._parent = undefined
     this._asyncContext = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
+    this.supervisor = this.cache.supervisor
+    this.supervisor?.onStart(this, parent)
   }
 
   get [FiberTypeId](): Fiber.Fiber.Variance<A, E> {
@@ -546,6 +553,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   declare readonly id: number
   declare interruptible: boolean
+  declare readonly supervisor: Supervisor.Supervisor | undefined
   declare currentOpCount: number
   declare readonly _stack: Array<Primitive>
   declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
@@ -560,7 +568,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   // set in setContext
   declare context: Context.Context<never>
-  declare cache: Fiber.Fiber.Cache
+  declare cache: FiberCache
 
   declare _dispatcher: Scheduler.SchedulerDispatcher | undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
@@ -651,6 +659,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._parent._children?.delete(this)
       this._parent = undefined
     }
+    this.supervisor?.onEnd(this, exit)
     if (this._observers !== undefined) {
       const observers = this._observers
       this._observers = undefined
@@ -776,7 +785,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
+    const cache: FiberCache = root._fiberCache ??= makeFiberContextCache(context)
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
@@ -788,7 +797,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
+/** The fiber's cache, with the Supervisor that the public `Fiber.Fiber.Cache` doesn't show */
+interface FiberCache extends Fiber.Fiber.Cache {
+  readonly supervisor: Supervisor.Supervisor | undefined
+}
+
+const makeFiberContextCache = (context: Context.Context<never>): FiberCache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
@@ -802,6 +816,7 @@ const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cac
     minimumLogLevel: Context.get(context, MinimumLogLevel),
     stackFrame: Context.get(context, CurrentStackFrame),
     runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    supervisor: Context.getOrUndefinedUnsafe(context, SupervisorKey),
     maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
     preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
   }
@@ -845,7 +860,7 @@ export const fiberAwait = <A, E>(
 ): Effect.Effect<Exit.Exit<A, E>> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return succeed(impl._exit)
-  return callback((resume) => {
+  return callbackBlocked(impl, (resume) => {
     if (impl._exit) return resume(succeed(impl._exit))
     return sync(self.addObserver((exit) => resume(succeed(exit))))
   })
@@ -862,35 +877,38 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
     >
   >
 > =>
-  callback((resume) => {
-    const iter = self[Symbol.iterator]() as Iterator<FiberImpl>
-    const exits: Array<Exit.Exit<any, any>> = []
-    let cancel: (() => void) | undefined = undefined
-    function loop() {
-      let result = iter.next()
-      while (!result.done) {
-        if (result.value._exit) {
-          exits.push(result.value._exit)
-          result = iter.next()
-          continue
+  suspend(() => {
+    // Read once, when the effect runs: the Supervisor gets this array, and a
+    // one-shot iterable is not consumed twice
+    const fibers = Array.from(self as Iterable<any>) as Array<FiberImpl>
+    return callbackBlocked(fibers, (resume) => {
+      const exits: Array<Exit.Exit<any, any>> = []
+      let cancel: (() => void) | undefined = undefined
+      function loop() {
+        while (exits.length < fibers.length) {
+          const fiber = fibers[exits.length]
+          if (fiber._exit) {
+            exits.push(fiber._exit)
+            continue
+          }
+          cancel = fiber.addObserver((exit) => {
+            exits.push(exit)
+            loop()
+          })
+          return
         }
-        cancel = result.value.addObserver((exit) => {
-          exits.push(exit)
-          loop()
-        })
-        return
+        resume(succeed(exits))
       }
-      resume(succeed(exits))
-    }
-    loop()
-    return sync(() => cancel?.())
+      loop()
+      return sync(() => cancel?.())
+    })
   })
 
 /** @internal */
 export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return impl._exit
-  return callback((resume) => {
+  return callbackBlocked(impl, (resume) => {
     if (impl._exit) return resume(impl._exit)
     return sync(self.addObserver(resume))
   })
@@ -901,38 +919,40 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
   Arr.ReadonlyArray.With<A, A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _A : never>,
   A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _E : never
 > =>
-  callback((resume) => {
+  suspend(() => {
     const fibers = Array.from(self) as Array<FiberImpl>
-    if (fibers.length === 0) return resume(succeed(Arr.empty() as any))
-    const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
-    const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
-    const removeObservers = () => {
-      for (let i = 0; i < observers.length; i++) {
-        fibers[i].removeObserver(observers[i])
-      }
-    }
-    let done = 0
-    let failed = false
-    for (let i = 0; i < fibers.length; i++) {
-      if (failed) break
-      const observer = (exit: Exit.Exit<any, any>) => {
-        done++
-        if (exit._tag === "Failure") {
-          failed = true
-          removeObservers()
-          return resume(exit as any)
-        }
-        out[i] = exit.value
-        if (done === fibers.length) {
-          resume(succeed(out))
+    if (fibers.length === 0) return succeed(Arr.empty() as any)
+    return callbackBlocked(fibers, (resume) => {
+      const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
+      const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
+      const removeObservers = () => {
+        for (let i = 0; i < observers.length; i++) {
+          fibers[i].removeObserver(observers[i])
         }
       }
-      observers.push(observer)
-      fibers[i].addObserver(observer)
-    }
-    return sync(() => {
-      failed = true
-      removeObservers()
+      let done = 0
+      let failed = false
+      for (let i = 0; i < fibers.length; i++) {
+        if (failed) break
+        const observer = (exit: Exit.Exit<any, any>) => {
+          done++
+          if (exit._tag === "Failure") {
+            failed = true
+            removeObservers()
+            return resume(exit as any)
+          }
+          out[i] = exit.value
+          if (done === fibers.length) {
+            resume(succeed(out))
+          }
+        }
+        observers.push(observer)
+        fibers[i].addObserver(observer)
+      }
+      return sync(() => {
+        failed = true
+        removeObservers()
+      })
     })
   })
 
@@ -1195,7 +1215,8 @@ const callbackOptions: <A, E = never, R = never>(
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal?: AbortSignal
   ) => void | Effect.Effect<void, E, R>,
-  withSignal: boolean
+  withSignal: boolean,
+  blockedOn?: object
 ) => Effect.Effect<A, E, R> = (function() {
   const Proto = makePrimitiveProto({
     op: "Async",
@@ -1214,10 +1235,20 @@ const callbackOptions: <A, E = never, R = never>(
       }, controller?.signal)
       if (yielded !== false) return yielded
       yielded = true
-      // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
-      fiber.yieldWith(() => {
-        resumed = true
-      })
+      if (fiber.supervisor === undefined) {
+        // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
+        fiber.yieldWith(() => {
+          resumed = true
+        })
+      } else {
+        fiber.supervisor.onBlock(fiber, this.blockedOn)
+        // Read from the fiber rather than captured, so that no blocked fiber's
+        // closure context grows by a slot
+        fiber.yieldWith(() => {
+          resumed = true
+          fiber.supervisor!.onUnblock(fiber)
+        })
+      }
       if (controller === undefined && onCancel === undefined) {
         return Yield
       }
@@ -1231,13 +1262,14 @@ const callbackOptions: <A, E = never, R = never>(
       return Yield
     }
   })
-  const AsyncImpl = function(this: any, register: any, withSignal: boolean) {
+  const AsyncImpl = function(this: any, register: any, withSignal: boolean, blockedOn: object | undefined) {
     this.register = register
     this.withSignal = withSignal
-  } as unknown as PrimitiveCtor<[register: any, withSignal: boolean]>
+    this.blockedOn = blockedOn
+  } as unknown as PrimitiveCtor<[register: any, withSignal: boolean, blockedOn: object | undefined]>
   AsyncImpl.prototype = Proto
-  return function(register: any, withSignal: boolean) {
-    return new AsyncImpl(register, withSignal)
+  return function(register: any, withSignal: boolean, blockedOn?: object) {
+    return new AsyncImpl(register, withSignal, blockedOn)
   } as any
 })()
 
@@ -1267,8 +1299,28 @@ export const callback = <A, E = never, R = never>(
   ) => void | Effect.Effect<void, E, R>
 ): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2)
 
+/**
+ * `callback` for a wait only the program itself can complete: a fiber blocked
+ * on it reports `blockedOn` to its Supervisor.
+ *
+ * @internal
+ */
+export const callbackBlocked = <A, E = never, R = never>(
+  blockedOn: object | undefined,
+  register: (
+    this: Scheduler.Scheduler,
+    resume: (effect: Effect.Effect<A, E, R>) => void
+  ) => void | Effect.Effect<void, E, R>
+): Effect.Effect<A, E, R> => callbackOptions(register as any, false, blockedOn)
+
 /** @internal */
-export const never: Effect.Effect<never> = callback<never>(constVoid)
+export const never: Effect.Effect<never> = (() => {
+  // A fiber blocked on `never` reports `never` itself to its Supervisor; built
+  // in a function so that bundlers can still drop it when it is unused
+  const self = callback<never>(constVoid)
+  ;(self as any).blockedOn = self
+  return self
+})()
 
 /** @internal */
 export const gen = <
@@ -1689,7 +1741,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
     const fibers = new Set<Fiber.Fiber<any, any>>()
     // Read fibers on exit to include losers forked after the race settles.
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callback((resume) => {
+    return callbackBlocked(fibers, (resume) => {
       const effects = Arr.fromIterable(all)
       const len = effects.length
       let doneCount = 0
@@ -1742,7 +1794,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callback((resume) => {
+    return callbackBlocked(fibers, (resume) => {
       let done = false
       let i = 0
       for (const effect of all) {
@@ -4569,7 +4621,11 @@ const makeCachedUnsafe = <A, E, R>(
       }
       exit = undefined
       const clock = fiber.getRef(ClockRef)
-      const run: CachedRun<A, E> = { fiber: new FiberImpl(fiber.context), awaiters: 0, done: false }
+      const run: CachedRun<A, E> = {
+        fiber: new FiberImpl(fiber.context, true, fiber as FiberImpl),
+        awaiters: 0,
+        done: false
+      }
       current = run
       // Join before evaluating, which may synchronously re-enter and interrupt other awaiters.
       const joined = join(fiber, run)
@@ -5169,9 +5225,9 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
           terminal = step(state, item, eff, index)
           if (terminal) break
         } else if (!parentFiber) {
-          return callback((cb) => {
+          fibers = new Set()
+          return callbackBlocked(fibers, (cb) => {
             parentFiber = getCurrentFiber()!
-            fibers = new Set()
             effect = eff
             resume = cb
             let result: Effect.Effect<void, E | E2, R> | undefined
@@ -5593,7 +5649,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
 ): FiberImpl<A, E> => {
   const parentRuntime = parent as FiberImpl<FA, FE>
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
-  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
+  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible, parentRuntime)
   if (!daemon) {
     parentRuntime.children().add(child)
     child._parent = parentRuntime
@@ -5697,7 +5753,7 @@ export const forkIn: {
     withFiber((parent) => {
       // A closed scope gets an unstarted fiber, which is interrupted below
       const fiber = scope.state._tag === "Closed"
-        ? new FiberImpl<A, E>(parent.context)
+        ? new FiberImpl<A, E>(parent.context, true, parent as FiberImpl)
         : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
@@ -5954,7 +6010,7 @@ class Latch implements _Latch.Latch {
     this.flushWaiters()
     return true
   }
-  await = callback<void>((resume) => {
+  await = callbackBlocked<void>(this, (resume) => {
     if (this._isOpen) {
       return resume(void_)
     }
@@ -5985,6 +6041,9 @@ class Latch implements _Latch.Latch {
 
 /** @internal */
 export const makeLatchUnsafe = (open?: boolean | undefined): _Latch.Latch => new Latch(open ?? false)
+
+/** @internal */
+export const isLatch = (u: unknown): u is _Latch.Latch => u instanceof Latch
 
 /** @internal */
 export const makeLatch = (open?: boolean | undefined) => sync(() => makeLatchUnsafe(open))

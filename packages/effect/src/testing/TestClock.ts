@@ -23,6 +23,7 @@ import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Semaphore from "../Semaphore.ts"
+import * as Supervisor from "../Supervisor.ts"
 
 /**
  * A `TestClock` simplifies deterministic and efficient testing of effects that
@@ -114,6 +115,15 @@ export interface TestClock extends Clock.Clock {
    * `TestClock`.
    */
   withLive<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
+  /**
+   * Returns the current time and the pending sleeps, soonest first: each
+   * deadline with the `Latch` its sleeping fiber waits on, which is what that
+   * fiber's `Supervisor` sees it blocked on. Each call returns a fresh
+   * snapshot.
+   *
+   * @since 4.1.2
+   */
+  stateUnsafe(): TestClock.State
 }
 
 /**
@@ -296,6 +306,12 @@ const makeWithScheduler = Effect.fnUntraced(function*(
   let currentMonotonicNanos = BigInt(0)
   let warningState: WarningState = WarningState.Start()
 
+  function stateUnsafe(): TestClock.State {
+    // `sleeps` is kept latest first
+    const pending = sleeps.map((entry): [number, Latch.Latch] => [entry.timestamp, entry.latch]).reverse()
+    return { timestamp: currentTimestamp, sleeps: pending }
+  }
+
   function currentTimeMillisUnsafe(): number {
     return currentTimestamp
   }
@@ -328,6 +344,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
           Effect.delay(config.warningDelay),
           withLive,
           Effect.forkChild,
+          // A test's Supervisor must not see the warning timer as a pending wait
+          Effect.provideService(Supervisor.Supervisor, undefined),
           Effect.interruptible,
           Effect.flatMap((fiber) =>
             Effect.sync(() => {
@@ -514,7 +532,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     adjust,
     setTime,
     sleep,
-    withLive
+    withLive,
+    stateUnsafe
   }
   liveClocks.set(testClock, liveClock)
   return [testClock, scheduler] as const
