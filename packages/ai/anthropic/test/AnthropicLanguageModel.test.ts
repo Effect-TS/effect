@@ -2412,7 +2412,9 @@ const Filter = Schema.Struct({
 }).annotate({ identifier: "Filter" })
 
 const RecursiveFilterTool = Tool.make("ListContacts", {
-  parameters: Schema.Struct({ filter: Filter }).annotate({ identifier: "ListContactsParams" })
+  // An identified alias of an identified root produces a chain of root references
+  parameters: Schema.suspend(() => Schema.Struct({ filter: Filter }).annotate({ identifier: "ListContactsParams" }))
+    .annotate({ identifier: "Params" })
 })
 
 const makeHttpClient = (
