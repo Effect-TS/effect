@@ -646,6 +646,26 @@ describe.concurrent("Sharding", () => {
       expect(Queue.sizeUnsafe(state.interrupts)).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("delivers to other entities while an interrupted request keeps defecting", () => {
+    const Box = Entity.make("DefectingBox", [
+      Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
+    ]).annotateRpcs(ClusterSchema.Persisted, true)
+    const layer = Box.toLayer({
+      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
+    }).pipe(Layer.provideMerge(TestSharding))
+    return Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const client = yield* Box.client
+      const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1000)
+      yield* Fiber.interrupt(dying)
+
+      const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1000)
+      expect(healthy.pollUnsafe()).toEqual(Exit.succeed("ok"))
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("interrupts aren't sent for durable messages on shutdown", () =>
     Effect.gen(function*() {
       let driver!: MessageStorage.MemoryDriver["Service"]
