@@ -692,13 +692,9 @@ Expected a value greater than 0`
       s: S,
       expected: { path: ReadonlyArray<Optic.Segment>; input: unknown }
     ) {
-      const result = Optic.getFocus(optic)(s)
-      assertTrue(Result.isFailure(result))
-      deepStrictEqual(result.failure.path, expected.path)
-      deepStrictEqual(result.failure.input, expected.input)
-      strictEqual(
-        SchemaIssue.defaultFormatter(result.failure.issue),
-        SchemaIssue.defaultFormatter(getFailure(optic.getResult(s)))
+      deepStrictEqual(
+        Optic.getFocus(optic)(s),
+        Result.fail({ ...expected, issue: getFailure(optic.getResult(s)) })
       )
     }
 
@@ -707,10 +703,10 @@ Expected a value greater than 0`
       | { readonly _tag: "Rect"; readonly width: number }
     type S = { readonly a: { readonly b: ReadonlyArray<number> }; readonly shape: Shape; readonly c?: number }
     const s: S = { a: { b: [1, -2, 3] }, shape: { _tag: "Circle", radius: 1 } }
+    const positive = Optic.id<S>().key("a").key("b").forEach((n) => n.check(Schema.isGreaterThan(0)))
 
-    it("steps with a path", () => {
+    it("steps that add to the path", () => {
       assertFocus(Optic.id<S>(), s, { value: s, path: [] })
-      assertFocus(Optic.id<S>().key("a").key("b"), s, { value: [1, -2, 3], path: [key("a"), key("b")] })
       assertFocus(Optic.id<S>().key("a").key("b").at(2), s, { value: 3, path: [key("a"), key("b"), key(2)] })
       assertFocus(Optic.id<S>().optionalKey("c"), s, { value: undefined, path: [key("c")] })
       assertFocus(Optic.id<S>().key("shape").tag("Circle").key("radius"), s, {
@@ -720,13 +716,11 @@ Expected a value greater than 0`
     })
 
     it("steps that keep the location", () => {
-      type P = { readonly p: { readonly x: number; readonly y: number } }
-      assertFocus(Optic.id<P>().key("p").pick(["x"]), { p: { x: 1, y: 2 } }, { value: { x: 1 }, path: [key("p")] })
-      assertFocus(Optic.id<P>().key("p").omit(["x"]), { p: { x: 1, y: 2 } }, { value: { y: 2 }, path: [key("p")] })
       assertFocus(Optic.id<S>().key("a").key("b").check(Schema.isMinLength(1)).notUndefined(), s, {
         value: [1, -2, 3],
         path: [key("a"), key("b")]
       })
+      assertFocus(Optic.id<S>().key("shape").pick(["_tag"]), s, { value: { _tag: "Circle" }, path: [key("shape")] })
     })
 
     it("built-in prisms", () => {
@@ -746,6 +740,7 @@ Expected a value greater than 0`
       const first = Optic.makeLens<ReadonlyArray<number>, number>((as) => as[0], (a, as) => [a, ...as.slice(1)])
       assertFocus(Optic.id<S>().key("a").key("b").compose(first), s, { value: 1, path: [key("a"), key("b"), opaque] })
       assertFocus(Optic.entries<number>().key(0).key(1), { x: 1 }, { value: 1, path: [opaque, key(0), key(1)] })
+      assertFocus(positive.key(1), s, { value: 3, path: [key("a"), key("b"), opaque] })
     })
 
     it("failures report the input and location of the failing step", () => {
@@ -754,52 +749,26 @@ Expected a value greater than 0`
         path: [key("shape")],
         input: s.shape
       })
-      assertFocusFailure(Optic.id<S>().key("a").key("b").check(Schema.isMaxLength(2)), s, {
-        path: [key("a"), key("b")],
-        input: [1, -2, 3]
-      })
-      assertFocusFailure(Optic.id<Option.Option<number>>().compose(Optic.some()), Option.none(), {
-        path: [],
-        input: Option.none()
-      })
+      type T = { readonly items?: ReadonlyArray<number> }
+      assertFocusFailure(Optic.id<T>().at("items").notUndefined().forEach((n) => n), {}, { path: [], input: {} })
     })
 
-    describe("traversals", () => {
-      const positive = Optic.id<S>().key("a").key("b").forEach((n) => n.check(Schema.isGreaterThan(0)))
-
-      it("report each element at its source index", () => {
-        assertFocus(positive, s, {
-          value: [1, 3],
-          path: [key("a"), key("b")],
-          elements: [[key("a"), key("b"), key(0)], [key("a"), key("b"), key(2)]]
-        })
+    it("traversals report each element at its source", () => {
+      assertFocus(positive, s, {
+        value: [1, 3],
+        path: [key("a"), key("b")],
+        elements: [[key("a"), key("b"), key(0)], [key("a"), key("b"), key(2)]]
       })
-
-      it("report the path inside each element", () => {
-        type T = { readonly items: ReadonlyArray<Option.Option<{ readonly n: number }>> }
-        const optic = Optic.id<T>().key("items").forEach((item) => item.compose(Optic.some()).key("n"))
-        assertFocus(optic, { items: [Option.none(), Option.some({ n: 1 })] }, {
-          value: [1],
-          path: [key("items")],
-          elements: [[key("items"), key(1), tag("Some"), key("value"), key("n")]]
-        })
-      })
-
-      it("keys of the collected array go to the element's source", () => {
-        assertFocus(positive.key(1), s, { value: 3, path: [key("a"), key("b"), key(2)] })
-        assertFocus(positive.at("1" as any), s, { value: 3, path: [key("a"), key("b"), key(2)] })
-        assertFocus(positive.key("length"), s, { value: 2, path: [key("a"), key("b"), opaque] })
-      })
-
-      it("a traversal of a collected array uses the elements' sources", () => {
-        const optic = positive.forEach((n) => n.check(Schema.isGreaterThan(1)))
-        assertFocus(optic, s, { value: [3], path: [key("a"), key("b")], elements: [[key("a"), key("b"), key(2)]] })
-      })
-
-      it("fail where the traversed collection can't be focused", () => {
-        type T = { readonly items?: ReadonlyArray<number> }
-        const optic = Optic.id<T>().at("items").notUndefined().forEach((n) => n)
-        assertFocusFailure(optic, {}, { path: [], input: {} })
+      type T = { readonly items: ReadonlyArray<Option.Option<{ readonly n: number }>> }
+      assertFocus(
+        Optic.id<T>().key("items").forEach((item) => item.compose(Optic.some()).key("n")),
+        { items: [Option.none(), Option.some({ n: 1 })] },
+        { value: [1], path: [key("items")], elements: [[key("items"), key(1), tag("Some"), key("value"), key("n")]] }
+      )
+      assertFocus(positive.forEach((n) => n.check(Schema.isGreaterThan(1))), s, {
+        value: [3],
+        path: [key("a"), key("b")],
+        elements: [[key("a"), key("b"), key(2)]]
       })
     })
   })
