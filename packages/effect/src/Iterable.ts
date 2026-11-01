@@ -2103,15 +2103,19 @@ export const some: {
 export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterable<A> => ({
   [Symbol.iterator]() {
     let next = b
+    let done = false
     return {
       next() {
-        const ab = f(next)
-        if (O.isNone(ab)) {
-          return { done: true, value: undefined }
+        if (!done) {
+          const ab = f(next)
+          if (O.isSome(ab)) {
+            const [a, b] = ab.value
+            next = b
+            return { done: false, value: a }
+          }
+          done = true
         }
-        const [a, b] = ab.value
-        next = b
-        return { done: false, value: a }
+        return { done: true, value: undefined }
       }
     }
   }
