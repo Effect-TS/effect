@@ -202,9 +202,10 @@ export const ShardGroup = Context.Reference<(entityId: EntityId) => string>(
  * **Details**
  *
  * Apply it to the entity with `Entity.annotate`. Once a request has had its
- * final reply for longer than the retention, a background singleton deletes the
- * request, its acknowledgements, interrupts and replies from `MessageStorage`.
- * The check runs every `ShardingConfig.messageRetentionInterval`.
+ * final reply for longer than the retention, the runner that owns the
+ * request's shard deletes the request, its acknowledgements, interrupts and
+ * replies from `MessageStorage`. Each runner checks its shards every
+ * `ShardingConfig.messageRetentionInterval`.
  *
  * The default `undefined` keeps completed requests forever.
  *
