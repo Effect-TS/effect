@@ -429,7 +429,7 @@ const message = Result.match(result, {
 console.log(message) // no focus
 ```
 
-To report where a focus was found, or where it failed, use `getFocus`. It returns the same value or issue as `getResult`, together with the path from the root. On failure it also returns the path to, and the input of, the step that failed:
+To report where a focus was found, or where it failed, use `getWithDiagnostics`. It returns the same value or issue as `getResult`, together with the path from the root. On failure it also returns the path to, and the input of, the step that failed:
 
 ```ts
 import { Optic, Result } from "effect"
@@ -441,7 +441,7 @@ type S = { readonly shapes: { readonly [id: string]: Shape } }
 
 const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
 
-const result = Optic.getFocus({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius)
+const result = Optic.getWithDiagnostics({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius)
 if (Result.isFailure(result)) {
   console.log(result.failure.path)
   // [ { _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" } ]

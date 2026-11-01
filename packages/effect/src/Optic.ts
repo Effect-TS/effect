@@ -1392,7 +1392,7 @@ export const getResult: {
  *
  * Checks, refinements, `pick` and `omit` keep the location and add no segment.
  *
- * @see {@link getFocus} — returns the path to a focus
+ * @see {@link getWithDiagnostics} — returns the path to a focus
  *
  * @stability experimental
  * @category models
@@ -1414,13 +1414,13 @@ export type Segment =
  * - `elements`: for a traversal, the path from the root to each focused
  *   element, in the order of `value`; otherwise `undefined`.
  *
- * @see {@link getFocus} — the function that returns it
+ * @see {@link getWithDiagnostics} — the function that returns it
  *
  * @stability experimental
  * @category models
  * @since 4.1.2
  */
-export interface Focus<A> {
+export interface Diagnostics<A> {
   readonly value: A
   readonly path: ReadonlyArray<Segment>
   readonly elements: ReadonlyArray<ReadonlyArray<Segment>> | undefined
@@ -1436,13 +1436,13 @@ export interface Focus<A> {
  * - `issue`: the step's issue, relative to `input`. It is the same issue
  *   `getResult` fails with.
  *
- * @see {@link getFocus} — the function that returns it
+ * @see {@link getWithDiagnostics} — the function that returns it
  *
  * @stability experimental
  * @category models
  * @since 4.1.2
  */
-export interface FocusFailure {
+export interface DiagnosticsFailure {
   readonly path: ReadonlyArray<Segment>
   readonly input: unknown
   readonly issue: SchemaIssue.Issue
@@ -1477,7 +1477,7 @@ export interface FocusFailure {
  *
  * const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
  *
- * const failure = Result.getFailure(Optic.getFocus({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius))
+ * const failure = Result.getFailure(Optic.getWithDiagnostics({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius))
  *
  * // `tag("Circle")` failed on the value at ["shapes"]["a"]
  * Option.map(failure, (f) => f.path) // => Option.some([{ _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" }])
@@ -1490,15 +1490,15 @@ export interface FocusFailure {
  * @category getters
  * @since 4.1.2
  */
-export const getFocus: {
-  <S, A>(optic: Optional<S, A>): (self: NoInfer<S>) => Result.Result<Focus<A>, FocusFailure>
-  <S, A>(self: NoInfer<S>, optic: Optional<S, A>): Result.Result<Focus<A>, FocusFailure>
+export const getWithDiagnostics: {
+  <S, A>(optic: Optional<S, A>): (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>): Result.Result<Diagnostics<A>, DiagnosticsFailure>
 } = dual<
-  <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Focus<A>, FocusFailure>,
-  <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Focus<A>, FocusFailure>
+  <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>,
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
 >(2, (self, optic) =>
   Result.map(
-    focusNode((optic as OptionalImpl<any, any>).node, self, { path: [], elements: undefined }),
+    readWithDiagnostics((optic as OptionalImpl<any, any>).node, self, { path: [], elements: undefined }),
     ({ location, value }) => ({ value, path: location.path, elements: location.elements?.map((e) => e.path) })
   ))
 
@@ -1510,11 +1510,11 @@ type Location = {
   readonly elements: ReadonlyArray<Location> | undefined
 }
 
-function focusNode(
+function readWithDiagnostics(
   node: Node,
   s: any,
   location: Location
-): Result.Result<{ readonly value: any; readonly location: Location }, FocusFailure> {
+): Result.Result<{ readonly value: any; readonly location: Location }, DiagnosticsFailure> {
   const path = location.path.slice()
   let elements = location.elements
   for (let i = 0; i < node.length; i++) {
@@ -1524,7 +1524,7 @@ function focusNode(
       const locations: Array<Location> = []
       for (let j = 0; j < s.length; j++) {
         const base = elements?.[j] ?? { path: [...path, keySegment(j)], elements: undefined }
-        const result = focusNode(step.inner.node, s[j], base)
+        const result = readWithDiagnostics(step.inner.node, s[j], base)
         if (Result.isSuccess(result)) {
           values.push(result.success.value)
           locations.push(result.success.location)

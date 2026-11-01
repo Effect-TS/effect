@@ -674,26 +674,26 @@ Expected a value greater than 0`
     assertFailureMessage(optic.getResult(1.1), `Expected an integer`)
   })
 
-  describe("getFocus", () => {
+  describe("getWithDiagnostics", () => {
     const key = (key: PropertyKey): Optic.Segment => ({ _tag: "Key", key })
     const tag = (tag: SchemaAST.LiteralValue): Optic.Segment => ({ _tag: "Tag", tag })
     const opaque: Optic.Segment = { _tag: "Opaque" }
 
-    function assertFocus<S, A>(
+    function assertDiagnostics<S, A>(
       optic: Optic.Optional<S, A>,
       s: S,
       expected: { value: A; path: ReadonlyArray<Optic.Segment>; elements?: ReadonlyArray<ReadonlyArray<Optic.Segment>> }
     ) {
-      deepStrictEqual(Optic.getFocus(s, optic), Result.succeed({ elements: undefined, ...expected }))
+      deepStrictEqual(Optic.getWithDiagnostics(s, optic), Result.succeed({ elements: undefined, ...expected }))
     }
 
-    function assertFocusFailure<S, A>(
+    function assertDiagnosticsFailure<S, A>(
       optic: Optic.Optional<S, A>,
       s: S,
       expected: { path: ReadonlyArray<Optic.Segment>; input: unknown }
     ) {
       deepStrictEqual(
-        Optic.getFocus(optic)(s),
+        Optic.getWithDiagnostics(optic)(s),
         Result.fail({ ...expected, issue: getFailure(optic.getResult(s)) })
       )
     }
@@ -706,33 +706,33 @@ Expected a value greater than 0`
     const positive = Optic.id<S>().key("a").key("b").forEach((n) => n.check(Schema.isGreaterThan(0)))
 
     it("steps that add to the path", () => {
-      assertFocus(Optic.id<S>(), s, { value: s, path: [] })
-      assertFocus(Optic.id<S>().key("a").key("b").at(2), s, { value: 3, path: [key("a"), key("b"), key(2)] })
-      assertFocus(Optic.id<S>().optionalKey("c"), s, { value: undefined, path: [key("c")] })
-      assertFocus(Optic.id<S>().key("shape").tag("Circle").key("radius"), s, {
+      assertDiagnostics(Optic.id<S>(), s, { value: s, path: [] })
+      assertDiagnostics(Optic.id<S>().key("a").key("b").at(2), s, { value: 3, path: [key("a"), key("b"), key(2)] })
+      assertDiagnostics(Optic.id<S>().optionalKey("c"), s, { value: undefined, path: [key("c")] })
+      assertDiagnostics(Optic.id<S>().key("shape").tag("Circle").key("radius"), s, {
         value: 1,
         path: [key("shape"), tag("Circle"), key("radius")]
       })
       type N = { readonly _tag: 1; readonly n: number } | { readonly _tag: 2 }
-      assertFocus(Optic.id<N>().tag(1).key("n"), { _tag: 1, n: 5 }, { value: 5, path: [tag(1), key("n")] })
+      assertDiagnostics(Optic.id<N>().tag(1).key("n"), { _tag: 1, n: 5 }, { value: 5, path: [tag(1), key("n")] })
     })
 
     it("steps that keep the location", () => {
-      assertFocus(Optic.id<S>().key("a").key("b").check(Schema.isMinLength(1)).notUndefined(), s, {
+      assertDiagnostics(Optic.id<S>().key("a").key("b").check(Schema.isMinLength(1)).notUndefined(), s, {
         value: [1, -2, 3],
         path: [key("a"), key("b")]
       })
-      assertFocus(Optic.id<S>().key("a").pick(["b"]), s, { value: { b: [1, -2, 3] }, path: [key("a")] })
+      assertDiagnostics(Optic.id<S>().key("a").pick(["b"]), s, { value: { b: [1, -2, 3] }, path: [key("a")] })
     })
 
     it("built-in prisms", () => {
-      assertFocus(Optic.some<number>(), Option.some(1), { value: 1, path: [tag("Some"), key("value")] })
-      assertFocus(Optic.none<number>(), Option.none(), { value: undefined, path: [tag("None")] })
-      assertFocus(Optic.success<number, string>(), Result.succeed(1), {
+      assertDiagnostics(Optic.some<number>(), Option.some(1), { value: 1, path: [tag("Some"), key("value")] })
+      assertDiagnostics(Optic.none<number>(), Option.none(), { value: undefined, path: [tag("None")] })
+      assertDiagnostics(Optic.success<number, string>(), Result.succeed(1), {
         value: 1,
         path: [tag("Success"), key("success")]
       })
-      assertFocus(Optic.failure<number, string>(), Result.fail("e"), {
+      assertDiagnostics(Optic.failure<number, string>(), Result.fail("e"), {
         value: "e",
         path: [tag("Failure"), key("failure")]
       })
@@ -740,34 +740,40 @@ Expected a value greater than 0`
 
     it("opaque steps", () => {
       const first = Optic.makeLens<ReadonlyArray<number>, number>((as) => as[0], (a, as) => [a, ...as.slice(1)])
-      assertFocus(Optic.id<S>().key("a").key("b").compose(first), s, { value: 1, path: [key("a"), key("b"), opaque] })
-      assertFocus(Optic.entries<number>().key(0).key(1), { x: 1 }, { value: 1, path: [opaque, key(0), key(1)] })
-      assertFocus(positive.key(1), s, { value: 3, path: [key("a"), key("b"), opaque] })
+      assertDiagnostics(Optic.id<S>().key("a").key("b").compose(first), s, {
+        value: 1,
+        path: [key("a"), key("b"), opaque]
+      })
+      assertDiagnostics(Optic.entries<number>().key(0).key(1), { x: 1 }, { value: 1, path: [opaque, key(0), key(1)] })
+      assertDiagnostics(positive.key(1), s, { value: 3, path: [key("a"), key("b"), opaque] })
     })
 
     it("failures report the input and location of the failing step", () => {
-      assertFocusFailure(Optic.id<S>().key("a").key("b").at(5), s, { path: [key("a"), key("b")], input: [1, -2, 3] })
-      assertFocusFailure(Optic.id<S>().key("shape").tag("Rect").key("width"), s, {
+      assertDiagnosticsFailure(Optic.id<S>().key("a").key("b").at(5), s, {
+        path: [key("a"), key("b")],
+        input: [1, -2, 3]
+      })
+      assertDiagnosticsFailure(Optic.id<S>().key("shape").tag("Rect").key("width"), s, {
         path: [key("shape")],
         input: s.shape
       })
       type T = { readonly items?: ReadonlyArray<number> }
-      assertFocusFailure(Optic.id<T>().at("items").notUndefined().forEach((n) => n), {}, { path: [], input: {} })
+      assertDiagnosticsFailure(Optic.id<T>().at("items").notUndefined().forEach((n) => n), {}, { path: [], input: {} })
     })
 
     it("traversals report each element at its source", () => {
-      assertFocus(positive, s, {
+      assertDiagnostics(positive, s, {
         value: [1, 3],
         path: [key("a"), key("b")],
         elements: [[key("a"), key("b"), key(0)], [key("a"), key("b"), key(2)]]
       })
       type T = { readonly items: ReadonlyArray<Option.Option<{ readonly n: number }>> }
-      assertFocus(
+      assertDiagnostics(
         Optic.id<T>().key("items").forEach((item) => item.compose(Optic.some()).key("n")),
         { items: [Option.none(), Option.some({ n: 1 })] },
         { value: [1], path: [key("items")], elements: [[key("items"), key(1), tag("Some"), key("value"), key("n")]] }
       )
-      assertFocus(positive.forEach((n) => n.check(Schema.isGreaterThan(1))), s, {
+      assertDiagnostics(positive.forEach((n) => n.check(Schema.isGreaterThan(1))), s, {
         value: [3],
         path: [key("a"), key("b")],
         elements: [[key("a"), key("b"), key(2)]]
@@ -776,7 +782,7 @@ Expected a value greater than 0`
       const groups: G = { groups: [{ items: [-1, 2, 3] }] }
       const nested = Optic.id<G>().key("groups")
         .forEach((g) => g.key("items").forEach((n) => n.check(Schema.isGreaterThan(0))))
-      assertFocus(nested.forEach((items) => items.key(0)), groups, {
+      assertDiagnostics(nested.forEach((items) => items.key(0)), groups, {
         value: [2],
         path: [key("groups")],
         elements: [[key("groups"), key(0), key("items"), opaque]]
