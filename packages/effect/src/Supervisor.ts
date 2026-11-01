@@ -206,33 +206,26 @@ export const Supervisor: Context.Reference<Supervisor | undefined> = Context.Ref
 )
 
 class Combined implements Supervisor {
-  readonly outer: Supervisor
-  readonly inner: Supervisor
-  constructor(outer: Supervisor, inner: Supervisor) {
-    this.outer = outer
-    this.inner = inner
+  readonly members: ReadonlyArray<Supervisor>
+  constructor(members: ReadonlyArray<Supervisor>) {
+    this.members = members
   }
   onStart(fiber: Fiber.Fiber<unknown, unknown>, parent: Fiber.Fiber<unknown, unknown> | undefined) {
-    this.outer.onStart(fiber, parent)
-    this.inner.onStart(fiber, parent)
+    for (const member of this.members) member.onStart(fiber, parent)
   }
   onEnd(fiber: Fiber.Fiber<unknown, unknown>, exit: Exit.Exit<unknown, unknown>) {
-    this.outer.onEnd(fiber, exit)
-    this.inner.onEnd(fiber, exit)
+    for (const member of this.members) member.onEnd(fiber, exit)
   }
   onBlock(fiber: Fiber.Fiber<unknown, unknown>, blockedOn: object | undefined) {
-    this.outer.onBlock(fiber, blockedOn)
-    this.inner.onBlock(fiber, blockedOn)
+    for (const member of this.members) member.onBlock(fiber, blockedOn)
   }
   onUnblock(fiber: Fiber.Fiber<unknown, unknown>) {
-    this.outer.onUnblock(fiber)
-    this.inner.onUnblock(fiber)
+    for (const member of this.members) member.onUnblock(fiber)
   }
 }
 
-const contains = (chain: Supervisor, supervisor: Supervisor): boolean =>
-  chain === supervisor ||
-  (chain instanceof Combined && (contains(chain.outer, supervisor) || contains(chain.inner, supervisor)))
+const membersOf = (supervisor: Supervisor): ReadonlyArray<Supervisor> =>
+  supervisor instanceof Combined ? supervisor.members : [supervisor]
 
 /**
  * Combines two Supervisors into one that calls `outer`, then `inner`, on
@@ -245,9 +238,9 @@ const contains = (chain: Supervisor, supervisor: Supervisor): boolean =>
  *
  * **Details**
  *
- * Supervisors are compared by identity: `combine(a, a)` is `a`, and when
- * `inner` is already part of `outer`, the result is `outer`, so no fiber
- * reports to the same Supervisor twice.
+ * Supervisors are compared by identity, and each one is called once even
+ * when `outer` and `inner` overlap: `combine(a, a)` is `a`, and when every
+ * Supervisor of `inner` is already part of `outer`, the result is `outer`.
  *
  * @stability experimental
  * @category combinators
@@ -258,7 +251,11 @@ export const combine: {
   (outer: Supervisor, inner: Supervisor): Supervisor
 } = dual(
   2,
-  (outer: Supervisor, inner: Supervisor): Supervisor => contains(outer, inner) ? outer : new Combined(outer, inner)
+  (outer: Supervisor, inner: Supervisor): Supervisor => {
+    const members = membersOf(outer)
+    const added = membersOf(inner).filter((member) => !members.includes(member))
+    return added.length === 0 ? outer : new Combined([...members, ...added])
+  }
 )
 
 /**
