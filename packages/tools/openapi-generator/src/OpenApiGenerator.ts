@@ -402,9 +402,9 @@ const parseOpenApi = (
         continue
       }
 
-      const resolvedResponses = Object.entries(operation.responses ?? {}).flatMap(([status, response]) =>
-        isResponseStatus(status) ? [[status, resolveReference(response, resolveRef)] as const] : []
-      )
+      const resolvedResponses = Object.entries(operation.responses ?? {})
+        .filter(([status]) => isResponseStatus(status))
+        .map(([status, response]) => [status, resolveReference(response, resolveRef)] as const)
       const hasExplicitSuccessResponse = resolvedResponses.some(([status]) => {
         if (!/^\d{3}$/.test(status)) {
           return false

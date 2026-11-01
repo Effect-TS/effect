@@ -93,10 +93,9 @@ const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
   const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
   if (operation.urlParams.length > 0) {
     const props = operation.urlParams.map((param) => {
-      const value = `${paramsAccessor}[${JSON.stringify(param)}]`
-      return `${JSON.stringify(param)}: ${
-        operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value
-      } as any`
+      const key = JSON.stringify(param)
+      const value = `${paramsAccessor}[${key}]`
+      return `${key}: ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
     })
     pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
   }
