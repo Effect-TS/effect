@@ -477,7 +477,19 @@ development:
         ["empty trailing document", "a: 1\n---\n", [{ a: 1 }, null]],
         ["end marker before a start marker", "a: 1\n...\n---\nb: 2\n", [{ a: 1 }, { b: 2 }]],
         ["bare document after an end marker", "a: 1\n...\nb: 2\n", [{ a: 1 }, { b: 2 }]],
-        ["content on start marker lines", "--- a\n--- [1, 2]\n--- &x {b: 1}\n", ["a", [1, 2], { b: 1 }]]
+        ["content on start marker lines", "--- a\n--- [1, 2]\n--- &x {b: 1}\n", ["a", [1, 2], { b: 1 }]],
+        ["start marker content after a mapping", "a: 1\n--- {b: 2}\n--- \"x: y\"\n", [{ a: 1 }, { b: 2 }, "x: y"]],
+        ["an anchored empty document", "--- &a\n--- b\n", [null, "b"]],
+        [
+          "quoted hashes on start marker lines",
+          "--- \"a # b\"\n--- 'a # b'\n--- [\"a # b\"]\n",
+          ["a # b", "a # b", ["a # b"]]
+        ],
+        [
+          "separation whitespace after markers and directives",
+          "a: 1\n... \t\n%YAML\t1.2 \n---\nb: 2\n",
+          [{ a: 1 }, { b: 2 }]
+        ]
       ] as const
     )("parses a stream of %s with parseAll and rejects it in parse", (_, source, expected) => {
       assert.deepStrictEqual(parseAll(source), expected)
@@ -531,8 +543,10 @@ development:
       ["a directive without a start marker", "%YAML 1.2\na: 1\n"],
       ["a directive after a bare document", "a: 1\n%YAML 1.2\n---\nb: 2\n"],
       ["an unsupported YAML version", "%YAML 1.1\n---\na: yes\n"],
+      ["a YAML directive with extra parameters", "%YAML 1.2 x\n---\na\n"],
       ["a TAG directive", "%TAG !e! tag:example.com,2000:\n---\na: 1\n"],
-      ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"]
+      ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"],
+      ["content after an end marker following a mapping", "a: 1\n... trailing: 2\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
       failureMessage(source, Yaml.parseAll)
@@ -544,6 +558,7 @@ development:
         ["sequence", "---\n- one\n- two\n...\n", ["one", "two"]],
         ["plain scalar", "---\none\n...\n", "one"],
         ["empty document", "---\n...\n", null],
+        ["anchored empty document", "--- &a\n...\n", null],
         ["%YAML 1.2 directive", "%YAML 1.2\n---\nDocument\n... # Suffix\n", "Document"]
       ] as const
     )("preserves single-document markers around a %s", (_, source, expected) => {
