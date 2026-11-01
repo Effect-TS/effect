@@ -2157,6 +2157,175 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
+  // Anthropic tool search runs on the server: `server_tool_use` and its
+  // `tool_search_tool_result` must replay in the assistant message as received,
+  // while only client tool results belong in the following user message (#10268).
+  describe("tool search", () => {
+    const ListContacts = Tool.make("ListContacts", {
+      parameters: Schema.Struct({ name: Schema.String }),
+      success: Schema.Array(Schema.String)
+    })
+    const toolkit = Toolkit.make(
+      ListContacts,
+      AnthropicTool.ToolSearchRegex_20251119(),
+      AnthropicTool.ToolSearchBM25_20251119(),
+      AnthropicTool.WebSearch_20250305({})
+    )
+    const toolkitLayer = toolkit.toLayer({ ListContacts: () => Effect.succeed([]) })
+
+    const toolReferences = [{ type: "tool_reference", tool_name: "ListContacts" }]
+    const content = [
+      {
+        type: "server_tool_use",
+        id: "srvtoolu_1",
+        name: "tool_search_tool_regex",
+        input: { pattern: "contacts", limit: 5 }
+      },
+      {
+        type: "tool_search_tool_result",
+        tool_use_id: "srvtoolu_1",
+        content: { type: "tool_search_tool_search_result", tool_references: toolReferences }
+      },
+      {
+        type: "server_tool_use",
+        id: "srvtoolu_2",
+        name: "tool_search_tool_bm25",
+        input: { query: "contacts", limit: 5 }
+      },
+      {
+        type: "tool_search_tool_result",
+        tool_use_id: "srvtoolu_2",
+        content: { type: "tool_search_tool_result_error", error_code: "unavailable", error_message: null }
+      },
+      { type: "server_tool_use", id: "srvtoolu_3", name: "web_search", input: { query: "contacts" } },
+      {
+        type: "web_search_tool_result",
+        tool_use_id: "srvtoolu_3",
+        content: [{
+          type: "web_search_result",
+          url: "https://example.com/contacts",
+          title: "Contacts",
+          encrypted_content: "encrypted",
+          page_age: null
+        }]
+      },
+      { type: "tool_use", id: "toolu_1", name: "ListContacts", input: { name: "Anna" } }
+    ]
+
+    const message = (content: ReadonlyArray<unknown>, stop_reason: string | null) => ({
+      id: "msg_test_1",
+      type: "message",
+      role: "assistant",
+      model: "claude-sonnet-4-20250514",
+      content,
+      stop_reason,
+      stop_sequence: null,
+      usage: {
+        cache_creation: null,
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+        inference_geo: null,
+        input_tokens: 1,
+        output_tokens: 1,
+        service_tier: null
+      }
+    })
+
+    const streamEvents = (content: ReadonlyArray<any>) => [
+      { type: "message_start", message: message([], null) },
+      ...content.flatMap((block, index) =>
+        "input" in block
+          ? [
+            { type: "content_block_start", index, content_block: { ...block, input: {} } },
+            {
+              type: "content_block_delta",
+              index,
+              delta: { type: "input_json_delta", partial_json: JSON.stringify(block.input) }
+            },
+            { type: "content_block_stop", index }
+          ]
+          : [{ type: "content_block_start", index, content_block: block }, { type: "content_block_stop", index }]
+      ),
+      { type: "message_delta", delta: { stop_reason: "tool_use", stop_sequence: null }, usage: { output_tokens: 1 } },
+      { type: "message_stop" }
+    ]
+
+    // Answers the first request with `first` and every later request with text.
+    const makeLayer = (requests: Array<HttpClientRequest.HttpClientRequest>, first: ReadonlyArray<unknown>) =>
+      AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient(Effect.fnUntraced(function*(request) {
+            requests.push(request)
+            const body = yield* getRequestBody(request)
+            if (requests.length > 1) {
+              return jsonResponse(request, message([{ type: "text", text: "Done" }], "end_turn"))
+            }
+            return body.stream
+              ? sseResponse(request, streamEvents(first))
+              : jsonResponse(request, message(first, "tool_use"))
+          }))
+        ))
+      )
+
+    for (const mode of ["generateText", "streamText"] as const) {
+      it.effect(`replays provider-executed results in the assistant message (${mode})`, () => {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        return Effect.gen(function*() {
+          const prompt = Prompt.make("Which contacts are there?")
+          const firstParts: ReadonlyArray<AiResponse.AnyPart> = mode === "generateText"
+            ? (yield* LanguageModel.generateText({ prompt, toolkit })).content
+            : globalThis.Array.from(yield* Stream.runCollect(LanguageModel.streamText({ prompt, toolkit })))
+
+          // The public success result stays the bare array of tool references
+          const searchResult = firstParts
+            .filter((part) => part.type === "tool-result")
+            .find((part) => part.id === "srvtoolu_1")
+          assertDefined(searchResult)
+          assert.deepStrictEqual(searchResult.result, toolReferences)
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.concat(prompt, Prompt.fromResponseParts(firstParts)),
+            toolkit,
+            disableToolCallResolution: true
+          })
+
+          const body = yield* getRequestBody(requests[1])
+          assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
+          assert.deepStrictEqual(body.messages[1].content, content)
+          assert.deepStrictEqual(body.messages[2].content.map((block: any) => block.tool_use_id), ["toolu_1"])
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(toolkitLayer),
+          Effect.provide(makeLayer(requests, content))
+        )
+      })
+    }
+
+    it.effect("sends defer_loading only for tools that opt in", () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        yield* LanguageModel.generateText({
+          prompt: "Which contacts are there?",
+          toolkit: Toolkit.make(
+            ListContacts.annotate(AnthropicTool.DeferLoading, true),
+            Tool.make("Ping", { parameters: Schema.Struct({ host: Schema.String }) }),
+            AnthropicTool.ToolSearchRegex_20251119()
+          ),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(makeLayer(requests, [{ type: "text", text: "Done" }]))
+        )
+
+        const body = yield* getRequestBody(requests[0])
+        assert.deepStrictEqual(
+          body.tools.map((tool: any) => [tool.name, tool.defer_loading]),
+          [["ListContacts", true], ["Ping", undefined], ["tool_search_tool_regex", undefined]]
+        )
+      }))
+  })
+
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
   // `providerName: "memory"`, and is a client-executed provider tool. These
   // tests cover the round-trip that was broken on beta.98 (see #2615):
