@@ -5,6 +5,7 @@ import {
   Clock,
   Context,
   Deferred,
+  Duration,
   Effect,
   Equal,
   Exit,
@@ -5459,5 +5460,42 @@ describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: 
         yield* TestClock.adjust(10)
         assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
       }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
+    }))
+})
+
+describe("Sharding message retention", { concurrent: false }, () => {
+  it.effect("forgets completed requests of entities annotated with Retention", () =>
+    Effect.gen(function*() {
+      const Hit = Rpc.make("Hit", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        primaryKey: ({ id }) => id
+      })
+      const Retained = Entity.make("Retained", [Hit])
+        .annotateRpcs(ClusterSchema.Persisted, true)
+        .annotate(ClusterSchema.Retention, Duration.minutes(10))
+      const Unretained = Entity.make("Unretained", [Hit]).annotateRpcs(ClusterSchema.Persisted, true)
+      const runs = { retained: 0, unretained: 0 }
+      const layer = Layer.mergeAll(
+        Retained.toLayer({ Hit: () => Effect.sync(() => ++runs.retained) }),
+        Unretained.toLayer({ Hit: () => Effect.sync(() => ++runs.unretained) })
+      ).pipe(Layer.provideMerge(UnregisteredSharding({ messageRetentionInterval: "1 minute" })))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const retained = (yield* Retained.client)("one")
+        const unretained = (yield* Unretained.client)("one")
+        const hitBoth = Effect.all([retained.Hit({ id: "a" }), unretained.Hit({ id: "a" })])
+        yield* hitBoth
+
+        // the reply is younger than the retention, so the duplicate is still answered from storage
+        yield* TestClock.adjust("5 minutes")
+        yield* hitBoth
+        expect(runs).toEqual({ retained: 1, unretained: 1 })
+
+        yield* TestClock.adjust("6 minutes")
+        yield* hitBoth
+        expect(runs).toEqual({ retained: 2, unretained: 1 })
+      }).pipe(Effect.provide(layer))
     }))
 })

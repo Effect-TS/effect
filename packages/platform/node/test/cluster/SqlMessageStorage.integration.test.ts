@@ -307,6 +307,69 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
+      it.effect("deleteProcessed forgets request families completed before the cutoff", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
+          const cutoff = Date.UTC(2026, 0, 1)
+          const request = (id: number, entityType?: string) =>
+            makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id }), entityType })
+          const expired = yield* request(1)
+          const recent = yield* request(2)
+          const reset = yield* request(3)
+          const otherType = yield* request(4, "other")
+          for (const r of [expired, recent, reset, otherType]) {
+            yield* storage.saveRequest(r)
+          }
+          const chunk = yield* makeChunkReply(expired)
+          yield* storage.saveReply(chunk)
+          yield* storage.saveEnvelope(yield* makeAckChunk(expired, chunk))
+          yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+            id: snowflake.nextUnsafe(),
+            requestId: expired.envelope.requestId,
+            address: expired.envelope.address
+          }))
+          yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
+          yield* storage.saveReply(yield* makeReply(recent, cutoff + 1))
+          yield* storage.saveReply(yield* makeReply(reset, cutoff - 2))
+          yield* storage.clearReplies(reset.envelope.requestId)
+          yield* storage.saveReply(yield* makeReply(otherType, cutoff - 3))
+
+          const deleted = yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+          expect(deleted).toEqual(1)
+
+          const expiredId = String(expired.envelope.requestId)
+          expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${expiredId}`).toEqual([])
+          expect(yield* sql`SELECT id FROM cluster_replies WHERE request_id = ${expiredId}`).toEqual([])
+          expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
+          for (const kept of [recent, reset, otherType]) {
+            const result = yield* storage.saveRequest(
+              yield* request(kept.envelope.payload.id, kept.envelope.address.entityType)
+            )
+            expect(result._tag).toEqual("Duplicate")
+          }
+          expect(yield* storage.repliesForUnfiltered([recent.envelope.requestId, otherType.envelope.requestId]))
+            .toHaveLength(2)
+        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
+
+      it.effect("deleteProcessed deletes at most limit request families", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const cutoff = Date.UTC(2026, 0, 1)
+          for (let id = 1; id <= 3; id++) {
+            const request = yield* makeRequest({ payload: { id } })
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(yield* makeReply(request, cutoff - id))
+          }
+          const deleteProcessed = storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 2 })
+          expect(yield* deleteProcessed).toEqual(2)
+          expect(yield* deleteProcessed).toEqual(1)
+          expect(yield* deleteProcessed).toEqual(0)
+        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
