@@ -418,24 +418,13 @@ class EachNode {
 
   constructor(inner: Optional<any, any>) {
     this.inner = inner as OptionalImpl<any, any>
-    // GET: collect focused Bs
-    this.get = (as) => {
-      const bs: Array<any> = []
-      for (let i = 0; i < as.length; i++) {
-        const r = inner.getResult(as[i])
-        if (Result.isSuccess(r)) bs.push(r.success)
-      }
-      return Result.succeed(bs)
-    }
-    // SET: bs must match the number of focusable elements
+    this.get = (as) => Result.succeed(readEach(this.inner, as))
     this.set = (bs, as) => {
-      // 1) collect focusable indices
       const idxs: Array<number> = []
       for (let i = 0; i < as.length; i++) {
         if (Result.isSuccess(inner.getResult(as[i]))) idxs.push(i)
       }
 
-      // 2) arity check
       if (bs.length !== idxs.length) {
         return Result.fail(
           new SchemaIssue.InvalidValue({
@@ -444,7 +433,6 @@ class EachNode {
         )
       }
 
-      // 3) update those indices
       const out = as.slice()
       for (let k = 0; k < idxs.length; k++) {
         const i = idxs[k]
@@ -1247,21 +1235,76 @@ function cloneShallow<T>(pojo: T): T {
 }
 
 function compileGet(nodes: Node, kind: Kind): (s: any) => any {
-  return (s) => {
-    for (let i = 0; i < nodes.length; i++) {
-      const op = nodes[i]
-      const result = op.get(s)
-      if (hasFailingGet(op.kind)) {
-        if (Result.isFailure(result)) {
-          return result
-        }
-        s = result.success
-      } else {
-        s = result
+  return (s) => readNode(nodes, kind, s)
+}
+
+function readNode(
+  nodes: Node,
+  kind: Kind,
+  s: any,
+  location: Location
+): Result.Result<Diagnostics<any>, DiagnosticsFailure>
+function readNode(nodes: Node, kind: Kind, s: any): any
+function readNode(nodes: Node, kind: Kind, s: any, location?: Location): any {
+  // Ordinary reads do not allocate diagnostic paths or element locations.
+  const path = location?.path.slice()
+  let elements = location?.elements
+  for (let i = 0; i < nodes.length; i++) {
+    const step = nodes[i]
+    if (path !== undefined && step._tag === "EachNode") {
+      const diagnostics = readEach(step.inner, s, { path, elements })
+      s = diagnostics.value
+      elements = diagnostics.elements
+      continue
+    }
+    const result = step.get(s)
+    if (hasFailingGet(step.kind)) {
+      if (Result.isFailure(result)) {
+        return path === undefined
+          ? result
+          : Result.fail({ path, elements, input: s, issue: result.failure })
+      }
+      s = result.success
+    } else {
+      s = result
+    }
+    if (path !== undefined && step._tag !== "EachNode") {
+      for (let j = 0; j < step.segments.length; j++) {
+        path.push(elements === undefined ? step.segments[j] : opaqueSegment)
+        elements = undefined
       }
     }
-    return hasFailingGet(kind) ? Result.succeed(s) : s
   }
+  return path === undefined
+    ? hasFailingGet(kind) ? Result.succeed(s) : s
+    : Result.succeed({ value: s, path, elements })
+}
+
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>, location: Location): Diagnostics<any>
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>): Array<any>
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>, location?: Location): any {
+  const values: Array<any> = []
+  const locations: Array<Location> | undefined = location === undefined ? undefined : []
+  for (let i = 0; i < as.length; i++) {
+    const result: Result.Result<any, SchemaIssue.Issue | DiagnosticsFailure> = location === undefined
+      ? inner.getResult(as[i])
+      : readNode(
+        inner.node,
+        "Optional",
+        as[i],
+        location.elements?.[i] ?? { path: [...location.path, keySegment(i)], elements: undefined }
+      )
+    if (Result.isSuccess(result)) {
+      if (locations === undefined) {
+        values.push(result.success)
+      } else {
+        const diagnostics: Diagnostics<any> = result.success
+        values.push(diagnostics.value)
+        locations.push({ path: diagnostics.path, elements: diagnostics.elements })
+      }
+    }
+  }
+  return location === undefined ? values : { value: values, path: location.path, elements: locations }
 }
 
 function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
@@ -1519,50 +1562,10 @@ export const getWithDiagnostics: {
 } = dual<
   <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>,
   <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
->(2, (self, optic) =>
-  Result.map(
-    readWithDiagnostics((optic as OptionalImpl<any, any>).node, self, { path: [], elements: undefined }),
-    ({ location, value }) => ({ value, path: location.path, elements: location.elements })
-  ))
-
-function readWithDiagnostics(
-  node: Node,
-  s: any,
-  location: Location
-): Result.Result<{ readonly value: any; readonly location: Location }, DiagnosticsFailure> {
-  const path = location.path.slice()
-  let elements = location.elements
-  for (let i = 0; i < node.length; i++) {
-    const step = node[i]
-    if (step._tag === "EachNode") {
-      const values: Array<any> = []
-      const locations: Array<Location> = []
-      for (let j = 0; j < s.length; j++) {
-        const base = elements?.[j] ?? { path: [...path, keySegment(j)], elements: undefined }
-        const result = readWithDiagnostics(step.inner.node, s[j], base)
-        if (Result.isSuccess(result)) {
-          values.push(result.success.value)
-          locations.push(result.success.location)
-        }
-      }
-      s = values
-      elements = locations
-      continue
-    }
-    if (hasFailingGet(step.kind)) {
-      const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
-      if (Result.isFailure(result)) return Result.fail({ path, elements, input: s, issue: result.failure })
-      s = result.success
-    } else {
-      s = step.get(s)
-    }
-    for (let j = 0; j < step.segments.length; j++) {
-      path.push(elements === undefined ? step.segments[j] : opaqueSegment)
-      elements = undefined
-    }
-  }
-  return Result.succeed({ value: s, location: { path, elements } })
-}
+>(
+  2,
+  (self, optic) => readNode((optic as OptionalImpl<any, any>).node, "Optional", self, { path: [], elements: undefined })
+)
 
 /**
  * Builds a source value from a focused value using a `Prism`.

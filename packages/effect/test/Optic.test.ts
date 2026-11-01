@@ -561,6 +561,19 @@ Expected a value greater than 0`
 
       strictEqual(assertPointerFailure(optic.replaceResult([2], [1]), [0]), issue)
     })
+
+    it("preserves skipped elements when replacing and modifying nested traversals", () => {
+      type S = { readonly groups: ReadonlyArray<ReadonlyArray<number>> }
+      const source: S = { groups: [[-1, 2], [3, -4]] }
+      const optic = Optic.id<S>().key("groups").forEach((group) =>
+        group.forEach((n) => n.check(Schema.isGreaterThan(0)))
+      )
+
+      assertSuccess(optic.getResult(source), [[2], [3]])
+      assertSuccess(optic.replaceResult([[20], [30]], source), { groups: [[-1, 20], [30, -4]] })
+      deepStrictEqual(optic.modifyAll((group) => group.map(addOne))(source), { groups: [[-1, 3], [4, -4]] })
+      deepStrictEqual(source, { groups: [[-1, 2], [3, -4]] })
+    })
   })
 
   describe("modifyAll", () => {
@@ -821,6 +834,31 @@ Expected a value greater than 0`
         input: [2, 3],
         elements: [location([key("a"), key("b"), key(1)]), location([key("a"), key("b"), key(2)])]
       })
+    })
+
+    it("reads each traversal element once per evaluation", () => {
+      const seen: Array<number> = []
+      const issue = new SchemaIssue.InvalidValue({ message: "negative" })
+      const optic = Optic.id<ReadonlyArray<number>>().forEach(() =>
+        Optic.makeOptional<number, number>(
+          (n) => {
+            seen.push(n)
+            return n > 0 ? Result.succeed(n) : Result.fail(issue)
+          },
+          (n) => Result.succeed(n)
+        )
+      )
+      const source = [-1, 2, 3]
+
+      assertSuccess(optic.getResult(source), [2, 3])
+      deepStrictEqual(seen, source)
+      seen.length = 0
+      assertSuccess(Optic.getWithDiagnostics(source, optic), {
+        value: [2, 3],
+        path: [],
+        elements: [location([key(1), opaque]), location([key(2), opaque])]
+      })
+      deepStrictEqual(seen, source)
     })
   })
 
