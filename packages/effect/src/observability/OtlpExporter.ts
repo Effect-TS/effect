@@ -11,6 +11,7 @@
  */
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -21,6 +22,7 @@ import type { HttpBody } from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
@@ -265,45 +267,25 @@ export const make: (
     )
   )
 
-  // `timer` changes synchronously, and a replaced timer stops acting.
-  interface Timer {
-    fiber: Fiber.Fiber<void> | undefined
-    sleeping: boolean
-  }
-  let timer: Timer | undefined
-  // Created after the shutdown finalizer, so timers stop before the shutdown flush.
-  const timerFibers = yield* FiberSet.make<void, never>()
-  const runTimer = yield* FiberSet.runtime(timerFibers)<never>()
-  const exportPeriodically = Effect.fnUntraced(function*(self: Timer) {
+  // `armed` is open while there is something to export. It changes in the
+  // same synchronous step as the buffer check, so a push is never stranded.
+  const armed = yield* Latch.make(exportsEmpty)
+  let wake = Deferred.makeUnsafe<void>()
+  const disarmIfEmpty = Effect.sync(() => {
+    if (exportsEmpty || buffer.length > 0 || !armed.closeUnsafe()) return
+    Deferred.doneUnsafe(wake, Effect.void)
+  })
+  // Forked after the shutdown finalizer, so the loop stops before the shutdown flush.
+  yield* Effect.gen(function*() {
     while (true) {
-      self.sleeping = true
-      yield* Effect.sleep(exportInterval)
-      self.sleeping = false
-      if (timer !== self) return
+      wake = Deferred.makeUnsafe<void>()
+      yield* armed.await
+      yield* Effect.race(Effect.sleep(exportInterval), Deferred.await(wake))
       yield* Fiber.await(yield* FiberSet.run(exportFibers, runExport))
-      if (timer !== self) return
-      if (!exportsEmpty && buffer.length === 0) {
-        timer = undefined
-        return
-      }
+      yield* disarmIfEmpty
     }
-  })
-  const startTimer = () => {
-    if (timer !== undefined) return
-    const self: Timer = { fiber: undefined, sleeping: false }
-    timer = self
-    self.fiber = runTimer(exportPeriodically(self))
-  }
-  if (exportsEmpty) startTimer()
-
-  // A timer awaiting its export is left running, so exports stay serialized.
-  const cancelIdleTimer = Effect.suspend(() => {
-    if (exportsEmpty || buffer.length > 0 || timer === undefined || !timer.sleeping) return Effect.void
-    const fiber = timer.fiber!
-    timer = undefined
-    return Fiber.interrupt(fiber)
-  })
-  const exportNow = Effect.andThen(runExport, cancelIdleTimer)
+  }).pipe(Effect.forkIn(scope))
+  const exportNow = Effect.andThen(runExport, disarmIfEmpty)
 
   const flusher = yield* Flusher
   yield* flusher.register(exportNow)
@@ -316,7 +298,7 @@ export const make: (
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
         runExportFork(exportNow)
       } else {
-        startTimer()
+        armed.openUnsafe()
       }
     }
   }
