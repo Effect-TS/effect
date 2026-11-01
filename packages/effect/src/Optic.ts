@@ -1424,7 +1424,7 @@ export const getResult: {
  *
  * - `Key`: a property or index, from `key`, `optionalKey`, `at`, the element
  *   index of a traversal, and the field read by {@link some}, {@link success}
- *   and {@link failure}. Array indices are numbers.
+ *   and {@link failure}. Traversal element indices are numbers.
  * - `Tag`: narrowing to a tagged variant, from `tag`, {@link some},
  *   {@link none}, {@link success} and {@link failure}. It doesn't move the
  *   location.
@@ -1439,7 +1439,7 @@ export const getResult: {
  *
  * @stability experimental
  * @category models
- * @since 4.1.2
+ * @since 4.2.0
  */
 export type Segment =
   | { readonly _tag: "Key"; readonly key: PropertyKey }
@@ -1464,7 +1464,7 @@ export type Segment =
  *
  * @stability experimental
  * @category models
- * @since 4.1.2
+ * @since 4.2.0
  */
 export interface Location {
   readonly path: ReadonlyArray<Segment>
@@ -1485,7 +1485,7 @@ export interface Location {
  *
  * @stability experimental
  * @category models
- * @since 4.1.2
+ * @since 4.2.0
  */
 export interface Diagnostics<A> extends Location {
   readonly value: A
@@ -1507,7 +1507,7 @@ export interface Diagnostics<A> extends Location {
  *
  * @stability experimental
  * @category models
- * @since 4.1.2
+ * @since 4.2.0
  */
 export interface DiagnosticsFailure extends Location {
   readonly input: unknown
@@ -1554,7 +1554,7 @@ export interface DiagnosticsFailure extends Location {
  *
  * @stability experimental
  * @category getters
- * @since 4.1.2
+ * @since 4.2.0
  */
 export const getWithDiagnostics: {
   <S, A>(optic: Optional<S, A>): (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
