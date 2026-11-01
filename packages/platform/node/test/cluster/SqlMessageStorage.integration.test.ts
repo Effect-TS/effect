@@ -52,6 +52,19 @@ const truncate = Effect.gen(function*() {
   yield* sql`DELETE FROM cluster_messages`
 })
 
+// Waits until another connection is paused in a test trigger's pg_sleep.
+const waitForPgSleep = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  while (true) {
+    const waiting = yield* sql`
+      SELECT 1 FROM pg_stat_activity
+      WHERE pid <> pg_backend_pid() AND wait_event = 'PgSleep'
+    `
+    if (waiting.length > 0) return
+    yield* Effect.sleep("10 millis")
+  }
+}).pipe(Effect.timeout("5 seconds"))
+
 describe("SqlMessageStorage", () => {
   it.effect("preserves ids above 2^53 with a number-returning SQLite driver", () => {
     let id = 9007199254740993n
@@ -195,6 +208,99 @@ describe("SqlMessageStorage", () => {
             `
             expect(indexes).toHaveLength(1)
           }))
+
+        it.effect("saveRequest keeps a duplicate whose original is deleted mid-save", () =>
+          Effect.gen(function*() {
+            yield* truncate
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const cutoff = Date.UTC(2026, 0, 1)
+            const request = makeRequest({ rpc: PrimaryKeyTest, payload: PrimaryKeyTest.payloadSchema.make({ id: 1 }) })
+            const expired = yield* request
+            yield* storage.saveRequest(expired)
+            yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
+            // Pause after the duplicate's insert hits the conflict, before it reads the existing row.
+            yield* sql`
+              CREATE FUNCTION cluster_test_slow_insert() RETURNS trigger AS $$
+              BEGIN
+                PERFORM pg_sleep(2);
+                RETURN NULL;
+              END $$ LANGUAGE plpgsql
+            `
+            yield* sql`
+              CREATE TRIGGER cluster_test_slow_insert AFTER INSERT ON cluster_messages
+              FOR EACH STATEMENT EXECUTE FUNCTION cluster_test_slow_insert()
+            `
+            yield* Effect.gen(function*() {
+              const resend = yield* request
+              const save = yield* storage.saveRequest(resend).pipe(Effect.forkChild)
+              yield* waitForPgSleep
+              expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
+                .toEqual(1)
+              const result = yield* Fiber.join(save)
+              if (result._tag === "Duplicate") {
+                assert(Option.isSome(result.lastReceivedReply))
+              } else {
+                // a reported Success must have stored the request
+                const messages = yield* storage.unprocessedMessages([resend.envelope.address.shardId])
+                expect(messages.map((message) => message.envelope.requestId)).toEqual([resend.envelope.requestId])
+              }
+            }).pipe(Effect.ensuring(
+              Effect.gen(function*() {
+                yield* sql`DROP TRIGGER cluster_test_slow_insert ON cluster_messages`
+                yield* sql`DROP FUNCTION cluster_test_slow_insert()`
+                yield* truncate
+              }).pipe(Effect.orDie)
+            ))
+          }).pipe(TestClock.withLive))
+
+        it.effect("clearReplies does not deadlock with a concurrent deleteProcessed", () =>
+          Effect.gen(function*() {
+            yield* truncate
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const cutoff = Date.UTC(2026, 0, 1)
+            const request = yield* makeRequest()
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+            // Pause clearReplies after it deletes the final reply, only in the transaction that opts in.
+            yield* sql`
+              CREATE FUNCTION cluster_test_slow_clear() RETURNS trigger AS $$
+              BEGIN
+                IF current_setting('cluster_test.slow_clear', true) = 'on' THEN
+                  PERFORM pg_sleep(2);
+                END IF;
+                RETURN OLD;
+              END $$ LANGUAGE plpgsql
+            `
+            yield* sql`
+              CREATE TRIGGER cluster_test_slow_clear AFTER DELETE ON cluster_replies
+              FOR EACH ROW EXECUTE FUNCTION cluster_test_slow_clear()
+            `
+            yield* Effect.gen(function*() {
+              const clearFiber = yield* Effect.gen(function*() {
+                yield* sql`SET LOCAL cluster_test.slow_clear = 'on'`
+                yield* storage.clearReplies(request.envelope.requestId)
+              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+              yield* waitForPgSleep
+              const cleanup = yield* Effect.exit(
+                storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+              )
+              const cleared = yield* Fiber.join(clearFiber)
+              assert(Exit.isSuccess(cleared), String(cleared))
+              assert(Exit.isSuccess(cleanup), String(cleanup))
+              // the reset started first, so the request is kept and delivered again
+              expect(cleanup.value).toEqual(0)
+              const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+              expect(messages.map((message) => message.envelope.requestId)).toEqual([request.envelope.requestId])
+            }).pipe(Effect.ensuring(
+              Effect.gen(function*() {
+                yield* sql`DROP TRIGGER cluster_test_slow_clear ON cluster_replies`
+                yield* sql`DROP FUNCTION cluster_test_slow_clear()`
+                yield* truncate
+              }).pipe(Effect.orDie)
+            ))
+          }).pipe(TestClock.withLive))
       }
 
       if (label === "mssql") {

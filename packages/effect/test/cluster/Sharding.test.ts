@@ -5498,4 +5498,34 @@ describe("Sharding message retention", { concurrent: false }, () => {
         expect(runs).toEqual({ retained: 2, unretained: 1 })
       }).pipe(Effect.provide(layer))
     }))
+
+  it.effect("forgets completed requests of entities whose shard group depends on the entity id", () =>
+    Effect.gen(function*() {
+      const Hit = Rpc.make("Hit", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        primaryKey: ({ id }) => id
+      })
+      const Tenanted = Entity.make("Tenanted", [Hit])
+        .annotateRpcs(ClusterSchema.Persisted, true)
+        .annotate(ClusterSchema.ShardGroup, (entityId) => entityId.split(":")[0])
+        .annotate(ClusterSchema.Retention, Duration.minutes(10))
+      let runs = 0
+      const layer = Tenanted.toLayer({ Hit: () => Effect.sync(() => ++runs) }).pipe(
+        Layer.provideMerge(UnregisteredSharding({
+          availableShardGroups: ["tenant-a"],
+          assignedShardGroups: ["tenant-a"],
+          messageRetentionInterval: "1 minute"
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const client = (yield* Tenanted.client)("tenant-a:one")
+        yield* client.Hit({ id: "a" })
+        yield* TestClock.adjust("11 minutes")
+        yield* client.Hit({ id: "a" })
+        expect(runs).toEqual(2)
+      }).pipe(Effect.provide(layer))
+    }))
 })
