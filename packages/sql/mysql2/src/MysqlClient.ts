@@ -239,8 +239,8 @@ export const make = (
     const defaultMethod: "execute" | "query" = options.disablePreparedStatements === true ? "query" : "execute"
 
     class ConnectionImpl implements Connection {
-      readonly conn: Mysql.PoolConnection | Mysql.Pool
-      constructor(conn: Mysql.PoolConnection | Mysql.Pool) {
+      readonly conn: Mysql.PoolConnection
+      constructor(conn: Mysql.PoolConnection) {
         this.conn = conn
       }
 
@@ -250,13 +250,21 @@ export const make = (
         rowsAsArray = false,
         method: "execute" | "query" = defaultMethod
       ) {
+        const conn = this.conn
         return Effect.callback<unknown, SqlError>((resume) => {
           const operation = method === "query" ? "executeUnprepared" : "execute"
-          ;(this.conn as any)[method]({
+          let settled = false
+          let onSettled: (() => void) | undefined
+          ;(conn as any)[method]({
             sql,
             values,
             rowsAsArray
           }, (cause: unknown | null, results: unknown, _fields: any) => {
+            settled = true
+            if (onSettled !== undefined) {
+              // Interrupted: the result is dropped and the canceller resumes.
+              return onSettled()
+            }
             if (cause) {
               resume(
                 Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", operation) }))
@@ -265,6 +273,11 @@ export const make = (
               resume(Effect.succeed(results))
             }
           })
+          return Effect.suspend(() =>
+            settled ? Effect.void : cancelStatement(connectionOptions, conn, (f) => {
+              onSettled = f
+            })
+          )
         })
       }
 
@@ -311,15 +324,16 @@ export const make = (
         params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
-        const stream = queryStream(this.conn as any, sql, params)
+        const stream = queryStream(connectionOptions, this.conn, sql, params)
         return transformRows
           ? Stream.mapArray(stream, (_) => transformRows(_) as any)
           : stream
       }
     }
 
-    const pool = options.url
-      ? Mysql.createPool({
+    // Shared by the pool and the one-off connections that send `KILL QUERY`.
+    const connectionOptions: Mysql.PoolOptions = options.url
+      ? {
         uri: Redacted.value(options.url),
         multipleStatements: true,
         supportBigNumbers: true,
@@ -327,8 +341,8 @@ export const make = (
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
           : undefined as any
-      })
-      : Mysql.createPool({
+      }
+      : {
         ...options.poolConfig,
         host: options.host,
         port: options.port,
@@ -343,7 +357,8 @@ export const make = (
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
           : options.poolConfig?.idleTimeout
-      } as Mysql.PoolOptions)
+      } as Mysql.PoolOptions
+    const pool = Mysql.createPool(connectionOptions)
 
     yield* Effect.acquireRelease(
       Effect.callback<void, SqlError>((resume) => {
@@ -379,11 +394,16 @@ export const make = (
       })
     )
 
-    const poolConnection = new ConnectionImpl(pool)
-
     const acquireConn = Effect.acquireRelease(
       Effect.callback<Mysql.PoolConnection, SqlError>((resume) => {
+        let interrupted = false
+        // mysql2 cannot remove a waiter from its queue, so a connection handed
+        // over after interruption goes straight back to the pool.
         pool.getConnection((cause, conn) => {
+          if (interrupted) {
+            conn?.release()
+            return
+          }
           if (cause) {
             resume(
               Effect.fail(
@@ -396,14 +416,17 @@ export const make = (
             resume(Effect.succeed(conn))
           }
         })
+        return Effect.sync(() => {
+          interrupted = true
+        })
       }),
-      (conn) => Effect.sync(() => conn.release())
+      (conn) => Effect.sync(() => conn.release()),
+      { interruptible: true }
     )
 
-    const transactionAcquirer = Effect.map(
-      acquireConn,
-      (conn) => new ConnectionImpl(conn)
-    )
+    // Every statement checks out its own connection, so an interrupted
+    // statement can be killed by thread id before the connection is reused.
+    const acquirer = Effect.map(acquireConn, (conn) => new ConnectionImpl(conn))
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -419,8 +442,7 @@ export const make = (
     return Object.assign(
       yield* Client.make({
         driver: "mysql2",
-        acquirer: Effect.succeed(poolConnection),
-        transactionAcquirer,
+        acquirer,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         compiler,
         spanAttributes,
@@ -496,14 +518,85 @@ export const makeCompiler = (transform?: (_: string) => string) =>
 
 const escape = Statement.defaultEscape("`")
 
+/**
+ * How long interrupting a statement waits for `KILL QUERY` and the statement to
+ * settle before destroying the connection instead.
+ */
+const cancelTimeoutMillis = 5000
+
+/**
+ * Stops the statement running on `conn` and waits until it is safe to release
+ * the connection.
+ *
+ * `KILL QUERY` goes over a one-off connection, because the pool may have no
+ * free slot. The returned effect completes once the kill attempt has finished
+ * and `onSettled` has been called for the statement, so a late kill can never
+ * reach a statement from the connection's next borrower. Kill failures are
+ * ignored. If both do not happen within `cancelTimeoutMillis`, the connection
+ * is destroyed, which removes it from the pool.
+ */
+const cancelStatement = (
+  connectionOptions: Mysql.ConnectionOptions,
+  conn: Mysql.PoolConnection,
+  registerOnSettled: (onSettled: () => void) => void
+): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    let done = false
+    let killed = false
+    let settled = false
+    const kill = Mysql.createConnection({ ...connectionOptions })
+    const finish = () => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      kill.destroy()
+      resume(Effect.void)
+    }
+    const timer = setTimeout(() => {
+      conn.destroy()
+      finish()
+    }, cancelTimeoutMillis)
+    kill.on("error", () => {})
+    ;(kill as any).query("KILL QUERY ?", [conn.threadId], () => {
+      killed = true
+      if (settled) finish()
+    })
+    registerOnSettled(() => {
+      settled = true
+      if (killed) finish()
+    })
+  })
+
 function queryStream(
+  connectionOptions: Mysql.ConnectionOptions,
   conn: Mysql.PoolConnection,
   sql: string,
   params?: ReadonlyArray<any>
 ) {
   return asyncPauseResume<any, SqlError>(Effect.fnUntraced(function*(emit) {
-    const query = (conn as any).query(sql, params).stream()
-    yield* Effect.addFinalizer(() => Effect.sync(() => query.destroy() as void))
+    const command = (conn as any).query(sql, params)
+    const query = command.stream()
+    // The command, unlike its stream, reports when the server is done with the
+    // statement, even after the stream has been destroyed.
+    let settled = false
+    let onSettled: (() => void) | undefined
+    const settle = () => {
+      settled = true
+      onSettled?.()
+    }
+    command.once("end", settle)
+    command.once("error", settle)
+    yield* Effect.addFinalizer(() =>
+      Effect.suspend(() => {
+        if (settled) return Effect.void
+        // Destroying the stream resumes a paused connection, so the remaining
+        // rows are read and discarded while the statement is killed.
+        query.destroy()
+        return cancelStatement(connectionOptions, conn, (f) => {
+          onSettled = f
+        })
+      })
+    )
 
     let buffer: Array<any> = []
     let taskPending = false
