@@ -589,7 +589,7 @@ describe("SqlClient", () => {
           ])
         }))
 
-      it.effect("creates only the transaction span without span propagation, and none without tracing", () =>
+      it.effect("traces controls without span propagation, but records no wait time or events, and none without tracing", () =>
         Effect.gen(function*() {
           const harness = makeHarness()
 
@@ -601,8 +601,12 @@ describe("SqlClient", () => {
           )
 
           assert.deepStrictEqual(
-            unpropagated.spans.map((span) => [span.name, Object.fromEntries(span.attributes)]),
-            [["sql.transaction", {}]]
+            unpropagated.spans.map((span) => [span.name, Object.fromEntries(span.attributes), span.events]),
+            [
+              ["sql.transaction", {}, []],
+              ["BEGIN", { "db.operation.name": "BEGIN" }, []],
+              ["COMMIT", { "db.operation.name": "COMMIT" }, []]
+            ]
           )
           assert.deepStrictEqual(disabled.spans, [])
         }))
