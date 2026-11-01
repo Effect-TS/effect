@@ -17,6 +17,7 @@ import * as Context from "./Context.ts"
 import type * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
+import type * as Fiber from "./Fiber.ts"
 import { constTrue, dual, identity } from "./Function.ts"
 import { exitSucceed } from "./internal/core.ts"
 import * as Count from "./internal/count.ts"
@@ -475,8 +476,9 @@ export const fromEffect = <A extends Request.Any>(
   f: (entry: Request.Entry<A>) => Effect.Effect<Request.Success<A>, Request.Error<A>>
 ): RequestResolver<A> => {
   effect.interruptChildrenPatch() // ensure middleware is registered
-  return make((entries) =>
-    Effect.callback<void>((resume) => {
+  return make((entries) => {
+    const fibers = new Set<Fiber.Fiber<unknown, unknown>>()
+    return effect.callbackBlocked<void>(fibers, (resume) => {
       const parent = effect.getCurrentFiber()!
       let done = 0
       for (let i = 0; i < entries.length; i++) {
@@ -486,6 +488,7 @@ export const fromEffect = <A extends Request.Any>(
           effect.setContext(f(entry), entry.context),
           true
         )
+        fibers.add(fiber)
         fiber.addObserver((exit) => {
           entry.completeUnsafe(exit)
           done++
@@ -495,7 +498,7 @@ export const fromEffect = <A extends Request.Any>(
         })
       }
     })
-  )
+  })
 }
 
 /**

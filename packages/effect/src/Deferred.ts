@@ -178,7 +178,7 @@ export const makeUnsafe = <A, E = never>(): Deferred<A, E> => new DeferredImpl<A
 export const make = <A, E = never>(): Effect<Deferred<A, E>> => internalEffect.sync(() => makeUnsafe())
 
 const _await = <A, E>(self: Deferred<A, E>): Effect<A, E> =>
-  internalEffect.callback<A, E>((resume) => {
+  internalEffect.callbackBlocked<A, E>(self, (resume) => {
     if (self.effect) return resume(self.effect)
     self.resumes ??= []
     self.resumes.push(resume)

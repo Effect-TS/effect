@@ -759,6 +759,12 @@ export * as Struct from "./Struct.ts"
 export * as SubscriptionRef from "./SubscriptionRef.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.2
+ */
+export * as Supervisor from "./Supervisor.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
