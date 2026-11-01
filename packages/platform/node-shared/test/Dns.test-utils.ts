@@ -1,9 +1,15 @@
+import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
+import * as NodeDatagramSocket from "@effect/platform-node-shared/NodeDatagramSocket"
+import * as NodeDnsClient from "@effect/platform-node-shared/NodeDnsClient"
+import * as NodeSocket from "@effect/platform-node-shared/NodeSocket"
 import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Equal from "effect/Equal"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Dns from "effect/net/Dns"
+import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
@@ -79,17 +85,21 @@ const assertRecords = (actual: ReadonlyArray<Dns.DnsRecord>, records: ReadonlyAr
   }
 }
 
+// Without a `tls` block, CoreDNS serves DNS over HTTPS as plain HTTP.
 const corefile = `
-example.test {
+example.test https://example.test:8443 {
   file /etc/coredns/example.test.db
 }
-2.0.192.in-addr.arpa {
+2.0.192.in-addr.arpa https://2.0.192.in-addr.arpa:8443 {
   file /etc/coredns/2.0.192.in-addr.arpa.db
 }
-edge.test {
+edge.test https://edge.test:8443 {
   file /etc/coredns/edge.test.db
 }
 `
+
+// TXT records that do not fit in a 512-byte UDP response.
+const bigTxt = Array.from({ length: 16 }, (_, i) => `big         IN TXT   "record ${i} ${"x".repeat(24)}"`).join("\n")
 
 // Mirrors `expected`, plus records that cannot be represented. Names outside
 // the zones are refused.
@@ -110,6 +120,7 @@ www         IN CNAME example.test.
 _pg._tcp    IN SRV   10 5 5432 db1.example.test.
 _443._tcp   IN TLSA  3 1 1 38a88126a15ae8e643ce9447c3ce9a874ea0e05255d07ee12227809edbe5c7f1
 bad-mx      IN MX    10 bad\\032host.example.test.
+${bigTxt}
 `
 
 const reverseZone = `
@@ -136,11 +147,12 @@ _dot._tcp   IN PTR   printer\\..
 `
 
 /**
- * Starts a CoreDNS container serving the fixture zones and returns the address
- * of its UDP listener.
+ * Starts a CoreDNS container serving the fixture zones.
  */
 export const startDnsServer = async (): Promise<{
   readonly nameServer: NetAddress.InetAddressV4
+  readonly tcpNameServer: NetAddress.InetAddressV4
+  readonly dohUrl: string
   readonly stop: () => Promise<void>
 }> => {
   // The fixtures are bind-mounted rather than copied: under Bun, the archive
@@ -169,15 +181,17 @@ export const startDnsServer = async (): Promise<{
     container = await new GenericContainer("coredns/coredns:1.14.7")
       .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
       .withCommand(["-conf", "/etc/coredns/Corefile"])
-      .withExposedPorts("53/udp")
+      .withExposedPorts("53/udp", "53/tcp", "8443/tcp")
       .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
       .start()
     // The resolver APIs accept only IP addresses for name servers.
     const { address } = await NodeDnsApi.promises.lookup(container.getHost(), { family: 4 })
+    const mapped = (port: "53/udp" | "53/tcp") =>
+      NetAddress.inetAddressFromStringUnsafe(`${address}:${container!.getMappedPort(port)}`) as NetAddress.InetAddressV4
     return {
-      nameServer: NetAddress.inetAddressFromStringUnsafe(
-        `${address}:${container.getMappedPort("53/udp")}`
-      ) as NetAddress.InetAddressV4,
+      nameServer: mapped("53/udp"),
+      tcpNameServer: mapped("53/tcp"),
+      dohUrl: `http://${address}:${container.getMappedPort("8443/tcp")}/dns-query`,
       stop
     }
   } catch (error) {
@@ -186,19 +200,20 @@ export const startDnsServer = async (): Promise<{
   }
 }
 
-const isBun = typeof process !== "undefined" && process.versions.bun !== undefined
-const isDeno = "Deno" in globalThis
-
 /**
- * Runs end-to-end tests of a platform `Dns` service against a CoreDNS
- * container. The only skipped tests cover documented runtime bugs that the
- * platform services cannot work around.
+ * Runs end-to-end tests of a `Dns` service against a CoreDNS container. The
+ * options skip runtime limitations.
  */
 export const describeDnsServer = (
   label: string,
   make: (
     nameServer: NetAddress.InetAddress
-  ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>
+  ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>,
+  options?: {
+    readonly splitsTxtRecords?: boolean | undefined
+    readonly refusedAsNotFound?: boolean | undefined
+    readonly lacksTlsa?: boolean | undefined
+  }
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -227,11 +242,10 @@ export const describeDnsServer = (
         assertRecords(yield* resolver.resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
       }))
 
-    // Bun's resolver and `Deno.resolveDns` cannot query TLSA records.
     it.effect("queries TLSA records where the runtime supports them", () =>
       Effect.gen(function*() {
         const query = (yield* dns()).resolve(name("_443._tcp.example.test"), "TLSA")
-        if (isBun || isDeno) {
+        if (options?.lacksTlsa === true) {
           const error = yield* Effect.flip(query)
           assert.strictEqual(error.reason, "Unsupported")
           assert.strictEqual(error.recordType, "TLSA")
@@ -240,10 +254,7 @@ export const describeDnsServer = (
         }
       }))
 
-    // Bun returns each character string of a TXT record as a separate record,
-    // so the chunks of a record cannot be reassembled:
-    // https://github.com/oven-sh/bun/issues/44692
-    it.effect.skipIf(isBun)("keeps the chunks of a TXT record together", () =>
+    it.effect.skipIf(options?.splitsTxtRecords === true)("keeps the chunks of a TXT record together", () =>
       Effect.gen(function*() {
         assertRecords(yield* (yield* dns()).resolve(name("example.test."), "TXT"), expected.TXT)
       }))
@@ -302,11 +313,85 @@ export const describeDnsServer = (
         assert.strictEqual(missingAddress.reason, "NotFound")
       }))
 
-    // `Deno.resolveDns` reports every error response, including refused
-    // queries, with the same `NotFound` error as a missing name.
-    it.effect.skipIf(isDeno)("reports refused queries", () =>
+    it.effect.skipIf(options?.refusedAsNotFound === true)("reports refused queries", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip((yield* dns()).resolve(name("outside.invalid"), "A"))
         assert.strictEqual(error.reason, "Refused")
+      }))
+  })
+
+/**
+ * Runs end-to-end tests of `NodeDnsClient` against a CoreDNS container.
+ * Responses are checked over UDP; the other transports only send large
+ * responses.
+ */
+export const describeDnsClient = (label: string) =>
+  describe(label, () => {
+    let server: Awaited<ReturnType<typeof startDnsServer>>
+    beforeAll(async () => {
+      server = await startDnsServer()
+    }, 120_000)
+    afterAll(async () => {
+      await server?.stop()
+    })
+
+    // The container maps UDP and TCP to different ports.
+    const udpTransport = (udpPayloadSize?: number) =>
+      DnsClient.makeTransportUdp({
+        nameServers: [server.nameServer],
+        udpPayloadSize,
+        udp: (nameServer, onError) =>
+          NodeDatagramSocket.make({ connect: { address: nameServer.address, port: nameServer.port }, onError }),
+        tcp: () =>
+          NodeSocket.makeNet({
+            host: NetAddress.formatIp(server.tcpNameServer.address),
+            port: server.tcpNameServer.port
+          })
+      }).pipe(Effect.provide(NodeCrypto.layer))
+    const tcpTransport = () => Effect.orDie(NodeDnsClient.makeTransportTcp({ nameServers: [server.tcpNameServer] }))
+    const httpsTransport = () =>
+      DnsClient.makeTransportHttps({ urls: [server.dohUrl] }).pipe(Effect.provide(FetchHttpClient.layer))
+    const client = (transport: Effect.Effect<DnsClient.Transport["Service"]>) =>
+      DnsClient.make({ timeout: "2 seconds" }).pipe(Effect.provideServiceEffect(DnsClient.Transport, transport))
+    const udp = () => client(udpTransport())
+    const ttl = (record: DnsClient.ResourceRecord) => Duration.toSeconds(record.ttl)
+
+    it.effect("returns the sections, TTLs, and flags of a response", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* udp()).query(name("example.test."), "A")
+        assert.strictEqual(response.rcode, 0)
+        assert.isTrue(response.flags.authoritative)
+        assert.isFalse(response.flags.truncated)
+        assert.isTrue(response.flags.recursionDesired)
+        assertRecords(response.answer.map((record) => record.data as Dns.DnsRecord), expected.A)
+        for (const record of response.answer) {
+          assert.strictEqual(record.owner, "example.test.")
+          assert.strictEqual(record.class, 1)
+          assert.strictEqual(ttl(record), 300)
+        }
+        assert.deepStrictEqual(response.authority.map((record) => [record.owner, ttl(record), record.data]), [
+          ["example.test.", 300, expected.NS[0]]
+        ])
+        assert.deepStrictEqual(response.edns, { udpPayloadSize: 1232, version: 0, dnssecOk: false })
+      }))
+
+    it.effect("returns NXDOMAIN responses with the zone's SOA record", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* udp()).query(name("missing.example.test."), "A")
+        assert.strictEqual(response.rcode, 3)
+        assert.deepStrictEqual(response.answer, [])
+        assert.deepStrictEqual(response.authority.map((record) => [record.owner, ttl(record), record.data]), [
+          ["example.test.", 300, expected.SOA[0]]
+        ])
+      }))
+
+    it.effect("returns large responses over every transport", () =>
+      Effect.gen(function*() {
+        // A 512-byte UDP payload size truncates the response, which is retried over TCP.
+        for (const transport of [udpTransport(), udpTransport(512), tcpTransport(), httpsTransport()]) {
+          const response = yield* (yield* client(transport)).query(name("big.example.test."), "TXT")
+          assert.isFalse(response.flags.truncated)
+          assert.strictEqual(response.answer.length, 16)
+        }
       }))
   })

@@ -34,7 +34,7 @@ const RecordTypeId = "~effect/net/Dns/DnsRecord" as const
 // Records
 // =============================================================================
 
-interface RecordProto<Tag extends RecordType> extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
+interface RecordProto<Tag extends RecordType | "UNKNOWN"> extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: Tag
   readonly [RecordTypeId]: typeof RecordTypeId
 }
@@ -77,12 +77,18 @@ export interface Caa extends RecordProto<"CAA"> {
 /**
  * A canonical name (alias) record.
  *
+ * **Details**
+ *
+ * `target` uses the same fully qualified text format as `Ptr.host`. It need
+ * not be a host name; classless reverse delegations use names such as
+ * `1.0/25.2.0.192.in-addr.arpa.`.
+ *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Cname extends RecordProto<"CNAME"> {
-  readonly target: Host.DomainName
+  readonly target: string
 }
 
 /**
@@ -232,6 +238,19 @@ export interface Txt extends RecordProto<"TXT"> {
 }
 
 /**
+ * A record with its numeric type and raw data, for unsupported types or
+ * data that the corresponding record model cannot represent.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Unknown extends RecordProto<"UNKNOWN"> {
+  readonly type: number
+  readonly data: Uint8Array
+}
+
+/**
  * Any supported DNS record value.
  *
  * **Details**
@@ -312,7 +331,7 @@ const recordFields: {
     value: isString
   },
   CNAME: {
-    target: Host.isDomainName
+    target: (u) => isString(u) && u.length > 0
   },
   MX: {
     exchange: Host.isDomainName,
@@ -376,6 +395,9 @@ export const recordTypes: Arr.NonEmptyReadonlyArray<RecordType> = Object.keys(re
  */
 export const isRecordType = (u: unknown): u is RecordType => recordTypes.includes(u as RecordType)
 
+const recordTag = (u: unknown): unknown =>
+  hasProperty(u, RecordTypeId) ? (u as { readonly _tag?: unknown })._tag : undefined
+
 /**
  * Returns `true` when a value is a DNS record.
  *
@@ -383,24 +405,57 @@ export const isRecordType = (u: unknown): u is RecordType => recordTypes.include
  * @category guards
  * @since 4.0.0
  */
-export const isDnsRecord = (u: unknown): u is DnsRecord => hasProperty(u, RecordTypeId)
+export const isDnsRecord = (u: unknown): u is DnsRecord => isRecordType(recordTag(u))
+
+/**
+ * Returns `true` when a value is an `Unknown` record.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.0.0
+ */
+export const isUnknownRecord = (u: unknown): u is Unknown => recordTag(u) === "UNKNOWN"
 
 const RecordPrototype = {
   ...Inspectable.BaseProto,
   [RecordTypeId]: RecordTypeId,
-  [Equal.symbol](this: DnsRecord, that: Equal.Equal): boolean {
-    return isDnsRecord(that) && that._tag === this._tag &&
+  [Equal.symbol](this: DnsRecord | Unknown, that: Equal.Equal): boolean {
+    return recordTag(that) === this._tag &&
       Object.keys(this).every((key) => Equal.equals((this as any)[key], (that as any)[key]))
   },
-  [Hash.symbol](this: DnsRecord): number {
+  [Hash.symbol](this: DnsRecord | Unknown): number {
     return Hash.structureKeys(this, Object.keys(this))
   },
-  toString(this: DnsRecord): string {
+  toString(this: DnsRecord | Unknown): string {
     return formatRecord(this)
   },
-  toJSON(this: DnsRecord): unknown {
+  toJSON(this: DnsRecord | Unknown): unknown {
     return { ...this }
   }
+}
+
+const checkedRecord = <R extends DnsRecord | Unknown>(
+  type: string,
+  fields: unknown,
+  checks: { readonly [key: string]: (u: unknown) => boolean }
+): Result.Result<R, NetAddress.NetAddressError> => {
+  const input = (typeof fields === "object" && fields !== null ? fields : {}) as Record<string, unknown>
+  const self = Object.create(RecordPrototype)
+  self._tag = type
+
+  for (const [key, check] of Object.entries(checks)) {
+    const value = input[key]
+    if (!check(value)) {
+      return Result.fail(new NetAddress.NetAddressError({ input: fields, message: `invalid ${type} record ${key}` }))
+    }
+    self[key] = Array.isArray(value)
+      ? Object.freeze([...value])
+      : value instanceof Uint8Array
+      ? new Uint8Array(value)
+      : value
+  }
+
+  return Result.succeed(Object.freeze(self))
 }
 
 /**
@@ -438,28 +493,10 @@ const RecordPrototype = {
 export const makeRecord = <T extends RecordType>(
   type: T,
   fields: RecordFields<T>
-): Result.Result<RecordFor<T>, NetAddress.NetAddressError> => {
-  if (!isRecordType(type)) {
-    return Result.fail(new NetAddress.NetAddressError({ input: type, message: "unknown DNS record type" }))
-  }
-  const input: Record<string, unknown> = typeof fields === "object" && fields !== null ? fields : {}
-  const self = Object.create(RecordPrototype)
-  self._tag = type
-
-  for (const [key, check] of Object.entries<(u: unknown) => boolean>(recordFields[type])) {
-    const value = input[key]
-    if (!check(value)) {
-      return Result.fail(new NetAddress.NetAddressError({ input: fields, message: `invalid ${type} record ${key}` }))
-    }
-    self[key] = Array.isArray(value)
-      ? Object.freeze([...value])
-      : value instanceof Uint8Array
-      ? new Uint8Array(value)
-      : value
-  }
-
-  return Result.succeed(Object.freeze(self))
-}
+): Result.Result<RecordFor<T>, NetAddress.NetAddressError> =>
+  isRecordType(type)
+    ? checkedRecord(type, fields, recordFields[type])
+    : Result.fail(new NetAddress.NetAddressError({ input: type, message: "unknown DNS record type" }))
 
 /**
  * Creates a trusted DNS record of a record type from its fields, throwing on
@@ -471,6 +508,29 @@ export const makeRecord = <T extends RecordType>(
  */
 export const makeRecordUnsafe = <T extends RecordType>(type: T, fields: RecordFields<T>): RecordFor<T> =>
   Result.getOrThrow(makeRecord(type, fields))
+
+/**
+ * Creates a checked `Unknown` record from its numeric type, which must be a
+ * 16-bit unsigned integer, and its data, which is copied.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeUnknownRecord = (
+  fields: { readonly type: number; readonly data: Uint8Array }
+): Result.Result<Unknown, NetAddress.NetAddressError> =>
+  checkedRecord("UNKNOWN", fields, { type: isUint16, data: (u) => u instanceof Uint8Array })
+
+/**
+ * Creates a trusted `Unknown` record, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const makeUnknownRecordUnsafe = (fields: { readonly type: number; readonly data: Uint8Array }): Unknown =>
+  Result.getOrThrow(makeUnknownRecord(fields))
 
 const encoder = new TextEncoder()
 
@@ -524,7 +584,7 @@ const formatName = (text: string): string => {
  * @category encoding
  * @since 4.0.0
  */
-export const formatRecord = (self: DnsRecord): string => {
+export const formatRecord = (self: DnsRecord | Unknown): string => {
   switch (self._tag) {
     case "A":
     case "AAAA":
@@ -532,7 +592,7 @@ export const formatRecord = (self: DnsRecord): string => {
     case "CAA":
       return `CAA ${self.critical ? 128 : 0} ${self.tag} ${quote(self.value)}`
     case "CNAME":
-      return `CNAME ${self.target}`
+      return `CNAME ${formatName(self.target)}`
     case "MX":
       return `MX ${self.priority} ${self.exchange}`
     case "NAPTR":
@@ -553,6 +613,10 @@ export const formatRecord = (self: DnsRecord): string => {
       return `TLSA ${self.certUsage} ${self.selector} ${self.matchingType} ${Hex.encode(self.data).toUpperCase()}`
     case "TXT":
       return `TXT ${self.chunks.map(quote).join(" ")}`
+    case "UNKNOWN":
+      return `TYPE${self.type} \\# ${self.data.length}${
+        self.data.length > 0 ? ` ${Hex.encode(self.data).toUpperCase()}` : ""
+      }`
   }
 }
 
@@ -803,7 +867,8 @@ const asciiName = /^[\w.-]+$/
  *
  * Lookup and query names are parsed and normalized, and reverse lookup
  * addresses are parsed, before platform callbacks receive them. Invalid names
- * and addresses fail with `BadName`.
+ * and addresses fail with `BadName`, and queries of types that are not a
+ * `RecordType` fail with `Unsupported`.
  *
  * The constructor filters lookups by the requested address family, keeps only
  * records of the requested type, removes duplicates, and turns empty results
@@ -874,14 +939,16 @@ export const make = (impl: {
       Result.match(Host.domainNameFromInput(input), {
         onFailure: (cause) => badName("resolve", input, cause, type),
         onSuccess: (name) =>
-          resolveRecords(name, type).pipe(
-            Effect.flatMap((records) =>
-              Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
-                onEmpty: () => notFound("resolve", name, type),
-                onNonEmpty: Effect.succeed
-              })
+          !isRecordType(type)
+            ? Effect.fail(new DnsError({ reason: "Unsupported", method: "resolve", hostname: name, recordType: type }))
+            : resolveRecords(name, type).pipe(
+              Effect.flatMap((records) =>
+                Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
+                  onEmpty: () => notFound("resolve", name, type),
+                  onNonEmpty: Effect.succeed
+                })
+              )
             )
-          )
       }),
     reverse: (input) =>
       Result.match(NetAddress.ipFromInput(input), {

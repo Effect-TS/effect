@@ -1,6 +1,7 @@
-import { Effect } from "effect"
+import { Effect, type Schema } from "effect"
 import type * as Arr from "effect/Array"
 import * as Dns from "effect/net/Dns"
+import type * as DnsClient from "effect/net/DnsClient"
 import type * as Host from "effect/net/Host"
 import type * as NetAddress from "effect/net/NetAddress"
 import { describe, expect, it } from "tstyche"
@@ -39,10 +40,22 @@ describe("Dns", () => {
         return Effect.succeed([])
       }
     })
-    expect<Dns.Cname["target"]>().type.toBe<Host.DomainName>()
+    expect<Dns.Cname["target"]>().type.toBe<string>()
     expect<Dns.Mx["exchange"]>().type.toBe<Host.DomainName>()
     expect<Dns.Srv["target"]>().type.toBe<Host.DomainName>()
     expect<Dns.Soa["primary"]>().type.toBe<Host.DomainName>()
-    expect(Dns.makeRecord).type.not.toBeCallableWith("CNAME", { target: "db.example.com" })
+    expect(Dns.makeRecord).type.not.toBeCallableWith("MX", { exchange: "mail.example.com", priority: 10 })
+  })
+
+  it("makes Unknown records with their own constructor", () => {
+    expect(Dns.makeUnknownRecordUnsafe({ type: 65280, data: new Uint8Array() })).type.toBe<Dns.Unknown>()
+    expect<Dns.Unknown>().type.not.toBeAssignableTo<Dns.DnsRecord>()
+    expect(Dns.makeRecord).type.not.toBeCallableWith("UNKNOWN", { type: 65280, data: new Uint8Array() })
+    expect(dns.resolve).type.not.toBeCallableWith("example.com", "UNKNOWN")
+  })
+
+  it("types DnsResourceRecord as DnsClient.ResourceRecord", () => {
+    expect<typeof Schema.DnsResourceRecord.Type>().type.toBeAssignableTo<DnsClient.ResourceRecord>()
+    expect<DnsClient.ResourceRecord>().type.toBeAssignableTo<typeof Schema.DnsResourceRecord.Type>()
   })
 })
