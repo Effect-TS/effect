@@ -112,6 +112,18 @@ export const layer = (options: {
  *
  * **Details**
  *
+ * Each signal is exported only when an endpoint is set and its own exporter
+ * variable includes `otlp`. Unlike the OpenTelemetry SDK specification, the
+ * exporter variables have no default, so an endpoint alone exports nothing.
+ * To export all three signals:
+ *
+ * ```sh
+ * export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+ * export OTEL_TRACES_EXPORTER=otlp
+ * export OTEL_METRICS_EXPORTER=otlp
+ * export OTEL_LOGS_EXPORTER=otlp
+ * ```
+ *
  * The layer provides the `OtlpExporter.Flusher` shared by all enabled signals.
  * It is provided even when configuration disables every signal, in which case
  * `flush` is a no-op.
