@@ -24,6 +24,8 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as JsonPointer from "effect/JsonPointer"
+import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -1439,11 +1441,11 @@ const prepareTools = Effect.fnUntraced(
     for (const tool of options.tools) {
       if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
         const description = Tool.getDescription(tool)
-        const input_schema = yield* tryToolJsonSchema(tool, "prepareTools")
         const toolStrict = Tool.getStrictMode(tool)
         const strict = capabilities.supportsStructuredOutput
           ? (toolStrict ?? config.strictJsonSchema ?? true)
           : undefined
+        const input_schema = yield* tryToolJsonSchema(tool, strict === true, "prepareTools")
 
         userTools.push({
           name: tool.name,
@@ -3263,12 +3265,6 @@ const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError
     })
   })
 
-const tryCodecTransform = <S extends Schema.Constraint>(schema: S, method: string) =>
-  Effect.try({
-    try: () => toCodecAnthropic(schema),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
-
 const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchemaFromSchema(schema, { transformer: toCodecAnthropic }),
@@ -3282,9 +3278,41 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, method: string) =>
+const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) => {
+  try {
+    return Tool.getJsonSchema(tool, { transformer: toCodecAnthropic })
+  } catch (error) {
+    if (strict) {
+      throw error
+    }
+    // Anthropic's schema restrictions (e.g. no recursion) only apply to strict tools
+    return resolveRootReference(Tool.getJsonSchema(tool))
+  }
+}
+
+// A root schema with an identifier is generated as a top-level `$ref`, which
+// may point to another reference (e.g. an identified suspend). Follow the chain
+// to its concrete schema so the root is an object schema, keeping `$defs`
+// because a recursive root refers back to its own definition.
+const resolveRootReference = (
+  jsonSchema: JsonSchema.JsonSchema,
+  visited: Set<string> = new Set()
+): JsonSchema.JsonSchema => {
+  const { $defs, $ref } = jsonSchema
+  if (typeof $ref !== "string" || !Predicate.isObject($defs) || visited.has($ref)) {
+    return jsonSchema
+  }
+  visited.add($ref)
+  const path = JsonPointer.parseUriFragment($ref)
+  if (path === undefined || path.length !== 2 || path[0] !== "$defs" || !Object.hasOwn($defs, path[1])) {
+    return jsonSchema
+  }
+  return resolveRootReference({ ...($defs as JsonSchema.Definitions)[path[1]], $defs }, visited)
+}
+
+const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>
   Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }),
+    try: () => getToolJsonSchema(tool, strict),
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
     // A raw JSON Schema given to a dynamic tool is sent unchanged
@@ -3311,6 +3339,16 @@ const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   return undefined
 })
 
+const getToolParamsCodec = <S extends Schema.Constraint>(schema: S) => {
+  try {
+    return toCodecAnthropic(schema).codec
+  } catch {
+    // The request used the plain JSON Schema (non-strict tools only), which
+    // describes the JSON codec of the parameters
+    return Schema.toCodecJson(schema)
+  }
+}
+
 const transformToolCallParams = Effect.fnUntraced(function*(
   options: LanguageModel.ProviderOptions,
   toolName: string,
@@ -3332,7 +3370,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
+  const codec = getToolParamsCodec(tool.parametersSchema)
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
