@@ -915,7 +915,11 @@ export const make = Effect.fnUntraced(function*<
             }
             const rpc = entityRpcs.get(message.envelope.tag)
             const persisted = options?.persisted === true
-            const report = reportUndecodable(message, rpc === undefined ? "unknown_rpc" : "schema_mismatch", persisted)
+            const report = reportUndeliverable(
+              message.envelope,
+              rpc === undefined ? "unknown_rpc" : "schema_mismatch",
+              persisted
+            )
             // Leave the request unanswered and claimed: the claim expiring, or
             // another runner acquiring the shard, makes it eligible again.
             if (persisted) return report
@@ -979,29 +983,37 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.spaced("10 seconds")
 ])
 
-// Counts requests the runner could not decode, tagged with the entity type and
-// the reason only, to keep the series low-cardinality.
+// Counts messages the runner could not deliver to an entity, tagged with the
+// entity type and the reason only, to keep the series low-cardinality.
 const undecodableRequests = Metric.counter("effect_cluster_undecodable_requests", {
-  description: "Incoming entity requests that could not be decoded, by entity type and reason",
+  description: "Incoming entity messages that could not be decoded or delivered, by entity type and reason",
   incremental: true
 })
 
-// The decode failure is not logged, as it can contain payload values.
-const reportUndecodable = (
-  message: Message.IncomingRequest<any>,
-  reason: "unknown_rpc" | "schema_mismatch",
+const undeliverableMessages = {
+  unknown_rpc: "Could not decode persisted request, leaving it for a compatible runner",
+  schema_mismatch: "Could not decode persisted request, leaving it for a compatible runner",
+  unregistered_entity: "Entity type not registered, leaving persisted message for a runner hosting it"
+} as const
+
+/**
+ * Reports a message this runner cannot deliver. The cause is not logged, as a
+ * decode failure can contain payload values.
+ *
+ * @internal
+ */
+export const reportUndeliverable = (
+  envelope: Envelope.PartialRequest | Envelope.AckChunk | Envelope.Interrupt,
+  reason: keyof typeof undeliverableMessages,
   persisted: boolean
 ) => {
-  const envelope = message.envelope
   return Effect.logWarning(
-    persisted
-      ? "Could not decode persisted request, leaving it for a compatible runner"
-      : "Could not decode request"
+    persisted ? undeliverableMessages[reason] : "Could not decode request"
   ).pipe(
     Effect.annotateLogs({
       entityType: envelope.address.entityType,
       entityId: envelope.address.entityId,
-      tag: envelope.tag,
+      tag: envelope._tag === "Request" ? envelope.tag : envelope._tag,
       requestId: String(envelope.requestId),
       reason
     }),

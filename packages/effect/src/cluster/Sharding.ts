@@ -894,8 +894,11 @@ const make = Effect.gen(function*() {
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
             }
-            // if the entity did not register in time, we save a defect reply
-            return entityNotRegistered(address.entityType)
+            // If the entity did not register in time, leave the message
+            // claimed in storage for a runner hosting the entity type. The
+            // claim expiring, or another runner acquiring the shard, makes it
+            // eligible again.
+            return EntityManager.reportUndeliverable(message.envelope, "unregistered_entity", true)
           } else if (state.status === "closed") {
             return Effect.void
           }

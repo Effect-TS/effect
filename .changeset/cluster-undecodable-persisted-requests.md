@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix cluster runners terminally failing persisted requests they cannot decode or whose RPC they do not know, so a compatible runner can process them instead.
+Fix cluster runners terminally failing persisted messages they cannot decode, whose RPC they do not know, or whose entity type they do not host, so a compatible runner can process them instead.
