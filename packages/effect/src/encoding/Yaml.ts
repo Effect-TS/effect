@@ -2,16 +2,17 @@
  * Parses YAML configuration files.
  *
  * Supports YAML 1.2 block and flow collections, indentless sequence values,
- * multiline plain and quoted scalars, block scalars, anchors, aliases, and
- * YAML 1.1 merge keys (`<<`).
+ * multiline plain and quoted scalars, block scalars, anchors, aliases, YAML 1.1
+ * merge keys (`<<`), document streams, and the `%YAML 1.2` directive. Parsing
+ * returns a `Result` that fails with an `EncodingError`.
  *
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
  * at its parent's indentation.
  *
  * Unsupported: compact nested block sequences (`- - value` on one line),
- * multiline quoted scalars in flow collections, explicit complex keys,
- * tag/directive processing, recursive aliases, and document streams. Mapping
- * keys are JavaScript strings.
+ * multiline quoted scalars in flow collections, explicit complex keys, tags,
+ * `%TAG` and other directives, YAML versions other than 1.2, and recursive
+ * aliases. Mapping keys are JavaScript strings.
  *
  * @stability unstable
  * @since 4.0.0
@@ -140,6 +141,14 @@ const stripComment = (input: string, depth = 0): string => {
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
 const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWith("- ")
+
+// YAML 1.2.2 §9.1: document markers start at column zero and are followed by whitespace.
+const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:[ \t]|$)/.test(line.raw)
+
+const isDocumentStart = (line: Line): boolean => isDocumentMarker(line) && line.raw.startsWith("---")
+
+// YAML 1.2.2 §5.3: `%` is the directive indicator and cannot start a plain scalar.
+const directiveIndicatorError = "Plain scalars cannot start with '%'"
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
@@ -296,7 +305,9 @@ class FlowParser {
       this.anchors.set(name, value)
       return value
     }
-    return parseScalar(foldFlowLines(this.readUntil(/[,\]}]/)).trim())
+    const text = foldFlowLines(this.readUntil(/[,\]}]/)).trim()
+    if (text.startsWith("%")) this.fail(directiveIndicatorError)
+    return parseScalar(text)
   }
 
   private parseSequence(): Array<unknown> {
@@ -360,7 +371,9 @@ class FlowParser {
     if (character === "\"" || character === "'") {
       return parseKey(this.readQuoted(character))
     }
-    return foldFlowLines(this.readUntil(/:/)).trim()
+    const key = foldFlowLines(this.readUntil(/:/)).trim()
+    if (key.startsWith("%")) this.fail(directiveIndicatorError)
+    return key
   }
 
   private readQuoted(quote: string): string {
@@ -403,23 +416,81 @@ class FlowParser {
 class YamlParser {
   private readonly lines: ReadonlyArray<Line>
   private index = 0
-  private documentStarted = false
-  private readonly anchors = new Map<string, unknown>()
+  // Anchors are scoped to one document.
+  private anchors = new Map<string, unknown>()
 
   constructor(lines: ReadonlyArray<Line>) {
     this.lines = lines
   }
 
-  parse(): unknown {
-    this.skipIgnored()
-    if (this.index >= this.lines.length) return null
-    this.documentStarted = true
-    const value = this.parseNode(this.lines[this.index].indent)
-    this.skipIgnored()
-    if (this.index < this.lines.length) {
-      this.fail(this.lines[this.index], "Unexpected content")
+  // YAML 1.2.2 §9.2. `limit` stops with an error before a document past it starts.
+  parseStream(limit = Number.POSITIVE_INFINITY): Array<unknown> {
+    const documents: Array<unknown> = []
+    // True at the start of the stream and after a document end marker, where directives and bare documents may start.
+    let prefix = true
+    while (true) {
+      this.skipIgnored()
+      const line = this.lines[this.index]
+      if (line === undefined) return documents
+      if (isDocumentMarker(line) && !isDocumentStart(line)) {
+        if (line.text !== "...") this.fail(line, "Unexpected content after document end marker")
+        this.index++
+        prefix = true
+        continue
+      }
+      if (!prefix && !isDocumentStart(line)) this.fail(line, "Unexpected content")
+      if (documents.length >= limit) {
+        this.fail(line, "Expected a single YAML document, use parseAll to parse a document stream")
+      }
+      if (prefix && line.indent === 0 && line.text.startsWith("%")) this.parseDirectives()
+      this.anchors = new Map()
+      documents.push(this.parseDocument())
+      prefix = false
     }
-    return value
+  }
+
+  // YAML 1.2.2 §6.8: only `%YAML 1.2` is supported, and directives must be followed by `---`.
+  private parseDirectives(): void {
+    let version = false
+    while (true) {
+      this.skipIgnored()
+      const line = this.lines[this.index]
+      if (line === undefined || line.indent !== 0 || !line.text.startsWith("%")) break
+      const [name, ...parameters] = line.text.slice(1).split(/[ \t]+/)
+      if (name === "YAML") {
+        if (version) this.fail(line, "Duplicate %YAML directive")
+        if (parameters.length !== 1 || parameters[0] !== "1.2") {
+          this.fail(line, `Unsupported YAML version '${parameters.join(" ")}', only 1.2 is supported`)
+        }
+        version = true
+      } else {
+        this.fail(line, `Unsupported YAML directive '%${name}'`)
+      }
+      this.index++
+    }
+    const next = this.lines[this.index]
+    if (next === undefined || !isDocumentStart(next)) {
+      this.fail(next ?? this.lines[this.index - 1], "Expected '---' after YAML directives")
+    }
+  }
+
+  private parseDocument(): unknown {
+    const start = this.lines[this.index]
+    if (isDocumentStart(start)) {
+      this.index++
+      const content = start.text.slice(3).trimStart()
+      if (content.length > 0) {
+        // Block collections start on the line after the marker.
+        if (isSequenceEntry(content) || mappingSeparator(content) !== -1) {
+          this.fail(start, "Block collections cannot start on the document start line")
+        }
+        return this.parseNodeValue(content, -1)
+      }
+    }
+    this.skipIgnored()
+    const line = this.lines[this.index]
+    if (line === undefined || isDocumentMarker(line)) return null
+    return this.parseNode(line.indent)
   }
 
   private parseNode(indent: number, parentIndent = indent - 1): unknown {
@@ -454,6 +525,7 @@ class YamlParser {
     line: Line
   ): void {
     const rawKey = text.slice(0, separator).trim()
+    if (rawKey.startsWith("%")) this.fail(line, directiveIndicatorError)
     const rawValue = text.slice(separator + 1).trimStart()
     const value = this.parseNodeValue(rawValue, indent, true)
     const fail = (message: string) => this.fail(line, message)
@@ -522,7 +594,7 @@ class YamlParser {
   private parseFlowValue(text: string, parentIndent: number): unknown {
     return new FlowParser(text, this.anchors, (depth) => {
       const next = this.lines[this.index]
-      if (next === undefined || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(next.text))) return undefined
+      if (next === undefined || isDocumentMarker(next)) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
       const content = next.text.trim().length > 0
       if (content && next.indent < parentIndent) return undefined
@@ -536,6 +608,7 @@ class YamlParser {
   private parsePlainValue(value: string, parentIndent: number): unknown {
     const first = this.lines[this.index - 1]
     if (/:(?:\s|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
+    if (value.startsWith("%")) this.fail(first, directiveIndicatorError)
     let output = value
     let terminated = findIndicator(first.raw, "#") !== -1
     while (!terminated) {
@@ -547,7 +620,7 @@ class YamlParser {
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
       const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
-      if (text.length === 0 || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(text))) break
+      if (text.length === 0 || isDocumentMarker(next)) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       this.rejectTabIndentedBlankLines(blankLines, parentIndent)
       output += foldLineBreak(blankLines) + text
@@ -578,7 +651,7 @@ class YamlParser {
         output += trimFoldedEnd(line, quote) + foldLineBreak(blankLines)
       }
       const next = this.lines[this.index++]
-      if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
+      if (next === undefined || isDocumentMarker(next)) throw new SyntaxError("Unterminated quoted YAML scalar")
       this.rejectTabIndent(next)
       if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
         this.fail(next, "Invalid quoted scalar indentation")
@@ -598,6 +671,7 @@ class YamlParser {
 
     while (end < this.lines.length) {
       const line = this.lines[end]
+      if (isDocumentMarker(line)) break
       // Only spaces make a line empty; a tab after the indentation is content.
       if (/[^ ]/.test(line.raw)) {
         if (contentIndent === undefined && line.indent > parentIndent) {
@@ -675,19 +749,8 @@ class YamlParser {
   private skipIgnored(): void {
     while (this.index < this.lines.length) {
       const line = this.lines[this.index]
-      const text = line.text.trimEnd()
-      if (text.length === 0 || text.startsWith("%")) {
+      if (line.text.trimEnd().length === 0) {
         this.index++
-      } else if (line.indent === 0 && text === "---") {
-        if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
-        this.documentStarted = true
-        this.index++
-      } else if (line.indent === 0 && text === "...") {
-        this.index++
-        while (this.index < this.lines.length && this.lines[this.index].text.trimEnd().length === 0) this.index++
-        if (this.index < this.lines.length) {
-          this.fail(this.lines[this.index], "Multiple YAML documents are not supported")
-        }
       } else {
         this.rejectTabIndent(line)
         return
@@ -700,33 +763,47 @@ class YamlParser {
   }
 }
 
-const parseDocument = (input: string): unknown => {
-  const source = input.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n")
-  const lines = source.split("\n").map((raw, index): Line => {
-    const indentation = /^( *)/.exec(raw)![1].length
-    return {
-      raw,
-      text: stripComment(raw.slice(indentation)),
-      indent: indentation,
-      number: index + 1,
-      // Rejected where the line is read as structure; block scalar content may hold tabs.
-      tabIndent: raw[indentation] === "\t"
-    }
-  })
-  return new YamlParser(lines).parse()
+const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A, EncodingError> => {
+  try {
+    const source = input.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n")
+    const lines = source.split("\n").map((raw, index): Line => {
+      const indentation = /^( *)/.exec(raw)![1].length
+      return {
+        raw,
+        text: stripComment(raw.slice(indentation)),
+        indent: indentation,
+        number: index + 1,
+        // Rejected where the line is read as structure; block scalar content may hold tabs.
+        tabIndent: raw[indentation] === "\t"
+      }
+    })
+    return Result.succeed(f(new YamlParser(lines)))
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Yaml",
+        kind: "Decode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
 }
 
 /**
- * Parses one YAML document into JavaScript values.
+ * Parses a single YAML document into JavaScript values.
  *
  * **Details**
  *
  * Returns `Result.succeed` with the parsed value, or `Result.fail` with an
  * `EncodingError` when the input is not valid YAML or uses an unsupported
- * feature.
+ * feature. Empty input, or input holding only comments, parses to `null`.
+ * Input holding more than one document fails; use {@link parseAll} for
+ * document streams.
  *
  * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
- * decoded while date-like values remain strings.
+ * decoded while date-like values remain strings. Numbers use JavaScript number
+ * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
  *
  * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
@@ -742,23 +819,49 @@ const parseDocument = (input: string): unknown => {
  *
  * Yaml.parse("port: 8080") // => Result.succeed({ port: 8080 })
  * Result.isFailure(Yaml.parse("port: [8080")) // => true
+ * Result.isFailure(Yaml.parse("a: 1\n---\nb: 2")) // => true
+ * ```
+ *
+ * @see {@link parseAll} for parsing a stream of documents
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.0
+ */
+export const parse = (input: string): Result.Result<unknown, EncodingError> =>
+  decode(input, (parser) => parser.parseStream(1)[0] ?? null)
+
+/**
+ * Parses a YAML stream into one JavaScript value per document.
+ *
+ * **Details**
+ *
+ * Returns `Result.succeed` with the parsed documents, or `Result.fail` with an
+ * `EncodingError` when any document is invalid. Documents are separated by
+ * `---` and `...` markers at the start of a line. An empty document parses to
+ * `null`, and input holding no documents parses to an empty array. Anchors
+ * are scoped to the document that defines them.
+ *
+ * A document may be preceded by a `%YAML 1.2` directive, which must be
+ * followed by `---`. Other YAML versions and other directives, including
+ * `%TAG`, fail.
+ *
+ * Each document is parsed like {@link parse}.
+ *
+ * **Example** (Parsing a document stream)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Yaml } from "effect/encoding"
+ *
+ * Yaml.parseAll("a: 1\n---\nb: 2\n") // => Result.succeed([{ a: 1 }, { b: 2 }])
+ * Yaml.parseAll("") // => Result.succeed([])
+ * Result.isFailure(Yaml.parseAll("%YAML 1.1\n---\na: yes\n")) // => true
  * ```
  *
  * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
-export const parse = (input: string): Result.Result<unknown, EncodingError> => {
-  try {
-    return Result.succeed(parseDocument(input))
-  } catch (e) {
-    return Result.fail(
-      new EncodingError({
-        module: "Yaml",
-        kind: "Decode",
-        input,
-        message: e instanceof Error ? e.message : "Invalid input"
-      })
-    )
-  }
-}
+export const parseAll = (input: string): Result.Result<Array<unknown>, EncodingError> =>
+  decode(input, (parser) => parser.parseStream())

@@ -4,8 +4,10 @@ import * as Yaml from "effect/encoding/Yaml"
 
 const parse = (input: string): unknown => Result.getOrThrow(Yaml.parse(input))
 
-const failureMessage = (input: string): string => {
-  const error = Result.getOrThrow(Result.flip(Yaml.parse(input)))
+const parseAll = (input: string): unknown => Result.getOrThrow(Yaml.parseAll(input))
+
+const failureMessage = (input: string, decode: typeof Yaml.parse | typeof Yaml.parseAll = Yaml.parse): string => {
+  const error = Result.getOrThrow(Result.flip(decode(input)))
   assert.strictEqual(error.kind, "Decode")
   assert.strictEqual(error.module, "Yaml")
   assert.strictEqual(error.input, input)
@@ -464,15 +466,76 @@ development:
       assert.deepStrictEqual(parse(`metadata:\n  a:\n    ${marker}${suffix}\n`), { metadata: { a: marker } })
     })
 
+    // YAML 1.2.2 §9.2: a stream holds any number of documents. Expected values were checked with yaml 2.9.1.
+    it.each(
+      [
+        ["mappings", "a: 1\n---\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["sequences", "- one\n---\n- two\n", [["one"], ["two"]]],
+        ["plain scalars", "one\n---\ntwo\n", ["one", "two"]],
+        ["explicit initial marker", "---\na: 1\n--- # second document\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["empty first document", "---\n---\nb: 2\n", [null, { b: 2 }]],
+        ["empty trailing document", "a: 1\n---\n", [{ a: 1 }, null]],
+        ["end marker before a start marker", "a: 1\n...\n---\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["bare document after an end marker", "a: 1\n...\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["content on start marker lines", "--- a\n--- [1, 2]\n--- &x {b: 1}\n", ["a", [1, 2], { b: 1 }]]
+      ] as const
+    )("parses a stream of %s with parseAll and rejects it in parse", (_, source, expected) => {
+      assert.deepStrictEqual(parseAll(source), expected)
+      assert.match(failureMessage(source), /parseAll/)
+    })
+
     it.each([
-      ["mappings", "a: 1\n---\nb: 2\n"],
-      ["sequences", "- one\n---\n- two\n"],
-      ["plain scalars", "one\n---\ntwo\n"],
-      ["explicit initial marker", "---\na: 1\n--- # second document\nb: 2\n"],
-      ["empty first document", "---\n---\nb: 2\n"],
-      ["empty trailing document", "a: 1\n---\n"]
-    ])("rejects a document stream containing %s", (_, source) => {
+      ["empty input", ""],
+      ["comment-only input", "# comment\n\n"]
+    ])("parses %s as an empty stream", (_, source) => {
+      assert.deepStrictEqual(parseAll(source), [])
+    })
+
+    // yaml 2.9.1 reports an extra empty document for example 9.3; the expected values follow the spec.
+    it.each(
+      [
+        [
+          "2.7",
+          "# Ranking of 1998 home runs\n---\n- Mark McGwire\n- Sammy Sosa\n- Ken Griffey\n\n# Team ranking\n---\n- Chicago Cubs\n- St Louis Cardinals\n",
+          [["Mark McGwire", "Sammy Sosa", "Ken Griffey"], ["Chicago Cubs", "St Louis Cardinals"]]
+        ],
+        [
+          "2.8",
+          "---\ntime: 20:03:20\nplayer: Sammy Sosa\naction: strike (miss)\n...\n---\ntime: 20:03:47\nplayer: Sammy Sosa\naction: grand slam\n...\n",
+          [
+            { time: "20:03:20", player: "Sammy Sosa", action: "strike (miss)" },
+            { time: "20:03:47", player: "Sammy Sosa", action: "grand slam" }
+          ]
+        ],
+        ["9.2", "%YAML 1.2\n---\nDocument\n... # Suffix\n", ["Document"]],
+        [
+          "9.3",
+          "Bare\ndocument\n...\n# No document\n...\n|\n%!PS-Adobe-2.0 # Not the first line\n",
+          ["Bare document", "%!PS-Adobe-2.0 # Not the first line\n"]
+        ],
+        ["9.4", "---\n{ matches\n% : 20 }\n...\n---\n# Empty\n...\n", [{ "matches %": 20 }, null]],
+        ["9.5", "%YAML 1.2\n--- |\n%!PS-Adobe-2.0\n...\n%YAML 1.2\n---\n# Empty\n...\n", ["%!PS-Adobe-2.0\n", null]],
+        ["9.6", "Document\n---\n# Empty\n...\n%YAML 1.2\n---\nmatches %: 20\n", ["Document", null, { "matches %": 20 }]]
+      ] as const
+    )("parses YAML 1.2.2 example %s with parseAll", (_, source, expected) => {
+      assert.deepStrictEqual(parseAll(source), expected)
+    })
+
+    it("scopes anchors to their document", () => {
+      assert.deepStrictEqual(parseAll("a: &x 1\nb: *x\n---\nc: &x 2\nd: *x\n"), [{ a: 1, b: 1 }, { c: 2, d: 2 }])
+      assert.match(failureMessage("a: &x 1\n---\nb: *x\n", Yaml.parseAll), /alias/)
+    })
+
+    // YAML 1.2.2 §§6.8 and 9.2: only %YAML 1.2 is processed, and directives must precede a start marker.
+    it.each([
+      ["a directive without a start marker", "%YAML 1.2\na: 1\n"],
+      ["a directive after a bare document", "a: 1\n%YAML 1.2\n---\nb: 2\n"],
+      ["an unsupported YAML version", "%YAML 1.1\n---\na: yes\n"],
+      ["a TAG directive", "%TAG !e! tag:example.com,2000:\n---\na: 1\n"],
+      ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"]
+    ])("rejects %s", (_, source) => {
       failureMessage(source)
+      failureMessage(source, Yaml.parseAll)
     })
 
     it.each(
@@ -480,7 +543,8 @@ development:
         ["mapping", "# before\n--- # start\na: 1\n... # end\n# after\n", { a: 1 }],
         ["sequence", "---\n- one\n- two\n...\n", ["one", "two"]],
         ["plain scalar", "---\none\n...\n", "one"],
-        ["empty document", "---\n...\n", null]
+        ["empty document", "---\n...\n", null],
+        ["%YAML 1.2 directive", "%YAML 1.2\n---\nDocument\n... # Suffix\n", "Document"]
       ] as const
     )("preserves single-document markers around a %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
