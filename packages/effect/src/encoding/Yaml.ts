@@ -413,13 +413,28 @@ class FlowParser {
   }
 }
 
+const makeLine = (raw: string, number: number): Line => {
+  const indentation = /^( *)/.exec(raw)![1].length
+  return {
+    raw,
+    text: stripComment(raw.slice(indentation)),
+    indent: indentation,
+    number,
+    // Rejected where the line is read as structure; block scalar content may hold tabs.
+    tabIndent: raw[indentation] === "\t"
+  }
+}
+
+// YAML separates tokens with spaces and tabs only, unlike `String.prototype.trimEnd`.
+const trimSeparation = (text: string): string => text.replace(/[ \t]+$/, "")
+
 class YamlParser {
-  private readonly lines: ReadonlyArray<Line>
+  private readonly lines: Array<Line>
   private index = 0
   // Anchors are scoped to one document.
   private anchors = new Map<string, unknown>()
 
-  constructor(lines: ReadonlyArray<Line>) {
+  constructor(lines: Array<Line>) {
     this.lines = lines
   }
 
@@ -432,8 +447,13 @@ class YamlParser {
       this.skipIgnored()
       const line = this.lines[this.index]
       if (line === undefined) return documents
+      // YAML 1.2.2 §9.1.1: a byte order mark may start any document prefix.
+      if (prefix && line.raw.startsWith("\uFEFF")) {
+        this.lines[this.index] = makeLine(line.raw.slice(1), line.number)
+        continue
+      }
       if (isDocumentMarker(line) && !isDocumentStart(line)) {
-        if (line.text.trimEnd() !== "...") this.fail(line, "Unexpected content after document end marker")
+        if (trimSeparation(line.text) !== "...") this.fail(line, "Unexpected content after document end marker")
         this.index++
         prefix = true
         continue
@@ -456,7 +476,7 @@ class YamlParser {
       this.skipIgnored()
       const line = this.lines[this.index]
       if (line === undefined || line.indent !== 0 || !line.text.startsWith("%")) break
-      const [name, ...parameters] = line.text.slice(1).trimEnd().split(/[ \t]+/)
+      const [name, ...parameters] = trimSeparation(line.text.slice(1)).split(/[ \t]+/)
       if (name === "YAML") {
         if (version) this.fail(line, "Duplicate %YAML directive")
         if (parameters.length !== 1 || parameters[0] !== "1.2") {
@@ -479,7 +499,7 @@ class YamlParser {
     if (isDocumentStart(start)) {
       this.index++
       // Strip the comment after the marker, so quotes and flow openers are read as token starts.
-      const content = stripComment(start.raw.slice(3).trimStart())
+      const content = stripComment(start.raw.slice(3).replace(/^[ \t]+/, ""))
       if (content.length > 0) {
         // Block collections start on the line after the marker.
         if (isSequenceEntry(content) || mappingSeparator(content) !== -1) {
@@ -766,18 +786,7 @@ class YamlParser {
 
 const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A, EncodingError> => {
   try {
-    const source = input.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n")
-    const lines = source.split("\n").map((raw, index): Line => {
-      const indentation = /^( *)/.exec(raw)![1].length
-      return {
-        raw,
-        text: stripComment(raw.slice(indentation)),
-        indent: indentation,
-        number: index + 1,
-        // Rejected where the line is read as structure; block scalar content may hold tabs.
-        tabIndent: raw[indentation] === "\t"
-      }
-    })
+    const lines = input.replace(/\r\n?/g, "\n").split("\n").map((raw, index) => makeLine(raw, index + 1))
     return Result.succeed(f(new YamlParser(lines)))
   } catch (e) {
     return Result.fail(
