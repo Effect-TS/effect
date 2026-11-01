@@ -2556,6 +2556,76 @@ describe.concurrent("Sharding defect recovery", () => {
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 
+  it.effect("answers a remembered interrupt once when its queued request is dispatched", () => {
+    const responding = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const generations = yield* makeGenerations(2)
+      let attempts = 0
+      const run = Rpc.make("run")
+      const entity = Entity.make("QueuedInterrupt", [run])
+      const sharding = yield* Sharding.Sharding
+      const manager = yield* EntityManager.make(
+        entity,
+        Effect.as(
+          generations.next,
+          entity.of({
+            run: () => Effect.suspend(() => attempts++ === 0 ? Effect.die("restart") : Effect.never)
+          })
+        ),
+        {
+          sharding,
+          storage: MessageStorage.noop,
+          runnerAddress: RunnerAddress.make("localhost", 1234),
+          residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+          abandonUndelivered: () => Effect.void,
+          isShardOwned: () => Effect.succeed(true),
+          maxIdleTime: Infinity,
+          concurrency: "unbounded",
+          defectRetryPolicy: Schedule.spaced(1)
+        }
+      )
+      const id = EntityId.make("queued-interrupt")
+      const shardId = sharding.getShardId(id, "default")
+      const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
+      const send = (requestId: Snowflake.Snowflake, respond: () => Effect.Effect<void>) =>
+        manager.sendLocal(
+          new Message.IncomingRequestLocal<typeof run>({
+            envelope: Envelope.makeRequest<typeof run>({
+              requestId,
+              address,
+              tag: "run",
+              payload: undefined,
+              headers: Headers.empty
+            }),
+            lastSentReply: Option.none(),
+            annotations: Context.empty(),
+            respond
+          })
+        )
+      yield* TestClock.adjust(1)
+      yield* send(yield* sharding.getSnowflake, () => Effect.void)
+      yield* TestClock.adjust(10)
+      yield* Deferred.await(generations.acquiring)
+
+      // The request and its interrupt arrive while the replacement handlers are
+      // being built. Its reply is held so concurrent answers would overlap.
+      let responses = 0
+      const requestId = yield* sharding.getSnowflake
+      yield* send(requestId, () => {
+        responses++
+        return responding.await
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* manager.sendLocal(
+        new Message.IncomingEnvelope({
+          envelope: new Envelope.Interrupt({ id: yield* sharding.getSnowflake, address, requestId })
+        })
+      ).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(10)
+      assert.strictEqual(responses, 1)
+    }).pipe(Effect.ensuring(responding.open), Effect.provide(BlockedRebuildSharding))
+  })
+
   // Preemptive shutdown abandons the parked caller during the drain; otherwise it
   // must stay parked rather than store an interrupt as its reply.
   for (const preemptiveShutdown of [true, false]) {
