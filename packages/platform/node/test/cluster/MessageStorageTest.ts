@@ -104,7 +104,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly payload?: any
   readonly entityId?: string
   readonly entityType?: string | undefined
-  readonly shardId?: ShardId.ShardId
+  readonly shardId?: ShardId.ShardId | undefined
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
