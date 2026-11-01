@@ -2626,6 +2626,142 @@ describe.concurrent("Sharding defect recovery", () => {
     }).pipe(Effect.ensuring(responding.open), Effect.provide(BlockedRebuildSharding))
   })
 
+  // Drives an EntityManager whose "defect" request restarts the entity once,
+  // holding the replacement handlers in acquisition until `generations.acquired`.
+  // Every other request runs forever and counts its starts per payload.
+  const makeRememberedInterruptManager = Effect.fnUntraced(function*(entityId: string) {
+    const generations = yield* makeGenerations(2)
+    const runs = new Map<string, number>()
+    const run = Rpc.make("run", { payload: Schema.String })
+    const entity = Entity.make("RememberedInterrupt", [run])
+    const sharding = yield* Sharding.Sharding
+    const manager = yield* EntityManager.make(
+      entity,
+      Effect.as(
+        generations.next,
+        entity.of({
+          run: ({ payload }) =>
+            Effect.suspend(() => {
+              runs.set(payload, (runs.get(payload) ?? 0) + 1)
+              return payload === "defect" && runs.get(payload) === 1 ? Effect.die("restart") : Effect.never
+            })
+        })
+      ),
+      {
+        sharding,
+        storage: MessageStorage.noop,
+        runnerAddress: RunnerAddress.make("localhost", 1234),
+        residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+        abandonUndelivered: () => Effect.void,
+        isShardOwned: () => Effect.succeed(true),
+        maxIdleTime: Infinity,
+        concurrency: "unbounded",
+        defectRetryPolicy: Schedule.spaced(1)
+      }
+    )
+    const id = EntityId.make(entityId)
+    const shardId = sharding.getShardId(id, "default")
+    const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
+    const send = Effect.fnUntraced(function*(
+      payload: string,
+      respond: Message.IncomingRequestLocal<typeof run>["respond"] = () => Effect.void
+    ) {
+      const requestId = yield* sharding.getSnowflake
+      yield* manager.sendLocal(
+        new Message.IncomingRequestLocal<typeof run>({
+          envelope: Envelope.makeRequest<typeof run>({
+            requestId,
+            address,
+            tag: "run",
+            payload,
+            headers: Headers.empty
+          }),
+          lastSentReply: Option.none(),
+          annotations: Context.empty(),
+          respond
+        })
+      ).pipe(Effect.forkChild({ startImmediately: true }))
+      return requestId
+    })
+    const interrupt = Effect.fnUntraced(function*(requestId: Snowflake.Snowflake) {
+      yield* manager.sendLocal(
+        new Message.IncomingEnvelope({
+          envelope: new Envelope.Interrupt({ id: yield* sharding.getSnowflake, address, requestId })
+        })
+      ).pipe(Effect.forkChild({ startImmediately: true }))
+    })
+    // Restarts the entity and waits until the replacement is held in acquisition.
+    const holdRebuild = Effect.gen(function*() {
+      yield* send("defect")
+      yield* TestClock.adjust(10)
+      yield* Deferred.await(generations.acquiring)
+    })
+    return { generations, runs, send, interrupt, holdRebuild } as const
+  })
+
+  it.effect("does not replay a request whose interrupt arrived while an earlier reply was held", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, runs, send } = yield* makeRememberedInterruptManager("held-reply")
+      let replies = 0
+      const hold = () => {
+        replies++
+        return replying.await
+      }
+      yield* TestClock.adjust(1)
+      const b = yield* send("b", hold)
+      const a = yield* send("a", hold)
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // B's interrupt is remembered; its replay answers it with a held reply.
+      yield* interrupt(b)
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(replies, 1)
+
+      // A's interrupt arrives before replay reaches A, and its reply is held too.
+      yield* interrupt(a)
+      yield* TestClock.adjust(1)
+      yield* replying.open
+      yield* TestClock.adjust(10)
+      assert.strictEqual(runs.get("a"), 1, "the interrupted request must not run again")
+      assert.strictEqual(replies, 2)
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
+
+  it.effect("keeps a queued request cancelled when its interrupted reply fails", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, runs, send } = yield* makeRememberedInterruptManager("failed-reply")
+      yield* TestClock.adjust(1)
+      const b = yield* send("b", () => replying.await)
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // B's interrupt is remembered. A is queued during acquisition, and the
+      // first attempt to save its interrupted reply fails.
+      yield* interrupt(b)
+      const exits: Array<Exit.Exit<unknown, unknown>> = []
+      const a = yield* send("a", (reply) => {
+        if (reply._tag !== "WithExit") return Effect.void
+        exits.push(reply.exit)
+        return exits.length === 1 ? Effect.die("reply lost") : Effect.void
+      })
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(1)
+
+      // A's interrupt arrives while B's held reply keeps the rebuild preparing.
+      yield* interrupt(a)
+      yield* TestClock.adjust(1)
+      yield* replying.open
+      yield* TestClock.adjust(10)
+      assert.isUndefined(runs.get("a"), "the interrupted request must never run")
+      assert.strictEqual(exits.length, 2)
+      assert.isTrue(Exit.isFailure(exits[1]) && Cause.hasInterrupts(exits[1].cause))
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
+
   // Preemptive shutdown abandons the parked caller during the drain; otherwise it
   // must stay parked rather than store an interrupt as its reply.
   for (const preemptiveShutdown of [true, false]) {
