@@ -35,6 +35,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import * as MachineId from "./MachineId.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -121,6 +122,7 @@ export const makeEncodedStorage: (options?: {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
+  const messageKindRequest = sql.literal(String(messageKind.Request))
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
@@ -814,6 +816,33 @@ export const makeEncodedStorage: (options?: {
         PersistenceError.refail,
         withTracerDisabled
       ),
+
+    deleteProcessed: Effect.fnUntraced(
+      function*({ completedBefore, entityType, limit }) {
+        // last_reply_id is the WithExit reply id, so its timestamp is the completion time
+        const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
+        // Lock the selected requests so a concurrent clearReplies cannot reset them before the delete.
+        const rows = yield* sql<{ id: string | bigint }>`
+          SELECT ${idColumn} FROM ${messagesTableSql} ${updateLock}
+          WHERE entity_type = ${entityType}
+          AND kind = ${messageKindRequest}
+          AND processed = ${sqlTrue}
+          AND last_reply_id < ${sql.literal(String(cutoff))}
+          ORDER BY rowid ASC
+          ${limitFragment(limit)}
+          ${forUpdate}
+        `
+        if (rows.length === 0) return 0
+        const ids = sql.literal(rows.map((row) => String(row.id)).join(","))
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`
+        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
+        return rows.length
+      },
+      sql.withTransaction,
+      Effect.provideService(SqlClient.SafeIntegers, true),
+      PersistenceError.refail,
+      withTracerDisabled
+    ),
 
     resetShards: (shardIds) =>
       resetUnprocessed(sql`shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})`).pipe(

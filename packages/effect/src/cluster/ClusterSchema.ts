@@ -9,6 +9,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import type * as Duration from "../Duration.ts"
 import { constFalse, constTrue, constUndefined, identity } from "../Function.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import type { EntityId } from "./EntityId.ts"
@@ -187,6 +188,42 @@ export const isUninterruptibleForClient = (context: Context.Context<never>): boo
 export const ShardGroup = Context.Reference<(entityId: EntityId) => string>(
   "effect/cluster/ClusterSchema/ShardGroup",
   { defaultValue: () => (_) => "default" }
+)
+
+/**
+ * Annotation that sets how long storage keeps the completed requests of an
+ * entity.
+ *
+ * **When to use**
+ *
+ * Use when a long-lived persisted entity would otherwise keep one stored
+ * request and reply for every message it has ever handled.
+ *
+ * **Details**
+ *
+ * Apply it to the entity with `Entity.annotate`. Once a request has had its
+ * final reply for longer than the retention, a background singleton deletes the
+ * request, its acknowledgements, interrupts and replies from `MessageStorage`.
+ * The check runs every `ShardingConfig.messageRetentionInterval`.
+ *
+ * The default `undefined` keeps completed requests forever.
+ *
+ * **Gotchas**
+ *
+ * - A request sent again with the same primary key after it was deleted is a
+ *   new request, so the handler runs again.
+ * - Choose a retention longer than any client retry window, and longer than any
+ *   consumer still reading the request's stored replies.
+ * - Do not use it on workflow or `ClusterCron` entities. They rely on stored
+ *   replies to know what already ran.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export const Retention = Context.Reference<Duration.Duration | undefined>(
+  "effect/cluster/ClusterSchema/Retention",
+  { defaultValue: constUndefined }
 )
 
 /**
