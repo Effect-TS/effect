@@ -674,6 +674,69 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     )
   }
 
+  // Clock and deferred requests are saved under their name, so a retried save
+  // after a lost acknowledgement is deduplicated.
+  for (
+    const save of [
+      {
+        label: "a durable clock",
+        matches: (request: Message.OutgoingRequest<any>) =>
+          request.envelope.address.entityType === "Workflow/-/DurableClock",
+        body: DurableClock.sleep({ name: "Wait", duration: "100 millis", inMemoryThreshold: 0 }).pipe(
+          Effect.as("done")
+        )
+      },
+      {
+        label: "a durable race winner",
+        matches: (request: Message.OutgoingRequest<any>) =>
+          request.envelope.tag === "deferred" &&
+          (request.envelope.payload as { readonly name: string }).name === "raceAll/Race",
+        body: DurableDeferred.raceAll({
+          name: "Race",
+          success: Schema.String,
+          error: Schema.Never,
+          effects: [Effect.succeed("done"), Effect.never]
+        })
+      }
+    ]
+  ) {
+    for (const ackLost of [false, true]) {
+      it.effect(
+        `completes after a transient failure ${ackLost ? "acknowledging" : "saving"} ${save.label}`,
+        () =>
+          Effect.gen(function*() {
+            const workflow = Workflow.make("TransientSaveRetry", {
+              payload: {},
+              success: Schema.String,
+              idempotencyKey: () => "one"
+            })
+            const storage = yield* makeSharedStorage
+            let saveFailures = 0
+            const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+              ...storage,
+              saveRequest: (request) => {
+                if (!save.matches(request) || saveFailures > 0) return storage.saveRequest(request)
+                saveFailures++
+                const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+                return ackLost ? Effect.andThen(storage.saveRequest(request), failure) : failure
+              }
+            })
+            yield* Effect.gen(function*() {
+              const executionId = yield* workflow.execute({}, { discard: true })
+              assert.deepStrictEqual(
+                yield* pollUntil(workflow, executionId, "Complete"),
+                new Workflow.Complete({ exit: Exit.succeed("done") })
+              )
+              assert.strictEqual(saveFailures, 1)
+            }).pipe(Effect.provide(
+              workflow.toLayer(() => save.body).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+            ))
+          }),
+        20_000
+      )
+    }
+  }
+
   it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
     "releases an activity request that failed to save once its retry completes",
     () =>
