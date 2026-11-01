@@ -715,7 +715,8 @@ export const cron: {
       return Cause.done(Duration.zero)
     }
     return effect.sync(() => {
-      const next = Cron.next(cron, now).getTime()
+      let next = Cron.next(cron, now).getTime()
+      if (Duration.isZero(Duration.millis(next - now))) next = Cron.next(cron, next).getTime()
       const duration = Duration.millis(next - now)
       return [duration, duration]
     })
@@ -983,7 +984,7 @@ export const fixed = (interval: Duration.Input): Schedule<number> => {
         }
         const runningBehind = meta.now > (lastRun + window)
         const boundary = window - ((meta.now - start) % window)
-        const delay = runningBehind ? 0 : boundary === 0 ? window : boundary
+        const delay = runningBehind ? 0 : Duration.isZero(Duration.millis(boundary)) ? window : boundary
         lastRun = runningBehind ? meta.now : meta.now + delay
         return [meta.attempt - 1, Duration.millis(delay)] as const
       })
@@ -1469,10 +1470,11 @@ export {
 export const windowed = (interval: Duration.Input): Schedule<number> => {
   const window = Duration.toMillis(Duration.fromInputUnsafe(interval))
   return fromStepWithMetadata(effect.succeed((meta) =>
-    effect.sync(() => [
-      meta.attempt - 1,
-      window === 0 ? Duration.zero : Duration.millis(window - (meta.elapsed % window))
-    ])
+    effect.sync(() => {
+      if (window === 0) return [meta.attempt - 1, Duration.zero] as const
+      const delay = Duration.millis(window - (meta.elapsed % window))
+      return [meta.attempt - 1, Duration.isZero(delay) ? Duration.millis(window) : delay] as const
+    })
   ))
 }
 

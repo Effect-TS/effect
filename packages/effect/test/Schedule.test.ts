@@ -280,6 +280,13 @@ describe("Schedule", () => {
   })
 
   describe("cron", () => {
+    it.effect("waits for the next match when the delay to the current one rounds to zero", () =>
+      Effect.gen(function*() {
+        const step = yield* Schedule.toStep(Schedule.cron("* * * * * *"))
+        const [, delay] = yield* step(1999.9999999999998, undefined)
+        expect(Duration.toMillis(delay)).toBe(1000)
+      }))
+
     it.effect("should recur on interval matching cron expression", () =>
       Effect.gen(function*() {
         const now = new Date(2024, 0, 1, 0, 0, 35).getTime()
@@ -625,6 +632,14 @@ describe("Schedule", () => {
           Duration.zero
         ])
       }))
+
+    it.effect("waits a full window when the delay to the boundary rounds to zero", () =>
+      Effect.gen(function*() {
+        const step = yield* Schedule.toStep(Schedule.fixed("1 second"))
+        yield* step(1000, undefined)
+        const [, delay] = yield* step(1999.9999999999998, undefined)
+        expect(delay).toEqual(Duration.seconds(1))
+      }))
   })
 
   describe("windowed", () => {
@@ -634,6 +649,14 @@ describe("Schedule", () => {
         const inputs = Array.makeBy(5, constUndefined)
         const output = yield* runDelays(schedule, inputs)
         expect(output).toEqual(Array.makeBy(5, constant(Duration.seconds(1))))
+      }))
+
+    it.effect("waits a full window when the delay to the boundary rounds to zero", () =>
+      Effect.gen(function*() {
+        const step = yield* Schedule.toStep(Schedule.windowed("1 second"))
+        yield* step(1000, undefined)
+        const [, delay] = yield* step(1999.9999999999998, undefined)
+        expect(delay).toEqual(Duration.seconds(1))
       }))
 
     it.effect("delays until the nearest window boundary", () =>
