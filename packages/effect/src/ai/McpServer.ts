@@ -737,23 +737,48 @@ class MiddlewareImpl {
   }
 }
 
-// The innermost middleware comes first.
+// The innermost middleware comes first. Each stack keeps its own order, and
+// where that leaves the order open, stacks provided further outside, which come
+// first in the context, run further outside. Stacks that order the same
+// middleware both ways have no common order, so insertion order decides.
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  const stacks: Array<ReadonlyArray<AnyMiddlewareFn>> = []
-  let maxLength = 0
-  for (const [key, value] of context.mapUnsafe) {
-    if (key.startsWith(middlewareKeyPrefix)) {
-      stacks.push(value)
-      maxLength = Math.max(maxLength, value.length)
+  // The middleware directly inside each middleware, and how many of those
+  // directly outside it are still unplaced.
+  const inners = new Map<AnyMiddlewareFn, Array<AnyMiddlewareFn>>()
+  const unplacedOuters = new Map<AnyMiddlewareFn, number>()
+  for (const [key, stack] of context.mapUnsafe) {
+    if (!key.startsWith(middlewareKeyPrefix)) continue
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const fn = stack[i]
+      if (!inners.has(fn)) {
+        inners.set(fn, [])
+        unplacedOuters.set(fn, 0)
+      }
+      const outer = stack[i + 1]
+      if (outer !== undefined && outer !== fn) {
+        inners.get(outer)!.push(fn)
+        unplacedOuters.set(fn, unplacedOuters.get(fn)! + 1)
+      }
     }
   }
-  const unique = new Set<AnyMiddlewareFn>()
-  for (let i = maxLength - 1; i >= 0; i--) {
-    for (const stack of stacks) {
-      if (i < stack.length) unique.add(stack[i])
+  // Repeatedly places the first middleware with nothing left to place outside it.
+  const outermostFirst: Array<AnyMiddlewareFn> = []
+  while (unplacedOuters.size > 0) {
+    let next = unplacedOuters.keys().next().value!
+    for (const [fn, count] of unplacedOuters) {
+      if (count === 0) {
+        next = fn
+        break
+      }
+    }
+    unplacedOuters.delete(next)
+    outermostFirst.push(next)
+    for (const fn of inners.get(next)!) {
+      const count = unplacedOuters.get(fn)
+      if (count !== undefined) unplacedOuters.set(fn, count - 1)
     }
   }
-  return Arr.fromIterable(unique).reverse()
+  return outermostFirst.reverse()
 }
 
 const isMcpError = (error: unknown): error is McpErrorBase =>

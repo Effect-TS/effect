@@ -12,6 +12,7 @@ import * as Schema from "effect/Schema"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
+class Tenant extends Context.Service<Tenant, string>()("test/Tenant") {}
 
 class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
   ...McpSchema.McpErrorBase.fields,
@@ -21,6 +22,14 @@ class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
 
 const WhoAmI = Toolkit.make(Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] }))
 const WhoAmIHandlers = WhoAmI.toLayer({ WhoAmI: () => Effect.map(CurrentUser, (user) => user) })
+
+const TenantMiddleware = McpServer.middleware<{ provides: Tenant }>()((effect) =>
+  Effect.provideService(effect, Tenant, "acme")
+)
+const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+  Effect.flatMap(Tenant, (tenant) => Effect.provideService(effect, CurrentUser, `alice@${tenant}`))
+)
+const Audit = McpServer.middleware()((effect) => effect)
 
 describe("McpServer request-level dependencies", () => {
   it.effect("provides declared dependencies from middleware over registration-time values", () =>
@@ -117,5 +126,54 @@ describe("McpServer request-level dependencies", () => {
       yield* client.readResource({ uri: "test://counted" })
 
       assert.strictEqual(calls, 1)
+    }))
+
+  it.effect("runs middleware provided outside a combined middleware outside all of it", () =>
+    Effect.gen(function*() {
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(Audit.combine(Auth).layer),
+        Layer.provide(TenantMiddleware.layer),
+        Layer.provide(WhoAmIHandlers)
+      )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
+
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@acme" }])
+    }))
+
+  it.effect("runs outer middleware outside a combined middleware when one of its members is also provided further out", () =>
+    Effect.gen(function*() {
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(Audit.combine(Auth).layer),
+        Layer.provide(TenantMiddleware.layer),
+        Layer.provide(Audit.layer),
+        Layer.provide(WhoAmIHandlers)
+      )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
+
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@acme" }])
+    }))
+
+  it.effect("keeps the order of each combined middleware when siblings share one", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const [A, B, C, D] = ["a", "b", "c", "d"].map((name) =>
+        McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => order.push(name)), effect))
+      )
+      const registrations = McpServer.resource({
+        uri: "test://shared",
+        name: "shared",
+        content: Effect.succeed("shared")
+      }).pipe(Layer.provide(Layer.mergeAll(A.combine(B).layer, C.combine(B.combine(D)).layer)))
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      yield* client.readResource({ uri: "test://shared" })
+
+      assert.isBelow(order.indexOf("d"), order.indexOf("b"))
+      assert.isBelow(order.indexOf("b"), order.indexOf("a"))
+      assert.isBelow(order.indexOf("b"), order.indexOf("c"))
     }))
 })
