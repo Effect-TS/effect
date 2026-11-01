@@ -2329,6 +2329,80 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }).pipe(Effect.scoped))
 
+  it.effect("reacquires shards after a forced release interrupts a parent resume waiting on its active run", () =>
+    Effect.gen(function*() {
+      let storageDown = false
+      const Child = Workflow.make("PendingResumeChild", { payload: {}, idempotencyKey: () => "child" })
+      const Parent = Workflow.make("PendingResumeParent", {
+        payload: {},
+        success: Schema.Number,
+        idempotencyKey: () => "parent"
+      })
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(RunnerStorage.makeMemory, (storage) => ({
+          ...storage,
+          refresh: (address, shardIds) =>
+            storageDown
+              ? Effect.fail(new ClusterError.PersistenceError({ cause: "runner storage outage" }))
+              : storage.refresh(address, shardIds)
+        }))
+      )
+      const layer = Layer.mergeAll(
+        Child.toLayer(() => Effect.void),
+        // The child's resume waits for the parent's run reply while the
+        // activity keeps that run active. The slow interrupt cleanup, like a
+        // storage round trip, lets shutdown interrupt the uninterruptible
+        // resume before the run exits and abandons its reply waiter.
+        Parent.toLayer(() =>
+          Effect.all([
+            Child.execute({}),
+            Activity.make({ name: "slow", success: Schema.Number, execute: Effect.as(Effect.sleep(5000), 42) })
+          ], { concurrency: 2 }).pipe(
+            Effect.map(([, result]) => result),
+            Effect.onInterrupt(() => Effect.sleep(100))
+          )
+        )
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+        shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
+        config: {
+          shardsPerGroup: 1,
+          shardLockRefreshInterval: 500,
+          shardLockExpiration: 3000,
+          entityTerminationTimeout: 500,
+          entityMessagePollInterval: 20,
+          entityReplyPollInterval: 20,
+          refreshAssignmentsInterval: 100
+        }
+      })))
+
+      const scope = yield* Effect.acquireRelease(Scope.make(), (scope) =>
+        Effect.gen(function*() {
+          const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+          yield* advanceUntil(() => closing.pollUnsafe() !== undefined, "the runner must shut down", 100, 20)
+        }))
+      const context = yield* Layer.buildWithScope(layer, scope)
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("parent"), "default")
+        yield* Parent.execute({}, { discard: true })
+        yield* pollUntil(Child, yield* Child.executionId({}), "Complete")
+        yield* TestClock.adjust(1500)
+        assert.isTrue(sharding.hasShardId(shardId))
+
+        storageDown = true
+        yield* advanceUntil(() => !sharding.hasShardId(shardId), "the outage must force the shard release", 100, 14)
+        storageDown = false
+
+        // Release must finish before the shard can be reacquired, then the
+        // durable resume replays the parent and its interrupted activity.
+        yield* TestClock.adjust(10000)
+        assert.isTrue(sharding.hasShardId(shardId), "the shard must be reacquired after recovery")
+        const result = yield* pollUntil(Parent, yield* Parent.executionId({}), "Complete")
+        assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed(42) }))
+      }).pipe(Effect.provide(context))
+    }).pipe(Effect.scoped))
+
   it.effect("interrupts a failure-suspended workflow", () =>
     Effect.gen(function*() {
       let attempts = 0
