@@ -646,23 +646,36 @@ describe.concurrent("Sharding", () => {
       expect(Queue.sizeUnsafe(state.interrupts)).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
 
-  it.effect("delivers to other entities while an interrupted request keeps defecting", () => {
-    const Box = Entity.make("DefectingBox", [
-      Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
-    ]).annotateRpcs(ClusterSchema.Persisted, true)
-    const layer = Box.toLayer({
-      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
-    }).pipe(Layer.provideMerge(TestSharding))
+  it.effect("answers an interrupted request that keeps defecting without stalling other entities", () => {
+    const layer = DefectingBoxLayer(DefectingBox)
     return Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const client = yield* Box.client
-      const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust(1000)
-      yield* Fiber.interrupt(dying)
+      const { client, requestId } = yield* interruptDefectingRequest(DefectingBox)
 
-      const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust(1000)
+      // The entity recovers once the interrupt is applied.
+      const healthy = yield* client("a").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust("10 seconds")
       expect(healthy.pollUnsafe()).toEqual(Exit.succeed("ok"))
+
+      const driver = yield* MessageStorage.MemoryDriver
+      const replies = yield* driver.encoded.repliesFor([requestId]).pipe(Effect.orDie)
+      const reply = replies.find((reply) => reply._tag === "WithExit")
+      assert(reply?._tag === "WithExit" && reply.exit._tag === "Failure" && reply.exit.cause[0]._tag === "Interrupt")
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("ignores interrupts for uninterruptible requests that keep defecting", () => {
+    const Box = DefectingBox.annotateRpcs(ClusterSchema.Uninterruptible, "server")
+    const state = { builds: 0 }
+    const layer = DefectingBoxLayer(Box, state)
+    return Effect.gen(function*() {
+      const { requestId } = yield* interruptDefectingRequest(Box)
+
+      const builds = state.builds
+      yield* TestClock.adjust("30 seconds")
+      assert.isAbove(state.builds, builds, "the request must keep restarting the entity")
+      const driver = yield* MessageStorage.MemoryDriver
+      const replies = yield* driver.encoded.repliesFor([requestId]).pipe(Effect.orDie)
+      assert.isFalse(replies.some((reply) => reply._tag === "WithExit"))
     }).pipe(Effect.provide(layer))
   })
 
@@ -5125,6 +5138,36 @@ const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
 }
 
 const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
+
+const DefectingBox = Entity.make("DefectingBox", [
+  Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
+]).annotateRpcs(ClusterSchema.Persisted, true)
+
+const DefectingBoxLayer = (box: typeof DefectingBox, state = { builds: 0 }) =>
+  box.toLayer(Effect.sync(() => {
+    state.builds++
+    return box.of({
+      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
+    })
+  })).pipe(Layer.provideMerge(TestSharding))
+
+// Interrupts the caller of a request whose handler always dies, then checks
+// that another entity still receives its requests.
+const interruptDefectingRequest = Effect.fnUntraced(function*(box: typeof DefectingBox) {
+  yield* TestClock.adjust(1)
+  const client = yield* box.client
+  const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
+  yield* TestClock.adjust(1000)
+  yield* Fiber.interrupt(dying)
+
+  const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
+  yield* TestClock.adjust(1000)
+  expect(healthy.pollUnsafe()).toEqual(Exit.succeed("ok"))
+
+  const driver = yield* MessageStorage.MemoryDriver
+  const request = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.address.entityId === "a")!
+  return { client, requestId: request.requestId }
+})
 
 const TestShardingWithoutRunnerStorage = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
