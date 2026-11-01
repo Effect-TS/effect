@@ -87,6 +87,22 @@ it.layer(MysqlContainer.layer, { timeout: "90 seconds", excludeTestServices: tru
   )
 
   it.effect(
+    "a stream consumer can run statements on the same connection once the streamed statement ends",
+    () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const rows = yield* sql.withTransaction(
+          sql`SELECT 1 AS value`.stream.pipe(
+            Stream.mapEffect(() => sql<{ value: number }>`SELECT 2 AS value`),
+            Stream.runCollect
+          )
+        ).pipe(Effect.timeout("2 seconds"))
+        assert.deepStrictEqual(rows, [[{ value: 2 }]])
+      }).pipe(Effect.provide(singleConnection)),
+    { timeout: 30_000 }
+  )
+
+  it.effect(
     "interrupting a statement queued on a shared connection leaves the running one alone",
     () =>
       Effect.gen(function*() {
