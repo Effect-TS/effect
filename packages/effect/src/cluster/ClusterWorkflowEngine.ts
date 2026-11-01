@@ -937,11 +937,17 @@ const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Eff
 
 // A cluster abandonment means this owner can no longer complete the effect, so
 // retrying it would only wait on a retired run. Re-raise it as an annotated
-// interrupt, so the activation can unwind and its shard can be released.
+// interrupt, so the activation can unwind and its shard can be released. An
+// outside interrupt left pending on an uninterruptible handler can surface
+// before the abandonment annotation, so interrupt-only causes are not retried
+// either.
 const ensureSuccess = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.sandbox,
-    Effect.retry({ schedule: retryPolicy, while: (cause) => !ClusterAbandon.isCause(cause) }),
+    Effect.retry({
+      schedule: retryPolicy,
+      while: (cause) => !ClusterAbandon.isCause(cause) && !Cause.hasInterruptsOnly(cause)
+    }),
     Effect.catchIf(ClusterAbandon.isCause, () => ClusterAbandon.interrupt),
     Effect.orDie
   )
