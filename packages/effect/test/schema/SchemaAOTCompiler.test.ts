@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaAST, SchemaParser } from "effect"
-import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
+import type * as CompilerRegistryModule from "effect/internal/schema/compilerRegistry"
 import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 import * as SchemaTransformation from "effect/SchemaTransformation"
 import { execFileSync } from "node:child_process"
@@ -8,6 +8,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { roots, schemas, suspendEvaluations } from "./fixtures/aot.ts"
+
+const CompilerRegistry: typeof CompilerRegistryModule = await import(
+  new URL("../../src/internal/schema/compilerRegistry.ts", import.meta.url).href
+)
 
 describe("SchemaAOTCompiler", { concurrent: false }, () => {
   it("emits deterministic modules without installing a decoder", () => {
@@ -190,6 +194,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     const schema = Schema.Struct({
       required: Schema.UndefinedOr(Schema.String),
       plain: Schema.String,
+      constructor: Schema.String,
       optional: Schema.optionalKey(Schema.String),
       ["__proto__"]: Schema.String
     })
@@ -199,6 +204,7 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.notInclude(decode, "if(!(\"optional\" in i))")
     assert.include(decode, "if(\"optional\" in i){")
     assert.include(decode, "if(!(Object.hasOwn(i,\"__proto__\")))return I")
+    assert.include(decode, "if(!(Object.hasOwn(i,\"constructor\")))return I")
 
     const guard = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["is"] }])
     assert.include(guard, "if(!(\"required\" in i))return false")
