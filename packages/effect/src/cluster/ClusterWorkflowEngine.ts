@@ -894,27 +894,24 @@ export const make = Effect.gen(function*() {
     ),
 
     scheduleClock(workflow, options) {
-      return DateTime.now.pipe(
-        Effect.flatMap((now) =>
-          sendDiscard({
-            rpc: ClockRpc,
-            address: entityAddressFor({
-              workflow,
-              entityType: ClockEntity.type,
-              executionId: options.executionId
-            }),
-            payload: {
-              name: options.clock.name,
-              workflowName: workflow._tag,
-              wakeUp: DateTime.mapEpochMillis(
-                DateTime.addDuration(now, options.clock.duration),
-                Math.ceil
-              )
-            }
-          })
-        ),
-        retryPersistence
-      )
+      // Compute the deadline once, so a retried save keeps the original wake-up.
+      return Effect.flatMap(DateTime.now, (now) =>
+        retryPersistence(sendDiscard({
+          rpc: ClockRpc,
+          address: entityAddressFor({
+            workflow,
+            entityType: ClockEntity.type,
+            executionId: options.executionId
+          }),
+          payload: {
+            name: options.clock.name,
+            workflowName: workflow._tag,
+            wakeUp: DateTime.mapEpochMillis(
+              DateTime.addDuration(now, options.clock.duration),
+              Math.ceil
+            )
+          }
+        })))
     }
   })
 
