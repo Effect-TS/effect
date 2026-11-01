@@ -434,6 +434,12 @@ export const layer = (options: {
  *
  * **Details**
  *
+ * Metrics are exported only when an endpoint is set, through
+ * `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`, and
+ * `OTEL_METRICS_EXPORTER` includes `otlp`. Unlike the OpenTelemetry SDK
+ * specification, `OTEL_METRICS_EXPORTER` has no default, so leaving it unset
+ * disables metrics.
+ *
  * Compression accepts "gzip" or "none".
  * `OTEL_EXPORTER_OTLP_METRICS_COMPRESSION` takes precedence over
  * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
