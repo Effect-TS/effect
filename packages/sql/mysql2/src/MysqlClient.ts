@@ -581,8 +581,17 @@ function queryStream(
   params?: ReadonlyArray<any>
 ) {
   return asyncPauseResume<any, SqlError>(Effect.fnUntraced(function*(emit) {
-    // Released after the finalizer below, once the statement has settled.
-    yield* permit.takeScoped(1)
+    // The permit is returned as soon as the statement settles, because the
+    // consumer may run its own statements on this connection before the
+    // stream ends. When the stream is cancelled, it is kept until the
+    // finalizer below has killed the statement and seen it settle.
+    let owned = true
+    const release = Effect.suspend(() => {
+      if (!owned) return Effect.void
+      owned = false
+      return permit.release(1)
+    })
+    yield* Effect.acquireRelease(permit.take(1), () => release, { interruptible: true })
     const command = (conn as any).query(sql, params)
     const query = command.stream()
     // The command, unlike its stream, reports when the server is done with the
@@ -590,8 +599,10 @@ function queryStream(
     let settled = false
     let onSettled: (() => void) | undefined
     const settle = () => {
+      if (settled) return
       settled = true
-      onSettled?.()
+      if (onSettled === undefined) Effect.runSync(release)
+      else onSettled()
     }
     command.once("end", settle)
     command.once("error", settle)
