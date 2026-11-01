@@ -1,4 +1,4 @@
-import { Optic, Option, Result, Schema, SchemaIssue } from "effect"
+import { Optic, Option, Result, Schema, type SchemaAST, SchemaIssue } from "effect"
 import { describe, it } from "vitest"
 import { assertSuccess, assertTrue, deepStrictEqual, strictEqual, throws } from "./utils/assert.ts"
 
@@ -676,7 +676,7 @@ Expected a value greater than 0`
 
   describe("getFocus", () => {
     const key = (key: PropertyKey): Optic.Segment => ({ _tag: "Key", key })
-    const tag = (tag: string): Optic.Segment => ({ _tag: "Tag", tag })
+    const tag = (tag: SchemaAST.LiteralValue): Optic.Segment => ({ _tag: "Tag", tag })
     const opaque: Optic.Segment = { _tag: "Opaque" }
 
     function assertFocus<S, A>(
@@ -713,6 +713,8 @@ Expected a value greater than 0`
         value: 1,
         path: [key("shape"), tag("Circle"), key("radius")]
       })
+      type N = { readonly _tag: 1; readonly n: number } | { readonly _tag: 2 }
+      assertFocus(Optic.id<N>().tag(1).key("n"), { _tag: 1, n: 5 }, { value: 5, path: [tag(1), key("n")] })
     })
 
     it("steps that keep the location", () => {
@@ -720,7 +722,7 @@ Expected a value greater than 0`
         value: [1, -2, 3],
         path: [key("a"), key("b")]
       })
-      assertFocus(Optic.id<S>().key("shape").pick(["_tag"]), s, { value: { _tag: "Circle" }, path: [key("shape")] })
+      assertFocus(Optic.id<S>().key("a").pick(["b"]), s, { value: { b: [1, -2, 3] }, path: [key("a")] })
     })
 
     it("built-in prisms", () => {
@@ -769,6 +771,15 @@ Expected a value greater than 0`
         value: [3],
         path: [key("a"), key("b")],
         elements: [[key("a"), key("b"), key(2)]]
+      })
+      type G = { readonly groups: ReadonlyArray<{ readonly items: ReadonlyArray<number> }> }
+      const groups: G = { groups: [{ items: [-1, 2, 3] }] }
+      const nested = Optic.id<G>().key("groups")
+        .forEach((g) => g.key("items").forEach((n) => n.check(Schema.isGreaterThan(0))))
+      assertFocus(nested.forEach((items) => items.key(0)), groups, {
+        value: [2],
+        path: [key("groups")],
+        elements: [[key("groups"), key(0), key("items"), opaque]]
       })
     })
   })
