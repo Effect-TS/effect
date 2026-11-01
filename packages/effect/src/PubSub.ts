@@ -19,6 +19,7 @@ import * as Exit from "./Exit.ts"
 import type { LazyArg } from "./Function.ts"
 import { dual, identity } from "./Function.ts"
 import * as Count from "./internal/count.ts"
+import * as internalEffect from "./internal/effect.ts"
 import * as Latch from "./Latch.ts"
 import * as MutableList from "./MutableList.ts"
 import * as MutableRef from "./MutableRef.ts"
@@ -170,13 +171,18 @@ export declare namespace PubSub {
      *
      * The publisher may have yielded since `publish` checked `ended`, so it
      * must be checked again before registering or publishing the surplus.
+     *
+     * `owner` is the `PubSub` being published to. A strategy that makes the
+     * publisher wait reports it to the publisher's `Supervisor` as what the
+     * publisher is blocked on (since 4.1.2).
      */
     handleSurplus(
       pubsub: Atomic<A>,
       subscribers: Subscribers<A>,
       elements: Iterable<A>,
       isShutdown: MutableRef.MutableRef<boolean>,
-      ended: MutableRef.MutableRef<Option.Option<A>>
+      ended: MutableRef.MutableRef<Option.Option<A>>,
+      owner?: PubSub<A>
     ): Effect.Effect<boolean>
 
     /**
@@ -239,6 +245,20 @@ export declare namespace PubSub {
 export const isPubSub = <A = unknown>(u: unknown): u is PubSub<A> => hasProperty(u, TypeId)
 
 const SubscriptionTypeId = "~effect/PubSub/Subscription"
+
+/**
+ * Checks whether a value is a `Subscription`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `Subscription` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isSubscription = <A = unknown>(u: unknown): u is Subscription<A> => hasProperty(u, SubscriptionTypeId)
 
 /**
  * A subscription represents a consumer's connection to a PubSub, allowing them to take messages.
@@ -1095,7 +1115,8 @@ export const publish: {
       self.subscribers,
       [value],
       self.shutdownFlag,
-      self.ended
+      self.ended,
+      self
     )
   }))
 
@@ -1200,7 +1221,8 @@ export const publishAll: {
       self.subscribers,
       surplus,
       self.shutdownFlag,
-      self.ended
+      self.ended,
+      self
     )
   }))
 
@@ -1394,7 +1416,7 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
   })
 
 const pollForItem = <A>(self: Subscription<A>) =>
-  Effect.callback<A>((resume) => {
+  internalEffect.callbackBlocked<A>(self, (resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
     if (Option.isSome(self.ended.current)) {
       // Messages may have been published after the empty check, before this callback ran.
@@ -2585,9 +2607,10 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     subscribers: PubSub.Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>,
-    ended: MutableRef.MutableRef<Option.Option<A>>
+    ended: MutableRef.MutableRef<Option.Option<A>>,
+    owner?: PubSub<A>
   ): Effect.Effect<boolean> {
-    return Effect.callback<boolean>((resume) => {
+    return internalEffect.callbackBlocked<boolean>(owner, (resume) => {
       // The publisher may have yielded since `publish` checked `ended`, and
       // `end` only rejects publishers that are already registered.
       if (Option.isSome(ended.current)) return resume(Effect.succeed(false))

@@ -802,7 +802,7 @@ export const offerAll: {
 } = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
   // Admitting what fits and registering the rest are one step, so no take can
   // free capacity between them
-  internalEffect.callback<Array<A>>((resume) => {
+  internalEffect.callbackBlocked<Array<A>>(self, (resume) => {
     const remaining = offerAllUnsafe(self, messages)
     if (remaining.length === 0 || self.strategy === "dropping") {
       return resume(core.exitSucceed(remaining))
@@ -1722,7 +1722,7 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
 export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
-  internalEffect.callback<void, Exclude<E, Done>>((resume) => {
+  internalEffect.callbackBlocked<void, Exclude<E, Done>>(self, (resume) => {
     const awaiter = (effect: Effect<void, E>) => resume(Pull.catchDone(effect, () => internalEffect.exitVoid))
     if (self.state._tag === "Done") {
       return awaiter(self.state.exit)
@@ -2057,7 +2057,7 @@ const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
 const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
-  internalEffect.callback<void, E>((resume) => {
+  internalEffect.callbackBlocked<void, E>(self, (resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
     const taker = { ready, resume }
@@ -2068,8 +2068,9 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   })
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
-  internalEffect.callback<boolean>((resume) =>
-    offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume })
+  internalEffect.callbackBlocked<boolean>(
+    self,
+    (resume) => offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume })
   )
 
 const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {

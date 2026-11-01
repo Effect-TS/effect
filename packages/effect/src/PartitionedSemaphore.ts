@@ -14,6 +14,7 @@ import { dual } from "./Function.ts"
 import * as internalEffect from "./internal/effect.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
+import { hasProperty } from "./Predicate.ts"
 
 /**
  * Runtime type identifier used to mark values that implement
@@ -29,6 +30,21 @@ import * as Option from "./Option.ts"
  * @since 4.0.0
  */
 export const PartitionedTypeId: PartitionedTypeId = "~effect/PartitionedSemaphore"
+
+/**
+ * Checks whether a value is a `PartitionedSemaphore`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `PartitionedSemaphore` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isPartitionedSemaphore = <K = unknown>(u: unknown): u is PartitionedSemaphore<K> =>
+  hasProperty(u, PartitionedTypeId)
 
 /**
  * Literal type of the `PartitionedSemaphore` runtime type identifier.
@@ -228,7 +244,7 @@ export const makeUnsafe = <K = unknown>(options: {
         return Effect.void
       }
 
-      return Effect.callback<void>((resume) => {
+      return internalEffect.callbackBlocked<void>(self, (resume) => {
         if (totalPermits >= permits) {
           resume(take(key, permits))
           return
@@ -310,7 +326,7 @@ export const makeUnsafe = <K = unknown>(options: {
     return true
   }
 
-  return {
+  const self: PartitionedSemaphore<K> = {
     [PartitionedTypeId]: PartitionedTypeId,
     capacity: maxPermits,
     available: Effect.sync(() => totalPermits),
@@ -338,6 +354,7 @@ export const makeUnsafe = <K = unknown>(options: {
         })
       }
   }
+  return self
 }
 
 /**

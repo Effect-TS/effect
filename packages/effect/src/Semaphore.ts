@@ -233,6 +233,20 @@ export interface Semaphore {
  */
 export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(permits)
 
+/**
+ * Checks whether a value is a `Semaphore`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `Semaphore` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isSemaphore = (u: unknown): u is Semaphore => u instanceof SemaphoreImpl
+
 interface Waiter {
   readonly permits: number
   resume: ((effect: Effect.Effect<void>) => void) | undefined
@@ -266,7 +280,7 @@ const takePermits = <A, E, R>(
     }
     self.waiters.add(waiter)
     internal.onExitUnsafe(fiber, remove)
-    const wait = restore(internal.callback<void>((resume) => {
+    const wait = restore(internal.callbackBlocked<void>(self, (resume) => {
       // The fiber may have yielded since the last check, missing a wake.
       if (firstAvailableWaiter(self) === waiter) {
         resume(internal.void)
