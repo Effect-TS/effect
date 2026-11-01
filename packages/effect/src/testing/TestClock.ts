@@ -328,11 +328,7 @@ class TestClockImpl implements TestClock {
 
   readonly stateUnsafe = (): TestClock.State => {
     // `sleeps` is kept latest first
-    const sleeps = this.sleeps
-    const pending: Array<[number, Latch.Latch]> = []
-    for (let i = sleeps.length - 1; i >= 0; i--) {
-      pending.push([sleeps[i].timestamp, sleeps[i].latch])
-    }
+    const pending = this.sleeps.map((entry): [number, Latch.Latch] => [entry.timestamp, entry.latch]).reverse()
     return { timestamp: this.currentTimestamp, sleeps: pending }
   }
 
