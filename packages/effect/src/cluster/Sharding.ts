@@ -2078,8 +2078,10 @@ const make = Effect.gen(function*() {
       yield* withStorageReadLock(Effect.sync(() => {
         entityRegistrationStartMillis ??= clock.currentTimeMillisUnsafe()
         entityManagers.set(entity.type, state)
-        // persisted messages read before this registration were reset, so
-        // read storage again instead of waiting for the next poll interval
+        // persisted messages read before this registration within the
+        // registration window were reset, so read storage again instead of
+        // waiting for the next poll interval. Messages read after the window
+        // keep their claim until it expires or the shard is reacquired.
         storageReadLatch.openUnsafe()
         if (entityManagerLatches.has(entity.type)) {
           entityManagerLatches.get(entity.type)!.openUnsafe()

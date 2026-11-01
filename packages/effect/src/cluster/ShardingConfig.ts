@@ -142,8 +142,17 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly entityMaxIdleTime: Duration.Input
   /**
-   * If an entity does not register itself within this time after a message is
-   * sent to it, the message will be marked as failed.
+   * How long to wait for an entity type to register before giving up on
+   * messages sent to it. The window starts when the runner begins registering
+   * entities, or lasts twice as long from the first message for a missing
+   * entity type if no entity has started registering.
+   *
+   * After the timeout, volatile and local sends fail with a defect. Persisted
+   * messages read from storage are left unanswered and claimed instead, so a
+   * runner hosting the entity type can process them. They become eligible
+   * again once the claim expires (10 minutes for the built-in storage) or
+   * another runner acquires the shard, so a type registered on this runner
+   * after the timeout only receives them after that, on a later poll.
    *
    * Defaults to 1 minute.
    */
