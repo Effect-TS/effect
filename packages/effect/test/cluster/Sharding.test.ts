@@ -679,6 +679,48 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(layer))
   })
 
+  it.effect("interrupts a replayed request while a remembered interrupt delays the rebuild", () => {
+    const saving = Latch.makeUnsafe(true)
+    let defects = 0
+    const Box = Entity.make("ReplayInterruptBox", [
+      Rpc.make("Never"),
+      Rpc.make("Defect")
+    ]).annotateRpcs(ClusterSchema.Persisted, true)
+    const layer = Box.toLayer({
+      Never: () => Effect.never,
+      Defect: () => Effect.suspend(() => defects++ === 0 ? Effect.die("restart entity") : Effect.void)
+    }, { concurrency: "unbounded" }).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+      ...storage,
+      saveReply: (reply) => saving.whenOpen(storage.saveReply(reply))
+    }))))
+    return Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const driver = yield* MessageStorage.MemoryDriver
+      const client = (yield* Box.client)("box")
+      const a = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
+      const b = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+
+      // B's interrupt arrives while the entity waits to restart.
+      yield* client.Defect().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(b)
+      yield* TestClock.adjust(1)
+
+      // The rebuild replays A, then waits to save B's interrupted reply.
+      saving.closeUnsafe()
+      yield* TestClock.adjust(1000)
+      yield* Fiber.interrupt(a)
+      yield* TestClock.adjust(1)
+      yield* saving.open
+      yield* TestClock.adjust(1)
+
+      const replies = yield* driver.encoded.repliesFor([driver.journal[0].requestId]).pipe(Effect.orDie)
+      const reply = replies.find((reply) => reply._tag === "WithExit")
+      assert(reply?._tag === "WithExit" && reply.exit._tag === "Failure" && reply.exit.cause[0]._tag === "Interrupt")
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("interrupts aren't sent for durable messages on shutdown", () =>
     Effect.gen(function*() {
       let driver!: MessageStorage.MemoryDriver["Service"]
