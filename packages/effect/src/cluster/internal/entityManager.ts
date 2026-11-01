@@ -172,7 +172,6 @@ export const make = Effect.fnUntraced(function*<
   const defectRetryPolicy = options.defectRetryPolicy
     ? Schedule.concat(options.defectRetryPolicy, defaultRetryPolicy)
     : defaultRetryPolicy
-  const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
   // The series reads the mailbox size on snapshot, so delivery does no extra work.
@@ -294,6 +293,16 @@ export const make = Effect.fnUntraced(function*<
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
+    // Restart backoff for this activation. Consecutive defects advance it, and
+    // a completed request drops it so the next defect starts over.
+    let restartStep: ((input: unknown) => Effect.Effect<unknown, unknown>) | undefined
+    const restartDelay = Effect.suspend(() =>
+      restartStep ? restartStep(void 0) : Effect.flatMap(Schedule.toStepWithSleep(defectRetryPolicy), (step) => {
+        restartStep = step
+        return step(void 0)
+      })
+    )
+
     // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
@@ -405,6 +414,7 @@ export const make = Effect.fnUntraced(function*<
                   )
                 })
                 const complete = Effect.sync(() => {
+                  restartStep = undefined
                   if (storageEnabled) {
                     processedRequestIds.add(request.message.envelope.requestId)
                   }
@@ -529,7 +539,7 @@ export const make = Effect.fnUntraced(function*<
 
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
-        Effect.andThen(Effect.ignore(retryDriver(void 0))),
+        Effect.andThen(Effect.ignore(restartDelay)),
         Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
