@@ -6890,17 +6890,25 @@ export function isPattern(
   regExp: globalThis.RegExp,
   annotations?: Annotations.Filter
 ): SchemaAST.Filter<string> {
-  const source = regExp.source
-  const flags = regExp.flags
-  const canExport = /^[dg]*uy?$/.test(flags)
-  const runtimeRegExp = flags === ""
-    ? `new globalThis.RegExp(${format(source)})`
-    : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
+  const { pattern, runtime } = jsonSchemaRegExp(regExp)
   return SchemaAST.isPattern(regExp, {
-    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : [{}, true],
-    toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
+    toJsonSchema: () => pattern === undefined ? [{}, true] : { pattern },
+    toCode: () => ({ runtime: `Schema.isPattern(${runtime})` }),
     ...annotations
   })
+}
+// JSON Schema patterns are ECMAScript Unicode patterns, so only `u` RegExps with `d`, `g`, or `y` flags export
+// exactly; sticky ones are anchored at the start. `pattern` is undefined when the RegExp cannot be exported.
+function jsonSchemaRegExp(regExp: globalThis.RegExp) {
+  const source = regExp.source
+  const flags = regExp.flags
+  return {
+    source,
+    pattern: /^[dg]*uy?$/.test(flags) ? flags.endsWith("y") ? `^(?:${source})` : source : undefined,
+    runtime: flags === ""
+      ? `new globalThis.RegExp(${format(source)})`
+      : `new globalThis.RegExp(${format(source)}, ${format(flags)})`
+  }
 }
 /**
  * Validates that a string represents a finite number.
@@ -9113,6 +9121,77 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
       toJsonSchema: ({ schemas, type }) =>
         type === "object" ? { propertyNames: schemas[0] } : [{ propertyNames: schemas[0] }, true],
       toCode: ({ schemas }) => ({ runtime: `Schema.isPropertyNames(${schemas[0].runtime})` }),
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that every own string property key of an object matched by the
+ * provided regular expression has a value that satisfies the encoded side of
+ * the provided value schema.
+ *
+ * **Details**
+ *
+ * Keys that do not match the regular expression are not checked. The regular
+ * expression is cloned and its `lastIndex` is reset before each test, so global
+ * and sticky expressions are deterministic and the provided regular expression
+ * is not mutated.
+ *
+ * JSON Schema:
+ *
+ * This check corresponds to a single `patternProperties` entry in JSON Schema.
+ * Unless annotations override `toJsonSchema`, JSON Schema receives the entry
+ * only when the JavaScript RegExp uses the Unicode flag and its other flags are
+ * `d`, `g`, or `y`. Sticky patterns are anchored at the start of the key.
+ * Effect checks the decoded object, while JSON Schema checks the original
+ * input. Defaults, excess-property handling, and property transformations can
+ * therefore produce different results.
+ *
+ * @stability unstable
+ * @category validation
+ * @since 4.1.0
+ */
+export function isPatternProperties(
+  regExp: globalThis.RegExp,
+  valueSchema: Constraint,
+  annotations?: Annotations.Filter
+) {
+  const copy = new globalThis.RegExp(regExp)
+  const { pattern, runtime, source } = jsonSchemaRegExp(copy)
+  const value = toEncoded(valueSchema)
+  const parser = SchemaParser._issue(value.ast)
+  return makeFilter<object>(
+    (input, ast, options) => {
+      const issues: Array<SchemaIssue.Issue> = []
+      for (const key of Reflect.ownKeys(input)) {
+        if (typeof key !== "string") continue
+        copy.lastIndex = 0
+        if (!copy.test(key)) continue
+        const issue = parser((input as Record<string, unknown>)[key], options)
+        if (issue !== undefined) {
+          issues.push(new SchemaIssue.Pointer([key], issue))
+          if (options.errors === "first") break
+        }
+      }
+      if (Arr.isArrayNonEmpty(issues)) {
+        return new SchemaIssue.Composite(ast, issues, input, options)
+      }
+      return true
+    },
+    {
+      expected: `an object whose properties matching the RegExp ${source} satisfy the schema`,
+      representation: {
+        id: "effect/schema/isPatternProperties",
+        payload: { source, flags: copy.flags },
+        schemas: [value.ast]
+      },
+      toJsonSchema: ({ schemas, type }) => {
+        if (pattern === undefined) return [{}, true]
+        const patternProperties = { [pattern]: schemas[0] }
+        return type === "object" ? { patternProperties } : [{ patternProperties }, true]
+      },
+      toCode: ({ schemas }) => ({ runtime: `Schema.isPatternProperties(${runtime}, ${schemas[0].runtime})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       ...annotations
     }
