@@ -10,6 +10,8 @@ import type { PreResponseHandler } from "../HttpEffect.ts"
 export class RequestState {
   preResponseHandler: PreResponseHandler | undefined = undefined
   loggerDisabled = false
+  redactedUrlParamNames: ReadonlyArray<string | RegExp> = []
+  redactedHeaderNames: ReadonlyArray<string | RegExp> = []
 }
 
 /**
@@ -30,4 +32,22 @@ export const appendPreResponseHandlerUnsafe = (context: Context.Context<never>, 
   state.preResponseHandler = prev ?
     (request, response) => Effect.flatMap(prev(request, response), (response) => handler(request, response))
     : handler
+}
+
+/**
+ * Adds names to redact in the server span of the current request. The span
+ * is recorded after the handler restores its context, so scoped updates of
+ * `CurrentRedactedNames` do not reach it.
+ *
+ * @internal
+ */
+export const addRedactedNamesUnsafe = (
+  context: Context.Context<never>,
+  urlParamNames: ReadonlyArray<string | RegExp>,
+  headerNames: ReadonlyArray<string | RegExp>
+): void => {
+  const state = Context.getOrUndefined(context, CurrentRequestState)
+  if (state === undefined) return
+  if (urlParamNames.length > 0) state.redactedUrlParamNames = [...state.redactedUrlParamNames, ...urlParamNames]
+  if (headerNames.length > 0) state.redactedHeaderNames = [...state.redactedHeaderNames, ...headerNames]
 }
