@@ -452,7 +452,7 @@ if (Result.isFailure(result)) {
 
 `key`, `optionalKey` and `at` add a `Key` segment and `tag` adds a `Tag` segment. `some`, `success` and `failure` add both, for example `Tag "Some"` then `Key "value"`. Checks, refinements, `pick` and `omit` keep the location. Optics built from your own functions (`makeLens` and so on) add an `Opaque` segment.
 
-For a traversal, `elements` holds the path to each focused element, using the element's index in the source collection.
+For a traversal, `path` points at the traversed collection and `elements` holds the path to each focused element, using the element's index in the source collection. A step into the collected array, such as `key(0)` after `forEach`, adds an `Opaque` segment.
 
 ## Generating an Optic from a Schema
 

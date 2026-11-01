@@ -102,7 +102,7 @@ export interface Iso<in out S, in out A> extends Lens<S, A>, Prism<S, A> {}
  * @since 4.0.0
  */
 export function makeIso<S, A>(get: (s: S) => A, set: (a: A) => S): Iso<S, A> {
-  return make(primitiveNode("Iso", get, set))
+  return make(primitiveNode("Iso", get, set, [opaqueSegment]))
 }
 
 /**
@@ -181,7 +181,7 @@ export interface Lens<in out S, in out A> extends Optional<S, A> {
  * @since 4.0.0
  */
 export function makeLens<S, A>(get: (s: S) => A, replace: (a: A, s: S) => S): Lens<S, A> {
-  return make(primitiveNode("Lens", get, replace))
+  return make(primitiveNode("Lens", get, replace, [opaqueSegment]))
 }
 
 /**
@@ -275,7 +275,7 @@ export function makePrism<S, A>(
   getResult: (s: S) => Result.Result<A, SchemaIssue.Issue>,
   set: (a: A) => S
 ): Prism<S, A> {
-  return make(primitiveNode("Prism", getResult, set))
+  return make(primitiveNode("Prism", getResult, set, [opaqueSegment]))
 }
 
 /**
@@ -329,19 +329,31 @@ type Operation = {
 
 type PrimitiveStep = Operation & {
   readonly _tag: "PrimitiveNode"
-  /** The path this step takes, `undefined` when it is opaque. */
-  readonly segments: ReadonlyArray<Segment> | undefined
+  /** The path segments this step adds, `[]` when it keeps the location. */
+  readonly segments: ReadonlyArray<Segment>
 }
 
 type Step = PrimitiveStep | PathNode | CheckNode<any> | EachNode
 
 type Node = ReadonlyArray<Step>
 
+type Path = ReadonlyArray<Segment>
+
+const opaqueSegment: Segment = { _tag: "Opaque" }
+
+function keySegment(key: PropertyKey): Segment {
+  return { _tag: "Key", key }
+}
+
+function tagSegment(tag: string): Segment {
+  return { _tag: "Tag", tag }
+}
+
 function primitiveNode(
   kind: Kind,
   get: (s: any) => any,
   set: (a: any, s?: any) => any,
-  segments?: ReadonlyArray<Segment>
+  segments: ReadonlyArray<Segment>
 ): Node {
   return [{ _tag: "PrimitiveNode", kind, get, set, segments }]
 }
@@ -989,7 +1001,7 @@ export function makeOptional<S, A>(
   getResult: (s: S) => Result.Result<A, SchemaIssue.Issue>,
   set: (a: A, s: S) => Result.Result<S, SchemaIssue.Issue>
 ): Optional<S, A> {
-  return make(primitiveNode("Optional", getResult, set))
+  return make(primitiveNode("Optional", getResult, set, [opaqueSegment]))
 }
 
 /**
@@ -1374,6 +1386,8 @@ export const getResult: {
  *   location.
  * - `Opaque`: a step built from user functions (`makeIso`, `makeLens`,
  *   `makePrism`, `makeOptional`) or {@link entries}, whose path is unknown.
+ *   Any step into the array collected by a traversal is also `Opaque`, since
+ *   that array has no location in the source.
  *
  * Checks, refinements, `pick` and `omit` keep the location and add no segment.
  *
@@ -1385,7 +1399,7 @@ export const getResult: {
  */
 export type Segment =
   | { readonly _tag: "Key"; readonly key: PropertyKey }
-  | { readonly _tag: "Tag"; readonly tag: SchemaAST.LiteralValue }
+  | { readonly _tag: "Tag"; readonly tag: string }
   | { readonly _tag: "Opaque" }
 
 /**
@@ -1483,33 +1497,24 @@ export const getFocus: {
   <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Focus<A>, FocusFailure>
 >(2, (self, optic) => focusNode((optic as OptionalImpl<any, any>).node, self, [], undefined))
 
-type Path = ReadonlyArray<Segment>
-
-const opaqueSegment: Segment = { _tag: "Opaque" }
-
-function keySegment(key: PropertyKey): Segment {
-  return { _tag: "Key", key }
-}
-
-function tagSegment(tag: SchemaAST.LiteralValue): Segment {
-  return { _tag: "Tag", tag }
-}
-
 function focusNode(
   node: Node,
   s: any,
   path: Path,
   elements: ReadonlyArray<Path> | undefined
 ): Result.Result<Focus<any>, FocusFailure> {
+  // After a traversal the focus is the collected array, which has no location
+  // in the source: a step into it is opaque
+  const append = (segment: Segment) => {
+    path = [...path, elements === undefined ? segment : opaqueSegment]
+    elements = undefined
+  }
   for (let i = 0; i < node.length; i++) {
     const step = node[i]
     switch (step._tag) {
       case "PathNode": {
         s = step.get(s)
-        for (let j = 0; j < step.path.length; j++) {
-          path = enter(path, elements, step.path[j])
-          elements = undefined
-        }
+        for (let j = 0; j < step.path.length; j++) append(keySegment(step.path[j]))
         break
       }
       case "CheckNode": {
@@ -1526,20 +1531,7 @@ function focusNode(
         } else {
           s = step.get(s)
         }
-        if (step.segments === undefined) {
-          path = [...path, opaqueSegment]
-          elements = undefined
-        } else {
-          for (let j = 0; j < step.segments.length; j++) {
-            const segment = step.segments[j]
-            if (segment._tag === "Key") {
-              path = enter(path, elements, segment.key)
-              elements = undefined
-            } else {
-              path = [...path, segment]
-            }
-          }
-        }
+        for (let j = 0; j < step.segments.length; j++) append(step.segments[j])
         break
       }
       case "EachNode": {
@@ -1560,18 +1552,6 @@ function focusNode(
     }
   }
   return Result.succeed({ value: s, path, elements })
-}
-
-// Reading a key of a traversal's collected array goes to the element's source
-// location; any other key of that array has no location in the source.
-function enter(path: Path, elements: ReadonlyArray<Path> | undefined, key: PropertyKey): Path {
-  if (elements === undefined) return [...path, keySegment(key)]
-  const index = typeof key === "number"
-    ? key
-    : typeof key === "string" && Arr.isCanonicalArrayIndex(key)
-    ? Number(key)
-    : -1
-  return elements[index] ?? [...path, opaqueSegment]
 }
 
 /**
@@ -1871,7 +1851,7 @@ export function id<S>(): Iso<S, S> {
  * @since 4.0.0
  */
 export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [string, A]>> {
-  return make(primitiveNode("Iso", Object.entries, Object.fromEntries))
+  return make(primitiveNode("Iso", Object.entries, Object.fromEntries, [opaqueSegment]))
 }
 
 /**
