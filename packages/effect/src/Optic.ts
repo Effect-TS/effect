@@ -329,14 +329,21 @@ type Operation = {
 
 type PrimitiveStep = Operation & {
   readonly _tag: "PrimitiveNode"
+  /** The path this step takes, `undefined` when it is opaque. */
+  readonly segments: ReadonlyArray<Segment> | undefined
 }
 
-type Step = PrimitiveStep | PathNode | CheckNode<any>
+type Step = PrimitiveStep | PathNode | CheckNode<any> | EachNode
 
 type Node = ReadonlyArray<Step>
 
-function primitiveNode(kind: Kind, get: (s: any) => any, set: (a: any, s?: any) => any): Node {
-  return [{ _tag: "PrimitiveNode", kind, get, set }]
+function primitiveNode(
+  kind: Kind,
+  get: (s: any) => any,
+  set: (a: any, s?: any) => any,
+  segments?: ReadonlyArray<Segment>
+): Node {
+  return [{ _tag: "PrimitiveNode", kind, get, set, segments }]
 }
 
 const identityOperation: Operation = {
@@ -386,6 +393,56 @@ class CheckNode<T> {
   constructor(checks: readonly [SchemaAST.Check<T>, ...Array<SchemaAST.Check<T>>]) {
     this.checks = checks
     this.get = (s) => SchemaAST.runChecks(checks, s)
+  }
+}
+
+class EachNode {
+  readonly _tag = "EachNode"
+  readonly kind = "Optional"
+  readonly inner: Optional<any, any>
+  readonly get: (as: ReadonlyArray<any>) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
+  readonly set: (bs: ReadonlyArray<any>, as?: any) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
+
+  constructor(inner: Optional<any, any>) {
+    this.inner = inner
+    // GET: collect focused Bs
+    this.get = (as) => {
+      const bs: Array<any> = []
+      for (let i = 0; i < as.length; i++) {
+        const r = inner.getResult(as[i])
+        if (Result.isSuccess(r)) bs.push(r.success)
+      }
+      return Result.succeed(bs)
+    }
+    // SET: bs must match the number of focusable elements
+    this.set = (bs, as) => {
+      // 1) collect focusable indices
+      const idxs: Array<number> = []
+      for (let i = 0; i < as.length; i++) {
+        if (Result.isSuccess(inner.getResult(as[i]))) idxs.push(i)
+      }
+
+      // 2) arity check
+      if (bs.length !== idxs.length) {
+        return Result.fail(
+          new SchemaIssue.InvalidValue({
+            message: `each: replacement length mismatch: ${bs.length} !== ${idxs.length}`
+          })
+        )
+      }
+
+      // 3) update those indices
+      const out = as.slice()
+      for (let k = 0; k < idxs.length; k++) {
+        const i = idxs[k]
+        const r = inner.replaceResult(bs[k], as[i])
+        if (Result.isFailure(r)) {
+          return Result.fail(new SchemaIssue.Pointer([i], r.failure))
+        }
+        out[i] = r.success
+      }
+      return Result.succeed(out)
+    }
   }
 }
 
@@ -1025,7 +1082,8 @@ class OptionalImpl<S, A> implements Optional<S, A> {
               InternalRecord.assignProperty(copy, key, a)
             }
             return copy
-          }
+          },
+          [keySegment(key)]
         )
       )
     )
@@ -1044,7 +1102,8 @@ class OptionalImpl<S, A> implements Optional<S, A> {
         primitiveNode(
           "Prism",
           (s) => s._tag === tag ? Result.succeed(s) : err,
-          identity
+          identity,
+          [tagSegment(tag)]
         )
       )
     )
@@ -1067,64 +1126,27 @@ class OptionalImpl<S, A> implements Optional<S, A> {
             } else {
               return err
             }
-          }
+          },
+          [keySegment(key)]
         )
       )
     )
   }
   pick(keys: any) {
-    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p })))
+    return make(
+      compose(this.node, primitiveNode("Lens", Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p }), []))
+    )
   }
   omit(keys: any) {
-    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o })))
+    return make(
+      compose(this.node, primitiveNode("Lens", Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o }), []))
+    )
   }
   notUndefined(): any {
     return this.refine(Predicate.isNotUndefined, { expected: "a value other than `undefined`" })
   }
   forEach<S, A, B>(this: Traversal<S, A>, f: (iso: Iso<A, A>) => Optional<A, B>): Traversal<S, B> {
-    const inner = f(id<A>())
-    return makeOptional<S, ReadonlyArray<B>>(
-      // GET: collect focused Bs
-      (s) =>
-        Result.map(this.getResult(s), (as) => {
-          const bs: Array<B> = []
-          for (let i = 0; i < as.length; i++) {
-            const r = inner.getResult(as[i])
-            if (Result.isSuccess(r)) bs.push(r.success)
-          }
-          return bs
-        }),
-      // SET: bs must match the number of focusable elements
-      (bs, s) =>
-        Result.flatMap(this.getResult(s), (as) => {
-          // 1) collect focusable indices
-          const idxs: Array<number> = []
-          for (let i = 0; i < as.length; i++) {
-            if (Result.isSuccess(inner.getResult(as[i]))) idxs.push(i)
-          }
-
-          // 2) arity check
-          if (bs.length !== idxs.length) {
-            return Result.fail(
-              new SchemaIssue.InvalidValue({
-                message: `each: replacement length mismatch: ${bs.length} !== ${idxs.length}`
-              })
-            )
-          }
-
-          // 3) update those indices
-          const out: Array<A> = as.slice()
-          for (let k = 0; k < idxs.length; k++) {
-            const i = idxs[k]
-            const r = inner.replaceResult(bs[k], as[i])
-            if (Result.isFailure(r)) {
-              return Result.fail(new SchemaIssue.Pointer([i], r.failure))
-            }
-            out[i] = r.success
-          }
-          return this.replaceResult(out, s)
-        })
-    )
+    return make(compose((this as any).node, [new EachNode(f(id<A>()))]))
   }
   modifyAll<S, A>(this: Traversal<S, A>, f: (a: A) => A): (s: S) => S {
     return (s) =>
@@ -1338,6 +1360,219 @@ export const getResult: {
   <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<A, SchemaIssue.Issue>,
   <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<A, SchemaIssue.Issue>
 >(2, (self, optic) => optic.getResult(self))
+
+/**
+ * One step on the path an optic takes into a value.
+ *
+ * **Details**
+ *
+ * - `Key`: a property or index, from `key`, `optionalKey`, `at`, the element
+ *   index of a traversal, and the field read by {@link some}, {@link success}
+ *   and {@link failure}. Array indices are numbers.
+ * - `Tag`: narrowing to a tagged variant, from `tag`, {@link some},
+ *   {@link none}, {@link success} and {@link failure}. It doesn't move the
+ *   location.
+ * - `Opaque`: a step built from user functions (`makeIso`, `makeLens`,
+ *   `makePrism`, `makeOptional`) or {@link entries}, whose path is unknown.
+ *
+ * Checks, refinements, `pick` and `omit` keep the location and add no segment.
+ *
+ * @see {@link getFocus} — returns the path to a focus
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.2
+ */
+export type Segment =
+  | { readonly _tag: "Key"; readonly key: PropertyKey }
+  | { readonly _tag: "Tag"; readonly tag: SchemaAST.LiteralValue }
+  | { readonly _tag: "Opaque" }
+
+/**
+ * A focused value together with where it was found.
+ *
+ * **Details**
+ *
+ * - `value`: the focus, as returned by `getResult`.
+ * - `path`: the segments from the root to the focus. For a traversal, this is
+ *   the path to the traversed collection.
+ * - `elements`: for a traversal, the path from the root to each focused
+ *   element, in the order of `value`; otherwise `undefined`.
+ *
+ * @see {@link getFocus} — the function that returns it
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.2
+ */
+export interface Focus<A> {
+  readonly value: A
+  readonly path: ReadonlyArray<Segment>
+  readonly elements: ReadonlyArray<ReadonlyArray<Segment>> | undefined
+}
+
+/**
+ * Why an optic could not focus, and where.
+ *
+ * **Details**
+ *
+ * - `path`: the segments from the root to the input of the step that failed.
+ * - `input`: the value that step received.
+ * - `issue`: the step's issue, relative to `input`. It is the same issue
+ *   `getResult` fails with.
+ *
+ * @see {@link getFocus} — the function that returns it
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.2
+ */
+export interface FocusFailure {
+  readonly path: ReadonlyArray<Segment>
+  readonly input: unknown
+  readonly issue: SchemaIssue.Issue
+}
+
+/**
+ * Reads the focused value from an `Optional`, together with the path from the
+ * root to it.
+ *
+ * **When to use**
+ *
+ * Use when reporting on a focus, for example in an assertion that should name
+ * the exact location of a mismatch.
+ *
+ * **Details**
+ *
+ * - Succeeds with the same value as `getResult`, and fails with the same
+ *   issue, plus its location and the input of the failing step.
+ * - A traversal reports the path to each focused element, using the element's
+ *   index in the source. Elements the traversal skips are not reported.
+ * - Supports both data-first and data-last forms.
+ *
+ * **Example** (Locating a failed focus)
+ *
+ * ```ts import.meta.vitest
+ * import { Optic, Option, Result } from "effect"
+ *
+ * type Shape =
+ *   | { readonly _tag: "Circle"; readonly radius: number }
+ *   | { readonly _tag: "Rect"; readonly width: number }
+ * type S = { readonly shapes: { readonly [id: string]: Shape } }
+ *
+ * const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
+ *
+ * const failure = Result.getFailure(Optic.getFocus({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius))
+ *
+ * // `tag("Circle")` failed on the value at ["shapes"]["a"]
+ * Option.map(failure, (f) => f.path) // => Option.some([{ _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" }])
+ * Option.map(failure, (f) => f.input) // => Option.some({ _tag: "Rect", width: 1 })
+ * ```
+ *
+ * @see {@link getResult} for the focus without its path
+ *
+ * @stability experimental
+ * @category getters
+ * @since 4.1.2
+ */
+export const getFocus: {
+  <S, A>(optic: Optional<S, A>): (self: NoInfer<S>) => Result.Result<Focus<A>, FocusFailure>
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>): Result.Result<Focus<A>, FocusFailure>
+} = dual<
+  <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Focus<A>, FocusFailure>,
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Focus<A>, FocusFailure>
+>(2, (self, optic) => focusNode((optic as OptionalImpl<any, any>).node, self, [], undefined))
+
+type Path = ReadonlyArray<Segment>
+
+const opaqueSegment: Segment = { _tag: "Opaque" }
+
+function keySegment(key: PropertyKey): Segment {
+  return { _tag: "Key", key }
+}
+
+function tagSegment(tag: SchemaAST.LiteralValue): Segment {
+  return { _tag: "Tag", tag }
+}
+
+function focusNode(
+  node: Node,
+  s: any,
+  path: Path,
+  elements: ReadonlyArray<Path> | undefined
+): Result.Result<Focus<any>, FocusFailure> {
+  for (let i = 0; i < node.length; i++) {
+    const step = node[i]
+    switch (step._tag) {
+      case "PathNode": {
+        s = step.get(s)
+        for (let j = 0; j < step.path.length; j++) {
+          path = enter(path, elements, step.path[j])
+          elements = undefined
+        }
+        break
+      }
+      case "CheckNode": {
+        const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
+        if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
+        s = result.success
+        break
+      }
+      case "PrimitiveNode": {
+        if (hasFailingGet(step.kind)) {
+          const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
+          if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
+          s = result.success
+        } else {
+          s = step.get(s)
+        }
+        if (step.segments === undefined) {
+          path = [...path, opaqueSegment]
+          elements = undefined
+        } else {
+          for (let j = 0; j < step.segments.length; j++) {
+            const segment = step.segments[j]
+            if (segment._tag === "Key") {
+              path = enter(path, elements, segment.key)
+              elements = undefined
+            } else {
+              path = [...path, segment]
+            }
+          }
+        }
+        break
+      }
+      case "EachNode": {
+        const values: Array<any> = []
+        const paths: Array<Path> = []
+        for (let j = 0; j < s.length; j++) {
+          const base = elements?.[j] ?? [...path, keySegment(j)]
+          const result = focusNode((step.inner as OptionalImpl<any, any>).node, s[j], base, undefined)
+          if (Result.isSuccess(result)) {
+            values.push(result.success.value)
+            paths.push(result.success.path)
+          }
+        }
+        s = values
+        elements = paths
+        break
+      }
+    }
+  }
+  return Result.succeed({ value: s, path, elements })
+}
+
+// Reading a key of a traversal's collected array goes to the element's source
+// location; any other key of that array has no location in the source.
+function enter(path: Path, elements: ReadonlyArray<Path> | undefined, key: PropertyKey): Path {
+  if (elements === undefined) return [...path, keySegment(key)]
+  const index = typeof key === "number"
+    ? key
+    : typeof key === "string" && Arr.isCanonicalArrayIndex(key)
+    ? Number(key)
+    : -1
+  return elements[index] ?? [...path, opaqueSegment]
+}
 
 /**
  * Builds a source value from a focused value using a `Prism`.
@@ -1675,10 +1910,12 @@ export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [str
  */
 export function some<A>(): Prism<Option.Option<A>, A> {
   const run = runRefinement(Option.isSome, { expected: "a Some value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.value),
-    Option.some
-  )
+    Option.some,
+    [tagSegment("Some"), keySegment("value")]
+  ))
 }
 
 /**
@@ -1715,10 +1952,12 @@ export function some<A>(): Prism<Option.Option<A>, A> {
  */
 export function none<A>(): Prism<Option.Option<A>, undefined> {
   const run = runRefinement(Option.isNone, { expected: "a None value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), () => undefined),
-    () => Option.none()
-  )
+    () => Option.none(),
+    [tagSegment("None")]
+  ))
 }
 
 /**
@@ -1755,10 +1994,12 @@ export function none<A>(): Prism<Option.Option<A>, undefined> {
  */
 export function success<A, E>(): Prism<Result.Result<A, E>, A> {
   const run = runRefinement(Result.isSuccess, { expected: "a Result.Success value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.success),
-    Result.succeed
-  )
+    Result.succeed,
+    [tagSegment("Success"), keySegment("success")]
+  ))
 }
 
 /**
@@ -1795,10 +2036,12 @@ export function success<A, E>(): Prism<Result.Result<A, E>, A> {
  */
 export function failure<A, E>(): Prism<Result.Result<A, E>, E> {
   const run = runRefinement(Result.isFailure, { expected: "a Result.Failure value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.failure),
-    Result.fail
-  )
+    Result.fail,
+    [tagSegment("Failure"), keySegment("failure")]
+  ))
 }
 
 function runRefinement<T extends E, E>(

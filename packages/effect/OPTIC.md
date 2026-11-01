@@ -429,6 +429,31 @@ const message = Result.match(result, {
 console.log(message) // no focus
 ```
 
+To report where a focus was found, or where it failed, use `getFocus`. It returns the same value or issue as `getResult`, together with the path from the root. On failure it also returns the path to, and the input of, the step that failed:
+
+```ts
+import { Optic, Result } from "effect"
+
+type Shape =
+  | { readonly _tag: "Circle"; readonly radius: number }
+  | { readonly _tag: "Rect"; readonly width: number }
+type S = { readonly shapes: { readonly [id: string]: Shape } }
+
+const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
+
+const result = Optic.getFocus({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius)
+if (Result.isFailure(result)) {
+  console.log(result.failure.path)
+  // [ { _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" } ]
+  console.log(result.failure.input)
+  // { _tag: "Rect", width: 1 }
+}
+```
+
+`key`, `optionalKey` and `at` add a `Key` segment and `tag` adds a `Tag` segment. `some`, `success` and `failure` add both, for example `Tag "Some"` then `Key "value"`. Checks, refinements, `pick` and `omit` keep the location. Optics built from your own functions (`makeLens` and so on) add an `Opaque` segment.
+
+For a traversal, `elements` holds the path to each focused element, using the element's index in the source collection.
+
 ## Generating an Optic from a Schema
 
 **Example** (Generating an Optic from a Struct)
