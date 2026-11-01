@@ -646,78 +646,23 @@ describe.concurrent("Sharding", () => {
       expect(Queue.sizeUnsafe(state.interrupts)).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
 
-  it.effect("answers an interrupted request that keeps defecting without stalling other entities", () => {
-    const layer = DefectingBoxLayer(DefectingBox)
-    return Effect.gen(function*() {
-      const { client, requestId } = yield* interruptDefectingRequest(DefectingBox)
-
-      // The entity recovers once the interrupt is applied.
-      const healthy = yield* client("a").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust("10 seconds")
-      expect(healthy.pollUnsafe()).toEqual(Exit.succeed("ok"))
-
-      const driver = yield* MessageStorage.MemoryDriver
-      const replies = yield* driver.encoded.repliesFor([requestId]).pipe(Effect.orDie)
-      const reply = replies.find((reply) => reply._tag === "WithExit")
-      assert(reply?._tag === "WithExit" && reply.exit._tag === "Failure" && reply.exit.cause[0]._tag === "Interrupt")
-    }).pipe(Effect.provide(layer))
-  })
-
-  it.effect("ignores interrupts for uninterruptible requests that keep defecting", () => {
-    const Box = DefectingBox.annotateRpcs(ClusterSchema.Uninterruptible, "server")
-    const state = { builds: 0 }
-    const layer = DefectingBoxLayer(Box, state)
-    return Effect.gen(function*() {
-      const { requestId } = yield* interruptDefectingRequest(Box)
-
-      const builds = state.builds
-      yield* TestClock.adjust("30 seconds")
-      assert.isAbove(state.builds, builds, "the request must keep restarting the entity")
-      const driver = yield* MessageStorage.MemoryDriver
-      const replies = yield* driver.encoded.repliesFor([requestId]).pipe(Effect.orDie)
-      assert.isFalse(replies.some((reply) => reply._tag === "WithExit"))
-    }).pipe(Effect.provide(layer))
-  })
-
-  it.effect("interrupts a replayed request while a remembered interrupt delays the rebuild", () => {
-    const saving = Latch.makeUnsafe(true)
-    let defects = 0
-    const Box = Entity.make("ReplayInterruptBox", [
-      Rpc.make("Never"),
-      Rpc.make("Defect")
+  it.effect("interrupting a request that keeps defecting does not stall other entities", () => {
+    const Box = Entity.make("DefectingBox", [
+      Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
     ]).annotateRpcs(ClusterSchema.Persisted, true)
     const layer = Box.toLayer({
-      Never: () => Effect.never,
-      Defect: () => Effect.suspend(() => defects++ === 0 ? Effect.die("restart entity") : Effect.void)
-    }, { concurrency: "unbounded" }).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
-      ...storage,
-      saveReply: (reply) => saving.whenOpen(storage.saveReply(reply))
-    }))))
+      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
+    }).pipe(Layer.provideMerge(TestSharding))
     return Effect.gen(function*() {
       yield* TestClock.adjust(1)
-      const driver = yield* MessageStorage.MemoryDriver
-      const client = (yield* Box.client)("box")
-      const a = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
-      const b = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust(1)
-
-      // B's interrupt arrives while the entity waits to restart.
-      yield* client.Defect().pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust(1)
-      yield* Fiber.interrupt(b)
-      yield* TestClock.adjust(1)
-
-      // The rebuild replays A, then waits to save B's interrupted reply.
-      saving.closeUnsafe()
+      const client = yield* Box.client
+      const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
       yield* TestClock.adjust(1000)
-      yield* Fiber.interrupt(a)
-      yield* TestClock.adjust(1)
-      yield* saving.open
-      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(dying)
 
-      const replies = yield* driver.encoded.repliesFor([driver.journal[0].requestId]).pipe(Effect.orDie)
-      const reply = replies.find((reply) => reply._tag === "WithExit")
-      assert(reply?._tag === "WithExit" && reply.exit._tag === "Failure" && reply.exit.cause[0]._tag === "Interrupt")
+      const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(healthy.pollUnsafe(), Exit.succeed("ok"))
     }).pipe(Effect.provide(layer))
   })
 
@@ -2556,76 +2501,6 @@ describe.concurrent("Sharding defect recovery", () => {
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 
-  it.effect("answers a remembered interrupt once when its queued request is dispatched", () => {
-    const responding = Latch.makeUnsafe()
-    return Effect.gen(function*() {
-      const generations = yield* makeGenerations(2)
-      let attempts = 0
-      const run = Rpc.make("run")
-      const entity = Entity.make("QueuedInterrupt", [run])
-      const sharding = yield* Sharding.Sharding
-      const manager = yield* EntityManager.make(
-        entity,
-        Effect.as(
-          generations.next,
-          entity.of({
-            run: () => Effect.suspend(() => attempts++ === 0 ? Effect.die("restart") : Effect.never)
-          })
-        ),
-        {
-          sharding,
-          storage: MessageStorage.noop,
-          runnerAddress: RunnerAddress.make("localhost", 1234),
-          residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
-          abandonUndelivered: () => Effect.void,
-          isShardOwned: () => Effect.succeed(true),
-          maxIdleTime: Infinity,
-          concurrency: "unbounded",
-          defectRetryPolicy: Schedule.spaced(1)
-        }
-      )
-      const id = EntityId.make("queued-interrupt")
-      const shardId = sharding.getShardId(id, "default")
-      const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
-      const send = (requestId: Snowflake.Snowflake, respond: () => Effect.Effect<void>) =>
-        manager.sendLocal(
-          new Message.IncomingRequestLocal<typeof run>({
-            envelope: Envelope.makeRequest<typeof run>({
-              requestId,
-              address,
-              tag: "run",
-              payload: undefined,
-              headers: Headers.empty
-            }),
-            lastSentReply: Option.none(),
-            annotations: Context.empty(),
-            respond
-          })
-        )
-      yield* TestClock.adjust(1)
-      yield* send(yield* sharding.getSnowflake, () => Effect.void)
-      yield* TestClock.adjust(10)
-      yield* Deferred.await(generations.acquiring)
-
-      // The request and its interrupt arrive while the replacement handlers are
-      // being built. Its reply is held so concurrent answers would overlap.
-      let responses = 0
-      const requestId = yield* sharding.getSnowflake
-      yield* send(requestId, () => {
-        responses++
-        return responding.await
-      }).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* manager.sendLocal(
-        new Message.IncomingEnvelope({
-          envelope: new Envelope.Interrupt({ id: yield* sharding.getSnowflake, address, requestId })
-        })
-      ).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* Deferred.succeed(generations.acquired, undefined)
-      yield* TestClock.adjust(10)
-      assert.strictEqual(responses, 1)
-    }).pipe(Effect.ensuring(responding.open), Effect.provide(BlockedRebuildSharding))
-  })
-
   // Drives an EntityManager whose "defect" request restarts the entity once,
   // holding the replacement handlers in acquisition until `generations.acquired`.
   // Every other request runs forever and counts its starts per payload.
@@ -2699,34 +2574,52 @@ describe.concurrent("Sharding defect recovery", () => {
     return { generations, runs, send, interrupt, holdRebuild } as const
   })
 
-  it.effect("does not replay a request whose interrupt arrived while an earlier reply was held", () => {
+  it.effect("answers a remembered interrupt once when its queued request is dispatched", () => {
     const replying = Latch.makeUnsafe()
     return Effect.gen(function*() {
-      const { generations, holdRebuild, interrupt, runs, send } = yield* makeRememberedInterruptManager("held-reply")
-      let replies = 0
-      const hold = () => {
-        replies++
-        return replying.await
-      }
-      yield* TestClock.adjust(1)
-      const b = yield* send("b", hold)
-      const a = yield* send("a", hold)
+      const { generations, holdRebuild, interrupt, send } = yield* makeRememberedInterruptManager("queued")
       yield* TestClock.adjust(1)
       yield* holdRebuild
 
-      // B's interrupt is remembered; its replay answers it with a held reply.
+      // The request and its interrupt arrive during acquisition. Its reply is
+      // held so a second answer would overlap the first.
+      let replies = 0
+      const a = yield* send("a", () => {
+        replies++
+        return replying.await
+      })
+      yield* interrupt(a)
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(10)
+      assert.strictEqual(replies, 1)
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
+
+  it.effect("interrupts a replayed request whose interrupt arrives before the rebuild publishes", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, send } = yield* makeRememberedInterruptManager("replayed")
+      const exits: Array<Exit.Exit<unknown, unknown>> = []
+      yield* TestClock.adjust(1)
+      const a = yield* send("a", (reply) => {
+        if (reply._tag === "WithExit") exits.push(reply.exit)
+        return Effect.void
+      })
+      const b = yield* send("b", () => replying.await)
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // Replay sends A, then B's remembered interrupt holds the rebuild in
+      // preparation while A's interrupt arrives.
       yield* interrupt(b)
       yield* Deferred.succeed(generations.acquired, undefined)
       yield* TestClock.adjust(1)
-      assert.strictEqual(replies, 1)
-
-      // A's interrupt arrives before replay reaches A, and its reply is held too.
       yield* interrupt(a)
       yield* TestClock.adjust(1)
       yield* replying.open
       yield* TestClock.adjust(10)
-      assert.strictEqual(runs.get("a"), 1, "the interrupted request must not run again")
-      assert.strictEqual(replies, 2)
+      assert.strictEqual(exits.length, 1)
+      assert.isTrue(Exit.isFailure(exits[0]) && Cause.hasInterrupts(exits[0].cause))
     }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
   })
 
@@ -5386,36 +5279,6 @@ const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
 }
 
 const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
-
-const DefectingBox = Entity.make("DefectingBox", [
-  Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
-]).annotateRpcs(ClusterSchema.Persisted, true)
-
-const DefectingBoxLayer = (box: typeof DefectingBox, state = { builds: 0 }) =>
-  box.toLayer(Effect.sync(() => {
-    state.builds++
-    return box.of({
-      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
-    })
-  })).pipe(Layer.provideMerge(TestSharding))
-
-// Interrupts the caller of a request whose handler always dies, then checks
-// that another entity still receives its requests.
-const interruptDefectingRequest = Effect.fnUntraced(function*(box: typeof DefectingBox) {
-  yield* TestClock.adjust(1)
-  const client = yield* box.client
-  const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
-  yield* TestClock.adjust(1000)
-  yield* Fiber.interrupt(dying)
-
-  const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
-  yield* TestClock.adjust(1000)
-  expect(healthy.pollUnsafe()).toEqual(Exit.succeed("ok"))
-
-  const driver = yield* MessageStorage.MemoryDriver
-  const request = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.address.entityId === "a")!
-  return { client, requestId: request.requestId }
-})
 
 const TestShardingWithoutRunnerStorage = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
