@@ -32,14 +32,18 @@ export class MysqlContainer extends Context.Service<
     )
   )
 
-  static client = Layer.unwrap(
-    Effect.gen(function*() {
-      const container = yield* MysqlContainer
-      return MysqlClient.layer({
-        url: Redacted.make(container.getConnectionUri())
+  static clientWith = (options: { readonly maxConnections?: number }) =>
+    Layer.unwrap(
+      Effect.gen(function*() {
+        const container = yield* MysqlContainer
+        return MysqlClient.layer({
+          ...options,
+          url: Redacted.make(container.getConnectionUri())
+        })
       })
-    })
-  )
+    )
+
+  static client = this.clientWith({})
 
   static layerClient = this.client.pipe(Layer.provide(this.layer))
 
