@@ -517,7 +517,8 @@ export type Encoded = {
    *
    * A request is eligible when its final `WithExit` reply has an id timestamp
    * before `completedBefore`, in Unix milliseconds. Selecting and deleting the
-   * requests must be atomic.
+   * requests must be atomic. Requests locked by a concurrent transaction may be
+   * skipped; they stay eligible for a later call.
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string

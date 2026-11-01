@@ -449,6 +449,19 @@ export const makeEncodedStorage: (options?: {
     mssql: () => sql.literal("WITH (UPDLOCK)"),
     orElse: () => sql.literal("")
   })
+  // Locks rows like updateLock and forUpdate, but skips rows another
+  // transaction has locked instead of waiting for them. mssql only accepts
+  // READPAST at READ COMMITTED or REPEATABLE READ, so the REPEATABLEREAD table
+  // hint keeps it valid under any session isolation level.
+  const skipLockedHint = sql.onDialectOrElse({
+    mssql: () => sql.literal("WITH (UPDLOCK, READPAST, REPEATABLEREAD)"),
+    orElse: () => sql.literal("")
+  })
+  const forUpdateSkipLocked = sql.onDialectOrElse({
+    mssql: () => sql.literal(""),
+    sqlite: () => sql.literal(""),
+    orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
+  })
 
   const emptyFragment = sql.literal("")
   // mssql only limits with OFFSET/FETCH, which requires the ORDER BY that
@@ -611,13 +624,18 @@ export const makeEncodedStorage: (options?: {
           const row = envelopeToRow(envelope, null, deliverAt)
           insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
           if (envelope._tag === "AckChunk") {
-            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-              Effect.andThen(
-                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
-              ),
-              Effect.andThen(insert),
-              sql.withTransaction
-            )
+            // Lock the request row before its replies, in the same order as
+            // deleteProcessed. MySQL can lock it anyway while scanning the
+            // request's messages below.
+            insert = sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${envelope.requestId} ${forUpdate}`
+              .pipe(
+                Effect.andThen(sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`),
+                Effect.andThen(
+                  sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
+                ),
+                Effect.andThen(insert),
+                sql.withTransaction
+              )
           }
         }
         return insert.pipe(
@@ -860,9 +878,12 @@ export const makeEncodedStorage: (options?: {
       function*({ completedBefore, entityType, limit, shardIds }) {
         // last_reply_id is the WithExit reply id, so its timestamp is the completion time
         const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
-        // Lock the selected requests so a concurrent clearReplies cannot reset them before the delete.
+        // Lock the selected requests so a concurrent clearReplies cannot reset
+        // them before the delete. Requests another transaction holds, such as
+        // a reset or a late acknowledgement, are skipped until a later call,
+        // because waiting for them can deadlock on gap locks in MySQL.
         const rows = yield* sql<{ id: string | bigint }>`
-          SELECT ${idColumn} FROM ${messagesTableSql} ${updateLock}
+          SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
           WHERE ${sql.in("shard_id", shardIds)}
           AND entity_type = ${entityType}
           AND kind = ${messageKindRequest}
@@ -870,7 +891,7 @@ export const makeEncodedStorage: (options?: {
           AND last_reply_id < ${sql.literal(String(cutoff))}
           ORDER BY rowid ASC
           ${limitFragment(limit)}
-          ${forUpdate}
+          ${forUpdateSkipLocked}
         `
         if (rows.length === 0) return 0
         const ids = sql.literal(rows.map((row) => String(row.id)).join(","))
