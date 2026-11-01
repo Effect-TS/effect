@@ -2106,17 +2106,16 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
     let done = false
     return {
       next() {
-        if (done) {
-          return { done: true, value: undefined }
-        }
-        const ab = f(next)
-        if (O.isNone(ab)) {
+        if (!done) {
+          const ab = f(next)
+          if (O.isSome(ab)) {
+            const [a, b] = ab.value
+            next = b
+            return { done: false, value: a }
+          }
           done = true
-          return { done: true, value: undefined }
         }
-        const [a, b] = ab.value
-        next = b
-        return { done: false, value: a }
+        return { done: true, value: undefined }
       }
     }
   }

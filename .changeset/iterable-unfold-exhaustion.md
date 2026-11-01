@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Keep Iterable.unfold exhausted after its generating function returns None.
+Fix `Iterable.unfold` iterators calling the generating function again after they have returned `done`.
