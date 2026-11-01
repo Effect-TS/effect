@@ -345,7 +345,7 @@ function keySegment(key: PropertyKey): Segment {
   return { _tag: "Key", key }
 }
 
-function tagSegment(tag: string): Segment {
+function tagSegment(tag: SchemaAST.LiteralValue): Segment {
   return { _tag: "Tag", tag }
 }
 
@@ -1106,7 +1106,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
   refine<B extends A>(refinement: (a: A) => a is B, annotations?: Schema.Annotations.Filter): any {
     return make(compose(this.node, [new CheckNode([SchemaAST.makeFilterByGuard(refinement, annotations)])]))
   }
-  tag(tag: string): any {
+  tag(tag: SchemaAST.LiteralValue): any {
     const err = Result.fail(new SchemaIssue.InvalidValue({ expected: `${JSON.stringify(tag)} tag` }))
     return make(
       compose(
@@ -1399,7 +1399,7 @@ export const getResult: {
  */
 export type Segment =
   | { readonly _tag: "Key"; readonly key: PropertyKey }
-  | { readonly _tag: "Tag"; readonly tag: string }
+  | { readonly _tag: "Tag"; readonly tag: SchemaAST.LiteralValue }
   | { readonly _tag: "Opaque" }
 
 /**
@@ -1495,14 +1495,25 @@ export const getFocus: {
 } = dual<
   <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Focus<A>, FocusFailure>,
   <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Focus<A>, FocusFailure>
->(2, (self, optic) => focusNode((optic as OptionalImpl<any, any>).node, self, [], undefined))
+>(2, (self, optic) =>
+  Result.map(
+    focusNode((optic as OptionalImpl<any, any>).node, self, { path: [], elements: undefined }),
+    ({ location, value }) => ({ value, path: location.path, elements: location.elements?.map((e) => e.path) })
+  ))
+
+// For a traversal's collected array, `elements` holds the location of each
+// element, including the elements of any nested traversal
+type Location = {
+  readonly path: Path
+  readonly elements: ReadonlyArray<Location> | undefined
+}
 
 function focusNode(
   node: Node,
   s: any,
-  path: Path,
-  elements: ReadonlyArray<Path> | undefined
-): Result.Result<Focus<any>, FocusFailure> {
+  location: Location
+): Result.Result<{ readonly value: any; readonly location: Location }, FocusFailure> {
+  let { elements, path } = location
   // After a traversal the focus is the collected array, which has no location
   // in the source: a step into it is opaque
   const append = (segment: Segment) => {
@@ -1536,22 +1547,22 @@ function focusNode(
       }
       case "EachNode": {
         const values: Array<any> = []
-        const paths: Array<Path> = []
+        const locations: Array<Location> = []
         for (let j = 0; j < s.length; j++) {
-          const base = elements?.[j] ?? [...path, keySegment(j)]
-          const result = focusNode((step.inner as OptionalImpl<any, any>).node, s[j], base, undefined)
+          const base = elements?.[j] ?? { path: [...path, keySegment(j)], elements: undefined }
+          const result = focusNode((step.inner as OptionalImpl<any, any>).node, s[j], base)
           if (Result.isSuccess(result)) {
             values.push(result.success.value)
-            paths.push(result.success.path)
+            locations.push(result.success.location)
           }
         }
         s = values
-        elements = paths
+        elements = locations
         break
       }
     }
   }
-  return Result.succeed({ value: s, path, elements })
+  return Result.succeed({ value: s, location: { path, elements } })
 }
 
 /**
