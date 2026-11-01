@@ -212,9 +212,9 @@ describe("MessageStorage", () => {
 
         expect(yield* storage.repliesForUnfiltered([expired.envelope.requestId])).toEqual([])
         expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
-        for (const kept of [recent, reset, otherType]) {
+        for (const [id, kept] of [[2, recent], [3, reset], [4, otherType]] as const) {
           const result = yield* storage.saveRequest(
-            yield* request(kept.envelope.payload.id, kept.envelope.address.entityType)
+            yield* request(id, kept.envelope.address.entityType)
           )
           expect(result._tag).toEqual("Duplicate")
         }
@@ -406,7 +406,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
   readonly entityId?: string
-  readonly entityType?: string
+  readonly entityType?: string | undefined
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc

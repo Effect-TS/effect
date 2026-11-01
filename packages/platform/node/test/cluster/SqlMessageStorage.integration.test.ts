@@ -344,9 +344,9 @@ describe("SqlMessageStorage", () => {
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${expiredId}`).toEqual([])
           expect(yield* sql`SELECT id FROM cluster_replies WHERE request_id = ${expiredId}`).toEqual([])
           expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
-          for (const kept of [recent, reset, otherType]) {
+          for (const [id, kept] of [[2, recent], [3, reset], [4, otherType]] as const) {
             const result = yield* storage.saveRequest(
-              yield* request(kept.envelope.payload.id, kept.envelope.address.entityType)
+              yield* request(id, kept.envelope.address.entityType)
             )
             expect(result._tag).toEqual("Duplicate")
           }
