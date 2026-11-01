@@ -1054,8 +1054,16 @@ export const subtract: {
   return add(self, newParts)
 })
 
-const mutateRounding = (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime => {
-  if (self._tag === "Utc" || self.zone._tag === "Offset") return mutate(self, f)
+const mutateRounding = (
+  self: DateTime.DateTime,
+  part: DateTime.DateTime.UnitSingular,
+  f: (date: Date) => void,
+  disambiguation: DateTime.Disambiguation = "compatible"
+): DateTime.DateTime => {
+  if (
+    self._tag === "Utc" || self.zone._tag === "Offset" ||
+    (part !== "millisecond" && part !== "second" && part !== "minute" && part !== "hour")
+  ) return mutate(self, f, { disambiguation })
   // keep the original offset when it is still valid, so rounding inside a
   // repeated hour stays in the same occurrence of that hour
   const date = toDate(self)
@@ -1119,7 +1127,7 @@ export const startOf: {
   }): A
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutateRounding(self, (date) => startOfDate(date, part, options)))
+}): DateTime.DateTime => mutateRounding(self, part, (date) => startOfDate(date, part, options)))
 
 const endOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
@@ -1172,7 +1180,7 @@ export const endOf: {
   }): A
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutateRounding(self, (date) => endOfDate(date, part, options)))
+}): DateTime.DateTime => mutateRounding(self, part, (date) => endOfDate(date, part, options), "later"))
 
 /** @internal */
 export const nearest: {
@@ -1185,7 +1193,7 @@ export const nearest: {
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime.DateTime =>
-  mutateRounding(self, (date) => {
+  mutateRounding(self, part, (date) => {
     if (part === "millisecond") return
     const millis = date.getTime()
     const start = new Date(millis)
