@@ -894,9 +894,10 @@ export const make = Effect.gen(function*() {
     ),
 
     scheduleClock(workflow, options) {
+      // Read the time once, so a retried save keeps the original deadline.
       return DateTime.now.pipe(
         Effect.flatMap((now) =>
-          sendDiscard({
+          retryPersistence(sendDiscard({
             rpc: ClockRpc,
             address: entityAddressFor({
               workflow,
@@ -911,9 +912,8 @@ export const make = Effect.gen(function*() {
                 Math.ceil
               )
             }
-          })
-        ),
-        retryPersistence
+          }))
+        )
       )
     }
   })
