@@ -869,7 +869,7 @@ export const make = Effect.gen(function*() {
         }
         const workflow = workflows.get(workflowName)
         if (workflow) {
-          return yield* Effect.orDie(sendDiscard({
+          return yield* retryPersistence(sendDiscard({
             rpc: DeferredRpc,
             address: entityAddressFor({
               workflow,
@@ -883,7 +883,7 @@ export const make = Effect.gen(function*() {
           }))
         }
         const client = yield* RcMap.get(clientsPartial, workflowName)
-        return yield* Effect.orDie(
+        return yield* retryPersistence(
           client(executionId).deferred({
             name: deferredName,
             exit
@@ -913,7 +913,7 @@ export const make = Effect.gen(function*() {
             }
           })
         ),
-        Effect.orDie
+        retryPersistence
       )
     }
   })
@@ -926,9 +926,9 @@ const retryPolicy = Schedule.min([
   Schedule.spaced("1 minute")
 ])
 
-// A transient storage failure must not become the workflow result. Requests
-// are saved under a primary key, so a retry after a lost acknowledgement is
-// deduplicated instead of running the activity again.
+// A transient storage failure must not become the workflow result. Activity,
+// deferred and clock requests are saved under a primary key, so a retry after
+// a lost acknowledgement is deduplicated instead of being recorded twice.
 const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),
