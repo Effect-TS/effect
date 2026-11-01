@@ -1316,10 +1316,12 @@ function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
       return a
     }
   }
+  const len = nodes.length
+  // EachNode.set finds its own matches; a terminal read only collects unused values.
+  const readLen = nodes[len - 1]._tag === "EachNode" ? len - 1 : len
   return (a, s) => {
-    const len = nodes.length
     const sources = new Array(len)
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < readLen; i++) {
       sources[i] = s
       const op = nodes[i]
       if (hasFailingGet(op.kind)) {
@@ -1331,6 +1333,9 @@ function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
       } else {
         s = op.get(s)
       }
+    }
+    if (readLen < len) {
+      sources[readLen] = s
     }
     for (let i = len - 1; i >= 0; i--) {
       const op = nodes[i]
