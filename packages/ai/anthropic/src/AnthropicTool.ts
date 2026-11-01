@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import * as Tool from "effect/ai/Tool"
+import * as Context from "effect/Context"
 import * as Schema from "effect/Schema"
 import * as Generated from "./Generated.ts"
 
@@ -2550,7 +2551,8 @@ export const WebFetch_20250910 = Tool.providerDefined({
  * **Details**
  *
  * Claude constructs regex patterns using Python's `re.search()` syntax.
- * Maximum query length: 200 characters.
+ * Maximum pattern length: 200 characters. The optional `limit` caps the
+ * number of returned tools (1 to 10,000, default 5).
  *
  * @stability unstable
  * @category schemas
@@ -2560,7 +2562,11 @@ export const ToolSearchRegexParameters = Schema.Struct({
   /**
    * Python regex pattern to search for tools.
    */
-  query: Schema.String
+  pattern: Schema.String,
+  /**
+   * Maximum number of tools to return.
+   */
+  limit: Schema.optionalKey(Schema.Int)
 })
 /**
  * Type of the parameters Claude supplies when invoking regex-based Anthropic tool search.
@@ -2568,7 +2574,7 @@ export const ToolSearchRegexParameters = Schema.Struct({
  * **Details**
  *
  * Claude constructs regex patterns using Python's `re.search()` syntax.
- * Maximum query length: 200 characters.
+ * Maximum pattern length: 200 characters.
  *
  * @stability unstable
  * @category models
@@ -2587,7 +2593,8 @@ export type ToolSearchRegexParameters = typeof ToolSearchRegexParameters.Type
  * **Details**
  *
  * The payload contains Claude's natural-language `query`. BM25 searches tool
- * names, descriptions, argument names, and argument descriptions.
+ * names, descriptions, argument names, and argument descriptions. The optional
+ * `limit` caps the number of returned tools (1 to 10,000, default 5).
  *
  * @see {@link ToolSearchBM25_20251119} for the provider-defined tool that consumes these parameters
  *
@@ -2599,7 +2606,11 @@ export const ToolSearchBM25Parameters = Schema.Struct({
   /**
    * Natural language query to search for tools.
    */
-  query: Schema.String
+  query: Schema.String,
+  /**
+   * Maximum number of tools to return.
+   */
+  limit: Schema.optionalKey(Schema.Int)
 })
 /**
  * Type of the parameters Claude supplies when invoking BM25 natural-language Anthropic tool search.
@@ -2613,6 +2624,51 @@ export type ToolSearchBM25Parameters = typeof ToolSearchBM25Parameters.Type
 // -----------------------------------------------------------------------------
 // Tool Search Tool Definitions
 // -----------------------------------------------------------------------------
+
+/**
+ * Annotation that defers loading a user-defined tool until Claude discovers it
+ * through tool search.
+ *
+ * **When to use**
+ *
+ * Use with `ToolSearchRegex_20251119` or `ToolSearchBM25_20251119` to keep
+ * large tool catalogs out of the initial context.
+ *
+ * **Details**
+ *
+ * When `true`, the tool definition is sent with `defer_loading: true`. The
+ * default is `false`, which sends no `defer_loading` field.
+ *
+ * **Gotchas**
+ *
+ * Anthropic requires at least one non-deferred tool, normally the tool search
+ * tool itself. The annotation has no effect on provider-defined tools.
+ *
+ * **Example** (Deferring a tool until it is searched)
+ *
+ * ```ts
+ * import { AnthropicTool } from "@effect/ai-anthropic"
+ * import { Tool, Toolkit } from "effect/ai"
+ *
+ * const ListContacts = Tool.make("ListContacts")
+ *   .annotate(AnthropicTool.DeferLoading, true)
+ *
+ * export const toolkit = Toolkit.make(
+ *   ListContacts,
+ *   AnthropicTool.ToolSearchBM25_20251119()
+ * )
+ * ```
+ *
+ * @see {@link ToolSearchRegex_20251119} for regex-based tool search
+ * @see {@link ToolSearchBM25_20251119} for natural-language tool search
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.1.2
+ */
+export const DeferLoading = Context.Reference<boolean>("@effect/ai-anthropic/AnthropicTool/DeferLoading", {
+  defaultValue: () => false
+})
 
 /**
  * Defines regex-based tool search for Claude models.
