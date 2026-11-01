@@ -30,6 +30,7 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
+import { TransactionNotifications } from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -223,8 +224,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   /**
    * Wraps requests in storage transactions.
    *
-   * `WithExit` replies saved in a transaction notify callers after the outermost
-   * commit; stream chunks notify immediately. Replies saved in a failed
+   * `WithExit` replies and discarded sends saved in a transaction notify after
+   * the outermost commit; stream chunks notify immediately. Replies saved in a failed
    * transaction must be discarded. The wrapper may fail only with the wrapped
    * effect's own failure or a defect.
    */
@@ -531,10 +532,6 @@ export type EncodedRepliesOptions<A> = {
   readonly newRequests: Array<string>
   readonly cursor: Option.Option<A>
 }
-
-const TransactionNotifications = Context.Reference<
-  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
->("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
 
 /**
  * Wraps a concrete message storage implementation with reply-handler management.
