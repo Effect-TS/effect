@@ -526,8 +526,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
     context: Context.Context<never>,
     interruptible: boolean = true,
-    parent?: FiberImpl<any, any>,
-    link?: boolean
+    parent?: FiberImpl<any, any>
   ) {
     this.setContext(context)
     this.id = ++fiberIdStore.id
@@ -544,10 +543,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._parent = undefined
     this._asyncContext = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
-    if (link) {
-      parent!.children().add(this)
-      this._parent = parent
-    }
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
   }
@@ -5654,7 +5649,11 @@ export const forkUnsafe = <FA, FE, A, E, R>(
 ): FiberImpl<A, E> => {
   const parentRuntime = parent as FiberImpl<FA, FE>
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
-  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible, parentRuntime, !daemon)
+  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible, parentRuntime)
+  if (!daemon) {
+    parentRuntime.children().add(child)
+    child._parent = parentRuntime
+  }
   if (immediate) {
     child.evaluate(effect as any)
   } else {
