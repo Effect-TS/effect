@@ -315,6 +315,69 @@ describe("SqlMessageStorage", () => {
           }).pipe(TestClock.withLive))
       }
 
+      if (label === "mysql") {
+        it.effect("a late AckChunk does not deadlock with a concurrent deleteProcessed", () =>
+          Effect.gen(function*() {
+            yield* truncate
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const cutoff = Date.UTC(2026, 0, 1)
+            const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+            const chunk = yield* makeChunkReply(request)
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(chunk)
+            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+            // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
+            yield* sql`
+              CREATE TRIGGER cluster_test_slow_ack AFTER UPDATE ON cluster_replies
+              FOR EACH ROW BEGIN
+                IF @cluster_test_slow_ack = 1 THEN
+                  DO SLEEP(2);
+                END IF;
+              END
+            `.unprepared
+            yield* Effect.gen(function*() {
+              const ackFiber = yield* Effect.gen(function*() {
+                yield* sql`SET @cluster_test_slow_ack = 1`
+                yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk)).pipe(
+                  Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
+                )
+              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+              yield* Effect.gen(function*() {
+                while (true) {
+                  const waiting = yield* sql`
+                    SELECT 1 FROM information_schema.PROCESSLIST
+                    WHERE ID <> CONNECTION_ID() AND STATE = 'User sleep'
+                  `
+                  if (waiting.length > 0) return
+                  yield* Effect.sleep("10 millis")
+                }
+              }).pipe(Effect.timeout("5 seconds"))
+              const cleanup = yield* Effect.exit(
+                storage.deleteProcessed({
+                  entityType: "test",
+                  shardIds: [request.envelope.address.shardId],
+                  completedBefore: cutoff,
+                  limit: 100
+                })
+              )
+              const acked = yield* Fiber.join(ackFiber)
+              assert(Exit.isSuccess(acked), String(acked))
+              assert(Exit.isSuccess(cleanup), String(cleanup))
+              // cleanup either deletes the whole family, including the new AckChunk, or leaves it for a later tick
+              const remaining = yield* sql<{ kind: number }>`
+                SELECT kind FROM cluster_messages WHERE request_id = ${String(request.envelope.requestId)}
+              `
+              expect(remaining.map((row) => Number(row.kind)).sort()).toEqual(cleanup.value === 1 ? [] : [0, 1])
+            }).pipe(Effect.ensuring(
+              Effect.gen(function*() {
+                yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
+                yield* truncate
+              }).pipe(Effect.orDie)
+            ))
+          }).pipe(TestClock.withLive))
+      }
+
       if (label === "mssql") {
         it.effect("rejects duplicate exit replies when another table has the same index name", () =>
           Effect.gen(function*() {
