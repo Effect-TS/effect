@@ -646,6 +646,26 @@ describe.concurrent("Sharding", () => {
       expect(Queue.sizeUnsafe(state.interrupts)).toEqual(1)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("interrupting a request that keeps defecting does not stall other entities", () => {
+    const Box = Entity.make("DefectingBox", [
+      Rpc.make("Send", { payload: { die: Schema.Boolean }, success: Schema.String })
+    ]).annotateRpcs(ClusterSchema.Persisted, true)
+    const layer = Box.toLayer({
+      Send: ({ payload }) => payload.die ? Effect.die("boom") : Effect.succeed("ok")
+    }).pipe(Layer.provideMerge(TestSharding))
+    return Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const client = yield* Box.client
+      const dying = yield* client("a").Send({ die: true }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1000)
+      yield* Fiber.interrupt(dying)
+
+      const healthy = yield* client("b").Send({ die: false }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(healthy.pollUnsafe(), Exit.succeed("ok"))
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("interrupts aren't sent for durable messages on shutdown", () =>
     Effect.gen(function*() {
       let driver!: MessageStorage.MemoryDriver["Service"]
@@ -2480,6 +2500,160 @@ describe.concurrent("Sharding defect recovery", () => {
       assert.isTrue(Exit.hasInterrupts(exit), "queued arrival must be interrupted")
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  // Drives an EntityManager whose "defect" request restarts the entity once,
+  // holding the replacement handlers in acquisition until `generations.acquired`.
+  // Every other request runs forever and counts its starts per payload.
+  const makeRememberedInterruptManager = Effect.fnUntraced(function*(entityId: string) {
+    const generations = yield* makeGenerations(2)
+    const runs = new Map<string, number>()
+    const run = Rpc.make("run", { payload: Schema.String })
+    const entity = Entity.make("RememberedInterrupt", [run])
+    const sharding = yield* Sharding.Sharding
+    const manager = yield* EntityManager.make(
+      entity,
+      Effect.as(
+        generations.next,
+        entity.of({
+          run: ({ payload }) =>
+            Effect.suspend(() => {
+              runs.set(payload, (runs.get(payload) ?? 0) + 1)
+              return payload === "defect" && runs.get(payload) === 1 ? Effect.die("restart") : Effect.never
+            })
+        })
+      ),
+      {
+        sharding,
+        storage: MessageStorage.noop,
+        runnerAddress: RunnerAddress.make("localhost", 1234),
+        residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+        abandonUndelivered: () => Effect.void,
+        isShardOwned: () => Effect.succeed(true),
+        maxIdleTime: Infinity,
+        concurrency: "unbounded",
+        defectRetryPolicy: Schedule.spaced(1)
+      }
+    )
+    const id = EntityId.make(entityId)
+    const shardId = sharding.getShardId(id, "default")
+    const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
+    const send = Effect.fnUntraced(function*(
+      payload: string,
+      respond: Message.IncomingRequestLocal<typeof run>["respond"] = () => Effect.void
+    ) {
+      const requestId = yield* sharding.getSnowflake
+      yield* manager.sendLocal(
+        new Message.IncomingRequestLocal<typeof run>({
+          envelope: Envelope.makeRequest<typeof run>({
+            requestId,
+            address,
+            tag: "run",
+            payload,
+            headers: Headers.empty
+          }),
+          lastSentReply: Option.none(),
+          annotations: Context.empty(),
+          respond
+        })
+      ).pipe(Effect.forkChild({ startImmediately: true }))
+      return requestId
+    })
+    const interrupt = Effect.fnUntraced(function*(requestId: Snowflake.Snowflake) {
+      yield* manager.sendLocal(
+        new Message.IncomingEnvelope({
+          envelope: new Envelope.Interrupt({ id: yield* sharding.getSnowflake, address, requestId })
+        })
+      ).pipe(Effect.forkChild({ startImmediately: true }))
+    })
+    // Restarts the entity and waits until the replacement is held in acquisition.
+    const holdRebuild = Effect.gen(function*() {
+      yield* send("defect")
+      yield* TestClock.adjust(10)
+      yield* Deferred.await(generations.acquiring)
+    })
+    return { generations, runs, send, interrupt, holdRebuild } as const
+  })
+
+  it.effect("answers a remembered interrupt once when its queued request is dispatched", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, send } = yield* makeRememberedInterruptManager("queued")
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // The request and its interrupt arrive during acquisition. Its reply is
+      // held so a second answer would overlap the first.
+      let replies = 0
+      const a = yield* send("a", () => {
+        replies++
+        return replying.await
+      })
+      yield* interrupt(a)
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(10)
+      assert.strictEqual(replies, 1)
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
+
+  it.effect("interrupts a replayed request whose interrupt arrives before the rebuild publishes", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, send } = yield* makeRememberedInterruptManager("replayed")
+      const exits: Array<Exit.Exit<unknown, unknown>> = []
+      yield* TestClock.adjust(1)
+      const a = yield* send("a", (reply) => {
+        if (reply._tag === "WithExit") exits.push(reply.exit)
+        return Effect.void
+      })
+      const b = yield* send("b", () => replying.await)
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // Replay sends A, then B's remembered interrupt holds the rebuild in
+      // preparation while A's interrupt arrives.
+      yield* interrupt(b)
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(1)
+      yield* interrupt(a)
+      yield* TestClock.adjust(1)
+      yield* replying.open
+      yield* TestClock.adjust(10)
+      assert.strictEqual(exits.length, 1)
+      assert.isTrue(Exit.isFailure(exits[0]) && Cause.hasInterrupts(exits[0].cause))
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
+
+  it.effect("keeps a queued request cancelled when its interrupted reply fails", () => {
+    const replying = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const { generations, holdRebuild, interrupt, runs, send } = yield* makeRememberedInterruptManager("failed-reply")
+      yield* TestClock.adjust(1)
+      const b = yield* send("b", () => replying.await)
+      yield* TestClock.adjust(1)
+      yield* holdRebuild
+
+      // B's interrupt is remembered. A is queued during acquisition, and the
+      // first attempt to save its interrupted reply fails.
+      yield* interrupt(b)
+      const exits: Array<Exit.Exit<unknown, unknown>> = []
+      const a = yield* send("a", (reply) => {
+        if (reply._tag !== "WithExit") return Effect.void
+        exits.push(reply.exit)
+        return exits.length === 1 ? Effect.die("reply lost") : Effect.void
+      })
+      yield* Deferred.succeed(generations.acquired, undefined)
+      yield* TestClock.adjust(1)
+
+      // A's interrupt arrives while B's held reply keeps the rebuild preparing.
+      yield* interrupt(a)
+      yield* TestClock.adjust(1)
+      yield* replying.open
+      yield* TestClock.adjust(10)
+      assert.isUndefined(runs.get("a"), "the interrupted request must never run")
+      assert.strictEqual(exits.length, 2)
+      assert.isTrue(Exit.isFailure(exits[1]) && Cause.hasInterrupts(exits[1].cause))
+    }).pipe(Effect.ensuring(replying.open), Effect.provide(BlockedRebuildSharding))
+  })
 
   // Preemptive shutdown abandons the parked caller during the drain; otherwise it
   // must stay parked rather than store an interrupt as its reply.

@@ -116,6 +116,10 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
+    /** Set when an interrupt arrives while no handlers are ready. */
+    interrupted?: boolean | undefined
+    /** The handler generation the remembered interrupt was last sent to. */
+    interruptSentTo?: EntityState["write"] | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -301,13 +305,31 @@ export const make = Effect.fnUntraced(function*<
       yield* restartStep(void 0)
     })
 
+    // An interrupted request is not run again. The server answers the
+    // interrupt as it would for a request without a running handler. Each
+    // generation receives it at most once, and the flag stays so a later
+    // generation still applies it if this one fails first.
+    const writeInterrupt = (
+      request: {
+        readonly message: Message.IncomingRequestLocal<any>
+        interruptSentTo?: EntityState["write"] | undefined
+      },
+      write: EntityState["write"]
+    ): Effect.Effect<void> => {
+      if (request.interruptSentTo === write) return Effect.void
+      request.interruptSentTo = write
+      return write(0, interruptEnvelope(request))
+    }
+
     // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
       for (const request of activeRequests.values()) {
         if (!request.delivered) continue
         request.sentExit = false
-        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
+        yield* request.interrupted
+          ? writeInterrupt(request, write)
+          : write(0, requestEnvelope(request), requestWriteOptions(request))
       }
     })
 
@@ -535,10 +557,22 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
+    // Forward interrupts remembered after their request was replayed, which
+    // the replacement handlers have not seen yet.
+    const forwardInterrupts = Effect.suspend(() => {
+      const write = writeRef.getUnsafe()
+      if (write === undefined) return Effect.void
+      const interrupts: Array<Effect.Effect<void>> = []
+      for (const request of activeRequests.values()) {
+        if (request.interrupted) interrupts.push(writeInterrupt(request, write))
+      }
+      return Effect.all(interrupts, { discard: true })
+    })
+
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(restartDelay)),
-        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
+        Effect.flatMap(() => isActive() ? Effect.andThen(rebuild, forwardInterrupts) : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
@@ -560,6 +594,16 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag !== "Request") {
             // Interrupts, acks and EOF reach the handlers even during shutdown.
             const write = writeRef.getUnsafe()
+            if (write === undefined && message._tag === "Interrupt") {
+              // Waiting could stall the sender indefinitely if every rebuild
+              // fails, so remember the interrupt for the next generation.
+              // Uninterruptible requests ignore it.
+              const request = activeRequests.get(Snowflake.Snowflake(message.requestId))
+              if (request && !isUninterruptibleForServer(request.message.annotations)) {
+                request.interrupted = true
+              }
+              return Effect.void
+            }
             return write
               ? write(clientId, message, writeOptions)
               : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
@@ -575,7 +619,7 @@ export const make = Effect.fnUntraced(function*<
           const request = activeRequests.get(Snowflake.Snowflake(message.id))
           if (!request) return Effect.void
           request.delivered = true
-          return write(clientId, message, writeOptions)
+          return request.interrupted ? writeInterrupt(request, write) : write(clientId, message, writeOptions)
         })
       },
       activeRequests,
@@ -1022,6 +1066,14 @@ const requestEnvelope = (entry: {
     ...entry.message.envelope,
     lastSentChunk: entry.lastSentChunk
   } as any) as any
+})
+
+const interruptEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+}): Parameters<EntityState["write"]>[1] => ({
+  _tag: "Interrupt",
+  requestId: entry.message.envelope.requestId as any,
+  interruptors: []
 })
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
