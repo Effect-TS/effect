@@ -172,6 +172,7 @@ export const make = Effect.fnUntraced(function*<
   const defectRetryPolicy = options.defectRetryPolicy
     ? Schedule.concat(options.defectRetryPolicy, defaultRetryPolicy)
     : defaultRetryPolicy
+  const newRestartStep = Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
   // The series reads the mailbox size on snapshot, so delivery does no extra work.
@@ -295,13 +296,11 @@ export const make = Effect.fnUntraced(function*<
 
     // Restart backoff for this activation. Consecutive defects advance it, and
     // a completed request drops it so the next defect starts over.
-    let restartStep: ((input: unknown) => Effect.Effect<unknown, unknown>) | undefined
-    const restartDelay = Effect.suspend(() =>
-      restartStep ? restartStep(void 0) : Effect.flatMap(Schedule.toStepWithSleep(defectRetryPolicy), (step) => {
-        restartStep = step
-        return step(void 0)
-      })
-    )
+    let restartStep: Effect.Success<typeof newRestartStep> | undefined
+    const restartDelay = Effect.gen(function*() {
+      restartStep ??= yield* newRestartStep
+      yield* restartStep(void 0)
+    })
 
     // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
