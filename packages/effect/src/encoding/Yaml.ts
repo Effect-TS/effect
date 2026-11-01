@@ -771,11 +771,18 @@ export const parse = (input: string): Result.Result<unknown, EncodingError> => {
 const ambiguousScalar =
   /^(?:null|Null|NULL|~|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$/
 
+// YAML 1.2.2 §5.1: characters outside the printable set must be escaped on
+// output. Line and paragraph separators are included to stay on the safe side
+// of YAML 1.1 line break handling.
+const nonPrintable =
+  // eslint-disable-next-line no-control-regex
+  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
+
 const isPlainSafe = (text: string): boolean =>
   text.length > 0 &&
   text.trim() === text &&
-  // eslint-disable-next-line no-control-regex
-  !/[\x00-\x1f\x7f\u0085\u2028\u2029]/.test(text) &&
+  !/[\t\n\r]/.test(text) &&
+  !nonPrintable.test(text) &&
   !/^[,[\]{}#&*!|>'"%@`]/.test(text) &&
   !/^[-?:](?:\s|$)/.test(text) &&
   !/^(?:---|\.\.\.)(?:\s|$)/.test(text) &&
@@ -818,7 +825,7 @@ const doubleQuote = (text: string): string => {
         continue
       }
     }
-    if (code < 0x20 || code === 0x7f || surrogate) {
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || surrogate || code === 0xfffe || code === 0xffff) {
       output += code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
     } else {
       output += character
@@ -827,7 +834,23 @@ const doubleQuote = (text: string): string => {
   return output + "\""
 }
 
+class PrintError extends Error {}
+
 const printSingleLine = (text: string): string => isPlainSafe(text) ? text : doubleQuote(text)
+
+// YAML 1.2.2 §7.4.2 limits an implicit key to 1024 characters, including quotes.
+const implicitKeyLimit = 1024
+
+// The unquoted merge key would be processed by `parse`, so it is always quoted.
+const printKey = (key: string, path: string): string => {
+  const printed = key === "<<" ? doubleQuote(key) : printSingleLine(key)
+  if (printed.length > implicitKeyLimit) {
+    throw new PrintError(
+      `Cannot print a mapping key of ${printed.length} characters (implicit keys are limited to ${implicitKeyLimit}) at ${path}`
+    )
+  }
+  return printed
+}
 
 const printNumber = (value: number): string => {
   if (Number.isNaN(value)) return ".nan"
@@ -844,8 +867,7 @@ const literalBlock = (text: string): { readonly header: string; readonly lines: 
   const body = text.replace(/\n+$/, "")
   if (body.length === 0) return undefined
   const lines = body.split("\n")
-  // eslint-disable-next-line no-control-regex
-  if (/[\x00-\x08\x0b-\x1f\x7f\u0085\u2028\u2029]/.test(body)) return undefined
+  if (/\r/.test(body) || nonPrintable.test(body)) return undefined
   if (lines.some((line) => line.length > 0 && !/^\S(?:.*\S)?$/.test(line))) return undefined
   const trailing = text.length - body.length
   const header = trailing === 0 ? "|-" : trailing === 1 ? "|" : "|+"
@@ -853,8 +875,6 @@ const literalBlock = (text: string): { readonly header: string; readonly lines: 
 }
 
 const isIdentifier = (key: string): boolean => /^[A-Za-z_$][\w$]*$/.test(key)
-
-class PrintError extends Error {}
 
 class Printer {
   readonly lines: Array<string> = []
@@ -890,9 +910,10 @@ class Printer {
       this.ancestors.add(value)
       const column = prefix === "" ? indentation : indentation + this.step
       if (prefix !== "") this.line(indentation, prefix, "")
-      value.forEach((item, index) => {
-        this.node(applyToJson(item, String(index)) ?? null, `${path}[${index}]`, column, "-")
-      })
+      // Index iteration keeps the positions of sparse arrays.
+      for (let index = 0; index < value.length; index++) {
+        this.node(applyToJson(value[index], String(index)) ?? null, `${path}[${index}]`, column, "-")
+      }
       this.ancestors.delete(value)
       return
     }
@@ -918,7 +939,7 @@ class Printer {
     const start = this.lines.length
     for (const [key, entry] of entries) {
       const entryPath = isIdentifier(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`
-      this.node(entry, entryPath, column, `${printSingleLine(key)}:`)
+      this.node(entry, entryPath, column, `${printKey(key, path)}:`)
     }
     if (item) this.lines[start] = `${" ".repeat(indentation)}- ${this.lines[start].slice(column)}`
     this.ancestors.delete(value)
@@ -978,18 +999,21 @@ const encodeError = (input: unknown, error: unknown): EncodingError =>
  * `null`, booleans, numbers, strings, arrays, and plain objects are supported.
  * Collections print in block style with keys in insertion order, empty ones
  * as `{}` and `[]`. Strings print plain when `parse` would read them back
- * unchanged and double-quoted otherwise, so `"true"`, `"1"`, and `"a: b"`
- * stay strings. Multiline strings print as literal block scalars when their
- * lines have no surrounding whitespace. Non-finite numbers print as `.inf`,
- * `-.inf`, and `.nan`.
+ * unchanged and double-quoted otherwise, so `"true"`, `"1"`, `"a: b"`, and
+ * the merge key `"<<"` stay strings. Non-printable characters are escaped.
+ * Multiline strings print as literal block scalars when their lines have no
+ * surrounding whitespace. Non-finite numbers print as `.inf`, `-.inf`, and
+ * `.nan`.
  *
  * As with `JSON.stringify`, a `toJSON` method is applied first (so a `Date`
  * prints as an ISO string), `undefined` properties are omitted, `undefined`
  * array items print as `null`, and symbol keys are ignored. Any other value,
  * including bigints, functions, symbols, class instances without `toJSON`,
  * and circular references, fails with an `EncodingError` naming the path of
- * the offending value. Shared references are printed in full each time; no
- * anchors are emitted. The output always ends with a line break.
+ * the offending value. Keys print as implicit keys, which YAML limits to 1024
+ * characters including quotes; a longer key fails with the path of its
+ * mapping. Shared references are printed in full each time; no anchors are
+ * emitted. The output always ends with a line break.
  *
  * **Example** (Printing a configuration object)
  *
