@@ -1492,6 +1492,73 @@ describe("AnthropicLanguageModel", () => {
         assert.include(error.message, "Tool.EmptyParams")
       }))
 
+    it.effect("sends recursive parameters for a non-strict tool and returns nested tool call params", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const model = "claude-sonnet-4-5"
+        const params = { filter: { OR: [{ name: "Anna" }, { name: "Ben" }] } }
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model,
+                content: [{ type: "tool_use", id: "toolu_test_1", name: "ListContacts", input: params }],
+                stop_reason: "tool_use",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({
+          prompt: "Find the contacts named Anna or Ben",
+          toolkit: Toolkit.make(RecursiveFilterTool),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model(model, { strictJsonSchema: false })),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        const body = yield* getRequestBody(capturedRequest)
+        assert.strictEqual(body.tools[0].strict, false)
+        const inputSchema = body.tools[0].input_schema
+        assert.deepStrictEqual(inputSchema.properties.filter, { $ref: "#/$defs/Filter" })
+        assert.deepStrictEqual(inputSchema.$defs.Filter.properties.OR.items, { $ref: "#/$defs/Filter" })
+        assert.deepStrictEqual(response.toolCalls.map((toolCall) => toolCall.params), [params])
+      }))
+
+    it.effect("rejects recursive parameters for a strict tool", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: "Find the contacts named Anna or Ben",
+          toolkit: Toolkit.make(RecursiveFilterTool),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-5")),
+          Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))),
+          Effect.flip
+        )
+
+        assert.strictEqual(error.reason._tag, "UnsupportedSchemaError")
+        assert.include(error.message, "Recursive schemas are not supported")
+      }))
+
     it.effect("serializes provider-executed web_search parts from the assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
@@ -2328,6 +2395,20 @@ describe("AnthropicLanguageModel", () => {
       })
     }
   })
+})
+
+interface Filter {
+  readonly name?: string
+  readonly OR?: ReadonlyArray<Filter>
+}
+
+const Filter = Schema.Struct({
+  name: Schema.optionalKey(Schema.String),
+  OR: Schema.optionalKey(Schema.Array(Schema.suspend((): Schema.Codec<Filter> => Filter)))
+}).annotate({ identifier: "Filter" })
+
+const RecursiveFilterTool = Tool.make("ListContacts", {
+  parameters: Schema.Struct({ filter: Filter })
 })
 
 const makeHttpClient = (
