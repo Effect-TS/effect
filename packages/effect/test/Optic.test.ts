@@ -678,23 +678,28 @@ Expected a value greater than 0`
     const key = (key: PropertyKey): Optic.Segment => ({ _tag: "Key", key })
     const tag = (tag: SchemaAST.LiteralValue): Optic.Segment => ({ _tag: "Tag", tag })
     const opaque: Optic.Segment = { _tag: "Opaque" }
+    const location = (
+      path: ReadonlyArray<Optic.Segment>,
+      elements?: ReadonlyArray<Optic.Location>
+    ): Optic.Location => ({ path, elements })
 
     function assertDiagnostics<S, A>(
       optic: Optic.Optional<S, A>,
       s: S,
-      expected: { value: A; path: ReadonlyArray<Optic.Segment>; elements?: ReadonlyArray<ReadonlyArray<Optic.Segment>> }
+      expected: { value: A; path: ReadonlyArray<Optic.Segment>; elements?: ReadonlyArray<Optic.Location> }
     ) {
       deepStrictEqual(Optic.getWithDiagnostics(s, optic), Result.succeed({ elements: undefined, ...expected }))
+      deepStrictEqual(optic.getResult(s), Result.succeed(expected.value))
     }
 
     function assertDiagnosticsFailure<S, A>(
       optic: Optic.Optional<S, A>,
       s: S,
-      expected: { path: ReadonlyArray<Optic.Segment>; input: unknown }
+      expected: { path: ReadonlyArray<Optic.Segment>; input: unknown; elements?: ReadonlyArray<Optic.Location> }
     ) {
       deepStrictEqual(
         Optic.getWithDiagnostics(optic)(s),
-        Result.fail({ ...expected, issue: getFailure(optic.getResult(s)) })
+        Result.fail({ elements: undefined, ...expected, issue: getFailure(optic.getResult(s)) })
       )
     }
 
@@ -765,27 +770,56 @@ Expected a value greater than 0`
       assertDiagnostics(positive, s, {
         value: [1, 3],
         path: [key("a"), key("b")],
-        elements: [[key("a"), key("b"), key(0)], [key("a"), key("b"), key(2)]]
+        elements: [location([key("a"), key("b"), key(0)]), location([key("a"), key("b"), key(2)])]
+      })
+      assertDiagnostics(positive, { ...s, a: { b: [-1] } }, {
+        value: [],
+        path: [key("a"), key("b")],
+        elements: []
       })
       type T = { readonly items: ReadonlyArray<Option.Option<{ readonly n: number }>> }
       assertDiagnostics(
         Optic.id<T>().key("items").forEach((item) => item.compose(Optic.some()).key("n")),
         { items: [Option.none(), Option.some({ n: 1 })] },
-        { value: [1], path: [key("items")], elements: [[key("items"), key(1), tag("Some"), key("value"), key("n")]] }
+        {
+          value: [1],
+          path: [key("items")],
+          elements: [location([key("items"), key(1), tag("Some"), key("value"), key("n")])]
+        }
       )
       assertDiagnostics(positive.forEach((n) => n.check(Schema.isGreaterThan(1))), s, {
         value: [3],
         path: [key("a"), key("b")],
-        elements: [[key("a"), key("b"), key(2)]]
+        elements: [location([key("a"), key("b"), key(2)])]
       })
+    })
+
+    it("retains source locations at every traversal level", () => {
       type G = { readonly groups: ReadonlyArray<{ readonly items: ReadonlyArray<number> }> }
-      const groups: G = { groups: [{ items: [-1, 2, 3] }] }
+      const groups: G = { groups: [{ items: [] }, { items: [-1, 2, 3] }] }
       const nested = Optic.id<G>().key("groups")
-        .forEach((g) => g.key("items").forEach((n) => n.check(Schema.isGreaterThan(0))))
+        .forEach((g) => g.key("items").check(Schema.isMinLength(1)).forEach((n) => n.check(Schema.isGreaterThan(0))))
+      assertDiagnostics(nested, groups, {
+        value: [[2, 3]],
+        path: [key("groups")],
+        elements: [location([key("groups"), key(1), key("items")], [
+          location([key("groups"), key(1), key("items"), key(1)]),
+          location([key("groups"), key(1), key("items"), key(2)])
+        ])]
+      })
       assertDiagnostics(nested.forEach((items) => items.key(0)), groups, {
         value: [2],
         path: [key("groups")],
-        elements: [[key("groups"), key(0), key("items"), opaque]]
+        elements: [location([key("groups"), key(1), key("items"), opaque])]
+      })
+    })
+
+    it("retains element locations when a check after filtering fails", () => {
+      const check = Schema.makeFilter<ReadonlyArray<number>>(() => ({ path: [0], issue: "unexpected value" }))
+      assertDiagnosticsFailure(positive.check(check), { ...s, a: { b: [-1, 2, 3] } }, {
+        path: [key("a"), key("b")],
+        input: [2, 3],
+        elements: [location([key("a"), key("b"), key(1)]), location([key("a"), key("b"), key(2)])]
       })
     })
   })

@@ -452,7 +452,11 @@ if (Result.isFailure(result)) {
 
 `key`, `optionalKey` and `at` add a `Key` segment and `tag` adds a `Tag` segment. `some`, `success` and `failure` add both, for example `Tag "Some"` then `Key "value"`. Checks, refinements, `pick` and `omit` keep the location. Optics built from your own functions (`makeLens` and so on) add an `Opaque` segment.
 
-For a traversal, `path` points at the traversed collection and `elements` holds the path to each focused element, using the element's index in the source collection. A step into the collected array, such as `key(0)` after `forEach`, adds an `Opaque` segment.
+For a traversal, `path` points at the traversed collection and `elements` holds a `Location` for each focused element. Each location contains its own root-relative `path` and optional nested `elements`, so nested traversals retain the original indices at every level. An empty traversal has `elements: []`.
+
+When translating a mismatch at an output index, use that element's location and continue through its nested `elements` as needed. For example, if an inner traversal selects `[2, 3]` from `groups[0].items = [-1, 2, 3]`, the location of focused `[0][0]` is available at `elements[0].elements[0].path` and points to `groups[0].items[1]`.
+
+Failures also include `elements` when the failing step receives a collected array. Use those locations to translate indices within the unchanged `issue`. A step into the collected array, such as `key(0)` after `forEach`, adds an `Opaque` segment.
 
 ## Generating an Optic from a Schema
 

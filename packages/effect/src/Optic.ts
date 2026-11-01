@@ -1404,15 +1404,18 @@ export type Segment =
   | { readonly _tag: "Opaque" }
 
 /**
- * A focused value together with where it was found.
+ * The source location of an optic's value, including the locations of elements
+ * collected by traversals.
  *
  * **Details**
  *
- * - `value`: the focus, as returned by `getResult`.
  * - `path`: the segments from the root to the focus. For a traversal, this is
  *   the path to the traversed collection.
- * - `elements`: for a traversal, the path from the root to each focused
- *   element, in the order of `value`; otherwise `undefined`.
+ * - `elements`: for a traversal, each collected element's location in output
+ *   order; otherwise `undefined`. Nested traversals retain their own elements.
+ *   An empty traversal has an empty array of element locations.
+ * - When translating a path inside a collected value, use the corresponding
+ *   element's location before continuing through the remaining path.
  *
  * @see {@link getWithDiagnostics} — the function that returns it
  *
@@ -1420,10 +1423,29 @@ export type Segment =
  * @category models
  * @since 4.1.2
  */
-export interface Diagnostics<A> {
-  readonly value: A
+export interface Location {
   readonly path: ReadonlyArray<Segment>
-  readonly elements: ReadonlyArray<ReadonlyArray<Segment>> | undefined
+  readonly elements: ReadonlyArray<Location> | undefined
+}
+
+/**
+ * A focused value together with its source location and traversal element
+ * locations.
+ *
+ * **Details**
+ *
+ * `value` is the same value returned by `getResult`. The inherited location
+ * describes how paths inside that value map to the original input.
+ *
+ * @see {@link getWithDiagnostics} — the function that returns it
+ * @see {@link Location} for the recursive location structure
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.2
+ */
+export interface Diagnostics<A> extends Location {
+  readonly value: A
 }
 
 /**
@@ -1435,6 +1457,8 @@ export interface Diagnostics<A> {
  * - `input`: the value that step received.
  * - `issue`: the step's issue, relative to `input`. It is the same issue
  *   `getResult` fails with.
+ * - `elements`: the source locations of elements in a collected `input`, so
+ *   paths inside `issue` can be translated through any preceding traversals.
  *
  * @see {@link getWithDiagnostics} — the function that returns it
  *
@@ -1442,8 +1466,7 @@ export interface Diagnostics<A> {
  * @category models
  * @since 4.1.2
  */
-export interface DiagnosticsFailure {
-  readonly path: ReadonlyArray<Segment>
+export interface DiagnosticsFailure extends Location {
   readonly input: unknown
   readonly issue: SchemaIssue.Issue
 }
@@ -1461,8 +1484,8 @@ export interface DiagnosticsFailure {
  *
  * - Succeeds with the same value as `getResult`, and fails with the same
  *   issue, plus its location and the input of the failing step.
- * - A traversal reports the path to each focused element, using the element's
- *   index in the source. Elements the traversal skips are not reported.
+ * - Traversal locations retain source indices at every nesting level, including
+ *   when a later step fails. Elements the traversal skips are not reported.
  * - Supports both data-first and data-last forms.
  *
  * **Example** (Locating a failed focus)
@@ -1499,16 +1522,8 @@ export const getWithDiagnostics: {
 >(2, (self, optic) =>
   Result.map(
     readWithDiagnostics((optic as OptionalImpl<any, any>).node, self, { path: [], elements: undefined }),
-    ({ location, value }) => ({ value, path: location.path, elements: location.elements?.map((e) => e.path) })
+    ({ location, value }) => ({ value, path: location.path, elements: location.elements })
   ))
-
-// A traversal's collected array has no location in the source: `elements`
-// holds the location of each collected element instead, and a step into the
-// array is opaque.
-type Location = {
-  readonly path: ReadonlyArray<Segment>
-  readonly elements: ReadonlyArray<Location> | undefined
-}
 
 function readWithDiagnostics(
   node: Node,
@@ -1536,7 +1551,7 @@ function readWithDiagnostics(
     }
     if (hasFailingGet(step.kind)) {
       const result: Result.Result<any, SchemaIssue.Issue> = step.get(s)
-      if (Result.isFailure(result)) return Result.fail({ path, input: s, issue: result.failure })
+      if (Result.isFailure(result)) return Result.fail({ path, elements, input: s, issue: result.failure })
       s = result.success
     } else {
       s = step.get(s)
