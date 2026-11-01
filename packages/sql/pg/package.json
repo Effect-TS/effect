@@ -64,9 +64,9 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.1",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "effect": "workspace:^",
-    "postgres": "^3.4.9",
+    "postgres": "^4.0.0",
     "testcontainers": "^12.2.1",
     "tinybench": "^6.2.2"
   },

@@ -67,7 +67,7 @@
   },
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
-    "undici": "^8.12.2"
+    "undici": "^8.12.3"
   },
   "peerDependencies": {
     "effect": "workspace:^",
@@ -78,9 +78,9 @@
     "@testcontainers/mysql": "^12.2.1",
     "@testcontainers/postgresql": "^12.2.1",
     "@testcontainers/redis": "^12.2.1",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "effect": "workspace:^",
-    "redis": "^6.3.0",
+    "redis": "^6.3.1",
     "testcontainers": "^12.2.1"
   }
 }

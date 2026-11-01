@@ -70,7 +70,7 @@
     "@effect/platform-node-shared": "workspace:^"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.3",
+    "@types/bun": "^1.4.4",
     "effect": "workspace:^",
     "tinybench": "^6.2.2"
   }
