@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve the original UTC offset when `DateTime.startOf`, `endOf` and `nearest` round within a repeated hour. Sub-day rounding keeps the original offset when it is valid for the rounded wall-clock time, while retaining the existing millisecond precision.
+Fix `DateTime.startOf`, `endOf` and `nearest` around repeated DST hours. Sub-day rounding now keeps the input's offset, so it no longer jumps to the other occurrence of the hour, and calendar `endOf` now returns the last instant of the period.

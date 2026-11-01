@@ -1066,8 +1066,7 @@ const mutateRounding = (
   ) {
     return mutate(self, f, { disambiguation })
   }
-  // keep the original offset when it is still valid, so rounding inside a
-  // repeated hour stays in the same occurrence of that hour
+  // keep the input's offset so rounding stays in the same occurrence of a repeated hour
   const date = toDate(self)
   const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
   f(date)
