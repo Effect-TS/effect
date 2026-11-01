@@ -7,6 +7,7 @@ import {
   EntityId,
   EntityType,
   Envelope,
+  MachineId,
   Message,
   MessageStorage,
   Reply,
@@ -187,6 +188,40 @@ describe("MessageStorage", () => {
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MemoryLayer)))
+    it.effect("deleteProcessed forgets requests of the entity type completed before the cutoff", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const cutoff = Date.UTC(2026, 0, 1)
+        const request = (id: number, entityType?: string) =>
+          makeRequest({ rpc: PrimaryKeyTest, payload: PrimaryKeyTest.payloadSchema.make({ id }), entityType })
+        const expired = yield* request(1)
+        const recent = yield* request(2)
+        const reset = yield* request(3)
+        const otherType = yield* request(4, "other")
+        for (const r of [expired, recent, reset, otherType]) {
+          yield* storage.saveRequest(r)
+        }
+        yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
+        yield* storage.saveReply(yield* makeReply(recent, cutoff + 1))
+        yield* storage.saveReply(yield* makeReply(reset, cutoff - 2))
+        yield* storage.clearReplies(reset.envelope.requestId)
+        yield* storage.saveReply(yield* makeReply(otherType, cutoff - 3))
+
+        const deleted = yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+        expect(deleted).toEqual(1)
+
+        expect(yield* storage.repliesForUnfiltered([expired.envelope.requestId])).toEqual([])
+        expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
+        for (const kept of [recent, reset, otherType]) {
+          const result = yield* storage.saveRequest(
+            yield* request(kept.envelope.payload.id, kept.envelope.address.entityType)
+          )
+          expect(result._tag).toEqual("Duplicate")
+        }
+        expect(yield* storage.repliesForUnfiltered([recent.envelope.requestId, otherType.envelope.requestId]))
+          .toHaveLength(2)
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unprocessedMessages honors the limit option", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
@@ -371,6 +406,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
   readonly entityId?: string
+  readonly entityType?: string
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -379,7 +415,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
       requestId: snowflake.nextUnsafe(),
       address: EntityAddress.make({
         shardId: ShardId.make("default", 1),
-        entityType: EntityType.make("test"),
+        entityType: EntityType.make(options?.entityType ?? "test"),
         entityId: EntityId.make(options?.entityId ?? "1")
       }),
       tag: rpc._tag,
@@ -414,11 +450,14 @@ export class StreamRpc extends Rpc.make("StreamTest", {
   primaryKey: (value) => value.id.toString()
 }) {}
 
-export const makeReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>) {
+// `completedAt` sets the reply id's timestamp, which storage treats as the completion time.
+export const makeReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>, completedAt?: number) {
   const snowflake = yield* Snowflake.Generator
   return new Reply.ReplyWithContext({
     reply: new Reply.WithExit({
-      id: snowflake.nextUnsafe(),
+      id: completedAt === undefined
+        ? snowflake.nextUnsafe()
+        : Snowflake.make({ timestamp: completedAt, machineId: MachineId.make(0), sequence: 0 }),
       requestId: request.envelope.requestId,
       exit: Exit.void as any
     }),
