@@ -116,6 +116,8 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
+    /** Set when an interrupt arrives while no handlers are ready. */
+    interrupted?: boolean | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -307,7 +309,7 @@ export const make = Effect.fnUntraced(function*<
       for (const request of activeRequests.values()) {
         if (!request.delivered) continue
         request.sentExit = false
-        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
+        yield* write(0, dispatchEnvelope(request), requestWriteOptions(request))
       }
     })
 
@@ -560,6 +562,13 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag !== "Request") {
             // Interrupts, acks and EOF reach the handlers even during shutdown.
             const write = writeRef.getUnsafe()
+            if (write === undefined && message._tag === "Interrupt") {
+              // Waiting could stall the sender indefinitely if every rebuild
+              // fails, so remember the interrupt for the next generation.
+              const request = activeRequests.get(Snowflake.Snowflake(message.requestId))
+              if (request) request.interrupted = true
+              return Effect.void
+            }
             return write
               ? write(clientId, message, writeOptions)
               : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
@@ -575,7 +584,7 @@ export const make = Effect.fnUntraced(function*<
           const request = activeRequests.get(Snowflake.Snowflake(message.id))
           if (!request) return Effect.void
           request.delivered = true
-          return write(clientId, message, writeOptions)
+          return write(clientId, request.interrupted ? interruptEnvelope(request) : message, writeOptions)
         })
       },
       activeRequests,
@@ -1023,6 +1032,22 @@ const requestEnvelope = (entry: {
     lastSentChunk: entry.lastSentChunk
   } as any) as any
 })
+
+const interruptEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+}): Parameters<EntityState["write"]>[1] => ({
+  _tag: "Interrupt",
+  requestId: entry.message.envelope.requestId as any,
+  interruptors: []
+})
+
+// An interrupted request is not run again. The server answers the interrupt
+// as it would for a request without a running handler.
+const dispatchEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+  readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+  readonly interrupted?: boolean | undefined
+}): Parameters<EntityState["write"]>[1] => entry.interrupted ? interruptEnvelope(entry) : requestEnvelope(entry)
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
