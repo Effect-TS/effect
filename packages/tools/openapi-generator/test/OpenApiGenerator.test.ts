@@ -3646,6 +3646,78 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.strictEqual(requests[0].headers["cookie"], "locale=en-US")
       }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
+    it.effect("escapes spec-controlled names in generated source", () =>
+      Effect.gen(function*() {
+        const path = "/items\"q"
+        const content = { "application/json": { schema: { type: "string" } } }
+        const spec = {
+          openapi: "3.1.0",
+          info: { title: "Quoted names", version: "1.0.0" },
+          paths: {
+            [path]: {
+              get: {
+                parameters: (["query", "header", "cookie"] as const).map((location) => ({
+                  name: `${location}"`,
+                  in: location,
+                  schema: { type: "string" }
+                })),
+                responses: {
+                  "200": { description: "OK", content },
+                  "x-extension": { description: "Extension", content },
+                  "4\"0": { description: "Invalid status", content }
+                },
+                tags: ["Items"],
+                security: []
+              }
+            }
+          },
+          components: { schemas: {}, securitySchemes: {} },
+          security: [],
+          tags: [{ name: "Items" }]
+        } as unknown as OpenAPISpec
+        const directory = yield* Effect.acquireRelease(
+          Effect.sync(() => mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))),
+          (directory) => Effect.sync(() => rmSync(directory, { recursive: true, force: true }))
+        )
+        const modules: Record<string, unknown> = {}
+        for (const format of ["httpclient", "httpclient-type-only", "httpapi"] as const) {
+          const source = yield* OpenApiGenerator.OpenApiGenerator.use((generator) =>
+            generator.generate(spec, { name: "TestClient", format })
+          ).pipe(
+            Effect.provide(
+              format === "httpclient-type-only"
+                ? OpenApiGenerator.layerTransformerTs
+                : OpenApiGenerator.layerTransformerSchema
+            )
+          )
+          const file = join(directory, `${format}.ts`)
+          writeFileSync(file, source)
+          modules[format] = yield* Effect.promise(() => import(file))
+        }
+
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        const { make } = modules.httpclient as {
+          make: (client: HttpClient.HttpClient) => Record<
+            string,
+            (options: { params: Record<string, string> }) => Effect.Effect<unknown, unknown>
+          >
+        }
+        const client = make(
+          HttpClient.make((request) => {
+            requests.push(request)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json("ok")))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+        )
+
+        const result = yield* client[`GET${path}`]({ params: { "query\"": "a", "header\"": "b", "cookie\"": "c" } })
+
+        assert.strictEqual(result, "ok")
+        assert.strictEqual(requests.length, 1)
+        assert.deepStrictEqual(requests[0].urlParams.params, [["query\"", "a"]])
+        assert.strictEqual(requests[0].headers["header\""], "b")
+        assert.strictEqual(requests[0].headers["cookie"], "cookie\"=c")
+      }).pipe(Effect.scoped))
+
     it.effect("drops structured cookie parameters with a warning", () =>
       Effect.gen(function*() {
         const generator = yield* OpenApiGenerator.OpenApiGenerator
