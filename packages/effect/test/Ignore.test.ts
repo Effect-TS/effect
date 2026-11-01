@@ -59,7 +59,9 @@ const gitCases: ReadonlyArray<{
   { source: "﻿bom\r\ncrlf\r\n", ignored: ["bom", "crlf"] },
   { source: "./foo\na//b\n[ab\n", kept: ["foo", "a/b", "[ab"] },
   { source: "*\n", ignored: [".env"] },
-  { source: "[[:word:]]\n", kept: ["_"] }
+  { source: "[[:word:]]\n", kept: ["_"] },
+  // class names resolve as own properties, not through the prototype
+  { source: "[[:toString:]]\n", kept: ["t"] }
 ]
 
 // Documented deviations from Git: code-point matching, and "/" inside a
@@ -263,13 +265,22 @@ describe("Ignore", () => {
 
     it("fails where the reference rejects the pattern or leaks regexp syntax", () => {
       const reference = ["!", "[", "[^", "[^bc", "a[", "a\\", "[]a]", "[-]", "[x-]", "[-x]", "[a-b-c]"]
-      for (const source of [...reference, "\\d", "a^b*"]) {
+      // `[*]` matches "]" and `a*\` matches "a$" in the reference; `[[:toString:]]`
+      // fails when the reference compiles its expression
+      const leaks = ["\\d", "a^b*", "[*]", "[?]", "a*\\", "[[:foo:]]", "[[:toString:]]"]
+      for (const source of [...reference, ...leaks]) {
         assertTrue(Result.isFailure(Ignore.dockerignore(source)), `expected ${JSON.stringify(source)} to fail`)
       }
       const result = Ignore.dockerignore("ok\n\n[\n")
       assert(Result.isFailure(result))
       assert.strictEqual(result.failure._tag, "IgnoreParseError")
       assert.strictEqual(result.failure.line, 3)
+    })
+
+    it("trims whitespace in linear time", () => {
+      const start = performance.now()
+      assertTrue(Result.isSuccess(Ignore.dockerignore("x" + " ".repeat(40_000) + "y")))
+      assertTrue(performance.now() - start < 500)
     })
 
     it("matches repeated wildcards in linear time", () => {

@@ -1124,7 +1124,14 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       ignore: ["gitignore", "a\n!.hidden/secret.ts\n!node_modules/pkg/index.ts\n"],
       expected: ["b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
-    { pattern: "*", dot: true, ignore: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] }
+    { pattern: "*", dot: true, ignore: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] },
+    // the exception is not a plain prefix of `node_modules/pkg`, so it must be read
+    {
+      pattern: "node_modules/**",
+      dot: true,
+      ignore: ["dockerignore", "node_modules\n!node_modules/*/**\n"],
+      expected: ["node_modules/pkg/index.ts"]
+    }
   ])(
     "glob $pattern (exclude: $exclude, dot: $dot, ignore: $ignore)",
     ({ dot, exclude, expected, ignore, pattern }) =>
@@ -1203,7 +1210,11 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         yield* fs.makeDirectory(`${root}/target`)
         yield* fs.writeFileString(`${root}/target/file.ts`, "")
         yield* fs.symlink(`${root}/target`, `${root}/link`)
-        expect(yield* fs.glob("**", { root, ignore: Ignore.gitignore("link/\ntarget/\n") })).toEqual(["link"])
+        const ignore = Ignore.gitignore("link/\ntarget/\n")
+        expect(yield* fs.glob("**", { root, ignore })).toEqual(["link"])
+        // literal segments are probed with `stat`, which follows the link
+        expect(yield* fs.glob("link", { root, ignore })).toEqual(["link"])
+        expect(yield* fs.glob("link/file.ts", { root, ignore })).toEqual(["link/file.ts"])
       }).pipe(Effect.scoped)
     ))
 
@@ -1213,7 +1224,9 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         const fs = yield* Fs.FileSystem
         const root = yield* globFixture
         const ignore = Ignore.gitignore("")
-        for (const pattern of [`${Glob.escape(posix(root))}/src/*.ts`, "src/../a/*.ts"]) {
+        for (
+          const pattern of [`${Glob.escape(posix(root))}/src/*.ts`, "//server/share", "src/../a/*.ts", "**/../x"]
+        ) {
           const exit = yield* Effect.exit(fs.glob(pattern, { root, ignore }))
           assert.strictEqual(exit._tag, "Failure", pattern)
           if (exit._tag === "Failure") {
