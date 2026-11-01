@@ -350,12 +350,13 @@ describe("McpServer skills", () => {
       Effect.gen(function*() {
         const { registrations } = makeFixture()
         const harness = yield* modernHarness(registrations)
-        const uris = (message: any) => message.result.skills.map((skill: any) => skill.uri)
+        // Concurrently registered skills are listed in the order their registrations finish.
+        const uris = (message: any) => message.result.skills.map((skill: any) => skill.uri).sort()
 
         assert.deepStrictEqual(uris((yield* call(harness, "skills/list")).message), ["skill://acme/public/SKILL.md"])
         assert.deepStrictEqual(uris((yield* call(harness, "skills/list", {}, admin)).message), [
-          "skill://acme/public/SKILL.md",
-          "skill://acme/admin/SKILL.md"
+          "skill://acme/admin/SKILL.md",
+          "skill://acme/public/SKILL.md"
         ])
 
         const hidden = yield* call(harness, "skills/get", { uri: "skill://acme/admin/SKILL.md" })
