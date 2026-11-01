@@ -537,10 +537,22 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
+    // Forward interrupts remembered after their request was replayed, which
+    // the replacement handlers have not seen yet.
+    const forwardInterrupts = Effect.suspend(() => {
+      const write = writeRef.getUnsafe()
+      if (write === undefined) return Effect.void
+      const interrupts: Array<Effect.Effect<void>> = []
+      for (const request of activeRequests.values()) {
+        if (request.interrupted) interrupts.push(write(0, interruptEnvelope(request)))
+      }
+      return Effect.all(interrupts, { discard: true })
+    })
+
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(restartDelay)),
-        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
+        Effect.flatMap(() => isActive() ? Effect.andThen(rebuild, forwardInterrupts) : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
@@ -565,8 +577,11 @@ export const make = Effect.fnUntraced(function*<
             if (write === undefined && message._tag === "Interrupt") {
               // Waiting could stall the sender indefinitely if every rebuild
               // fails, so remember the interrupt for the next generation.
+              // Uninterruptible requests ignore it.
               const request = activeRequests.get(Snowflake.Snowflake(message.requestId))
-              if (request) request.interrupted = true
+              if (request && !isUninterruptibleForServer(request.message.annotations)) {
+                request.interrupted = true
+              }
               return Effect.void
             }
             return write
