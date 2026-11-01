@@ -1496,7 +1496,7 @@ describe("AnthropicLanguageModel", () => {
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
         const model = "claude-sonnet-4-5"
-        const params = { filter: { OR: [{ name: "Anna" }, { name: "Ben" }] } }
+        const params = { filter: { name: null, OR: [{ name: "Anna" }, { name: "Ben" }] } }
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
           Layer.provide(Layer.succeed(
             HttpClient.HttpClient,
@@ -1537,9 +1537,13 @@ describe("AnthropicLanguageModel", () => {
         const body = yield* getRequestBody(capturedRequest)
         assert.strictEqual(body.tools[0].strict, false)
         const inputSchema = body.tools[0].input_schema
+        assert.strictEqual(inputSchema.type, "object")
         assert.deepStrictEqual(inputSchema.properties.filter, { $ref: "#/$defs/Filter" })
         assert.deepStrictEqual(inputSchema.$defs.Filter.properties.OR.items, { $ref: "#/$defs/Filter" })
-        assert.deepStrictEqual(response.toolCalls.map((toolCall) => toolCall.params), [params])
+        assert.strictEqual(response.toolCalls.length, 1)
+        const { filter } = response.toolCalls[0].params
+        assert.isUndefined(filter.name)
+        assert.deepStrictEqual(filter.OR, [{ name: "Anna" }, { name: "Ben" }])
       }))
 
     it.effect("rejects recursive parameters for a strict tool", () =>
@@ -2398,17 +2402,17 @@ describe("AnthropicLanguageModel", () => {
 })
 
 interface Filter {
-  readonly name?: string
+  readonly name?: string | undefined
   readonly OR?: ReadonlyArray<Filter>
 }
 
 const Filter = Schema.Struct({
-  name: Schema.optionalKey(Schema.String),
+  name: Schema.optional(Schema.String),
   OR: Schema.optionalKey(Schema.Array(Schema.suspend((): Schema.Codec<Filter> => Filter)))
 }).annotate({ identifier: "Filter" })
 
 const RecursiveFilterTool = Tool.make("ListContacts", {
-  parameters: Schema.Struct({ filter: Filter })
+  parameters: Schema.Struct({ filter: Filter }).annotate({ identifier: "ListContactsParams" })
 })
 
 const makeHttpClient = (
