@@ -235,7 +235,14 @@ describe("SqlMessageStorage", () => {
               const resend = yield* request
               const save = yield* storage.saveRequest(resend).pipe(Effect.forkChild)
               yield* waitForPgSleep
-              expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
+              expect(
+                yield* storage.deleteProcessed({
+                  entityType: "test",
+                  shardIds: [ShardId.make("default", 1)],
+                  completedBefore: cutoff,
+                  limit: 100
+                })
+              )
                 .toEqual(1)
               const result = yield* Fiber.join(save)
               if (result._tag === "Duplicate") {
@@ -284,7 +291,12 @@ describe("SqlMessageStorage", () => {
               }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
               yield* waitForPgSleep
               const cleanup = yield* Effect.exit(
-                storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+                storage.deleteProcessed({
+                  entityType: "test",
+                  shardIds: [ShardId.make("default", 1)],
+                  completedBefore: cutoff,
+                  limit: 100
+                })
               )
               const cleared = yield* Fiber.join(clearFiber)
               assert(Exit.isSuccess(cleared), String(cleared))
@@ -413,20 +425,22 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
-      it.effect("deleteProcessed forgets request families completed before the cutoff", () =>
+      it.effect("deleteProcessed forgets request families in the shards completed before the cutoff", () =>
         Effect.gen(function*() {
           yield* truncate
           const sql = yield* SqlClient.SqlClient
           const storage = yield* MessageStorage.MessageStorage
           const snowflake = yield* Snowflake.Generator
           const cutoff = Date.UTC(2026, 0, 1)
-          const request = (id: number, entityType?: string) =>
-            makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id }), entityType })
+          const shard = ShardId.make("default", 1)
+          const request = (id: number, entityType?: string, shardId?: ShardId.ShardId) =>
+            makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id }), entityType, shardId })
           const expired = yield* request(1)
           const recent = yield* request(2)
           const reset = yield* request(3)
           const otherType = yield* request(4, "other")
-          for (const r of [expired, recent, reset, otherType]) {
+          const otherShard = yield* request(5, undefined, ShardId.make("default", 2))
+          for (const r of [expired, recent, reset, otherType, otherShard]) {
             yield* storage.saveRequest(r)
           }
           const chunk = yield* makeChunkReply(expired)
@@ -442,22 +456,30 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(reset, cutoff - 2))
           yield* storage.clearReplies(reset.envelope.requestId)
           yield* storage.saveReply(yield* makeReply(otherType, cutoff - 3))
+          yield* storage.saveReply(yield* makeReply(otherShard, cutoff - 4))
 
-          const deleted = yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+          const options = { entityType: "test", completedBefore: cutoff, limit: 100 }
+          expect(yield* storage.deleteProcessed({ ...options, shardIds: [] })).toEqual(0)
+          const deleted = yield* storage.deleteProcessed({ ...options, shardIds: [shard] })
           expect(deleted).toEqual(1)
 
           const expiredId = String(expired.envelope.requestId)
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${expiredId}`).toEqual([])
           expect(yield* sql`SELECT id FROM cluster_replies WHERE request_id = ${expiredId}`).toEqual([])
           expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
-          for (const [id, kept] of [[2, recent], [3, reset], [4, otherType]] as const) {
+          for (const [id, kept] of [[2, recent], [3, reset], [4, otherType], [5, otherShard]] as const) {
             const result = yield* storage.saveRequest(
-              yield* request(id, kept.envelope.address.entityType)
+              yield* request(id, kept.envelope.address.entityType, kept.envelope.address.shardId)
             )
             expect(result._tag).toEqual("Duplicate")
           }
-          expect(yield* storage.repliesForUnfiltered([recent.envelope.requestId, otherType.envelope.requestId]))
-            .toHaveLength(2)
+          expect(
+            yield* storage.repliesForUnfiltered([
+              recent.envelope.requestId,
+              otherType.envelope.requestId,
+              otherShard.envelope.requestId
+            ])
+          ).toHaveLength(3)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
       it.effect("deleteProcessed deletes at most limit request families", () =>
@@ -470,7 +492,12 @@ describe("SqlMessageStorage", () => {
             yield* storage.saveRequest(request)
             yield* storage.saveReply(yield* makeReply(request, cutoff - id))
           }
-          const deleteProcessed = storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 2 })
+          const deleteProcessed = storage.deleteProcessed({
+            entityType: "test",
+            shardIds: [ShardId.make("default", 1)],
+            completedBefore: cutoff,
+            limit: 2
+          })
           expect(yield* deleteProcessed).toEqual(2)
           expect(yield* deleteProcessed).toEqual(1)
           expect(yield* deleteProcessed).toEqual(0)
