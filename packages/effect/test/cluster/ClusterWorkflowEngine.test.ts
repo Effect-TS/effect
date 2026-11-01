@@ -719,13 +719,21 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             })
             const storage = yield* makeSharedStorage
             let saveFailures = 0
+            let inserts = 0
+            const payloads: Array<unknown> = []
             const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
               ...storage,
               saveRequest: (envelope) => {
-                if (!saves(envelope) || saveFailures > 0) return storage.saveRequest(envelope)
+                if (!saves(envelope)) return storage.saveRequest(envelope)
+                payloads.push(envelope.envelope.payload)
+                const save = Effect.tap(storage.saveRequest(envelope), (result) =>
+                  Effect.sync(() => {
+                    if (result._tag === "Success") inserts++
+                  }))
+                if (saveFailures > 0) return save
                 saveFailures++
                 const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
-                return ackLost ? Effect.andThen(storage.saveRequest(envelope), failure) : failure
+                return ackLost ? Effect.andThen(save, failure) : failure
               }
             })
             yield* Effect.gen(function*() {
@@ -752,6 +760,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
                 yield* Fiber.join(caller)
               }
               assert.strictEqual(saveFailures, 1)
+              assert.strictEqual(inserts, 1)
+              // A retry resends the original payload, including a clock's deadline.
+              assert.deepStrictEqual(payloads[1], payloads[0])
             }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer })))
           }),
         20_000
