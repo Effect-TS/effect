@@ -17,6 +17,7 @@ import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import { pipe } from "./Function.ts"
+import type { Ignore } from "./Ignore.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
@@ -149,11 +150,20 @@ export interface FileSystem {
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
+   * `ignore` applies `.gitignore` or `.dockerignore` rules from `Ignore` to
+   * paths relative to `root`. It only removes results: an ignore exception
+   * never brings back a path dropped by the pattern, `exclude`, `dot`, or the
+   * symbolic link rules. Git rules never descend into an ignored directory.
+   * Docker rules descend into one unless BuildKit would skip it, so exceptions
+   * such as `!node_modules/keep.txt` still apply. Directory-only Git rules test
+   * the entry itself, so a link to a directory does not match `link/`.
+   *
    * **Gotchas**
    *
    * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
    * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling.
+   * pattern's spelling. With `ignore`, an absolute pattern or one with a `..`
+   * segment is a defect, because ignore rules only match paths under `root`.
    */
   readonly glob: (
     pattern: string,
@@ -161,6 +171,7 @@ export interface FileSystem {
       readonly root?: string | undefined
       readonly exclude?: ReadonlyArray<string> | undefined
       readonly dot?: boolean | undefined
+      readonly ignore?: Ignore | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
