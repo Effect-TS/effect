@@ -576,6 +576,7 @@ describe("OtlpExporter", () => {
         yield* Effect.gen(function*() {
           yield* Effect.log("flush test")
           yield* Metric.update(Metric.counter("otlp_flush_test"), 1)
+          yield* Effect.void.pipe(Effect.withSpan("flush test"))
           yield* (yield* OtlpExporter.Flusher).flush
 
           assert.deepStrictEqual(
