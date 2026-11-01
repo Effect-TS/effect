@@ -339,7 +339,9 @@ type Node = ReadonlyArray<Step>
 
 const opaqueSegment: Segment = { _tag: "Opaque" }
 
-function keySegment(key: PropertyKey): Segment {
+type KeySegment = Extract<Segment, { readonly _tag: "Key" }>
+
+function keySegment(key: PropertyKey): KeySegment {
   return { _tag: "Key", key }
 }
 
@@ -365,18 +367,16 @@ const identityOperation: Operation = {
 class PathNode {
   readonly _tag = "PathNode"
   readonly kind = "Lens"
-  readonly path: ReadonlyArray<PropertyKey>
-  readonly segments: ReadonlyArray<Segment>
+  readonly segments: ReadonlyArray<KeySegment>
   readonly get: (s: any) => any
   readonly set: (a: any, s?: any) => any
 
-  constructor(path: ReadonlyArray<PropertyKey>) {
-    this.path = path
-    this.segments = path.map(keySegment)
+  constructor(segments: ReadonlyArray<KeySegment>) {
+    this.segments = segments
     this.get = (s) => {
       let out = s
-      for (let i = 0; i < path.length; i++) {
-        out = out[path[i]]
+      for (let i = 0; i < segments.length; i++) {
+        out = out[segments[i].key]
       }
       return out
     }
@@ -384,12 +384,12 @@ class PathNode {
       const out = cloneShallow(s)
       let current = out
       let i = 0
-      for (; i < path.length - 1; i++) {
-        const key = path[i]
+      for (; i < segments.length - 1; i++) {
+        const key = segments[i].key
         InternalRecord.assignProperty(current, key, cloneShallow(current[key]))
         current = current[key]
       }
-      InternalRecord.assignProperty(current, path[i], a)
+      InternalRecord.assignProperty(current, segments[i].key, a)
       return out
     }
   }
@@ -467,7 +467,7 @@ function compose(a: Node, b: Node): Node {
     const node = b[i]
     const last = nodes[nodes.length - 1]
     if (last._tag === "PathNode" && node._tag === "PathNode") {
-      nodes[nodes.length - 1] = new PathNode([...last.path, ...node.path])
+      nodes[nodes.length - 1] = new PathNode([...last.segments, ...node.segments])
     } else if (last._tag === "CheckNode" && node._tag === "CheckNode") {
       nodes[nodes.length - 1] = new CheckNode<any>([...last.checks, ...node.checks])
     } else {
@@ -1071,7 +1071,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
     return make(compose(this.node, that.node))
   }
   key(key: PropertyKey): any {
-    return make(compose(this.node, [new PathNode([key])]))
+    return make(compose(this.node, [new PathNode([keySegment(key)])]))
   }
   optionalKey(key: PropertyKey): any {
     return make(
