@@ -207,6 +207,11 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly runnerHealthCheckInterval: Duration.Input
   /**
+   * The interval at which completed requests of entities annotated with
+   * `ClusterSchema.Retention` are deleted from message storage.
+   */
+  readonly messageRetentionInterval: Duration.Input
+  /**
    * Simulate serialization and deserialization to remote runners for local
    * entities.
    */
@@ -248,6 +253,7 @@ export const defaults: ShardingConfig["Service"] = {
   refreshAssignmentsInterval: Duration.seconds(3),
   runnerJoinDebounce: Duration.zero,
   runnerHealthCheckInterval: Duration.minutes(1),
+  messageRetentionInterval: Duration.minutes(1),
   simulateRemoteSerialization: true
 }
 
@@ -412,6 +418,10 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   runnerHealthCheckInterval: Config.Duration("runnerHealthCheckInterval").pipe(
     Config.withDefault(defaults.runnerHealthCheckInterval)
     // Config.withDescription("The interval at which to check for unhealthy runners and report them.")
+  ),
+  messageRetentionInterval: Config.Duration("messageRetentionInterval").pipe(
+    Config.withDefault(defaults.messageRetentionInterval)
+    // Config.withDescription("The interval at which completed requests of entities with a retention are deleted.")
   ),
   // unhealthyRunnerReportInterval: Config.Duration("unhealthyRunnerReportInterval").pipe(
   simulateRemoteSerialization: Config.Boolean("simulateRemoteSerialization").pipe(

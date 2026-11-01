@@ -2066,9 +2066,47 @@ const make = Effect.gen(function*() {
         }
       }))
 
+      const retention = Context.get(entity.protocol.annotations, ClusterSchema.Retention)
+      if (storageEnabled && retention !== undefined) {
+        yield* registerRetentionSingleton(entity, retention)
+      }
+
       yield* PubSub.publish(events, EntityRegistered({ entity }))
     }
   )
+
+  // --- Message retention ---
+
+  const retentionBatchSize = 1000
+
+  // One singleton per entity type, so it runs on a runner that registers the
+  // entity even when runners register different entity types.
+  const registerRetentionSingleton = (entity: Entity<any, any>, retention: Duration.Duration) => {
+    const name = `effect/cluster/Sharding/MessageRetention/${entity.type}`
+    const deleteBatches = (completedBefore: number): Effect.Effect<void, PersistenceError> =>
+      Effect.flatMap(
+        storage.deleteProcessed({ entityType: entity.type, completedBefore, limit: retentionBatchSize }),
+        (deleted) => deleted < retentionBatchSize ? Effect.void : deleteBatches(completedBefore)
+      )
+    return registerSingleton(
+      name,
+      Effect.gen(function*() {
+        while (true) {
+          yield* Effect.sleep(config.messageRetentionInterval)
+          yield* deleteBatches(clock.currentTimeMillisUnsafe() - Duration.toMillis(retention))
+        }
+      }).pipe(
+        Effect.catchCause((cause) => Effect.logDebug("Message retention failed", cause)),
+        Effect.forever,
+        Effect.annotateLogs({
+          module: "effect/cluster/Sharding",
+          fiber: "Message retention",
+          entityType: entity.type
+        })
+      ),
+      { shardGroup: entity.getShardGroup(makeEntityId(name)) }
+    )
+  }
 
   // Sleeps until the registration deadline shared with the storage read loop,
   // re-checking once in case registration started and moved the deadline.
