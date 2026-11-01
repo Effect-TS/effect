@@ -2338,6 +2338,47 @@ describe.concurrent("Sharding defect recovery", () => {
       }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
     }))
 
+  it.effect("backs off defect restarts per entity and resets after recovery", () =>
+    Effect.gen(function*() {
+      const entity = Entity.make("DefectBackoff", [
+        Rpc.make("run", { payload: { id: Schema.String, dies: Schema.Number } })
+      ])
+      const attempts = new Map<string, Array<number>>()
+      const entityLayer = entity.toLayer(entity.of({
+        run: Effect.fnUntraced(function*({ payload }) {
+          const times = attempts.get(payload.id) ?? []
+          times.push(yield* Clock.currentTimeMillis)
+          attempts.set(payload.id, times)
+          if (times.length <= payload.dies) {
+            return yield* Effect.die("defect")
+          }
+        })
+      }))
+      const gaps = (id: string) => {
+        const times = attempts.get(id) ?? []
+        return times.slice(1).map((time, i) => time - times[i])
+      }
+
+      yield* Effect.gen(function*() {
+        const client = yield* entity.client
+        // sleeps woken by one adjustment still observe their exact wake times
+        const advance = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          Effect.raceFirst(effect, Effect.forever(TestClock.adjust(100)))
+        // `b` defects while `a` is still recovering
+        yield* advance(Effect.all([
+          client("a").run({ id: "a1", dies: 2 }),
+          client("b").run({ id: "b1", dies: 1 })
+        ], { concurrency: "unbounded" }))
+        yield* advance(client("a").run({ id: "a2", dies: 1 }))
+        // consecutive defects of one entity keep backing off
+        assert.deepStrictEqual(gaps("a1"), [500, 750])
+        // another entity of the same type starts from the first delay
+        assert.deepStrictEqual(gaps("b1"), [500])
+        // a recovered entity starts from the first delay again
+        assert.deepStrictEqual(gaps("a2"), [500])
+      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
+    }))
+
   it.effect("replays unfinished requests before arrivals during acquisition", () =>
     Effect.gen(function*() {
       const entity = DefectRecoveryEntity
