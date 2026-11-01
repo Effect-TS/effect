@@ -178,6 +178,60 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
+  it.effect("keeps an export timer pending only while telemetry is buffered", () =>
+    Effect.gen(function*() {
+      const { attempts, httpClient } = yield* makeStatusHttpClient(200)
+      const testClock = yield* Clock.Clock
+      let pendingSleeps = 0
+      const clock: Clock.Clock = {
+        ...testClock,
+        sleep: (duration) =>
+          Effect.suspend(() => {
+            pendingSleeps++
+            return Effect.ensuring(testClock.sleep(duration), Effect.sync(() => pendingSleeps--))
+          })
+      }
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const exporter = yield* makeExporterRaw(10).pipe(Effect.provideService(Clock.Clock, clock))
+          const flusher = yield* OtlpExporter.Flusher
+          yield* yieldNowN(3)
+          assert.strictEqual(pendingSleeps, 0)
+
+          exporter.push({ value: 1 })
+          yield* yieldNowN(3)
+          assert.strictEqual(pendingSleeps, 1)
+          yield* TestClock.adjust("1 hour")
+          assert.strictEqual(yield* Ref.get(attempts), 1)
+          assert.strictEqual(pendingSleeps, 0)
+
+          exporter.push({ value: 2 })
+          yield* flusher.flush
+          yield* yieldNowN(3)
+          assert.strictEqual(yield* Ref.get(attempts), 2)
+          assert.strictEqual(pendingSleeps, 0)
+        }).pipe(
+          Effect.provideService(HttpClient.HttpClient, httpClient),
+          Effect.provide(OtlpExporter.layerFlusher)
+        )
+      )
+    }))
+
+  it.effect("exports again once the disabled window has passed", () =>
+    Effect.gen(function*() {
+      const { attempts, httpClient } = yield* makeStatusHttpClient(400)
+      const exporter = yield* makeExporter(httpClient, { exportInterval: "1 second", maxBatchSize: 10 })
+
+      exporter.push({ value: 1 })
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("61 seconds")
+      exporter.push({ value: 2 })
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Ref.get(attempts), 2)
+    }))
+
   it.effect("allows an in-flight batch export to finish during shutdown", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()

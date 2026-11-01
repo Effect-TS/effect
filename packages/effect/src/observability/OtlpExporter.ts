@@ -21,6 +21,7 @@ import type { HttpBody } from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
@@ -154,6 +155,10 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  * after unhandled failures, and flushes during scope finalization up to
  * `shutdownTimeout`.
  *
+ * The export interval starts with the first push and stops once an export
+ * empties the buffer, so an idle exporter keeps no timer pending. With
+ * `exportEmpty` and batching disabled, it exports on every interval instead.
+ *
  * Optional gzip compression uses `HttpClientRequest.compressBody` before the
  * retry loop, so retries reuse the compressed bytes. Bodies smaller than 1KB
  * remain uncompressed. Compression requires runtime `CompressionStream` support;
@@ -186,7 +191,6 @@ export const make: (
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
-  let disabledUntil: number | undefined = undefined
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
@@ -206,14 +210,18 @@ export const make: (
   )
 
   const request = HttpClientRequest.post(options.url, { headers })
+  const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
   let buffer: Array<any> = []
+  let disabledUntil: number | undefined = undefined
+  const isDisabled = () => {
+    if (disabledUntil === undefined) return false
+    if (clock.currentTimeMillisUnsafe() < disabledUntil) return true
+    disabledUntil = undefined
+    return false
+  }
+
   const runExport = Effect.suspend(() => {
-    if (disabledUntil !== undefined && clock.currentTimeMillisUnsafe() < disabledUntil) {
-      return Effect.void
-    } else if (disabledUntil !== undefined) {
-      disabledUntil = undefined
-    }
-    if (buffer.length === 0 && (options.maxBatchSize !== "disabled" || options.exportEmpty !== true)) {
+    if (isDisabled() || (buffer.length === 0 && !exportsEmpty)) {
       return Effect.void
     }
     const items = buffer
@@ -245,9 +253,6 @@ export const make: (
   const exportFibers = yield* FiberSet.make<void, never>()
   const runExportFork = yield* FiberSet.runtime(exportFibers)<never>()
 
-  const flusher = yield* Flusher
-  yield* flusher.register(runExport)
-
   yield* Scope.addFinalizer(
     scope,
     Effect.suspend(() => {
@@ -261,19 +266,38 @@ export const make: (
     )
   )
 
-  yield* Effect.sleep(exportInterval).pipe(
-    Effect.andThen(FiberSet.run(exportFibers, runExport)),
-    Effect.flatMap(Fiber.await),
-    Effect.forever,
-    Effect.forkIn(scope)
-  )
+  // `armed` is open while there is something to export. It changes in the
+  // same synchronous step as the buffer check, so a push is never stranded.
+  const armed = yield* Latch.make(exportsEmpty)
+  const wake = yield* Latch.make()
+  const disarmIfEmpty = Effect.sync(() => {
+    if (exportsEmpty || buffer.length > 0 || !armed.closeUnsafe()) return
+    wake.openUnsafe()
+  })
+  // Forked after the shutdown finalizer, so the loop stops before the shutdown flush.
+  yield* Effect.gen(function*() {
+    while (true) {
+      wake.closeUnsafe()
+      yield* armed.await
+      yield* Effect.race(Effect.sleep(exportInterval), wake.await)
+      yield* Fiber.await(yield* FiberSet.run(exportFibers, runExport))
+      yield* disarmIfEmpty
+    }
+  }).pipe(Effect.forkIn(scope))
+  const exportNow = Effect.andThen(runExport, disarmIfEmpty)
+
+  const flusher = yield* Flusher
+  yield* flusher.register(exportNow)
 
   return {
     push(data) {
-      if (disabledUntil !== undefined) return
+      // With no idle timer, the next push ends the disabled window.
+      if (isDisabled()) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
-        runExportFork(runExport)
+        runExportFork(exportNow)
+      } else {
+        armed.openUnsafe()
       }
     }
   }
