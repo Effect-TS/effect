@@ -308,10 +308,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
 
   function stateUnsafe(): TestClock.State {
     // `sleeps` is kept latest first
-    const pending: Array<[number, Latch.Latch]> = []
-    for (let i = sleeps.length - 1; i >= 0; i--) {
-      pending.push([sleeps[i].timestamp, sleeps[i].latch])
-    }
+    const pending = sleeps.map((entry): [number, Latch.Latch] => [entry.timestamp, entry.latch]).reverse()
     return { timestamp: currentTimestamp, sleeps: pending }
   }
 

@@ -558,7 +558,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   declare readonly id: number
   declare interruptible: boolean
-  declare supervisor: Supervisor.Supervisor | undefined
+  declare readonly supervisor: Supervisor.Supervisor | undefined
   declare currentOpCount: number
   declare readonly _stack: Array<Primitive>
   declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
@@ -886,18 +886,16 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
     // Copied when the effect runs, so a Supervisor can read the fibers again
     const fibers = Array.from(self as Iterable<any>) as Array<FiberImpl>
     return callbackBlocked(fibers, (resume) => {
-      const iter = fibers[Symbol.iterator]()
       const exits: Array<Exit.Exit<any, any>> = []
       let cancel: (() => void) | undefined = undefined
       function loop() {
-        let result = iter.next()
-        while (!result.done) {
-          if (result.value._exit) {
-            exits.push(result.value._exit)
-            result = iter.next()
+        while (exits.length < fibers.length) {
+          const fiber = fibers[exits.length]
+          if (fiber._exit) {
+            exits.push(fiber._exit)
             continue
           }
-          cancel = result.value.addObserver((exit) => {
+          cancel = fiber.addObserver((exit) => {
             exits.push(exit)
             loop()
           })
@@ -927,8 +925,8 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
 > =>
   suspend(() => {
     const fibers = Array.from(self) as Array<FiberImpl>
+    if (fibers.length === 0) return succeed(Arr.empty() as any)
     return callbackBlocked(fibers, (resume) => {
-      if (fibers.length === 0) return resume(succeed(Arr.empty() as any))
       const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
       const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
       const removeObservers = () => {
