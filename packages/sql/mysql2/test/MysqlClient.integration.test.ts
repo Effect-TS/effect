@@ -42,17 +42,24 @@ describe("MysqlClient", () => {
   it.effect("uses query when prepared statements are disabled", () =>
     Effect.gen(function*() {
       const calls: Array<"execute" | "query"> = []
-      vi.mocked(Mysql.createPool).mockReturnValueOnce({
-        query: (options: string | object, callback: (cause: null, rows?: Array<unknown>) => void) => {
-          if (typeof options !== "string") {
-            calls.push("query")
-          }
-          callback(null, [])
-        },
+      const query = (options: string | object, callback: (cause: null, rows?: Array<unknown>) => void) => {
+        if (typeof options !== "string") {
+          calls.push("query")
+        }
+        callback(null, [])
+      }
+      const conn = {
+        threadId: 1,
+        query,
         execute: (_options: object, callback: (cause: null, rows: Array<unknown>) => void) => {
           calls.push("execute")
           callback(null, [])
         },
+        release: () => {}
+      }
+      vi.mocked(Mysql.createPool).mockReturnValueOnce({
+        query,
+        getConnection: (callback: (cause: null, conn: unknown) => void) => callback(null, conn),
         end: (callback: () => void) => callback()
       } as unknown as Mysql.Pool)
 
