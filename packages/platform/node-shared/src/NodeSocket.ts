@@ -455,6 +455,15 @@ export const fromDuplex = <RO>(
         return Effect.sync(cleanup)
       })
 
+    // Closed streams may never emit the `drain` event a write would await.
+    const isWriteClosed = (conn: Duplex) => conn.destroyed || conn.writableEnded
+    const writeClosedError = () =>
+      Effect.fail(
+        new Socket.SocketError({
+          reason: new Socket.SocketWriteError({ cause: new Error("socket closed") })
+        })
+      )
+
     const write = (
       chunk: Uint8Array | string | Socket.CloseEvent
     ): Effect.Effect<void, Socket.SocketError> =>
@@ -465,6 +474,7 @@ export const fromDuplex = <RO>(
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
           return Effect.void
         }
+        if (isWriteClosed(conn)) return writeClosedError()
         try {
           return conn.write(chunk) ? Effect.void : awaitDrain(conn)
         } catch (cause) {
@@ -482,6 +492,7 @@ export const fromDuplex = <RO>(
       Effect.suspend(() => {
         const conn = currentSocket
         if (conn === undefined) return latch.whenOpen(writeAll(chunks))
+        if (isWriteClosed(conn)) return writeClosedError()
         let needsDrain = false
         try {
           if (chunks.length === 1) {
