@@ -643,6 +643,30 @@ nested:
       assert.deepStrictEqual(oracle(output), value)
     })
 
+    it("quotes the merge key so it stays a literal key", () => {
+      const value = { "<<": { a: 1 }, b: 2 }
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(output, "\"<<\":\n  a: 1\nb: 2\n")
+      assert.deepStrictEqual(YAML.parse(output, { merge: true }), value)
+    })
+
+    it("fails for keys that do not fit an implicit key once printed", () => {
+      // YAML 1.2.2 §7.4.2: an implicit key fits on one line within 1024 characters.
+      const longest = "k".repeat(1024)
+      const output = Result.getOrThrow(Yaml.stringify({ [longest]: 1 }))
+      assert.deepStrictEqual(oracle(output), { [longest]: 1 })
+
+      for (const key of ["k".repeat(1025), `${"k".repeat(1022)}: x`]) {
+        const result = Yaml.stringify({ nested: { [key]: 1 } })
+        assert.isTrue(Result.isFailure(result))
+        if (Result.isFailure(result)) {
+          assert.strictEqual(result.failure.kind, "Encode")
+          assert.include(result.failure.message, "1024")
+          assert.include(result.failure.message, "value.nested")
+        }
+      }
+    })
+
     it.each([
       ["clipped", "first\nsecond\n", "|\n  first\n  second\n"],
       ["stripped", "first\nsecond", "|-\n  first\n  second\n"],
@@ -653,6 +677,20 @@ nested:
       const output = Result.getOrThrow(Yaml.stringify({ text: value }))
       assert.strictEqual(output, `text: ${expected}`)
       assert.deepStrictEqual(oracle(output), { text: value })
+    })
+
+    it.each([
+      ["a C1 control", "\x80", "\"\\x80\""],
+      ["a C1 control inside text", "a\x9fb", "\"a\\x9fb\""],
+      ["a non-character", "\ufffe", "\"\\ufffe\""],
+      ["a lone surrogate", "\ud800", "\"\\ud800\""],
+      ["a lone surrogate in a multiline string", "a\nb\udc00", "\"a\\nb\\udc00\""],
+      ["a supplementary character, left plain", "\u{1F600}", "\u{1F600}"]
+    ])("escapes %s so the output contains only printable characters", (_, value, expected) => {
+      // YAML 1.2.2 §5.1: non-printable characters must be escaped on output.
+      const output = Result.getOrThrow(Yaml.stringify(value))
+      assert.strictEqual(output, `${expected}\n`)
+      assert.strictEqual(oracle(output), value)
     })
 
     it("prints non-finite numbers and negative zero so they round-trip", () => {
@@ -674,6 +712,10 @@ nested:
         Result.getOrThrow(Yaml.stringify(value)),
         "items:\n  - null\n  - 1\ndate: 2024-01-02T03:04:05.000Z\ncustom:\n  replaced: true\n"
       )
+      const sparse: Array<number> = []
+      sparse[1] = 1
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify(sparse)), "- null\n- 1\n")
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify(new Array(2))), "- null\n- null\n")
     })
 
     it("indents nested collections by the indent option", () => {
