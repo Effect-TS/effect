@@ -188,19 +188,17 @@ describe("MessageStorage", () => {
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MemoryLayer)))
-    it.effect("deleteProcessed forgets requests of the entity type and shards completed before the cutoff", () =>
+    it.effect("deleteProcessed forgets requests of the entity type completed before the cutoff", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
         const cutoff = Date.UTC(2026, 0, 1)
-        const shard = ShardId.make("default", 1)
-        const request = (id: number, entityType?: string, shardId?: ShardId.ShardId) =>
-          makeRequest({ rpc: PrimaryKeyTest, payload: PrimaryKeyTest.payloadSchema.make({ id }), entityType, shardId })
+        const request = (id: number, entityType?: string) =>
+          makeRequest({ rpc: PrimaryKeyTest, payload: PrimaryKeyTest.payloadSchema.make({ id }), entityType })
         const expired = yield* request(1)
         const recent = yield* request(2)
         const reset = yield* request(3)
         const otherType = yield* request(4, "other")
-        const otherShard = yield* request(5, undefined, ShardId.make("default", 2))
-        for (const r of [expired, recent, reset, otherType, otherShard]) {
+        for (const r of [expired, recent, reset, otherType]) {
           yield* storage.saveRequest(r)
         }
         yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
@@ -208,28 +206,18 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(reset, cutoff - 2))
         yield* storage.clearReplies(reset.envelope.requestId)
         yield* storage.saveReply(yield* makeReply(otherType, cutoff - 3))
-        yield* storage.saveReply(yield* makeReply(otherShard, cutoff - 4))
 
-        const options = { entityType: "test", completedBefore: cutoff, limit: 100 }
-        expect(yield* storage.deleteProcessed({ ...options, shardIds: [] })).toEqual(0)
-        const deleted = yield* storage.deleteProcessed({ ...options, shardIds: [shard] })
+        const deleted = yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
         expect(deleted).toEqual(1)
 
         expect(yield* storage.repliesForUnfiltered([expired.envelope.requestId])).toEqual([])
         expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
-        for (const [id, kept] of [[2, recent], [3, reset], [4, otherType], [5, otherShard]] as const) {
-          const result = yield* storage.saveRequest(
-            yield* request(id, kept.envelope.address.entityType, kept.envelope.address.shardId)
-          )
+        for (const [id, kept] of [[2, recent], [3, reset], [4, otherType]] as const) {
+          const result = yield* storage.saveRequest(yield* request(id, kept.envelope.address.entityType))
           expect(result._tag).toEqual("Duplicate")
         }
-        expect(
-          yield* storage.repliesForUnfiltered([
-            recent.envelope.requestId,
-            otherType.envelope.requestId,
-            otherShard.envelope.requestId
-          ])
-        ).toHaveLength(3)
+        expect(yield* storage.repliesForUnfiltered([recent.envelope.requestId, otherType.envelope.requestId]))
+          .toHaveLength(2)
       }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("does not store an AckChunk for a request deleteProcessed removed", () =>
@@ -241,13 +229,11 @@ describe("MessageStorage", () => {
         yield* storage.saveRequest(request)
         yield* storage.saveReply(chunk)
         yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
-        const shardIds = [request.envelope.address.shardId]
-        expect(yield* storage.deleteProcessed({ entityType: "test", shardIds, completedBefore: cutoff, limit: 100 }))
-          .toEqual(1)
+        expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })).toEqual(1)
 
         // a late acknowledgement for the deleted request
         yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
-        expect(yield* storage.unprocessedMessages(shardIds)).toEqual([])
+        expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
       }).pipe(Effect.provide(MemoryLayer)))
 
     it.effect("unprocessedMessages honors the limit option", () =>
