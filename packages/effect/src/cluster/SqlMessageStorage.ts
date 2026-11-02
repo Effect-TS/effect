@@ -457,47 +457,50 @@ export const makeEncodedStorage: (options?: {
     mssql: () => sql.literal("WITH (UPDLOCK, READPAST, REPEATABLEREAD)"),
     orElse: () => sql.literal("")
   })
-  // On small tables mssql can scan the clustered index for request_id
-  // filters, taking locks on other requests' rows and deadlocking with
-  // concurrent writers. These statements reach rows only through the
-  // request_id indexes, so they lock just the request's own rows.
-  const markAcksProcessed = (requestId: string) =>
-    sql.onDialectOrElse({
-      mssql: () =>
-        sql`
-          UPDATE m SET processed = ${sqlTrue}
-          FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
-          WHERE m.processed = ${sqlFalse} AND m.request_id = ${requestId} AND m.kind = ${messageKindAckChunk}
-        `,
-      orElse: () =>
-        sql`
-          UPDATE ${messagesTableSql} SET processed = ${sqlTrue}
-          WHERE processed = ${sqlFalse} AND request_id = ${requestId} AND kind = ${messageKindAckChunk}
-        `
-    })
-  const deleteRequests = (ids: Fragment) =>
-    sql.onDialectOrElse({
-      mssql: () =>
-        Effect.andThen(
-          sql`
-            DELETE r FROM ${repliesTableSql} r WITH (INDEX(${sql(repliesTable + "_request_lookup_idx")}))
-            WHERE r.request_id IN (${ids})
-          `,
-          sql`
-            DELETE m FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
-            WHERE m.request_id IN (${ids})
-          `
-        ),
-      orElse: () =>
-        Effect.andThen(
-          sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`,
-          sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
-        )
-    })
   const forUpdateSkipLocked = sql.onDialectOrElse({
     mssql: () => sql.literal(""),
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
+  })
+  // Every write that touches a request's replies locks the request row first,
+  // in the same order as deleteProcessed, so the two cannot deadlock. An empty
+  // result means the request has been deleted.
+  const lockRequest = (requestId: string) =>
+    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
+  // On small tables mssql can scan the clustered index for request_id
+  // filters, taking locks on other requests' rows and deadlocking with
+  // concurrent writers. These statements reach rows only through the
+  // request_id indexes, so they lock just the request's own rows.
+  const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (requestId) =>
+      sql`
+        UPDATE m SET processed = ${sqlTrue}
+        FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+        WHERE m.processed = ${sqlFalse} AND m.request_id = ${requestId} AND m.kind = ${messageKindAckChunk}
+      `,
+    orElse: () => (requestId) =>
+      sql`
+        UPDATE ${messagesTableSql} SET processed = ${sqlTrue}
+        WHERE processed = ${sqlFalse} AND request_id = ${requestId} AND kind = ${messageKindAckChunk}
+      `
+  })
+  const deleteRequests: (ids: Fragment) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (ids) =>
+      Effect.andThen(
+        sql`
+          DELETE r FROM ${repliesTableSql} r WITH (INDEX(${sql(repliesTable + "_request_lookup_idx")}))
+          WHERE r.request_id IN (${ids})
+        `,
+        sql`
+          DELETE m FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+          WHERE m.request_id IN (${ids})
+        `
+      ),
+    orElse: () => (ids) =>
+      Effect.andThen(
+        sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`,
+        sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
+      )
   })
 
   const emptyFragment = sql.literal("")
@@ -659,27 +662,20 @@ export const makeEncodedStorage: (options?: {
           })
         } else {
           const row = envelopeToRow(envelope, null, deliverAt)
-          insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-          if (envelope._tag === "AckChunk") {
-            // Lock the request row before its replies, in the same order as
-            // deleteProcessed. MySQL can lock it anyway while scanning the
-            // request's messages below.
-            const insertAck = insert
-            insert = sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${envelope.requestId} ${forUpdate}`
-              .pipe(
-                Effect.flatMap((request) =>
-                  // the request was deleted, for example by deleteProcessed, so
-                  // there is nothing left to acknowledge
-                  request.length === 0 ?
-                    Effect.succeed([]) :
-                    sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-                      Effect.andThen(markAcksProcessed(envelope.requestId)),
-                      Effect.andThen(insertAck)
-                    )
-                ),
-                sql.withTransaction
-              )
-          }
+          const insertRow = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+          insert = envelope._tag !== "AckChunk" ? insertRow : lockRequest(envelope.requestId).pipe(
+            Effect.flatMap((request) =>
+              // the request was deleted, for example by deleteProcessed, so
+              // there is nothing left to acknowledge
+              request.length === 0 ?
+                Effect.succeed([]) :
+                sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+                  Effect.andThen(markAcksProcessed(envelope.requestId)),
+                  Effect.andThen(insertRow)
+                )
+            ),
+            sql.withTransaction
+          )
         }
         return insert.pipe(
           Effect.map((rows) => {
@@ -737,9 +733,7 @@ export const makeEncodedStorage: (options?: {
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
         const expectedReplyId = options?.expectedReplyId
-        // Lock the request row before its replies, in the same order as
-        // deleteProcessed, so the two cannot deadlock.
-        yield* sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${String(requestId)} ${forUpdate}`
+        yield* lockRequest(String(requestId))
         if (expectedReplyId === undefined) {
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${

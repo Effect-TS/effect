@@ -1216,7 +1216,7 @@ const make = Effect.gen(function*() {
     // entity types it has registered with a retention. Only the owner of a
     // shard can process its messages, so this covers every deliverable row.
     const retentionBatchSize = 1000
-    const deleteExpired = (entityType: string, completedBefore: number): Effect.Effect<void, PersistenceError> =>
+    const deleteExpired = (entityType: string, completedBefore: number) =>
       Effect.suspend(() =>
         // read the held shards for every batch, so a released shard is no longer touched
         storage.deleteProcessed({
@@ -1225,20 +1225,16 @@ const make = Effect.gen(function*() {
           completedBefore,
           limit: retentionBatchSize
         })
-      ).pipe(
-        Effect.flatMap((deleted) =>
-          deleted < retentionBatchSize ? Effect.void : deleteExpired(entityType, completedBefore)
-        )
-      )
+      ).pipe(Effect.repeat({ while: (deleted) => deleted >= retentionBatchSize }))
 
     yield* Effect.gen(function*() {
       while (true) {
         yield* Effect.sleep(config.messageRetentionInterval)
         const now = clock.currentTimeMillisUnsafe()
-        for (const state of Array.from(entityManagers.values())) {
-          const retention = Context.get(state.entity.protocol.annotations, ClusterSchema.Retention)
+        for (const { entity } of Array.from(entityManagers.values())) {
+          const retention = Context.get(entity.protocol.annotations, ClusterSchema.Retention)
           if (retention === undefined) continue
-          yield* deleteExpired(state.entity.type, now - Duration.toMillis(retention))
+          yield* deleteExpired(entity.type, now - Duration.toMillis(retention))
         }
       }
     }).pipe(
