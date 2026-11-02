@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, ByteSize, Cause, IgnoreFile, Option, Result } from "effect"
+import { Array, ByteSize, Cause, IgnoreFile, Option, PathFilter, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import * as Glob from "effect/Glob"
@@ -17,7 +17,7 @@ export interface TestLayerOptions {
 
 const posix = (path: string) => path.replaceAll("\\", "/")
 
-const makeIgnore = ([format, source]: readonly ["gitignore" | "dockerignore", string]) =>
+const makeFilter = ([format, source]: readonly ["gitignore" | "dockerignore", string]) =>
   format === "gitignore" ? IgnoreFile.gitignore(source) : Result.getOrThrow(IgnoreFile.dockerignore(source))
 
 const runWith = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
@@ -1089,7 +1089,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
     readonly pattern: string
     readonly exclude?: ReadonlyArray<string>
     readonly dot?: boolean
-    readonly ignore?: readonly ["gitignore" | "dockerignore", string]
+    readonly filter?: readonly ["gitignore" | "dockerignore", string]
     readonly expected: ReadonlyArray<string>
   }>([
     {
@@ -1112,53 +1112,60 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
     { pattern: "*", exclude: ["**/src/", "**/README.md/"], expected: ["README.md", "a", "b", "node_modules"] },
-    // `ignore` expectations: moby/patternmatcher@5a6d842 and `git check-ignore --no-index`
+    // `filter` expectations: moby/patternmatcher@5a6d842 and `git check-ignore --no-index`
     {
       pattern: "**/*.ts",
       dot: true,
-      ignore: ["dockerignore", "node_modules\n.hidden\n!node_modules/pkg/index.ts\n"],
+      filter: ["dockerignore", "node_modules\n.hidden\n!node_modules/pkg/index.ts\n"],
       expected: ["a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts", "src/sub/deep.ts"]
     },
     {
       pattern: "**/*.ts",
       dot: true,
-      ignore: ["dockerignore", "node_modules\nsrc\n!**/index.ts\n"],
+      filter: ["dockerignore", "node_modules\nsrc\n!**/index.ts\n"],
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts"]
     },
     {
       pattern: "**/*.ts",
       dot: true,
-      ignore: ["dockerignore", "src\n!src/index.ts\nsrc\n"],
+      filter: ["dockerignore", "src\n!src/index.ts\nsrc\n"],
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "node_modules/pkg/index.ts"]
     },
     {
       pattern: "**/*.ts",
       dot: true,
-      ignore: ["gitignore", "node_modules\n!node_modules/pkg/index.ts\n"],
+      filter: ["gitignore", "node_modules\n!node_modules/pkg/index.ts\n"],
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
     {
       pattern: "**/*.ts",
       exclude: ["node_modules"],
-      ignore: ["gitignore", "a\n!.hidden/secret.ts\n!node_modules/pkg/index.ts\n"],
+      filter: ["gitignore", "a\n!.hidden/secret.ts\n!node_modules/pkg/index.ts\n"],
       expected: ["b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
-    { pattern: "*", dot: true, ignore: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] },
+    { pattern: "*", dot: true, filter: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] },
+    // a filter inclusion does not revive what `exclude` dropped
+    {
+      pattern: "*",
+      exclude: ["**/src/", "**/README.md/"],
+      filter: ["gitignore", "!src\n"],
+      expected: ["README.md", "a", "b", "node_modules"]
+    },
     // the exception is not a plain prefix of `node_modules/pkg`, so it must be read
     {
       pattern: "node_modules/**",
       dot: true,
-      ignore: ["dockerignore", "node_modules\n!node_modules/*/**\n"],
+      filter: ["dockerignore", "node_modules\n!node_modules/*/**\n"],
       expected: ["node_modules/pkg/index.ts"]
     }
   ])(
-    "glob $pattern (exclude: $exclude, dot: $dot, ignore: $ignore)",
-    ({ dot, exclude, expected, ignore, pattern }) =>
+    "glob $pattern (exclude: $exclude, dot: $dot, filter: $filter)",
+    ({ dot, exclude, expected, filter, pattern }) =>
       runPromise(
         Effect.gen(function*() {
           const fs = yield* Fs.FileSystem
           const root = yield* globFixture
-          expect(yield* fs.glob(pattern, { root, exclude, dot, ignore: ignore && makeIgnore(ignore) })).toEqual(
+          expect(yield* fs.glob(pattern, { root, exclude, dot, filter: filter && makeFilter(filter) })).toEqual(
             expected
           )
         }).pipe(Effect.scoped)
@@ -1221,7 +1228,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 
-  it("glob ignore evaluates gitignore directory rules against the entry's own type", () =>
+  it("glob filter evaluates directory rules against the entry's own type", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
@@ -1229,26 +1236,26 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         yield* fs.makeDirectory(`${root}/target`)
         yield* fs.writeFileString(`${root}/target/file.ts`, "")
         yield* fs.symlink(`${root}/target`, `${root}/link`)
-        const ignore = IgnoreFile.gitignore("link/\ntarget/\n")
-        expect(yield* fs.glob("**", { root, ignore })).toEqual(["link"])
+        const filter = IgnoreFile.gitignore("link/\ntarget/\n")
+        expect(yield* fs.glob("**", { root, filter })).toEqual(["link"])
         // literal segments are probed with `stat`, which follows the link
-        expect(yield* fs.glob("link", { root, ignore })).toEqual(["link"])
-        expect(yield* fs.glob("link/file.ts", { root, ignore })).toEqual(["link/file.ts"])
+        expect(yield* fs.glob("link", { root, filter })).toEqual(["link"])
+        expect(yield* fs.glob("link/file.ts", { root, filter })).toEqual(["link/file.ts"])
       }).pipe(Effect.scoped)
     ))
 
-  it("glob with ignore dies on an absolute pattern, a .. segment or an escaped separator", () =>
+  it("glob with filter dies on an absolute pattern, a .. segment or an escaped separator", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
         const root = posix(yield* globFixture)
         const src = `${root}/src`
         const escapedRoot = Glob.escape(root).replaceAll("/", "\\/")
-        // without `ignore`, an escaped separator names the same path as a plain one
+        // without `filter`, an escaped separator names the same path as a plain one
         expect(yield* fs.glob("..\\/a\\/x.ts", { root: src })).toEqual(["../a/x.ts"])
         expect(yield* fs.glob(`${escapedRoot}\\/src\\/index.ts`)).toEqual([`${root}/src/index.ts`])
         expect(yield* fs.glob("src\\/index.ts", { root })).toEqual(["src/index.ts"])
-        const ignore = IgnoreFile.gitignore("src\n")
+        const filter = IgnoreFile.gitignore("src\n")
         for (
           const [pattern, base] of [
             [`${Glob.escape(root)}/src/*.ts`, root],
@@ -1257,19 +1264,48 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
             ["**/../x", root],
             ["..\\/a\\/x.ts", src],
             [`${escapedRoot}\\/src\\/index.ts`, root],
-            // one literal entry would skip the ignored `src` ancestor
+            // one literal entry would skip the excluded `src` ancestor
             ["src\\/index.ts", root],
             // compiling discards a branch with `.` after `**`, which must not hide it
             ["{**/src\\/index.ts/.,README.md}", root],
             ["**/\\.\\./.", root]
           ]
         ) {
-          const exit = yield* Effect.exit(fs.glob(pattern, { root: base, ignore }))
+          const exit = yield* Effect.exit(fs.glob(pattern, { root: base, filter }))
           assert.strictEqual(exit._tag, "Failure", pattern)
           if (exit._tag === "Failure") {
             assert.isTrue(Cause.hasDies(exit.cause), pattern)
           }
         }
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob filter reaches inclusions below inherited exclusions, with or without hints", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* globFixture
+        // every top-level entry is excluded; only node_modules can hold the inclusion
+        for (const hint of [false, true]) {
+          const filter = PathFilter.make([
+            PathFilter.exclude({
+              match: (path: string) => !path.includes("/"),
+              matchesBelow: hint ? (directory) => directory === "" : undefined
+            }, { subtree: "inherit" }),
+            PathFilter.include({
+              match: (path: string) => path === "node_modules/pkg/index.ts",
+              matchesBelow: hint
+                ? (directory) => directory === "" || "node_modules/pkg/index.ts".startsWith(`${directory}/`)
+                : undefined
+            })
+          ])
+          expect(yield* fs.glob("**/*.ts", { root, filter })).toEqual(["node_modules/pkg/index.ts"])
+        }
+        const scoped = PathFilter.make([
+          PathFilter.exclude("*", { subtree: "inherit" }),
+          PathFilter.include("index.ts", { scope: "node_modules/pkg" })
+        ])
+        expect(yield* fs.glob("**/*.ts", { root, filter: scoped })).toEqual(["node_modules/pkg/index.ts"])
       }).pipe(Effect.scoped)
     ))
 }
