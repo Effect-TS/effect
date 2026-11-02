@@ -8,4 +8,4 @@ Spans are now named `{method} {target}` (for example `tools/call get_weather`) a
 
 `Toolkit.handle` no longer records tool arguments on the current span by default. It records `gen_ai.tool.name` and `gen_ai.tool.call.id` instead of `tool` and `parameters`. Provide `Toolkit.RecordToolArguments` as `true` to record arguments in `gen_ai.tool.call.arguments`.
 
-`RpcServer.make` accepts an `onRequest` option that wraps the effect running each request, from its middleware to its response write. The callback also receives the decoded request.
+`RpcServer.make` accepts an `onRequest` option that wraps the effect running each request's middleware and handler. The callback also receives the decoded request.

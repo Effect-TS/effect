@@ -1561,6 +1561,18 @@ const requestSpanOptions = (
   }
 }
 
+// The MCP span of the request being handled. Unlike `Tracer.ParentSpan`, it is
+// unset outside a request, so code that sends a response for a request can
+// tell whether that request has an MCP span.
+const CurrentRequestSpan = Context.Reference<Tracer.Span | undefined>("effect/ai/McpServer/CurrentRequestSpan", {
+  defaultValue: () => undefined
+})
+
+const recordErrorResponse = (span: Tracer.Span, code: number) => {
+  span.attribute("rpc.status_code", String(code))
+  span.attribute("error.type", String(code))
+}
+
 const endRequestSpan = (span: Tracer.Span, method: string, exit: Exit.Exit<unknown, unknown>, endTime: bigint) => {
   if (Exit.isSuccess(exit)) {
     if (method === "tools/call" && Predicate.hasProperty(exit.value, "isError") && exit.value.isError === true) {
@@ -1568,15 +1580,13 @@ const endRequestSpan = (span: Tracer.Span, method: string, exit: Exit.Exit<unkno
     }
     return span.end(endTime, exit)
   }
-  if (Cause.hasInterruptsOnly(exit.cause)) {
+  // Interruptions and defects carry no JSON-RPC error. When one is answered
+  // with an internal error, the response write records it on the span.
+  const error = Cause.findErrorOption(exit.cause)
+  if (Option.isNone(error) || !Predicate.hasProperty(error.value, "code") || typeof error.value.code !== "number") {
     return span.end(endTime, exit)
   }
-  // A failure without a typed JSON-RPC error is a defect, which is sent as an internal error.
-  const error = Cause.findErrorOption(exit.cause)
-  const code =
-    Option.isSome(error) && Predicate.hasProperty(error.value, "code") && typeof error.value.code === "number"
-      ? error.value.code
-      : McpSchema.INTERNAL_ERROR_CODE
+  const code = error.value.code
   span.attribute("rpc.status_code", String(code))
   if (requestErrorCodes.has(code)) {
     return span.end(endTime, Exit.void)
@@ -1772,7 +1782,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
         }),
         (span) =>
           Effect.onExit(
-            Effect.provideService(effect, Tracer.ParentSpan, span),
+            effect.pipe(
+              Effect.provideService(Tracer.ParentSpan, span),
+              Effect.provideService(CurrentRequestSpan, span)
+            ),
             (exit) =>
               Effect.sync(() => endRequestSpan(span, method, exit, fiber.getRef(Clock.Clock).currentTimeNanosUnsafe()))
           )
@@ -2031,7 +2044,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
           return sendRequestError(clientId, response.requestId, {
             code: McpSchema.INTERNAL_ERROR_CODE,
             message: "Internal error"
-          })
+          }).pipe(
+            Effect.andThen(CurrentRequestSpan),
+            Effect.map((span) => {
+              if (span !== undefined) recordErrorResponse(span, McpSchema.INTERNAL_ERROR_CODE)
+            })
+          )
         }
       }
       return protocol.send(clientId, response)

@@ -79,10 +79,16 @@ export interface RpcServer<A extends Rpc.Any> {
 }
 
 /**
- * Wraps the effect that runs one request: its middleware, handler and
- * response write. The effect exits once the response has been written, or
- * with an interruption when the request is cancelled, its client disconnects
+ * Wraps the effect that runs one request: its middleware and handler and,
+ * when the handler returns its result directly, the response write. The
+ * effect is interrupted when the request is cancelled, its client disconnects
  * or the server stops.
+ *
+ * **Gotchas**
+ *
+ * When the handler succeeds with a `Deferred`, the wrapped effect ends at that
+ * point. The reply is sent once the `Deferred` completes, outside the wrapped
+ * effect.
  *
  * @stability unstable
  * @category models
