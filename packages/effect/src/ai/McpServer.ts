@@ -13,6 +13,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Data from "../Data.ts"
@@ -28,6 +29,7 @@ import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
+import * as HttpTraceContext from "../http/HttpTraceContext.ts"
 import type * as JsonSchema from "../JsonSchema.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -1489,6 +1491,114 @@ interface ActiveRequest {
   readonly httpPost: { expected: number } | undefined
 }
 
+interface RequestSpan {
+  readonly span: Tracer.Span
+  readonly method: string
+  readonly clock: Clock.Clock
+}
+
+// JSON-RPC errors caused by the request rather than the server: parse error,
+// invalid request, method not found, invalid params and resource not found.
+// Per the MCP semantic conventions they do not mark the server span as failed.
+const requestErrorCodes: ReadonlySet<number> = new Set([-32700, -32600, -32601, -32602, -32002])
+
+const internalErrorResponse = { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" } as const
+
+const stringifyJson = (value: unknown): string => {
+  try {
+    return JSON.stringify(value) ?? "null"
+  } catch {
+    return String(value)
+  }
+}
+
+// Only the W3C keys are read: other `_meta` members can carry protocol claims.
+const remoteParentSpan = (params: Readonly<Record<string, unknown>> | undefined): Tracer.ExternalSpan | undefined => {
+  const meta = params?._meta
+  if (!Predicate.isReadonlyObject(meta) || typeof meta.traceparent !== "string") {
+    return undefined
+  }
+  return Option.getOrUndefined(HttpTraceContext.w3c(Headers.fromInput({ traceparent: meta.traceparent })))
+}
+
+const requestSpanOptions = (
+  request: RpcMessage.RequestEncoded,
+  networkTransport: string | undefined,
+  sessionId: string | undefined,
+  recordToolArguments: boolean
+): {
+  readonly name: string
+  readonly attributes: Record<string, unknown>
+  readonly remoteParent: Tracer.ExternalSpan | undefined
+} => {
+  const method = request.tag
+  const params = Predicate.isReadonlyObject(request.payload)
+    ? request.payload as Readonly<Record<string, unknown>>
+    : undefined
+  const attributes: Record<string, unknown> = { "mcp.method.name": method }
+  if (request.isNotification !== true) attributes["jsonrpc.request.id"] = String(request.id)
+  if (sessionId !== undefined) attributes["mcp.session.id"] = sessionId
+  if (networkTransport !== undefined) attributes["network.transport"] = networkTransport
+  let target: string | undefined
+  switch (method) {
+    case "tools/call": {
+      attributes["gen_ai.operation.name"] = "execute_tool"
+      if (typeof params?.name === "string") {
+        target = params.name
+        attributes["gen_ai.tool.name"] = target
+      }
+      if (recordToolArguments && params?.arguments !== undefined) {
+        attributes["gen_ai.tool.call.arguments"] = stringifyJson(params.arguments)
+      }
+      break
+    }
+    case "prompts/get": {
+      if (typeof params?.name === "string") {
+        target = params.name
+        attributes["gen_ai.prompt.name"] = target
+      }
+      break
+    }
+    case "resources/read":
+    case "resources/subscribe":
+    case "resources/unsubscribe": {
+      // Resource URIs can be unbounded and sensitive, so they stay out of the span name.
+      if (typeof params?.uri === "string") attributes["mcp.resource.uri"] = params.uri
+      break
+    }
+  }
+  return {
+    name: target === undefined ? method : `${method} ${target}`,
+    attributes,
+    remoteParent: remoteParentSpan(params)
+  }
+}
+
+const endRequestSpan = ({ clock, method, span }: RequestSpan, exit: RpcMessage.ExitEncoded<unknown, unknown>) => {
+  const endTime = clock.currentTimeNanosUnsafe()
+  if (exit._tag === "Success") {
+    if (method === "tools/call" && Predicate.hasProperty(exit.value, "isError") && exit.value.isError === true) {
+      span.attribute("error.type", "tool_error")
+    }
+    return span.end(endTime, Exit.void)
+  }
+  const failure = exit.cause.find((reason) => reason._tag === "Fail")
+  if (failure === undefined && exit.cause.every((reason) => reason._tag === "Interrupt")) {
+    return span.end(endTime, Exit.interrupt())
+  }
+  // A failure without a typed error is a defect, which is sent as an internal error.
+  const error = failure?._tag === "Fail" ? failure.error : internalErrorResponse
+  const code = Predicate.hasProperty(error, "code") && typeof error.code === "number"
+    ? error.code
+    : McpSchema.INTERNAL_ERROR_CODE
+  span.attribute("rpc.status_code", String(code))
+  if (requestErrorCodes.has(code)) {
+    return span.end(endTime, Exit.void)
+  }
+  span.attribute("error.type", String(code))
+  span.end(endTime, Exit.fail(error))
+}
+
 class McpClientKey extends Data.Class<{
   readonly clientId: number
   readonly profile: McpCore.NegotiatedProtocolProfile<string>
@@ -1582,6 +1692,14 @@ const normalizeCacheHints = (
  * runtime handles protocol lifecycle state and determines which clients receive
  * queued server notifications.
  *
+ * Each client request and notification runs in a server span that follows the
+ * OpenTelemetry MCP semantic conventions. Spans are named after the JSON-RPC
+ * method, with the tool or prompt name appended for `tools/call` and
+ * `prompts/get` (for example `tools/call get_weather`). A W3C `traceparent` in
+ * `params._meta` becomes the span's parent, and the transport span (such as
+ * the HTTP server span) is linked. Tool arguments are recorded only when
+ * `Toolkit.RecordToolArguments` is `true`.
+ *
  * @stability unstable
  * @category running
  * @since 4.0.0
@@ -1649,7 +1767,76 @@ const runWithRuntime = Effect.fnUntraced(function*(
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
+  const networkTransport = transport === "http" ? "tcp" : transport === "stdio" ? "pipe" : undefined
+  // Server spans of requests awaiting a response, ended when it is sent.
+  const requestSpans = new Map<number, Map<string, RequestSpan>>()
+  const finishRequestSpan = (
+    clientId: number,
+    requestId: string | number,
+    exit: RpcMessage.ExitEncoded<unknown, unknown>
+  ) => {
+    const spans = requestSpans.get(clientId)
+    const key = requestKey(requestId)
+    const tracked = spans?.get(key)
+    if (tracked === undefined) return
+    spans!.delete(key)
+    if (spans!.size === 0) requestSpans.delete(clientId)
+    endRequestSpan(tracked, exit)
+  }
+  const endClientSpans = (clientId: number) => {
+    const spans = requestSpans.get(clientId)
+    if (spans === undefined) return
+    requestSpans.delete(clientId)
+    for (const tracked of spans.values()) {
+      endRequestSpan(tracked, { _tag: "Failure", cause: [{ _tag: "Interrupt", fiberId: undefined }] })
+    }
+  }
+  // Tracing is owned here rather than by `RpcServer`, so the span can follow
+  // the MCP semantic conventions and continue the client's `_meta` trace.
+  const withRequestSpan = <A, E, R>(
+    fiber: Fiber.Fiber<unknown, unknown>,
+    clientId: number,
+    request: RpcMessage.RequestEncoded,
+    headers: Headers.Headers,
+    effect: Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R> => {
+    const { attributes, name, remoteParent } = requestSpanOptions(
+      request,
+      networkTransport,
+      isHttp ? headers[MCP_SESSION_ID_HEADER] : undefined,
+      fiber.getRef(Toolkit.RecordToolArguments)
+    )
+    const ambientParent = Context.getOrUndefined(fiber.context, Tracer.ParentSpan)
+    return Effect.flatMap(
+      Effect.makeSpan(name, {
+        kind: "server",
+        attributes,
+        parent: remoteParent,
+        links: remoteParent !== undefined && ambientParent !== undefined
+          ? [{ span: ambientParent, attributes: {} }]
+          : undefined
+      }),
+      (span) => {
+        const tracked: RequestSpan = { span, method: request.tag, clock: fiber.getRef(Clock.Clock) }
+        const handled = Effect.provideService(effect, Tracer.ParentSpan, span)
+        const key = requestKey(request.id)
+        const spans = requestSpans.get(clientId) ?? new Map<string, RequestSpan>()
+        // Notifications get no response, and a duplicate request id is rejected
+        // without one, so their spans end when dispatch completes.
+        if (request.isNotification === true || spans.has(key)) {
+          return Effect.ensuring(
+            handled,
+            Effect.sync(() => endRequestSpan(tracked, { _tag: "Success", value: undefined }))
+          )
+        }
+        spans.set(key, tracked)
+        requestSpans.set(clientId, spans)
+        return handled
+      }
+    )
+  }
   const disconnectClient = (clientId: number) => {
+    endClientSpans(clientId)
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1659,15 +1846,14 @@ const runWithRuntime = Effect.fnUntraced(function*(
     clientId: number,
     requestId: string | number,
     { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown }
-  ) =>
-    protocol.send(clientId, {
-      _tag: "Exit",
-      requestId,
-      exit: {
-        _tag: "Failure",
-        cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
-      }
-    })
+  ) => {
+    const exit: RpcMessage.ExitEncoded<unknown, unknown> = {
+      _tag: "Failure",
+      cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
+    }
+    finishRequestSpan(clientId, requestId, exit)
+    return protocol.send(clientId, { _tag: "Exit", requestId, exit })
+  }
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
     if (waiting === undefined) return
@@ -1876,6 +2062,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     ...protocol,
     send: (clientId, response) => {
       if (response._tag === "Exit") {
+        finishRequestSpan(clientId, response.requestId, response.exit)
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
         const active = requests?.get(key)
@@ -1892,10 +2079,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           response.exit._tag === "Failure" &&
           !response.exit.cause.some((failure) => failure._tag === "Fail")
         ) {
-          return sendRequestError(clientId, response.requestId, {
-            code: McpSchema.INTERNAL_ERROR_CODE,
-            message: "Internal error"
-          })
+          return sendRequestError(clientId, response.requestId, internalErrorResponse)
         }
       }
       return protocol.send(clientId, response)
@@ -1944,7 +2128,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const prepare = cancellationRequest === undefined
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
-            return Effect.gen(function*() {
+            const handled = Effect.gen(function*() {
               const prepared = yield* prepare
               const clientState = clientStates.get(clientId)
               if (isHttp && clientState === undefined) {
@@ -1956,6 +2140,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
               }
               const session = prepared.binding
               const selectedProtocol = prepared.protocol
+              yield* Effect.annotateCurrentSpan("mcp.protocol.version", selectedProtocol.protocolVersion)
               // Select before dated payload decoding: legacy requests use
               // their session's adapter; modern requests carry their own version.
               clientStates.set(clientId, {
@@ -2085,6 +2270,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                   )
               )
             )
+            return withRequestSpan(fiber, clientId, request, headers, handled)
           }
           case "Ping":
           case "Ack":
@@ -2178,6 +2364,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientStates.keys()) {
         if (!clientIds.has(clientId)) {
+          endClientSpans(clientId)
           clientStates.delete(clientId)
           // HTTP UUID sessions are stored separately and outlive request-scoped client IDs.
           runtime.disconnect(clientId)
@@ -2288,7 +2475,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   )
 
   return yield* RpcServer.make(runtime.clientRpcs, {
-    spanPrefix: "McpServer",
+    disableTracing: true,
     disableFatalDefects: true
   }).pipe(
     Effect.provideService(RpcServer.Protocol, patchedProtocol),
