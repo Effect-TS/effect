@@ -6,7 +6,8 @@
  * back-reference repeated strings, so both stay off the wire on later rows.
  * Fingerprint mode uses positional layouts and rejects mismatches for smaller
  * frames; its row shapes are presence masks instead of field id lists. Encoded
- * results are arena-backed views; see {@link toCodec} for ownership details.
+ * results may be views into a shared buffer; see {@link toCodec} for ownership
+ * details.
  *
  * @stability unstable
  * @since 4.0.0
@@ -91,8 +92,10 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * encode/decode handles exactly one frame; use {@link parser} for streams.
  * Derived codecs are memoized by schema identity and wire mode.
  *
- * Encoded results are arena-backed views and may share a larger buffer. Use
- * `bytes.slice()` when independent ownership is required.
+ * Encoded results may be views into a larger shared buffer. Use
+ * `bytes.slice()` when independent ownership is required. Large `Uint8Array`
+ * values are copied once the frame is complete, so they must not change while
+ * the encode runs.
  *
  * **Gotchas**
  *
@@ -1361,6 +1364,11 @@ const OUTPUT_ARENA_SIZE = 64 * 1024
 // Room left after a large reservation for the bytes that close its frame.
 const OUTPUT_GROWTH_SLACK = 4 * 1024
 
+// Byte payloads at least this large are not copied into the arena: the writer
+// keeps a reference and the finished frame is assembled once, so they are
+// copied exactly once however deeply they are nested.
+const DEFERRED_BYTES_MIN = 16 * 1024
+
 // Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
@@ -1389,6 +1397,11 @@ class Writer {
   start = 0
   limit = 0
   len = 0
+  // Deferred payloads and the arena positions they belong at, in write order.
+  // Length prefixes count them; `growSized` moves only arena bytes.
+  readonly deferred: Array<Uint8Array> = []
+  readonly deferredAt: Array<number> = []
+  deferredLen = 0
   reset() {
     let arena = outputArena
     // Nested codecs cannot share the active arena tail.
@@ -1426,6 +1439,12 @@ class Writer {
     this.buf[this.start + this.len++] = b
   }
   bytes(b: Uint8Array) {
+    if (b.length >= DEFERRED_BYTES_MIN) {
+      this.deferred.push(b)
+      this.deferredAt.push(this.len)
+      this.deferredLen += b.length
+      return
+    }
     this.ensure(b.length)
     this.buf.set(b, this.start + this.len)
     this.len += b.length
@@ -1513,15 +1532,22 @@ class Writer {
     return this.len++
   }
   endSized(mark: number) {
-    const code = this.len - mark - 1
+    const code = this.len - mark - 1 + (this.deferredLen === 0 ? 0 : this.deferredAfter(mark))
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
   }
   // Row-run regions prefix `length * 2`; odd codes are back-references.
   endSizedRun(mark: number) {
-    const code = (this.len - mark - 1) * 2
+    const code = (this.len - mark - 1 + (this.deferredLen === 0 ? 0 : this.deferredAfter(mark))) * 2
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
+  }
+  // Deferred bytes inside the region opened at `mark`.
+  private deferredAfter(mark: number): number {
+    const at = this.deferredAt
+    let sum = 0
+    for (let k = at.length - 1; k >= 0 && at[k] > mark; k--) sum += this.deferred[k].length
+    return sum
   }
   private growSized(mark: number, code: number) {
     const size = uvarintSize(code)
@@ -1530,6 +1556,8 @@ class Writer {
     const absoluteMark = this.start + mark
     this.buf.copyWithin(absoluteMark + size, absoluteMark + 1, this.start + this.len)
     this.len += extra
+    const at = this.deferredAt
+    for (let k = at.length - 1; k >= 0 && at[k] > mark; k--) at[k] += extra
     let n = code
     let p = absoluteMark
     while (n > 0x7F) {
@@ -1571,13 +1599,46 @@ class Writer {
   }
   out(): Uint8Array<ArrayBuffer> {
     const arena = this.arena!
-    const out = new Uint8Array(arena.buf.buffer, this.start, this.len)
-    if (arena === outputArena) arena.offset = this.start + this.len
+    let out: Uint8Array<ArrayBuffer>
+    if (this.deferred.length === 0) {
+      out = new Uint8Array(arena.buf.buffer, this.start, this.len)
+      if (arena === outputArena) arena.offset = this.start + this.len
+    } else {
+      out = this.assemble()
+      // The frame was copied out, so its arena region is free again.
+      if (arena === outputArena) arena.offset = this.start
+    }
     arena.writing = false
     this.arena = undefined
     return out
   }
+  private assemble(): Uint8Array<ArrayBuffer> {
+    const out = new Uint8Array(this.len + this.deferredLen)
+    const buf = this.buf
+    const start = this.start
+    let from = 0
+    let to = 0
+    for (let k = 0; k < this.deferred.length; k++) {
+      const at = this.deferredAt[k]
+      const bytes = this.deferred[k]
+      out.set(buf.subarray(start + from, start + at), to)
+      to += at - from
+      out.set(bytes, to)
+      to += bytes.length
+      from = at
+    }
+    out.set(buf.subarray(start + from, start + this.len), to)
+    this.clearDeferred()
+    return out
+  }
+  private clearDeferred() {
+    if (this.deferred.length === 0) return
+    this.deferred.length = 0
+    this.deferredAt.length = 0
+    this.deferredLen = 0
+  }
   abort() {
+    this.clearDeferred()
     const arena = this.arena
     if (arena === undefined) return
     if (arena === outputArena) arena.offset = this.start
