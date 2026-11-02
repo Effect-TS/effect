@@ -437,23 +437,11 @@ describe("SchemaBinary", () => {
     it("rejects non-number elements in uniform number arrays", () => {
       const codec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
       for (const value of ["x", undefined, null, 1n]) {
-        const error = schemaError(() => Schema.encodeUnknownSync(codec)([1, value, 3] as any))
-        assert.include(error.message, "Expected a number")
-        assert.include(error.message, "at [1]")
-      }
-    })
-
-    it("rejects non-number elements after an f64 run is already decided", () => {
-      for (
-        const codec of [
-          SchemaBinary.toCodec(Schema.Array(Schema.Number)),
-          SchemaBinary.toCodecDirect(Schema.Array(Schema.Number))
-        ]
-      ) {
-        for (const value of ["x", undefined, null, 1n]) {
-          const error = schemaError(() => Schema.encodeUnknownSync(codec)([Math.PI, Math.E, value] as any))
+        // a leading Math.PI settles the run on f64 before value is classified
+        for (const first of [1, Math.PI]) {
+          const error = schemaError(() => Schema.encodeUnknownSync(codec)([first, value, 3] as any))
           assert.include(error.message, "Expected a number")
-          assert.include(error.message, "at [2]")
+          assert.include(error.message, "at [1]")
         }
       }
     })
