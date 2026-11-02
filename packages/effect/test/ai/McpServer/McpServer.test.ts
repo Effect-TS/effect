@@ -3499,11 +3499,10 @@ describe("McpServer", () => {
 
     const isHttpSpan = (span: Tracer.AnySpan) => span._tag === "Span" && span.attributes.has("http.request.method")
 
-    const makeTracedHarness = Effect.fnUntraced(function*(recordToolArguments = false) {
-      // Ended MCP request spans, in completion order. HTTP transport spans and
-      // notification spans are skipped so each request maps to the next entry.
-      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-      const tracer = Tracer.make({
+    // Offers ended MCP request spans in completion order. HTTP transport spans
+    // and notification spans are skipped so each request maps to the next entry.
+    const makeEndedSpanTracer = (ended: Queue.Queue<Tracer.NativeSpan>) =>
+      Tracer.make({
         span(options) {
           const span = new Tracer.NativeSpan(options)
           const end = span.end.bind(span)
@@ -3516,6 +3515,10 @@ describe("McpServer", () => {
           return span
         }
       })
+
+    const makeTracedHarness = Effect.fnUntraced(function*(recordToolArguments = false) {
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = makeEndedSpanTracer(ended)
       const registrations = Layer.mergeAll(
         McpServer.toolkit(WeatherToolkit).pipe(
           Layer.provideMerge(WeatherToolkit.toLayer({
@@ -3529,6 +3532,11 @@ describe("McpServer", () => {
             tool: new McpSchema.Tool({ name: "crash", inputSchema: { type: "object" } }),
             annotations: Context.empty(),
             handle: () => Effect.die("boom")
+          })
+          yield* server.addTool({
+            tool: new McpSchema.Tool({ name: "echo", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
           })
           yield* McpServer.registerPrompt({ name: "greeting", content: () => Effect.succeed("hello") })
           yield* McpServer.registerResource({
@@ -3594,6 +3602,10 @@ describe("McpServer", () => {
 
         const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
         assert.strictEqual(call.attributes.get("gen_ai.tool.call.arguments"), "{\"location\":\"London\"}")
+
+        // Tools registered directly with `addTool` do not go through `Toolkit.handle`.
+        const direct = yield* request(2, "tools/call", { name: "echo", arguments: { text: "hi" } })
+        assert.strictEqual(direct.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
@@ -3634,5 +3646,119 @@ describe("McpServer", () => {
         assert.strictEqual(defect.attributes.get("rpc.status_code"), "-32603")
         assert.strictEqual(defect.attributes.get("error.type"), "-32603")
       }))
+
+    describe("request span lifecycle", () => {
+      const makeTracedTransport = Effect.fnUntraced(function*(options?: { readonly failExitFor?: string }) {
+        const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+        const tracer = makeEndedSpanTracer(ended)
+        const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const disconnects = yield* Queue.unbounded<number>()
+        const ready = yield* Deferred.make<
+          (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+        >()
+        let failExitFor = options?.failExitFor
+        const transport = yield* RpcServer.Protocol.make((write) =>
+          Deferred.succeed(ready, write).pipe(Effect.as({
+            disconnects,
+            send: (_clientId, message) => {
+              if (message._tag === "Exit" && message.requestId === failExitFor) {
+                failExitFor = undefined
+                return Effect.die("write failed")
+              }
+              return Queue.offer(outbound, message).pipe(Effect.asVoid)
+            },
+            end: () => Effect.void,
+            clientIds: Effect.succeed(new Set([1])),
+            initialMessage: Effect.succeedNone,
+            supportsAck: false,
+            supportsTransferables: false,
+            supportsSpanPropagation: false,
+            supportsNotifications: true,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          }))
+        )
+        const context = yield* Layer.build(
+          McpServer.layer({ name: "TracingLifecycle", version: "1.0.0", protocols: [McpProtocol.v2025_03_26] }).pipe(
+            Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
+          )
+        )
+        const entered = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        yield* Context.get(context, McpServer.McpServer).addTool({
+          tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Deferred.succeed(entered, undefined).pipe(
+              Effect.andThen(Deferred.await(release)),
+              Effect.as(new McpSchema.CallToolResult({ content: [] }))
+            )
+        })
+        const write = yield* Deferred.await(ready)
+        const send = (message: RpcMessage.FromClientEncoded) =>
+          write(1, message).pipe(Effect.provideService(Tracer.Tracer, tracer))
+        yield* send({
+          _tag: "Request",
+          id: "initialize",
+          tag: "initialize",
+          payload: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "client", version: "1.0.0" }
+          },
+          headers: []
+        })
+        assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "initialize" })
+        assert.strictEqual((yield* Queue.take(ended)).name, "initialize")
+
+        yield* send({ _tag: "Request", id: "wait", tag: "tools/call", payload: { name: "Wait" }, headers: [] })
+        yield* Deferred.await(entered)
+        // The next ended span, or none if it does not end within a second.
+        const nextEnded = Effect.gen(function*() {
+          const fiber = yield* Queue.take(ended).pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
+          yield* TestClock.adjust("1 second")
+          return Option.getOrUndefined(yield* Fiber.join(fiber))
+        })
+        return { send, outbound, disconnects, release, nextEnded }
+      })
+
+      it.effect("ends the span of a request interrupted by a transport disconnect", () =>
+        Effect.gen(function*() {
+          const { disconnects, nextEnded } = yield* makeTracedTransport()
+
+          yield* Queue.offer(disconnects, 1)
+
+          const span = yield* nextEnded
+          assert.strictEqual(span?.name, "tools/call Wait")
+          assert.strictEqual(span && exitTag(span), "Failure")
+        }))
+
+      it.effect("keeps a request span open across a graceful EOF until its response", () =>
+        Effect.gen(function*() {
+          const { nextEnded, outbound, release, send } = yield* makeTracedTransport()
+
+          yield* send({ _tag: "Eof" })
+          yield* Deferred.succeed(release, undefined)
+
+          assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "wait" })
+          const span = yield* nextEnded
+          assert.strictEqual(span?.name, "tools/call Wait")
+          assert.strictEqual(span && exitTag(span), "Success")
+        }))
+
+      it.effect("records the internal error sent after a response write fails", () =>
+        Effect.gen(function*() {
+          const { nextEnded, outbound, release } = yield* makeTracedTransport({ failExitFor: "wait" })
+
+          yield* Deferred.succeed(release, undefined)
+
+          const response = yield* Queue.take(outbound)
+          assert.deepInclude(response, { _tag: "Exit", requestId: "wait" })
+          const span = yield* nextEnded
+          assert.strictEqual(span?.name, "tools/call Wait")
+          assert.strictEqual(span && exitTag(span), "Failure")
+          assert.strictEqual(span?.attributes.get("rpc.status_code"), "-32603")
+          assert.strictEqual(span?.attributes.get("error.type"), "-32603")
+        }))
+    })
   })
 })
