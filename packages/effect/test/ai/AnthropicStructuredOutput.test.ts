@@ -54,6 +54,26 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.suspend(() => Schema.String), { type: "string" })
     })
 
+    it("resolves a root alias of an identified schema", () => {
+      const NR = Schema.Struct({ a: Schema.String }).annotate({ identifier: "NR" })
+      const Params = Schema.suspend(() => NR).annotate({ identifier: "Params" })
+      assertJsonSchema(Params, {
+        type: "object",
+        properties: { a: { type: "string" } },
+        required: ["a"],
+        additionalProperties: false,
+        $defs: {
+          NR: {
+            type: "object",
+            properties: { a: { type: "string" } },
+            required: ["a"],
+            additionalProperties: false
+          },
+          Params: { $ref: "#/$defs/NR" }
+        }
+      })
+    })
+
     it("rejects recursive Suspend", () => {
       interface A {
         readonly a: string
