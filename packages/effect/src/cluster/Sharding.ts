@@ -885,9 +885,7 @@ const make = Effect.gen(function*() {
       const resetAddresses = MutableHashSet.empty<EntityAddress>()
       const resetRequestIds: Array<Snowflake.Snowflake> = []
       const cappedAddresses = MutableHashSet.empty<EntityAddress>()
-      // deferred addresses with a later request skipped in this read, and
-      // those whose deferred request was read again
-      const skippedDeferred = MutableHashSet.empty<EntityAddress>()
+      // deferred addresses whose deferred request was read again
       const readDeferred = MutableHashSet.empty<EntityAddress>()
 
       const markDelivered = Effect.sync(() => {
@@ -968,7 +966,6 @@ const make = Effect.gen(function*() {
             const deferred = MutableHashMap.get(deferredRequests, address)
             if (Option.isSome(deferred)) {
               if (deferred.value !== message.envelope.requestId) {
-                MutableHashSet.add(skippedDeferred, address)
                 return Effect.void
               }
               MutableHashSet.add(readDeferred, address)
@@ -1048,6 +1045,10 @@ const make = Effect.gen(function*() {
         yield* storageReadLock.take(1)
 
         forgetDeferred((shardId) => !MutableHashSet.has(acquiredShards, shardId))
+        // the deferrals made before this read, checked once it is done
+        const deferredBeforeRead = MutableHashMap.size(deferredRequests) > 0
+          ? Array.from(deferredRequests)
+          : undefined
         // Messages left claimed for an entity type that has registered since
         // are read again from the oldest, before newer ones can overtake them.
         let registeredAddresses: Array<EntityAddress> | undefined
@@ -1101,15 +1102,17 @@ const make = Effect.gen(function*() {
 
         // A deferred request that was not read again is either still claimed,
         // or was answered or removed by someone else. In the latter case the
-        // requests skipped behind it are released.
+        // requests waiting behind it are released. This is checked on every
+        // read, so the release does not depend on new requests arriving.
         let releasedAddresses: Array<EntityAddress> | undefined
         let deferredIds: Array<Snowflake.Snowflake> | undefined
-        for (const address of skippedDeferred) {
-          if (MutableHashSet.has(readDeferred, address)) continue
-          const deferred = MutableHashMap.get(deferredRequests, address)
-          if (Option.isSome(deferred)) (deferredIds ??= []).push(deferred.value)
+        if (deferredBeforeRead !== undefined) {
+          for (const [address, requestId] of deferredBeforeRead) {
+            if (MutableHashSet.has(readDeferred, address)) continue
+            const deferred = MutableHashMap.get(deferredRequests, address)
+            if (Option.isSome(deferred) && deferred.value === requestId) (deferredIds ??= []).push(requestId)
+          }
         }
-        MutableHashSet.clear(skippedDeferred)
         MutableHashSet.clear(readDeferred)
         if (deferredIds !== undefined) {
           const pending = yield* Effect.option(storage.unprocessedMessagesById(deferredIds))
