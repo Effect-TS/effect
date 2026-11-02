@@ -47,6 +47,40 @@ describe("ScopedCache", () => {
       })
   )
 
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "does not retain request responses through lookup finalizers",
+    () =>
+      Effect.gen(function*() {
+        const control = new WeakRef({})
+        const cache = yield* ScopedCache.make({
+          capacity: 16,
+          lookup: (key: string) => Effect.acquireRelease(Effect.succeed(key), () => Effect.void)
+        })
+        const response = yield* ScopedCache.get(cache, "key").pipe(
+          Effect.map(() => ({})),
+          Effect.withSpan("request"),
+          Effect.map((body) => new WeakRef(body))
+        )
+        yield* collectGarbage
+        assert.isTrue(yield* ScopedCache.has(cache, "key"))
+        assert.isUndefined(control.deref())
+        assert.isUndefined(response.deref())
+      })
+  )
+
+  it.effect("parents lookups to the requesting span", () =>
+    Effect.gen(function*() {
+      const cache = yield* ScopedCache.make({
+        capacity: 16,
+        lookup: (_key: string) => Effect.currentParentSpan
+      })
+      const [request, parent] = yield* Effect.all([Effect.currentSpan, ScopedCache.get(cache, "key")]).pipe(
+        Effect.withSpan("request")
+      )
+      assert.strictEqual(parent.traceId, request.traceId)
+      assert.strictEqual(parent.spanId, request.spanId)
+    }))
+
   describe("constructors", () => {
     describe("make", () => {
       it.effect("creates cache with fixed capacity", () =>
