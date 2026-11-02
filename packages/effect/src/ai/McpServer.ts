@@ -1568,12 +1568,20 @@ const CurrentRequestSpan = Context.Reference<Tracer.Span | undefined>("effect/ai
   defaultValue: () => undefined
 })
 
+// Spans whose request was answered with an error response sent by `McpServer`
+// itself. That response, not the handler's exit, classifies the span.
+const errorResponseSpans = new WeakSet<Tracer.Span>()
+
 const recordErrorResponse = (span: Tracer.Span, code: number) => {
+  errorResponseSpans.add(span)
   span.attribute("rpc.status_code", String(code))
   span.attribute("error.type", String(code))
 }
 
 const endRequestSpan = (span: Tracer.Span, method: string, exit: Exit.Exit<unknown, unknown>, endTime: bigint) => {
+  if (errorResponseSpans.has(span)) {
+    return span.end(endTime, exit)
+  }
   if (Exit.isSuccess(exit)) {
     if (method === "tools/call" && Predicate.hasProperty(exit.value, "isError") && exit.value.isError === true) {
       span.attribute("error.type", "tool_error")
