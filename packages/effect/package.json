@@ -144,6 +144,7 @@
     "miniflare": "5.20260925.0-alpha",
     "protobufjs": "^8.8.1",
     "tinybench": "^6.2.2",
-    "valibot": "^1.5.0"
+    "valibot": "^1.5.0",
+    "yaml": "^2.9.1"
   }
 }

@@ -1,9 +1,9 @@
 /**
- * Parses YAML configuration files.
+ * Parses and prints YAML configuration files.
  *
- * Supports YAML 1.2 block and flow collections, indentless sequence values,
- * multiline plain and quoted scalars, block scalars, anchors, aliases, and
- * YAML 1.1 merge keys (`<<`).
+ * Parsing supports YAML 1.2 block and flow collections, indentless sequence
+ * values, multiline plain and quoted scalars, block scalars, anchors,
+ * aliases, and YAML 1.1 merge keys (`<<`).
  *
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
  * at its parent's indentation.
@@ -12,6 +12,9 @@
  * multiline quoted scalars in flow collections, explicit complex keys,
  * tag/directive processing, recursive aliases, and document streams. Mapping
  * keys are JavaScript strings.
+ *
+ * Printing turns JSON-like values into block-style YAML that `parse` reads
+ * back unchanged. Comments and source formatting are not retained.
  *
  * @stability unstable
  * @since 4.0.0
@@ -762,3 +765,311 @@ export const parse = (input: string): Result.Result<unknown, EncodingError> => {
     )
   }
 }
+
+// Scalars the YAML 1.2 core schema, or `parseScalar`, would not read back as
+// the same string.
+const ambiguousScalar =
+  /^(?:null|Null|NULL|~|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$/
+
+// YAML 1.2.2 §5.1: characters outside the printable set must be escaped on
+// output. Line and paragraph separators are included to stay on the safe side
+// of YAML 1.1 line break handling, and the byte order mark because §5.4
+// excludes it from content characters.
+const nonPrintable =
+  // eslint-disable-next-line no-control-regex
+  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufeff\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
+
+const isPlainSafe = (text: string): boolean =>
+  text.length > 0 &&
+  text.trim() === text &&
+  !/[\t\n\r]/.test(text) &&
+  !nonPrintable.test(text) &&
+  !/^[,[\]{}#&*!|>'"%@`]/.test(text) &&
+  !/^[-?:](?:\s|$)/.test(text) &&
+  !/^(?:---|\.\.\.)(?:\s|$)/.test(text) &&
+  !/:(?:\s|$)/.test(text) &&
+  !/\s#/.test(text) &&
+  !ambiguousScalar.test(text) &&
+  parseScalar(text) === text
+
+const doubleQuoteEscapes: Record<string, string> = {
+  "\0": "\\0",
+  "\x07": "\\a",
+  "\b": "\\b",
+  "\t": "\\t",
+  "\n": "\\n",
+  "\v": "\\v",
+  "\f": "\\f",
+  "\r": "\\r",
+  "\x1b": "\\e",
+  "\"": "\\\"",
+  "\\": "\\\\",
+  "\u0085": "\\N",
+  "\u2028": "\\L",
+  "\u2029": "\\P"
+}
+
+const doubleQuote = (text: string): string => {
+  let output = "\""
+  // Iterating by code point keeps surrogate pairs together, so only lone
+  // surrogates reach the non-printable check.
+  for (const character of text) {
+    if (hasOwn.call(doubleQuoteEscapes, character)) {
+      output += doubleQuoteEscapes[character]
+    } else if (nonPrintable.test(character)) {
+      const code = character.charCodeAt(0)
+      output += code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
+    } else {
+      output += character
+    }
+  }
+  return output + "\""
+}
+
+class PrintError extends Error {}
+
+const printSingleLine = (text: string): string => isPlainSafe(text) ? text : doubleQuote(text)
+
+// YAML 1.2.2 §7.4.2 limits an implicit key to 1024 characters, including quotes.
+const implicitKeyLimit = 1024
+
+// The unquoted merge key would be processed by `parse`, so it is always quoted.
+const printKey = (key: string, path: string): string => {
+  const printed = key === "<<" ? doubleQuote(key) : printSingleLine(key)
+  if (printed.length > implicitKeyLimit) {
+    throw new PrintError(
+      `Cannot print a mapping key of ${printed.length} characters (implicit keys are limited to ${implicitKeyLimit}) at ${path}`
+    )
+  }
+  return printed
+}
+
+const printNumber = (value: number): string => {
+  if (Number.isNaN(value)) return ".nan"
+  if (value === Number.POSITIVE_INFINITY) return ".inf"
+  if (value === Number.NEGATIVE_INFINITY) return "-.inf"
+  if (Object.is(value, -0)) return "-0.0"
+  return String(value)
+}
+
+// A multiline string prints as a literal block scalar when every line can be
+// written as-is: no control characters besides tabs and line breaks, and no
+// leading or trailing whitespace on any line.
+const literalBlock = (text: string): { readonly header: string; readonly lines: Array<string> } | undefined => {
+  const body = text.replace(/\n+$/, "")
+  if (body.length === 0 || /\r/.test(body) || nonPrintable.test(body)) return undefined
+  const lines = body.split("\n")
+  if (lines.some((line) => line.trim() !== line)) return undefined
+  // Kept line breaks beyond the first become empty lines inside the scalar.
+  const trailing = text.length - body.length
+  for (let index = 1; index < trailing; index++) lines.push("")
+  return { header: trailing === 0 ? "|-" : trailing === 1 ? "|" : "|+", lines }
+}
+
+const isIdentifier = (key: string): boolean => /^[A-Za-z_$][\w$]*$/.test(key)
+
+class Printer {
+  readonly lines: Array<string> = []
+  private readonly ancestors = new Set<object>()
+  private readonly step: number
+
+  constructor(step: number) {
+    this.step = step
+  }
+
+  // Prints `value`, with `toJSON` already applied, after `prefix` (`""` at the
+  // root, `-` for a sequence item, or `key:` for a mapping entry) placed at
+  // `indentation`.
+  node(value: unknown, path: string, indentation: number, prefix: string): void {
+    switch (typeof value) {
+      case "string":
+        return this.scalar(value, indentation, prefix)
+      case "number":
+        return this.line(indentation, prefix, printNumber(value))
+      case "boolean":
+        return this.line(indentation, prefix, String(value))
+      case "undefined":
+        throw new PrintError(`Cannot print undefined at ${path}`)
+      case "object":
+        break
+      default:
+        throw new PrintError(`Cannot print a ${typeof value} at ${path}`)
+    }
+    if (value === null) return this.line(indentation, prefix, "null")
+    if (this.ancestors.has(value)) throw new PrintError(`Circular reference at ${path}`)
+    if (Array.isArray(value)) {
+      if (value.length === 0) return this.line(indentation, prefix, "[]")
+      this.ancestors.add(value)
+      const column = prefix === "" ? indentation : indentation + this.step
+      if (prefix !== "") this.line(indentation, prefix, "")
+      // Index iteration keeps the positions of sparse arrays.
+      for (let index = 0; index < value.length; index++) {
+        this.node(applyToJson(value[index], String(index)) ?? null, `${path}[${index}]`, column, "-")
+      }
+      this.ancestors.delete(value)
+      return
+    }
+    const prototype = Object.getPrototypeOf(value)
+    if (prototype !== Object.prototype && prototype !== null) {
+      // Only a string name is safe to interpolate into the diagnostic.
+      const name = prototype.constructor?.name
+      const label = typeof name === "string" && name.length > 0 ? name : "object"
+      throw new PrintError(`Cannot print a ${label} instance without toJSON at ${path}`)
+    }
+    const entries: Array<[string, unknown]> = []
+    for (const key of Object.keys(value)) {
+      const entry = applyToJson((value as YamlRecord)[key], key)
+      if (entry !== undefined) entries.push([key, entry])
+    }
+    if (entries.length === 0) return this.line(indentation, prefix, "{}")
+    this.ancestors.add(value)
+    // A mapping starts on the line of its sequence dash and continues two
+    // columns in, aligned with its first key.
+    const item = prefix === "-"
+    const column = prefix === "" ? indentation : item ? indentation + 2 : indentation + this.step
+    if (!item && prefix !== "") this.line(indentation, prefix, "")
+    const start = this.lines.length
+    for (const [key, entry] of entries) {
+      const entryPath = isIdentifier(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`
+      this.node(entry, entryPath, column, `${printKey(key, path)}:`)
+    }
+    if (item) this.lines[start] = `${" ".repeat(indentation)}- ${this.lines[start].slice(column)}`
+    this.ancestors.delete(value)
+  }
+
+  private scalar(text: string, indentation: number, prefix: string): void {
+    const block = text.includes("\n") ? literalBlock(text) : undefined
+    if (block === undefined) return this.line(indentation, prefix, printSingleLine(text))
+    this.line(indentation, prefix, block.header)
+    const pad = " ".repeat(indentation + this.step)
+    for (const line of block.lines) this.lines.push(line.length === 0 ? "" : pad + line)
+  }
+
+  private line(indentation: number, prefix: string, text: string): void {
+    const content = prefix === "" ? text : text === "" ? prefix : `${prefix} ${text}`
+    this.lines.push(" ".repeat(indentation) + content)
+  }
+}
+
+// Mirrors `JSON.stringify`: objects and bigints carrying a `toJSON` method are
+// replaced by its result before printing.
+const applyToJson = (value: unknown, key: string): unknown => {
+  if (
+    (typeof value === "object" && value !== null || typeof value === "bigint") &&
+    typeof (value as { toJSON?: unknown }).toJSON === "function"
+  ) {
+    return (value as { toJSON: (key: string) => unknown }).toJSON(key)
+  }
+  return value
+}
+
+const indentStep = (options: { readonly indent?: number | undefined } | undefined): number => {
+  const indent = options?.indent ?? 2
+  if (!Number.isInteger(indent) || indent < 1) throw new PrintError(`Indent must be a positive integer, got ${indent}`)
+  return indent
+}
+
+const printDocument = (value: unknown, path: string, step: number): string => {
+  const printer = new Printer(step)
+  printer.node(applyToJson(value, ""), path, 0, "")
+  return `${printer.lines.join("\n")}\n`
+}
+
+const printResult = (input: unknown, print: () => string): Result.Result<string, EncodingError> => {
+  try {
+    return Result.succeed(print())
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Yaml",
+        kind: "Encode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
+}
+
+/**
+ * Prints a JavaScript value as a YAML document.
+ *
+ * **Details**
+ *
+ * `null`, booleans, numbers, strings, arrays, and plain objects are supported.
+ * Collections print in block style with keys in insertion order, empty ones
+ * as `{}` and `[]`. Strings print plain when `parse` would read them back
+ * unchanged and double-quoted otherwise, so `"true"`, `"1"`, `"a: b"`, and
+ * the merge key `"<<"` stay strings. Non-printable characters are escaped.
+ * Multiline strings print as literal block scalars when their lines have no
+ * surrounding whitespace. Non-finite numbers print as `.inf`, `-.inf`, and
+ * `.nan`.
+ *
+ * As with `JSON.stringify`, a `toJSON` method is applied first (so a `Date`
+ * prints as an ISO string), `undefined` properties are omitted, `undefined`
+ * array items print as `null`, and symbol keys are ignored. Any other value,
+ * including bigints, functions, symbols, class instances without `toJSON`,
+ * and circular references, fails with an `EncodingError` naming the path of
+ * the offending value. Keys print as implicit keys, which YAML limits to 1024
+ * characters including quotes; a longer key fails with the path of its
+ * mapping. Shared references are printed in full each time; no anchors are
+ * emitted. The output always ends with a line break.
+ *
+ * **Example** (Printing a configuration object)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Yaml } from "effect/encoding"
+ *
+ * const yaml = Yaml.stringify({ name: "effect", ports: [3000, 3001], version: "1" })
+ *
+ * yaml // => Result.succeed("name: effect\nports:\n  - 3000\n  - 3001\nversion: \"1\"\n")
+ * Result.isFailure(Yaml.stringify({ id: 1n })) // => true
+ * ```
+ *
+ * @see {@link stringifyAll} for printing a stream of documents
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.0.0
+ */
+export const stringify = (
+  value: unknown,
+  options?: { readonly indent?: number | undefined }
+): Result.Result<string, EncodingError> => printResult(value, () => printDocument(value, "value", indentStep(options)))
+
+/**
+ * Prints JavaScript values as a stream of YAML documents separated by `---`.
+ *
+ * **Details**
+ *
+ * Each value is printed with the rules of {@link stringify}, and an empty
+ * iterable prints as an empty string. A value that cannot be printed fails
+ * with an `EncodingError` whose path starts with the document index, such as
+ * `value[1].id`.
+ *
+ * **Example** (Printing two documents)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Yaml } from "effect/encoding"
+ *
+ * Yaml.stringifyAll([{ a: 1 }, ["b"]]) // => Result.succeed("a: 1\n---\n- b\n")
+ * ```
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.0.0
+ */
+export const stringifyAll = (
+  values: Iterable<unknown>,
+  options?: { readonly indent?: number | undefined }
+): Result.Result<string, EncodingError> =>
+  printResult(values, () => {
+    const step = indentStep(options)
+    // `for...of` rejects non-iterables, which `Array.from` would accept as array-likes or empty input.
+    const documents: Array<string> = []
+    for (const value of values) {
+      documents.push(printDocument(value, `value[${documents.length}]`, step))
+    }
+    return documents.join("---\n")
+  })
