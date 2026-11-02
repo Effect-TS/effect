@@ -37,6 +37,13 @@ import * as requestState from "./internal/requestState.ts"
  * response of an upgraded request, middleware observes it in place of the
  * handler's response.
  *
+ * **Gotchas**
+ *
+ * `self`, the middleware and `handleResponse` run uninterruptibly, so an
+ * interrupt, which server adapters send on client disconnect and shutdown,
+ * takes effect once the response is handled. Wrap `self` in
+ * `Effect.interruptible` to let it be interrupted while producing the response.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -303,6 +310,12 @@ export const withPreResponseHandler: {
 /**
  * Converts an HTTP server effect into a Web `Request` handler using the supplied base context and optional middleware.
  *
+ * **Gotchas**
+ *
+ * The effect runs uninterruptibly by default, so aborting the request's
+ * `signal` does not stop it before it produces a response. Wrap the effect in
+ * `Effect.interruptible` to let an abort interrupt it.
+ *
  * @stability unstable
  * @category converting
  * @since 4.0.0
@@ -357,6 +370,12 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
 /**
  * Converts an HTTP server effect into a Web `Request` handler using an empty base context.
  *
+ * **Gotchas**
+ *
+ * The effect runs uninterruptibly by default, so aborting the request's
+ * `signal` does not stop it before it produces a response. Wrap the effect in
+ * `Effect.interruptible` to let an abort interrupt it.
+ *
  * @stability unstable
  * @category converting
  * @since 4.0.0
@@ -380,6 +399,12 @@ export const toWebHandler: <E>(
  * work while building may still be in progress when the first request arrives,
  * in which case that request waits for the build to finish. If the build fails,
  * every request rejects with the build error.
+ *
+ * **Gotchas**
+ *
+ * The effect runs uninterruptibly by default, so aborting the request's
+ * `signal` does not stop it before it produces a response. Wrap the effect in
+ * `Effect.interruptible` to let an abort interrupt it.
  *
  * @stability unstable
  * @category converting
@@ -452,6 +477,12 @@ export const toWebHandlerLayerWith = <
  * work while building may still be in progress when the first request arrives,
  * in which case that request waits for the build to finish. If the build fails,
  * every request rejects with the build error.
+ *
+ * **Gotchas**
+ *
+ * The effect runs uninterruptibly by default, so aborting the request's
+ * `signal` does not stop it before it produces a response. Wrap the effect in
+ * `Effect.interruptible` to let an abort interrupt it.
  *
  * @stability unstable
  * @category converting

@@ -119,6 +119,13 @@ export type WebSocketOptions =
  * and `Effect` timeouts in your handlers or middleware. An explicit value is
  * passed to Bun unchanged.
  *
+ * On shutdown the server waits up to `gracefulShutdownTimeout` (default 20
+ * seconds) for in-flight requests, then interrupts the remaining request
+ * fibers. `disablePreemptiveShutdown: true` skips the wait and interrupts
+ * them immediately. Handlers run uninterruptibly unless wrapped in
+ * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so a
+ * client disconnect does not stop them and shutdown waits for them to finish.
+ *
  * **Gotchas**
  *
  * Without an idle timeout, Bun also keeps idle keep-alive connections and

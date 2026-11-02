@@ -1490,6 +1490,33 @@ describe("HttpServer", () => {
       yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
     }))
 
+  it.live("interrupts an interruptible served handler once the graceful shutdown timeout elapses", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      const started = Latch.makeUnsafe()
+      let interrupted = false
+      yield* HttpServer.serve(Effect.interruptible(
+        Effect.gen(function*() {
+          yield* started.open
+          yield* Effect.sleep("10 seconds")
+          return HttpServerResponse.text("done")
+        }).pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted = true)))
+      )).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, gracefulShutdownTimeout: "100 millis" })),
+        Layer.buildWithScope(scope)
+      )
+      const request = Http.get({ host: "127.0.0.1", port: tcpPort(server) })
+      request.on("error", constVoid)
+      yield* Effect.addFinalizer(() => Effect.sync(() => request.destroy()))
+      yield* started.await.pipe(Effect.timeout("2 seconds"))
+
+      // Finalizers are uninterruptible, so the timeout applies to the join
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+      assert.isTrue(interrupted)
+    }))
+
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
     const upstream = Http.createServer(() => {
