@@ -34,7 +34,7 @@
  * as regular expression syntax fail with a {@link ParseError}; see
  * {@link dockerignore}.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Data from "./Data.ts"
@@ -55,6 +55,10 @@ const TypeId = "~effect/IgnoreFile"
  * `format` records which semantics the rules follow. Test paths with
  * {@link ignores} or pass the value as the `ignore` option of
  * `FileSystem.glob`.
+ *
+ * This type is unstable, so `FileSystem.glob` can accept it. The rest of the
+ * module, including how rules are parsed and matched, is experimental and may
+ * change in patch releases.
  *
  * @see {@link gitignore} for Git rules
  * @see {@link dockerignore} for Docker rules
@@ -121,7 +125,7 @@ const makeDocker = (patterns: ReadonlyArray<DockerPattern>): IgnoreFile => {
  * `line` is the 1-based line number in the source, counting blank and comment
  * lines, and `pattern` is that line without surrounding whitespace.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -166,7 +170,7 @@ export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
  *
  * @see {@link concat} for combining nested `.gitignore` files
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -221,7 +225,7 @@ export const gitignore = (source: string, options?: {
  * Result.isFailure(IgnoreFile.dockerignore("!")) // => true
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -258,7 +262,7 @@ export const dockerignore = (source: string): Result.Result<IgnoreFile, ParseErr
  * IgnoreFile.ignores(ignore, "logs/other.log") // => true
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category combinators
  * @since 4.0.0
  */
@@ -303,7 +307,7 @@ export const concat: {
  * pipe(ignore, IgnoreFile.ignores("./dist/")) // => true
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category predicates
  * @since 4.0.0
  */
