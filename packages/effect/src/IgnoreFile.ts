@@ -1,41 +1,38 @@
 /**
  * Matches root-relative paths against `.gitignore` or `.dockerignore` rules
- * without accessing the file system. Pass an `IgnoreFile` to
- * `FileSystem.glob` to filter a walk with the same rules.
+ * without accessing the file system. Pass an `IgnoreFile` as the `ignore`
+ * option of `FileSystem.glob` to filter a walk with the same rules.
  *
  * **Details**
  *
- * The two formats share "last matching rule wins" and `!` exceptions, but
- * differ elsewhere, so each keeps its own semantics:
+ * In both formats the last matching rule wins and `!` adds an exception. They
+ * differ otherwise:
  *
- * - Git rules apply below their `base` directory. A rule without a `/`
- *   (other than a trailing one) matches a name at any depth, and any other `/`
- *   anchors it to the base. A trailing `/` matches only directories. An
- *   exception cannot re-include a path inside an excluded directory.
- * - Docker rules are anchored at the build context root, `**` may appear
- *   anywhere in a pattern, a trailing `/` has no meaning, and an exception can
+ * - Git rules apply below their `base` directory. A rule with a `/` other than
+ *   a trailing one is anchored to the base; otherwise it matches a name at any
+ *   depth. A trailing `/` matches only directories. An exception cannot
  *   re-include a path inside an excluded directory.
+ * - Docker rules are anchored at the build context root, `**` may appear
+ *   anywhere, a trailing `/` is ignored, and an exception can re-include a
+ *   path inside an excluded directory.
  *
- * Discovering ignore files is up to the caller. For Git, combine sources from
- * lowest to highest precedence with {@link concat}: `core.excludesFile`, then
- * `.git/info/exclude`, then each `.gitignore` from the root down, passing its
- * directory as `base`. For Docker, read `<Dockerfile>.dockerignore` next to the
- * Dockerfile if it exists, otherwise `.dockerignore` at the context root; the
- * Dockerfile-specific file replaces the root one.
+ * Callers find and read the ignore files. For Git, {@link concat} them from
+ * lowest to highest precedence: `core.excludesFile`, `.git/info/exclude`, then
+ * each `.gitignore` from the root down with its directory as `base`. For
+ * Docker, use `<Dockerfile>.dockerignore` next to the Dockerfile if it exists,
+ * otherwise the context root's `.dockerignore`.
  *
  * **Gotchas**
  *
- * Git compatibility has documented limits. Names are matched by Unicode code
- * point rather than by byte, so `?` and negated classes such as `[!a]` match a
- * non-ASCII character that Git would not. A `/` inside a bracket class makes
- * the rule match nothing. Matching is case-sensitive (`core.ignorecase` is not
+ * Git compatibility has limits. Names are matched by Unicode code point rather
+ * than by byte, so `?` and negated classes such as `[!a]` match a non-ASCII
+ * character that Git would not. A `/` inside a bracket class makes the rule
+ * match nothing. Matching is case-sensitive (`core.ignorecase` is not
  * supported) and tracked files are not considered.
  *
- * Docker patterns use `/` as the separator on every platform. Docker turns
- * each pattern into a Go regular expression, and some patterns reach that
- * engine as regular expression syntax instead of glob syntax. Rather than
- * reproduce that behavior, {@link dockerignore} rejects those patterns with a
- * {@link ParseError}; see its documentation for the list.
+ * Docker patterns use `/` on every platform. Patterns that Docker would read
+ * as regular expression syntax fail with a {@link ParseError}; see
+ * {@link dockerignore}.
  *
  * @stability unstable
  * @since 4.0.0
@@ -117,8 +114,8 @@ const makeDocker = (patterns: ReadonlyArray<internal.DockerPattern>): IgnoreFile
 }
 
 /**
- * The error returned by {@link dockerignore} for a pattern Docker rejects or
- * that relies on regular expression syntax.
+ * The error returned by {@link dockerignore} for a pattern that Docker rejects
+ * or reads as regular expression syntax.
  *
  * **Details**
  *
@@ -195,9 +192,8 @@ export const gitignore = (source: string, options?: {
  *
  * **Gotchas**
  *
- * Docker passes some patterns to Go's regular expression engine as regular
- * expression syntax, so they do not mean what they look like. These fail with
- * a {@link ParseError} instead, and each has a spelling that works:
+ * Docker reads some patterns as Go regular expression syntax rather than glob
+ * syntax. These fail with a {@link ParseError}; each has a working spelling:
  *
  * - `*` or `?` inside a bracket class, such as `[*]`, which Docker reads as
  *   part of a larger expression. Write `[\*]` or `[\?]` for the literal
@@ -209,9 +205,8 @@ export const gitignore = (source: string, options?: {
  *   a regular expression class, and a backslash before a non-ASCII character,
  *   which Docker rejects. Write the character without the backslash.
  *
- * Unknown character class names, such as `[[:foo:]]`, also fail. Escaping does
- * not help here: Docker cannot compile the pattern at all, and only reports it
- * once a path reaches it. The supported names are `alnum`, `alpha`, `ascii`,
+ * Unknown character class names, such as `[[:foo:]]`, also fail, because Docker
+ * cannot compile them. The supported names are `alnum`, `alpha`, `ascii`,
  * `blank`, `cntrl`, `digit`, `graph`, `lower`, `print`, `punct`, `space`,
  * `upper`, `word` and `xdigit`, each optionally negated as `[:^name:]`.
  *

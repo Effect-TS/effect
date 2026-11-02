@@ -150,23 +150,19 @@ export interface FileSystem {
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
-   * `ignore` applies `.gitignore` or `.dockerignore` rules from an
-   * `IgnoreFile` to paths relative to `root`. It only removes results: an
-   * ignore exception never brings back a path dropped by the pattern,
-   * `exclude`, `dot`, or the symbolic link rules. Git rules never descend
-   * into an ignored directory. Docker rules descend into one unless no
-   * exception could apply inside it, so exceptions such as
-   * `!node_modules/keep.txt` still apply. Directory-only Git rules test the
-   * entry itself, so a link to a directory does not match `link/`, even when
-   * the pattern names the link.
+   * The `ignore` option filters results with an `IgnoreFile`, matched
+   * against paths relative to `root`. It only removes results: an exception
+   * never restores a path dropped by the pattern, `exclude`, `dot` or the
+   * symbolic link rules. Git rules skip ignored directories. Docker rules
+   * still read one when an exception such as `!node_modules/keep.txt` could
+   * apply inside it. A Git `dir/` rule never matches a link to a directory.
    *
    * **Gotchas**
    *
    * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
    * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling. With `ignore`, an absolute pattern, a `..` segment or
-   * an escaped `/` is a defect, because ignore rules match paths under `root`
-   * one segment at a time.
+   * pattern's spelling. With `ignore`, a pattern that is absolute or contains
+   * a `..` segment or an escaped `/` is a defect.
    */
   readonly glob: (
     pattern: string,
