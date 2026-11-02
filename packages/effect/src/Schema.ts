@@ -6527,7 +6527,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
  */
 export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   BottomLazy<
-    SchemaAST.Union<SchemaAST.Objects>,
+    SchemaAST.Union<Cases[keyof Cases]["ast"]>,
     TaggedUnion<Cases>
   >
 {
