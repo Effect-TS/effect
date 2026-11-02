@@ -474,3 +474,19 @@ it.live("scope release returns when stdout is unread and backpressured", () =>
 
     assert.isBelow(releaseMillis, 2_000)
   }).pipe(Effect.provide(NodeServices)))
+
+it.live("scope release returns when a backpressured stdin stream is never read", () =>
+  Effect.gen(function*() {
+    const chunk = new Uint8Array(64 * 1024)
+    const endless = Stream.fromIterable({
+      *[Symbol.iterator]() {
+        while (true) yield chunk
+      }
+    })
+    const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
+      yield* ChildProcess.make("sleep", ["600"], { stdin: endless })
+      yield* Effect.sleep("200 millis")
+    })))
+
+    assert.isBelow(releaseMillis, 2_000)
+  }).pipe(Effect.provide(NodeServices)))
