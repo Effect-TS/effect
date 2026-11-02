@@ -295,8 +295,10 @@ export const exclude = (pattern: string | PathMatcher, options?: {
  * **Details**
  *
  * Patterns, `scope` and `dot` work as in {@link exclude}. `subtree` defaults
- * to `"self"`, so including a directory does not include the paths inside it;
- * use `"inherit"` to include them too, unless a later rule overrides it.
+ * to `"self"`, so including a directory does not include the paths inside it.
+ * With `"inherit"`, they are included too if the inclusion changed the
+ * directory's result, unless a later rule overrides it; including a directory
+ * that was already included passes nothing down.
  *
  * **Gotchas**
  *
