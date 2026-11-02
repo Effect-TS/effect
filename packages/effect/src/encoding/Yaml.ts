@@ -1,8 +1,9 @@
 /**
  * Parses YAML configuration files.
  *
- * Supports YAML 1.2 block and flow collections, indentless sequence values,
- * multiline plain and quoted scalars, block scalars, anchors, aliases, YAML 1.1
+ * Supports YAML 1.2 block and flow collections, compact nested sequences
+ * (`- - value`), indentless sequence values, multiline plain and quoted scalars
+ * (inside flow collections too), block scalars, anchors, aliases, YAML 1.1
  * merge keys (`<<`), document streams, and the `%YAML 1.2` directive. Parsing
  * returns a `Result` that fails with an `EncodingError`.
  *
@@ -11,9 +12,9 @@
  *
  * Unsupported input fails rather than being read as text: tags (`!!str`,
  * `!local`), explicit keys (`? key`), `%TAG` and other directives, YAML
- * versions other than 1.2, recursive aliases, compact nested block sequences
- * (`- - value` on one line), multiline quoted scalars in flow collections, and
- * collections nested more than 1000 levels deep.
+ * versions other than 1.2, recursive aliases, and collections nested more than
+ * 1000 levels deep. A block sequence cannot start on the same line as a
+ * mapping key (`key: - value`).
  *
  * Mapping keys are JavaScript strings. An alias may be a key when it refers to
  * a scalar. Only spaces and tabs are YAML white space, so characters such as a
@@ -257,6 +258,32 @@ const trimFoldedEnd = (line: string, quote: string): string => {
   return line.slice(0, end + (escaped ? 1 : 0))
 }
 
+// Folds the line breaks of a multiline quoted scalar read inside a flow collection,
+// following the same rules as quoted block values. The result keeps its quotes.
+const foldQuotedLines = (raw: string): string => {
+  const lines = raw.split("\n")
+  if (lines.length === 1) return raw
+  const quote = raw[0]
+  let output = ""
+  let line = lines[0]
+  let index = 1
+  while (index < lines.length) {
+    if (quote === "\"" && endsWithEscape(line)) {
+      output += line.slice(0, -1)
+    } else {
+      // The last line holds the closing quote, so it is never blank.
+      let blankLines = 0
+      while (index < lines.length - 1 && trimWhiteStart(lines[index]).length === 0) {
+        blankLines++
+        index++
+      }
+      output += trimFoldedEnd(line, quote) + foldLineBreak(blankLines)
+    }
+    line = trimWhiteStart(lines[index++])
+  }
+  return output + line
+}
+
 const parseDoubleQuoted = (input: string): string => {
   if (!input.endsWith("\"") || input.length < 2) {
     throw new SyntaxError("Unterminated double-quoted YAML string")
@@ -351,7 +378,9 @@ const flowNameEnd = /[ \t\n,[\]{}]/
 class FlowParser {
   private input: string
   private readonly anchors: Map<string, unknown>
-  private readonly nextLine: (depth: number) => string | undefined
+  // `quoted` asks for a continuation of an open quoted scalar, returned without
+  // comment removal since `#` inside quotes is content.
+  private readonly nextLine: (depth: number, quoted: boolean) => string | undefined
   // Block collections already open around this flow collection.
   private readonly blockDepth: number
   private index = 0
@@ -360,7 +389,7 @@ class FlowParser {
   constructor(
     input: string,
     anchors: Map<string, unknown>,
-    nextLine: (depth: number) => string | undefined,
+    nextLine: (depth: number, quoted: boolean) => string | undefined,
     blockDepth: number
   ) {
     this.input = input
@@ -492,12 +521,37 @@ class FlowParser {
     return scalarKey(this.anchors, anchor, text)
   }
 
+  // Reads a quoted scalar, pulling continuation lines until its closing quote.
+  // The scan resumes where it stopped, so long scalars stay linear.
   private readQuoted(quote: string): string {
     const start = this.index
-    const end = closingQuote(this.input, quote, start + 1)
-    if (end === -1) this.fail("Unterminated quoted scalar")
-    this.index = end + 1
-    return this.input.slice(start, this.index)
+    let index = start + 1
+    let multiline = false
+    while (true) {
+      for (; index < this.input.length; index++) {
+        const character = this.input[index]
+        if (quote === "\"" && character === "\\") {
+          // Skips the escaped character, which may be the line break pulled next.
+          index++
+        } else if (character === quote) {
+          if (quote === "'" && this.input[index + 1] === "'") {
+            index++
+          } else {
+            this.index = index + 1
+            if (multiline) {
+              // The rest of the closing line was read raw, so remove its comment now.
+              const rest = this.input.slice(this.index)
+              if (!rest.startsWith("#")) this.input = this.input.slice(0, this.index) + stripComment(rest, this.depth)
+            }
+            return foldQuotedLines(this.input.slice(start, this.index))
+          }
+        }
+      }
+      const line = this.nextLine(this.depth, true)
+      if (line === undefined) this.fail("Unterminated quoted scalar")
+      this.input += `\n${line}`
+      multiline = true
+    }
   }
 
   private readUntil(stop: RegExp): string {
@@ -518,7 +572,7 @@ class FlowParser {
   private peek(): string {
     // Inside a collection, the end of the line continues on the next line.
     if (this.index === this.input.length && this.depth > 0) {
-      const line = this.nextLine(this.depth)
+      const line = this.nextLine(this.depth, false)
       if (line !== undefined) this.input += `\n${line}`
     }
     return this.input[this.index] ?? ""
@@ -721,9 +775,11 @@ class YamlParser {
     return scalarKey(this.anchors, anchor?.[1], text)
   }
 
-  private parseSequence(indent: number): Array<unknown> {
+  // `first` is the entry of a compact nested sequence (`- - item`), which starts on its parent entry's line.
+  private parseSequence(indent: number, first?: { readonly text: string; readonly line: Line }): Array<unknown> {
     this.enterCollection()
     const output: Array<unknown> = []
+    if (first !== undefined) output.push(this.parseSequenceEntry(first.text, indent, first.line))
     while (true) {
       this.skipIgnored()
       const line = this.lineAt(this.index)
@@ -731,22 +787,24 @@ class YamlParser {
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) break
       this.index++
-      const item = trimWhiteStart(line.text.slice(1))
-      if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
-      if (isExplicitKey(item)) this.fail(line, explicitKeyError)
-      const separator = mappingSeparator(item)
-      if (separator === -1) {
-        output.push(this.parseNodeValue(item, indent))
-      } else {
-        // The mapping is indented to its first key, which may sit more than one space after the dash.
-        const keyOffset = line.text.length - item.length
-        if (line.text.slice(1, keyOffset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
-        const mappingIndent = indent + keyOffset
-        output.push(this.parseMapping(mappingIndent, { text: item, separator, line }))
-      }
+      output.push(this.parseSequenceEntry(line.text, indent, line))
     }
     this.depth--
     return output
+  }
+
+  // `entry` starts with the `-` indicator, which sits at column `indent` of `line`.
+  private parseSequenceEntry(entry: string, indent: number, line: Line): unknown {
+    const item = trimWhiteStart(entry.slice(1))
+    if (isExplicitKey(item)) this.fail(line, explicitKeyError)
+    // A compact nested sequence or mapping is indented to its first character,
+    // which may sit more than one space after the dash.
+    const offset = entry.length - item.length
+    const compact = isSequenceEntry(item) ? -1 : mappingSeparator(item)
+    if (compact === -1 && !isSequenceEntry(item)) return this.parseNodeValue(item, indent)
+    if (entry.slice(1, offset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
+    if (isSequenceEntry(item)) return this.parseSequence(indent + offset, { text: item, line })
+    return this.parseMapping(indent + offset, { text: item, separator: compact, line })
   }
 
   private enterCollection(): void {
@@ -775,6 +833,10 @@ class YamlParser {
       return null
     }
     if (text.startsWith("!")) throw new SyntaxError(tagError)
+    // YAML 1.2.2 §8.2.1: a block sequence never starts after a key or an anchor on the same line.
+    if (isSequenceEntry(text)) {
+      throw new SyntaxError("A block sequence cannot start on the same line as a mapping key or anchor")
+    }
     if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
     // Keep escaped trailing whitespace in quoted values.
     if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
@@ -788,7 +850,7 @@ class YamlParser {
   }
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
-    return new FlowParser(text, this.anchors, (depth) => {
+    return new FlowParser(text, this.anchors, (depth, quoted) => {
       const next = this.lineAt(this.index)
       if (next === undefined) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
@@ -796,8 +858,9 @@ class YamlParser {
       if (content && next.indent < parentIndent) return undefined
       if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
       this.index++
+      const text = next.raw.slice(next.indent)
       // Strip comments again knowing the open collections, so quoted `#` after a comma is kept.
-      return stripComment(next.raw.slice(next.indent), depth)
+      return quoted ? text : stripComment(text, depth)
     }, this.depth).parse()
   }
 
