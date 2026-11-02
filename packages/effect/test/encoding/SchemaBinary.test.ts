@@ -437,7 +437,7 @@ describe("SchemaBinary", () => {
     it("rejects non-number elements in uniform number arrays", () => {
       const codec = SchemaBinary.toCodec(Schema.Array(Schema.Number))
       for (const value of ["x", undefined, null, 1n]) {
-        // a leading Math.PI settles the run on f64 before value is classified
+        // a leading Math.PI settles the run on f64 before value is reached
         for (const first of [1, Math.PI]) {
           const error = schemaError(() => Schema.encodeUnknownSync(codec)([first, value, 3] as any))
           assert.include(error.message, "Expected a number")
