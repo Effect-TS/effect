@@ -214,6 +214,13 @@ const aliasKey = (anchors: Map<string, unknown>, name: string, fail: (message: s
   return value === null || value === undefined ? "" : String(value)
 }
 
+// Resolves a scalar key, recording its anchor. Only a plain `<<` merges, so a
+// quoted key keeps its quotes in `text` and stays ordinary.
+const scalarKey = (anchors: Map<string, unknown>, anchor: string | undefined, text: string): MappingKey => {
+  if (anchor !== undefined) anchors.set(anchor, parseScalar(text))
+  return { key: parseKey(text), merge: text === "<<" }
+}
+
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
 // Folds the line breaks of a multiline plain flow scalar. Scans line by line, since
@@ -338,6 +345,9 @@ const parseKey = (input: string): string => {
   return value === null || value === undefined ? "" : String(value)
 }
 
+// Ends an anchor or alias name inside a flow collection.
+const flowNameEnd = /[ \t\n,[\]{}]/
+
 class FlowParser {
   private input: string
   private readonly anchors: Map<string, unknown>
@@ -386,7 +396,7 @@ class FlowParser {
     }
     if (character === "&") {
       this.index++
-      const name = this.readUntil(/[ \t\n,[\]{}]/)
+      const name = this.readUntil(flowNameEnd)
       if (name === "" || /[[{]/.test(this.peek())) this.fail("Invalid anchor")
       this.skipWhitespace()
       if (this.peek() === "&") this.fail("Multiple anchors on one node")
@@ -394,11 +404,16 @@ class FlowParser {
       this.anchors.set(name, value)
       return value
     }
-    const text = trimWhite(foldFlowLines(this.readUntil(/[,\]}]/)))
+    return parseScalar(this.readPlain(/[,\]}]/))
+  }
+
+  // Reads a plain scalar up to `stop`, rejecting directive, tag and explicit key indicators.
+  private readPlain(stop: RegExp): string {
+    const text = trimWhite(foldFlowLines(this.readUntil(stop)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
     if (text.startsWith("!")) this.fail(tagError)
     if (isExplicitKey(text)) this.fail(explicitKeyError)
-    return parseScalar(text)
+    return text
   }
 
   private parseSequence(): Array<unknown> {
@@ -461,7 +476,7 @@ class FlowParser {
     let anchor: string | undefined
     if (this.peek() === "&") {
       this.index++
-      anchor = this.readUntil(/[ \t\n,[\]{}]/)
+      anchor = this.readUntil(flowNameEnd)
       if (anchor === "") this.fail("Invalid anchor")
       this.skipWhitespace()
     }
@@ -470,26 +485,11 @@ class FlowParser {
     if (character === "*") {
       if (anchor !== undefined) this.fail("An alias cannot have an anchor")
       this.index++
-      return { key: aliasKey(this.anchors, this.readUntil(/[ \t\n,[\]{}]/), fail), merge: false }
+      return { key: aliasKey(this.anchors, this.readUntil(flowNameEnd), fail), merge: false }
     }
-    let key: string
-    let value: unknown
-    let merge = false
-    if (character === "\"" || character === "'") {
-      const raw = this.readQuoted(character)
-      key = parseKey(raw)
-      value = parseScalar(raw)
-    } else {
-      const text = trimWhite(foldFlowLines(this.readUntil(/:/)))
-      if (text.startsWith("%")) this.fail(directiveIndicatorError)
-      if (isExplicitKey(text)) this.fail(explicitKeyError)
-      // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
-      key = parseKey(text)
-      value = parseScalar(text)
-      merge = text === "<<"
-    }
-    if (anchor !== undefined) this.anchors.set(anchor, value)
-    return { key, merge }
+    // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
+    const text = character === "\"" || character === "'" ? this.readQuoted(character) : this.readPlain(/:/)
+    return scalarKey(this.anchors, anchor, text)
   }
 
   private readQuoted(quote: string): string {
@@ -718,8 +718,7 @@ class YamlParser {
       if (!isWhite(raw[raw.length - 1])) fail("An alias used as a mapping key must be followed by a space before ':'")
       return { key: aliasKey(this.anchors, text.slice(1), fail), merge: false }
     }
-    if (anchor !== null) this.anchors.set(anchor[1], parseScalar(text))
-    return { key: parseKey(text), merge: text === "<<" }
+    return scalarKey(this.anchors, anchor?.[1], text)
   }
 
   private parseSequence(indent: number): Array<unknown> {
