@@ -797,7 +797,7 @@ const make = Effect.gen(function*() {
 
   const storageReadLatch = yield* Latch.make(true)
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
-  // Messages read from storage stay there when this runner cannot decode them.
+  // Hoisted so the storage read loop does not allocate it per message.
   const persistedSend = { persisted: true } as const
 
   type PendingNotification = {
@@ -894,10 +894,9 @@ const make = Effect.gen(function*() {
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
             }
-            // If the entity did not register in time, leave the message
-            // claimed in storage for a runner hosting the entity type. The
-            // claim expiring, or another runner acquiring the shard, makes it
-            // eligible again.
+            // If the entity did not register in time, the message is left
+            // claimed for a runner hosting the entity type, see
+            // `ShardingConfig.entityRegistrationTimeout`.
             return EntityManager.reportUndeliverable(message.envelope, "unregistered_entity", true)
           } else if (state.status === "closed") {
             return Effect.void

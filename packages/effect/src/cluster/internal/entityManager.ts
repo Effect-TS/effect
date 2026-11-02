@@ -920,8 +920,7 @@ export const make = Effect.fnUntraced(function*<
               rpc === undefined ? "unknown_rpc" : "schema_mismatch",
               persisted
             )
-            // Leave the request unanswered and claimed: the claim expiring, or
-            // another runner acquiring the shard, makes it eligible again.
+            // Left claimed for a compatible runner, see `EntityManager.send`.
             if (persisted) return report
             const defect = new MalformedMessage({ cause })
             return Effect.andThen(
@@ -990,12 +989,6 @@ const undecodableRequests = Metric.counter("effect_cluster_undecodable_requests"
   incremental: true
 })
 
-const undeliverableMessages = {
-  unknown_rpc: "Could not decode persisted request, leaving it for a compatible runner",
-  schema_mismatch: "Could not decode persisted request, leaving it for a compatible runner",
-  unregistered_entity: "Entity type not registered, leaving persisted message for a runner hosting it"
-} as const
-
 /**
  * Reports a message this runner cannot deliver. The cause is not logged, as a
  * decode failure can contain payload values.
@@ -1004,12 +997,15 @@ const undeliverableMessages = {
  */
 export const reportUndeliverable = (
   envelope: Envelope.PartialRequest | Envelope.AckChunk | Envelope.Interrupt,
-  reason: keyof typeof undeliverableMessages,
+  reason: "unknown_rpc" | "schema_mismatch" | "unregistered_entity",
   persisted: boolean
 ) => {
-  return Effect.logWarning(
-    persisted ? undeliverableMessages[reason] : "Could not decode request"
-  ).pipe(
+  const message = !persisted
+    ? "Could not decode request"
+    : reason === "unregistered_entity"
+    ? "Entity type not registered, leaving persisted message for a runner hosting it"
+    : "Could not decode persisted request, leaving it for a compatible runner"
+  return Effect.logWarning(message).pipe(
     Effect.annotateLogs({
       entityType: envelope.address.entityType,
       entityId: envelope.address.entityId,
