@@ -141,6 +141,44 @@ describe("toCodeDocument", () => {
       })
     })
 
+    it("should emit opaque path schemas when generating BytePath values", () => {
+      for (
+        const [schema, identifier] of [
+          [Schema.BytePath, "BytePath"],
+          [Schema.toType(Schema.BytePathFromBytes), "BytePathFromBytes"]
+        ] as const
+      ) {
+        assertSchema({ schema }, {
+          codes: makeCode(identifier, identifier),
+          references: {
+            nonRecursives: [{
+              $ref: identifier,
+              code: makeCode(`Schema.BytePath.annotate({ "identifier": "${identifier}" })`, "BytePath.BytePath")
+            }]
+          },
+          artifacts: [{
+            _tag: "Import",
+            importDeclaration: `import * as BytePath from "effect/BytePath"`
+          }]
+        })
+      }
+    })
+
+    it("should emit a byte-array schema when generating the encoded side of BytePathFromBytes", () => {
+      assertSchema({ schema: Schema.BytePathFromBytes }, {
+        codes: makeCode("BytePathFromBytesEncoded", "BytePathFromBytesEncoded"),
+        references: {
+          nonRecursives: [{
+            $ref: "BytePathFromBytesEncoded",
+            code: makeCode(
+              `Schema.Uint8Array.annotate({ "~identifier": "BytePathFromBytes" })`,
+              "globalThis.Uint8Array"
+            )
+          }]
+        }
+      })
+    })
+
     it("Uint8Array", () => {
       assertSchema({ schema: Schema.Uint8Array }, {
         codes: makeCode(`Schema.Uint8Array`, "globalThis.Uint8Array")
