@@ -537,8 +537,8 @@ export const cors = (options?: {
     : (origin: string) => (opts.allowedOrigins as ReadonlyArray<string>).includes(origin)
 
   const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1
-    ? ((originHeader: string): ReadonlyRecord<string, string> => {
-      if (!isAllowedOrigin(originHeader)) return { vary: "Origin" }
+    ? ((originHeader: string | undefined): ReadonlyRecord<string, string> => {
+      if (originHeader === undefined || !isAllowedOrigin(originHeader)) return { vary: "Origin" }
       return {
         "access-control-allow-origin": originHeader,
         vary: "Origin"
