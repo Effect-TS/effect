@@ -1358,6 +1358,9 @@ function decodeAscii(buf: Uint8Array, start: number, end: number): string | unde
 
 const OUTPUT_ARENA_SIZE = 64 * 1024
 
+// Room left after a large reservation for the bytes that close its frame.
+const OUTPUT_GROWTH_SLACK = 4 * 1024
+
 // Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
@@ -1401,21 +1404,22 @@ class Writer {
     this.len = 0
   }
   ensure(n: number) {
-    if (this.len + n > this.limit) {
-      const previous = this.arena!
-      const required = this.len + n
-      let size = OUTPUT_ARENA_SIZE
-      while (size < required) size *= 2
-      const next = makeOutputArena(size)
-      next.writing = true
-      next.buf.set(this.buf.subarray(this.start, this.start + this.len))
-      previous.writing = false
-      this.arena = outputArena = next
-      this.buf = next.buf
-      this.view = next.view
-      this.start = 0
-      this.limit = next.buf.length
-    }
+    if (this.len + n > this.limit) this.grow(n)
+  }
+  // Doubling follows what is already written, so one large reservation gets
+  // its own size plus slack instead of the next power of two.
+  private grow(n: number) {
+    const previous = this.arena!
+    const size = Math.max(OUTPUT_ARENA_SIZE, this.len * 2, this.len + n + OUTPUT_GROWTH_SLACK)
+    const next = makeOutputArena(size)
+    next.writing = true
+    next.buf.set(this.buf.subarray(this.start, this.start + this.len))
+    previous.writing = false
+    this.arena = outputArena = next
+    this.buf = next.buf
+    this.view = next.view
+    this.start = 0
+    this.limit = next.buf.length
   }
   byte(b: number) {
     this.ensure(1)
