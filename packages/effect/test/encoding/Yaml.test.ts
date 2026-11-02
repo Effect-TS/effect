@@ -685,12 +685,19 @@ nested:
       ["a non-character", "\ufffe", "\"\\ufffe\""],
       ["a lone surrogate", "\ud800", "\"\\ud800\""],
       ["a lone surrogate in a multiline string", "a\nb\udc00", "\"a\\nb\\udc00\""],
+      ["an interior byte order mark", "a\uFEFFb", "\"a\\ufeffb\""],
+      ["an interior byte order mark in a multiline string", "a\nb\uFEFFc", "\"a\\nb\\ufeffc\""],
       ["a supplementary character, left plain", "\u{1F600}", "\u{1F600}"]
     ])("escapes %s so the output contains only printable characters", (_, value, expected) => {
       // YAML 1.2.2 §5.1: non-printable characters must be escaped on output.
+      // §5.4: a byte order mark is not a content character outside quotes.
       const output = Result.getOrThrow(Yaml.stringify(value))
       assert.strictEqual(output, `${expected}\n`)
       assert.strictEqual(oracle(output), value)
+    })
+
+    it("escapes an interior byte order mark in a mapping key", () => {
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify({ "a\uFEFFb": 1 })), "\"a\\ufeffb\": 1\n")
     })
 
     it("prints non-finite numbers and negative zero so they round-trip", () => {
