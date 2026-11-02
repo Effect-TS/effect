@@ -23,6 +23,7 @@ import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
 import type { Duplex } from "node:stream"
 import type { ConnectionOptions } from "node:tls"
+import { connectionInternals } from "./internal/connection.ts"
 import { validateChannelName } from "./internal/sqlError.ts"
 import * as PgConnection from "./PgConnection.ts"
 import * as PgPool from "./PgPool.ts"
@@ -320,8 +321,8 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       prepareTransactionControls: true,
       commit,
       onCommitFailure,
-      // A session the server ended took its transaction with it.
-      isTransaction: (conn) => (conn as ConnectionImpl).connection.inTransaction,
+      // The server rolls back the transaction of a session it ended.
+      isTransaction: (conn) => connectionInternals((conn as ConnectionImpl).connection).deadError() === undefined,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer,
       compiler,
