@@ -924,7 +924,14 @@ describe("McpServer", () => {
 
   it.effect("should not deliver list changes from before an HTTP session initialized", () =>
     Effect.gen(function*() {
-      const { release, scheduler } = yield* makeHeldServerScheduler
+      const { describe: schedulerState, release, scheduler } = yield* makeHeldServerScheduler
+      // EFF-3277: this test hangs rarely on Bun. Before the 5000ms test timeout, report
+      // the step it is stuck on. Registered first, so it is cleared after teardown.
+      let step = "build server"
+      const watchdog = setTimeout(() => {
+        console.error(`EFF-3277: stuck at step "${step}", held scheduler ${schedulerState()}`)
+      }, 4000)
+      yield* Effect.addFinalizer(() => Effect.sync(() => clearTimeout(watchdog)))
       const holding = yield* Deferred.make<void>()
       const resume = yield* Deferred.make<void>()
       const protocol = McpProtocol.v2025_11_25
@@ -947,6 +954,7 @@ describe("McpServer", () => {
           Layer.provide(Layer.succeed(Scheduler.Scheduler, scheduler))
         )
       )
+      step = "initialize session"
       const headers = yield* initializeHttpSession(harness, protocol)
       const call = yield* harness.post({
         jsonrpc: "2.0",
@@ -954,15 +962,20 @@ describe("McpServer", () => {
         method: "tools/call",
         params: { name: "Hold" }
       }, headers).pipe(Effect.forkChild)
+      step = "await tool call"
       yield* Deferred.await(holding)
 
       // Queue the registration's list change while the session's request is in
       // flight, then emit a newer one that must follow it on the stream.
+      step = "release held list change"
       yield* release
       yield* Deferred.succeed(resume, undefined)
+      step = "join tool call response"
       const stream = makeMcpSseReader(yield* Fiber.join(call))
       yield* Effect.addFinalizer(() => stream.cancel)
+      step = "drain response stream"
       const messages = yield* stream.drain()
+      step = "teardown"
       assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
         "notifications/tools/list_changed",
         "hold"
