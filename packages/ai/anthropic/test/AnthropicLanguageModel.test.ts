@@ -2210,9 +2210,9 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
-  // Anthropic tool search runs on the server: `server_tool_use` and its
-  // `tool_search_tool_result` must replay in the assistant message as received,
-  // while only client tool results belong in the following user message (#10268).
+  // Server tool calls and their results, including errors, must replay in the
+  // assistant message as received; only client tool results belong in the
+  // following user message (#10268).
   describe("tool search", () => {
     const ListContacts = Tool.make("ListContacts", {
       parameters: Schema.Struct({ name: Schema.String }),
@@ -2222,7 +2222,9 @@ describe("AnthropicLanguageModel", () => {
       ListContacts,
       AnthropicTool.ToolSearchRegex_20251119(),
       AnthropicTool.ToolSearchBM25_20251119(),
-      AnthropicTool.WebSearch_20250305({})
+      AnthropicTool.WebSearch_20250305({}),
+      AnthropicTool.WebFetch_20250910({}),
+      AnthropicTool.CodeExecution_20250522()
     )
     const toolkitLayer = toolkit.toLayer({ ListContacts: () => Effect.succeed([]) })
 
@@ -2261,6 +2263,40 @@ describe("AnthropicLanguageModel", () => {
           encrypted_content: "encrypted",
           page_age: null
         }]
+      },
+      { type: "server_tool_use", id: "srvtoolu_4", name: "web_fetch", input: { url: "https://example.com/contacts" } },
+      {
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_4",
+        content: {
+          type: "web_fetch_result",
+          url: "https://example.com/contacts",
+          retrieved_at: null,
+          content: {
+            type: "document",
+            source: { type: "text", media_type: "text/plain", data: "Anna" },
+            title: null,
+            citations: { enabled: true }
+          }
+        }
+      },
+      { type: "server_tool_use", id: "srvtoolu_5", name: "web_fetch", input: { url: "https://example.com/missing" } },
+      {
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_5",
+        content: { type: "web_fetch_tool_result_error", error_code: "url_not_accessible" }
+      },
+      { type: "server_tool_use", id: "srvtoolu_6", name: "code_execution", input: { code: "print(1)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_6",
+        content: { type: "code_execution_result", stdout: "1\n", stderr: "", return_code: 0, content: [] }
+      },
+      { type: "server_tool_use", id: "srvtoolu_7", name: "code_execution", input: { code: "print(2)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_7",
+        content: { type: "code_execution_tool_result_error", error_code: "unavailable" }
       },
       { type: "tool_use", id: "toolu_1", name: "ListContacts", input: { name: "Anna" } }
     ]
