@@ -152,8 +152,8 @@ const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number =
       index = closingQuote(input, character, index + 1)
       if (index === -1) return -1
       tokenStart = false
-    } else if (tokenStart && (character === "&" || character === "*")) {
-      // Anchor and alias names may contain `:`.
+    } else if (tokenStart && (character === "&" || character === "*" || character === "!")) {
+      // Anchor and alias names and tags may contain `:`, and the node after a property still starts a token.
       while (index + 1 < input.length && !/[ \t,[\]{}]/.test(input[index + 1])) index++
     } else if (character === "#" && (index === 0 || isWhite(input[index - 1]))) {
       return indicator === "#" ? index : -1
@@ -520,28 +520,32 @@ class FlowParser {
       if (name === "" || /[[{]/.test(this.peek())) this.fail("Invalid anchor")
       this.skipWhitespace()
       if (this.peek() === "&") this.fail("Multiple anchors on one node")
-      const value = this.parseValue()
+      if (this.peek() === "*") this.fail("An alias cannot have an anchor")
+      const value = this.peek() === "!" ? this.parseTaggedValue(true) : this.parseValue()
       this.anchors.set(name, value)
       return value
     }
-    if (character === "!") return this.parseTaggedValue()
+    if (character === "!") return this.parseTaggedValue(false)
     const text = this.readPlain(/[,\]}]/)
     this.plainText = text
     return parseScalar(text)
   }
 
   // A tag, optionally followed by an anchor, then the node it applies to.
-  private parseTaggedValue(): unknown {
+  // `anchored` is true when an anchor before the tag belongs to the same node.
+  private parseTaggedValue(anchored: boolean): unknown {
     const fail = (message: string) => this.fail(message)
-    const tag = readTag(this.readTagToken(), fail)
+    const tag = this.readFlowTag(fail)
     this.skipWhitespace()
     let anchor: string | undefined
     if (this.peek() === "&") {
+      if (anchored) this.fail("Multiple anchors on one node")
       this.index++
       anchor = this.readUntil(flowNameEnd)
       if (anchor === "") this.fail("Invalid anchor")
       this.skipWhitespace()
     }
+    if (this.peek() === "&") this.fail("Multiple anchors on one node")
     if (this.peek() === "!") this.fail("Multiple tags on one node")
     if (this.peek() === "*") this.fail("An alias cannot have a tag")
     this.plainText = undefined
@@ -633,7 +637,7 @@ class FlowParser {
     }
     let tag: string | undefined
     if (this.peek() === "!") {
-      tag = readTag(this.readTagToken(), fail)
+      tag = this.readFlowTag(fail)
       this.skipWhitespace()
       if (anchor === undefined && this.peek() === "&") {
         this.index++
@@ -643,6 +647,7 @@ class FlowParser {
       }
       if (this.peek() === "!") this.fail("Multiple tags on one node")
     }
+    if (anchor !== undefined && this.peek() === "&") this.fail("Multiple anchors on one node")
     const character = this.peek()
     if (character === "*") {
       if (anchor !== undefined) this.fail("An alias cannot have an anchor")
@@ -681,6 +686,15 @@ class FlowParser {
       start = 0
       from = skipped
     }
+  }
+
+  // YAML 1.2.2 §7.5: a tag is separated from its content, which may be empty before a
+  // flow indicator or at the end of the line.
+  private readFlowTag(fail: (message: string) => never): string {
+    const tag = readTag(this.readTagToken(), fail)
+    const next = this.line[this.index]
+    if (next !== undefined && !/[ \t\n,\]}]/.test(next)) this.fail(`Expected white space after the YAML tag ${tag}`)
+    return tag
   }
 
   // A verbatim tag (`!<...>`) may contain `,`, so it is read up to its `>`.
@@ -777,6 +791,9 @@ const nodeProperties = (
       if (rest.length > 0 && !isWhite(rest[0])) fail(`Expected white space after the YAML tag ${tag}`)
       rest = trimWhiteStart(rest)
     } else {
+      // A node has at most one anchor and one tag.
+      if (tag !== undefined && rest.startsWith("!")) fail("Multiple tags on one node")
+      if (anchor !== undefined && /^&[^ \t,[\]{}]/.test(rest)) fail("Multiple anchors on one node")
       return { anchor, tag, rest }
     }
   }
@@ -945,6 +962,7 @@ class YamlParser {
   private parseBlockKey(raw: string, fail: (message: string) => never): MappingKey {
     const { anchor, tag, rest: text } = nodeProperties(trimWhite(raw), fail)
     if (text.startsWith("%")) fail(directiveIndicatorError)
+    if (isExplicitKey(text)) fail(explicitKeyError)
     if (text.startsWith("*")) {
       if (anchor !== undefined) fail("An alias cannot have an anchor")
       if (tag !== undefined) fail("An alias cannot have a tag")
@@ -993,22 +1011,54 @@ class YamlParser {
     if (++this.depth > maxDepth) throw new SyntaxError(depthError)
   }
 
-  private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {
+  // `outer` holds properties from a previous line that belong to this node.
+  private parseNodeValue(
+    rawValue: string,
+    parentIndent: number,
+    allowIndentless = false,
+    outer?: { readonly anchor: string | undefined; readonly tag: string | undefined }
+  ): unknown {
     const fail = (message: string): never => {
       throw new SyntaxError(message)
     }
-    const { anchor, tag, rest } = nodeProperties(rawValue, fail)
+    const own = nodeProperties(rawValue, fail)
+    if (outer?.anchor !== undefined && own.anchor !== undefined) fail("Multiple anchors on one node")
+    if (outer?.tag !== undefined && own.tag !== undefined) fail("Multiple tags on one node")
+    const anchor = outer?.anchor ?? own.anchor
+    const tag = outer?.tag ?? own.tag
+    const rest = own.rest
+    if (anchor === undefined && tag === undefined) return this.parseValue(rest, parentIndent, allowIndentless)
+    // YAML 1.2.2 §7.1: an alias has no properties.
+    if (rest.startsWith("*")) fail(tag === undefined ? "An alias cannot have an anchor" : "An alias cannot have a tag")
+    if (trimWhite(rest).length === 0) {
+      // YAML 1.2.2 §6.9: the properties may be followed by the node's scalar content on the
+      // next line, where more properties of the same node may appear.
+      const next = this.scalarContinuation(parentIndent)
+      if (next !== undefined) {
+        this.index++
+        return this.parseNodeValue(next.text, parentIndent, false, { anchor, tag })
+      }
+    }
     let value: unknown
     if (tag === undefined) {
       value = this.parseValue(rest, parentIndent, allowIndentless)
     } else {
-      if (rest.startsWith("*")) fail("An alias cannot have a tag")
       this.plainText = undefined
       const node = this.parseValue(rest, parentIndent, allowIndentless)
       value = resolveTag(tag, node, this.plainText, fail)
     }
+    // Recorded once the whole node, with its tag, is resolved.
     if (anchor !== undefined) this.anchors.set(anchor, value)
     return value
+  }
+
+  // The next line, when it continues a node as a scalar rather than starting a collection.
+  private scalarContinuation(parentIndent: number): Line | undefined {
+    this.skipIgnored()
+    const next = this.lineAt(this.index)
+    if (next === undefined || next.indent <= parentIndent) return undefined
+    if (isExplicitKey(next.text) || isSequenceEntry(next.text) || mappingSeparator(next.text) !== -1) return undefined
+    return next
   }
 
   private parseValue(value: string, parentIndent: number, allowIndentless: boolean): unknown {
@@ -1024,6 +1074,7 @@ class YamlParser {
       return null
     }
     if (text.startsWith("!")) throw new SyntaxError("Multiple tags on one node")
+    if (isExplicitKey(text)) throw new SyntaxError(explicitKeyError)
     // YAML 1.2.2 §8.2.1: a block sequence never starts after a key or an anchor on the same line.
     if (isSequenceEntry(text)) {
       throw new SyntaxError("A block sequence cannot start on the same line as a mapping key or anchor")
