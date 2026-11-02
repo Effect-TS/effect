@@ -30,6 +30,7 @@ import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
+import * as Tracer from "./Tracer.ts"
 
 const TypeId = "~effect/ScopedCache"
 
@@ -163,7 +164,7 @@ export const makeWith = <
     self.lookup = (key: Key): Effect.Effect<A, E> =>
       effect.updateContext(
         options.lookup(key),
-        (input) => Context.merge(context, input)
+        (input) => Context.merge(context, detachParentSpan(input))
       )
     const map = MutableHashMap.empty<Key, Entry<A, E>>()
     self.state = { _tag: "Open", map }
@@ -182,6 +183,15 @@ export const makeWith = <
       self
     )
   })
+
+// Lookup finalizers capture the lookup context for the life of the entry, so
+// keep only the requester's span ids: the span itself retains its exit value.
+const detachParentSpan = <R>(context: Context.Context<R>): Context.Context<R> => {
+  const parent = Context.getOrUndefinedUnsafe<Tracer.AnySpan>(context, Tracer.ParentSpanKey)
+  return parent === undefined || parent._tag === "ExternalSpan"
+    ? context
+    : Context.add(context, Tracer.ParentSpan, Tracer.externalSpan(parent))
+}
 
 /**
  * Creates a `ScopedCache` with a fixed time-to-live for every lookup result.
