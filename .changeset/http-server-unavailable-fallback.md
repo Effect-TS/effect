@@ -3,4 +3,4 @@
 "@effect/platform-deno": patch
 ---
 
-Answer `503 Service Unavailable` with `Cache-Control: no-store` and `Retry-After: 1`, instead of `404`, when `BunHttpServer` or `DenoHttpServer` receives a request while no app is being served.
+`BunHttpServer` and `DenoHttpServer` now return `503 Service Unavailable` instead of `404` while no app is served, with `Cache-Control: no-store` and an advisory `Retry-After: 1`.
