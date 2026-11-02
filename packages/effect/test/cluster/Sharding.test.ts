@@ -5,6 +5,7 @@ import {
   Clock,
   Context,
   Deferred,
+  Duration,
   Effect,
   Equal,
   Exit,
@@ -5459,5 +5460,143 @@ describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: 
         yield* TestClock.adjust(10)
         assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
       }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
+    }))
+})
+
+describe("Sharding message retention", { concurrent: false }, () => {
+  it.effect("forgets completed requests of entities annotated with Retention", () =>
+    Effect.gen(function*() {
+      const Hit = Rpc.make("Hit", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        primaryKey: ({ id }) => id
+      })
+      const Retained = Entity.make("Retained", [Hit])
+        .annotateRpcs(ClusterSchema.Persisted, true)
+        .annotate(ClusterSchema.Retention, Duration.minutes(10))
+      const Unretained = Entity.make("Unretained", [Hit]).annotateRpcs(ClusterSchema.Persisted, true)
+      const runs = { retained: 0, unretained: 0 }
+      const layer = Layer.mergeAll(
+        Retained.toLayer({ Hit: () => Effect.sync(() => ++runs.retained) }),
+        Unretained.toLayer({ Hit: () => Effect.sync(() => ++runs.unretained) })
+      ).pipe(Layer.provideMerge(UnregisteredSharding({ messageRetentionInterval: "1 minute" })))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const retained = (yield* Retained.client)("one")
+        const unretained = (yield* Unretained.client)("one")
+        const hitBoth = Effect.all([retained.Hit({ id: "a" }), unretained.Hit({ id: "a" })])
+        yield* hitBoth
+
+        // the reply is younger than the retention, so the duplicate is still answered from storage
+        yield* TestClock.adjust("5 minutes")
+        yield* hitBoth
+        expect(runs).toEqual({ retained: 1, unretained: 1 })
+
+        yield* TestClock.adjust("6 minutes")
+        yield* hitBoth
+        expect(runs).toEqual({ retained: 2, unretained: 1 })
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("deletes completed requests only in shards the runner holds", () =>
+    Effect.gen(function*() {
+      const Retained = Entity.make("OwnedRetained", [Rpc.make("Hit")])
+        .annotateRpcs(ClusterSchema.Persisted, true)
+        .annotate(ClusterSchema.Retention, Duration.minutes(1))
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      const layer = Retained.toLayer({ Hit: () => Effect.void }).pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+        )),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provideMerge(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 10,
+          refreshAssignmentsInterval: 1000,
+          messageRetentionInterval: "10 seconds"
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const storage = yield* MessageStorage.MessageStorage
+        const { encoded } = yield* MessageStorage.MemoryDriver
+        const shardId = sharding.getShardId(EntityId.make("one"), "default")
+        const otherShard = ShardId.make("default", shardId.id === 1 ? 2 : 1)
+        // a completed request, saved while this runner holds no shard
+        const requestId = yield* sharding.getSnowflake
+        yield* encoded.saveEnvelope({
+          envelope: {
+            _tag: "Request",
+            requestId: String(requestId),
+            address: {
+              shardId: { group: shardId.group, id: shardId.id },
+              entityType: "OwnedRetained",
+              entityId: "one"
+            },
+            tag: "Hit",
+            payload: {},
+            headers: {}
+          },
+          primaryKey: null,
+          deliverAt: null
+        })
+        yield* encoded.saveReply({
+          _tag: "WithExit",
+          id: String(yield* sharding.getSnowflake),
+          requestId: String(requestId),
+          exit: { _tag: "Success", value: undefined }
+        })
+
+        storageState.acquireDenied.push(shardId)
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(otherShard)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust("2 minutes")
+        expect(yield* storage.repliesForUnfiltered([requestId])).toHaveLength(1)
+
+        storageState.acquireDenied.length = 0
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust("10 seconds")
+        expect(yield* storage.repliesForUnfiltered([requestId])).toHaveLength(0)
+      }).pipe(Effect.provide(layer), Effect.scoped)
+    }))
+
+  it.effect("forgets completed requests of entities whose shard group depends on the entity id", () =>
+    Effect.gen(function*() {
+      const Hit = Rpc.make("Hit", {
+        payload: { id: Schema.String },
+        success: Schema.Number,
+        primaryKey: ({ id }) => id
+      })
+      const Tenanted = Entity.make("Tenanted", [Hit])
+        .annotateRpcs(ClusterSchema.Persisted, true)
+        .annotate(ClusterSchema.ShardGroup, (entityId) => entityId.split(":")[0])
+        .annotate(ClusterSchema.Retention, Duration.minutes(10))
+      let runs = 0
+      const layer = Tenanted.toLayer({ Hit: () => Effect.sync(() => ++runs) }).pipe(
+        Layer.provideMerge(UnregisteredSharding({
+          availableShardGroups: ["tenant-a"],
+          assignedShardGroups: ["tenant-a"],
+          messageRetentionInterval: "1 minute"
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const client = (yield* Tenanted.client)("tenant-a:one")
+        yield* client.Hit({ id: "a" })
+        yield* TestClock.adjust("11 minutes")
+        yield* client.Hit({ id: "a" })
+        expect(runs).toEqual(2)
+      }).pipe(Effect.provide(layer))
     }))
 })

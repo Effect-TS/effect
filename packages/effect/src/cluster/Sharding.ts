@@ -1209,6 +1209,44 @@ const make = Effect.gen(function*() {
 
     // fork after the state the loop reads has been initialized
     yield* Effect.forkIn(storageReadLoop, shardingScope)
+
+    // --- Message retention ---
+
+    // Each runner deletes the expired requests in the shards it holds, for the
+    // entity types it has registered with a retention. Only the owner of a
+    // shard can process its messages, so this covers every deliverable row.
+    const retentionBatchSize = 1000
+    const deleteExpired = (entityType: string, completedBefore: number) =>
+      Effect.suspend(() =>
+        // read the held shards for every batch, so a released shard is no longer touched
+        storage.deleteProcessed({
+          entityType,
+          shardIds: Array.from(acquiredShards),
+          completedBefore,
+          limit: retentionBatchSize
+        })
+      ).pipe(Effect.repeat({ while: (deleted) => deleted >= retentionBatchSize }))
+
+    yield* Effect.gen(function*() {
+      while (true) {
+        yield* Effect.sleep(config.messageRetentionInterval)
+        const now = clock.currentTimeMillisUnsafe()
+        for (const { entity } of Array.from(entityManagers.values())) {
+          const retention = Context.get(entity.protocol.annotations, ClusterSchema.Retention)
+          if (retention === undefined) continue
+          yield* deleteExpired(entity.type, now - Duration.toMillis(retention))
+        }
+      }
+    }).pipe(
+      Effect.catchCause((cause) => Effect.logDebug("Message retention failed", cause)),
+      Effect.forever,
+      Effect.annotateLogs({
+        module: "effect/cluster/Sharding",
+        fiber: "Message retention",
+        runner: selfAddress
+      }),
+      Effect.forkIn(shardingScope)
+    )
   }
 
   // --- Sending messages ---

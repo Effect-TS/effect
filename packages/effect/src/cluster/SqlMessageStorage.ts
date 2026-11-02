@@ -30,11 +30,12 @@ import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
-import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import { isSqlError, SqlError, UnknownError } from "../sql/SqlError.ts"
 import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import * as MachineId from "./MachineId.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -121,6 +122,7 @@ export const makeEncodedStorage: (options?: {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
+  const messageKindRequest = sql.literal(String(messageKind.Request))
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
@@ -342,39 +344,75 @@ export const makeEncodedStorage: (options?: {
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
     `
-  // an insert that returned no rows hit an existing message_id
-  const selectUnlessInserted = (message_id: string) => (inserted: ReadonlyArray<unknown>) =>
-    inserted.length > 0 ? Effect.succeed([]) : selectByMessageId(message_id)
+  const maxInsertAttempts = 3
+  // Wraps a dialect insert that reports whether it stored the row. When a row
+  // with the same message_id already exists, returns that row instead.
+  const insertUnlessExists = (
+    insert: (row: MessageRow, message_id: string) => Effect.Effect<boolean, SqlError>
+  ) =>
+  (row: MessageRow, message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> => {
+    // The existing row can be deleted, for example by deleteProcessed, between
+    // the conflicting insert and the read. Insert again instead of reporting a
+    // save that stored nothing.
+    const loop = (attempt: number): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+      Effect.flatMap(
+        insert(row, message_id),
+        (inserted) =>
+          inserted ? Effect.succeed([]) : Effect.flatMap(selectByMessageId(message_id), (rows) => {
+            if (rows.length > 0) return Effect.succeed(rows)
+            if (attempt < maxInsertAttempts) return loop(attempt + 1)
+            return Effect.fail(
+              new SqlError({
+                reason: new UnknownError({
+                  cause: undefined,
+                  message: `Message ${message_id} conflicted with a row that was deleted before it could be read`,
+                  operation: "saveEnvelope"
+                })
+              })
+            )
+          })
+      )
+    return loop(1)
+  }
 
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
   ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
-    pg: () => (row, message_id) =>
-      sql`
-        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-        ON CONFLICT (message_id) DO NOTHING
-        RETURNING id
-      `.pipe(Effect.flatMap(selectUnlessInserted(message_id))),
-    mysql: () => (row, message_id) =>
-      Effect.flatMap(
-        sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
-        (row: any) => {
-          if (row.affectedRows > 0) {
-            return Effect.succeed([])
-          }
-          return selectByMessageId(message_id)
-        }
+    pg: () =>
+      insertUnlessExists((row) =>
+        Effect.map(
+          sql`
+            INSERT INTO ${messagesTableSql} ${sql.insert(row)}
+            ON CONFLICT (message_id) DO NOTHING
+            RETURNING id
+          `,
+          (rows) => rows.length > 0
+        )
       ),
-    mssql: () => (row, message_id) =>
-      sql`
-        MERGE ${messagesTableSql} WITH (HOLDLOCK) AS target
-        USING (SELECT ${message_id} as message_id) AS source
-        ON target.message_id = source.message_id
-        WHEN NOT MATCHED THEN
-          INSERT ${sql.insert(row)}
-        OUTPUT inserted.id;
-      `.pipe(Effect.flatMap(selectUnlessInserted(message_id))),
+    mysql: () =>
+      insertUnlessExists((row) =>
+        Effect.map(
+          sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
+          (result: any) => result.affectedRows > 0
+        )
+      ),
+    mssql: () =>
+      insertUnlessExists((row, message_id) =>
+        Effect.map(
+          sql`
+            MERGE ${messagesTableSql} WITH (HOLDLOCK) AS target
+            USING (SELECT ${message_id} as message_id) AS source
+            ON target.message_id = source.message_id
+            WHEN NOT MATCHED THEN
+              INSERT ${sql.insert(row)}
+            OUTPUT inserted.id;
+          `,
+          (rows) => rows.length > 0
+        )
+      ),
+    // SQLite allows a single writer, so the read and insert in one transaction
+    // cannot interleave with a delete.
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -410,6 +448,59 @@ export const makeEncodedStorage: (options?: {
   const updateLock = sql.onDialectOrElse({
     mssql: () => sql.literal("WITH (UPDLOCK)"),
     orElse: () => sql.literal("")
+  })
+  // Locks rows like updateLock and forUpdate, but skips rows another
+  // transaction has locked instead of waiting for them. mssql only accepts
+  // READPAST at READ COMMITTED or REPEATABLE READ, so the REPEATABLEREAD table
+  // hint keeps it valid under any session isolation level.
+  const skipLockedHint = sql.onDialectOrElse({
+    mssql: () => sql.literal("WITH (UPDLOCK, READPAST, REPEATABLEREAD)"),
+    orElse: () => sql.literal("")
+  })
+  const forUpdateSkipLocked = sql.onDialectOrElse({
+    mssql: () => sql.literal(""),
+    sqlite: () => sql.literal(""),
+    orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
+  })
+  // Every write that touches a request's replies locks the request row first,
+  // in the same order as deleteProcessed, so the two cannot deadlock. An empty
+  // result means the request has been deleted.
+  const lockRequest = (requestId: string) =>
+    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
+  // On small tables mssql can scan the clustered index for request_id
+  // filters, taking locks on other requests' rows and deadlocking with
+  // concurrent writers. These statements reach rows only through the
+  // request_id indexes, so they lock just the request's own rows.
+  const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (requestId) =>
+      sql`
+        UPDATE m SET processed = ${sqlTrue}
+        FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+        WHERE m.processed = ${sqlFalse} AND m.request_id = ${requestId} AND m.kind = ${messageKindAckChunk}
+      `,
+    orElse: () => (requestId) =>
+      sql`
+        UPDATE ${messagesTableSql} SET processed = ${sqlTrue}
+        WHERE processed = ${sqlFalse} AND request_id = ${requestId} AND kind = ${messageKindAckChunk}
+      `
+  })
+  const deleteRequests: (ids: Fragment) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (ids) =>
+      Effect.andThen(
+        sql`
+          DELETE r FROM ${repliesTableSql} r WITH (INDEX(${sql(repliesTable + "_request_lookup_idx")}))
+          WHERE r.request_id IN (${ids})
+        `,
+        sql`
+          DELETE m FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+          WHERE m.request_id IN (${ids})
+        `
+      ),
+    orElse: () => (ids) =>
+      Effect.andThen(
+        sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`,
+        sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
+      )
   })
 
   const emptyFragment = sql.literal("")
@@ -571,16 +662,20 @@ export const makeEncodedStorage: (options?: {
           })
         } else {
           const row = envelopeToRow(envelope, null, deliverAt)
-          insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-          if (envelope._tag === "AckChunk") {
-            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-              Effect.andThen(
-                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
-              ),
-              Effect.andThen(insert),
-              sql.withTransaction
-            )
-          }
+          const insertRow = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+          insert = envelope._tag !== "AckChunk" ? insertRow : lockRequest(envelope.requestId).pipe(
+            Effect.flatMap((request) =>
+              // the request was deleted, for example by deleteProcessed, so
+              // there is nothing left to acknowledge
+              request.length === 0 ?
+                Effect.succeed([]) :
+                sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+                  Effect.andThen(markAcksProcessed(envelope.requestId)),
+                  Effect.andThen(insertRow)
+                )
+            ),
+            sql.withTransaction
+          )
         }
         return insert.pipe(
           Effect.map((rows) => {
@@ -638,6 +733,7 @@ export const makeEncodedStorage: (options?: {
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
         const expectedReplyId = options?.expectedReplyId
+        yield* lockRequest(String(requestId))
         if (expectedReplyId === undefined) {
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
@@ -815,6 +911,36 @@ export const makeEncodedStorage: (options?: {
         withTracerDisabled
       ),
 
+    deleteProcessed: Effect.fnUntraced(
+      function*({ completedBefore, entityType, limit, shardIds }) {
+        // last_reply_id is the WithExit reply id, so its timestamp is the completion time
+        const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
+        // Lock the selected requests so a concurrent clearReplies cannot reset
+        // them before the delete. Requests another transaction holds, such as
+        // a reset or a late acknowledgement, are skipped until a later call,
+        // because waiting for them can deadlock on gap locks in MySQL.
+        const rows = yield* sql<{ id: string | bigint }>`
+          SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
+          WHERE ${sql.in("shard_id", shardIds)}
+          AND entity_type = ${entityType}
+          AND kind = ${messageKindRequest}
+          AND processed = ${sqlTrue}
+          AND last_reply_id < ${sql.literal(String(cutoff))}
+          ORDER BY rowid ASC
+          ${limitFragment(limit)}
+          ${forUpdateSkipLocked}
+        `
+        if (rows.length === 0) return 0
+        const ids = sql.literal(rows.map((row) => String(row.id)).join(","))
+        yield* deleteRequests(ids)
+        return rows.length
+      },
+      sql.withTransaction,
+      Effect.provideService(SqlClient.SafeIntegers, true),
+      PersistenceError.refail,
+      withTracerDisabled
+    ),
+
     resetShards: (shardIds) =>
       resetUnprocessed(sql`shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})`).pipe(
         Effect.asVoid,
@@ -987,11 +1113,11 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(shardLookupIndex)} 
             ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `,
@@ -1093,7 +1219,7 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex} AND object_id = OBJECT_ID(${repliesTable}))
             CREATE INDEX ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
@@ -1149,6 +1275,27 @@ export const migrations = (options?: {
             CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
             ON ${messagesTableSql} (rowid)
           `,
+        orElse: () => Effect.void
+      })
+    }),
+
+    // mssql index names are scoped to their table, but 0001 used to look them
+    // up by name alone, so a same-named index on another table skipped them.
+    // Writes force these indexes, so create any that are missing.
+    "0004_mssql_lookup_indexes": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const ensureIndex = (index: string, table: string, columns: string) =>
+        sql`
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${index} AND object_id = OBJECT_ID(${table}))
+          CREATE INDEX ${sql(index)} ON ${sql(table)} (${sql.literal(columns)})
+        `
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          Effect.all([
+            ensureIndex(`${messagesTable}_shard_idx`, messagesTable, "shard_id, processed, last_read, deliver_at"),
+            ensureIndex(`${messagesTable}_request_id_idx`, messagesTable, "request_id"),
+            ensureIndex(`${repliesTable}_request_lookup_idx`, repliesTable, "request_id, kind, acked")
+          ], { discard: true }),
         orElse: () => Effect.void
       })
     })

@@ -221,6 +221,26 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
+   * Deletes up to `limit` completed requests of an entity type in the given
+   * shards with their messages and replies, returning how many requests were
+   * deleted.
+   *
+   * **Details**
+   *
+   * A request is eligible when its final `WithExit` reply has an id timestamp
+   * before `completedBefore`, in Unix milliseconds. Requests without a final
+   * reply, including ones reset by `clearReplies`, are kept. An empty
+   * `shardIds` deletes nothing. A request sent again with the same primary key
+   * after deletion is saved as a new request.
+   */
+  readonly deleteProcessed: (options: {
+    readonly entityType: string
+    readonly shardIds: Iterable<ShardId.ShardId>
+    readonly completedBefore: number
+    readonly limit: number
+  }) => Effect.Effect<number, PersistenceError>
+
+  /**
    * Wraps requests in storage transactions.
    *
    * `WithExit` replies saved in a transaction notify callers after the outermost
@@ -487,6 +507,25 @@ export type Encoded = {
   readonly resetShards: (
     shardIds: Arr.NonEmptyArray<string>
   ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Deletes up to `limit` completed requests of an entity type in the given
+   * shards with every message and reply sharing their request id, returning
+   * how many requests were deleted.
+   *
+   * **Details**
+   *
+   * A request is eligible when its final `WithExit` reply has an id timestamp
+   * before `completedBefore`, in Unix milliseconds. Selecting and deleting the
+   * requests must be atomic. Requests locked by a concurrent transaction may be
+   * skipped; they stay eligible for a later call.
+   */
+  readonly deleteProcessed: (options: {
+    readonly entityType: string
+    readonly shardIds: Arr.NonEmptyArray<string>
+    readonly completedBefore: number
+    readonly limit: number
+  }) => Effect.Effect<number, PersistenceError>
 
   /**
    * Used to wrap requests with transactions.
@@ -802,6 +841,11 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     resetRequests: (requestIds) => requestIds.length === 0 ? Effect.void : encoded.resetRequests(requestIds),
     resetAddresses: (addresses) => addresses.length === 0 ? Effect.void : encoded.resetAddresses(addresses),
     clearAddress: encoded.clearAddress,
+    deleteProcessed: (options) => {
+      const shardIds = Array.from(options.shardIds, (id) => id.toString())
+      if (!Arr.isArrayNonEmpty(shardIds)) return Effect.succeed(0)
+      return encoded.deleteProcessed({ ...options, shardIds })
+    },
     resetShards: (shardIds) => {
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.void
@@ -934,6 +978,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   resetRequests: () => Effect.void,
   resetAddresses: () => Effect.void,
   clearAddress: () => Effect.void,
+  deleteProcessed: () => Effect.succeed(0),
   resetShards: () => Effect.void,
   withTransaction: identity
 }))
@@ -1088,11 +1133,11 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
           } else if (envelope._tag === "AckChunk") {
             const entry = requests.get(envelope.requestId)
-            if (entry) {
-              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                r._tag === "Chunk" && r.id === envelope.replyId
-              ) ?? entry.lastReceivedChunk
-            }
+            // the request was deleted, so there is nothing left to acknowledge
+            if (!entry) return SaveResultEncoded.Success()
+            entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+              r._tag === "Chunk" && r.id === envelope.replyId
+            ) ?? entry.lastReceivedChunk
           }
           unprocessed.add(envelope)
           journal.push(envelope)
@@ -1226,6 +1271,36 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
             journal.splice(i, 1)
           }
+        }),
+      deleteProcessed: ({ completedBefore, entityType, limit, shardIds }) =>
+        Effect.sync(() => {
+          const deleted = new Set<string>()
+          for (const [requestId, entry] of requests) {
+            if (deleted.size >= limit) break
+            const address = entry.envelope.address
+            const exit = entry.replies.find((reply) => reply._tag === "WithExit")
+            if (
+              address.entityType === entityType && exit !== undefined &&
+              shardIds.includes(ShardId.make(address.shardId.group, address.shardId.id).toString()) &&
+              Snowflake.timestamp(Snowflake.Snowflake(exit.id)) < completedBefore
+            ) {
+              deleted.add(requestId)
+              for (const reply of entry.replies) replyIds.delete(reply.id)
+            }
+          }
+          if (deleted.size === 0) return 0
+          for (const requestId of deleted) requests.delete(requestId)
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            if (deleted.has(entry.envelope.requestId)) requestsByPrimaryKey.delete(primaryKey)
+          }
+          for (let i = journal.length - 1; i >= 0; i--) {
+            const envelope = journal[i]
+            if (!deleted.has(envelope.requestId)) continue
+            unprocessed.delete(envelope)
+            lastRead.delete(envelope)
+            journal.splice(i, 1)
+          }
+          return deleted.size
         }),
       resetShards: (shardIds) =>
         Effect.sync(() => {

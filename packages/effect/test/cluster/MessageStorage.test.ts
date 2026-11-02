@@ -7,6 +7,7 @@ import {
   EntityId,
   EntityType,
   Envelope,
+  MachineId,
   Message,
   MessageStorage,
   Reply,
@@ -187,6 +188,68 @@ describe("MessageStorage", () => {
         const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
         expect(messages).toHaveLength(0)
       }).pipe(Effect.provide(MemoryLayer)))
+    it.effect("deleteProcessed forgets requests of the entity type and shards completed before the cutoff", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const cutoff = Date.UTC(2026, 0, 1)
+        const shard = ShardId.make("default", 1)
+        const request = (id: number, entityType?: string, shardId?: ShardId.ShardId) =>
+          makeRequest({ rpc: PrimaryKeyTest, payload: PrimaryKeyTest.payloadSchema.make({ id }), entityType, shardId })
+        const expired = yield* request(1)
+        const recent = yield* request(2)
+        const reset = yield* request(3)
+        const otherType = yield* request(4, "other")
+        const otherShard = yield* request(5, undefined, ShardId.make("default", 2))
+        for (const r of [expired, recent, reset, otherType, otherShard]) {
+          yield* storage.saveRequest(r)
+        }
+        yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
+        yield* storage.saveReply(yield* makeReply(recent, cutoff + 1))
+        yield* storage.saveReply(yield* makeReply(reset, cutoff - 2))
+        yield* storage.clearReplies(reset.envelope.requestId)
+        yield* storage.saveReply(yield* makeReply(otherType, cutoff - 3))
+        yield* storage.saveReply(yield* makeReply(otherShard, cutoff - 4))
+
+        const options = { entityType: "test", completedBefore: cutoff, limit: 100 }
+        expect(yield* storage.deleteProcessed({ ...options, shardIds: [] })).toEqual(0)
+        const deleted = yield* storage.deleteProcessed({ ...options, shardIds: [shard] })
+        expect(deleted).toEqual(1)
+
+        expect(yield* storage.repliesForUnfiltered([expired.envelope.requestId])).toEqual([])
+        expect((yield* storage.saveRequest(yield* request(1)))._tag).toEqual("Success")
+        for (const [id, kept] of [[2, recent], [3, reset], [4, otherType], [5, otherShard]] as const) {
+          const result = yield* storage.saveRequest(
+            yield* request(id, kept.envelope.address.entityType, kept.envelope.address.shardId)
+          )
+          expect(result._tag).toEqual("Duplicate")
+        }
+        expect(
+          yield* storage.repliesForUnfiltered([
+            recent.envelope.requestId,
+            otherType.envelope.requestId,
+            otherShard.envelope.requestId
+          ])
+        ).toHaveLength(3)
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("does not store an AckChunk for a request deleteProcessed removed", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const cutoff = Date.UTC(2026, 0, 1)
+        const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+        const chunk = yield* makeChunkReply(request)
+        yield* storage.saveRequest(request)
+        yield* storage.saveReply(chunk)
+        yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+        const shardIds = [request.envelope.address.shardId]
+        expect(yield* storage.deleteProcessed({ entityType: "test", shardIds, completedBefore: cutoff, limit: 100 }))
+          .toEqual(1)
+
+        // a late acknowledgement for the deleted request
+        yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
+        expect(yield* storage.unprocessedMessages(shardIds)).toEqual([])
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unprocessedMessages honors the limit option", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
@@ -371,6 +434,8 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
   readonly entityId?: string
+  readonly entityType?: string | undefined
+  readonly shardId?: ShardId.ShardId | undefined
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -378,8 +443,8 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.nextUnsafe(),
       address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
-        entityType: EntityType.make("test"),
+        shardId: options?.shardId ?? ShardId.make("default", 1),
+        entityType: EntityType.make(options?.entityType ?? "test"),
         entityId: EntityId.make(options?.entityId ?? "1")
       }),
       tag: rpc._tag,
@@ -414,11 +479,14 @@ export class StreamRpc extends Rpc.make("StreamTest", {
   primaryKey: (value) => value.id.toString()
 }) {}
 
-export const makeReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>) {
+// `completedAt` sets the reply id's timestamp, which storage treats as the completion time.
+export const makeReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>, completedAt?: number) {
   const snowflake = yield* Snowflake.Generator
   return new Reply.ReplyWithContext({
     reply: new Reply.WithExit({
-      id: snowflake.nextUnsafe(),
+      id: completedAt === undefined
+        ? snowflake.nextUnsafe()
+        : Snowflake.make({ timestamp: completedAt, machineId: MachineId.make(0), sequence: 0 }),
       requestId: request.envelope.requestId,
       exit: Exit.void as any
     }),
