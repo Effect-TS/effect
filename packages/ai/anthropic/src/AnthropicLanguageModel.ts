@@ -1165,7 +1165,10 @@ const prepareMessages = Effect.fnUntraced(
                   }
 
                   if (toolName === "code_execution" && Predicate.hasProperty(part.result, "type")) {
-                    if (part.result.type === "code_execution_result") {
+                    if (
+                      part.result.type === "code_execution_result" ||
+                      part.result.type === "code_execution_tool_result_error"
+                    ) {
                       content.push({
                         type: "code_execution_tool_result",
                         tool_use_id: part.id,
@@ -1924,8 +1927,7 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content,
-              providerExecuted: true
+              result: part.content
             })
           } else {
             parts.push({
@@ -1933,8 +1935,7 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content,
-              providerExecuted: true
+              result: part.content
             })
           }
 
@@ -2572,8 +2573,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content,
-                    providerExecuted: true
+                    result: part.content
                   })
                 } else {
                   parts.push({
@@ -2581,8 +2581,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content,
-                    providerExecuted: true
+                    result: part.content
                   })
                 }
                 break

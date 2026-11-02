@@ -2227,11 +2227,23 @@ describe("AnthropicLanguageModel", () => {
           }
         }
       },
-      { type: "server_tool_use", id: "srvtoolu_5", name: "code_execution", input: { code: "print(1)" } },
+      { type: "server_tool_use", id: "srvtoolu_5", name: "web_fetch", input: { url: "https://example.com/missing" } },
+      {
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_5",
+        content: { type: "web_fetch_tool_result_error", error_code: "url_not_accessible" }
+      },
+      { type: "server_tool_use", id: "srvtoolu_6", name: "code_execution", input: { code: "print(1)" } },
       {
         type: "code_execution_tool_result",
-        tool_use_id: "srvtoolu_5",
+        tool_use_id: "srvtoolu_6",
         content: { type: "code_execution_result", stdout: "1\n", stderr: "", return_code: 0, content: [] }
+      },
+      { type: "server_tool_use", id: "srvtoolu_7", name: "code_execution", input: { code: "print(2)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_7",
+        content: { type: "code_execution_tool_result_error", error_code: "unavailable" }
       },
       { type: "tool_use", id: "toolu_1", name: "ListContacts", input: { name: "Anna" } }
     ]
