@@ -298,14 +298,29 @@ const make = Effect.gen(function*() {
   // Addresses with persisted messages left claimed because their entity type
   // did not register in time. Their claims are reset once it registers.
   const unregisteredAddresses = MutableHashSet.empty<EntityAddress>()
+  // Addresses whose claimed requests must be read again from the oldest
+  // before any of their requests is delivered. They are held back until the
+  // claim reset succeeds.
+  const pendingResets = MutableHashSet.empty<EntityAddress>()
+  // Interrupts and acks for requests held back at an address, sent once the
+  // request is delivered. Storage may not return them again.
+  const heldEnvelopes = MutableHashMap.empty<EntityAddress, Map<Snowflake.Snowflake, Message.IncomingEnvelope>>()
+  const isHeldBack = (address: EntityAddress) =>
+    MutableHashSet.has(pendingResets, address) || MutableHashMap.has(deferredRequests, address)
   // A new owner resets the claims of a shard, so deferrals only hold while
-  // this runner keeps it.
+  // this runner keeps it, and until it reacquires the shard with a reset.
   const forgetDeferred = (drop: (shardId: ShardId) => boolean) => {
     for (const address of Array.from(MutableHashMap.keys(deferredRequests))) {
       if (drop(address.shardId)) MutableHashMap.remove(deferredRequests, address)
     }
     for (const address of Array.from(unregisteredAddresses)) {
       if (drop(address.shardId)) MutableHashSet.remove(unregisteredAddresses, address)
+    }
+    for (const address of Array.from(pendingResets)) {
+      if (drop(address.shardId)) MutableHashSet.remove(pendingResets, address)
+    }
+    for (const address of Array.from(MutableHashMap.keys(heldEnvelopes))) {
+      if (drop(address.shardId)) MutableHashMap.remove(heldEnvelopes, address)
     }
   }
   // shards still held by this runner while their entities stop and their locks
@@ -671,9 +686,10 @@ const make = Effect.gen(function*() {
         }
 
         const acquired = oacquired.value
-        yield* storage.resetShards(acquired).pipe(
-          Effect.ignore,
-          Effect.timeoutOption(shardLockInterval)
+        const shardsReset = yield* storage.resetShards(acquired).pipe(
+          Effect.timeoutOption(shardLockInterval),
+          Effect.map(Option.isSome),
+          Effect.orElseSucceed(() => false)
         )
         // A forced release or a pending join can begin while `acquire` is in
         // flight, so re-check both. Shards locked meanwhile are released
@@ -693,7 +709,9 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
-        if (acquired.length > 0) {
+        // Without a reset, requests this runner holds back may still be
+        // claimed, so their deferrals are kept.
+        if (shardsReset && acquired.length > 0) {
           forgetDeferred((shardId) => acquired.some((acquiredId) => Equal.equals(acquiredId, shardId)))
         }
         updateShardGauges()
@@ -824,15 +842,49 @@ const make = Effect.gen(function*() {
     }
   }
   // Sends a message read from storage. Retrying a deferred request lifts its
-  // deferral, which `onDeferred` restores if it is still undecodable.
+  // deferral, which `onDeferred` restores if it is still undecodable. Once it
+  // is delivered, the requests claimed behind it are reset and read again
+  // before newer ones.
   const sendPersisted = (manager: EntityManager.EntityManager, message: Message.Incoming<any>) => {
-    if (message._tag === "IncomingRequest") {
-      const deferred = MutableHashMap.get(deferredRequests, message.envelope.address)
-      if (Option.isSome(deferred) && deferred.value === message.envelope.requestId) {
-        MutableHashMap.remove(deferredRequests, message.envelope.address)
-      }
+    if (message._tag !== "IncomingRequest") return manager.send(message, persistedSend)
+    const address = message.envelope.address
+    const requestId = message.envelope.requestId
+    const isDeferred = () => {
+      const deferred = MutableHashMap.get(deferredRequests, address)
+      return Option.isSome(deferred) && deferred.value === requestId
     }
-    return manager.send(message, persistedSend)
+    let send = manager.send(message, persistedSend)
+    if (isDeferred()) {
+      MutableHashMap.remove(deferredRequests, address)
+      MutableHashSet.add(pendingResets, address)
+      send = Effect.ensuring(
+        send,
+        Effect.sync(() => {
+          if (isDeferred()) MutableHashSet.remove(pendingResets, address)
+        })
+      )
+    }
+    return Effect.flatMap(send, () => {
+      const held = MutableHashMap.get(heldEnvelopes, address)
+      if (Option.isNone(held) || isDeferred()) return Effect.void
+      const envelope = held.value.get(requestId)
+      if (envelope === undefined) return Effect.void
+      held.value.delete(requestId)
+      if (held.value.size === 0) MutableHashMap.remove(heldEnvelopes, address)
+      return manager.send(envelope)
+    })
+  }
+  const holdEnvelope = (message: Message.IncomingEnvelope) => {
+    const address = message.envelope.address
+    let held = Option.getOrUndefined(MutableHashMap.get(heldEnvelopes, address))
+    if (held === undefined) {
+      held = new Map()
+      MutableHashMap.set(heldEnvelopes, address, held)
+    }
+    // an interrupt is kept over a later ack
+    if (held.get(message.envelope.requestId)?.envelope._tag !== "Interrupt") {
+      held.set(message.envelope.requestId, message)
+    }
   }
 
   type PendingNotification = {
@@ -959,16 +1011,20 @@ const make = Effect.gen(function*() {
           }
 
           // A request waits behind an earlier one for the same entity that
-          // was left in storage for a compatible runner, so the entity never
-          // processes them out of order. Its claim is kept, and expires no
-          // earlier than the deferred request's claim.
-          if (message._tag === "IncomingRequest") {
+          // was left in storage for a compatible runner, or behind a pending
+          // claim reset, so the entity never processes them out of order. Its
+          // claim is kept until the reset. Envelopes for held back requests
+          // are kept until the request is delivered.
+          if (isHeldBack(address)) {
             const deferred = MutableHashMap.get(deferredRequests, address)
-            if (Option.isSome(deferred)) {
-              if (deferred.value !== message.envelope.requestId) {
-                return Effect.void
-              }
+            if (
+              message._tag === "IncomingRequest" && Option.isSome(deferred) &&
+              deferred.value === message.envelope.requestId
+            ) {
               MutableHashSet.add(readDeferred, address)
+            } else {
+              if (message._tag === "IncomingEnvelope") holdEnvelope(message)
+              return Effect.void
             }
           }
 
@@ -1049,16 +1105,17 @@ const make = Effect.gen(function*() {
         const deferredBeforeRead = MutableHashMap.size(deferredRequests) > 0
           ? Array.from(deferredRequests)
           : undefined
+        // envelopes kept for addresses that are no longer held back, dropped
+        // after an exhaustive read has delivered the requests they belong to
+        const releasedHeld = MutableHashMap.size(heldEnvelopes) > 0
+          ? Array.from(MutableHashMap.keys(heldEnvelopes)).filter((address) => !isHeldBack(address))
+          : undefined
         // Messages left claimed for an entity type that has registered since
         // are read again from the oldest, before newer ones can overtake them.
-        let registeredAddresses: Array<EntityAddress> | undefined
         for (const address of Array.from(unregisteredAddresses)) {
           if (!entityManagers.has(address.entityType)) continue
           MutableHashSet.remove(unregisteredAddresses, address)
-          ;(registeredAddresses ??= []).push(address)
-        }
-        if (registeredAddresses !== undefined) {
-          yield* Effect.ignore(storage.resetAddresses(registeredAddresses))
+          MutableHashSet.add(pendingResets, address)
         }
 
         entityManagers.forEach((state) => state.manager.clearProcessed())
@@ -1104,7 +1161,6 @@ const make = Effect.gen(function*() {
         // or was answered or removed by someone else. In the latter case the
         // requests waiting behind it are released. This is checked on every
         // read, so the release does not depend on new requests arriving.
-        let releasedAddresses: Array<EntityAddress> | undefined
         let deferredIds: Array<Snowflake.Snowflake> | undefined
         if (deferredBeforeRead !== undefined) {
           for (const [address, requestId] of deferredBeforeRead) {
@@ -1124,8 +1180,16 @@ const make = Effect.gen(function*() {
             for (const [address, requestId] of Array.from(deferredRequests)) {
               if (!deferredIds.includes(requestId) || pendingIds.has(requestId)) continue
               MutableHashMap.remove(deferredRequests, address)
-              ;(releasedAddresses ??= []).push(address)
+              MutableHashSet.add(pendingResets, address)
+              const held = MutableHashMap.get(heldEnvelopes, address)
+              if (Option.isSome(held)) held.value.delete(requestId)
             }
+          }
+        }
+
+        if (exhaustive && releasedHeld !== undefined) {
+          for (const address of releasedHeld) {
+            if (!isHeldBack(address)) MutableHashMap.remove(heldEnvelopes, address)
           }
         }
 
@@ -1158,11 +1222,8 @@ const make = Effect.gen(function*() {
         // because of the entity cap. They are reset in one storage operation
         // after releasing the read lock, and before the next read starts.
         let addressesToReset: Array<EntityAddress> | undefined
-        if (
-          MutableHashSet.size(resetAddresses) > 0 || MutableHashSet.size(cappedAddresses) > 0 ||
-          releasedAddresses !== undefined
-        ) {
-          addressesToReset = [...resetAddresses, ...cappedAddresses, ...(releasedAddresses ?? [])]
+        if (MutableHashSet.size(resetAddresses) > 0 || MutableHashSet.size(cappedAddresses) > 0) {
+          addressesToReset = [...resetAddresses, ...cappedAddresses]
           MutableHashSet.clear(resetAddresses)
           MutableHashSet.clear(cappedAddresses)
         }
@@ -1178,9 +1239,19 @@ const make = Effect.gen(function*() {
         if (addressesToReset !== undefined) {
           yield* Effect.ignore(storage.resetAddresses(addressesToReset))
         }
-        // read the released requests without waiting for the next poll
-        if (releasedAddresses !== undefined) {
-          storageReadLatch.openUnsafe()
+
+        // Addresses held back for a claim reset are released once it
+        // succeeds, and read again without waiting for the next poll. A
+        // failed reset is retried after the next read.
+        if (MutableHashSet.size(pendingResets) > 0) {
+          const addresses = Array.from(pendingResets)
+          const reset = yield* Effect.exit(storage.resetAddresses(addresses))
+          if (Exit.isSuccess(reset)) {
+            for (const address of addresses) MutableHashSet.remove(pendingResets, address)
+            storageReadLatch.openUnsafe()
+          } else {
+            yield* Effect.logWarning("Could not release requests held behind a deferred request, retrying", reset.cause)
+          }
         }
 
         // A full batch means more messages could be waiting; start the next
@@ -1291,13 +1362,13 @@ const make = Effect.gen(function*() {
 
           yield* Effect.whileLoop({
             // a deferred request holds back the rest, see `deferredRequests`
-            while: () => index < messages.length && !MutableHashMap.has(deferredRequests, address),
+            while: () => index < messages.length && !isHeldBack(address),
             body: constant(sendWithRetry),
             step: () => index++
           })
 
           // The main loop skips the remaining requests, which stay claimed.
-          if (MutableHashMap.has(deferredRequests, address)) return
+          if (isHeldBack(address)) return
 
           for (const id of messageIds) {
             resumptionState.unprocessed.delete(id)
