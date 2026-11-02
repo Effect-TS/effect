@@ -177,7 +177,8 @@ const stripComment = (input: string, depth = 0): string => {
 
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
-const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWith("- ")
+// YAML 1.2.2 §6.2: a space or a tab separates the `-` indicator from the entry.
+const isSequenceEntry = (text: string): boolean => text === "-" || /^-[ \t]/.test(text)
 
 // YAML 1.2.2 §9.1: document markers start at column zero and are followed by whitespace.
 const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:[ \t]|$)/.test(line.raw)
