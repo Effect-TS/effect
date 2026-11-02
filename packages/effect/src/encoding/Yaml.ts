@@ -9,10 +9,16 @@
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
  * at its parent's indentation.
  *
- * Unsupported: compact nested block sequences (`- - value` on one line),
- * multiline quoted scalars in flow collections, explicit complex keys, tags,
- * `%TAG` and other directives, YAML versions other than 1.2, and recursive
- * aliases. Mapping keys are JavaScript strings.
+ * Unsupported input fails rather than being read as text: tags (`!!str`,
+ * `!local`), explicit keys (`? key`), `%TAG` and other directives, YAML
+ * versions other than 1.2, recursive aliases, compact nested block sequences
+ * (`- - value` on one line), multiline quoted scalars in flow collections, and
+ * collections nested more than 1000 levels deep.
+ *
+ * Mapping keys are JavaScript strings. An alias may be a key when it refers to
+ * a scalar. Only spaces and tabs are YAML white space, so characters such as a
+ * no-break space (U+00A0) are kept as content. Numbers use JavaScript number
+ * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
  *
  * @stability unstable
  * @since 4.0.0
@@ -88,6 +94,17 @@ class MappingBuilder {
   }
 }
 
+// YAML 1.2.2 §5.5: only spaces and tabs are white space. NBSP, U+2028 and other
+// characters JavaScript treats as white space are content.
+const isWhite = (character: string | undefined): boolean => character === " " || character === "\t"
+
+const trimWhiteStart = (text: string): string => text.replace(/^[ \t]+/, "")
+
+const trimWhiteEnd = (text: string): string => text.replace(/[ \t]+$/, "")
+
+// Line breaks also separate tokens inside flow collections.
+const trimWhite = (text: string): string => text.replace(/^[ \t\n]+|[ \t\n]+$/g, "")
+
 const closingQuote = (input: string, quote: string, start: number): number => {
   for (let index = start; index < input.length; index++) {
     const character = input[index]
@@ -111,8 +128,8 @@ const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number =
       if (index === -1) return -1
       tokenStart = false
     } else if (tokenStart && character === "&") {
-      while (index + 1 < input.length && !/[\s,[\]{}]/.test(input[index + 1])) index++
-    } else if (character === "#" && (index === 0 || /\s/.test(input[index - 1]))) {
+      while (index + 1 < input.length && !/[ \t,[\]{}]/.test(input[index + 1])) index++
+    } else if (character === "#" && (index === 0 || isWhite(input[index - 1]))) {
       return indicator === "#" ? index : -1
     } else if (tokenStart && (character === "[" || character === "{")) {
       depth++
@@ -121,12 +138,12 @@ const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number =
       tokenStart = false
     } else if (depth > 0 && character === ",") {
       tokenStart = true
-    } else if (character === ":" && (depth > 0 || input[index + 1] === undefined || /\s/.test(input[index + 1]))) {
+    } else if (character === ":" && (depth > 0 || input[index + 1] === undefined || isWhite(input[index + 1]))) {
       if (depth === 0 && indicator === ":") return index
       tokenStart = true
-    } else if (tokenStart && character === "-" && /\s/.test(input[index + 1] ?? "")) {
+    } else if (tokenStart && character === "-" && isWhite(input[index + 1])) {
       continue
-    } else if (!/\s/.test(character)) {
+    } else if (!isWhite(character)) {
       tokenStart = false
     }
   }
@@ -135,7 +152,7 @@ const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number =
 
 const stripComment = (input: string, depth = 0): string => {
   const index = findIndicator(input, "#", depth)
-  return index === -1 ? input : input.slice(0, index).trimEnd()
+  return index === -1 ? input : trimWhiteEnd(input.slice(0, index))
 }
 
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
@@ -149,6 +166,31 @@ const isDocumentStart = (line: Line): boolean => isDocumentMarker(line) && line.
 
 // YAML 1.2.2 §5.3: `%` is the directive indicator and cannot start a plain scalar.
 const directiveIndicatorError = "Plain scalars cannot start with '%'"
+
+// YAML 1.2.2 §6.9.1: `!` starts a tag. Tags are rejected rather than read as text.
+const tagError = "YAML tags are not supported"
+
+const isExplicitKey = (text: string): boolean => text === "?" || /^\?[ \t]/.test(text)
+
+const explicitKeyError = "YAML explicit keys (`?`) are not supported"
+
+// Bounds recursion over nested block and flow collections, so deep input fails
+// with an `EncodingError` instead of exhausting the stack.
+const maxDepth = 1000
+
+const depthError = `YAML collections exceed the maximum nesting depth of ${maxDepth}`
+
+// YAML 1.2.2 §7.1: an alias may be a mapping key. Keys are strings, so only scalars qualify.
+// `raw` is the key text up to the `:`, which must be separated from the alias:
+// `:` may be part of an anchor name.
+const aliasKey = (anchors: Map<string, unknown>, raw: string, fail: (message: string) => never): string => {
+  if (!isWhite(raw[raw.length - 1])) fail("An alias used as a mapping key must be followed by a space before ':'")
+  const name = trimWhite(raw).slice(1)
+  if (!anchors.has(name)) fail(`Unknown alias '*${name}'`)
+  const value = anchors.get(name)
+  if (typeof value === "object" && value !== null) fail(`Alias '*${name}' of a collection cannot be a mapping key`)
+  return value === null || value === undefined ? "" : String(value)
+}
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
@@ -220,7 +262,7 @@ const parseDoubleQuoted = (input: string): string => {
 }
 
 const parseScalar = (input: string): unknown => {
-  const value = input.trim()
+  const value = trimWhite(input)
   if (value.length === 0) return null
   if (value.startsWith("\"") && value.endsWith("\"")) {
     return parseDoubleQuoted(value)
@@ -261,13 +303,21 @@ class FlowParser {
   private input: string
   private readonly anchors: Map<string, unknown>
   private readonly nextLine: (depth: number) => string | undefined
+  // Block collections already open around this flow collection.
+  private readonly blockDepth: number
   private index = 0
   private depth = 0
 
-  constructor(input: string, anchors: Map<string, unknown>, nextLine: (depth: number) => string | undefined) {
+  constructor(
+    input: string,
+    anchors: Map<string, unknown>,
+    nextLine: (depth: number) => string | undefined,
+    blockDepth: number
+  ) {
     this.input = input
     this.anchors = anchors
     this.nextLine = nextLine
+    this.blockDepth = blockDepth
   }
 
   parse(): unknown {
@@ -283,7 +333,7 @@ class FlowParser {
     this.skipWhitespace()
     const character = this.peek()
     if (character === "[" || character === "{") {
-      this.depth++
+      if (this.blockDepth + ++this.depth > maxDepth) this.fail(depthError)
       const collection = character === "[" ? this.parseSequence() : this.parseMapping()
       this.depth--
       return collection
@@ -291,13 +341,13 @@ class FlowParser {
     if (character === "\"" || character === "'") return parseScalar(this.readQuoted(character))
     if (character === "*") {
       this.index++
-      const name = this.readUntil(/[,\]}\s]/)
+      const name = this.readUntil(/[,\]} \t\n]/)
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
     }
     if (character === "&") {
       this.index++
-      const name = this.readUntil(/[\s,[\]{}]/)
+      const name = this.readUntil(/[ \t\n,[\]{}]/)
       if (name === "" || /[[{]/.test(this.peek())) this.fail("Invalid anchor")
       this.skipWhitespace()
       if (this.peek() === "&") this.fail("Multiple anchors on one node")
@@ -305,8 +355,10 @@ class FlowParser {
       this.anchors.set(name, value)
       return value
     }
-    const text = foldFlowLines(this.readUntil(/[,\]}]/)).trim()
+    const text = trimWhite(foldFlowLines(this.readUntil(/[,\]}]/)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
+    if (text.startsWith("!")) this.fail(tagError)
+    if (isExplicitKey(text)) this.fail(explicitKeyError)
     return parseScalar(text)
   }
 
@@ -371,8 +423,12 @@ class FlowParser {
     if (character === "\"" || character === "'") {
       return parseKey(this.readQuoted(character))
     }
-    const key = foldFlowLines(this.readUntil(/:/)).trim()
+    const raw = foldFlowLines(this.readUntil(/:/))
+    const key = trimWhite(raw)
     if (key.startsWith("%")) this.fail(directiveIndicatorError)
+    if (key.startsWith("!")) this.fail(tagError)
+    if (isExplicitKey(key)) this.fail(explicitKeyError)
+    if (key.startsWith("*")) return aliasKey(this.anchors, raw, (message) => this.fail(message))
     return key
   }
 
@@ -391,7 +447,7 @@ class FlowParser {
   }
 
   private skipWhitespace(): void {
-    while (/\s/.test(this.peek())) this.index++
+    while (/[ \t\n]/.test(this.peek())) this.index++
   }
 
   private expect(character: string): void {
@@ -425,14 +481,11 @@ const makeLine = (raw: string, number: number): Line => {
   }
 }
 
-// YAML separates tokens with spaces and tabs only, unlike `String.prototype.trimEnd`.
-const trimSeparation = (text: string): string => text.replace(/[ \t]+$/, "")
-
 // Removes the comment from a marker or directive line, keeping characters before
 // it that are not YAML separation so they can be rejected.
 const boundaryContent = (raw: string): string => {
   const index = findIndicator(raw, "#")
-  return trimSeparation(index === -1 ? raw : raw.slice(0, index))
+  return trimWhiteEnd(index === -1 ? raw : raw.slice(0, index))
 }
 
 class YamlParser {
@@ -443,6 +496,8 @@ class YamlParser {
   private documentEnd: number
   // Anchors are scoped to one document.
   private anchors = new Map<string, unknown>()
+  // Block collections currently open.
+  private depth = 0
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -544,6 +599,7 @@ class YamlParser {
     const line = this.lineAt(this.index)
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
+    if (isExplicitKey(line.text)) this.fail(line, explicitKeyError)
     if (isSequenceEntry(line.text)) return this.parseSequence(indent)
     if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
     this.index++
@@ -551,16 +607,20 @@ class YamlParser {
   }
 
   private parseMapping(indent: number, mapping = new MappingBuilder()): YamlRecord {
+    this.enterCollection()
     while (true) {
       this.skipIgnored()
       const line = this.lineAt(this.index)
-      if (line === undefined || line.indent < indent) return mapping.output
+      if (line === undefined || line.indent < indent) break
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
+      if (isExplicitKey(line.text)) this.fail(line, explicitKeyError)
       const separator = mappingSeparator(line.text)
-      if (separator === -1) return mapping.output
+      if (separator === -1) break
       this.index++
       this.parseMappingEntry(mapping, line.text, separator, indent, line)
     }
+    this.depth--
+    return mapping.output
   }
 
   private parseMappingEntry(
@@ -570,26 +630,31 @@ class YamlParser {
     indent: number,
     line: Line
   ): void {
-    const rawKey = text.slice(0, separator).trim()
+    const rawKey = trimWhite(text.slice(0, separator))
     if (rawKey.startsWith("%")) this.fail(line, directiveIndicatorError)
-    const rawValue = text.slice(separator + 1).trimStart()
-    const value = this.parseNodeValue(rawValue, indent, true)
+    if (rawKey.startsWith("!")) this.fail(line, tagError)
     const fail = (message: string) => this.fail(line, message)
+    // Resolved before the value, which may redefine the anchor.
+    const key = rawKey.startsWith("*") ? aliasKey(this.anchors, text.slice(0, separator), fail) : parseKey(rawKey)
+    const rawValue = trimWhiteStart(text.slice(separator + 1))
+    const value = this.parseNodeValue(rawValue, indent, true)
     if (rawKey === "<<") mapping.merge(value, fail)
-    else mapping.set(parseKey(rawKey), value, fail)
+    else mapping.set(key, value, fail)
   }
 
   private parseSequence(indent: number): Array<unknown> {
+    this.enterCollection()
     const output: Array<unknown> = []
     while (true) {
       this.skipIgnored()
       const line = this.lineAt(this.index)
-      if (line === undefined || line.indent < indent) return output
+      if (line === undefined || line.indent < indent) break
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
-      if (!isSequenceEntry(line.text)) return output
+      if (!isSequenceEntry(line.text)) break
       this.index++
-      const item = line.text.slice(1).trimStart()
+      const item = trimWhiteStart(line.text.slice(1))
       if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
+      if (isExplicitKey(item)) this.fail(line, explicitKeyError)
       const separator = mappingSeparator(item)
       if (separator === -1) {
         output.push(this.parseNodeValue(item, indent))
@@ -603,10 +668,16 @@ class YamlParser {
         output.push(this.parseMapping(mappingIndent, mapping))
       }
     }
+    this.depth--
+    return output
+  }
+
+  private enterCollection(): void {
+    if (++this.depth > maxDepth) throw new SyntaxError(depthError)
   }
 
   private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {
-    const anchor = /^&([^\s,[\]{}]+)(?:\s+(.*))?$/.exec(rawValue)
+    const anchor = /^&([^ \t,[\]{}]+)(?:[ \t]+(.*))?$/.exec(rawValue)
     if (anchor === null) return this.parseValue(rawValue, parentIndent, allowIndentless)
     const value = this.parseValue(anchor[2] ?? "", parentIndent, allowIndentless)
     this.anchors.set(anchor[1], value)
@@ -614,7 +685,7 @@ class YamlParser {
   }
 
   private parseValue(value: string, parentIndent: number, allowIndentless: boolean): unknown {
-    const text = value.trimEnd()
+    const text = trimWhiteEnd(value)
     if (text.length === 0) {
       this.skipIgnored()
       const next = this.lineAt(this.index)
@@ -625,11 +696,12 @@ class YamlParser {
       }
       return null
     }
+    if (text.startsWith("!")) throw new SyntaxError(tagError)
     if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
     // Keep escaped trailing whitespace in quoted values.
     if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
     if (text.startsWith("*")) {
-      const name = text.slice(1).trim()
+      const name = trimWhite(text.slice(1))
       if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
       return this.anchors.get(name)
     }
@@ -642,18 +714,18 @@ class YamlParser {
       const next = this.lineAt(this.index)
       if (next === undefined) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
-      const content = next.text.trim().length > 0
+      const content = trimWhite(next.text).length > 0
       if (content && next.indent < parentIndent) return undefined
       if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
       this.index++
       // Strip comments again knowing the open collections, so quoted `#` after a comma is kept.
       return stripComment(next.raw.slice(next.indent), depth)
-    }).parse()
+    }, this.depth).parse()
   }
 
   private parsePlainValue(value: string, parentIndent: number): unknown {
     const first = this.lines[this.index - 1]
-    if (/:(?:\s|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
+    if (/:(?:[ \t]|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
     if (value.startsWith("%")) this.fail(first, directiveIndicatorError)
     let output = value
     let terminated = findIndicator(first.raw, "#") !== -1
@@ -665,9 +737,9 @@ class YamlParser {
       // Quotes in plain continuations are literal.
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
-      const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
+      const text = trimWhiteEnd(comment === -1 ? content : content.slice(0, comment))
       if (text.length === 0) break
-      if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
+      if (/:(?:[ \t]|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       this.rejectTabIndentedBlankLines(blankLines, parentIndent)
       output += foldLineBreak(blankLines) + text
       this.index++
@@ -684,7 +756,7 @@ class YamlParser {
       const end = closingQuote(line, quote, 0)
       if (end !== -1) {
         const rest = line.slice(end + 1)
-        if (rest.trim().length > 0 && !/^[ \t]+#/.test(rest)) {
+        if (trimWhite(rest).length > 0 && !/^[ \t]+#/.test(rest)) {
           throw new SyntaxError("Unexpected content after quoted YAML scalar")
         }
         return parseScalar(output + line.slice(0, end + 1))
@@ -699,10 +771,10 @@ class YamlParser {
       const next = this.lineAt(this.index++)
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
       this.rejectTabIndent(next)
-      if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
+      if (trimWhite(next.raw).length > 0 && next.indent <= parentIndent) {
         this.fail(next, "Invalid quoted scalar indentation")
       }
-      line = next.raw.trimStart()
+      line = trimWhiteStart(next.raw)
     }
   }
 
@@ -785,16 +857,20 @@ class YamlParser {
     }
   }
 
+  private isBlank(line: Line | undefined): boolean {
+    return line !== undefined && trimWhite(line.raw).length === 0
+  }
+
   private skipBlankLines(): number {
     const start = this.index
-    while (this.lineAt(this.index)?.raw.trim().length === 0) this.index++
+    while (this.isBlank(this.lineAt(this.index))) this.index++
     return this.index - start
   }
 
   private skipIgnored(): void {
     while (this.index < this.documentEnd) {
       const line = this.lines[this.index]
-      if (line.text.trimEnd().length === 0) {
+      if (trimWhite(line.text).length === 0) {
         this.index++
       } else {
         this.rejectTabIndent(line)
@@ -837,7 +913,12 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  *
  * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
  * decoded while date-like values remain strings. Numbers use JavaScript number
- * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
+ * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision; quote
+ * such values to keep them exact as strings.
+ *
+ * Tags, explicit keys (`? key`), and collections nested more than 1000 levels
+ * deep fail. An alias may be used as a mapping key when it refers to a scalar,
+ * whose string form becomes the key.
  *
  * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
@@ -854,6 +935,7 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * Yaml.parse("port: 8080") // => Result.succeed({ port: 8080 })
  * Result.isFailure(Yaml.parse("port: [8080")) // => true
  * Result.isFailure(Yaml.parse("a: 1\n---\nb: 2")) // => true
+ * Result.isFailure(Yaml.parse("port: !!str 8080")) // => true
  * ```
  *
  * @see {@link parseAll} for parsing a stream of documents
