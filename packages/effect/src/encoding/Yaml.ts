@@ -211,6 +211,23 @@ const readTag = (text: string, fail: (message: string) => never): string => {
   return tag
 }
 
+// YAML 1.2.2 §10.3: the core schema's scalar spellings, matched against source text.
+// Shared by tag resolution and by the printer, which quotes any string spelled this way.
+const coreSchema = {
+  null: /^(?:null|Null|NULL|~)$/,
+  true: /^(?:true|True|TRUE)$/,
+  false: /^(?:false|False|FALSE)$/,
+  int: /^[-+]?[0-9]+$/,
+  octal: /^0o[0-7]+$/,
+  hex: /^0x[0-9a-fA-F]+$/,
+  // The fraction is optional, so `1` is a float too.
+  float: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$/,
+  infinity: /^[-+]?\.(?:inf|Inf|INF)$/,
+  nan: /^\.(?:nan|NaN|NAN)$/
+}
+
+const isCoreNonString = (text: string): boolean => Object.values(coreSchema).some((pattern) => pattern.test(text))
+
 // Resolves a core scalar tag against the scalar's source text, so `!!str 0x10` stays
 // `"0x10"` and `!!int "42"` becomes `42`.
 const resolveScalarTag = (tag: string, text: string, fail: (message: string) => never): unknown => {
@@ -218,24 +235,25 @@ const resolveScalarTag = (tag: string, text: string, fail: (message: string) => 
     case "!!str":
       return text
     case "!!null":
-      if (/^(?:null|Null|NULL|~|)$/.test(text)) return null
+      if (text === "" || coreSchema.null.test(text)) return null
       break
     case "!!bool":
-      if (/^(?:true|True|TRUE)$/.test(text)) return true
-      if (/^(?:false|False|FALSE)$/.test(text)) return false
+      if (coreSchema.true.test(text)) return true
+      if (coreSchema.false.test(text)) return false
       break
     case "!!int":
-      if (/^[-+]?[0-9]+$/.test(text)) return Number(text)
-      if (/^0o[0-7]+$/.test(text)) return Number.parseInt(text.slice(2), 8)
-      if (/^0x[0-9a-fA-F]+$/.test(text)) return Number.parseInt(text.slice(2), 16)
+      if (coreSchema.int.test(text)) return Number(text)
+      if (coreSchema.octal.test(text)) return Number.parseInt(text.slice(2), 8)
+      if (coreSchema.hex.test(text)) return Number.parseInt(text.slice(2), 16)
       break
     case "!!float":
-      // The fraction is optional, so `1` is a float too.
-      if (/^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$/.test(text)) return Number(text)
-      if (/^[-+]?\.(?:inf|Inf|INF)$/.test(text)) {
-        return text.startsWith("-") ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
+      if (coreSchema.float.test(text)) return Number(text)
+      if (coreSchema.infinity.test(text)) {
+        return text.startsWith("-")
+          ? Number.NEGATIVE_INFINITY
+          : Number.POSITIVE_INFINITY
       }
-      if (/^\.(?:nan|NaN|NAN)$/.test(text)) return Number.NaN
+      if (coreSchema.nan.test(text)) return Number.NaN
       break
   }
   return fail(`Scalar '${text}' does not match the YAML tag ${tag}`)
@@ -1383,11 +1401,6 @@ export const parse = (input: string): Result.Result<unknown, EncodingError> =>
 export const parseAll = (input: string): Result.Result<Array<unknown>, EncodingError> =>
   decode(input, (parser) => parser.parseStream())
 
-// Scalars the YAML 1.2 core schema, or `parseScalar`, would not read back as
-// the same string.
-const ambiguousScalar =
-  /^(?:null|Null|NULL|~|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$/
-
 // YAML 1.2.2 §5.1: characters outside the printable set must be escaped on
 // output. Line and paragraph separators are included to stay on the safe side
 // of YAML 1.1 line break handling, and the byte order mark because §5.4
@@ -1406,7 +1419,8 @@ const isPlainSafe = (text: string): boolean =>
   !/^(?:---|\.\.\.)(?:\s|$)/.test(text) &&
   !/:(?:\s|$)/.test(text) &&
   !/\s#/.test(text) &&
-  !ambiguousScalar.test(text) &&
+  // Quoted when the core schema, or `parseScalar`, would not read it back as the same string.
+  !isCoreNonString(text) &&
   parseScalar(text) === text
 
 const doubleQuoteEscapes: Record<string, string> = {
