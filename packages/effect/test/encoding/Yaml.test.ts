@@ -593,6 +593,10 @@ items:
       assert.deepStrictEqual(Object.keys((result as { readonly flow: object }).flow), ["b", "c"])
     })
 
+    it("merges through a plain << key that carries an anchor", () => {
+      assert.deepStrictEqual(parse("&a <<: {x: 1}\nb: {&c <<: {y: 2}, z: 3}\n"), { x: 1, b: { y: 2, z: 3 } })
+    })
+
     it("treats quoted merge keys as ordinary keys", () => {
       assert.deepStrictEqual(parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
     })
@@ -710,6 +714,18 @@ items:
         c: "<<",
         d: { "<<": { y: 2 } }
       })
+    })
+
+    // Expected values were checked with yaml 2.9.1.
+    it.each(
+      [
+        ["hex", "{0x10: 1}\n", { "16": 1 }],
+        ["null", "{null: 1}\n", { "": 1 }],
+        ["anchored hex", "{&a 0x10: 1, b: *a}\n", { "16": 1, b: 16 }],
+        ["anchored null", "{&a null: 1, b: *a}\n", { "": 1, b: null }]
+      ] as const
+    )("converts %s flow keys like block keys", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
     })
 
     it("rejects aliases of collections used as keys", () => {
