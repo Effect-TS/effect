@@ -685,6 +685,21 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.strictEqual(receivedType, "integer")
     })
 
+    it("omits isConditional and marks the export approximate", () => {
+      const conditional = Schema.String.check(Schema.isConditional(Schema.String, { onTrue: Schema.Never }))
+      const schema = Schema.Union([conditional, Schema.Finite], { mode: "oneOf" })
+      assert.deepStrictEqual(
+        SchemaRepresentation.toJsonSchemaDocument(SchemaRepresentation.toRepresentation(schema.ast)).schema,
+        { anyOf: [{ type: "string" }, { type: "number" }] }
+      )
+      const unexportable = Schema.Struct({ [Symbol("key")]: Schema.String })
+      assert.deepStrictEqual(
+        Schema.toJsonSchemaDocument(Schema.String.check(Schema.isConditional(unexportable, { onTrue: Schema.Never })))
+          .schema,
+        { type: "string" }
+      )
+    })
+
     it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
