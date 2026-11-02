@@ -1,5 +1,5 @@
 import { Effect, hole, Schema, Struct, Tuple } from "effect"
-import type { Array as Arr } from "effect"
+import type { Array as Arr, SchemaAST } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Union", () => {
@@ -373,6 +373,12 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+      })
+
+      it("mapCases should infer the AST from the mapped cases", () => {
+        const schema = Schema.TaggedUnion({ A: {} }).mapCases(({ A }) => ({ A: Schema.suspend(() => A) }))
+
+        expect(schema.ast).type.toBe<SchemaAST.Union<SchemaAST.Suspend>>()
       })
 
       it("mapCases should infer the mapped cases", () => {
