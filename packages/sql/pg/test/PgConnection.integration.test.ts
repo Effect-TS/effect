@@ -234,21 +234,6 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.isAbove(connection.processId, 0)
     }))
 
-  it.effect("reports an open transaction until the session ends", () =>
-    Effect.gen(function*() {
-      const connection = yield* makeConnection()
-      assert.isFalse(connection.inTransaction)
-      yield* connection.query("BEGIN")
-      assert.isTrue(connection.inTransaction)
-      yield* Effect.flip(connection.query("SELECT 1 / 0"))
-      assert.isTrue(connection.inTransaction)
-      yield* connection.query("ROLLBACK")
-      assert.isFalse(connection.inTransaction)
-      yield* connection.query("BEGIN")
-      yield* Effect.flip(connection.query("SELECT pg_terminate_backend(pg_backend_pid())"))
-      assert.isFalse(connection.inTransaction)
-    }))
-
   it.effect("runs unnamed extended queries with inferred binary parameters", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()

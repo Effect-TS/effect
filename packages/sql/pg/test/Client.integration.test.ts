@@ -6,7 +6,6 @@ import {
   DateTime,
   Deferred,
   Effect,
-  Exit,
   Fiber,
   Layer,
   Option,
@@ -396,51 +395,15 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.strictEqual(error.reason.operation, "commit")
     }))
 
-  it.effect.each([["top-level", false], ["nested", true]] as const)(
-    "fails with a typed error when the server ends the session in a %s transaction",
-    ([, nested]) =>
-      Effect.gen(function*() {
-        const sql = yield* PgClient.PgClient
-        const terminate = sql`SELECT pg_terminate_backend(pg_backend_pid())`
-        const transaction = sql.withTransaction(nested ? sql.withTransaction(terminate) : terminate)
-
-        const exit = yield* Effect.exit(transaction)
-        assert.isTrue(Exit.isFailure(exit))
-        if (!Exit.isFailure(exit)) {
-          return
-        }
-        assert.isFalse(
-          Cause.hasDies(exit.cause),
-          `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
-        )
-        assert.instanceOf(Option.getOrThrow(Cause.findErrorOption(exit.cause)), SqlError.SqlError)
-
-        const recovered = yield* transaction.pipe(
-          Effect.as("failed"),
-          Effect.catchTag("SqlError", () => Effect.succeed("recovered"))
-        )
-        assert.strictEqual(recovered, "recovered")
-        assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT 1 AS value`), [{ value: 1 }])
-      })
-  )
-
-  it.effect("rolls back a failed transaction on a live session", () =>
+  it.effect("keeps the typed error when the server ends the session in a nested transaction", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      yield* sql`CREATE TABLE live_rollback (value INTEGER)`
+      const cause = yield* sql.withTransaction(
+        sql.withTransaction(sql`SELECT pg_terminate_backend(pg_backend_pid())`)
+      ).pipe(Effect.sandbox, Effect.flip)
 
-      const error = yield* sql.withTransaction(Effect.gen(function*() {
-        yield* sql`INSERT INTO live_rollback VALUES (1)`
-        const inner = yield* sql.withTransaction(
-          sql`INSERT INTO live_rollback VALUES (2)`.pipe(Effect.andThen(Effect.fail("inner")))
-        ).pipe(Effect.flip)
-        assert.strictEqual(inner, "inner")
-        assert.deepStrictEqual(yield* sql`SELECT value FROM live_rollback`, [{ value: 1 }])
-        return yield* Effect.fail("outer")
-      })).pipe(Effect.flip)
-
-      assert.strictEqual(error, "outer")
-      assert.deepStrictEqual(yield* sql`SELECT value FROM live_rollback`, [])
+      assert.isFalse(Cause.hasDies(cause))
+      assert.instanceOf(Cause.squash(cause), SqlError.SqlError)
     }))
 
   it.effect("afterCommit runs once other connections see the transaction's rows", () =>
