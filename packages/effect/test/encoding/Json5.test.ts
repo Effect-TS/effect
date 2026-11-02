@@ -51,7 +51,12 @@ b', \\u0061b: 1, a\\u0062c: 2, café: true, 𐐀: 2, $_: null, /* block */ }`
     const changed = { get: () => (calls++, "changed"), configurable: true }
     // oxlint-disable-next-line no-extend-native -- Parsing must not reach inherited properties; removed below.
     Object.defineProperties(Object.prototype, {
-      accessor: { set: () => calls++, configurable: true },
+      accessor: {
+        set: () => {
+          calls++
+        },
+        configurable: true
+      },
       readonly: { value: 0, configurable: true },
       // The escape letters `q` and `u`, which a sparse lookup table would inherit.
       113: changed,

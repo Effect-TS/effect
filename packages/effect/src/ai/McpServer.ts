@@ -2124,7 +2124,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const selectedProtocol = clientState?.protocol ?? runtime.protocols[0]
             const profile = reverseKey?.profile ?? clientState?.profile ?? {
               protocolVersion: selectedProtocol.protocolVersion,
-              clientCapabilities: {},
+              clientCapabilities: new McpSchema.ClientCapabilities({}),
               clientInfo: { name: "unknown", version: "unknown" }
             }
             return RcMap.get(

@@ -36,11 +36,15 @@ because they share the fixed release group in `.changeset/config.json`.
 
 Choose the bump from current release policy:
 
-- Use `patch` for compatible fixes, `minor` for compatible additions, and
-  `major` for breaks.
-- A break confined to APIs tagged `@stability unstable` is `minor`. A break
-  confined to APIs tagged `@stability experimental` is `patch`. APIs tagged
-  `@stability stable` follow strict semver.
+- APIs tagged `@stability stable`, and APIs without a stability tag, follow
+  strict semver: `patch` for compatible fixes, `minor` for compatible
+  additions, and `major` for breaks.
+- For APIs tagged `@stability unstable`, use `patch` for compatible fixes and
+  new features. Only a break is `minor`.
+- For APIs tagged `@stability experimental`, use `patch` for fixes, new
+  features, and breaks.
+- When a PR touches APIs at several stability levels, use the highest bump any
+  of them requires.
 - Use `major` only when a maintainer has approved a major release.
 - The release queue retargets PRs with `minor` changesets to `v4/next-minor`
   and PRs with `major` changesets to `v4/next-major`. Choose the level the

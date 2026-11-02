@@ -24,8 +24,6 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
-import * as JsonPointer from "effect/JsonPointer"
-import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -36,7 +34,7 @@ import type { Span } from "effect/Tracer"
 import type { Mutable, Simplify } from "effect/Types"
 import { AnthropicClient, type MessageStreamEvent } from "./AnthropicClient.ts"
 import { addGenAIAnnotations } from "./AnthropicTelemetry.ts"
-import type { AnthropicTool } from "./AnthropicTool.ts"
+import * as AnthropicTool from "./AnthropicTool.ts"
 import type * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
 
@@ -1220,7 +1218,9 @@ const prepareMessages = Effect.fnUntraced(
                     content.push({
                       type: "tool_search_tool_result",
                       tool_use_id: part.id,
-                      content: part.result as any
+                      content: Array.isArray(part.result)
+                        ? { type: "tool_search_tool_search_result", tool_references: part.result }
+                        : part.result as any
                     })
                     break
                   }
@@ -1451,7 +1451,8 @@ const prepareTools = Effect.fnUntraced(
           name: tool.name,
           input_schema: input_schema as any,
           ...(Predicate.isNotUndefined(description) ? { description } : undefined),
-          ...(Predicate.isNotUndefined(strict) ? { strict } : undefined)
+          ...(Predicate.isNotUndefined(strict) ? { strict } : undefined),
+          ...(Context.get(tool.annotations, AnthropicTool.DeferLoading) ? { defer_loading: true } : undefined)
         })
 
         if (capabilities.supportsStructuredOutput === true) {
@@ -1460,7 +1461,7 @@ const prepareTools = Effect.fnUntraced(
       }
 
       if (Tool.isProviderDefined(tool)) {
-        const providerTool = tool as AnthropicTool
+        const providerTool = tool as AnthropicTool.AnthropicTool
         switch (providerTool.id) {
           case "anthropic.bash_20241022": {
             betas.add("computer-use-2024-10-22")
@@ -1958,7 +1959,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content.tool_references
+              result: part.content.tool_references,
+              providerExecuted: true
             })
           } else {
             parts.push({
@@ -1966,7 +1968,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           }
 
@@ -2011,7 +2014,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           } else {
             const idGenerator = yield* IdGenerator.IdGenerator
@@ -2021,7 +2025,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
 
             const content = part.content as ReadonlyArray<Generated.BetaResponseWebSearchResultBlock>
@@ -2486,7 +2491,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 } else {
                   const idGenerator = yield* IdGenerator.IdGenerator
@@ -2496,7 +2502,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
 
                   const content = part.content as ReadonlyArray<Generated.BetaResponseWebSearchResultBlock>
@@ -2592,7 +2599,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content.tool_references
+                    result: part.content.tool_references,
+                    providerExecuted: true
                   })
                 } else {
                   parts.push({
@@ -2600,7 +2608,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 }
                 break
@@ -3286,28 +3295,8 @@ const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
       throw error
     }
     // Anthropic's schema restrictions (e.g. no recursion) only apply to strict tools
-    return resolveRootReference(Tool.getJsonSchema(tool))
+    return Tool.getJsonSchema(tool, { transformer: LanguageModel.defaultCodecTransformer })
   }
-}
-
-// A root schema with an identifier is generated as a top-level `$ref`, which
-// may point to another reference (e.g. an identified suspend). Follow the chain
-// to its concrete schema so the root is an object schema, keeping `$defs`
-// because a recursive root refers back to its own definition.
-const resolveRootReference = (
-  jsonSchema: JsonSchema.JsonSchema,
-  visited: Set<string> = new Set()
-): JsonSchema.JsonSchema => {
-  const { $defs, $ref } = jsonSchema
-  if (typeof $ref !== "string" || !Predicate.isObject($defs) || visited.has($ref)) {
-    return jsonSchema
-  }
-  visited.add($ref)
-  const path = JsonPointer.parseUriFragment($ref)
-  if (path === undefined || path.length !== 2 || path[0] !== "$defs" || !Object.hasOwn($defs, path[1])) {
-    return jsonSchema
-  }
-  return resolveRootReference({ ...($defs as JsonSchema.Definitions)[path[1]], $defs }, visited)
 }
 
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>

@@ -96,7 +96,9 @@ const importFromOtherProcess = (filename: string, msecs: number) => {
   )
 }
 
-describe("SqlEventJournal", () => {
+// node:sqlite blocks the Vitest worker; concurrent tests would share a running
+// timeout while waiting for each other's queries.
+describe("SqlEventJournal", { concurrent: false }, () => {
   ConflictsTest.suite(makeJournal)
 
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>

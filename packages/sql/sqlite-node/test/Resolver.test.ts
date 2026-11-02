@@ -23,7 +23,9 @@ const seededClient = Effect.gen(function*() {
   return sql
 })
 
-describe("Resolver", () => {
+// node:sqlite blocks the Vitest worker; concurrent tests would share a running
+// timeout while waiting for each other's queries.
+describe("Resolver", { concurrent: false }, () => {
   describe("ordered", () => {
     it.effect("insert", () =>
       Effect.gen(function*() {
