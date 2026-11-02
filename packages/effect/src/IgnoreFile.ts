@@ -120,15 +120,19 @@ export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
 export const gitignore = (source: string, options?: {
   /** The directory containing the file, relative to the root. */
   readonly scope?: string | undefined
-}): PathFilter.PathFilter =>
-  PathFilter.make(
+}): PathFilter.PathFilter => {
+  const scope = options?.scope
+  // checked even when the source has no rules
+  Engine.splitScope(scope ?? "")
+  return PathFilter.make(
     parseGitignore(source).map(({ directoryOnly, negated, nodes }) => {
       const matcher = Glob.pathMatcher(Glob.fromNodes(nodes, new Set([0]), true))
       return negated
-        ? PathFilter.include(matcher, { directoryOnly, scope: options?.scope, subtree: "self" })
-        : PathFilter.exclude(matcher, { directoryOnly, scope: options?.scope, subtree: "barrier" })
+        ? PathFilter.include(matcher, { directoryOnly, scope, subtree: "self" })
+        : PathFilter.exclude(matcher, { directoryOnly, scope, subtree: "barrier" })
     })
   )
+}
 
 /**
  * Parses the contents of a `.dockerignore` file into a `PathFilter`.
@@ -138,12 +142,13 @@ export const gitignore = (source: string, options?: {
  * Lines are read as Docker reads them: a line starting with `#` is a comment,
  * surrounding whitespace is trimmed, and each pattern is cleaned, so `./a`,
  * `/a` and `a/` all mean `a`. `**` matches any number of characters including
- * `/` wherever it appears, and a pattern also matches every path inside a
- * matching directory.
+ * `/` wherever it appears.
  *
  * Every other line becomes one rule with `subtree: "inherit"`, in order: an
- * exclusion, or for a `!` line an inclusion. Paths inside a directory are
- * decided as BuildKit decides them when it sends a build context.
+ * exclusion, or for a `!` line an inclusion. As in BuildKit, a pattern that
+ * matches a directory also applies to every path inside it, but only if it
+ * changes the directory's result at that point in the file: in `d`,
+ * `!d/keep`, `d` the third line does not, so `d/keep` is kept.
  *
  * Fails with a {@link ParseError} where Docker rejects the file, such as for a
  * lone `!` or an unclosed `[`.
