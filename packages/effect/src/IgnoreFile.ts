@@ -1,7 +1,7 @@
 /**
  * Matches root-relative paths against `.gitignore` or `.dockerignore` rules
- * without accessing the file system. Pass an `Ignore` to `FileSystem.glob` to
- * filter a walk with the same rules.
+ * without accessing the file system. Pass an `IgnoreFile` to
+ * `FileSystem.glob` to filter a walk with the same rules.
  *
  * **Details**
  *
@@ -45,11 +45,11 @@ import { format } from "./Formatter.ts"
 import { dual } from "./Function.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import type * as Glob from "./internal/glob.ts"
-import * as internal from "./internal/ignore.ts"
+import * as internal from "./internal/ignoreFile.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import * as Result from "./Result.ts"
 
-const TypeId = "~effect/Ignore"
+const TypeId = "~effect/IgnoreFile"
 
 /**
  * Compiled `.gitignore` or `.dockerignore` rules.
@@ -67,28 +67,28 @@ const TypeId = "~effect/Ignore"
  * @category models
  * @since 4.0.0
  */
-export interface Ignore extends Pipeable, Inspectable {
+export interface IgnoreFile extends Pipeable, Inspectable {
   readonly [TypeId]: typeof TypeId
   readonly format: "gitignore" | "dockerignore"
 }
 
-type IgnoreImpl =
-  & Ignore
+type IgnoreFileImpl =
+  & IgnoreFile
   & internal.Matcher
   & (
     | { readonly format: "gitignore"; readonly rules: ReadonlyArray<internal.GitRule> }
     | { readonly format: "dockerignore"; readonly patterns: ReadonlyArray<internal.DockerPattern> }
   )
 
-const IgnoreProto = {
+const IgnoreFileProto = {
   [TypeId]: TypeId,
-  toJSON(this: Ignore) {
-    return { _id: "Ignore", format: this.format }
+  toJSON(this: IgnoreFile) {
+    return { _id: "IgnoreFile", format: this.format }
   },
-  toString(this: Ignore) {
-    return `Ignore(${format(this.toJSON())})`
+  toString(this: IgnoreFile) {
+    return `IgnoreFile(${format(this.toJSON())})`
   },
-  [NodeInspectSymbol](this: Ignore) {
+  [NodeInspectSymbol](this: IgnoreFile) {
     return this.toJSON()
   },
   pipe() {
@@ -96,8 +96,8 @@ const IgnoreProto = {
   }
 }
 
-const makeGit = (rules: ReadonlyArray<internal.GitRule>): Ignore => {
-  const self = Object.create(IgnoreProto)
+const makeGit = (rules: ReadonlyArray<internal.GitRule>): IgnoreFile => {
+  const self = Object.create(IgnoreFileProto)
   self.format = "gitignore"
   self.rules = rules
   const matcher = internal.gitMatcher(rules)
@@ -106,8 +106,8 @@ const makeGit = (rules: ReadonlyArray<internal.GitRule>): Ignore => {
   return self
 }
 
-const makeDocker = (patterns: ReadonlyArray<internal.DockerPattern>): Ignore => {
-  const self = Object.create(IgnoreProto)
+const makeDocker = (patterns: ReadonlyArray<internal.DockerPattern>): IgnoreFile => {
+  const self = Object.create(IgnoreFileProto)
   self.format = "dockerignore"
   self.patterns = patterns
   const matcher = internal.dockerMatcher(patterns)
@@ -129,7 +129,7 @@ const makeDocker = (patterns: ReadonlyArray<internal.DockerPattern>): Ignore => 
  * @category errors
  * @since 4.0.0
  */
-export class ParseError extends Data.TaggedError("IgnoreParseError")<{
+export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
   readonly line: number
   readonly pattern: string
   readonly message: string
@@ -157,15 +157,15 @@ export class ParseError extends Data.TaggedError("IgnoreParseError")<{
  * **Example** (Matching Git rules)
  *
  * ```ts import.meta.vitest
- * import { Ignore } from "effect"
+ * import { IgnoreFile } from "effect"
  *
- * const ignore = Ignore.gitignore("node_modules/\n*.log\n!keep.log\n")
+ * const ignore = IgnoreFile.gitignore("node_modules/\n*.log\n!keep.log\n")
  *
- * Ignore.ignores(ignore, "node_modules/") // => true
- * Ignore.ignores(ignore, "src/debug.log") // => true
- * Ignore.ignores(ignore, "keep.log") // => false
+ * IgnoreFile.ignores(ignore, "node_modules/") // => true
+ * IgnoreFile.ignores(ignore, "src/debug.log") // => true
+ * IgnoreFile.ignores(ignore, "keep.log") // => false
  * // a file named `node_modules` is not matched by the directory rule
- * Ignore.ignores(ignore, "node_modules") // => false
+ * IgnoreFile.ignores(ignore, "node_modules") // => false
  * ```
  *
  * @see {@link concat} for combining nested `.gitignore` files
@@ -177,7 +177,7 @@ export class ParseError extends Data.TaggedError("IgnoreParseError")<{
 export const gitignore = (source: string, options?: {
   /** The directory containing the file, relative to the root. */
   readonly base?: string | undefined
-}): Ignore => makeGit(internal.parseGitignore(source, internal.splitBase(options?.base ?? "")))
+}): IgnoreFile => makeGit(internal.parseGitignore(source, internal.splitBase(options?.base ?? "")))
 
 /**
  * Parses the contents of a `.dockerignore` file.
@@ -218,20 +218,20 @@ export const gitignore = (source: string, options?: {
  * **Example** (Re-including a file)
  *
  * ```ts import.meta.vitest
- * import { Ignore, Result } from "effect"
+ * import { IgnoreFile, Result } from "effect"
  *
- * const ignore = Result.getOrThrow(Ignore.dockerignore("node_modules\n!node_modules/keep.txt\n"))
+ * const ignore = Result.getOrThrow(IgnoreFile.dockerignore("node_modules\n!node_modules/keep.txt\n"))
  *
- * Ignore.ignores(ignore, "node_modules/pkg/index.js") // => true
- * Ignore.ignores(ignore, "node_modules/keep.txt") // => false
- * Result.isFailure(Ignore.dockerignore("!")) // => true
+ * IgnoreFile.ignores(ignore, "node_modules/pkg/index.js") // => true
+ * IgnoreFile.ignores(ignore, "node_modules/keep.txt") // => false
+ * Result.isFailure(IgnoreFile.dockerignore("!")) // => true
  * ```
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const dockerignore = (source: string): Result.Result<Ignore, ParseError> => {
+export const dockerignore = (source: string): Result.Result<IgnoreFile, ParseError> => {
   const parsed = internal.parseDockerignore(source)
   return Array.isArray(parsed) ? Result.succeed(makeDocker(parsed)) : Result.fail(new ParseError(parsed))
 }
@@ -253,15 +253,15 @@ export const dockerignore = (source: string): Result.Result<Ignore, ParseError> 
  * **Example** (Combining nested .gitignore files)
  *
  * ```ts import.meta.vitest
- * import { Ignore } from "effect"
+ * import { IgnoreFile } from "effect"
  *
- * const root = Ignore.gitignore("*.log\n")
- * const nested = Ignore.gitignore("!/keep.log\n", { base: "logs" })
- * const ignore = Ignore.concat(root, nested)
+ * const root = IgnoreFile.gitignore("*.log\n")
+ * const nested = IgnoreFile.gitignore("!/keep.log\n", { base: "logs" })
+ * const ignore = IgnoreFile.concat(root, nested)
  *
- * Ignore.ignores(ignore, "keep.log") // => true
- * Ignore.ignores(ignore, "logs/keep.log") // => false
- * Ignore.ignores(ignore, "logs/other.log") // => true
+ * IgnoreFile.ignores(ignore, "keep.log") // => true
+ * IgnoreFile.ignores(ignore, "logs/keep.log") // => false
+ * IgnoreFile.ignores(ignore, "logs/other.log") // => true
  * ```
  *
  * @stability unstable
@@ -269,18 +269,18 @@ export const dockerignore = (source: string): Result.Result<Ignore, ParseError> 
  * @since 4.0.0
  */
 export const concat: {
-  (that: Ignore): (self: Ignore) => Ignore
-  (self: Ignore, that: Ignore): Ignore
-} = dual(2, (self: Ignore, that: Ignore): Ignore => {
-  const left = self as IgnoreImpl
-  const right = that as IgnoreImpl
+  (that: IgnoreFile): (self: IgnoreFile) => IgnoreFile
+  (self: IgnoreFile, that: IgnoreFile): IgnoreFile
+} = dual(2, (self: IgnoreFile, that: IgnoreFile): IgnoreFile => {
+  const left = self as IgnoreFileImpl
+  const right = that as IgnoreFileImpl
   if (left.format === "gitignore" && right.format === "gitignore") {
     return makeGit([...left.rules, ...right.rules])
   }
   if (left.format === "dockerignore" && right.format === "dockerignore") {
     return makeDocker([...left.patterns, ...right.patterns])
   }
-  throw new Error(`Ignore.concat cannot combine ${left.format} with ${right.format}`)
+  throw new Error(`IgnoreFile.concat cannot combine ${left.format} with ${right.format}`)
 })
 
 /**
@@ -300,13 +300,13 @@ export const concat: {
  * **Example** (Filtering paths)
  *
  * ```ts import.meta.vitest
- * import { Ignore, pipe } from "effect"
+ * import { IgnoreFile, pipe } from "effect"
  *
- * const ignore = Ignore.gitignore("dist/\n")
+ * const ignore = IgnoreFile.gitignore("dist/\n")
  * const paths = ["src/index.ts", "dist/index.js"]
  *
- * paths.filter((path) => !Ignore.ignores(ignore, path)) // => ["src/index.ts"]
- * pipe(ignore, Ignore.ignores("./dist/")) // => true
+ * paths.filter((path) => !IgnoreFile.ignores(ignore, path)) // => ["src/index.ts"]
+ * pipe(ignore, IgnoreFile.ignores("./dist/")) // => true
  * ```
  *
  * @stability unstable
@@ -314,6 +314,6 @@ export const concat: {
  * @since 4.0.0
  */
 export const ignores: {
-  (path: string): (self: Ignore) => boolean
-  (self: Ignore, path: string): boolean
-} = dual(2, (self: Ignore, path: string): boolean => (self as IgnoreImpl).ignores(path))
+  (path: string): (self: IgnoreFile) => boolean
+  (self: IgnoreFile, path: string): boolean
+} = dual(2, (self: IgnoreFile, path: string): boolean => (self as IgnoreFileImpl).ignores(path))

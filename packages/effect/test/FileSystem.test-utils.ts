@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, ByteSize, Cause, Ignore, Option, Result } from "effect"
+import { Array, ByteSize, Cause, IgnoreFile, Option, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import * as Glob from "effect/Glob"
@@ -18,7 +18,7 @@ export interface TestLayerOptions {
 const posix = (path: string) => path.replaceAll("\\", "/")
 
 const makeIgnore = ([format, source]: readonly ["gitignore" | "dockerignore", string]) =>
-  format === "gitignore" ? Ignore.gitignore(source) : Result.getOrThrow(Ignore.dockerignore(source))
+  format === "gitignore" ? IgnoreFile.gitignore(source) : Result.getOrThrow(IgnoreFile.dockerignore(source))
 
 const runWith = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
   Effect.runPromise(Effect.provide(self, layer))
@@ -1210,7 +1210,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         yield* fs.makeDirectory(`${root}/target`)
         yield* fs.writeFileString(`${root}/target/file.ts`, "")
         yield* fs.symlink(`${root}/target`, `${root}/link`)
-        const ignore = Ignore.gitignore("link/\ntarget/\n")
+        const ignore = IgnoreFile.gitignore("link/\ntarget/\n")
         expect(yield* fs.glob("**", { root, ignore })).toEqual(["link"])
         // literal segments are probed with `stat`, which follows the link
         expect(yield* fs.glob("link", { root, ignore })).toEqual(["link"])
@@ -1229,7 +1229,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         expect(yield* fs.glob("..\\/a\\/x.ts", { root: src })).toEqual(["../a/x.ts"])
         expect(yield* fs.glob(`${escapedRoot}\\/src\\/index.ts`)).toEqual([`${root}/src/index.ts`])
         expect(yield* fs.glob("src\\/index.ts", { root })).toEqual(["src/index.ts"])
-        const ignore = Ignore.gitignore("src\n")
+        const ignore = IgnoreFile.gitignore("src\n")
         for (
           const [pattern, base] of [
             [`${Glob.escape(root)}/src/*.ts`, root],

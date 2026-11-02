@@ -17,7 +17,7 @@ import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import { pipe } from "./Function.ts"
-import type { Ignore } from "./Ignore.ts"
+import type { IgnoreFile } from "./IgnoreFile.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
@@ -150,14 +150,15 @@ export interface FileSystem {
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
-   * `ignore` applies `.gitignore` or `.dockerignore` rules from `Ignore` to
-   * paths relative to `root`. It only removes results: an ignore exception
-   * never brings back a path dropped by the pattern, `exclude`, `dot`, or the
-   * symbolic link rules. Git rules never descend into an ignored directory.
-   * Docker rules descend into one unless no exception could apply inside it,
-   * so exceptions such as `!node_modules/keep.txt` still apply. Directory-only
-   * Git rules test the entry itself, so a link to a directory does not match
-   * `link/`, even when the pattern names the link.
+   * `ignore` applies `.gitignore` or `.dockerignore` rules from an
+   * `IgnoreFile` to paths relative to `root`. It only removes results: an
+   * ignore exception never brings back a path dropped by the pattern,
+   * `exclude`, `dot`, or the symbolic link rules. Git rules never descend
+   * into an ignored directory. Docker rules descend into one unless no
+   * exception could apply inside it, so exceptions such as
+   * `!node_modules/keep.txt` still apply. Directory-only Git rules test the
+   * entry itself, so a link to a directory does not match `link/`, even when
+   * the pattern names the link.
    *
    * **Gotchas**
    *
@@ -173,7 +174,7 @@ export interface FileSystem {
       readonly root?: string | undefined
       readonly exclude?: ReadonlyArray<string> | undefined
       readonly dot?: boolean | undefined
-      readonly ignore?: Ignore | undefined
+      readonly ignore?: IgnoreFile | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
