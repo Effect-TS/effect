@@ -287,7 +287,8 @@ const parsePosixClass = (
 ): { readonly ranges: ReadonlyArray<number>; readonly end: number } | undefined => {
   for (let i = open + 2; i < chars.length && i <= open + 8; i++) {
     if (chars[i] === ":" && chars[i + 1] === "]") {
-      const ranges = posixClasses[chars.slice(open + 2, i).join("")]
+      const name = chars.slice(open + 2, i).join("")
+      const ranges = Object.hasOwn(posixClasses, name) ? posixClasses[name] : undefined
       return ranges === undefined ? undefined : { ranges, end: i + 1 }
     }
   }
@@ -749,7 +750,12 @@ export interface IgnoreStep {
 /** @internal */
 export const ignoreWalker = (ignore: unknown): IgnoreWalker => (ignore as { readonly walker: IgnoreWalker }).walker
 
-const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
+/** A listed or probed entry; `link` marks a probed directory reached through a link. */
+interface Entry extends FileSystem.DirectoryEntry {
+  readonly link?: boolean | undefined
+}
+
+const byName = Order.mapInput(Order.String, (entry: Entry) => entry.name)
 
 /** @internal */
 export const make = (
@@ -761,7 +767,11 @@ export const make = (
     return walk(fs, compiled, options, undefined)
   }
   // Ignore rules match root-relative paths, so every walked entry needs one.
-  if (compiled.nodes.some((node) => node._tag === "Literal" && node.value !== "." && isUnlisted(node.value))) {
+  // Check the expanded patterns too, since compiling drops some invalid ones.
+  if (
+    expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).includes("..")) ||
+    compiled.nodes.some((node) => node._tag === "Literal" && node.value !== "." && isUnlisted(node.value))
+  ) {
     return Effect.die(
       new Error(`FileSystem.glob with ignore requires a relative pattern without ".." segments: ${pattern}`)
     )
@@ -796,7 +806,7 @@ const walk = Effect.fnUntraced(function*(
     parent: string,
     name: string,
     named: boolean
-  ): Effect.Effect<FileSystem.DirectoryEntry | undefined, PlatformError> => {
+  ): Effect.Effect<Entry | undefined, PlatformError> => {
     const path = toFsPath(join(parent, name))
     return fs.stat(path).pipe(
       Effect.map((info) => info.type),
@@ -806,7 +816,19 @@ const walk = Effect.fnUntraced(function*(
           Effect.catchIf(isNotLink, () => Effect.succeed(undefined))
         )),
       Effect.catchIf(named ? isMissing : isIgnorable, () => Effect.succeed(undefined)),
-      Effect.map((type) => type === undefined ? undefined : { name, type })
+      Effect.flatMap((type): Effect.Effect<Entry | undefined, PlatformError> => {
+        if (type === undefined) {
+          return Effect.succeed(undefined)
+        }
+        if (type !== "Directory" || !ignoreNeedsDirectory) {
+          return Effect.succeed({ name, type })
+        }
+        // `stat` follows links, but ignore rules need the entry's own type
+        return fs.readLink(path).pipe(
+          Effect.as<Entry>({ name, type, link: true }),
+          Effect.catchIf(isNotLink, () => Effect.succeed<Entry>({ name, type }))
+        )
+      })
     )
   }
 
@@ -815,7 +837,7 @@ const walk = Effect.fnUntraced(function*(
     relative: string,
     states: States,
     named: boolean
-  ): Effect.Effect<{ readonly entries: Array<FileSystem.DirectoryEntry>; readonly named: boolean }, PlatformError> => {
+  ): Effect.Effect<{ readonly entries: Array<Entry>; readonly named: boolean }, PlatformError> => {
     const literals = new Set<string>()
     let listed = !named
     for (const state of states) {
@@ -853,7 +875,7 @@ const walk = Effect.fnUntraced(function*(
 
   // Synchronous unless the entry type must be resolved through `stat` / `readLink`
   const visit = (
-    { name, type }: FileSystem.DirectoryEntry,
+    { link: probedLink = false, name, type }: Entry,
     parent: string,
     states: States,
     excluded: States,
@@ -867,7 +889,8 @@ const walk = Effect.fnUntraced(function*(
     const relative = join(parent, name)
     const nextExcluded = union(step(excludes, excluded, name))
     const descend = canDescend(compiled, next)
-    const child = (isDirectory: boolean, link: boolean): Child | undefined => {
+    // `link` changes how `**` follows the entry; `ownLink` only how ignore rules see it
+    const child = (isDirectory: boolean, link: boolean, ownLink = link): Child | undefined => {
       let accepted = accepts(compiled, next, isDirectory)
       if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
         return undefined
@@ -876,7 +899,7 @@ const walk = Effect.fnUntraced(function*(
       let pruned = false
       if (ignore !== undefined && name !== ".") {
         // Ignore rules see the entry's own type, so a link is never a directory
-        const result = ignore.step(ignored, name, isDirectory && !link)
+        const result = ignore.step(ignored, name, isDirectory && !ownLink)
         accepted &&= !result.ignored
         pruned = result.ignored && result.prune
         if (!accepted && (!isDirectory || !descend || pruned)) {
@@ -903,7 +926,7 @@ const walk = Effect.fnUntraced(function*(
       return child(false, false)
     }
     if (type !== "Unknown" && type !== "SymbolicLink") {
-      return child(type === "Directory", false)
+      return child(type === "Directory", false, probedLink)
     }
     const path = toFsPath(relative)
     return fs.stat(path).pipe(
