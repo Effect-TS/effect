@@ -438,11 +438,19 @@ const boundaryContent = (raw: string): string => {
 class YamlParser {
   private readonly lines: Array<Line>
   private index = 0
+  // Lines from this index on belong to the next document, so document content
+  // never reads past a document marker.
+  private documentEnd: number
   // Anchors are scoped to one document.
   private anchors = new Map<string, unknown>()
 
   constructor(lines: Array<Line>) {
     this.lines = lines
+    this.documentEnd = lines.length
+  }
+
+  private lineAt(index: number): Line | undefined {
+    return index < this.documentEnd ? this.lines[index] : undefined
   }
 
   // YAML 1.2.2 §9.2. `limit` stops with an error before a document past it starts.
@@ -503,8 +511,16 @@ class YamlParser {
 
   private parseDocument(): unknown {
     const start = this.lines[this.index]
+    if (isDocumentStart(start)) this.index++
+    const end = this.lines.findIndex((line, index) => index >= this.index && isDocumentMarker(line))
+    this.documentEnd = end === -1 ? this.lines.length : end
+    const value = this.parseDocumentContent(start)
+    this.documentEnd = this.lines.length
+    return value
+  }
+
+  private parseDocumentContent(start: Line): unknown {
     if (isDocumentStart(start)) {
-      this.index++
       // Strip the comment after the marker, so quotes and flow openers are read as token starts.
       const content = stripComment(start.raw.slice(3).replace(/^[ \t]+/, ""))
       if (content.length > 0) {
@@ -516,14 +532,14 @@ class YamlParser {
       }
     }
     this.skipIgnored()
-    const line = this.lines[this.index]
-    if (line === undefined || isDocumentMarker(line)) return null
+    const line = this.lineAt(this.index)
+    if (line === undefined) return null
     return this.parseNode(line.indent)
   }
 
   private parseNode(indent: number, parentIndent = indent - 1): unknown {
     this.skipIgnored()
-    const line = this.lines[this.index]
+    const line = this.lineAt(this.index)
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
     if (isSequenceEntry(line.text)) return this.parseSequence(indent)
@@ -535,8 +551,8 @@ class YamlParser {
   private parseMapping(indent: number, mapping = new MappingBuilder()): YamlRecord {
     while (true) {
       this.skipIgnored()
-      const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent || isDocumentMarker(line)) return mapping.output
+      const line = this.lineAt(this.index)
+      if (line === undefined || line.indent < indent) return mapping.output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       const separator = mappingSeparator(line.text)
       if (separator === -1) return mapping.output
@@ -565,8 +581,8 @@ class YamlParser {
     const output: Array<unknown> = []
     while (true) {
       this.skipIgnored()
-      const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent || isDocumentMarker(line)) return output
+      const line = this.lineAt(this.index)
+      if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) return output
       this.index++
@@ -599,8 +615,8 @@ class YamlParser {
     const text = value.trimEnd()
     if (text.length === 0) {
       this.skipIgnored()
-      const next = this.lines[this.index]
-      if (next === undefined || isDocumentMarker(next)) return null
+      const next = this.lineAt(this.index)
+      if (next === undefined) return null
       if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent)
       if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
         return this.parseSequence(parentIndent)
@@ -621,8 +637,8 @@ class YamlParser {
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
     return new FlowParser(text, this.anchors, (depth) => {
-      const next = this.lines[this.index]
-      if (next === undefined || isDocumentMarker(next)) return undefined
+      const next = this.lineAt(this.index)
+      if (next === undefined) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
       const content = next.text.trim().length > 0
       if (content && next.indent < parentIndent) return undefined
@@ -641,14 +657,14 @@ class YamlParser {
     let terminated = findIndicator(first.raw, "#") !== -1
     while (!terminated) {
       const blankLines = this.skipBlankLines()
-      const next = this.lines[this.index]
+      const next = this.lineAt(this.index)
       if (next === undefined || next.indent <= parentIndent) break
       this.rejectTabIndent(next)
       // Quotes in plain continuations are literal.
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
       const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
-      if (text.length === 0 || isDocumentMarker(next)) break
+      if (text.length === 0) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       this.rejectTabIndentedBlankLines(blankLines, parentIndent)
       output += foldLineBreak(blankLines) + text
@@ -678,8 +694,8 @@ class YamlParser {
         this.rejectTabIndentedBlankLines(blankLines, parentIndent)
         output += trimFoldedEnd(line, quote) + foldLineBreak(blankLines)
       }
-      const next = this.lines[this.index++]
-      if (next === undefined || isDocumentMarker(next)) throw new SyntaxError("Unterminated quoted YAML scalar")
+      const next = this.lineAt(this.index++)
+      if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
       this.rejectTabIndent(next)
       if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
         this.fail(next, "Invalid quoted scalar indentation")
@@ -697,9 +713,8 @@ class YamlParser {
     let contentIndent = Number.isNaN(explicitIndent) ? undefined : parentIndent + explicitIndent
     let hasContent = false
 
-    while (end < this.lines.length) {
+    while (end < this.documentEnd) {
       const line = this.lines[end]
-      if (isDocumentMarker(line)) break
       // Only spaces make a line empty; a tab after the indentation is content.
       if (/[^ ]/.test(line.raw)) {
         if (contentIndent === undefined && line.indent > parentIndent) {
@@ -770,12 +785,12 @@ class YamlParser {
 
   private skipBlankLines(): number {
     const start = this.index
-    while (this.index < this.lines.length && this.lines[this.index].raw.trim().length === 0) this.index++
+    while (this.lineAt(this.index)?.raw.trim().length === 0) this.index++
     return this.index - start
   }
 
   private skipIgnored(): void {
-    while (this.index < this.lines.length) {
+    while (this.index < this.documentEnd) {
       const line = this.lines[this.index]
       if (line.text.trimEnd().length === 0) {
         this.index++
