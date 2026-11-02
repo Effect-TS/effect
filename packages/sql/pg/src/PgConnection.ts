@@ -215,6 +215,12 @@ export interface PgConnection {
   readonly config: Config
   readonly processId: number
   /**
+   * Whether a transaction block is open, as reported by the latest
+   * `ReadyForQuery`. False once the session has ended, since the server rolls
+   * back an open transaction with it.
+   */
+  readonly inTransaction: boolean
+  /**
    * Reserves the session for exclusive use until the scope closes. Pinning is
    * reentrant. Calls through the returned connection skip the
    * ownership queue, while calls through the original connection wait.
@@ -404,6 +410,10 @@ class PgConnectionImpl implements PgConnection {
   pipelineFlushScheduled = false
   readonly pipelineIdleWaiters = new Set<() => void>()
   readonly [internalsKey]: ConnectionInternals
+
+  get inTransaction(): boolean {
+    return this.deadWith === undefined && this.transactionStatus !== "I"
+  }
 
   constructor(config: Config, resolved: ResolvedConfig, session: Session, registry: PgTypes.Registry | undefined) {
     this.config = config
@@ -885,6 +895,10 @@ class PinnedPgConnection implements PgConnection {
 
   get processId(): number {
     return this.base.processId
+  }
+
+  get inTransaction(): boolean {
+    return this.base.inTransaction
   }
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>

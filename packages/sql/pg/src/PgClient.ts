@@ -320,6 +320,8 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       prepareTransactionControls: true,
       commit,
       onCommitFailure,
+      // A session the server ended took its transaction with it.
+      isTransaction: (conn) => (conn as ConnectionImpl).connection.inTransaction,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer,
       compiler,
