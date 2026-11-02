@@ -362,7 +362,15 @@ development:
         ["sibling key after the collection", "a: [\n  1\n  ]\nb: 2\n", { a: [1], b: 2 }],
         ["comment and blank lines", "a: [1, # one\n# between\n\n  2]\n", { a: [1, 2] }],
         ["quoted hash after a comma on a continuation line", "a: [\n  1, \"a # b\"\n  ]\n", { a: [1, "a # b"] }],
-        ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }]
+        ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }],
+        // YAML 1.2.2 §7.3: quoted scalars fold across lines inside flow collections too.
+        ["multiline quoted items", "a: [\"x\n  y\", 'p\n\n  q']\nb: 1\n", { a: ["x y", "p\nq"], b: 1 }],
+        ["multiline quoted keys and values", "a: {k: \"v\n  w\", 'k2\n  x': 1}\n", { a: { k: "v w", "k2 x": 1 } }],
+        ["escaped line break in a quoted item", "a: [\"x\\\n  y\"]\n", { a: ["xy"] }],
+        ["hash on a quoted continuation line", "a: [\"x\n  # y\"]\n", { a: ["x # y"] }],
+        ["escaped single quote across lines", "a: ['it''s\n  ok']\n", { a: ["it's ok"] }],
+        ["white space around a quoted line break", "a: [\"x  \n  \ty\"]\n", { a: ["x y"] }],
+        ["quoted continuation at the collection's indentation", "a:\n  [\"x\n  y\"]\n", { a: ["x y"] }]
       ] as const
     )("parses %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
@@ -371,7 +379,9 @@ development:
     it.each([
       ["continuation at the parent indentation", "a: {\nb: 1 }\n"],
       ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
-      ["content after the closing bracket", "a: [1,\n  2] extra\n"]
+      ["content after the closing bracket", "a: [1,\n  2] extra\n"],
+      ["quoted continuation at the parent indentation", "a: [\"x\ny\"]\n"],
+      ["unterminated multiline quoted item", "a: [\"x\n  y]\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
     })
@@ -429,25 +439,51 @@ development:
     })
   })
 
-  describe("unsupported compact nested block sequences", () => {
-    // Valid YAML, deliberately rejected as unsupported.
+  // YAML 1.2.2 §8.2.1: a sequence entry may start a compact nested sequence on its own line.
+  // Expected values were checked with yaml 2.9.1.
+  describe("compact nested block sequences", () => {
+    it.each(
+      [
+        ["an indentless mapping value", "a:\n- - 1\n  - 2\n", { a: [[1, 2]] }],
+        ["an indented mapping value", "a:\n  - - 1\n    - 2\n", { a: [[1, 2]] }],
+        ["a root sequence", "- - 1\n  - 2\n", [[1, 2]]],
+        ["a blank line between nested entries", "- - 1\n\n  - 2\n", [[1, 2]]],
+        ["a nested entry after a scalar item", "a:\n- 1\n- - 2\n", { a: [1, [2]] }],
+        ["a nested mapping item", "a:\n- - b: 1\n", { a: [[{ b: 1 }]] }],
+        ["a single-line nested sequence", "- - 1\n", [[1]]],
+        ["an empty nested entry", "- -\n", [[null]]],
+        ["three levels", "- - - 1\n    - 2\n  - 3\n- 4\n", [[[1, 2], 3], 4]],
+        ["extra space after the outer dash", "-   - 1\n    - b: 1\n      c: 2\n", [[1, { b: 1, c: 2 }]]],
+        [
+          "anchors, aliases, flow collections and block scalars",
+          "- - &a x\n  - *a\n  - [1, {b: c}]\n  - |\n    text\n",
+          [["x", "x", [1, { b: "c" }], "text\n"]]
+        ]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+    })
+
+    it("parses YAML 1.2.2 example 8.15 (block sequence entry types)", () => {
+      assert.deepStrictEqual(
+        parse("- # Empty\n- |\n block node\n- - one # Compact\n  - two # sequence\n- one: two # Compact mapping\n"),
+        [null, "block node\n", ["one", "two"], { one: "two" }]
+      )
+    })
+
     it.each([
-      ["indentless mapping value", "a:\n- - 1\n  - 2\n"],
-      ["indented mapping value", "a:\n  - - 1\n    - 2\n"],
-      ["root sequence", "- - 1\n  - 2\n"],
-      ["blank line between nested entries", "- - 1\n\n  - 2\n"],
-      ["nested entry after a scalar item", "a:\n- 1\n- - 2\n"],
-      ["nested mapping item", "a:\n- - b: 1\n"],
-      ["single-line nested sequence", "- - 1\n"],
-      ["empty nested entry", "- -\n"]
-    ])("rejects %s", (_, source) => {
+      ["less-indented nested entry", "- - 1\n - 2\n"],
+      ["nested sequence on a mapping key line", "a: - - 1\n"],
+      ["sequence on a mapping key line", "a: - 1\n"]
+    ])("rejects a %s", (_, source) => {
       failureMessage(source)
     })
 
     it.each(
       [
         ["mapping value", "a: one\n  - two\n", { a: "one - two" }],
-        ["sequence item", "- one\n  - two\n", ["one - two"]]
+        ["sequence item", "- one\n  - two\n", ["one - two"]],
+        ["nested sequence item", "- - 1\n   - 2\n", [["1 - 2"]]]
       ] as const
     )("preserves a dash in a plain continuation of a %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
