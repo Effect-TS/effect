@@ -2,4 +2,4 @@
 "@effect/platform-bun": patch
 ---
 
-Fix `BunHttpServer.make` shutdown hanging on unread request bodies after the graceful shutdown timeout expires.
+Close remaining connections when `gracefulShutdownTimeout` expires in `BunHttpServer.make`, so shutdown no longer hangs on unread request bodies.
