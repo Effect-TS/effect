@@ -176,7 +176,7 @@ export const make = Effect.fnUntraced(function*(
       yield* Scope.addFinalizerExit(serveScope, () => {
         const index = handlerStack.lastIndexOf(handler)
         if (index !== -1) handlerStack.splice(index, 1)
-        currentHandler = handlerStack[handlerStack.length - 1] ?? unavailable
+        currentHandler = handlerStack[handlerStack.length - 1]
         return preemptiveShutdown
       })
       handlerStack.push(handler)
