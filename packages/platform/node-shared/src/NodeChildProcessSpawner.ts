@@ -674,27 +674,39 @@ const make = Effect.gen(function*() {
         const env = resolveEnvironment(cmd.options)
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
-        // Input feeders are released after the child is terminated. Bun does not
-        // close a destroyed, backpressured stdin while its reader is alive.
-        const inputScope = yield* Scope.fork(yield* Effect.scope)
-        const [childProcess, exitSignal] = yield* Effect.acquireRelease(
-          spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
-          Effect.fnUntraced(function*([childProcess, exitSignal]) {
-            const exited = yield* Deferred.isDone(exitSignal)
-            if (exited) {
-              const [code] = yield* Deferred.await(exitSignal)
-              if (code !== 0 && Predicate.isNotNull(code)) {
-                yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
-              } else if (isReferenced && process.platform !== "win32" && cmd.options.detached !== false) {
-                yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
-              }
-              return
+        const releaseProcess = Effect.fnUntraced(function*(
+          childProcess: NodeChildProcess.ChildProcess,
+          exitSignal: Deferred.Deferred<readonly [code: number | null, signal: NodeJS.Signals | null]>
+        ) {
+          const exited = yield* Deferred.isDone(exitSignal)
+          if (exited) {
+            const [code] = yield* Deferred.await(exitSignal)
+            if (code !== 0 && Predicate.isNotNull(code)) {
+              yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
+            } else if (isReferenced && process.platform !== "win32" && cmd.options.detached !== false) {
+              yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
             }
-            if (!isReferenced) {
-              return
-            }
-            yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
-          })
+            return
+          }
+          if (!isReferenced) {
+            return
+          }
+          yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
+        })
+        // Input feeders are released concurrently with process termination,
+        // since either may wait on the other: Bun does not settle a destroyed,
+        // backpressured stdin while the child is alive, and a child may wait for
+        // stdin EOF before exiting.
+        const [childProcess, exitSignal, inputScope] = yield* Effect.acquireRelease(
+          Effect.map(
+            spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
+            ([childProcess, exitSignal]) => [childProcess, exitSignal, Scope.makeUnsafe()] as const
+          ),
+          ([childProcess, exitSignal, inputScope], exit) =>
+            Effect.all([Scope.close(inputScope, exit), releaseProcess(childProcess, exitSignal)], {
+              concurrency: "unbounded",
+              discard: true
+            })
         )
 
         const pid = ProcessId(childProcess.pid!)
