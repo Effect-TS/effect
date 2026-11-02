@@ -371,8 +371,8 @@ describe("toFormatter", () => {
       a: Schema.Option(Schema.String)
     }) {}
     const format = Schema.toFormatter(A)
-    strictEqual(format({ a: Option.some("a") }), `A({ "a": some("a") })`)
-    strictEqual(format({ a: Option.none() }), `A({ "a": none() })`)
+    strictEqual(format(new A({ a: Option.some("a") })), `A({ "a": some("a") })`)
+    strictEqual(format(new A({ a: Option.none() })), `A({ "a": none() })`)
   })
 
   describe("suspend", () => {
