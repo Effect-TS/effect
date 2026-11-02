@@ -116,8 +116,9 @@ export interface Options extends Net.ListenOptions {
   /**
    * Bounds how long shutdown waits for the server to close its connections
    * before it interrupts the remaining request fibers. Handlers run
-   * uninterruptibly unless wrapped in `Effect.interruptible` or served as
-   * `HttpRouter` routes, so shutdown still waits for them after the timeout.
+   * uninterruptibly unless wrapped in `Effect.interruptible` or served by
+   * interruptible `HttpRouter` routes, so shutdown still waits for them after
+   * the timeout.
    *
    * @default "20 seconds"
    */
