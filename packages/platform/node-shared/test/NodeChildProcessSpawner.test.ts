@@ -40,6 +40,15 @@ describe.skipIf(process.platform === "win32")("error descriptions", () => {
         "nonexistent-command-12345 'a b' 'it'\\''s' '\\u001b[2J'"
       )
     }).pipe(Effect.provide(NodeServices)))
+
+  it.effect("a failed spawn leaves nothing in the caller's scope", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+
+      yield* Effect.flip(Scope.provide(scope)(ChildProcess.make("nonexistent-command-12345")))
+
+      assert.strictEqual(scope.state._tag, "Empty")
+    }).pipe(Effect.provide(NodeServices)))
 })
 
 describe("Windows cleanup", { concurrent: false }, () => {
@@ -486,6 +495,25 @@ it.live("scope release returns when a backpressured stdin stream is never read",
     const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
       yield* ChildProcess.make("sleep", ["600"], { stdin: endless })
       yield* Effect.sleep("200 millis")
+    })))
+
+    assert.isBelow(releaseMillis, 2_000)
+  }).pipe(Effect.provide(NodeServices)))
+
+it.live("scope release closes stdin for a child that drains it on the kill signal", () =>
+  Effect.gen(function*() {
+    const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
+      const handle = yield* ChildProcess.make(process.execPath, [
+        "-e",
+        // The timeout only bounds the child's lifetime if stdin is never closed.
+        "process.on(\"SIGTERM\", () => process.stdin.on(\"end\", () => process.exit(0)).resume()); console.log(\"READY\"); setTimeout(() => process.exit(1), 3_000)"
+      ], { stdin: Stream.never })
+      yield* handle.stdout.pipe(
+        Stream.decodeText,
+        Stream.splitLines,
+        Stream.takeUntil((line) => line === "READY"),
+        Stream.runDrain
+      )
     })))
 
     assert.isBelow(releaseMillis, 2_000)
