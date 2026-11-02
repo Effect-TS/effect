@@ -232,6 +232,24 @@ describe("MessageStorage", () => {
         ).toHaveLength(3)
       }).pipe(Effect.provide(MemoryLayer)))
 
+    it.effect("does not store an AckChunk for a request deleteProcessed removed", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const cutoff = Date.UTC(2026, 0, 1)
+        const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+        const chunk = yield* makeChunkReply(request)
+        yield* storage.saveRequest(request)
+        yield* storage.saveReply(chunk)
+        yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+        const shardIds = [request.envelope.address.shardId]
+        expect(yield* storage.deleteProcessed({ entityType: "test", shardIds, completedBefore: cutoff, limit: 100 }))
+          .toEqual(1)
+
+        // a late acknowledgement for the deleted request
+        yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
+        expect(yield* storage.unprocessedMessages(shardIds)).toEqual([])
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unprocessedMessages honors the limit option", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
