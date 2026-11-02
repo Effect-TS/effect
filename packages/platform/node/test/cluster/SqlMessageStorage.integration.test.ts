@@ -454,6 +454,49 @@ describe("SqlMessageStorage", () => {
             const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
             expect(error._tag).toEqual("PersistenceError")
           }))
+
+        it.effect("acknowledges and cleans up when another table has the lookup index names", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            yield* sql`CREATE TABLE collision_idx_other (id INT)`
+            yield* sql`CREATE INDEX collision_idx_messages_request_id_idx ON collision_idx_other (id)`
+            yield* sql`CREATE INDEX collision_idx_replies_request_lookup_idx ON collision_idx_other (id)`
+            const migrate = SqlMessageStorage.makeEncoded({ prefix: "collision_idx" }).pipe(
+              Effect.provide(NodeCrypto.layer)
+            )
+            yield* migrate
+            // Recreate a schema migrated before this change: the lookup indexes
+            // are missing from the storage tables and only migrations 1-3 ran.
+            for (
+              const [index, table] of [
+                ["collision_idx_messages_request_id_idx", "collision_idx_messages"],
+                ["collision_idx_replies_request_lookup_idx", "collision_idx_replies"]
+              ]
+            ) {
+              yield* sql`
+                IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = ${index} AND object_id = OBJECT_ID(${table}))
+                DROP INDEX ${sql(index)} ON ${sql(table)}
+              `
+            }
+            yield* sql`DELETE FROM collision_idx_migrations WHERE migration_id > 3`
+            const storage = yield* MessageStorage.makeEncoded(yield* migrate)
+
+            const cutoff = Date.UTC(2026, 0, 1)
+            const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+            const chunk = yield* makeChunkReply(request)
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(chunk)
+            yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
+            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+            expect(
+              yield* storage.deleteProcessed({
+                entityType: "test",
+                shardIds: [request.envelope.address.shardId],
+                completedBefore: cutoff,
+                limit: 100
+              })
+            ).toEqual(1)
+          }))
       }
 
       it.effect("resetRequests with no IDs leaves existing claims untouched", () =>
