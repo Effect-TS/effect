@@ -1,18 +1,25 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue } from "@effect/vitest/utils"
-import { IgnoreFile, Result } from "effect"
+import { IgnoreFile, PathFilter, Result } from "effect"
+
+// The tables write directories with a trailing "/", which only this helper
+// interprets: `PathFilter` takes directory-ness as an option.
+const excludes = (filter: PathFilter.PathFilter, path: string) =>
+  path.endsWith("/")
+    ? PathFilter.excludes(filter, path.slice(0, -1), { directory: true })
+    : PathFilter.excludes(filter, path)
 
 const assertIgnores = (
-  ignore: IgnoreFile.IgnoreFile,
+  filter: PathFilter.PathFilter,
   ignored: ReadonlyArray<string>,
   kept: ReadonlyArray<string>,
   label: string
 ) => {
   for (const path of ignored) {
-    assertTrue(IgnoreFile.ignores(ignore, path), `expected ${label} to ignore ${JSON.stringify(path)}`)
+    assertTrue(excludes(filter, path), `expected ${label} to ignore ${JSON.stringify(path)}`)
   }
   for (const path of kept) {
-    assertFalse(IgnoreFile.ignores(ignore, path), `expected ${label} to keep ${JSON.stringify(path)}`)
+    assertFalse(excludes(filter, path), `expected ${label} to keep ${JSON.stringify(path)}`)
   }
 }
 
@@ -22,8 +29,8 @@ const dockerignore = (source: string) => Result.getOrThrow(IgnoreFile.dockerigno
 // fixture tree. Paths ending in "/" are directories.
 const gitCases: ReadonlyArray<{
   readonly source: string
-  readonly base?: string
-  readonly nested?: readonly [base: string, source: string]
+  readonly scope?: string
+  readonly nested?: readonly [scope: string, source: string]
   readonly ignored?: ReadonlyArray<string>
   readonly kept?: ReadonlyArray<string>
 }> = [
@@ -40,8 +47,8 @@ const gitCases: ReadonlyArray<{
     ignored: ["vmlinux.o", "arch/vmlinux.o", "arch/foo/kernel/sub/vmlinux.x"],
     kept: ["arch/foo/kernel/vmlinux.lds"]
   },
-  { source: "sub\n*.txt\n", base: "sub", ignored: ["sub/a.txt", "sub/sub"], kept: ["a.txt", "sub/"] },
-  { source: "x\n", base: "[a]", ignored: ["[a]/x"], kept: ["a/x"] },
+  { source: "sub\n*.txt\n", scope: "sub", ignored: ["sub/a.txt", "sub/sub"], kept: ["a.txt", "sub/"] },
+  { source: "x\n", scope: "[a]", ignored: ["[a]/x"], kept: ["a/x"] },
   { source: "hello.*\n", ignored: ["hello.c", "a/hello.c"] },
   { source: "/hello.*\n", ignored: ["hello.c"], kept: ["a/hello.c"] },
   { source: "doc/frotz/\n", ignored: ["doc/frotz/"], kept: ["a/doc/frotz/"] },
@@ -235,18 +242,18 @@ const dockerCases: ReadonlyArray<{
 
 describe("IgnoreFile", () => {
   describe("gitignore", () => {
-    for (const { base, ignored = [], kept = [], nested, source } of gitCases) {
-      const label = JSON.stringify(nested ? [source, ...nested] : base ? [base, source] : source)
+    for (const { ignored = [], kept = [], nested, scope, source } of gitCases) {
+      const label = JSON.stringify(nested ? [source, ...nested] : scope ? [scope, source] : source)
       it(label, () => {
-        const root = IgnoreFile.gitignore(source, base === undefined ? undefined : { base })
-        const ignore = nested ? IgnoreFile.concat(root, IgnoreFile.gitignore(nested[1], { base: nested[0] })) : root
-        assertIgnores(ignore, ignored, kept, label)
+        const root = IgnoreFile.gitignore(source, scope === undefined ? undefined : { scope })
+        const filter = nested ? PathFilter.concat(root, IgnoreFile.gitignore(nested[1], { scope: nested[0] })) : root
+        assertIgnores(filter, ignored, kept, label)
       })
     }
 
     it("documented deviations", () => {
       for (const { effect, path, source } of gitDeviations) {
-        assert.strictEqual(IgnoreFile.ignores(IgnoreFile.gitignore(source), path), effect, `${source} against ${path}`)
+        assert.strictEqual(excludes(IgnoreFile.gitignore(source), path), effect, `${source} against ${path}`)
       }
     })
   })
@@ -254,7 +261,7 @@ describe("IgnoreFile", () => {
   describe("dockerignore", () => {
     it("moby/patternmatcher fixtures", () => {
       for (const [source, path, expected] of dockerReference) {
-        assert.strictEqual(IgnoreFile.ignores(dockerignore(source), path), expected, `${source} against ${path}`)
+        assert.strictEqual(excludes(dockerignore(source), path), expected, `${source} against ${path}`)
       }
     })
 
@@ -284,28 +291,16 @@ describe("IgnoreFile", () => {
     })
 
     it("matches repeated wildcards in linear time", () => {
-      const ignore = dockerignore("*a".repeat(30) + "b")
+      const filter = dockerignore("*a".repeat(30) + "b")
       const start = performance.now()
-      assertFalse(IgnoreFile.ignores(ignore, "a".repeat(5_000)))
+      assertFalse(PathFilter.excludes(filter, "a".repeat(5_000)))
       assertTrue(performance.now() - start < 500)
     })
   })
 
-  it("canonicalizes paths and rejects parent segments", () => {
-    const ignore = IgnoreFile.gitignore("a/b\n")
-    assertTrue(IgnoreFile.ignores(ignore, "./a//b"))
-    assert.throws(() => IgnoreFile.ignores(ignore, "a/../a/b"))
-  })
-
-  it("rejects a base with empty, . or .. segments", () => {
-    assertTrue(IgnoreFile.ignores(IgnoreFile.gitignore("x\n", { base: "a" }), "a/x"))
-    for (const base of ["a//b", "./a", "a/.."]) {
-      assert.throws(() => IgnoreFile.gitignore("x\n", { base }))
+  it("rejects a scope with empty, . or .. segments", () => {
+    for (const scope of ["a//b", "./a", "a/.."]) {
+      assert.throws(() => IgnoreFile.gitignore("x\n", { scope }))
     }
-  })
-
-  it("concat requires the same format", () => {
-    assertTrue(IgnoreFile.ignores(IgnoreFile.concat(dockerignore("a\n"), dockerignore("b\n")), "a"))
-    assert.throws(() => IgnoreFile.concat(IgnoreFile.gitignore("a\n"), dockerignore("a\n")))
   })
 })
