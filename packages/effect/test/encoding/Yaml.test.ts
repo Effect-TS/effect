@@ -493,6 +493,37 @@ development:
     })
   })
 
+  // YAML 1.2.2 §§6.2 and 8.2.1: a tab after `-` separates the indicator from the entry's node,
+  // but a compact collection after the dash must be indented with spaces.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1.
+  describe("tab after a sequence dash", () => {
+    it.each(
+      [
+        ["a root entry", "-\t1\n", [1]],
+        ["a later entry", "- 1\n-\t2\n", [1, 2]],
+        ["an empty entry", "-\t\n- 2\n", [null, 2]],
+        ["an indentless mapping value", "a:\n-\t1\n", { a: [1] }],
+        ["a compact nested entry", "- -\t1\n", [[1]]]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+    })
+
+    it.each([
+      ["compact nested sequence", "-\t- 1\n"],
+      ["compact mapping", "-\tk: v\n"]
+    ])("rejects a tab before a %s", (_, source) => {
+      assert.match(failureMessage(source), /Tabs cannot be used for YAML indentation/)
+    })
+
+    it.each([
+      ["mapping key line", "a: -\t1\n"],
+      ["document start line", "--- -\t1\n"]
+    ])("rejects a sequence on the %s", (_, source) => {
+      failureMessage(source)
+    })
+  })
+
   describe("document boundaries", () => {
     // YAML 1.2.2 §9.1.2: document markers must start at column zero.
     it.each([
