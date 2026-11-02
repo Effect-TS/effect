@@ -739,13 +739,16 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
   if (self.state._tag !== "Open") {
     return false
   } else if (self.messages.length >= self.capacity) {
-    if (self.strategy === "sliding") {
+    if (self.capacity <= 0 && self.state.takers.size > 0) {
+      MutableList.append(self.messages, message)
+      if (self.strategy === "sliding") {
+        MutableList.takeNVoid(self.messages, self.messages.length - self.state.takers.size)
+      }
+      releaseTakers(self as Queue<A, E>)
+      return true
+    } else if (self.strategy === "sliding") {
       MutableList.take(self.messages)
       MutableList.append(self.messages, message)
-      return true
-    } else if (self.capacity <= 0 && self.state.takers.size > 0) {
-      MutableList.append(self.messages, message)
-      releaseTakers(self as Queue<A, E>)
       return true
     }
     return false
@@ -850,7 +853,8 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
   ) {
     MutableList.appendAll(self.messages, messages)
     if (self.strategy === "sliding") {
-      MutableList.takeN(self.messages, self.messages.length - self.capacity)
+      const capacity = self.capacity <= 0 ? self.state.takers.size : self.capacity
+      MutableList.takeN(self.messages, self.messages.length - capacity)
     }
     scheduleReleaseTaker(self as Queue<A, E>)
     return []
