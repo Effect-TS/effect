@@ -11,75 +11,75 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 
 ## Summary table
 
-| v3 API                                          | v4 API                                                                                             | Migration type    |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------- |
-| `asSchema(schema)`                              | `revealCodec(schema)`                                                                              | rename            |
-| `encodedSchema(schema)`                         | `toEncoded(schema)`                                                                                | rename            |
-| `typeSchema(schema)`                            | `toType(schema)`                                                                                   | rename            |
-| `compose(schemaB)`                              | `decodeTo(schemaB)`                                                                                | rename            |
-| `annotations(ann)`                              | `annotate(ann)`                                                                                    | rename            |
-| `decodingFallback` annotation                   | `catchDecoding(...)`                                                                               | rename            |
-| `concurrency` annotation                        | `concurrency` parse option (see [concurrency and batching](#concurrency-and-batching-annotations)) | manual            |
-| `batching` annotation                           | — (see [concurrency and batching](#concurrency-and-batching-annotations))                          | removed           |
-| `parseJson()`                                   | `fromJsonString(Unknown)`                                                                          | rename            |
-| `parseJson(schema)`                             | `fromJsonString(schema)`                                                                           | rename            |
-| `pattern(regex)`                                | `check(isPattern(regex))`                                                                          | rename            |
-| `nonEmptyString`                                | `isNonEmpty`                                                                                       | rename            |
-| `BigIntFromSelf`                                | `BigInt`                                                                                           | rename            |
-| `SymbolFromSelf`                                | `Symbol`                                                                                           | rename            |
-| `URLFromSelf`                                   | `URL`                                                                                              | rename            |
-| `RedactedFromSelf`                              | `Redacted`                                                                                         | rename            |
-| `Redacted`                                      | `RedactedFromValue`                                                                                | rename            |
-| `EitherFromSelf`                                | `Result`                                                                                           | rename            |
-| `DateFromNumber`                                | `DateFromMillis`                                                                                   | rename            |
-| `Date`                                          | `DateFromString`                                                                                   | restructure       |
-| `decodeUnknown`                                 | `decodeUnknownEffect`                                                                              | rename            |
-| `decode`                                        | `decodeEffect`                                                                                     | rename            |
-| `decodeUnknownEither`                           | `decodeUnknownExit`                                                                                | rename            |
-| `decodeEither`                                  | `decodeExit`                                                                                       | rename            |
-| `encodeUnknown`                                 | `encodeUnknownEffect`                                                                              | rename            |
-| `encode`                                        | `encodeEffect`                                                                                     | rename            |
-| `encodeUnknownEither`                           | `encodeUnknownExit`                                                                                | rename            |
-| `encodeEither`                                  | `encodeExit`                                                                                       | rename            |
-| `asserts(schema)(input)`                        | `asserts(schema, input)`                                                                           | semi-auto         |
-| `Literal(null)`                                 | `Null`                                                                                             | restructure       |
-| `Literal("a", "b")`                             | `Literals(["a", "b"])`                                                                             | variadic-to-array |
-| `pickLiteral("a", "b")`                         | `Literals(...).pick(["a", "b"])`                                                                   | restructure       |
-| `Union(A, B)`                                   | `Union([A, B])`                                                                                    | variadic-to-array |
-| `Tuple(A, B)`                                   | `Tuple([A, B])`                                                                                    | variadic-to-array |
-| `TemplateLiteral(A, B)`                         | `TemplateLiteral([A, B])`                                                                          | variadic-to-array |
-| `TemplateLiteralParser(A, B)`                   | `TemplateLiteralParser(schema.parts)`                                                              | restructure       |
-| `Record({ key, value })`                        | `Record(key, value)`                                                                               | restructure       |
-| `filter(predicate)`                             | `check(makeFilter(predicate))`                                                                     | restructure       |
-| `filter(refinement)`                            | `refine(refinement)`                                                                               | restructure       |
-| `UUID`                                          | `String.check(isUUID())`                                                                           | restructure       |
-| `ULID`                                          | `String.check(isULID())`                                                                           | restructure       |
-| `pick("a")`                                     | `mapFields(Struct.pick(["a"]))`                                                                    | restructure       |
-| `omit("a")`                                     | `mapFields(Struct.omit(["a"]))`                                                                    | restructure       |
-| `partial`                                       | `mapFields(Struct.map(Schema.optional))`                                                           | restructure       |
-| `partialWith({ exact: true })`                  | `mapFields(Struct.map(Schema.optionalKey))`                                                        | restructure       |
-| `required(schema)`                              | `schema.mapFields(Struct.map(Schema.requiredKey))`                                                 | restructure       |
-| `extend(structB)`                               | `mapFields(Struct.assign(fieldsB))` or `fieldsAssign(fieldsB)`                                     | restructure       |
-| `transform(from, to, { decode, encode })`       | `from.pipe(decodeTo(to, SchemaTransformation.transform({ decode, encode })))`                      | restructure       |
-| `transformOrFail(from, to, { decode, encode })` | `from.pipe(decodeTo(to, { decode: SchemaGetter.transformEffect(...), ... }))`                      | restructure       |
-| `transformLiteral(from, to)`                    | `Literal(from).transform(to)`                                                                      | restructure       |
-| `transformLiterals([0,"a"], [1,"b"])`           | `Literals([0, 1]).transform(["a", "b"])`                                                           | restructure       |
-| `attachPropertySignature("k", "v")`             | `mapFields(f => ({...f, k: tagDefaultOmit("v")}))`                                                 | restructure       |
-| `validate*`                                     | removed (use `decode*` + `toType`)                                                                 | removed           |
-| `keyof`                                         | —                                                                                                  | removed           |
-| `NonEmptyArrayEnsure`                           | —                                                                                                  | removed           |
-| `withDefaults`                                  | —                                                                                                  | removed           |
-| `Data(schema)`                                  | —                                                                                                  | removed           |
-| `optionalWith(schema, opts)`                    | varies by options (see [optionalWith](#optionalwith))                                              | manual            |
-| `optionalToOptional`                            | see [optional field transformations](#optional-field-transformations)                              | manual            |
-| `optionalToRequired`                            | see [optional field transformations](#optional-field-transformations)                              | manual            |
-| `requiredToOptional`                            | see [optional field transformations](#optional-field-transformations)                              | manual            |
-| `filterEffect`                                  | see [filterEffect](#filtereffect)                                                                  | manual            |
-| `fromKey`                                       | see [rename](#rename)                                                                              | manual            |
-| `rename({ a: "c" })`                            | see [rename](#rename)                                                                              | manual            |
-| `format(schema)`                                | see [format](#format)                                                                              | manual            |
-| `ParseResult.ArrayFormatter.formatError(error)` | see [ParseResult formatters](#parseresult-formatters)                                              | manual            |
-| `declare`                                       | see [declare](#declare)                                                                            | manual            |
+| v3 API                                          | v4 API                                                                        | Migration type    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- | ----------------- |
+| `asSchema(schema)`                              | `revealCodec(schema)`                                                         | rename            |
+| `encodedSchema(schema)`                         | `toEncoded(schema)`                                                           | rename            |
+| `typeSchema(schema)`                            | `toType(schema)`                                                              | rename            |
+| `compose(schemaB)`                              | `decodeTo(schemaB)`                                                           | rename            |
+| `annotations(ann)`                              | `annotate(ann)`                                                               | rename            |
+| `decodingFallback` annotation                   | `catchDecoding(...)`                                                          | rename            |
+| `concurrency` annotation                        | see [concurrency and batching](#concurrency-and-batching-annotations)         | manual            |
+| `batching` annotation                           | — (see [concurrency and batching](#concurrency-and-batching-annotations))     | removed           |
+| `parseJson()`                                   | `fromJsonString(Unknown)`                                                     | rename            |
+| `parseJson(schema)`                             | `fromJsonString(schema)`                                                      | rename            |
+| `pattern(regex)`                                | `check(isPattern(regex))`                                                     | rename            |
+| `nonEmptyString`                                | `isNonEmpty`                                                                  | rename            |
+| `BigIntFromSelf`                                | `BigInt`                                                                      | rename            |
+| `SymbolFromSelf`                                | `Symbol`                                                                      | rename            |
+| `URLFromSelf`                                   | `URL`                                                                         | rename            |
+| `RedactedFromSelf`                              | `Redacted`                                                                    | rename            |
+| `Redacted`                                      | `RedactedFromValue`                                                           | rename            |
+| `EitherFromSelf`                                | `Result`                                                                      | rename            |
+| `DateFromNumber`                                | `DateFromMillis`                                                              | rename            |
+| `Date`                                          | `DateFromString`                                                              | restructure       |
+| `decodeUnknown`                                 | `decodeUnknownEffect`                                                         | rename            |
+| `decode`                                        | `decodeEffect`                                                                | rename            |
+| `decodeUnknownEither`                           | `decodeUnknownExit`                                                           | rename            |
+| `decodeEither`                                  | `decodeExit`                                                                  | rename            |
+| `encodeUnknown`                                 | `encodeUnknownEffect`                                                         | rename            |
+| `encode`                                        | `encodeEffect`                                                                | rename            |
+| `encodeUnknownEither`                           | `encodeUnknownExit`                                                           | rename            |
+| `encodeEither`                                  | `encodeExit`                                                                  | rename            |
+| `asserts(schema)(input)`                        | `asserts(schema, input)`                                                      | semi-auto         |
+| `Literal(null)`                                 | `Null`                                                                        | restructure       |
+| `Literal("a", "b")`                             | `Literals(["a", "b"])`                                                        | variadic-to-array |
+| `pickLiteral("a", "b")`                         | `Literals(...).pick(["a", "b"])`                                              | restructure       |
+| `Union(A, B)`                                   | `Union([A, B])`                                                               | variadic-to-array |
+| `Tuple(A, B)`                                   | `Tuple([A, B])`                                                               | variadic-to-array |
+| `TemplateLiteral(A, B)`                         | `TemplateLiteral([A, B])`                                                     | variadic-to-array |
+| `TemplateLiteralParser(A, B)`                   | `TemplateLiteralParser(schema.parts)`                                         | restructure       |
+| `Record({ key, value })`                        | `Record(key, value)`                                                          | restructure       |
+| `filter(predicate)`                             | `check(makeFilter(predicate))`                                                | restructure       |
+| `filter(refinement)`                            | `refine(refinement)`                                                          | restructure       |
+| `UUID`                                          | `String.check(isUUID())`                                                      | restructure       |
+| `ULID`                                          | `String.check(isULID())`                                                      | restructure       |
+| `pick("a")`                                     | `mapFields(Struct.pick(["a"]))`                                               | restructure       |
+| `omit("a")`                                     | `mapFields(Struct.omit(["a"]))`                                               | restructure       |
+| `partial`                                       | `mapFields(Struct.map(Schema.optional))`                                      | restructure       |
+| `partialWith({ exact: true })`                  | `mapFields(Struct.map(Schema.optionalKey))`                                   | restructure       |
+| `required(schema)`                              | `schema.mapFields(Struct.map(Schema.requiredKey))`                            | restructure       |
+| `extend(structB)`                               | `mapFields(Struct.assign(fieldsB))` or `fieldsAssign(fieldsB)`                | restructure       |
+| `transform(from, to, { decode, encode })`       | `from.pipe(decodeTo(to, SchemaTransformation.transform({ decode, encode })))` | restructure       |
+| `transformOrFail(from, to, { decode, encode })` | `from.pipe(decodeTo(to, { decode: SchemaGetter.transformEffect(...), ... }))` | restructure       |
+| `transformLiteral(from, to)`                    | `Literal(from).transform(to)`                                                 | restructure       |
+| `transformLiterals([0,"a"], [1,"b"])`           | `Literals([0, 1]).transform(["a", "b"])`                                      | restructure       |
+| `attachPropertySignature("k", "v")`             | `mapFields(f => ({...f, k: tagDefaultOmit("v")}))`                            | restructure       |
+| `validate*`                                     | removed (use `decode*` + `toType`)                                            | removed           |
+| `keyof`                                         | —                                                                             | removed           |
+| `NonEmptyArrayEnsure`                           | —                                                                             | removed           |
+| `withDefaults`                                  | —                                                                             | removed           |
+| `Data(schema)`                                  | —                                                                             | removed           |
+| `optionalWith(schema, opts)`                    | varies by options (see [optionalWith](#optionalwith))                         | manual            |
+| `optionalToOptional`                            | see [optional field transformations](#optional-field-transformations)         | manual            |
+| `optionalToRequired`                            | see [optional field transformations](#optional-field-transformations)         | manual            |
+| `requiredToOptional`                            | see [optional field transformations](#optional-field-transformations)         | manual            |
+| `filterEffect`                                  | see [filterEffect](#filtereffect)                                             | manual            |
+| `fromKey`                                       | see [rename](#rename)                                                         | manual            |
+| `rename({ a: "c" })`                            | see [rename](#rename)                                                         | manual            |
+| `format(schema)`                                | see [format](#format)                                                         | manual            |
+| `ParseResult.ArrayFormatter.formatError(error)` | see [ParseResult formatters](#parseresult-formatters)                         | manual            |
+| `declare`                                       | see [declare](#declare)                                                       | manual            |
 
 ## Additional rename notes
 
@@ -998,9 +998,9 @@ const schema = Schema.String.pipe(Schema.catchDecoding(() => Effect.succeedSome(
 
 **Migration: manual**
 
-v4 removes the `concurrency` and `batching` schema annotations, and there is no annotation-based replacement. Because `annotate` accepts any key, `.annotate({ concurrency: "unbounded", batching: true })` still compiles and is ignored at runtime. Parsing then runs sequentially. If your transformations make requests with `Effect.request`, requests from sibling children are no longer pending at the same time and stop sharing batches, and the code still type-checks.
+v4 removes the `concurrency` and `batching` schema annotations and has no annotation-based replacement. Because `annotate` accepts any key, `.annotate({ concurrency: "unbounded", batching: true })` still compiles and is ignored at runtime: parsing runs sequentially, so requests that sibling children make with `Effect.request` are no longer pending at the same time and stop sharing batches.
 
-> **Warning:** Losing these annotations does not cause an error. It shows up as slower parsing and more backend calls. When a schema decodes many values through `Effect.request` (for example, while loading startup data) and each child awaits one request, an isolated parse sends each request in its own batch, and a step that used to take seconds can take minutes. Before upgrading, search for `concurrency:` and `batching:` in `.annotations(...)` calls, plus any calls to `AST.getConcurrencyAnnotation` or `AST.getBatchingAnnotation`.
+> **Warning:** Losing these annotations does not cause an error. It shows up as slower parsing and more backend calls. When a schema decodes many values through `Effect.request` (for example, while loading startup data) and each child awaits one request, a parse running on its own sends every request in its own batch, and a step that used to take seconds can take minutes. Before upgrading, search for `concurrency:` and `batching:` in `.annotations(...)` calls, plus any calls to `AST.getConcurrencyAnnotation` or `AST.getBatchingAnnotation`.
 
 In v3:
 
@@ -1010,11 +1010,11 @@ In v3:
 
 In v4:
 
-- **Concurrency is a parse option.** Pass `concurrency` (a number or `"unbounded"`) when you create a decoder, encoder, or parser (for example `Schema.decodeUnknownEffect(schema, { concurrency })`), or pass it on each call (for example `decode(input, { concurrency })`). Constructors take it as `SchemaParser.makeEffect(schema)(input, { parseOptions: { concurrency } })`. The default is sequential.
-- **The option covers the whole parse.** It applies to every tuple, array, struct, record, and struct-with-rest node, and each node enforces the limit on its own children. Nested products can therefore run more children at once than the limit, so the limit is not a cap on total in-flight work. Union members are still tried one at a time, unlike v3, but products inside the member being tried still use the option.
-- **There is no batching option.** `Effect.withRequestBatching` and the `batching` option of `Effect.forEach` are also gone. A `RequestResolver` batches the requests that are pending for it when its delay ends. The default delay is `Effect.yieldNow`, and you can change it with `RequestResolver.setDelay` or `RequestResolver.setDelayEffect`. Sequential parsing waits for each child to finish before it starts the next, so when each child awaits a single request and nothing else uses the resolver, every batch holds one request. Concurrent parsing lets requests from sibling children be pending together, so they can share a batch. The parse option only controls how sibling children are traversed. Requests can still share a batch under sequential parsing when one transformation starts several requests concurrently (for example with `Effect.all(..., { concurrency: "unbounded" })`), or when other fibers, including other parses, use the same resolver in the same delay window. Do not add parse concurrency only to keep batching that your transformations or callers already provide.
-- **Batch sizes are not guaranteed.** The size of a batch depends on how many requests are pending when the resolver's delay ends. That in turn depends on each node's concurrency limit, on how nested products overlap, on other effects that run before a request is made, and on the resolver's settings (`RequestResolver.batchN`, batch keys, and the delay). Bound backend batch sizes with the resolver, not with the parse option.
-- **Concurrency affects more than requests.** Every effectful transformation, check, and constructor default of sibling children runs concurrently. Issues are collected in completion order. With `errors: "first"`, the first failure to complete interrupts the remaining children, and it may not be the earliest position.
+- **Concurrency is a parse option.** Pass `concurrency` (a number or `"unbounded"`) when you create a decoder, encoder, or parser (`Schema.decodeUnknownEffect(schema, { concurrency })`) or on each call (`decode(input, { concurrency })`). Constructors take it as `SchemaParser.makeEffect(schema)(input, { parseOptions: { concurrency } })`. The default is sequential.
+- **The option covers the whole parse.** Every tuple, array, struct, record, and struct-with-rest node enforces the limit on its own children, so nested products can run more children at once than the limit. Union members are still tried one at a time, unlike v3, but products inside the member being tried use the option.
+- **There is no batching option.** `Effect.withRequestBatching` and the `batching` option of `Effect.forEach` are gone too. A `RequestResolver` batches whatever requests are pending for it when its delay ends (`Effect.yieldNow` by default, adjustable with `RequestResolver.setDelay`). The parse option only decides whether sibling children are traversed together. With sequential parsing, children that each await one request send them in separate batches when nothing else uses the resolver; with concurrent parsing, those requests are pending together and can share a batch. Requests started concurrently inside one transformation (for example with `Effect.all(..., { concurrency: "unbounded" })`), or by other fibers and parses using the same resolver, still batch under sequential parsing, so do not add parse concurrency only to keep batching you already have.
+- **Batch sizes are not guaranteed.** A batch holds whatever is pending when the resolver's delay ends, which depends on each node's concurrency limit, on how nested products overlap, on other effects that run before a request, and on the resolver's settings (`RequestResolver.batchN`, batch keys, and the delay). Bound backend batch sizes with the resolver, not with the parse option.
+- **Concurrency affects more than requests.** Every effectful transformation, check, and constructor default of sibling children runs concurrently. Issues are collected in completion order, and with `errors: "first"` the first failure to complete interrupts the remaining children, which may not be the earliest position.
 
 v3
 
@@ -1066,7 +1066,7 @@ const decodeUsers = Schema.decodeUnknownEffect(Users, { concurrency: "unbounded"
 const program = decodeUsers([1, 2, 3])
 ```
 
-Without `{ concurrency: "unbounded" }`, the same program resolves three batches of one request each. With `{ concurrency: 2 }`, the array resolves at most two of its requests at a time. That limit is per node: other products in the same parse can make requests in the same delay window, so a batch can contain requests from several nodes.
+Without `{ concurrency: "unbounded" }`, the same program resolves three batches of one request each. With `{ concurrency: 2 }`, the array has at most two of its requests pending at a time, but the limit is per node: requests from other products in the same parse can land in the same batch.
 
 ### rename
 
