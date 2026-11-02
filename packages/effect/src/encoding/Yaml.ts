@@ -773,10 +773,11 @@ const ambiguousScalar =
 
 // YAML 1.2.2 §5.1: characters outside the printable set must be escaped on
 // output. Line and paragraph separators are included to stay on the safe side
-// of YAML 1.1 line break handling.
+// of YAML 1.1 line break handling, and the byte order mark because §5.4
+// excludes it from content characters.
 const nonPrintable =
   // eslint-disable-next-line no-control-regex
-  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
+  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufeff\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
 
 const isPlainSafe = (text: string): boolean =>
   text.length > 0 &&
@@ -825,7 +826,7 @@ const doubleQuote = (text: string): string => {
         continue
       }
     }
-    if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || surrogate || code === 0xfffe || code === 0xffff) {
+    if (nonPrintable.test(character)) {
       output += code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
     } else {
       output += character
