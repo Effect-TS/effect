@@ -811,22 +811,13 @@ const doubleQuoteEscapes: Record<string, string> = {
 
 const doubleQuote = (text: string): string => {
   let output = "\""
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index]
+  // Iterating by code point keeps surrogate pairs together, so only lone
+  // surrogates reach the non-printable check.
+  for (const character of text) {
     if (hasOwn.call(doubleQuoteEscapes, character)) {
       output += doubleQuoteEscapes[character]
-      continue
-    }
-    const code = character.charCodeAt(0)
-    const surrogate = code >= 0xd800 && code <= 0xdfff
-    if (surrogate && code <= 0xdbff && index + 1 < text.length) {
-      const next = text.charCodeAt(index + 1)
-      if (next >= 0xdc00 && next <= 0xdfff) {
-        output += character + text[++index]
-        continue
-      }
-    }
-    if (nonPrintable.test(character)) {
+    } else if (nonPrintable.test(character)) {
+      const code = character.charCodeAt(0)
       output += code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
     } else {
       output += character
@@ -864,15 +855,15 @@ const printNumber = (value: number): string => {
 // A multiline string prints as a literal block scalar when every line can be
 // written as-is: no control characters besides tabs and line breaks, and no
 // leading or trailing whitespace on any line.
-const literalBlock = (text: string): { readonly header: string; readonly lines: ReadonlyArray<string> } | undefined => {
+const literalBlock = (text: string): { readonly header: string; readonly lines: Array<string> } | undefined => {
   const body = text.replace(/\n+$/, "")
-  if (body.length === 0) return undefined
+  if (body.length === 0 || /\r/.test(body) || nonPrintable.test(body)) return undefined
   const lines = body.split("\n")
-  if (/\r/.test(body) || nonPrintable.test(body)) return undefined
-  if (lines.some((line) => line.length > 0 && !/^\S(?:.*\S)?$/.test(line))) return undefined
+  if (lines.some((line) => line.trim() !== line)) return undefined
+  // Kept line breaks beyond the first become empty lines inside the scalar.
   const trailing = text.length - body.length
-  const header = trailing === 0 ? "|-" : trailing === 1 ? "|" : "|+"
-  return { header, lines: trailing > 1 ? [...lines, ...Array.from({ length: trailing - 1 }, () => "")] : lines }
+  for (let index = 1; index < trailing; index++) lines.push("")
+  return { header: trailing === 0 ? "|-" : trailing === 1 ? "|" : "|+", lines }
 }
 
 const isIdentifier = (key: string): boolean => /^[A-Za-z_$][\w$]*$/.test(key)
@@ -920,10 +911,9 @@ class Printer {
     }
     const prototype = Object.getPrototypeOf(value)
     if (prototype !== Object.prototype && prototype !== null) {
-      const name = typeof prototype?.constructor?.name === "string" && prototype.constructor.name.length > 0
-        ? prototype.constructor.name
-        : "object"
-      throw new PrintError(`Cannot print a ${name} instance without toJSON at ${path}`)
+      throw new PrintError(
+        `Cannot print a ${prototype.constructor?.name || "object"} instance without toJSON at ${path}`
+      )
     }
     const entries: Array<[string, unknown]> = []
     for (const key of Object.keys(value)) {
@@ -984,13 +974,20 @@ const printDocument = (value: unknown, path: string, step: number): string => {
   return `${printer.lines.join("\n")}\n`
 }
 
-const encodeError = (input: unknown, error: unknown): EncodingError =>
-  new EncodingError({
-    module: "Yaml",
-    kind: "Encode",
-    input,
-    message: error instanceof Error ? error.message : "Invalid input"
-  })
+const printResult = (input: unknown, print: () => string): Result.Result<string, EncodingError> => {
+  try {
+    return Result.succeed(print())
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Yaml",
+        kind: "Encode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
+}
 
 /**
  * Prints a JavaScript value as a YAML document.
@@ -1037,13 +1034,7 @@ const encodeError = (input: unknown, error: unknown): EncodingError =>
 export const stringify = (
   value: unknown,
   options?: { readonly indent?: number | undefined }
-): Result.Result<string, EncodingError> => {
-  try {
-    return Result.succeed(printDocument(value, "value", indentStep(options)))
-  } catch (e) {
-    return Result.fail(encodeError(value, e))
-  }
-}
+): Result.Result<string, EncodingError> => printResult(value, () => printDocument(value, "value", indentStep(options)))
 
 /**
  * Prints JavaScript values as a stream of YAML documents separated by `---`.
@@ -1071,16 +1062,8 @@ export const stringify = (
 export const stringifyAll = (
   values: Iterable<unknown>,
   options?: { readonly indent?: number | undefined }
-): Result.Result<string, EncodingError> => {
-  try {
+): Result.Result<string, EncodingError> =>
+  printResult(values, () => {
     const step = indentStep(options)
-    const documents: Array<string> = []
-    let index = 0
-    for (const value of values) {
-      documents.push(printDocument(value, `value[${index++}]`, step))
-    }
-    return Result.succeed(documents.join("---\n"))
-  } catch (e) {
-    return Result.fail(encodeError(values, e))
-  }
-}
+    return Array.from(values, (value, index) => printDocument(value, `value[${index}]`, step)).join("---\n")
+  })
