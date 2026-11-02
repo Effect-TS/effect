@@ -30,6 +30,9 @@ assignability, rejection, or displayed public types. An ordinary source edit or
 exported declaration is covered by `pnpm check` unless compiler behavior is part
 of the task.
 
+`pnpm check` runs tsrs (`effect-tsgo tsrs`), which tracks TypeScript 7.1. CI runs `pnpm check-tsc`, the
+official `tsc`. Use `pnpm check-tsc` on Linux musl, or to reproduce a CI-only type error. See `CONTRIBUTING.md`.
+
 Never run bare `pnpm test` or `pnpm doctest`; both start the full suite in watch mode. Always pass `--run` and the
 specific files covering the change. CI runs the full suite.
 
