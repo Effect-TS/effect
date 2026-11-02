@@ -428,6 +428,13 @@ const makeLine = (raw: string, number: number): Line => {
 // YAML separates tokens with spaces and tabs only, unlike `String.prototype.trimEnd`.
 const trimSeparation = (text: string): string => text.replace(/[ \t]+$/, "")
 
+// Removes the comment from a marker or directive line, keeping characters before
+// it that are not YAML separation so they can be rejected.
+const boundaryContent = (raw: string): string => {
+  const index = findIndicator(raw, "#")
+  return trimSeparation(index === -1 ? raw : raw.slice(0, index))
+}
+
 class YamlParser {
   private readonly lines: Array<Line>
   private index = 0
@@ -453,7 +460,7 @@ class YamlParser {
         continue
       }
       if (isDocumentMarker(line) && !isDocumentStart(line)) {
-        if (trimSeparation(line.text) !== "...") this.fail(line, "Unexpected content after document end marker")
+        if (boundaryContent(line.raw) !== "...") this.fail(line, "Unexpected content after document end marker")
         this.index++
         prefix = true
         continue
@@ -476,7 +483,7 @@ class YamlParser {
       this.skipIgnored()
       const line = this.lines[this.index]
       if (line === undefined || line.indent !== 0 || !line.text.startsWith("%")) break
-      const [name, ...parameters] = trimSeparation(line.text.slice(1)).split(/[ \t]+/)
+      const [name, ...parameters] = boundaryContent(line.raw.slice(1)).split(/[ \t]+/)
       if (name === "YAML") {
         if (version) this.fail(line, "Duplicate %YAML directive")
         if (parameters.length !== 1 || parameters[0] !== "1.2") {
