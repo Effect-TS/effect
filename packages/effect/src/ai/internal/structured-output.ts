@@ -38,11 +38,17 @@ export function resolveReference($ref: string, definitions: JsonSchema.Definitio
 export function resolveTopLevelReference(
   document: JsonSchema.Document<"draft-2020-12">
 ): JsonSchema.Document<"draft-2020-12"> {
-  if (typeof document.schema.$ref !== "string") return document
-  return {
-    ...document,
-    schema: resolveReference(document.schema.$ref, document.definitions)
+  let schema = document.schema
+  if (typeof schema.$ref !== "string") return document
+  const visited = new Set<string>()
+  while (typeof schema.$ref === "string") {
+    if (visited.has(schema.$ref)) {
+      throw new Error(`Circular reference ${JSON.stringify(schema.$ref)}`)
+    }
+    visited.add(schema.$ref)
+    schema = resolveReference(schema.$ref, document.definitions)
   }
+  return { ...document, schema }
 }
 
 /**

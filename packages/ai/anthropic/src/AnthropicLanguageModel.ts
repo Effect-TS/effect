@@ -24,8 +24,6 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
-import * as JsonPointer from "effect/JsonPointer"
-import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -3286,28 +3284,8 @@ const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
       throw error
     }
     // Anthropic's schema restrictions (e.g. no recursion) only apply to strict tools
-    return resolveRootReference(Tool.getJsonSchema(tool))
+    return Tool.getJsonSchema(tool, { transformer: LanguageModel.defaultCodecTransformer })
   }
-}
-
-// A root schema with an identifier is generated as a top-level `$ref`, which
-// may point to another reference (e.g. an identified suspend). Follow the chain
-// to its concrete schema so the root is an object schema, keeping `$defs`
-// because a recursive root refers back to its own definition.
-const resolveRootReference = (
-  jsonSchema: JsonSchema.JsonSchema,
-  visited: Set<string> = new Set()
-): JsonSchema.JsonSchema => {
-  const { $defs, $ref } = jsonSchema
-  if (typeof $ref !== "string" || !Predicate.isObject($defs) || visited.has($ref)) {
-    return jsonSchema
-  }
-  visited.add($ref)
-  const path = JsonPointer.parseUriFragment($ref)
-  if (path === undefined || path.length !== 2 || path[0] !== "$defs" || !Object.hasOwn($defs, path[1])) {
-    return jsonSchema
-  }
-  return resolveRootReference({ ...($defs as JsonSchema.Definitions)[path[1]], $defs }, visited)
 }
 
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>

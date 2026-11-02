@@ -91,6 +91,32 @@ describe("toCodecOpenAI", () => {
   })
 
   describe("Suspend", () => {
+    it("resolves a root alias of an identified schema", () => {
+      const NR = Schema.Struct({ a: Schema.String }).annotate({ identifier: "NR" })
+      const Params = Schema.suspend(() => NR).annotate({ identifier: "Params" })
+      assertJsonSchema(Params, {
+        type: "object",
+        properties: { a: { type: "string" } },
+        required: ["a"],
+        additionalProperties: false,
+        $defs: {
+          NR: {
+            type: "object",
+            properties: { a: { type: "string" } },
+            required: ["a"],
+            additionalProperties: false
+          },
+          Params: { $ref: "#/$defs/NR" }
+        }
+      })
+    })
+
+    it("rejects a root reference cycle", () => {
+      const A: Schema.Codec<unknown> = Schema.suspend((): Schema.Codec<unknown> => B).annotate({ identifier: "A" })
+      const B: Schema.Codec<unknown> = Schema.suspend((): Schema.Codec<unknown> => A).annotate({ identifier: "B" })
+      assertError(A, `Circular reference "#/$defs/A"`)
+    })
+
     it("no-transformation recursive schema", () => {
       interface A {
         readonly a: string
