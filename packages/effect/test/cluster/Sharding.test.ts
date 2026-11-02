@@ -245,32 +245,35 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         const request = driver.journal[0]
         assert.strictEqual(request._tag, "Request")
 
-        // A persisted interrupt restarts the uninterruptible request.
-        yield* driver.encoded.saveEnvelope({
-          envelope: {
-            _tag: "Interrupt",
-            id: String(yield* sharding.getSnowflake),
-            requestId: request.requestId,
-            address: request.address
-          },
-          primaryKey: null,
-          deliverAt: null
-        })
-        yield* sharding.pollStorage
-        yield* TestClock.adjust(1)
-        assert.strictEqual(yield* Queue.take(started), 2, "handler must restart after the stored interrupt")
+        // Each persisted interrupt restarts the uninterruptible request.
+        for (const restart of [2, 3]) {
+          yield* driver.encoded.saveEnvelope({
+            envelope: {
+              _tag: "Interrupt",
+              id: String(yield* sharding.getSnowflake),
+              requestId: request.requestId,
+              address: request.address
+            },
+            primaryKey: null,
+            deliverAt: null
+          })
+          yield* sharding.pollStorage
+          yield* TestClock.adjust(1)
+          assert.strictEqual(yield* Queue.take(started), restart, "handler must restart after the stored interrupt")
+        }
         assert.strictEqual(active, 1)
         expect(running.pollUnsafe()).toBeUndefined()
         claimed.length = 0
         released.length = 0
 
+        // Both interrupts are read again once their claims expire.
         yield* TestClock.adjust("10 minutes")
         for (let i = 0; i < 3; i++) {
           yield* sharding.pollStorage
           yield* TestClock.adjust(1)
         }
         expect(claimed).toContain(Snowflake.Snowflake(request.requestId))
-        assert.strictEqual(starts, 2, "polling must not deliver the restarted request again")
+        assert.strictEqual(starts, 3, "interrupts already delivered must not restart the request again")
         assert.strictEqual(active, 1, "restarted handler must remain active")
         expect(running.pollUnsafe()).toBeUndefined()
         assert.strictEqual(released.length, 0, "restarted active request claim must not be released")
