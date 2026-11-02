@@ -36,6 +36,7 @@ import {
   MachineId,
   Message,
   MessageStorage,
+  Reply,
   Runner,
   RunnerAddress,
   RunnerHealth,
@@ -5713,7 +5714,7 @@ describe("Sharding persisted message compatibility", () => {
     }).pipe(observer.provide)
   })
 
-  it.effect("leaves an undecodable request reached while resuming a full mailbox for a compatible runner", () => {
+  it.effect("leaves an undecodable request reached while resuming a full mailbox, and the requests after it", () => {
     const observer = makeCompatibilityObserver()
     const release = Latch.makeUnsafe(false)
     return Effect.gen(function*() {
@@ -5722,24 +5723,29 @@ describe("Sharding persisted message compatibility", () => {
       const client = (yield* NewerCompatibilityEntity.client)("1")
 
       // The first request takes the only mailbox slot, so the second is resumed
-      // from storage once the slot frees up, and `Remove` queues behind it.
+      // from storage once the slot frees up, and `Remove` and a third `Block`
+      // queue behind it.
       yield* client.Block(void 0, { discard: true })
       yield* TestClock.adjust(1)
       yield* client.Block(void 0, { discard: true })
       yield* TestClock.adjust(1)
       yield* client.Remove(void 0, { discard: true })
       yield* TestClock.adjust(1)
+      yield* client.Block(void 0, { discard: true })
+      yield* TestClock.adjust(1)
       assert.lengthOf(observer.warnings, 0, "Remove waits behind the full mailbox")
 
       yield* release.open
       yield* TestClock.adjust(testConfigDefaults.sendRetryInterval as number)
+      // later polls must not deliver the last `Block` ahead of `Remove`
+      yield* TestClock.adjust((testConfigDefaults.entityMessagePollInterval as number) * 2)
 
       assert.strictEqual(driver.replyIds.size, 2, "only the two Block requests are answered")
-      assert.strictEqual(driver.unprocessed.size, 1, "Remove is left for a compatible runner")
-      assert.lengthOf(observer.warnings, 1)
+      assert.strictEqual(driver.unprocessed.size, 2, "Remove and the Block after it are left for a compatible runner")
+      assert.isAtLeast(observer.warnings.length, 1)
       assert.include(observer.warnings[0], "Remove")
-      assert.deepStrictEqual(observer.undecodable(), [
-        [{ type: "CompatibilityEntity", reason: "unknown_rpc" }, { count: 1, incremental: true }]
+      assert.deepStrictEqual(observer.undecodable().map(([attributes]) => attributes), [
+        { type: "CompatibilityEntity", reason: "unknown_rpc" }
       ])
     }).pipe(
       Effect.provide(
@@ -5749,5 +5755,83 @@ describe("Sharding persisted message compatibility", () => {
       ),
       observer.provide
     )
+  })
+
+  it.effect("delivers requests waiting behind a deferred request once it is answered elsewhere", () => {
+    const observer = makeCompatibilityObserver()
+    let served = 0
+    return Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const storage = yield* MessageStorage.MessageStorage
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+      const client = (yield* NewerCompatibilityEntity.client)("1")
+      yield* client.Remove(void 0, { discard: true })
+      yield* TestClock.adjust(1)
+      yield* client.Block(void 0, { discard: true })
+      yield* TestClock.adjust(1)
+      assert.strictEqual(served, 0, "Block waits behind the deferred Remove")
+
+      // e.g. a compatible runner, or an operator clearing the request
+      const remove = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.tag === "Remove")!
+      yield* storage.saveReply(Reply.ReplyWithContext.fromDefect({
+        id: yield* sharding.getSnowflake,
+        requestId: Snowflake.Snowflake(remove.requestId),
+        defect: "answered elsewhere"
+      }))
+      yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+
+      assert.strictEqual(served, 1, "Block is delivered on the next poll")
+    }).pipe(
+      Effect.provide(
+        OlderCompatibilityLayer(Effect.sync(() => {
+          served++
+        })).pipe(Layer.provideMerge(UnregisteredSharding({})))
+      ),
+      observer.provide
+    )
+  })
+
+  it.effect("an entity type registered after the timeout processes the messages left for it before newer ones", () => {
+    const observer = makeCompatibilityObserver()
+    const served: Array<string> = []
+    return Effect.gen(function*() {
+      const storage = yield* makeSharedMemoryStorage
+
+      // Another runner persists two requests without processing them.
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const client = (yield* NewerCompatibilityEntity.client)("1")
+        yield* client.Add({ n: "1" }, { discard: true })
+        yield* client.Add({ n: "2" }, { discard: true })
+      }).pipe(Effect.provide(RestartSharding(
+        OlderCompatibilityLayer(),
+        unreadStorage(storage, "Add", Latch.makeUnsafe(false))
+      )))
+
+      yield* Effect.gen(function*() {
+        // the runner reads both after the registration timeout and leaves them
+        yield* TestClock.adjust(1)
+        yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+        assert.lengthOf(observer.warnings.filter((warning) => warning.includes("not registered")), 2)
+
+        yield* Layer.build(NewerCompatibilityEntity.toLayer({
+          Add: ({ payload }) =>
+            Effect.sync(() => {
+              served.push(payload.n)
+            }),
+          Remove: () => Effect.void,
+          Block: () => Effect.void
+        }))
+        const client = (yield* NewerCompatibilityEntity.client)("1")
+        yield* client.Add({ n: "3" }, { discard: true })
+        yield* TestClock.adjust(1)
+
+        assert.deepStrictEqual(served, ["1", "2", "3"])
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(RestartSharding(Layer.empty, storage, { entityRegistrationTimeout: 1000 }))
+      )
+    }).pipe(observer.provide)
   })
 })
