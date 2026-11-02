@@ -6558,7 +6558,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
    * **Details**
    *
    * The returned record becomes the new `cases`, and its key order is the
-   * member order. Each case must still have a `_tag` literal.
+   * member order. Keys may be strings or symbols.
    *
    * Options:
    *
@@ -6570,6 +6570,13 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
    *   may no longer be valid or safe to apply to the transformed schema. Only
    *   use this option if you have verified that your refinements remain correct
    *   after the transformation.
+   *
+   * **Gotchas**
+   *
+   * Each key must equal its case's `_tag` literal, because `guards`, `match`,
+   * and `matchOrElse` look cases up by `_tag`. A renamed key, such as
+   * `({ A }) => ({ Renamed: A })`, type-checks but throws
+   * `Case key does not match its _tag` when the schema is built.
    *
    * **Example** (Adding shared fields to every case)
    *
@@ -6636,9 +6643,16 @@ function makeTaggedUnion<Cases extends Record<string, Constraint>>(
   cases: Cases,
   checks: SchemaAST.Checks | undefined
 ): TaggedUnion<Cases> {
-  const members: Array<any> = Object.values(cases)
+  const keys = Reflect.ownKeys(cases)
+  const members: Array<any> = keys.map((key) => cases[key as keyof Cases])
   const union = makeUnion(SchemaAST.union(members, undefined, checks), members)
-  const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  const tagged = toTaggedUnion("_tag")(union)
+  for (const key of keys) {
+    if ((tagged.cases as Record<PropertyKey, unknown>)[key] !== cases[key as keyof Cases]) {
+      throw new globalThis.Error(`Case key does not match its _tag: ${globalThis.String(key)}`)
+    }
+  }
+  const { tag, guards, isAnyOf, match, matchOrElse } = tagged
   return make(union.ast, {
     tag,
     cases,
