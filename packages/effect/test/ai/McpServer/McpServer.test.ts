@@ -41,6 +41,7 @@ import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import * as Tracer from "effect/Tracer"
 import { collectGarbage } from "../../utils/gc.ts"
 import { makeHeldServerScheduler } from "./TestUtils/McpHeldScheduler.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
@@ -3482,6 +3483,147 @@ describe("McpServer", () => {
         const tools = yield* read()
         assert.strictEqual(tools.id, 1)
         assert.isArray(tools.result.tools)
+      }))
+  })
+
+  // https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/mcp.md
+  describe("tracing", () => {
+    const GetWeather = Tool.make("get_weather", {
+      parameters: Schema.Struct({ location: Schema.String }),
+      success: Schema.String,
+      failure: Schema.String,
+      failureMode: "return"
+    })
+    const WeatherToolkit = Toolkit.make(GetWeather)
+    const protocol = McpProtocol.v2025_06_18
+
+    const isHttpSpan = (span: Tracer.AnySpan) => span._tag === "Span" && span.attributes.has("http.request.method")
+
+    const makeTracedHarness = Effect.fnUntraced(function*() {
+      // Ended MCP request spans, in completion order. HTTP transport spans and
+      // notification spans are skipped so each request maps to the next entry.
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          const end = span.end.bind(span)
+          span.end = (endTime, exit) => {
+            end(endTime, exit)
+            if (span.kind === "server" && !isHttpSpan(span) && !span.name.includes("notifications/")) {
+              Queue.offerUnsafe(ended, span)
+            }
+          }
+          return span
+        }
+      })
+      const registrations = Layer.mergeAll(
+        McpServer.toolkit(WeatherToolkit).pipe(
+          Layer.provideMerge(WeatherToolkit.toLayer({
+            get_weather: ({ location }) =>
+              location === "Atlantis" ? Effect.fail("unknown location") : Effect.succeed(`sunny in ${location}`)
+          }))
+        ),
+        Layer.effectDiscard(Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          yield* server.addTool({
+            tool: new McpSchema.Tool({ name: "crash", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () => Effect.die("boom")
+          })
+          yield* McpServer.registerPrompt({ name: "greeting", content: () => Effect.succeed("hello") })
+          yield* McpServer.registerResource({
+            uri: "file:///readme",
+            name: "readme",
+            content: Effect.succeed("read me")
+          })
+        }))
+      )
+      const harness = yield* makeHttpHarness(registrations.pipe(
+        Layer.provideMerge(makeServerLayer({ name: "TracingTest", protocols: [protocol] })),
+        Layer.provideMerge(Layer.succeed(Tracer.Tracer, tracer))
+      ))
+      const headers = yield* initializeHttpSession(harness, protocol)
+      const initialize = yield* Queue.take(ended)
+      const request = Effect.fnUntraced(function*(id: number, method: string, params: Record<string, unknown>) {
+        yield* readMcpHttpResponse(yield* harness.post({ jsonrpc: "2.0", id, method, params }, headers))
+        return yield* Queue.take(ended)
+      })
+      return { headers, initialize, request }
+    })
+
+    const exitTag = (span: Tracer.NativeSpan) => span.status._tag === "Ended" ? span.status.exit._tag : undefined
+
+    it.effect("records MCP server spans with method-specific names and no tool arguments", () =>
+      Effect.gen(function*() {
+        const { headers, initialize, request } = yield* makeTracedHarness()
+
+        assert.strictEqual(initialize.name, "initialize")
+        assert.strictEqual(initialize.attributes.get("mcp.method.name"), "initialize")
+
+        const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
+        assert.strictEqual(call.name, "tools/call get_weather")
+        assert.strictEqual(call.kind, "server")
+        assert.deepInclude(Object.fromEntries(call.attributes), {
+          "mcp.method.name": "tools/call",
+          "jsonrpc.request.id": "1",
+          "mcp.protocol.version": protocol.protocolVersion,
+          "mcp.session.id": headers["Mcp-Session-Id"],
+          "network.transport": "tcp",
+          "gen_ai.operation.name": "execute_tool",
+          "gen_ai.tool.name": "get_weather"
+        })
+        for (const key of ["parameters", "gen_ai.tool.call.arguments", "rpc.method"]) {
+          assert.isFalse(call.attributes.has(key), `Unexpected span attribute ${key}`)
+        }
+        // Without client trace context the span stays under the HTTP server span.
+        assert.isTrue(Option.isSome(call.parent) && isHttpSpan(call.parent.value))
+
+        const prompt = yield* request(2, "prompts/get", { name: "greeting" })
+        assert.strictEqual(prompt.name, "prompts/get greeting")
+        assert.strictEqual(prompt.attributes.get("gen_ai.prompt.name"), "greeting")
+
+        const resource = yield* request(3, "resources/read", { uri: "file:///readme" })
+        assert.strictEqual(resource.name, "resources/read")
+        assert.strictEqual(resource.attributes.get("mcp.resource.uri"), "file:///readme")
+      }))
+
+    // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
+    it.effect("continues the client trace from params._meta and links the HTTP server span", () =>
+      Effect.gen(function*() {
+        const { request } = yield* makeTracedHarness()
+
+        const span = yield* request(1, "tools/call", {
+          name: "get_weather",
+          arguments: { location: "London" },
+          _meta: { traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" }
+        })
+
+        assert.strictEqual(span.traceId, "0af7651916cd43dd8448eb211c80319c")
+        assert.isTrue(Option.isSome(span.parent))
+        if (Option.isSome(span.parent)) {
+          assert.strictEqual(span.parent.value._tag, "ExternalSpan")
+          assert.strictEqual(span.parent.value.spanId, "b7ad6b7169203331")
+        }
+        assert.deepStrictEqual(span.links.map((link) => isHttpSpan(link.span)), [true])
+      }))
+
+    it.effect("classifies tool results and JSON-RPC errors on the span", () =>
+      Effect.gen(function*() {
+        const { request } = yield* makeTracedHarness()
+
+        const toolError = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "Atlantis" } })
+        assert.strictEqual(exitTag(toolError), "Success")
+        assert.strictEqual(toolError.attributes.get("error.type"), "tool_error")
+
+        const unknownTool = yield* request(2, "tools/call", { name: "missing_tool", arguments: {} })
+        assert.strictEqual(exitTag(unknownTool), "Success")
+        assert.strictEqual(unknownTool.attributes.get("rpc.status_code"), "-32602")
+        assert.isFalse(unknownTool.attributes.has("error.type"))
+
+        const defect = yield* request(3, "tools/call", { name: "crash", arguments: {} })
+        assert.strictEqual(exitTag(defect), "Failure")
+        assert.strictEqual(defect.attributes.get("rpc.status_code"), "-32603")
+        assert.strictEqual(defect.attributes.get("error.type"), "-32603")
       }))
   })
 })
