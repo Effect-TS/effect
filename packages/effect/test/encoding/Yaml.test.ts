@@ -749,20 +749,71 @@ items:
   })
 
   // Stage 3 hardening: input that used to acquire silent, misleading semantics.
+  // YAML 1.2.2 §10.3: tags of the core schema resolve, and every other tag fails rather than
+  // being kept as text. Expected values were checked with yaml 2.9.1, except `!!float 1`:
+  // the core schema's float pattern matches it, while yaml 2.9.1 rejects it.
   describe("tags", () => {
-    // Core tags are resolved in a later stage; until then every tag is rejected rather than kept as text.
+    it.each(
+      [
+        ["!!str", "a: !!str 123\nb: !!str true\nc: !!str ~\nd: !!str\n", { a: "123", b: "true", c: "~", d: "" }],
+        ["!!int", "a: !!int 0x10\nb: !!int \"42\"\nc: !!int -7\nd: !!int 0o17\n", { a: 16, b: 42, c: -7, d: 15 }],
+        [
+          "!!float",
+          "a: !!float 1\nb: !!float \"2.5\"\nc: !!float -.Inf\nd: !!float 1e3\n",
+          { a: 1, b: 2.5, c: Number.NEGATIVE_INFINITY, d: 1000 }
+        ],
+        ["!!bool", "a: !!bool true\nb: !!bool \"false\"\nc: !!bool True\n", { a: true, b: false, c: true }],
+        ["!!null", "a: !!null ~\nb: !!null\nc: !!null \"\"\nd: !!null Null\n", { a: null, b: null, c: null, d: null }],
+        [
+          "!!seq and !!map",
+          "a: !!seq\n- 1\nb: !!seq [2]\nc: !!map\n  d: 1\ne: !!map {f: 2}\n",
+          { a: [1], b: [2], c: { d: 1 }, e: { f: 2 } }
+        ],
+        ["a document root tag", "--- !!seq\n- 1\n", [1]],
+        [
+          "tags in flow collections",
+          "- !!int 1\n- [!!str 1, !!bool false]\n- {!!str 1: !!null }\n",
+          [1, ["1", false], { "1": null }]
+        ],
+        ["empty flow scalars", "a: {b: !!str}\nc: [!!str , x]\n", { a: { b: "" }, c: ["", "x"] }],
+        ["block keys with anchors", "!!str 1: x\n&k !!str foo: 1\nb: *k\n", { "1": "x", foo: 1, b: "foo" }],
+        ["flow keys with anchors", "{&k !!str foo: 1, b: *k}\n", { foo: 1, b: "foo" }],
+        ["anchors before and after tags", "a: !!str &x 1\nb: *x\nc: &y !!int \"7\"\nd: *y\n", {
+          a: "1",
+          b: "1",
+          c: 7,
+          d: 7
+        }],
+        ["block and quoted scalars", "a: !!str |\n  x\nb: !!str 'y'\n", { a: "x\n", b: "y" }]
+      ] as const
+    )("resolves %s", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+    })
+
     it.each([
-      ["core scalar tag", "a: !!str 123\n"],
-      ["core tag on a sequence item", "- !!int 1\n"],
-      ["core collection tag", "a: !!map\n  b: 1\n"],
       ["local tag", "a: !custom x\n"],
       ["non-specific tag", "a: ! x\n"],
       ["verbatim tag", "a: !<tag:yaml.org,2002:str> x\n"],
-      ["tag in a flow collection", "a: [!!str 1]\n"],
-      ["tag on a key", "!!str a: 1\n"],
-      ["tag after an anchor on a key", "&k !!str foo: 1\n"],
-      ["tag after an anchor on a flow key", "{&k !!str foo: 1}\n"]
+      ["YAML 1.1 !!binary tag", "a: !!binary aGk=\n"],
+      ["YAML 1.1 !!timestamp tag", "a: !!timestamp 2001-12-14\n"],
+      ["unknown !! tag", "a: !!foo x\n"]
     ])("rejects a %s", (_, source) => {
+      assert.match(failureMessage(source), /tag/i)
+    })
+
+    it.each([
+      ["!!int", "a: !!int x\n"],
+      ["!!int", "a: !!int 1.5\n"],
+      ["!!float", "a: !!float x\n"],
+      ["!!float", "a: !!float 0x10\n"],
+      ["!!bool", "a: !!bool yes\n"],
+      ["!!null", "a: !!null x\n"],
+      ["!!str", "a: !!str [1]\n"],
+      ["!!seq", "a: !!seq {b: 1}\n"],
+      ["!!seq", "a: !!seq x\n"],
+      ["!!map", "a: !!map [1]\n"],
+      ["!!map", "a: !!map\n"]
+    ])("rejects content that does not match %s in %j", (_, source) => {
       assert.match(failureMessage(source), /tag/i)
     })
 
