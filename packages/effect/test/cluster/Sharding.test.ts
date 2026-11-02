@@ -245,8 +245,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         const request = driver.journal[0]
         assert.strictEqual(request._tag, "Request")
 
-        // Each persisted interrupt restarts the uninterruptible request.
-        for (const restart of [2, 3]) {
+        const saveInterrupt = Effect.gen(function*() {
           yield* driver.encoded.saveEnvelope({
             envelope: {
               _tag: "Interrupt",
@@ -259,8 +258,14 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           })
           yield* sharding.pollStorage
           yield* TestClock.adjust(1)
-          assert.strictEqual(yield* Queue.take(started), restart, "handler must restart after the stored interrupt")
-        }
+        })
+
+        // A persisted interrupt restarts the uninterruptible request once.
+        yield* saveInterrupt
+        assert.strictEqual(yield* Queue.take(started), 2, "handler must restart after the stored interrupt")
+        // A later, distinct interrupt has nothing left to cancel.
+        yield* saveInterrupt
+        assert.strictEqual(starts, 2, "a second interrupt must not restart the request again")
         assert.strictEqual(active, 1)
         expect(running.pollUnsafe()).toBeUndefined()
         claimed.length = 0
@@ -273,7 +278,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           yield* TestClock.adjust(1)
         }
         expect(claimed).toContain(Snowflake.Snowflake(request.requestId))
-        assert.strictEqual(starts, 3, "interrupts already delivered must not restart the request again")
+        assert.strictEqual(starts, 2, "interrupts read again must not restart the request again")
         assert.strictEqual(active, 1, "restarted handler must remain active")
         expect(running.pollUnsafe()).toBeUndefined()
         assert.strictEqual(released.length, 0, "restarted active request claim must not be released")
