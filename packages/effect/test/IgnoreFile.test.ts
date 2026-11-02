@@ -311,5 +311,7 @@ describe("IgnoreFile", () => {
     for (const scope of ["a//b", "./a", "a/.."]) {
       assert.throws(() => IgnoreFile.gitignore("x\n", { scope }))
     }
+    // even when the source has no rules
+    assert.throws(() => IgnoreFile.gitignore("", { scope: ".." }))
   })
 })
