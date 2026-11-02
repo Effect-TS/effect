@@ -29,7 +29,8 @@ export type Node =
   /** Ends one expanded pattern. */
   | { readonly _tag: "End"; readonly directoryOnly: boolean }
 
-type States = ReadonlySet<number>
+/** @internal */
+export type States = ReadonlySet<number>
 
 /**
  * Every expanded pattern's nodes laid out in one array, so a match state is an
@@ -222,14 +223,16 @@ const compileSegment = (chars: ReadonlyArray<string>): Node => {
       tokens.push({ _tag: "Char", code: char.codePointAt(0)! })
     }
   }
-  if (!magic) {
-    return { _tag: "Literal", value: literal }
-  }
+  return magic ? makeWildcard(tokens) : { _tag: "Literal", value: literal }
+}
+
+/** @internal */
+export const makeWildcard = (tokens: ReadonlyArray<Token>): Node => {
   const first = tokens[0]
   return {
     _tag: "Wildcard",
     tokens,
-    leadingDot: first._tag === "Char" && first.code === 0x2e,
+    leadingDot: first?._tag === "Char" && first.code === 0x2e,
     affixes: compileAffixes(tokens)
   }
 }
@@ -258,7 +261,8 @@ const compileAffixes = (
   return suffix === undefined ? undefined : { prefix, suffix }
 }
 
-const range = (from: string, to: string): Array<number> => [from.codePointAt(0)!, to.codePointAt(0)!]
+/** @internal */
+export const range = (from: string, to: string): Array<number> => [from.codePointAt(0)!, to.codePointAt(0)!]
 
 const posixClasses: Record<string, ReadonlyArray<number>> = {
   alnum: [...range("0", "9"), ...range("A", "Z"), ...range("a", "z")],
@@ -468,7 +472,8 @@ const expandSequence = (sequence: BraceSequence): Array<string> => {
 // matching
 // -----------------------------------------------------------------------------
 
-const matchToken = (token: Token, code: number): boolean => {
+/** @internal */
+export const matchToken = (token: Token, code: number): boolean => {
   switch (token._tag) {
     case "Char":
       return token.code === code
@@ -532,7 +537,8 @@ const matchWildcard = (
 }
 
 // `**` also matches zero segments, so its successor is reachable too
-const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<number> => {
+/** @internal */
+export const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<number> => {
   for (const state of states) {
     if (nodes[state]._tag === "Globstar") {
       states.add(state + 1)
@@ -541,14 +547,16 @@ const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<number> =
   return states
 }
 
-interface Step {
+/** @internal */
+export interface Step {
   /** States reached by matching a literal or wildcard segment. */
   readonly explicit: States
   /** States reached by a `**` consuming the name. */
   readonly globstar: States
 }
 
-const step = (compiled: Compiled, states: States, name: string): Step => {
+/** @internal */
+export const step = (compiled: Compiled, states: States, name: string): Step => {
   const explicit = new Set<number>()
   const viaGlobstar = new Set<number>()
   // only a literal segment can name the root of an absolute path
@@ -579,7 +587,8 @@ const step = (compiled: Compiled, states: States, name: string): Step => {
   return { explicit: closure(compiled.nodes, explicit), globstar: closure(compiled.nodes, viaGlobstar) }
 }
 
-const union = (step: Step): States => {
+/** @internal */
+export const union = (step: Step): States => {
   if (step.globstar.size === 0) {
     return step.explicit
   }
@@ -714,23 +723,74 @@ const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error
 
 const DIRECTORY_CONCURRENCY = 16
 
+// Listings never contain `.`, `..`, or the root of an absolute pattern
+const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
+
+/**
+ * The traversal protocol an `IgnoreFile` implements for `FileSystem.glob`.
+ *
+ * @internal
+ */
+export interface IgnoreWalker {
+  readonly initial: unknown
+  /** Whether matching depends on whether an entry is itself a directory. */
+  readonly needsDirectory: boolean
+  readonly step: (state: unknown, name: string, isDirectory: boolean) => IgnoreStep
+}
+
+/** @internal */
+export interface IgnoreStep {
+  readonly state: unknown
+  readonly ignored: boolean
+  /** Set for an ignored entry when nothing below it can be included. */
+  readonly prune: boolean
+}
+
+// A segment that decodes to `..` or contains an escaped `/`. A segment never
+// holds an unescaped `/`, so dropping each escaping backslash is enough.
+const spansSegments = (segment: string): boolean => {
+  const decoded = segment.replace(/\\(.)/gsu, "$1")
+  return decoded === ".." || decoded.includes("/")
+}
+
+/** @internal */
+export const ignoreWalker = (ignore: unknown): IgnoreWalker => (ignore as { readonly walker: IgnoreWalker }).walker
+
 const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
 
 /** @internal */
 export const make = (
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">
 ): FileSystem.FileSystem["glob"] =>
-(pattern, options) => walk(fs, compile([pattern], options?.dot ?? false), options)
+(pattern, options) => {
+  const compiled = compile([pattern], options?.dot ?? false)
+  if (options?.ignore === undefined) {
+    return walk(fs, compiled, options, undefined)
+  }
+  // Ignore rules match root-relative paths one segment at a time, so every
+  // walked entry needs one. Check the expanded source text, since compiling
+  // drops some branches, and reject an escaped `/`, which would make one entry
+  // span several segments. Every compiled node comes from one of these segments.
+  if (expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).some(spansSegments))) {
+    return Effect.die(
+      new Error(
+        `FileSystem.glob with ignore requires a relative pattern without ".." segments or escaped "/": ${pattern}`
+      )
+    )
+  }
+  return walk(fs, compiled, options, ignoreWalker(options.ignore))
+}
 
 // Named directories (the root and those reached only through leading literal
 // segments) must be readable; unreadable wildcard-reached ones are skipped.
 const walk = Effect.fnUntraced(function*(
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
-  options?: {
+  options: {
     readonly root?: string | undefined
     readonly exclude?: ReadonlyArray<string> | undefined
-  }
+  } | undefined,
+  ignore: IgnoreWalker | undefined
 ): Effect.fn.Return<Array<string>, PlatformError> {
   if (compiled.initial.size === 0) {
     return []
@@ -738,14 +798,14 @@ const walk = Effect.fnUntraced(function*(
   const root = options?.root ?? ""
   const excludes = compile(options?.exclude ?? [], true)
   const excludeNeedsDirectory = excludes.nodes.some((node) => node._tag === "End" && node.directoryOnly)
+  const ignoreNeedsDirectory = ignore?.needsDirectory ?? false
 
   const toFsPath = (relative: string): string =>
     isAbsolute(relative) ? relative : relative === "" ? (root === "" ? "." : root) : join(root, relative)
 
-  // Listings never contain `.`, `..`, or the root of an absolute pattern
-  const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
-
-  // Keep broken links so literal probes agree with directory listings.
+  // Keep broken links so literal probes agree with directory listings, and
+  // report a link to a directory as a link when ignore rules need the entry's
+  // own type, since `stat` follows it.
   const probe = (
     parent: string,
     name: string,
@@ -760,6 +820,14 @@ const walk = Effect.fnUntraced(function*(
           Effect.catchIf(isNotLink, () => Effect.succeed(undefined))
         )),
       Effect.catchIf(named ? isMissing : isIgnorable, () => Effect.succeed(undefined)),
+      Effect.flatMap((type) =>
+        type === "Directory" && ignoreNeedsDirectory
+          ? fs.readLink(path).pipe(
+            Effect.as("SymbolicLink" as const),
+            Effect.catchIf(isNotLink, () => Effect.succeed(type))
+          )
+          : Effect.succeed(type)
+      ),
       Effect.map((type) => type === undefined ? undefined : { name, type })
     )
   }
@@ -801,6 +869,7 @@ const walk = Effect.fnUntraced(function*(
     readonly relative: string
     readonly accepted: boolean
     readonly excluded: States
+    readonly ignored: unknown
     readonly next: States | undefined
   }
 
@@ -809,7 +878,8 @@ const walk = Effect.fnUntraced(function*(
     { name, type }: FileSystem.DirectoryEntry,
     parent: string,
     states: States,
-    excluded: States
+    excluded: States,
+    ignored: unknown
   ): Child | undefined | Effect.Effect<Child | undefined, PlatformError> => {
     const result = step(compiled, states, name)
     const next = union(result)
@@ -820,15 +890,28 @@ const walk = Effect.fnUntraced(function*(
     const nextExcluded = union(step(excludes, excluded, name))
     const descend = canDescend(compiled, next)
     const child = (isDirectory: boolean, link: boolean): Child | undefined => {
-      const accepted = accepts(compiled, next, isDirectory)
+      let accepted = accepts(compiled, next, isDirectory)
       if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
         return undefined
+      }
+      let nextIgnored = ignored
+      let pruned = false
+      if (ignore !== undefined && name !== ".") {
+        // Ignore rules see the entry's own type, so a link is never a directory
+        const result = ignore.step(ignored, name, isDirectory && !link)
+        accepted &&= !result.ignored
+        pruned = result.prune
+        if (!accepted && (!isDirectory || !descend || pruned)) {
+          return undefined
+        }
+        nextIgnored = result.state
       }
       return {
         relative,
         accepted,
         excluded: nextExcluded,
-        next: !isDirectory || !descend
+        ignored: nextIgnored,
+        next: !isDirectory || !descend || pruned
           ? undefined
           : !link || result.globstar.size === 0
           ? next
@@ -838,7 +921,7 @@ const walk = Effect.fnUntraced(function*(
           : undefined
       }
     }
-    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory) {
+    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory && !ignoreNeedsDirectory) {
       return child(false, false)
     }
     if (type !== "Unknown" && type !== "SymbolicLink") {
@@ -850,7 +933,10 @@ const walk = Effect.fnUntraced(function*(
       Effect.catchIf(isIgnorable, () => Effect.succeed(false)),
       Effect.flatMap((isDirectory) => {
         const resolved = child(isDirectory, type === "SymbolicLink")
-        if (type === "SymbolicLink" || resolved?.next === undefined || result.globstar.size === 0) {
+        if (
+          type === "SymbolicLink" || !isDirectory ||
+          ((resolved?.next === undefined || result.globstar.size === 0) && !ignoreNeedsDirectory)
+        ) {
           return Effect.succeed(resolved)
         }
         return fs.readLink(path).pipe(
@@ -889,13 +975,14 @@ const walk = Effect.fnUntraced(function*(
     relative: string,
     states: States,
     excluded: States,
+    ignored: unknown,
     named: boolean
   ): Effect.fn.Return<Array<string>, PlatformError> {
     const listing = yield* entries(relative, states, named)
     const children: Array<Child | undefined> = []
     const pending: Array<Effect.Effect<void, PlatformError>> = []
     for (const entry of listing.entries) {
-      const child = visit(entry, relative, states, excluded)
+      const child = visit(entry, relative, states, excluded, ignored)
       if (Effect.isEffect(child)) {
         const index = children.push(undefined) - 1
         pending.push(Effect.map(child, (child) => {
@@ -911,7 +998,7 @@ const walk = Effect.fnUntraced(function*(
     const subtrees: Array<Effect.Effect<Array<string>, PlatformError>> = []
     for (const child of children) {
       if (child?.next !== undefined) {
-        const walk = directory(child.relative, child.next, child.excluded, listing.named)
+        const walk = directory(child.relative, child.next, child.excluded, child.ignored, listing.named)
         if (slots > 0) {
           slots--
           subtrees.push(Fiber.join(yield* fork(walk)))
@@ -942,7 +1029,7 @@ const walk = Effect.fnUntraced(function*(
   // The losing walk is interrupted along with every fiber it forked
   return yield* Effect.raceFirst(
     Effect.ensuring(
-      directory("", compiled.initial, excludes.initial, true),
+      directory("", compiled.initial, excludes.initial, ignore?.initial, true),
       Effect.sync(() => {
         finishing = true
       })
