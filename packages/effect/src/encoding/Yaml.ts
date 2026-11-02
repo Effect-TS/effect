@@ -193,8 +193,8 @@ const isExplicitKey = (text: string): boolean => text === "?" || /^\?[ \t]/.test
 
 const explicitKeyError = "YAML explicit keys (`?`) are not supported"
 
-// A mapping key with its properties resolved. `merge` is true only for a plain `<<`
-// without properties, so quoted keys and aliases resolving to `<<` stay ordinary keys.
+// A mapping key with its properties resolved. `merge` is true only for a plain `<<`,
+// with or without an anchor, so quoted keys and aliases resolving to `<<` stay ordinary keys.
 type MappingKey = {
   readonly key: string
   readonly merge: boolean
@@ -474,18 +474,22 @@ class FlowParser {
     }
     let key: string
     let value: unknown
+    let merge = false
     if (character === "\"" || character === "'") {
       const raw = this.readQuoted(character)
       key = parseKey(raw)
       value = parseScalar(raw)
     } else {
-      key = trimWhite(foldFlowLines(this.readUntil(/:/)))
-      if (key.startsWith("%")) this.fail(directiveIndicatorError)
-      if (isExplicitKey(key)) this.fail(explicitKeyError)
-      value = parseScalar(key)
+      const text = trimWhite(foldFlowLines(this.readUntil(/:/)))
+      if (text.startsWith("%")) this.fail(directiveIndicatorError)
+      if (isExplicitKey(text)) this.fail(explicitKeyError)
+      // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
+      key = parseKey(text)
+      value = parseScalar(text)
+      merge = text === "<<"
     }
     if (anchor !== undefined) this.anchors.set(anchor, value)
-    return { key, merge: anchor === undefined && key === "<<" && character !== "\"" && character !== "'" }
+    return { key, merge }
   }
 
   private readQuoted(quote: string): string {
@@ -715,7 +719,7 @@ class YamlParser {
       return { key: aliasKey(this.anchors, text.slice(1), fail), merge: false }
     }
     if (anchor !== null) this.anchors.set(anchor[1], parseScalar(text))
-    return { key: parseKey(text), merge: anchor === null && text === "<<" }
+    return { key: parseKey(text), merge: text === "<<" }
   }
 
   private parseSequence(indent: number): Array<unknown> {
