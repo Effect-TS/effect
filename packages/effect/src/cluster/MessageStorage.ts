@@ -1133,11 +1133,11 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
           } else if (envelope._tag === "AckChunk") {
             const entry = requests.get(envelope.requestId)
-            if (entry) {
-              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                r._tag === "Chunk" && r.id === envelope.replyId
-              ) ?? entry.lastReceivedChunk
-            }
+            // the request was deleted, so there is nothing left to acknowledge
+            if (!entry) return SaveResultEncoded.Success()
+            entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+              r._tag === "Chunk" && r.id === envelope.replyId
+            ) ?? entry.lastReceivedChunk
           }
           unprocessed.add(envelope)
           journal.push(envelope)
