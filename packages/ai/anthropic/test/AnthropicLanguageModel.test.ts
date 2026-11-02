@@ -985,6 +985,61 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(response.usage.inputTokens, { uncached: 3, total: 3, cacheRead: 0, cacheWrite: 0 })
       }))
 
+    it.effect("decodes a web fetch result whose document omits citations", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [
+                  {
+                    type: "server_tool_use",
+                    id: "srvtoolu_1",
+                    name: "web_fetch",
+                    input: { url: "https://example.com" }
+                  },
+                  {
+                    type: "web_fetch_tool_result",
+                    tool_use_id: "srvtoolu_1",
+                    content: {
+                      type: "web_fetch_result",
+                      url: "https://example.com",
+                      retrieved_at: "2026-03-03T15:05:04.091000+00:00",
+                      content: {
+                        type: "document",
+                        source: { type: "text", media_type: "text/plain", data: "Example Domain" },
+                        title: "Example Domain"
+                      }
+                    }
+                  },
+                  { type: "text", text: "Example Domain" }
+                ],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: { input_tokens: 3, output_tokens: 1 }
+              }))
+            )
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({
+          prompt: "What is on https://example.com?",
+          toolkit: Toolkit.make(AnthropicTool.WebFetch_20250910({}))
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const result = response.content.find((part) => part.type === "tool-result")
+        assertDefined(result)
+        assert.strictEqual(result.isFailure, false)
+        assert.isTrue(response.content.some((part) => part.type === "text" && part.text === "Example Domain"))
+      }))
+
     it.effect("emits response metadata for a fallback block and keeps fallback usage iterations", () =>
       Effect.gen(function*() {
         const fallback = {
