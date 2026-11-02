@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`b41529e2ea04dff5fb1f68ef8044d42b75ba141e`)
+Head: `origin/main` (`27d644e4b6f3dc02e5e2a06e8ce2b912595772c9`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -8100,6 +8100,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
 
+### `@effect/sql/Migrator`
+
+- `Migrator.make` -> `effect/sql/Migrator#make`: Moved with the same curried make({ dumpSchema })(options) pattern.
+
 ### `@effect/sql/Model`
 
 - `Model.Any` -> `effect/schema/Model#Any`: Moved; v4 schemas track DecodingServices and EncodingServices separately instead of one Context type.
@@ -8188,9 +8192,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Statement.Constructor` -> `effect/sql/Statement#Constructor`: Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as "data" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them. sql.insert and sql.updateValues now require a non-empty array of rows; narrow array inputs with Array.isReadonlyArrayNonEmpty first.
 
-- `Statement.Fragment`: TODO: needs guidance
+- `Statement.Fragment` -> `effect/sql/Statement#Fragment`: Moved with the same segments field, but the brand key is now Statement.FragmentTypeId and its value is the symbol itself rather than a function. Build fragments with the sql template or Statement.fragment and check them with Statement.isFragment; sql interpolation binds unbranded objects as parameters.
 
-- `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
+- `Statement.FragmentId` -> `effect/sql/Statement#FragmentTypeId`: Renamed to FragmentTypeId, now with a different Symbol.for key. Fragment values store the symbol itself under this key instead of a function; prefer Statement.isFragment for runtime checks.
 
 - `Statement.Statement` -> `effect/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
 
