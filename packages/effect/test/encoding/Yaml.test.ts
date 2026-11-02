@@ -738,6 +738,9 @@ nested:
       ["a function", { handlers: [() => 1] }, "value.handlers[0]"],
       ["a symbol", { s: Symbol("s") }, "value.s"],
       ["a Map", { m: new Map() }, "value.m"],
+      ["an instance whose prototype has a non-string constructor name", {
+        nested: Object.create({ constructor: { name: Symbol("Name") } })
+      }, "value.nested"],
       ["a class instance without toJSON", {
         d: new (class Point {
           x = 1
@@ -797,6 +800,17 @@ nested:
         assert.strictEqual(result.failure.module, "Yaml")
         assert.strictEqual(result.failure.kind, "Encode")
         assert.include(result.failure.message, "value[1].n")
+      }
+    })
+
+    it("fails for a stream that is not iterable", () => {
+      for (const values of [42, { 0: "a", length: 1 }]) {
+        const result = Yaml.stringifyAll(values as any)
+        assert.isTrue(Result.isFailure(result))
+        if (Result.isFailure(result)) {
+          assert.strictEqual(result.failure.module, "Yaml")
+          assert.strictEqual(result.failure.kind, "Encode")
+        }
       }
     })
   })
