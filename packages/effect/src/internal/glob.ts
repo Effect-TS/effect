@@ -746,11 +746,12 @@ export interface IgnoreStep {
   readonly prune: boolean
 }
 
-// A literal `..` or root, or a segment with an escaped `/`
-const spansSegments = (node: Node): boolean =>
-  node._tag === "Literal"
-    ? node.value !== "." && (isUnlisted(node.value) || node.value.includes("/"))
-    : node._tag === "Wildcard" && node.tokens.some((token) => token._tag === "Char" && token.code === 0x2f)
+// A segment that decodes to `..` or contains an escaped `/`. A segment never
+// holds an unescaped `/`, so dropping each escaping backslash is enough.
+const spansSegments = (segment: string): boolean => {
+  const decoded = segment.replace(/\\(.)/gsu, "$1")
+  return decoded === ".." || decoded.includes("/")
+}
 
 /** @internal */
 export const ignoreWalker = (ignore: unknown): IgnoreWalker => (ignore as { readonly walker: IgnoreWalker }).walker
@@ -772,13 +773,10 @@ export const make = (
     return walk(fs, compiled, options, undefined)
   }
   // Ignore rules match root-relative paths one segment at a time, so every
-  // walked entry needs one. Check the expanded patterns too, since compiling
-  // drops some invalid ones, and reject an escaped `/`, which would make one
-  // entry span several segments.
-  if (
-    expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).includes("..")) ||
-    compiled.nodes.some(spansSegments)
-  ) {
+  // walked entry needs one. Check the expanded source text, since compiling
+  // drops some branches, and reject an escaped `/`, which would make one entry
+  // span several segments. Every compiled node comes from one of these segments.
+  if (expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).some(spansSegments))) {
     return Effect.die(
       new Error(
         `FileSystem.glob with ignore requires a relative pattern without ".." segments or escaped "/": ${pattern}`
