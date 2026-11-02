@@ -106,9 +106,9 @@ import * as NodeWS from "./NodeWS.ts"
  */
 export interface Options extends Net.ListenOptions {
   /**
-   * Skips waiting for in-flight requests on shutdown, so request fibers are
-   * interrupted as soon as the server stops serving. Uninterruptible handlers
-   * still run to completion.
+   * Skips the `gracefulShutdownTimeout` wait, so shutdown interrupts request
+   * fibers as soon as the server stops serving. Uninterruptible handlers still
+   * run to completion.
    *
    * @default false
    */
@@ -116,9 +116,8 @@ export interface Options extends Net.ListenOptions {
   /**
    * Bounds how long shutdown waits for the server to close its connections
    * before it interrupts the remaining request fibers. Handlers run
-   * uninterruptibly unless wrapped in `Effect.interruptible` or served by
-   * interruptible `HttpRouter` routes, and shutdown still waits for them to
-   * finish after the timeout.
+   * uninterruptibly unless wrapped in `Effect.interruptible` or served as
+   * `HttpRouter` routes, so shutdown still waits for them after the timeout.
    *
    * @default "20 seconds"
    */

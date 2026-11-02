@@ -89,10 +89,9 @@ export const make = (
  * **Gotchas**
  *
  * The response effect and middleware run uninterruptibly by default, so a
- * client disconnect or server shutdown cannot stop the effect before it
- * produces a response, and shutdown waits for it to finish. Wrap the effect
- * in `Effect.interruptible` to let both interrupt it. Routes served with
- * `HttpRouter` are already interruptible unless added with
+ * client disconnect does not stop the effect and shutdown waits for it to
+ * finish. Wrap the effect in `Effect.interruptible` to let both interrupt it.
+ * `HttpRouter` routes are interruptible unless added with
  * `uninterruptible: true`.
  *
  * @stability unstable
@@ -148,10 +147,9 @@ export const serve: {
  * **Gotchas**
  *
  * The response effect and middleware run uninterruptibly by default, so a
- * client disconnect or server shutdown cannot stop the effect before it
- * produces a response, and shutdown waits for it to finish. Wrap the effect
- * in `Effect.interruptible` to let both interrupt it. Routes served with
- * `HttpRouter` are already interruptible unless added with
+ * client disconnect does not stop the effect and shutdown waits for it to
+ * finish. Wrap the effect in `Effect.interruptible` to let both interrupt it.
+ * `HttpRouter` routes are interruptible unless added with
  * `uninterruptible: true`.
  *
  * @stability unstable

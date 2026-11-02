@@ -39,11 +39,10 @@ import * as requestState from "./internal/requestState.ts"
  *
  * **Gotchas**
  *
- * The returned effect runs `self`, the middleware, and `handleResponse`
- * uninterruptibly, so interrupting its fiber, as server adapters do on client
- * disconnect or shutdown, takes effect only after the response is handled.
- * Wrap `self` in `Effect.interruptible` to let it be interrupted while it
- * produces the response.
+ * `self`, the middleware and `handleResponse` run uninterruptibly, so an
+ * interrupt, which server adapters send on client disconnect and shutdown,
+ * takes effect once the response is handled. Wrap `self` in
+ * `Effect.interruptible` to let it be interrupted while producing the response.
  *
  * @stability unstable
  * @category combinators
@@ -403,7 +402,7 @@ export const toWebHandler: <E>(
  *
  * **Gotchas**
  *
- * The handler effect runs uninterruptibly by default, so aborting the request's
+ * The effect runs uninterruptibly by default, so aborting the request's
  * `signal` does not stop it before it produces a response. Wrap the effect in
  * `Effect.interruptible` to let an abort interrupt it.
  *
