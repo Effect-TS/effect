@@ -2664,7 +2664,7 @@ export type ToolSearchBM25Parameters = typeof ToolSearchBM25Parameters.Type
  *
  * @stability unstable
  * @category annotations
- * @since 4.2.0
+ * @since 4.1.2
  */
 export const DeferLoading = Context.Reference<boolean>("@effect/ai-anthropic/AnthropicTool/DeferLoading", {
   defaultValue: () => false
