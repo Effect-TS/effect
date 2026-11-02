@@ -57,8 +57,8 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
-import * as McpSkills from "./internal/mcpSkills.ts"
 import { protocolVersion as requestScopedProtocolVersion } from "./internal/mcpSchema/v2026_07_28.ts"
+import * as McpSkills from "./internal/mcpSkills.ts"
 
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
@@ -102,7 +102,6 @@ import * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
-const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
 const decodeJson = Schema.decodeEffect(Schema.UnknownFromJsonString)
 const decodeToolOutputJson = Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)
 const decodeToolInputJson = Schema.decodeUnknownEffect(ToolJson)
@@ -3248,11 +3247,8 @@ const toolErrorResult = (message: string): CallToolResult =>
     content: [{ type: "text", text: message }]
   })
 
-const toolResultContent = Effect.fnUntraced(function*(encoded: unknown): Effect.fn.Return<CallToolResult["content"]> {
-  if (encoded === undefined) return []
-  const text = yield* encodeJson(encoded).pipe(Effect.orDie)
-  return [{ type: "text", text }]
-})
+const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
+  encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
 /**
  * The requirements of a toolkit registration.

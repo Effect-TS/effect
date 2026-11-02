@@ -1313,4 +1313,3 @@ describe("client input", () => {
       assert.isFalse((yield* disabled.client.listTools()).some((tool) => tool.name === "needs_input"))
     }))
 })
-

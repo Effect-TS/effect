@@ -59,7 +59,12 @@ const connect = Effect.fnUntraced(function*<R = never>(
     Queue.offerUnsafe(observed, message.method)
     return response
   }, { preconnect() {} })
-  const client = yield* McpClient.make({ name: "task-client", version: "1", tasks: { mode: "poll" }, ...clientOptions })
+  const client = yield* McpClient.make({
+    name: "task-client",
+    version: "1",
+    extensions: { tasks: { mode: "poll" } },
+    ...clientOptions
+  })
     .pipe(
       Effect.provideService(
         McpClient.Transport,
@@ -99,6 +104,40 @@ const taskMetadata = () => ({
 // Owner: McpClient polling and input orchestration, public ToolExecution controls and Toolkit integration.
 // Server state translation belongs to McpServer/McpTasks.test.ts; SQL persistence belongs to McpTasksWorkflow.test.ts.
 describe("McpClient Tasks", () => {
+  it.effect("should use Skills and Tasks together while preserving input capabilities", () =>
+    Effect.gen(function*() {
+      const uri = "skill://acme/reports/SKILL.md"
+      const { client, report, requests } = yield* connect(
+        ask("name").pipe(Effect.map((answer) => answer.content.value)),
+        {
+          extensions: { skills: true, tasks: { mode: "poll" } },
+          input: { elicitation: () => Effect.succeed({ action: "accept", content: { value: "Alice" } }) },
+          registration: McpServer.skill({
+            uri,
+            files: { "SKILL.md": "---\nname: reports\ndescription: Build reports\n---\n" }
+          }).pipe(Layer.orDie)
+        }
+      )
+      const [skill] = yield* client.listSkills()
+      assert.strictEqual(skill.uri, uri)
+      yield* client.readSkillResource({ skill, uri })
+      const result = yield* client.callTool({ tool: report, schema: Schema.String }).pipe(Effect.forkChild)
+      assert.strictEqual(yield* finish(result), "Alice")
+      for (const { message } of requests) {
+        const meta = message.params?._meta as Record<string, unknown>
+        const capabilities = meta["io.modelcontextprotocol/clientCapabilities"] as McpSchema.ClientCapabilities
+        assert.deepStrictEqual(capabilities.extensions, {
+          "io.modelcontextprotocol/skills": {},
+          "io.modelcontextprotocol/tasks": {}
+        })
+        if (message.method === "resources/read") {
+          assert.isUndefined(capabilities.elicitation)
+        } else {
+          assert.isDefined(capabilities.elicitation)
+        }
+      }
+    }))
+
   // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#polymorphic-results
   it.effect("should return final tool output when execution is immediate or task-backed", () =>
     Effect.gen(function*() {
@@ -325,7 +364,7 @@ describe("McpClient Tasks", () => {
   // Conformance: https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html#capability-negotiation
   it.effect("should omit task capability when polling is disabled", () =>
     Effect.gen(function*() {
-      const { client, report, requests } = yield* connect(Effect.succeed("done"), { tasks: undefined })
+      const { client, report, requests } = yield* connect(Effect.succeed("done"), { extensions: undefined })
       const error = yield* client.callTool({ tool: report }).pipe(Effect.flip)
       assert(error.reason._tag === "ProtocolError")
       assert.strictEqual(error.reason.code, -32021)
