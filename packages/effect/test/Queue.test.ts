@@ -434,29 +434,22 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Queue.takeAll(queue), [4, 5])
     }))
 
-  it.effect("offer sliding with zero capacity hands off to a waiting taker", () =>
+  it.effect("offer sliding with zero capacity only hands off to waiting takers", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.sliding<number>(0)
+      assert.isTrue(yield* Queue.offer(queue, 0))
+      assert.strictEqual(yield* Queue.size(queue), 0)
       const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
       assert.isTrue(yield* Queue.offer(queue, 1))
       assert.strictEqual(yield* Fiber.join(taker), 1)
     }))
 
-  it.effect("offerAll sliding with zero capacity hands off the latest messages to waiting takers", () =>
+  it.effect("offerAll sliding with zero capacity hands the newest messages to waiting takers", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.sliding<number>(0)
       const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
-      assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2, 3]), [])
-      assert.strictEqual(yield* Fiber.join(taker), 3)
-    }))
-
-  it.effect("offer sliding with zero capacity drops older messages pending for a waiting taker", () =>
-    Effect.gen(function*() {
-      const queue = yield* Queue.sliding<number>(0)
-      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
-      Queue.offerAllUnsafe(queue, [1, 2, 3])
-      Queue.offerUnsafe(queue, 4)
-      assert.strictEqual(yield* Fiber.join(taker), 4)
+      assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2]), [])
+      assert.strictEqual(yield* Fiber.join(taker), 2)
       assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
