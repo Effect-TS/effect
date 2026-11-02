@@ -654,6 +654,44 @@ describe("SqlMessageStorage", () => {
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
+      it.effect("creates the retention index", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const index = "cluster_messages_retention_idx"
+          const columns = yield* sql.onDialectOrElse({
+            pg: () =>
+              sql<{ name: string }>`
+                SELECT a.attname AS name
+                FROM pg_index i
+                JOIN pg_class c ON c.oid = i.indexrelid
+                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+                WHERE c.relname = ${index} AND i.indrelid = 'cluster_messages'::regclass
+                ORDER BY array_position(i.indkey::int2[], a.attnum)
+              `,
+            mysql: () =>
+              sql<{ name: string }>`
+                SELECT column_name AS name FROM information_schema.statistics
+                WHERE table_schema = DATABASE() AND table_name = 'cluster_messages' AND index_name = ${index}
+                ORDER BY seq_in_index
+              `,
+            mssql: () =>
+              sql<{ name: string }>`
+                SELECT c.name FROM sys.indexes i
+                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+                JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+                WHERE i.name = ${index} AND i.object_id = OBJECT_ID('cluster_messages')
+                ORDER BY ic.key_ordinal
+              `,
+            orElse: () =>
+              sql<{ name: string }>`
+                SELECT ii.name FROM sqlite_master m, pragma_index_info(m.name) ii
+                WHERE m.type = 'index' AND m.name = ${index} AND m.tbl_name = 'cluster_messages'
+                ORDER BY ii.seqno
+              `
+          })
+          expect(columns.map((column) => column.name)).toEqual(["entity_type", "processed", "last_reply_id"])
+        }))
+
       it.effect("deleteProcessed deletes at most limit request families", () =>
         Effect.gen(function*() {
           yield* truncate
