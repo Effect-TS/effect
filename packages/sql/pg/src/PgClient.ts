@@ -321,7 +321,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       prepareTransactionControls: true,
       commit,
       onCommitFailure,
-      // The server rolls back the transaction of a session it ended.
+      // A session the server ended has nothing left to roll back.
       isTransaction: (conn) => connectionInternals((conn as ConnectionImpl).connection).deadError() === undefined,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer,

@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Preserve the typed `SqlError` from `withTransaction` when the server ends a PgClient session inside a transaction.
+Fix `withTransaction` failing with a defect instead of the typed `SqlError` when PostgreSQL ends the session mid-transaction.
