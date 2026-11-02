@@ -2157,9 +2157,10 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
-  // Anthropic tool search runs on the server: `server_tool_use` and its
-  // `tool_search_tool_result` must replay in the assistant message as received,
-  // while only client tool results belong in the following user message (#10268).
+  // Anthropic server tools (tool search, web search, web fetch, code execution):
+  // `server_tool_use` and its result block, including errors, must replay in the
+  // assistant message as received, while only client tool results belong in the
+  // following user message (#10268).
   describe("tool search", () => {
     const ListContacts = Tool.make("ListContacts", {
       parameters: Schema.Struct({ name: Schema.String }),
