@@ -4003,6 +4003,8 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
       issuePath[issuePathLen++] = i
       encodeFail("a number", value, ctx.options)
     }
+    // Once both narrower modes are ruled out, only the type check remains.
+    if (!varint && !decimal) continue
     if (isVarintNumber(value)) {
       const magnitude = value < 0 ? -value : value
       if (magnitude > DECIMAL_MANTISSA_MAX) decimal = false
@@ -4012,7 +4014,6 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
       if (scale === 0) decimal = false
       else numberRunScales[i] = scale
     }
-    if (!varint && !decimal) break
   }
   if (varint) {
     w.byte(NUMBER_RUN_VARINT)
@@ -4031,16 +4032,7 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
     }
   } else {
     w.byte(NUMBER_RUN_F64)
-    // The classification pass stops at the first f64-only value, so the rest
-    // are type-checked here.
-    for (let i = 0; i < count; i++) {
-      const value = arr[i]
-      if (typeof value !== "number") {
-        issuePath[issuePathLen++] = i
-        encodeFail("a number", value, ctx.options)
-      }
-      w.f64(value)
-    }
+    for (let i = 0; i < count; i++) w.f64(arr[i] as number)
   }
 }
 
