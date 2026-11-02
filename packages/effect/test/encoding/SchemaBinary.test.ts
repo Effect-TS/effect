@@ -443,6 +443,21 @@ describe("SchemaBinary", () => {
       }
     })
 
+    it("rejects non-number elements after an f64 run is already decided", () => {
+      for (
+        const codec of [
+          SchemaBinary.toCodec(Schema.Array(Schema.Number)),
+          SchemaBinary.toCodecDirect(Schema.Array(Schema.Number))
+        ]
+      ) {
+        for (const value of ["x", undefined, null, 1n]) {
+          const error = schemaError(() => Schema.encodeUnknownSync(codec)([Math.PI, Math.E, value] as any))
+          assert.include(error.message, "Expected a number")
+          assert.include(error.message, "at [2]")
+        }
+      }
+    })
+
     it("length-prefixes each number slot of a tuple", () => {
       const pair = Schema.Tuple([Schema.Number, Schema.Number])
       assert.strictEqual(encode(pair, [1, 2]).length, 6)

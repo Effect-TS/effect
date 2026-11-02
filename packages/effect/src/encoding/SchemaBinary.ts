@@ -4031,7 +4031,16 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
     }
   } else {
     w.byte(NUMBER_RUN_F64)
-    for (let i = 0; i < count; i++) w.f64(arr[i] as number)
+    // The classification pass stops at the first f64-only value, so the rest
+    // are type-checked here.
+    for (let i = 0; i < count; i++) {
+      const value = arr[i]
+      if (typeof value !== "number") {
+        issuePath[issuePathLen++] = i
+        encodeFail("a number", value, ctx.options)
+      }
+      w.f64(value)
+    }
   }
 }
 
