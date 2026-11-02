@@ -135,6 +135,23 @@ describe("LanguageModel", () => {
         assertTrue(!span.attributes.has("gen_ai.tool.call.arguments"))
       }))
 
+    it.effect("records tool call arguments when Toolkit.RecordToolArguments is enabled", () =>
+      Effect.gen(function*() {
+        let span: LanguageModel.ProviderOptions["span"] | undefined
+        yield* LanguageModel.generateText({ prompt: "hi", toolkit: MyToolkit }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: (options) => {
+              span = options.span
+              return [{ type: "tool-call", id: "call-1", name: "MyTool", params: { testParam: "secret" } }]
+            }
+          }),
+          Effect.provide(MyToolkit.toLayer({ MyTool: () => Effect.succeed({ testSuccess: "test-success" }) })),
+          Effect.provideService(Toolkit.RecordToolArguments, true)
+        )
+        assertDefined(span)
+        strictEqual(span.attributes.get("gen_ai.tool.call.arguments"), "{\"testParam\":\"secret\"}")
+      }))
+
     it.effect("JSON-encodes object tool choices", () =>
       LanguageModel.generateText({
         prompt: "hi",

@@ -3499,7 +3499,7 @@ describe("McpServer", () => {
 
     const isHttpSpan = (span: Tracer.AnySpan) => span._tag === "Span" && span.attributes.has("http.request.method")
 
-    const makeTracedHarness = Effect.fnUntraced(function*() {
+    const makeTracedHarness = Effect.fnUntraced(function*(recordToolArguments = false) {
       // Ended MCP request spans, in completion order. HTTP transport spans and
       // notification spans are skipped so each request maps to the next entry.
       const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
@@ -3540,7 +3540,8 @@ describe("McpServer", () => {
       )
       const harness = yield* makeHttpHarness(registrations.pipe(
         Layer.provideMerge(makeServerLayer({ name: "TracingTest", protocols: [protocol] })),
-        Layer.provideMerge(Layer.succeed(Tracer.Tracer, tracer))
+        Layer.provideMerge(Layer.succeed(Tracer.Tracer, tracer)),
+        Layer.provideMerge(Layer.succeed(Toolkit.RecordToolArguments, recordToolArguments))
       ))
       const headers = yield* initializeHttpSession(harness, protocol)
       const initialize = yield* Queue.take(ended)
@@ -3585,6 +3586,14 @@ describe("McpServer", () => {
         const resource = yield* request(3, "resources/read", { uri: "file:///readme" })
         assert.strictEqual(resource.name, "resources/read")
         assert.strictEqual(resource.attributes.get("mcp.resource.uri"), "file:///readme")
+      }))
+
+    it.effect("records tool arguments when Toolkit.RecordToolArguments is enabled", () =>
+      Effect.gen(function*() {
+        const { request } = yield* makeTracedHarness(true)
+
+        const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
+        assert.strictEqual(call.attributes.get("gen_ai.tool.call.arguments"), "{\"location\":\"London\"}")
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
