@@ -376,7 +376,13 @@ const parseKey = (input: string): string => {
 const flowNameEnd = /[ \t\n,[\]{}]/
 
 class FlowParser {
-  private input: string
+  // The flow collection is read one line at a time. Each line after the first
+  // starts with the "\n" that separates it from the previous one, so offsets and
+  // multiline text match a single joined string without ever building one:
+  // appending to and indexing a growing string is quadratic.
+  private line: string
+  // Length of the lines before `line`, for error offsets.
+  private offset = 0
   private readonly anchors: Map<string, unknown>
   // `quoted` asks for a continuation of an open quoted scalar, returned without
   // comment removal since `#` inside quotes is content.
@@ -392,7 +398,7 @@ class FlowParser {
     nextLine: (depth: number, quoted: boolean) => string | undefined,
     blockDepth: number
   ) {
-    this.input = input
+    this.line = input
     this.anchors = anchors
     this.nextLine = nextLine
     this.blockDepth = blockDepth
@@ -401,7 +407,7 @@ class FlowParser {
   parse(): unknown {
     const value = this.parseValue()
     this.skipWhitespace()
-    if (this.index !== this.input.length) {
+    if (this.index !== this.line.length) {
       this.fail("Unexpected flow collection content")
     }
     return value
@@ -524,40 +530,65 @@ class FlowParser {
   // Reads a quoted scalar, pulling continuation lines until its closing quote.
   // The scan resumes where it stopped, so long scalars stay linear.
   private readQuoted(quote: string): string {
-    const start = this.index
+    const startOffset = this.offset + this.index
+    const pieces: Array<string> = []
+    let start = this.index
     let index = start + 1
-    let multiline = false
     while (true) {
-      for (; index < this.input.length; index++) {
-        const character = this.input[index]
+      const line = this.line
+      for (; index < line.length; index++) {
+        const character = line[index]
         if (quote === "\"" && character === "\\") {
-          // Skips the escaped character, which may be the line break pulled next.
+          // Skips the escaped character, which may be the line break of the next line.
           index++
         } else if (character === quote) {
-          if (quote === "'" && this.input[index + 1] === "'") {
+          if (quote === "'" && line[index + 1] === "'") {
             index++
           } else {
             this.index = index + 1
-            if (multiline) {
+            pieces.push(line.slice(start, this.index))
+            if (pieces.length > 1) {
               // The rest of the closing line was read raw, so remove its comment now.
-              const rest = this.input.slice(this.index)
-              if (!rest.startsWith("#")) this.input = this.input.slice(0, this.index) + stripComment(rest, this.depth)
+              const rest = line.slice(this.index)
+              if (!rest.startsWith("#")) this.line = line.slice(0, this.index) + stripComment(rest, this.depth)
             }
-            return foldQuotedLines(this.input.slice(start, this.index))
+            return foldQuotedLines(pieces.join(""))
           }
         }
       }
-      const line = this.nextLine(this.depth, true)
-      if (line === undefined) this.fail("Unterminated quoted scalar")
-      this.input += `\n${line}`
-      multiline = true
+      pieces.push(line.slice(start))
+      // 1 when an escape at the end of the line consumed the next line's "\n".
+      const skipped = index - line.length
+      if (!this.nextChunk(true)) throw new SyntaxError(`Unterminated quoted scalar at flow offset ${startOffset}`)
+      start = 0
+      index = skipped
     }
   }
 
   private readUntil(stop: RegExp): string {
-    const start = this.index
-    while (!stop.test(this.peek()) && this.index < this.input.length) this.index++
-    return this.input.slice(start, this.index)
+    const pieces: Array<string> = []
+    let start = this.index
+    while (true) {
+      if (this.index === this.line.length) {
+        pieces.push(this.line.slice(start))
+        if (this.depth === 0 || !this.nextChunk(false)) return pieces.join("")
+        start = 0
+      }
+      if (stop.test(this.line[this.index])) break
+      this.index++
+    }
+    pieces.push(this.line.slice(start, this.index))
+    return pieces.join("")
+  }
+
+  // Moves to the next line of the flow collection, keeping its leading "\n".
+  private nextChunk(quoted: boolean): boolean {
+    const next = this.nextLine(this.depth, quoted)
+    if (next === undefined) return false
+    this.offset += this.line.length
+    this.line = `\n${next}`
+    this.index = 0
+    return true
   }
 
   private skipWhitespace(): void {
@@ -571,15 +602,12 @@ class FlowParser {
 
   private peek(): string {
     // Inside a collection, the end of the line continues on the next line.
-    if (this.index === this.input.length && this.depth > 0) {
-      const line = this.nextLine(this.depth, false)
-      if (line !== undefined) this.input += `\n${line}`
-    }
-    return this.input[this.index] ?? ""
+    if (this.index === this.line.length && this.depth > 0) this.nextChunk(false)
+    return this.line[this.index] ?? ""
   }
 
   private fail(message: string): never {
-    throw new SyntaxError(`${message} at flow offset ${this.index}`)
+    throw new SyntaxError(`${message} at flow offset ${this.offset + this.index}`)
   }
 }
 
@@ -845,7 +873,8 @@ class YamlParser {
       if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
       return this.anchors.get(name)
     }
-    if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(text, parentIndent)
+    // The untrimmed value keeps an escaped trailing space before a quoted line break.
+    if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(value, parentIndent)
     return this.parsePlainValue(text, parentIndent)
   }
 
@@ -853,10 +882,15 @@ class YamlParser {
     return new FlowParser(text, this.anchors, (depth, quoted) => {
       const next = this.lineAt(this.index)
       if (next === undefined) return undefined
-      // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
-      const content = trimWhite(next.text).length > 0
-      if (content && next.indent < parentIndent) return undefined
-      if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+      if (quoted) {
+        // Inside a quote, `#` and brackets are content: every non-blank line is indented past the parent.
+        if (trimWhite(next.raw).length > 0 && next.indent <= parentIndent) return undefined
+      } else {
+        // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
+        const content = trimWhite(next.text).length > 0
+        if (content && next.indent < parentIndent) return undefined
+        if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+      }
       this.index++
       const text = next.raw.slice(next.indent)
       // Strip comments again knowing the open collections, so quoted `#` after a comma is kept.
