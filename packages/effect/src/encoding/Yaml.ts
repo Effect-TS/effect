@@ -10,8 +10,14 @@
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
  * at its parent's indentation.
  *
- * Unsupported input fails rather than being read as text: tags (`!!str`,
- * `!local`), explicit keys (`? key`), `%TAG` and other directives, YAML
+ * The shorthand tags of the YAML 1.2 core schema resolve: `!!str`, `!!int`,
+ * `!!float`, `!!bool`, `!!null`, `!!seq` and `!!map`. A tagged node whose
+ * content does not match its tag fails.
+ *
+ * Unsupported input fails rather than being read as text: other tags, including
+ * local tags (`!local`), the non-specific tag (`!`), verbatim tags
+ * (`!<tag:yaml.org,2002:str>`, even for core tags) and YAML 1.1 tags such as
+ * `!!binary`; explicit keys (`? key`), `%TAG` and other directives, YAML
  * versions other than 1.2, recursive aliases, and collections nested more than
  * 1000 levels deep. A block sequence cannot start on the same line as a
  * mapping key (`key: - value`).
@@ -188,8 +194,67 @@ const isDocumentStart = (line: Line): boolean => isDocumentMarker(line) && line.
 // YAML 1.2.2 §5.3: `%` is the directive indicator and cannot start a plain scalar.
 const directiveIndicatorError = "Plain scalars cannot start with '%'"
 
-// YAML 1.2.2 §6.9.1: `!` starts a tag. Tags are rejected rather than read as text.
-const tagError = "YAML tags are not supported"
+// YAML 1.2.2 §6.9.1: `!` starts a tag. Only the shorthand tags of the core schema
+// (§10.3) resolve; every other tag fails rather than being read as text.
+const coreTags = new Set(["!!str", "!!int", "!!float", "!!bool", "!!null", "!!seq", "!!map"])
+
+// The tag token at the start of `text`, which must be a core tag.
+const readTag = (text: string, fail: (message: string) => never): string => {
+  // A verbatim tag (`!<...>`) may contain `,`, so it is read whole.
+  const tag = /^!(?:<[^>]*>?|[^ \t\n,[\]{}]*)/.exec(text)![0]
+  if (!coreTags.has(tag)) {
+    fail(`Unsupported YAML tag '${tag}', only the core tags ${[...coreTags].join(", ")} are supported`)
+  }
+  return tag
+}
+
+// Resolves a core scalar tag against the scalar's source text, so `!!str 0x10` stays
+// `"0x10"` and `!!int "42"` becomes `42`.
+const resolveScalarTag = (tag: string, text: string, fail: (message: string) => never): unknown => {
+  switch (tag) {
+    case "!!str":
+      return text
+    case "!!null":
+      if (/^(?:null|Null|NULL|~|)$/.test(text)) return null
+      break
+    case "!!bool":
+      if (/^(?:true|True|TRUE)$/.test(text)) return true
+      if (/^(?:false|False|FALSE)$/.test(text)) return false
+      break
+    case "!!int":
+      if (/^[-+]?[0-9]+$/.test(text)) return Number(text)
+      if (/^0o[0-7]+$/.test(text)) return Number.parseInt(text.slice(2), 8)
+      if (/^0x[0-9a-fA-F]+$/.test(text)) return Number.parseInt(text.slice(2), 16)
+      break
+    case "!!float":
+      // The fraction is optional, so `1` is a float too.
+      if (/^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$/.test(text)) return Number(text)
+      if (/^[-+]?\.(?:inf|Inf|INF)$/.test(text)) {
+        return text.startsWith("-") ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
+      }
+      if (/^\.(?:nan|NaN|NAN)$/.test(text)) return Number.NaN
+      break
+  }
+  return fail(`Scalar '${text}' does not match the YAML tag ${tag}`)
+}
+
+// Resolves a core tag against a parsed node. `plain` is the source text when the
+// node is a plain scalar; quoted and block scalars are already strings, and an
+// empty node is the empty string.
+const resolveTag = (
+  tag: string,
+  value: unknown,
+  plain: string | undefined,
+  fail: (message: string) => never
+): unknown => {
+  const collection = typeof value === "object" && value !== null
+  if (tag === "!!seq" || tag === "!!map") {
+    if (!collection || Array.isArray(value) !== (tag === "!!seq")) fail(`Node does not match the YAML tag ${tag}`)
+    return value
+  }
+  if (collection) fail(`A collection does not match the YAML tag ${tag}`)
+  return resolveScalarTag(tag, plain ?? (typeof value === "string" ? value : ""), fail)
+}
 
 const isExplicitKey = (text: string): boolean => text === "?" || /^\?[ \t]/.test(text)
 
@@ -218,9 +283,22 @@ const aliasKey = (anchors: Map<string, unknown>, name: string, fail: (message: s
 
 // Resolves a scalar key, recording its anchor. Only a plain `<<` merges, so a
 // quoted key keeps its quotes in `text` and stays ordinary.
-const scalarKey = (anchors: Map<string, unknown>, anchor: string | undefined, text: string): MappingKey => {
-  if (anchor !== undefined) anchors.set(anchor, parseScalar(text))
-  return { key: parseKey(text), merge: text === "<<" }
+// `text` is the key's source; a tagged key resolves its tag instead and never merges.
+const scalarKey = (
+  anchors: Map<string, unknown>,
+  anchor: string | undefined,
+  tag: string | undefined,
+  text: string,
+  fail: (message: string) => never
+): MappingKey => {
+  if (tag === undefined) {
+    if (anchor !== undefined) anchors.set(anchor, parseScalar(text))
+    return { key: parseKey(text), merge: text === "<<" }
+  }
+  const quoted = text.startsWith("\"") || text.startsWith("'")
+  const value = resolveScalarTag(tag, quoted ? parseScalar(text) as string : text, fail)
+  if (anchor !== undefined) anchors.set(anchor, value)
+  return { key: value === null ? "" : String(value), merge: false }
 }
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
@@ -396,6 +474,8 @@ class FlowParser {
   private readonly blockDepth: number
   private index = 0
   private depth = 0
+  // Source text of the last plain scalar, which a scalar tag resolves against.
+  private plainText: string | undefined
 
   constructor(
     input: string,
@@ -444,7 +524,31 @@ class FlowParser {
       this.anchors.set(name, value)
       return value
     }
-    return parseScalar(this.readPlain(/[,\]}]/))
+    if (character === "!") return this.parseTaggedValue()
+    const text = this.readPlain(/[,\]}]/)
+    this.plainText = text
+    return parseScalar(text)
+  }
+
+  // A tag, optionally followed by an anchor, then the node it applies to.
+  private parseTaggedValue(): unknown {
+    const fail = (message: string) => this.fail(message)
+    const tag = readTag(this.readTagToken(), fail)
+    this.skipWhitespace()
+    let anchor: string | undefined
+    if (this.peek() === "&") {
+      this.index++
+      anchor = this.readUntil(flowNameEnd)
+      if (anchor === "") this.fail("Invalid anchor")
+      this.skipWhitespace()
+    }
+    if (this.peek() === "!") this.fail("Multiple tags on one node")
+    if (this.peek() === "*") this.fail("An alias cannot have a tag")
+    this.plainText = undefined
+    const node = this.parseValue()
+    const value = resolveTag(tag, node, this.plainText, fail)
+    if (anchor !== undefined) this.anchors.set(anchor, value)
+    return value
   }
 
   // Reads a plain scalar up to `stop`, rejecting directive, tag, explicit key and
@@ -459,7 +563,6 @@ class FlowParser {
     }
     const text = trimWhite(foldFlowLines(this.readUntil(stop)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
-    if (text.startsWith("!")) this.fail(tagError)
     if (isExplicitKey(text)) this.fail(explicitKeyError)
     return text
   }
@@ -528,16 +631,28 @@ class FlowParser {
       if (anchor === "") this.fail("Invalid anchor")
       this.skipWhitespace()
     }
+    let tag: string | undefined
+    if (this.peek() === "!") {
+      tag = readTag(this.readTagToken(), fail)
+      this.skipWhitespace()
+      if (anchor === undefined && this.peek() === "&") {
+        this.index++
+        anchor = this.readUntil(flowNameEnd)
+        if (anchor === "") this.fail("Invalid anchor")
+        this.skipWhitespace()
+      }
+      if (this.peek() === "!") this.fail("Multiple tags on one node")
+    }
     const character = this.peek()
-    if (character === "!") this.fail(tagError)
     if (character === "*") {
       if (anchor !== undefined) this.fail("An alias cannot have an anchor")
+      if (tag !== undefined) this.fail("An alias cannot have a tag")
       this.index++
       return { key: aliasKey(this.anchors, this.readUntil(flowNameEnd), fail), merge: false }
     }
     // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
     const text = character === "\"" || character === "'" ? this.readQuoted(character) : this.readPlain(/:/)
-    return scalarKey(this.anchors, anchor, text)
+    return scalarKey(this.anchors, anchor, tag, text, fail)
   }
 
   // Reads a quoted scalar, pulling continuation lines until its closing quote.
@@ -566,6 +681,15 @@ class FlowParser {
       start = 0
       from = skipped
     }
+  }
+
+  // A verbatim tag (`!<...>`) may contain `,`, so it is read up to its `>`.
+  private readTagToken(): string {
+    if (this.line[this.index + 1] !== "<") return this.readUntil(flowNameEnd)
+    const token = this.readUntil(/>/)
+    if (this.peek() !== ">") return token
+    this.index++
+    return `${token}>`
   }
 
   private readUntil(stop: RegExp): string {
@@ -633,6 +757,31 @@ const boundaryContent = (raw: string): string => {
   return trimWhiteEnd(index === -1 ? raw : raw.slice(0, index))
 }
 
+// Splits the node properties, an anchor and a tag in either order, from the start of `text`.
+const nodeProperties = (
+  text: string,
+  fail: (message: string) => never
+): { readonly anchor: string | undefined; readonly tag: string | undefined; readonly rest: string } => {
+  let anchor: string | undefined
+  let tag: string | undefined
+  let rest = text
+  while (true) {
+    // `s`: U+2028 and U+2029 are content, not line breaks.
+    const property = anchor === undefined ? /^&([^ \t,[\]{}]+)(?:[ \t]+|$)/s.exec(rest) : null
+    if (property !== null) {
+      anchor = property[1]
+      rest = rest.slice(property[0].length)
+    } else if (tag === undefined && rest.startsWith("!")) {
+      tag = readTag(rest, fail)
+      rest = rest.slice(tag.length)
+      if (rest.length > 0 && !isWhite(rest[0])) fail(`Expected white space after the YAML tag ${tag}`)
+      rest = trimWhiteStart(rest)
+    } else {
+      return { anchor, tag, rest }
+    }
+  }
+}
+
 class YamlParser {
   private readonly lines: Array<Line>
   private index = 0
@@ -643,6 +792,8 @@ class YamlParser {
   private anchors = new Map<string, unknown>()
   // Block collections currently open.
   private depth = 0
+  // Source text of the last plain scalar, which a scalar tag resolves against.
+  private plainText: string | undefined
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -792,18 +943,16 @@ class YamlParser {
 
   // `raw` is the key text before the `:` separator.
   private parseBlockKey(raw: string, fail: (message: string) => never): MappingKey {
-    let text = trimWhite(raw)
-    const anchor = /^&([^ \t,[\]{}]+)(?:[ \t]+|$)/.exec(text)
-    if (anchor !== null) text = text.slice(anchor[0].length)
+    const { anchor, tag, rest: text } = nodeProperties(trimWhite(raw), fail)
     if (text.startsWith("%")) fail(directiveIndicatorError)
-    if (text.startsWith("!")) fail(tagError)
     if (text.startsWith("*")) {
-      if (anchor !== null) fail("An alias cannot have an anchor")
+      if (anchor !== undefined) fail("An alias cannot have an anchor")
+      if (tag !== undefined) fail("An alias cannot have a tag")
       // `:` may be part of an alias name, so the separator must follow white space.
       if (!isWhite(raw[raw.length - 1])) fail("An alias used as a mapping key must be followed by a space before ':'")
       return { key: aliasKey(this.anchors, text.slice(1), fail), merge: false }
     }
-    return scalarKey(this.anchors, anchor?.[1], text)
+    return scalarKey(this.anchors, anchor, tag, text, fail)
   }
 
   // `first` is the entry of a compact nested sequence (`- - item`), which starts on its parent entry's line.
@@ -845,11 +994,20 @@ class YamlParser {
   }
 
   private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {
-    // `s`: U+2028 and U+2029 are content, not line breaks.
-    const anchor = /^&([^ \t,[\]{}]+)(?:[ \t]+(.*))?$/s.exec(rawValue)
-    if (anchor === null) return this.parseValue(rawValue, parentIndent, allowIndentless)
-    const value = this.parseValue(anchor[2] ?? "", parentIndent, allowIndentless)
-    this.anchors.set(anchor[1], value)
+    const fail = (message: string): never => {
+      throw new SyntaxError(message)
+    }
+    const { anchor, tag, rest } = nodeProperties(rawValue, fail)
+    let value: unknown
+    if (tag === undefined) {
+      value = this.parseValue(rest, parentIndent, allowIndentless)
+    } else {
+      if (rest.startsWith("*")) fail("An alias cannot have a tag")
+      this.plainText = undefined
+      const node = this.parseValue(rest, parentIndent, allowIndentless)
+      value = resolveTag(tag, node, this.plainText, fail)
+    }
+    if (anchor !== undefined) this.anchors.set(anchor, value)
     return value
   }
 
@@ -865,7 +1023,7 @@ class YamlParser {
       }
       return null
     }
-    if (text.startsWith("!")) throw new SyntaxError(tagError)
+    if (text.startsWith("!")) throw new SyntaxError("Multiple tags on one node")
     // YAML 1.2.2 §8.2.1: a block sequence never starts after a key or an anchor on the same line.
     if (isSequenceEntry(text)) {
       throw new SyntaxError("A block sequence cannot start on the same line as a mapping key or anchor")
@@ -925,6 +1083,7 @@ class YamlParser {
       this.index++
       terminated = comment !== -1
     }
+    this.plainText = output
     return parseScalar(output)
   }
 
@@ -1096,9 +1255,12 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision; quote
  * such values to keep them exact as strings.
  *
- * Tags, explicit keys (`? key`), and collections nested more than 1000 levels
- * deep fail. An alias may be used as a mapping key when it refers to a scalar,
- * whose string form becomes the key.
+ * The core schema's shorthand tags resolve against the scalar as written, so
+ * `!!str 0x10` is the string `"0x10"` and `!!int "42"` is the number `42`.
+ * Other tags, including verbatim and non-specific tags, fail, as do explicit
+ * keys (`? key`) and collections nested more than 1000 levels deep. An alias
+ * may be used as a mapping key when it refers to a scalar, whose string form
+ * becomes the key.
  *
  * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
@@ -1115,7 +1277,8 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * Yaml.parse("port: 8080") // => Result.succeed({ port: 8080 })
  * Result.isFailure(Yaml.parse("port: [8080")) // => true
  * Result.isFailure(Yaml.parse("a: 1\n---\nb: 2")) // => true
- * Result.isFailure(Yaml.parse("port: !!str 8080")) // => true
+ * Yaml.parse("port: !!str 8080") // => Result.succeed({ port: "8080" })
+ * Result.isFailure(Yaml.parse("port: !custom 8080")) // => true
  * ```
  *
  * @see {@link parseAll} for parsing a stream of documents
