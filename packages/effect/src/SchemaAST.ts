@@ -3119,7 +3119,7 @@ export const Objects: new(
       pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const property = properties![index]
-      return Effect.flatMap(Effect.exit(pending), (exit) => {
+      return Effect.flatMap(Effect.exit(pending), (exit): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
         // Copy the parsed prefix per execution so reruns cannot overwrite earlier results.
         const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
         const terminal = stepProperty(state, property, exit)
