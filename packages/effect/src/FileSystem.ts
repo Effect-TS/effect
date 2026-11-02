@@ -163,8 +163,9 @@ export interface FileSystem {
    *
    * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
    * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling. With `ignore`, an absolute pattern or one with a `..`
-   * segment is a defect, because ignore rules only match paths under `root`.
+   * pattern's spelling. With `ignore`, an absolute pattern, a `..` segment or
+   * an escaped `/` is a defect, because ignore rules match paths under `root`
+   * one segment at a time.
    */
   readonly glob: (
     pattern: string,
