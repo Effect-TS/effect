@@ -5795,8 +5795,19 @@ describe("Sharding persisted message compatibility", () => {
   it.effect("an entity type registered after the timeout processes the messages left for it before newer ones", () => {
     const observer = makeCompatibilityObserver()
     const served: Array<string> = []
+    // fails the next claim reset once, when armed
+    let failNextReset = false
     return Effect.gen(function*() {
       const storage = yield* makeSharedMemoryStorage
+      const flakyStorage = MessageStorage.MessageStorage.of({
+        ...storage,
+        resetAddresses: (addresses) =>
+          Effect.suspend(() => {
+            if (!failNextReset) return storage.resetAddresses(addresses)
+            failNextReset = false
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "transient reset failure" }))
+          })
+      })
 
       // Another runner persists two requests without processing them.
       yield* Effect.gen(function*() {
@@ -5815,6 +5826,8 @@ describe("Sharding persisted message compatibility", () => {
         yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
         assert.lengthOf(observer.warnings.filter((warning) => warning.includes("not registered")), 2)
 
+        // releasing the claims left for the entity type fails once
+        failNextReset = true
         yield* Layer.build(NewerCompatibilityEntity.toLayer({
           Add: ({ payload }) =>
             Effect.sync(() => {
@@ -5826,12 +5839,106 @@ describe("Sharding persisted message compatibility", () => {
         const client = (yield* NewerCompatibilityEntity.client)("1")
         yield* client.Add({ n: "3" }, { discard: true })
         yield* TestClock.adjust(1)
+        // recovery is retried without waiting for the claims to expire
+        yield* TestClock.adjust((testConfigDefaults.entityMessagePollInterval as number) * 2)
 
         assert.deepStrictEqual(served, ["1", "2", "3"])
       }).pipe(
         Effect.scoped,
-        Effect.provide(RestartSharding(Layer.empty, storage, { entityRegistrationTimeout: 1000 }))
+        Effect.provide(RestartSharding(Layer.empty, flakyStorage, { entityRegistrationTimeout: 1000 }))
       )
     }).pipe(observer.provide)
+  })
+
+  it.effect("a request held behind a deferred request is not overtaken once the deferred request decodes again", () => {
+    const observer = makeCompatibilityObserver()
+    const served: Array<string> = []
+    // e.g. an effectful decoder that depends on a service that is unavailable
+    let decodable = false
+    const RecoveringEntity = Entity.make("CompatibilityEntity", [
+      Rpc.make("Add", {
+        payload: { n: Schema.String.check(Schema.makeFilter(() => decodable || "not decodable yet")) }
+      }),
+      Rpc.make("Block")
+    ]).annotateRpcs(ClusterSchema.Persisted, true)
+    return Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const client = (yield* NewerCompatibilityEntity.client)("1")
+      yield* client.Add({ n: "a" }, { discard: true })
+      yield* TestClock.adjust(1)
+
+      // `b` is read a minute later, so its claim expires a minute after `a`'s
+      yield* TestClock.adjust(60_000)
+      yield* client.Add({ n: "b" }, { discard: true })
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(served, [])
+
+      // `a` is retried on the same runner once its claim expires, and decodes
+      decodable = true
+      yield* TestClock.adjust(10 * 60_000 - 60_000 + (testConfigDefaults.entityMessagePollInterval as number))
+      yield* client.Add({ n: "c" }, { discard: true })
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(60_000)
+
+      assert.deepStrictEqual(served, ["a", "b", "c"])
+    }).pipe(
+      Effect.provide(
+        RecoveringEntity.toLayer({
+          Add: ({ payload }) =>
+            Effect.sync(() => {
+              served.push(payload.n)
+            }),
+          Block: () => Effect.void
+        }).pipe(Layer.provideMerge(UnregisteredSharding({})))
+      ),
+      observer.provide
+    )
+  })
+
+  it.effect("a cancelled request held behind a deferred request stays cancelled once it is released", () => {
+    const observer = makeCompatibilityObserver()
+    let block: "idle" | "running" | "interrupted" = "idle"
+    return Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const storage = yield* MessageStorage.MessageStorage
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+      const client = (yield* NewerCompatibilityEntity.client)("1")
+      yield* client.Remove(void 0, { discard: true })
+      yield* TestClock.adjust(1)
+
+      // `Block` waits behind the deferred `Remove`, and its caller cancels it
+      const fiber = yield* client.Block().pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(fiber)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(block, "idle")
+
+      const remove = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.tag === "Remove")!
+      yield* storage.saveReply(Reply.ReplyWithContext.fromDefect({
+        id: yield* sharding.getSnowflake,
+        requestId: Snowflake.Snowflake(remove.requestId),
+        defect: "answered elsewhere"
+      }))
+      yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+
+      assert.notStrictEqual(block, "running", "the cancellation still applies to Block")
+    }).pipe(
+      Effect.provide(
+        OlderCompatibilityLayer(
+          Effect.sync(() => {
+            block = "running"
+          }).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                block = "interrupted"
+              })
+            )
+          )
+        ).pipe(Layer.provideMerge(UnregisteredSharding({})))
+      ),
+      observer.provide
+    )
   })
 })
