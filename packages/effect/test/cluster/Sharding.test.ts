@@ -5671,18 +5671,27 @@ describe("Sharding persisted message compatibility", () => {
   it.effect("leaves a persisted request for an unknown RPC for a compatible runner", () =>
     leavesRequestForCompatibleRunner((client) => client.Remove()))
 
-  it.effect("a compatible runner processes a request an older runner left in storage", () => {
+  it.effect("a compatible runner processes requests an older runner left in storage, in order", () => {
     const observer = makeCompatibilityObserver()
+    const served: Array<string> = []
+    const serve = (tag: string) =>
+      Effect.sync(() => {
+        served.push(tag)
+      })
     return Effect.gen(function*() {
       const storage = yield* makeSharedMemoryStorage
 
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
         const client = (yield* NewerCompatibilityEntity.client)("1")
+        // Both requests are read in the same batch. `Block` is decodable here,
+        // but must not overtake the deferred `Add` for the same entity.
         yield* client.Add({ n: "payload-secret" }, { discard: true })
+        yield* client.Block(void 0, { discard: true })
         yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
-      }).pipe(Effect.provide(RestartSharding(OlderCompatibilityLayer(), storage)))
+      }).pipe(Effect.provide(RestartSharding(OlderCompatibilityLayer(serve("Block")), storage)))
 
+      assert.deepStrictEqual(served, [], "Block waits behind the deferred Add")
       assert.lengthOf(observer.warnings, 1)
       assert.include(observer.warnings[0], "CompatibilityEntity")
       assert.notInclude(observer.warnings[0], "payload-secret", "payload values are not logged")
@@ -5692,19 +5701,15 @@ describe("Sharding persisted message compatibility", () => {
 
       // The newer runner acquires the shard while the older runner's claim is
       // still within its window.
-      const served: Array<string> = []
       yield* TestClock.adjust(1).pipe(Effect.provide(RestartSharding(
         NewerCompatibilityEntity.toLayer({
-          Add: ({ payload }) =>
-            Effect.sync(() => {
-              served.push(payload.n)
-            }),
+          Add: ({ payload }) => serve(`Add:${payload.n}`),
           Remove: () => Effect.void,
-          Block: () => Effect.void
+          Block: () => serve("Block")
         }),
         storage
       )))
-      assert.deepStrictEqual(served, ["payload-secret"])
+      assert.deepStrictEqual(served, ["Add:payload-secret", "Block"])
     }).pipe(observer.provide)
   })
 
