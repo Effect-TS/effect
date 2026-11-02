@@ -25,6 +25,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { PersistedQueueFactory } from "effect/persistence/PersistedQueue"
@@ -241,14 +242,14 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
         { discard: true }
       )
 
-    function handleFromClient({ context, discard, message }: {
+    function handleFromClient({ context, message }: {
       readonly message: FromClient<any>
       readonly context: Context.Context<never>
-      readonly discard: boolean
     }): Effect.Effect<void, MailboxFull | PersistenceError> {
       const target = Context.getUnsafe(context, ClientTarget)
       switch (message._tag) {
         case "Request": {
+          const discard = message.discard === true
           const rpc = entity.protocol.requests.get(message.tag)! as Rpc.AnyWithProps
           const clientRequestId = String(message.id)
           const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(message.payload).pipe(
@@ -346,7 +347,15 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                         storageRequestId: result.requestId
                       }, requestTargetCapacity)
                     }
-                    if (discard) return Effect.void
+                    // A discarded call is acknowledged once its message is delivered.
+                    if (discard) {
+                      return client.write({
+                        _tag: "Exit",
+                        clientId: 0,
+                        requestId: RequestId(clientRequestId),
+                        exit: Exit.void as any
+                      })
+                    }
                     if (pushedReply !== undefined && result.replies.length === 0) {
                       return Effect.flatMap(
                         Deferred.await(pushedReply),
