@@ -17,6 +17,7 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
       released,
       held: held.length,
       ...counts,
+      flushed: Deferred.isDoneUnsafe(flushed),
       missedCallers
     })
   const base = new Scheduler.MixedScheduler()
@@ -40,7 +41,10 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
       const stack = new Error().stack ?? ""
       const caller = stack.split("\n")[2] ?? ""
       if (!caller.includes("McpServer.ts")) {
-        if (stack.includes("McpServer.ts") && missedCallers.length < 3) missedCallers.push(stack)
+        // Fiber dispatchers created while McpServer is on the stack are expected.
+        if (stack.includes("McpServer.ts") && !stack.includes("currentDispatcher") && missedCallers.length < 3) {
+          missedCallers.push(stack)
+        }
         return base.makeDispatcher()
       }
       counts.serverDispatchers++

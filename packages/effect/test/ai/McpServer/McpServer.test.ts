@@ -922,15 +922,16 @@ describe("McpServer", () => {
       )
     }))
 
-  it.effect("should not deliver list changes from before an HTTP session initialized", () =>
-    Effect.gen(function*() {
+  it.effect("should not deliver list changes from before an HTTP session initialized", () => {
+    // EFF-3277: this test hangs rarely on Bun. Before the 5000ms test timeout, report
+    // the step it is stuck on.
+    let step = "build server"
+    return Effect.gen(function*() {
       const { describe: schedulerState, release, scheduler } = yield* makeHeldServerScheduler
-      // EFF-3277: this test hangs rarely on Bun. Before the 5000ms test timeout, report
-      // the step it is stuck on. Registered first, so it is cleared after teardown.
-      let step = "build server"
       const watchdog = setTimeout(() => {
         console.error(`EFF-3277: stuck at step "${step}", held scheduler ${schedulerState()}`)
       }, 4000)
+      // Registered first, so it is cleared only after every other finalizer.
       yield* Effect.addFinalizer(() => Effect.sync(() => clearTimeout(watchdog)))
       const holding = yield* Deferred.make<void>()
       const resume = yield* Deferred.make<void>()
@@ -975,12 +976,19 @@ describe("McpServer", () => {
       yield* Effect.addFinalizer(() => stream.cancel)
       step = "drain response stream"
       const messages = yield* stream.drain()
-      step = "teardown"
       assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
         "notifications/tools/list_changed",
         "hold"
       ])
-    }))
+    }).pipe(
+      // Runs on success, failure and interruption, before the test scope's finalizers.
+      Effect.onExit(() =>
+        Effect.sync(() => {
+          step = "teardown"
+        })
+      )
+    )
+  })
 
   it.effect("should deliver notifications and results to other clients when one client stops reading", () =>
     Effect.gen(function*() {
