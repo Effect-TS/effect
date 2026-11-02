@@ -393,6 +393,25 @@ development:
     })
   })
 
+  // YAML 1.2.2 §7.3.3 (ns-plain-first): a plain scalar may start with `-` only when a
+  // non-space character other than a flow indicator follows, so `- ` cannot start a flow node.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1 and js-yaml 4.3.2.
+  describe("flow plain scalars starting with a dash", () => {
+    it("parses a dash followed by content or a key's colon", () => {
+      assert.deepStrictEqual(parse("a: {-: [-1, -x, b - c]}\n"), { a: { "-": [-1, "-x", "b - c"] } })
+    })
+
+    it.each([
+      ["a dash and a space before an item", "a: [- 1]\n"],
+      ["a dash and a tab before an item", "a: [-\t1]\n"],
+      ["a lone dash before a closing bracket", "a: [1, -]\n"],
+      ["a dash and a space before a key's colon", "a: {- : 1}\n"],
+      ["a block sequence entry in a multiline collection", "a: [\n  - 1\n]\n"]
+    ])("rejects %s", (_, source) => {
+      failureMessage(source)
+    })
+  })
+
   describe("scalar conformance boundaries", () => {
     it.each([
       ["colon followed by space", "description: Use when: deploy\n"],
