@@ -1119,11 +1119,11 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(shardLookupIndex)} 
             ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `,
@@ -1225,7 +1225,7 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex} AND object_id = OBJECT_ID(${repliesTable}))
             CREATE INDEX ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
@@ -1281,6 +1281,27 @@ export const migrations = (options?: {
             CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
             ON ${messagesTableSql} (rowid)
           `,
+        orElse: () => Effect.void
+      })
+    }),
+
+    // mssql index names are scoped to their table, but 0001 used to look them
+    // up by name alone, so a same-named index on another table skipped them.
+    // Writes force these indexes, so create any that are missing.
+    "0004_mssql_lookup_indexes": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const ensureIndex = (index: string, table: string, columns: string) =>
+        sql`
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${index} AND object_id = OBJECT_ID(${table}))
+          CREATE INDEX ${sql(index)} ON ${sql(table)} (${sql.literal(columns)})
+        `
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          Effect.all([
+            ensureIndex(`${messagesTable}_shard_idx`, messagesTable, "shard_id, processed, last_read, deliver_at"),
+            ensureIndex(`${messagesTable}_request_id_idx`, messagesTable, "request_id"),
+            ensureIndex(`${repliesTable}_request_lookup_idx`, repliesTable, "request_id, kind, acked")
+          ], { discard: true }),
         orElse: () => Effect.void
       })
     })
