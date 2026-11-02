@@ -1769,7 +1769,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
   // semantic conventions and continue the client's `_meta` trace. Wrapping the
   // request effect keeps the span on its lifecycle: it ends after the response
   // is written, or when the request is interrupted.
-  const traceRequest: RpcServer.OnRequest<Rpc.Any> = (effect, request) =>
+  const traceRequest = <X, E, R>(
+    effect: Effect.Effect<X, E, R>,
+    request: RpcMessage.Request<Rpc.Any>
+  ): Effect.Effect<X, E, R> =>
     Effect.withFiber((fiber) => {
       const method = runtime.methodForInternalTag(request.tag)
       const { name, ...spanOptions } = requestSpanOptions(method, request, {
@@ -2452,7 +2455,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
   return yield* RpcServer.make(runtime.clientRpcs, {
     disableTracing: true,
     disableFatalDefects: true,
-    onRequest: traceRequest
+    // Wrapped so `RpcServer.make` infers the group's rpcs from `clientRpcs`
+    // rather than from `traceRequest`'s parameter type.
+    onRequest: (effect, request) => traceRequest(effect, request)
   }).pipe(
     Effect.provideService(RpcServer.Protocol, patchedProtocol),
     Effect.provideService(McpServerClientMiddleware, clientMiddleware),
