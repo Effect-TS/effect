@@ -979,8 +979,13 @@ items:
 
   describe("stringify", () => {
     // `yaml` is the reference implementation the module tracks; it checks the
-    // output is valid YAML with the intended meaning, independent of `parse`.
-    const oracle = (output: string): unknown => YAML.parse(output)
+    // output is valid YAML with the intended meaning, independent of `parse`,
+    // and `parse` must then read the output back the same way.
+    const oracle = (output: string): unknown => {
+      const value = YAML.parse(output)
+      assert.deepStrictEqual(parse(output), value)
+      return value
+    }
 
     it("prints scalars, nested collections, and empty collections", () => {
       const value = {
@@ -1055,6 +1060,7 @@ nested:
       const output = Result.getOrThrow(Yaml.stringify(value))
       assert.strictEqual(output, "\"<<\":\n  a: 1\nb: 2\n")
       assert.deepStrictEqual(YAML.parse(output, { merge: true }), value)
+      assert.deepStrictEqual(parse(output), value)
     })
 
     it("fails for keys that do not fit an implicit key once printed", () => {
@@ -1190,6 +1196,7 @@ nested:
         YAML.parseAllDocuments(output).map((document) => document.toJS()),
         documents
       )
+      assert.deepStrictEqual(parseAll(output), documents)
     })
 
     it("prints an empty stream as an empty string and forwards the indent option", () => {
