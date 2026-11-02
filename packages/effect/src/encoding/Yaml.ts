@@ -512,8 +512,10 @@ class YamlParser {
   private parseDocument(): unknown {
     const start = this.lines[this.index]
     if (isDocumentStart(start)) this.index++
-    const end = this.lines.findIndex((line, index) => index >= this.index && isDocumentMarker(line))
-    this.documentEnd = end === -1 ? this.lines.length : end
+    // Scanning forward from the current line keeps a stream of many documents linear.
+    let end = this.index
+    while (end < this.lines.length && !isDocumentMarker(this.lines[end])) end++
+    this.documentEnd = end
     const value = this.parseDocumentContent(start)
     this.documentEnd = this.lines.length
     return value
