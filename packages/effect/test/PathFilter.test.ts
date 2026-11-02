@@ -51,8 +51,8 @@ describe("PathFilter", () => {
 
   it("keeps the subtree semantics of each format", () => {
     const docker = Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/keep\nd\n"))
-    // the inherited hit of the third line outranks the exception
-    assertMatch(PathFilter.match(docker, "d/keep"), "Exclude", docker.rules[2])
+    // the third line does not change the result at `d`, so `d/keep` does not inherit it
+    assertMatch(PathFilter.match(docker, "d/keep"), "Include", docker.rules[1])
     const git = IgnoreFile.gitignore("d/x\n!/d\n")
     // re-including `d` does not lift the earlier exclusion of `d/x`
     assertMatch(PathFilter.match(git, "d", { directory: true }), "Include", git.rules[1])
