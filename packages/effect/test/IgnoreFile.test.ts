@@ -1,22 +1,22 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue } from "@effect/vitest/utils"
-import { Ignore, Result } from "effect"
+import { IgnoreFile, Result } from "effect"
 
 const assertIgnores = (
-  ignore: Ignore.Ignore,
+  ignore: IgnoreFile.IgnoreFile,
   ignored: ReadonlyArray<string>,
   kept: ReadonlyArray<string>,
   label: string
 ) => {
   for (const path of ignored) {
-    assertTrue(Ignore.ignores(ignore, path), `expected ${label} to ignore ${JSON.stringify(path)}`)
+    assertTrue(IgnoreFile.ignores(ignore, path), `expected ${label} to ignore ${JSON.stringify(path)}`)
   }
   for (const path of kept) {
-    assertFalse(Ignore.ignores(ignore, path), `expected ${label} to keep ${JSON.stringify(path)}`)
+    assertFalse(IgnoreFile.ignores(ignore, path), `expected ${label} to keep ${JSON.stringify(path)}`)
   }
 }
 
-const dockerignore = (source: string) => Result.getOrThrow(Ignore.dockerignore(source))
+const dockerignore = (source: string) => Result.getOrThrow(IgnoreFile.dockerignore(source))
 
 // Expectations from `git check-ignore --no-index` (git 2.54.0) against a
 // fixture tree. Paths ending in "/" are directories.
@@ -233,20 +233,20 @@ const dockerCases: ReadonlyArray<{
   { source: "[[:digit:]]\n[[:word:]]x\n", ignored: ["7", "_x"] }
 ]
 
-describe("Ignore", () => {
+describe("IgnoreFile", () => {
   describe("gitignore", () => {
     for (const { base, ignored = [], kept = [], nested, source } of gitCases) {
       const label = JSON.stringify(nested ? [source, ...nested] : base ? [base, source] : source)
       it(label, () => {
-        const root = Ignore.gitignore(source, base === undefined ? undefined : { base })
-        const ignore = nested ? Ignore.concat(root, Ignore.gitignore(nested[1], { base: nested[0] })) : root
+        const root = IgnoreFile.gitignore(source, base === undefined ? undefined : { base })
+        const ignore = nested ? IgnoreFile.concat(root, IgnoreFile.gitignore(nested[1], { base: nested[0] })) : root
         assertIgnores(ignore, ignored, kept, label)
       })
     }
 
     it("documented deviations", () => {
       for (const { effect, path, source } of gitDeviations) {
-        assert.strictEqual(Ignore.ignores(Ignore.gitignore(source), path), effect, `${source} against ${path}`)
+        assert.strictEqual(IgnoreFile.ignores(IgnoreFile.gitignore(source), path), effect, `${source} against ${path}`)
       }
     })
   })
@@ -254,7 +254,7 @@ describe("Ignore", () => {
   describe("dockerignore", () => {
     it("moby/patternmatcher fixtures", () => {
       for (const [source, path, expected] of dockerReference) {
-        assert.strictEqual(Ignore.ignores(dockerignore(source), path), expected, `${source} against ${path}`)
+        assert.strictEqual(IgnoreFile.ignores(dockerignore(source), path), expected, `${source} against ${path}`)
       }
     })
 
@@ -269,43 +269,43 @@ describe("Ignore", () => {
       // fails when the reference compiles its expression
       const leaks = ["\\d", "a^b*", "[*]", "[?]", "a*\\", "[[:foo:]]", "[[:toString:]]"]
       for (const source of [...reference, ...leaks]) {
-        assertTrue(Result.isFailure(Ignore.dockerignore(source)), `expected ${JSON.stringify(source)} to fail`)
+        assertTrue(Result.isFailure(IgnoreFile.dockerignore(source)), `expected ${JSON.stringify(source)} to fail`)
       }
-      const result = Ignore.dockerignore("ok\n\n[\n")
+      const result = IgnoreFile.dockerignore("ok\n\n[\n")
       assert(Result.isFailure(result))
-      assert.strictEqual(result.failure._tag, "IgnoreParseError")
+      assert.strictEqual(result.failure._tag, "IgnoreFileParseError")
       assert.strictEqual(result.failure.line, 3)
     })
 
     it("trims whitespace in linear time", () => {
       const start = performance.now()
-      assertTrue(Result.isSuccess(Ignore.dockerignore("x" + " ".repeat(40_000) + "y")))
+      assertTrue(Result.isSuccess(IgnoreFile.dockerignore("x" + " ".repeat(40_000) + "y")))
       assertTrue(performance.now() - start < 500)
     })
 
     it("matches repeated wildcards in linear time", () => {
       const ignore = dockerignore("*a".repeat(30) + "b")
       const start = performance.now()
-      assertFalse(Ignore.ignores(ignore, "a".repeat(5_000)))
+      assertFalse(IgnoreFile.ignores(ignore, "a".repeat(5_000)))
       assertTrue(performance.now() - start < 500)
     })
   })
 
   it("canonicalizes paths and rejects parent segments", () => {
-    const ignore = Ignore.gitignore("a/b\n")
-    assertTrue(Ignore.ignores(ignore, "./a//b"))
-    assert.throws(() => Ignore.ignores(ignore, "a/../a/b"))
+    const ignore = IgnoreFile.gitignore("a/b\n")
+    assertTrue(IgnoreFile.ignores(ignore, "./a//b"))
+    assert.throws(() => IgnoreFile.ignores(ignore, "a/../a/b"))
   })
 
   it("rejects a base with empty, . or .. segments", () => {
-    assertTrue(Ignore.ignores(Ignore.gitignore("x\n", { base: "a" }), "a/x"))
+    assertTrue(IgnoreFile.ignores(IgnoreFile.gitignore("x\n", { base: "a" }), "a/x"))
     for (const base of ["a//b", "./a", "a/.."]) {
-      assert.throws(() => Ignore.gitignore("x\n", { base }))
+      assert.throws(() => IgnoreFile.gitignore("x\n", { base }))
     }
   })
 
   it("concat requires the same format", () => {
-    assertTrue(Ignore.ignores(Ignore.concat(dockerignore("a\n"), dockerignore("b\n")), "a"))
-    assert.throws(() => Ignore.concat(Ignore.gitignore("a\n"), dockerignore("a\n")))
+    assertTrue(IgnoreFile.ignores(IgnoreFile.concat(dockerignore("a\n"), dockerignore("b\n")), "a"))
+    assert.throws(() => IgnoreFile.concat(IgnoreFile.gitignore("a\n"), dockerignore("a\n")))
   })
 })

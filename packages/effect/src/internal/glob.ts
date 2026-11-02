@@ -727,7 +727,7 @@ const DIRECTORY_CONCURRENCY = 16
 const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
 
 /**
- * The traversal protocol an `Ignore` implements for `FileSystem.glob`.
+ * The traversal protocol an `IgnoreFile` implements for `FileSystem.glob`.
  *
  * @internal
  */

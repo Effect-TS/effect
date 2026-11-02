@@ -27,7 +27,7 @@ export const splitPath = (path: string): { readonly segments: Array<string>; rea
     if (segment === "" || segment === ".") {
       directory = i === raw.length - 1 && segments.length > 0
     } else if (segment === "..") {
-      throw new Error(`Ignore paths cannot contain ".." segments: ${path}`)
+      throw new Error(`IgnoreFile paths cannot contain ".." segments: ${path}`)
     } else {
       segments.push(segment)
       directory = false
@@ -66,7 +66,7 @@ export const splitBase = (base: string): Array<string> => {
   const segments = base.split("/")
   for (const segment of segments) {
     if (segment === "" || segment === "." || segment === "..") {
-      throw new Error(`Ignore.gitignore base must not contain empty, "." or ".." segments: ${base}`)
+      throw new Error(`IgnoreFile.gitignore base must not contain empty, "." or ".." segments: ${base}`)
     }
   }
   return segments
