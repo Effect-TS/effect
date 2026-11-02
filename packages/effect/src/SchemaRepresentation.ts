@@ -1557,6 +1557,25 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isNot` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isNot}.
+ *
+ * @see {@link Schema.isNot} for creating the corresponding check
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isNotReviver: FilterReviver<null> = makeReviverFilter(
+  "effect/schema/isNot",
+  Schema.Null,
+  ({ annotations, schemas }) => Schema.isNot(schemas[0], annotations)
+)
+
+/**
  * Reviver for persisted `isUnique` checks.
  *
  * **When to use**

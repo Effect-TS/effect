@@ -9119,6 +9119,54 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   )
 }
 /**
+ * Validates that a value does not satisfy the encoded side of the provided
+ * schema.
+ *
+ * **Details**
+ *
+ * The check passes exactly when validating the input against the negated
+ * schema fails. The negated schema is retained in the check representation, so
+ * it survives serialization and JSON Schema export.
+ *
+ * JSON Schema:
+ * This check corresponds to `not` in JSON Schema. Effect checks the decoded
+ * value, while JSON Schema checks the original input. Transformations and
+ * excess-property handling can therefore produce different results.
+ *
+ * **Example** (Rejecting a reserved value)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.String.check(Schema.isNot(Schema.Literal("admin")))
+ *
+ * Schema.is(schema)("guest") // => true
+ * Schema.is(schema)("admin") // => false
+ * ```
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export function isNot(schema: Constraint, annotations?: Annotations.Filter) {
+  const negated = toEncoded(schema)
+  const parser = SchemaParser._issue(negated.ast)
+  return makeFilter<unknown>(
+    (input, _ast, options) => parser(input, { ...options, errors: "first" }) !== undefined,
+    {
+      expected: "a value not matching the negated schema",
+      representation: {
+        id: "effect/schema/isNot",
+        payload: null,
+        schemas: [negated.ast]
+      },
+      toJsonSchema: ({ schemas }) => ({ not: schemas[0] }),
+      toCode: ({ schemas }) => ({ runtime: `Schema.isNot(${schemas[0].runtime})` }),
+      ...annotations
+    }
+  )
+}
+/**
  * Validates that all items in an array are unique according to Effect equality.
  *
  * **Details**
