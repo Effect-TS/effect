@@ -9946,6 +9946,24 @@ pointed message
         strictEqual(schema.match({ _tag: "B", b: 1, c: 2 }, { A: (a) => a.a, B: (b) => b.c }), 2)
       })
 
+      it("mapCases should throw when a case key does not match its _tag", () => {
+        throws(
+          () => Schema.TaggedUnion({ A: {} }).mapCases(({ A }) => ({ Renamed: A })),
+          "Case key does not match its _tag: Renamed"
+        )
+      })
+
+      it("mapCases should keep symbol-keyed cases", async () => {
+        const c = Symbol.for("C")
+        const schema = Schema.TaggedUnion({ A: {} }).mapCases((cases) => ({
+          ...cases,
+          [c]: Schema.Struct({ _tag: Schema.UniqueSymbol(c) })
+        }))
+
+        await new TestSchema.Asserts(schema).decoding().succeed({ _tag: c })
+        assertTrue(schema.guards[c]({ _tag: c }))
+      })
+
       it("mapCases should drop checks unless unsafePreserveChecks is true", async () => {
         const schema = Schema.TaggedUnion({ A: {}, B: {} }).check(
           Schema.makeFilter((value) => value._tag === "A", { expected: "A" })
