@@ -378,7 +378,12 @@ export const RecordToolArguments = Context.Reference<boolean>("effect/ai/Toolkit
   defaultValue: () => false
 })
 
-const stringifyToolArguments = (params: unknown): string => {
+/**
+ * Formats tool arguments for the `gen_ai.tool.call.arguments` span attribute.
+ *
+ * @internal
+ */
+export const stringifyToolArguments = (params: unknown): string => {
   try {
     return JSON.stringify(params) ?? "null"
   } catch {

@@ -1504,12 +1504,10 @@ const requestErrorCodes: ReadonlySet<number> = new Set([-32700, -32600, -32601, 
 
 const internalErrorResponse = { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" } as const
 
-const stringifyJson = (value: unknown): string => {
-  try {
-    return JSON.stringify(value) ?? "null"
-  } catch {
-    return String(value)
-  }
+// The exit recorded for a request that never gets a response.
+const interruptedExit: RpcMessage.ExitEncoded<never, never> = {
+  _tag: "Failure",
+  cause: [{ _tag: "Interrupt", fiberId: undefined }]
 }
 
 // Only the W3C keys are read: other `_meta` members can carry protocol claims.
@@ -1548,7 +1546,7 @@ const requestSpanOptions = (
         attributes["gen_ai.tool.name"] = target
       }
       if (recordToolArguments && params?.arguments !== undefined) {
-        attributes["gen_ai.tool.call.arguments"] = stringifyJson(params.arguments)
+        attributes["gen_ai.tool.call.arguments"] = Toolkit.stringifyToolArguments(params.arguments)
       }
       break
     }
@@ -1776,11 +1774,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
     exit: RpcMessage.ExitEncoded<unknown, unknown>
   ) => {
     const spans = requestSpans.get(clientId)
+    if (spans === undefined) return
     const key = requestKey(requestId)
-    const tracked = spans?.get(key)
+    const tracked = spans.get(key)
     if (tracked === undefined) return
-    spans!.delete(key)
-    if (spans!.size === 0) requestSpans.delete(clientId)
+    spans.delete(key)
+    if (spans.size === 0) requestSpans.delete(clientId)
     endRequestSpan(tracked, exit)
   }
   // A span ends only once its response is written. If the write fails, the
@@ -1795,7 +1794,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (spans === undefined) return
     requestSpans.delete(clientId)
     for (const tracked of spans.values()) {
-      endRequestSpan(tracked, { _tag: "Failure", cause: [{ _tag: "Interrupt", fiberId: undefined }] })
+      endRequestSpan(tracked, interruptedExit)
     }
   }
   // Tracing is owned here rather than by `RpcServer`, so the span can follow
