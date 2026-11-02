@@ -114,7 +114,7 @@ describe("toCodecOpenAI", () => {
     it("rejects a root reference cycle", () => {
       const A: Schema.Codec<unknown> = Schema.suspend((): Schema.Codec<unknown> => B).annotate({ identifier: "A" })
       const B: Schema.Codec<unknown> = Schema.suspend((): Schema.Codec<unknown> => A).annotate({ identifier: "B" })
-      assert.throws(() => toCodecOpenAI(A))
+      assertError(A, `Circular reference "#/$defs/A"`)
     })
 
     it("no-transformation recursive schema", () => {
