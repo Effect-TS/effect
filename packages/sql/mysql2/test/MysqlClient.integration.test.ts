@@ -115,15 +115,61 @@ describe("MysqlClient", () => {
           )
         }
       }), { timeout: 60_000 })
+
+    it.live("gives a shared connection back when the kill connection cannot be created", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const command = Object.assign(new EventEmitter(), {
+          stream: () => {
+            // Unless it is killed, the statement ends on its own after 100 ms.
+            setTimeout(() => command.emit("end"), 100)
+            return new Readable({ objectMode: true, read() {} })
+          }
+        })
+        // mysql2 calls a configured `stream` factory while constructing the
+        // connection, so creating the kill connection can throw synchronously.
+        mockPool(log, command, {
+          kill: () => {
+            throw new Error("SSH tunnel unavailable")
+          }
+        })
+
+        yield* withMockClient(Effect.scoped(Effect.gen(function*() {
+          const sql = yield* MysqlClient.MysqlClient
+          const conn = yield* sql.reserve
+          const consumer = yield* conn.executeStream("SELECT 1 AS value", [], undefined).pipe(
+            Stream.runDrain,
+            Effect.forkChild
+          )
+          yield* Effect.sleep("20 millis")
+          yield* Fiber.interrupt(consumer)
+          // The connection may be retired instead of reused, so the statement
+          // only has to settle rather than succeed.
+          yield* conn.execute("SELECT 2 AS value", [], undefined).pipe(
+            Effect.exit,
+            Effect.timeout("2 seconds")
+          )
+        })))
+        assert.isTrue(
+          log.includes("start SELECT 2 AS value") || log.includes("connection destroyed"),
+          log.join(", ")
+        )
+      }), { timeout: 60_000 })
   })
 })
 
 /**
  * Provides a mysql2 pool whose only connection, thread 7, runs streams through
- * `command` and every other statement in 50 ms. A `KILL QUERY` reaches the
- * server 20 ms after it is sent, and then calls `onKill`.
+ * `command` and every other statement in 50 ms. Unless `kill` provides the
+ * connection for it, a `KILL QUERY` reaches the server 20 ms after it is sent,
+ * and then calls `onKill`.
  */
-const mockPool = (log: Array<string>, command: EventEmitter, onKill: () => void = () => {}) => {
+const mockPool = (
+  log: Array<string>,
+  command: EventEmitter,
+  options: { readonly onKill?: () => void; readonly kill?: () => Mysql.Connection } = {}
+) => {
+  const onKill = options.onKill ?? (() => {})
   const conn = {
     threadId: 7,
     query: (options: string | { sql: string }, ...args: Array<any>) => {
@@ -147,18 +193,19 @@ const mockPool = (log: Array<string>, command: EventEmitter, onKill: () => void 
     getConnection: (callback: (cause: null, conn: unknown) => void) => callback(null, conn),
     end: (callback: () => void) => callback()
   } as unknown as Mysql.Pool)
-  vi.mocked(Mysql.createConnection).mockImplementationOnce(() =>
-    ({
-      on: () => {},
-      destroy: () => {},
-      query: (_sql: string, values: Array<unknown>, callback: () => void) => {
-        setTimeout(() => {
-          log.push(`kill ${values[0]}`)
-          onKill()
-          callback()
-        }, 20)
-      }
-    }) as unknown as Mysql.Connection
+  vi.mocked(Mysql.createConnection).mockImplementationOnce(
+    options.kill ?? (() =>
+      ({
+        on: () => {},
+        destroy: () => {},
+        query: (_sql: string, values: Array<unknown>, callback: () => void) => {
+          setTimeout(() => {
+            log.push(`kill ${values[0]}`)
+            onKill()
+            callback()
+          }, 20)
+        }
+      }) as unknown as Mysql.Connection)
   )
 }
 
@@ -234,7 +281,7 @@ const interruptStreamSetup = Effect.fnUntraced(function*(maxOpsBeforeYield: numb
       return new Readable({ objectMode: true, read() {} })
     }
   })
-  mockPool(log, command, end)
+  mockPool(log, command, { onKill: end })
 
   yield* withMockClient(Effect.gen(function*() {
     const sql = yield* MysqlClient.MysqlClient
