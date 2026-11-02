@@ -149,10 +149,16 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    *
    * After the timeout, volatile and local sends fail with a defect. Persisted
    * messages read from storage are left unanswered and claimed instead, so a
-   * runner hosting the entity type can process them. They become eligible
-   * again once the claim expires (10 minutes for the built-in storage) or
-   * another runner acquires the shard, so a type registered on this runner
-   * after the timeout only receives them after that, on a later poll.
+   * runner hosting the entity type can process them. If the type registers on
+   * this runner later, they are read again, oldest first, on its next poll.
+   * Otherwise they become eligible again once the claim expires (10 minutes
+   * for the built-in storage) or another runner acquires the shard.
+   *
+   * Persisted requests a runner cannot decode, or whose RPC it does not know,
+   * are left in storage the same way, for a compatible runner. Later requests
+   * for the same entity wait behind them, so the entity processes requests in
+   * order. A request no runner can decode therefore stalls its entity until
+   * it is removed from storage. Each attempt to deliver it logs a warning.
    *
    * Defaults to 1 minute.
    */

@@ -54,13 +54,16 @@ export interface EntityManager {
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
   /**
-   * With `persisted`, a request read from storage that this runner cannot
-   * decode, or whose RPC it does not know, is left in storage for a compatible
-   * runner instead of being answered with a terminal defect.
+   * With `onDeferred`, the message was read from storage. A request this
+   * runner cannot decode, or whose RPC it does not know, is then left in
+   * storage for a compatible runner instead of being answered with a terminal
+   * defect, and `onDeferred` is called with it.
    */
   readonly send: (
     message: Message.Incoming<any>,
-    options?: { readonly persisted?: boolean | undefined }
+    options?: {
+      readonly onDeferred?: ((message: Message.IncomingRequest<any>) => void) | undefined
+    }
   ) => Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage>
 
   readonly isProcessingFor: (message: Message.Incoming<any>, options?: {
@@ -914,14 +917,16 @@ export const make = Effect.fnUntraced(function*<
               return Effect.die(new MalformedMessage({ cause }))
             }
             const rpc = entityRpcs.get(message.envelope.tag)
-            const persisted = options?.persisted === true
+            const onDeferred = options?.onDeferred
             const report = reportUndeliverable(
               message.envelope,
               rpc === undefined ? "unknown_rpc" : "schema_mismatch",
-              persisted
+              onDeferred !== undefined
             )
             // Left claimed for a compatible runner, see `EntityManager.send`.
-            if (persisted) return report
+            if (onDeferred !== undefined) {
+              return Effect.andThen(report, Effect.sync(() => onDeferred(message)))
+            }
             const defect = new MalformedMessage({ cause })
             return Effect.andThen(
               report,
