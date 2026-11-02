@@ -3745,7 +3745,7 @@ describe("McpServer", () => {
           assert.strictEqual(span && exitTag(span), "Success")
         }))
 
-      it.effect("records the internal error sent after a response write fails", () =>
+      it.effect("ends the span as interrupted when its response write fails", () =>
         Effect.gen(function*() {
           const { nextEnded, outbound, release } = yield* makeTracedTransport({ failExitFor: "wait" })
 
@@ -3755,9 +3755,11 @@ describe("McpServer", () => {
           assert.deepInclude(response, { _tag: "Exit", requestId: "wait" })
           const span = yield* nextEnded
           assert.strictEqual(span?.name, "tools/call Wait")
+          // RpcServer interrupts the handler after a failed write, so the span follows the fiber exit.
           assert.strictEqual(span && exitTag(span), "Failure")
-          assert.strictEqual(span?.attributes.get("rpc.status_code"), "-32603")
-          assert.strictEqual(span?.attributes.get("error.type"), "-32603")
+          if (span?.status._tag === "Ended" && span.status.exit._tag === "Failure") {
+            assert.isTrue(Cause.hasInterruptsOnly(span.status.exit.cause), "Expected an interrupted span")
+          }
         }))
     })
   })
