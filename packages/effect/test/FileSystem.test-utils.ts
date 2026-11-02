@@ -1218,16 +1218,31 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 
-  it("glob with ignore dies on an absolute pattern or a .. segment", () =>
+  it("glob with ignore dies on an absolute pattern, a .. segment or an escaped separator", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
-        const root = yield* globFixture
-        const ignore = Ignore.gitignore("")
+        const root = posix(yield* globFixture)
+        const src = `${root}/src`
+        const escapedRoot = Glob.escape(root).replaceAll("/", "\\/")
+        // without `ignore`, an escaped separator names the same path as a plain one
+        expect(yield* fs.glob("..\\/a\\/x.ts", { root: src })).toEqual(["../a/x.ts"])
+        expect(yield* fs.glob(`${escapedRoot}\\/src\\/index.ts`)).toEqual([`${root}/src/index.ts`])
+        expect(yield* fs.glob("src\\/index.ts", { root })).toEqual(["src/index.ts"])
+        const ignore = Ignore.gitignore("src\n")
         for (
-          const pattern of [`${Glob.escape(posix(root))}/src/*.ts`, "//server/share", "src/../a/*.ts", "**/../x"]
+          const [pattern, base] of [
+            [`${Glob.escape(root)}/src/*.ts`, root],
+            ["//server/share", root],
+            ["src/../a/*.ts", root],
+            ["**/../x", root],
+            ["..\\/a\\/x.ts", src],
+            [`${escapedRoot}\\/src\\/index.ts`, root],
+            // one literal entry would skip the ignored `src` ancestor
+            ["src\\/index.ts", root]
+          ]
         ) {
-          const exit = yield* Effect.exit(fs.glob(pattern, { root, ignore }))
+          const exit = yield* Effect.exit(fs.glob(pattern, { root: base, ignore }))
           assert.strictEqual(exit._tag, "Failure", pattern)
           if (exit._tag === "Failure") {
             assert.isTrue(Cause.hasDies(exit.cause), pattern)
