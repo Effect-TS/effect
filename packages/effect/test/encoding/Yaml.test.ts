@@ -316,6 +316,8 @@ development:
       ["space before escaped line break followed by blank line", "description: \"Deploy \\\n\n  it\"\n", "Deploy  it"],
       ["escaped leading space after line break", "description: \"Deploy\\\n  \\ it\"\n", "Deploy it"],
       ["escaped trailing space before a folded break", "description: \"Deploy\\ \n  it\"\n", "Deploy  it"],
+      // YAML 1.2.2 §5.7: a backslash followed by a literal tab escapes a tab.
+      ["escaped literal tab before a folded break", "description: \"Deploy\\\t\n  it\"\n", "Deploy\t it"],
       ["escaped break followed by multiple blank lines", "description: \"Deploy\\\n\n\n  it\"\n", "Deploy\nit"],
       ["hash inside double quotes", "description: \"Deploy\n  # still text\" # comment\n", "Deploy # still text"],
       ["hash inside single quotes", "description: 'Deploy\n  # still text' # comment\n", "Deploy # still text"],
@@ -368,6 +370,7 @@ development:
         ["multiline quoted keys and values", "a: {k: \"v\n  w\", 'k2\n  x': 1}\n", { a: { k: "v w", "k2 x": 1 } }],
         ["escaped line break in a quoted item", "a: [\"x\\\n  y\"]\n", { a: ["xy"] }],
         ["escaped trailing space before a quoted line break", "a: [\"x\\ \n  y\"]\n", { a: ["x  y"] }],
+        ["escaped literal tab before a quoted line break", "a: [\"x\\\t\n  y\"]\n", { a: ["x\t y"] }],
         ["hash on a quoted continuation line", "a: [\"x\n  # y\"]\n", { a: ["x # y"] }],
         ["escaped single quote across lines", "a: ['it''s\n  ok']\n", { a: ["it's ok"] }],
         ["white space around a quoted line break", "a: [\"x  \n  \ty\"]\n", { a: ["x y"] }],
