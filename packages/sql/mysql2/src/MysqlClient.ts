@@ -560,9 +560,9 @@ class ActiveStatement {
    * `KILL QUERY` goes over a one-off connection, because the pool may have no
    * free slot. The effect completes once the kill attempt has finished and the
    * statement has settled, so a late kill can never reach another statement on
-   * the connection. Kill failures are ignored. If both do not happen within
-   * `cancelTimeoutMillis`, the connection is destroyed, which removes it from
-   * the pool.
+   * the connection. Kill failures are ignored, including a kill connection that
+   * cannot be created. If both do not happen within `cancelTimeoutMillis`, the
+   * connection is destroyed, which removes it from the pool.
    */
   readonly cancel: Effect.Effect<void> = Effect.suspend(() => {
     this.cancelling = true
@@ -570,25 +570,32 @@ class ActiveStatement {
       if (this.settled) return resume(Effect.void)
       let done = false
       let killed = false
-      const kill = Mysql.createConnection({ ...this.connectionOptions })
+      let kill: Mysql.Connection | undefined
       const finish = () => {
         if (done) return
         done = true
         clearTimeout(timer)
-        kill.destroy()
+        kill?.destroy()
         resume(Effect.void)
+      }
+      const onKilled = () => {
+        killed = true
+        if (this.settled) finish()
       }
       const timer = setTimeout(() => {
         this.conn.destroy()
         finish()
       }, cancelTimeoutMillis)
-      kill.on("error", () => {})
-      ;(kill as any).query("KILL QUERY ?", [this.conn.threadId], () => {
-        killed = true
-        if (this.settled) finish()
-      })
       this.onSettled = () => {
         if (killed) finish()
+      }
+      try {
+        // A configured `stream` factory runs synchronously here and may throw.
+        kill = Mysql.createConnection({ ...this.connectionOptions })
+        kill.on("error", () => {})
+        ;(kill as any).query("KILL QUERY ?", [this.conn.threadId], onKilled)
+      } catch {
+        onKilled()
       }
     })
   })
@@ -619,7 +626,7 @@ function queryStream(
     yield* Effect.acquireRelease(
       permit.take(1),
       () =>
-        Effect.andThen(
+        Effect.ensuring(
           Effect.suspend(() => {
             if (query === undefined) return Effect.void
             // Destroying the stream resumes a paused connection, so the
