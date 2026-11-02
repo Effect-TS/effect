@@ -6592,7 +6592,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
    * decode({ _tag: "Error", error: "boom", module: "core" }) // => { _tag: "Error", error: "boom", module: "core" }
    * ```
    *
-   * @since 4.0.0
+   * @since 4.2.0
    */
   mapCases<To extends Record<string, Constraint>>(
     f: (cases: Cases) => To,
@@ -6643,16 +6643,15 @@ function makeTaggedUnion<Cases extends Record<string, Constraint>>(
   cases: Cases,
   checks: SchemaAST.Checks | undefined
 ): TaggedUnion<Cases> {
-  const keys = Reflect.ownKeys(cases)
-  const members: Array<any> = keys.map((key) => cases[key as keyof Cases])
+  const keys = Reflect.ownKeys(cases) as Array<keyof Cases>
+  const members: Array<any> = keys.map((key) => cases[key])
   const union = makeUnion(SchemaAST.union(members, undefined, checks), members)
-  const tagged = toTaggedUnion("_tag")(union)
+  const { tag, cases: casesByTag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
   for (const key of keys) {
-    if ((tagged.cases as Record<PropertyKey, unknown>)[key] !== cases[key as keyof Cases]) {
+    if ((casesByTag as Record<keyof Cases, unknown>)[key] !== cases[key]) {
       throw new globalThis.Error(`Case key does not match its _tag: ${globalThis.String(key)}`)
     }
   }
-  const { tag, guards, isAnyOf, match, matchOrElse } = tagged
   return make(union.ast, {
     tag,
     cases,

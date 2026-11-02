@@ -2148,6 +2148,30 @@ const schema = Schema.Union([
 
 The result is a tagged union schema with built-in helpers based on the tag values. See the next section for more details.
 
+#### Mapping Cases
+
+You can transform every case of a tagged union with the `mapCases` method. It accepts a function from `cases` to a new record of cases and returns a new `Schema.TaggedUnion`, so `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` stay typed. Combine it with `Struct.map` the same way you combine `mapMembers` with `Tuple.map`.
+
+**Example** (Adding shared fields to every case)
+
+```ts
+import { Schema, Struct } from "effect"
+
+const Diagnostic = Schema.TaggedUnion({
+  Error: { error: Schema.String },
+  Instruction: { instruction: Schema.String }
+}).mapCases(Struct.map(Schema.fieldsAssign({ module: Schema.String })))
+
+/*
+type Type =
+  | { readonly _tag: "Error"; readonly error: string; readonly module: string }
+  | { readonly _tag: "Instruction"; readonly instruction: string; readonly module: string }
+*/
+type Type = (typeof Diagnostic)["Type"]
+```
+
+Each key of the returned record must equal its case's `_tag` literal, because the helpers look cases up by `_tag`. Renaming a key throws when the schema is built. Checks attached to the original union are dropped unless you pass `{ unsafePreserveChecks: true }`, as with `mapMembers`.
+
 ### Augmenting Tagged Unions
 
 The `toTaggedUnion` function enhances a tagged union schema by adding helper methods for working with its members.
