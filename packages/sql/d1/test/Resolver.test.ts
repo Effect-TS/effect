@@ -20,7 +20,9 @@ const seededClient = Effect.gen(function*() {
   return sql
 })
 
-describe("Resolver", () => {
+// Each test starts its own Miniflare instance. Concurrent startups compete for
+// CPU and share one running timeout, so run them one at a time.
+describe("Resolver", { concurrent: false, timeout: 30_000 }, () => {
   describe("ordered", () => {
     it.effect("insert", () =>
       Effect.gen(function*() {

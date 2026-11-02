@@ -2,11 +2,26 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, it } from "vitest"
+
+// Runs a command without blocking the Vitest worker, so concurrent sibling
+// tests are not held up (and timed out) while it runs.
+const run = (command: string, args: ReadonlyArray<string>, cwd: string) =>
+  new Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string }>(
+    (resolve, reject) => {
+      const child = spawn(command, args, { cwd })
+      let stdout = ""
+      let stderr = ""
+      child.stdout.setEncoding("utf8").on("data", (data) => stdout += data)
+      child.stderr.setEncoding("utf8").on("data", (data) => stderr += data)
+      child.on("error", reject)
+      child.on("close", (status) => resolve({ status, stdout, stderr }))
+    }
+  )
 
 describe("Data", () => {
   describe("Class", () => {
@@ -129,7 +144,7 @@ describe("Data", () => {
       assert.strictEqual(show(Option.Some({ value: 42 })), "some(42)")
     })
 
-    it("declarations reference the named constructor types", () => {
+    it("declarations reference the named constructor types", async () => {
       const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
       const directory = mkdtempSync(join(packageRoot, "test", ".taggedEnum-declarations-"))
       try {
@@ -172,10 +187,10 @@ export const TE = Data.taggedEnum<TEDefinition>()
           })
         )
         const repositoryRoot = join(packageRoot, "../..")
-        const result = spawnSync(
+        const result = await run(
           join(repositoryRoot, "node_modules/.bin/tsc"),
           ["-p", join(directory, "tsconfig.json"), "--pretty", "false"],
-          { cwd: repositoryRoot, encoding: "utf8" }
+          repositoryRoot
         )
         assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
         const declarations = readFileSync(
