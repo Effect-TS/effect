@@ -1,5 +1,57 @@
 # effect
 
+## 4.1.2
+
+### Patch Changes
+
+- [#10217](https://github.com/Effect-TS/effect/pull/10217) [`5216684`](https://github.com/Effect-TS/effect/commit/52166841177ca39d32cc4c06ac5fcdd660656748) Thanks @devangpratap! - Fix `ByteSize` decimal unit constructors such as `megabytes(2.01)` throwing or returning the wrong byte count, and reject fractional-byte quantities instead of rounding them.
+
+- [#10261](https://github.com/Effect-TS/effect/pull/10261) [`b707ad1`](https://github.com/Effect-TS/effect/commit/b707ad1bce3cbf1613fd97622901d7e81e2a34c7) Thanks @effect-bot! - Fix cluster entity defect restart backoff being shared by all entities of a type and never resetting.
+
+- [#10249](https://github.com/Effect-TS/effect/pull/10249) [`46f48af`](https://github.com/Effect-TS/effect/commit/46f48afc88b4b4df3cc1c470ae01f31cc7f8d77c) Thanks @effect-bot! - Prevent an interrupted cluster request that keeps defecting from stalling message delivery to other entities.
+
+- [#10218](https://github.com/Effect-TS/effect/pull/10218) [`92201bc`](https://github.com/Effect-TS/effect/commit/92201bcd47f1789590ff884542051e2123fdb529) Thanks @sbking! - Defer the runner notification for a discarded persisted send made inside a `ClusterSchema.WithTransaction` handler until the transaction commits. The message was invisible to the runner before the commit, so delivery waited for the next storage poll.
+
+- [#10260](https://github.com/Effect-TS/effect/pull/10260) [`cf329f3`](https://github.com/Effect-TS/effect/commit/cf329f3b694ba8659946ee74dbbb6cdb6e5535de) Thanks @effect-bot! - Fix `ClusterWorkflowEngine` turning transient storage failures while saving durable clocks or deferred completions into workflow defects; they are now retried.
+
+- [#10262](https://github.com/Effect-TS/effect/pull/10262) [`1d25d78`](https://github.com/Effect-TS/effect/commit/1d25d78d9639e2725f4ea8d056a77b3bde9afd78) Thanks @effect-bot! - Fix `ClusterWorkflowEngine` blocking shard reacquisition indefinitely after a forced shard release interrupted a workflow resume waiting on its active run.
+
+- [#10226](https://github.com/Effect-TS/effect/pull/10226) [`d190d97`](https://github.com/Effect-TS/effect/commit/d190d973a7fb2ebb71bfaf1a01adbffef1833555) Thanks @tim-smart! - Fix `ClusterWorkflowEngine` letting a runner that lost its shard delete a newer activity result, which could run the activity again and change the workflow's history.
+
+- [#10241](https://github.com/Effect-TS/effect/pull/10241) [`d7b3b6b`](https://github.com/Effect-TS/effect/commit/d7b3b6bd6be4d96babda9d191538fe25c7124f44) Thanks @Marve10s! - Fix `HttpClient.withCookiesRef` not sending cookies when the request URL is completed after it, for example by the `baseUrl` of `HttpApiClient`. Cookies are now selected for the final URL of each request, including redirect hops.
+
+- [#10211](https://github.com/Effect-TS/effect/pull/10211) [`a478745`](https://github.com/Effect-TS/effect/commit/a4787453be8e4f360f0212fb0b25bc4a0e18fc72) Thanks @effect-bot! - Keep `EventLogServer` session auth challenges on their RPC connection, so a challenge is released when its client disconnects instead of being retained by the server after an unauthenticated disconnect.
+
+- [#10221](https://github.com/Effect-TS/effect/pull/10221) [`69eaa29`](https://github.com/Effect-TS/effect/commit/69eaa29dfe5c33547ad12068f65d31b2123194c3) Thanks @clean99! - Fix `Iterable.filterMapWhile` iterators yielding values or pulling from the source after they have returned `done`.
+
+- [#10233](https://github.com/Effect-TS/effect/pull/10233) [`3711ba6`](https://github.com/Effect-TS/effect/commit/3711ba65343a0932840478aa758a2612be0327a7) Thanks @clean99! - Fix `Iterable.unfold` iterators calling the generating function again after they have returned `done`.
+
+- [#9972](https://github.com/Effect-TS/effect/pull/9972) [`715c5e4`](https://github.com/Effect-TS/effect/commit/715c5e4b4528889be2ce30163b130d422e7ab68f) Thanks @eugene1g! - Add `Json5.parse` and `Jsonc.parse` to `effect/encoding`, returning a `Result` that fails with an `EncodingError` on invalid input.
+
+- [#10242](https://github.com/Effect-TS/effect/pull/10242) [`2a10622`](https://github.com/Effect-TS/effect/commit/2a10622e906caccd7a9b4a90d1aaef090e8e00cc) Thanks @Marve10s! - Fix `McpServer` running middleware provided outside a combined middleware inside it.
+
+- [#10243](https://github.com/Effect-TS/effect/pull/10243) [`6bccdd5`](https://github.com/Effect-TS/effect/commit/6bccdd54e1bc5d7f182972811d6827d1ad10f1aa) Thanks @Marve10s! - Encode declared `McpServer` tool failures with their JSON codec, so values such as `bigint`, `Map` and `Option` no longer cause an internal error or lossy output
+
+- [#10244](https://github.com/Effect-TS/effect/pull/10244) [`60be011`](https://github.com/Effect-TS/effect/commit/60be01136a530ec10d8b67efc812eee94804444c) Thanks @Marve10s! - Fix 2026-07-28 MCP listings failing for resources, resource templates and prompts registered as plain objects.
+
+- [#10235](https://github.com/Effect-TS/effect/pull/10235) [`e1edcdc`](https://github.com/Effect-TS/effect/commit/e1edcdc8d60bef515a2c5fa97706d4baaf0c0290) Thanks @schutzelaars! - Stop OTLP log and trace exporters from keeping a timer pending while idle. A Node program kept alive only by an idle exporter now exits.
+
+- [#10210](https://github.com/Effect-TS/effect/pull/10210) [`ef81e9d`](https://github.com/Effect-TS/effect/commit/ef81e9dbd1221ab8a9c38ce50f96129054e3b6e2) Thanks @effect-bot! - Fix `RateLimiter.layerStoreRedis` sharing state between different keys. A key ending in `:refill` or `:adaptive` no longer reads or writes another key's token-bucket refill time or adaptive state.
+
+- [#10223](https://github.com/Effect-TS/effect/pull/10223) [`013fb34`](https://github.com/Effect-TS/effect/commit/013fb34f88f3451ede7e7333f205563f07716b13) Thanks @effect-bot! - Fix `RpcServer` returning an empty HTTP 500 for requests with malformed headers; such requests now fail with a defect `Exit`, and malformed notifications are dropped.
+
+- [#10251](https://github.com/Effect-TS/effect/pull/10251) [`113dbc7`](https://github.com/Effect-TS/effect/commit/113dbc74b259b7e56e618a506dc67e85794c36ed) Thanks @wmaurer! - Fix `Schedule.fixed`, `Schedule.windowed` and `Schedule.cron` returning a zero delay when the clock is a fraction of a nanosecond before the next run.
+
+- [#10230](https://github.com/Effect-TS/effect/pull/10230) [`519d66e`](https://github.com/Effect-TS/effect/commit/519d66eb5972ef3c801fb164dd652f25a71e0511) Thanks @effect-bot! - Add `SchemaBinary.int32`, `uint32`, `int64` and `uint64`, opt-in schemas that write integers as fixed-width little-endian payloads. The 32-bit schemas decode to `number` and the 64-bit schemas to `bigint`. Out-of-range and non-integer values are rejected instead of wrapped.
+
+- [#10213](https://github.com/Effect-TS/effect/pull/10213) [`e7a6ea4`](https://github.com/Effect-TS/effect/commit/e7a6ea43fe8ac77f68329b84d26dc2d1e136d745) Thanks @effect-bot! - SQL transactions now trace `BEGIN`, `COMMIT`, `ROLLBACK` and savepoint statements as child spans of `sql.transaction`, replacing its `effect.sql.transaction.commit`, `savepoint` and `rollback` events; with `Statement.SpanPropagationEnabled`, the transaction also parents connection spans and records its connection wait time.
+
+- [#10240](https://github.com/Effect-TS/effect/pull/10240) [`019f35e`](https://github.com/Effect-TS/effect/commit/019f35e0a7ebe050eae01d68cc14ae63158fd8e4) Thanks @clean99! - Fix `Stream.groupAdjacentBy` dropping its last group when the stream fails. The group is now emitted before the error.
+
+- [#10278](https://github.com/Effect-TS/effect/pull/10278) [`2a0d16c`](https://github.com/Effect-TS/effect/commit/2a0d16cd1ff63a69baf5d19a13dc2051b500150c) Thanks @tim-smart! - Fix `AnthropicStructuredOutput.toCodecAnthropic`, `OpenAiStructuredOutput.toCodecOpenAI`, and MCP tool schemas returning or rejecting a root `$ref` when the schema is an identified alias of another identified schema.
+
+- [#10236](https://github.com/Effect-TS/effect/pull/10236) [`e5570c9`](https://github.com/Effect-TS/effect/commit/e5570c999651935f12a01441ab1e8979a7a6e94d) Thanks @clean99! - Fix `DateTime.startOf`, `endOf` and `nearest` moving a zoned `DateTime` to the other occurrence of a repeated DST hour, and calendar-unit `endOf` returning an instant an hour early when the period ends in a repeated hour.
+
 ## 4.1.1
 
 ### Patch Changes
