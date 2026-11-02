@@ -847,6 +847,84 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(text.delta, "Hello")
       }))
 
+    it.effect("decodes a web fetch result whose document omits citations", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: { input_tokens: 3, output_tokens: 1 }
+                  }
+                },
+                {
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: { type: "server_tool_use", id: "srvtoolu_1", name: "web_fetch", input: {} }
+                },
+                {
+                  type: "content_block_delta",
+                  index: 0,
+                  delta: { type: "input_json_delta", partial_json: "{\"url\":\"https://example.com\"}" }
+                },
+                { type: "content_block_stop", index: 0 },
+                {
+                  type: "content_block_start",
+                  index: 1,
+                  content_block: {
+                    type: "web_fetch_tool_result",
+                    tool_use_id: "srvtoolu_1",
+                    content: {
+                      type: "web_fetch_result",
+                      url: "https://example.com",
+                      retrieved_at: "2026-03-03T15:05:04.091000+00:00",
+                      content: {
+                        type: "document",
+                        source: { type: "text", media_type: "text/plain", data: "Example Domain" },
+                        title: "Example Domain"
+                      }
+                    }
+                  }
+                },
+                { type: "content_block_stop", index: 1 },
+                { type: "content_block_start", index: 2, content_block: { type: "text", text: "" } },
+                { type: "content_block_delta", index: 2, delta: { type: "text_delta", text: "Example Domain" } },
+                { type: "content_block_stop", index: 2 },
+                {
+                  type: "message_delta",
+                  delta: { stop_reason: "end_turn", stop_sequence: null },
+                  usage: { output_tokens: 5 }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "What is on https://example.com?",
+          toolkit: Toolkit.make(AnthropicTool.WebFetch_20250910({}))
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const result = parts.find((part) => part.type === "tool-result")
+        assertDefined(result)
+        assert.strictEqual(result.isFailure, false)
+        assert.isTrue(parts.some((part) => part.type === "text-delta" && part.delta === "Example Domain"))
+      }))
+
     it.effect("emits response metadata for a fallback block", () =>
       Effect.gen(function*() {
         const fallback = {
