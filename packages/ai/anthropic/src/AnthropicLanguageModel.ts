@@ -1890,25 +1890,14 @@ const makeResponse = Effect.fnUntraced(
         case "code_execution_tool_result": {
           const toolName = toolNameMapper.getCustomName("code_execution")
 
-          if (part.content.type === "code_execution_result") {
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: false,
-              result: part.content,
-              providerExecuted: true
-            })
-          } else {
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: true,
-              result: part.content,
-              providerExecuted: true
-            })
-          }
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: toolName,
+            isFailure: part.content.type !== "code_execution_result",
+            result: part.content,
+            providerExecuted: true
+          })
 
           break
         }
@@ -1989,25 +1978,16 @@ const makeResponse = Effect.fnUntraced(
               title: part.content.content.title ?? part.content.url,
               mediaType: part.content.content.source.media_type
             })
-
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: false,
-              result: part.content,
-              providerExecuted: true
-            })
-          } else {
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: true,
-              result: part.content,
-              providerExecuted: true
-            })
           }
+
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: toolName,
+            isFailure: part.content.type !== "web_fetch_result",
+            result: part.content,
+            providerExecuted: true
+          })
 
           break
         }
@@ -2467,25 +2447,16 @@ const makeStreamResponse = Effect.fnUntraced(
                     title: part.content.content.title ?? part.content.url,
                     mediaType: part.content.content.source.media_type
                   })
-
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: false,
-                    result: part.content,
-                    providerExecuted: true
-                  })
-                } else {
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: true,
-                    result: part.content,
-                    providerExecuted: true
-                  })
                 }
+
+                parts.push({
+                  type: "tool-result",
+                  id: part.tool_use_id,
+                  name: toolName,
+                  isFailure: part.content.type !== "web_fetch_result",
+                  result: part.content,
+                  providerExecuted: true
+                })
 
                 break
               }
@@ -2537,25 +2508,14 @@ const makeStreamResponse = Effect.fnUntraced(
                 const part = event.content_block
                 const toolName = toolNameMapper.getCustomName("code_execution")
 
-                if (part.content.type === "code_execution_result") {
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: false,
-                    result: part.content,
-                    providerExecuted: true
-                  })
-                } else {
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: true,
-                    result: part.content,
-                    providerExecuted: true
-                  })
-                }
+                parts.push({
+                  type: "tool-result",
+                  id: part.tool_use_id,
+                  name: toolName,
+                  isFailure: part.content.type !== "code_execution_result",
+                  result: part.content,
+                  providerExecuted: true
+                })
                 break
               }
 
