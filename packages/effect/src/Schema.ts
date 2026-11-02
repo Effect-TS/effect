@@ -6546,6 +6546,53 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly guards: { [K in keyof Cases]: (u: unknown) => u is Cases[K]["Type"] }
   readonly match: TaggedUnionMatch<Cases, Cases[keyof Cases]["Type"]>
   readonly matchOrElse: TaggedUnionMatchOrElse<Cases, Cases[keyof Cases]["Type"], "_tag">
+  /**
+   * Returns a new tagged union with the cases modified by the provided function.
+   *
+   * **When to use**
+   *
+   * Use to transform every case of an existing tagged union, such as adding
+   * shared fields with `Struct.map(Schema.fieldsAssign(...))`, while keeping
+   * `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse`.
+   *
+   * **Details**
+   *
+   * The returned record becomes the new `cases`, and its key order is the
+   * member order. Each case must still have a `_tag` literal.
+   *
+   * Options:
+   *
+   * - `unsafePreserveChecks` - if `true`, keep any `.check(...)` constraints
+   *   that were attached to the original tagged union. Defaults to `false`.
+   *
+   *   **Warning**: This is an unsafe operation. Since `mapCases`
+   *   transformations change the schema type, the original refinement functions
+   *   may no longer be valid or safe to apply to the transformed schema. Only
+   *   use this option if you have verified that your refinements remain correct
+   *   after the transformation.
+   *
+   * **Example** (Adding shared fields to every case)
+   *
+   * ```ts import.meta.vitest
+   * import { Schema, Struct } from "effect"
+   *
+   * const Diagnostic = Schema.TaggedUnion({
+   *   Error: { error: Schema.String },
+   *   Instruction: { instruction: Schema.String }
+   * }).mapCases(Struct.map(Schema.fieldsAssign({ module: Schema.String })))
+   *
+   * const decode = Schema.decodeUnknownSync(Diagnostic)
+   * decode({ _tag: "Error", error: "boom", module: "core" }) // => { _tag: "Error", error: "boom", module: "core" }
+   * ```
+   *
+   * @since 4.0.0
+   */
+  mapCases<To extends Record<string, Constraint>>(
+    f: (cases: Cases) => To,
+    options?: {
+      readonly unsafePreserveChecks?: boolean | undefined
+    } | undefined
+  ): TaggedUnion<To>
 }
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
@@ -6579,15 +6626,36 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
   casesByTag: CasesByTag
 ): TaggedUnion<{ readonly [K in keyof CasesByTag & string]: TaggedStruct<K, CasesByTag[K]> }> {
   const cases: any = {}
-  const members: any = []
   for (const key of Object.keys(casesByTag)) {
-    const member = TaggedStruct(key, casesByTag[key])
-    InternalRecord.assignProperty(cases, key, member)
-    members.push(member)
+    InternalRecord.assignProperty(cases, key, TaggedStruct(key, casesByTag[key]))
   }
-  const union = Union(members)
+  return makeTaggedUnion(cases, undefined)
+}
+
+function makeTaggedUnion<Cases extends Record<string, Constraint>>(
+  cases: Cases,
+  checks: SchemaAST.Checks | undefined
+): TaggedUnion<Cases> {
+  const members: Array<any> = Object.values(cases)
+  const union = makeUnion(SchemaAST.union(members, undefined, checks), members)
   const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse })
+  return make(union.ast, {
+    tag,
+    cases,
+    isAnyOf,
+    guards,
+    match,
+    matchOrElse,
+    mapCases<To extends Record<string, Constraint>>(
+      this: TaggedUnion<Cases>,
+      f: (cases: Cases) => To,
+      options?: {
+        readonly unsafePreserveChecks?: boolean | undefined
+      } | undefined
+    ): TaggedUnion<To> {
+      return makeTaggedUnion(f(this.cases), options?.unsafePreserveChecks ? this.ast.checks : undefined)
+    }
+  })
 }
 /**
  * Type-level representation returned by {@link Opaque}.
