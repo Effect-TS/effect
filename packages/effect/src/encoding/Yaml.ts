@@ -911,9 +911,10 @@ class Printer {
     }
     const prototype = Object.getPrototypeOf(value)
     if (prototype !== Object.prototype && prototype !== null) {
-      throw new PrintError(
-        `Cannot print a ${prototype.constructor?.name || "object"} instance without toJSON at ${path}`
-      )
+      // Only a string name is safe to interpolate into the diagnostic.
+      const name = prototype.constructor?.name
+      const label = typeof name === "string" && name.length > 0 ? name : "object"
+      throw new PrintError(`Cannot print a ${label} instance without toJSON at ${path}`)
     }
     const entries: Array<[string, unknown]> = []
     for (const key of Object.keys(value)) {
@@ -1065,5 +1066,10 @@ export const stringifyAll = (
 ): Result.Result<string, EncodingError> =>
   printResult(values, () => {
     const step = indentStep(options)
-    return Array.from(values, (value, index) => printDocument(value, `value[${index}]`, step)).join("---\n")
+    // `for...of` rejects non-iterables, which `Array.from` would accept as array-likes or empty input.
+    const documents: Array<string> = []
+    for (const value of values) {
+      documents.push(printDocument(value, `value[${documents.length}]`, step))
+    }
+    return documents.join("---\n")
   })
