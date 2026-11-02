@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, FileSystem, Latch, Option, PlatformError } from "effect"
+import { ByteSize, Effect, Exit, FileSystem, IgnoreFile, Latch, Option, PlatformError, Result } from "effect"
 
 const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
   type,
@@ -218,5 +218,31 @@ describe("FileSystem", () => {
         const fs = makeFileSystem({ readLink: () => Effect.die("boom") })
         assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("**"))))
       }))
+
+    it.effect.each([
+      { name: "gitignore", filter: IgnoreFile.gitignore("d\n!d/sub/keep\n"), expected: [], reads: ["."] },
+      {
+        name: "dockerignore",
+        filter: Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\n")),
+        expected: ["d/sub/keep"],
+        reads: [".", "d", "d/sub"]
+      }
+    ])(
+      "reads only directories a $name filter could include from",
+      ({ expected, filter, reads }) =>
+        Effect.gen(function*() {
+          const read: Array<string> = []
+          const fs = makeFileSystem({
+            directories: { ".": ["d"], "d": ["other", "sub", "x.ts"], "d/other": ["x.ts"], "d/sub": ["keep", "x.ts"] },
+            readDirectory: (path) => {
+              read.push(path)
+              return undefined
+            },
+            stat: (path) => path === "d/sub/keep" ? Effect.succeed(info("File")) : undefined
+          })
+          assert.deepStrictEqual(yield* fs.glob("**", { filter }), expected)
+          assert.deepStrictEqual(read.sort(), reads)
+        })
+    )
   })
 })

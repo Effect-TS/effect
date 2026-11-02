@@ -397,7 +397,7 @@ const segmentsOf = (path: string): Array<string> => {
  * @see {@link excludes} for a boolean result
  *
  * @stability unstable
- * @category predicates
+ * @category getters
  * @since 4.0.0
  */
 export const match: {

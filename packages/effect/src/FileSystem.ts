@@ -153,10 +153,10 @@ export interface FileSystem {
    * The `filter` option drops results that a `PathFilter` excludes, matched
    * against paths relative to `root`. It only removes results: an inclusion
    * never restores a path dropped by the pattern, `exclude`, `dot` or the
-   * symbolic link rules. Excluded directories are not read unless a later
-   * inclusion could still match inside them; a `barrier` exclusion is never
-   * read. Rules see each entry's own type, so a `directoryOnly` rule never
-   * matches a link to a directory.
+   * symbolic link rules. A directory excluded by a `barrier` rule is never
+   * read, and one excluded by an `inherit` rule is read only when a later
+   * inclusion could match inside it. Rules see each entry's own type, so a
+   * `directoryOnly` rule never matches a link to a directory.
    *
    * **Gotchas**
    *

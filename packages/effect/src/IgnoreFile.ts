@@ -169,6 +169,10 @@ export const gitignore = (source: string, options?: {
  * `blank`, `cntrl`, `digit`, `graph`, `lower`, `print`, `punct`, `space`,
  * `upper`, `word` and `xdigit`, each optionally negated as `[:^name:]`.
  *
+ * A later pattern that repeats an exclusion already in effect for a directory
+ * still applies inside it, so `d`, `!d/keep`, `d` excludes `d/keep`. BuildKit
+ * skips such a pattern at the directory and keeps `d/keep`.
+ *
  * **Example** (Re-including a file)
  *
  * ```ts import.meta.vitest
