@@ -549,6 +549,7 @@ development:
       ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"],
       ["content after an end marker following a mapping", "a: 1\n... trailing: 2\n"],
       ["a non-separation character after an end marker", "a: 1\n... \u00A0\n"],
+      ["a non-separation character before an end marker comment", "a: 1\n... \u00A0 # tail\n"],
       ["an unsupported YAML version after a byte order mark", "1\n...\n\uFEFF%YAML 1.1\n---\na: yes\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
