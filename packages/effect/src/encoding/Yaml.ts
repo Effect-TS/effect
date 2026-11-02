@@ -378,6 +378,8 @@ const parseKey = (input: string): string => {
 // Ends an anchor or alias name inside a flow collection.
 const flowNameEnd = /[ \t\n,[\]{}]/
 
+const flowDashError = "A flow plain scalar cannot start with '-' followed by white space or a flow indicator"
+
 class FlowParser {
   // The flow collection is read one line at a time. Each line after the first
   // starts with the "\n" that separates it from the previous one, so offsets and
@@ -445,8 +447,16 @@ class FlowParser {
     return parseScalar(this.readPlain(/[,\]}]/))
   }
 
-  // Reads a plain scalar up to `stop`, rejecting directive, tag and explicit key indicators.
+  // Reads a plain scalar up to `stop`, rejecting directive, tag, explicit key and
+  // block sequence indicators.
   private readPlain(stop: RegExp): string {
+    // YAML 1.2.2 §7.3.3: `-` starts a plain scalar only before a non-space character other
+    // than a flow indicator. Checked in the source, since folding and trimming hide a
+    // following space or line break; the end of the line is a line break.
+    if (this.peek() === "-") {
+      const next = this.line[this.index + 1]
+      if (next === undefined || /[ \t,[\]{}]/.test(next)) this.fail(flowDashError)
+    }
     const text = trimWhite(foldFlowLines(this.readUntil(stop)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
     if (text.startsWith("!")) this.fail(tagError)
