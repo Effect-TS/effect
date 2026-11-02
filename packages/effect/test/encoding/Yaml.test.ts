@@ -651,4 +651,85 @@ items:
       )
     })
   })
+
+  // Stage 3 hardening: input that used to acquire silent, misleading semantics.
+  describe("tags", () => {
+    // Core tags are resolved in a later stage; until then every tag is rejected rather than kept as text.
+    it.each([
+      ["core scalar tag", "a: !!str 123\n"],
+      ["core tag on a sequence item", "- !!int 1\n"],
+      ["core collection tag", "a: !!map\n  b: 1\n"],
+      ["local tag", "a: !custom x\n"],
+      ["non-specific tag", "a: ! x\n"],
+      ["verbatim tag", "a: !<tag:yaml.org,2002:str> x\n"],
+      ["tag in a flow collection", "a: [!!str 1]\n"],
+      ["tag on a key", "!!str a: 1\n"]
+    ])("rejects a %s", (_, source) => {
+      assert.match(failureMessage(source), /tag/i)
+    })
+
+    it("keeps exclamation marks inside plain scalars", () => {
+      assert.deepStrictEqual(parse("a: x!y\nb: hello!\n"), { a: "x!y", b: "hello!" })
+    })
+  })
+
+  // Expected values were checked with yaml 2.9.1.
+  describe("alias keys", () => {
+    it("resolves aliases of scalars used as keys", () => {
+      assert.deepStrictEqual(parse("a: &k key\n*k : 1\nb: &n 1\nc: {*n : 2}\n"), {
+        a: "key",
+        key: 1,
+        b: 1,
+        c: { "1": 2 }
+      })
+    })
+
+    it("rejects aliases of collections used as keys", () => {
+      assert.match(failureMessage("a: &k [1]\n*k : 2\n"), /alias/i)
+    })
+  })
+
+  describe("explicit keys", () => {
+    it.each([
+      ["block scalar key", "? a\n: 1\n"],
+      ["block collection key", "? [a, b]\n: 1\n"],
+      ["flow mapping key", "{? a : 1}\n"]
+    ])("rejects a %s", (_, source) => {
+      assert.match(failureMessage(source), /explicit key/i)
+    })
+  })
+
+  describe("nesting depth", () => {
+    const flow = (depth: number) => "[".repeat(depth) + "]".repeat(depth)
+    const block = (depth: number) => Array.from({ length: depth }, (_, i) => `${" ".repeat(i)}k:`).join("\n")
+
+    it.each([["flow", flow], ["block", block]] as const)("allows 1000 nested %s collections", (_, nested) => {
+      assert.isTrue(Result.isSuccess(Yaml.parse(nested(1000))))
+    })
+
+    it.each([["flow", flow], ["block", block]] as const)("rejects deeper %s nesting", (_, nested) => {
+      assert.match(failureMessage(nested(1001)), /depth/i)
+      assert.match(failureMessage(nested(100_000)), /depth/i)
+    })
+  })
+
+  // YAML 1.2.2 §5.5: only spaces and tabs are white space; NBSP and U+2028 are content.
+  // Expected values were checked with yaml 2.9.1.
+  describe("non-separation whitespace", () => {
+    it.each(
+      [
+        ["trailing a plain value", "a: x   \n", { a: "x  " }],
+        ["leading a plain value", "a:  x\n", { a: " x" }],
+        ["before a hash", "a: x #y\n", { a: "x #y" }],
+        ["in a block key", "x : 1\n", { "x ": 1 }],
+        ["on a plain continuation line", "a: x\n   \n  y\n", { a: "x   y" }],
+        ["at a quoted continuation", "a: \"x\n   y\"\n", { a: "x  y" }],
+        ["in flow keys and values", "{a : [ b, c ]}\n", { "a ": [" b", "c "] }],
+        ["as a line separator", "a: x \n", { a: "x " }],
+        ["on a document start line", "---  a\n", " a"]
+      ] as const
+    )("keeps NBSP and U+2028 %s", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+    })
+  })
 })
