@@ -495,6 +495,12 @@ export * as PartitionedSemaphore from "./PartitionedSemaphore.ts"
 export * as Path from "./Path.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as PathFilter from "./PathFilter.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */

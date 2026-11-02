@@ -1,32 +1,32 @@
 /**
- * Matches root-relative paths against `.gitignore` or `.dockerignore` rules
- * without accessing the file system. Pass an `IgnoreFile` as the `ignore`
- * option of `FileSystem.glob` to filter a walk with the same rules.
+ * Parses `.gitignore` and `.dockerignore` files into a `PathFilter`, which
+ * matches root-relative paths without accessing the file system or can be
+ * passed as the `filter` option of `FileSystem.glob`.
  *
  * **Details**
  *
- * In both formats the last matching rule wins and `!` adds an exception. They
+ * In both formats the last matching line wins and `!` adds an exception. They
  * differ otherwise:
  *
- * - Git rules apply below their `base` directory. A rule with a `/` other than
- *   a trailing one is anchored to the base; otherwise it matches a name at any
- *   depth. A trailing `/` matches only directories. An exception cannot
+ * - Git lines apply below their `scope` directory. A line with a `/` other
+ *   than a trailing one is anchored to the scope; otherwise it matches a name
+ *   at any depth. A trailing `/` matches only directories. An exception cannot
  *   re-include a path inside an excluded directory.
- * - Docker rules are anchored at the build context root, `**` may appear
+ * - Docker lines are anchored at the build context root, `**` may appear
  *   anywhere, a trailing `/` is ignored, and an exception can re-include a
  *   path inside an excluded directory.
  *
- * Callers find and read the ignore files. For Git, {@link concat} them from
- * lowest to highest precedence: `core.excludesFile`, `.git/info/exclude`, then
- * each `.gitignore` from the root down with its directory as `base`. For
- * Docker, use `<Dockerfile>.dockerignore` next to the Dockerfile if it exists,
- * otherwise the context root's `.dockerignore`.
+ * Callers find and read the ignore files. For Git, combine them with
+ * `PathFilter.concat` from lowest to highest precedence: `core.excludesFile`,
+ * `.git/info/exclude`, then each `.gitignore` from the root down with its
+ * directory as `scope`. For Docker, use `<Dockerfile>.dockerignore` next to
+ * the Dockerfile if it exists, otherwise the context root's `.dockerignore`.
  *
  * **Gotchas**
  *
  * Git compatibility has limits. Names are matched by Unicode code point rather
  * than by byte, so `?` and negated classes such as `[!a]` match a non-ASCII
- * character that Git would not. A `/` inside a bracket class makes the rule
+ * character that Git would not. A `/` inside a bracket class makes the line
  * match nothing. Matching is case-sensitive (`core.ignorecase` is not
  * supported) and tracked files are not considered.
  *
@@ -38,83 +38,10 @@
  * @since 4.0.0
  */
 import * as Data from "./Data.ts"
-import { format } from "./Formatter.ts"
-import { dual } from "./Function.ts"
-import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import * as Glob from "./internal/glob.ts"
-import { type Pipeable, pipeArguments } from "./Pipeable.ts"
+import * as Engine from "./internal/pathFilter.ts"
+import * as PathFilter from "./PathFilter.ts"
 import * as Result from "./Result.ts"
-
-const TypeId = "~effect/IgnoreFile"
-
-/**
- * Compiled `.gitignore` or `.dockerignore` rules.
- *
- * **Details**
- *
- * `format` records which semantics the rules follow. Test paths with
- * {@link ignores} or pass the value as the `ignore` option of
- * `FileSystem.glob`.
- *
- * This type is unstable, so `FileSystem.glob` can accept it. The rest of the
- * module, including how rules are parsed and matched, is experimental and may
- * change in patch releases.
- *
- * @see {@link gitignore} for Git rules
- * @see {@link dockerignore} for Docker rules
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface IgnoreFile extends Pipeable, Inspectable {
-  readonly [TypeId]: typeof TypeId
-  readonly format: "gitignore" | "dockerignore"
-}
-
-type IgnoreFileImpl =
-  & IgnoreFile
-  & Matcher
-  & (
-    | { readonly format: "gitignore"; readonly rules: ReadonlyArray<GitRule> }
-    | { readonly format: "dockerignore"; readonly patterns: ReadonlyArray<DockerPattern> }
-  )
-
-const IgnoreFileProto = {
-  [TypeId]: TypeId,
-  toJSON(this: IgnoreFile) {
-    return { _id: "IgnoreFile", format: this.format }
-  },
-  toString(this: IgnoreFile) {
-    return `IgnoreFile(${format(this.toJSON())})`
-  },
-  [NodeInspectSymbol](this: IgnoreFile) {
-    return this.toJSON()
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-const makeGit = (rules: ReadonlyArray<GitRule>): IgnoreFile => {
-  const self = Object.create(IgnoreFileProto)
-  self.format = "gitignore"
-  self.rules = rules
-  const matcher = gitMatcher(rules)
-  self.walker = matcher.walker satisfies Glob.IgnoreWalker
-  self.ignores = matcher.ignores
-  return self
-}
-
-const makeDocker = (patterns: ReadonlyArray<DockerPattern>): IgnoreFile => {
-  const self = Object.create(IgnoreFileProto)
-  self.format = "dockerignore"
-  self.patterns = patterns
-  const matcher = dockerMatcher(patterns)
-  self.walker = matcher.walker
-  self.ignores = matcher.ignores
-  return self
-}
 
 /**
  * The error returned by {@link dockerignore} for a pattern that Docker rejects
@@ -136,39 +63,55 @@ export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
 }> {}
 
 /**
- * Parses the contents of a `.gitignore` file.
+ * Parses the contents of a `.gitignore` file into a `PathFilter`.
  *
  * **Details**
  *
- * `base` is the `/`-separated directory, relative to the root, that contains
- * the file; it defaults to the root. Rules only apply to paths strictly below
+ * `scope` is the `/`-separated directory, relative to the root, that contains
+ * the file; it defaults to the root. Lines only apply to paths strictly below
  * it, and its segments are matched literally.
  *
  * Lines are read as Git reads them: blank lines and lines starting with `#`
  * are skipped, `\#` and `\!` escape a leading `#` or `!`, and trailing spaces
  * are dropped unless escaped with `\`. Only `**\/`, `/**` and `/**\/` are
- * special; any other `**` is a plain `*`. Malformed rules, such as an unclosed
- * `[` or a trailing `\`, match nothing, as in Git.
+ * special; any other `**` is a plain `*`. Malformed lines, such as an unclosed
+ * `[` or a trailing `\`, match nothing, as in Git, and produce no rule.
+ *
+ * Every other line becomes one rule, in order: an exclusion with `subtree:
+ * "barrier"`, or for a `!` line an inclusion with `subtree: "self"`.
  *
  * **Gotchas**
  *
- * A `base` with an empty, `.` or `..` segment is a defect.
+ * A `scope` with an empty, `.` or `..` segment is a defect.
  *
  * **Example** (Matching Git rules)
  *
  * ```ts import.meta.vitest
- * import { IgnoreFile } from "effect"
+ * import { IgnoreFile, PathFilter } from "effect"
  *
- * const ignore = IgnoreFile.gitignore("node_modules/\n*.log\n!keep.log\n")
+ * const filter = IgnoreFile.gitignore("node_modules/\n*.log\n!keep.log\n")
  *
- * IgnoreFile.ignores(ignore, "node_modules/") // => true
- * IgnoreFile.ignores(ignore, "src/debug.log") // => true
- * IgnoreFile.ignores(ignore, "keep.log") // => false
+ * PathFilter.excludes(filter, "node_modules", { directory: true }) // => true
+ * PathFilter.excludes(filter, "src/debug.log") // => true
+ * PathFilter.excludes(filter, "keep.log") // => false
  * // a file named `node_modules` is not matched by the directory rule
- * IgnoreFile.ignores(ignore, "node_modules") // => false
+ * PathFilter.excludes(filter, "node_modules") // => false
  * ```
  *
- * @see {@link concat} for combining nested `.gitignore` files
+ * **Example** (Combining nested .gitignore files)
+ *
+ * ```ts import.meta.vitest
+ * import { IgnoreFile, PathFilter } from "effect"
+ *
+ * const filter = PathFilter.concat(
+ *   IgnoreFile.gitignore("*.log\n"),
+ *   IgnoreFile.gitignore("!/keep.log\n", { scope: "logs" })
+ * )
+ *
+ * PathFilter.excludes(filter, "keep.log") // => true
+ * PathFilter.excludes(filter, "logs/keep.log") // => false
+ * PathFilter.excludes(filter, "logs/other.log") // => true
+ * ```
  *
  * @stability experimental
  * @category constructors
@@ -176,11 +119,21 @@ export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
  */
 export const gitignore = (source: string, options?: {
   /** The directory containing the file, relative to the root. */
-  readonly base?: string | undefined
-}): IgnoreFile => makeGit(parseGitignore(source, splitBase(options?.base ?? "")))
+  readonly scope?: string | undefined
+}): PathFilter.PathFilter => {
+  const scope = Engine.splitScope(options?.scope ?? "")
+  return PathFilter.make(
+    parseGitignore(source).map(({ directoryOnly, negated, nodes }): PathFilter.Rule => {
+      const matcher = Glob.pathMatcher(Glob.fromNodes(nodes, new Set([0]), true))
+      return negated
+        ? { _tag: "Include", matcher, directoryOnly, scope, subtree: "self" }
+        : { _tag: "Exclude", matcher, directoryOnly, scope, subtree: "barrier" }
+    })
+  )
+}
 
 /**
- * Parses the contents of a `.dockerignore` file.
+ * Parses the contents of a `.dockerignore` file into a `PathFilter`.
  *
  * **Details**
  *
@@ -189,6 +142,9 @@ export const gitignore = (source: string, options?: {
  * `/a` and `a/` all mean `a`. `**` matches any number of characters including
  * `/` wherever it appears, and a pattern also matches every path inside a
  * matching directory.
+ *
+ * Every other line becomes one rule with `subtree: "inherit"`, in order: an
+ * exclusion, or for a `!` line an inclusion.
  *
  * Fails with a {@link ParseError} where Docker rejects the file, such as for a
  * lone `!` or an unclosed `[`.
@@ -216,12 +172,12 @@ export const gitignore = (source: string, options?: {
  * **Example** (Re-including a file)
  *
  * ```ts import.meta.vitest
- * import { IgnoreFile, Result } from "effect"
+ * import { IgnoreFile, PathFilter, Result } from "effect"
  *
- * const ignore = Result.getOrThrow(IgnoreFile.dockerignore("node_modules\n!node_modules/keep.txt\n"))
+ * const filter = Result.getOrThrow(IgnoreFile.dockerignore("node_modules\n!node_modules/keep.txt\n"))
  *
- * IgnoreFile.ignores(ignore, "node_modules/pkg/index.js") // => true
- * IgnoreFile.ignores(ignore, "node_modules/keep.txt") // => false
+ * PathFilter.excludes(filter, "node_modules/pkg/index.js") // => true
+ * PathFilter.excludes(filter, "node_modules/keep.txt") // => false
  * Result.isFailure(IgnoreFile.dockerignore("!")) // => true
  * ```
  *
@@ -229,92 +185,17 @@ export const gitignore = (source: string, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const dockerignore = (source: string): Result.Result<IgnoreFile, ParseError> => {
+export const dockerignore = (source: string): Result.Result<PathFilter.PathFilter, ParseError> => {
   const parsed = parseDockerignore(source)
-  return Array.isArray(parsed) ? Result.succeed(makeDocker(parsed)) : Result.fail(new ParseError(parsed))
+  if (!Array.isArray(parsed)) {
+    return Result.fail(new ParseError(parsed))
+  }
+  return Result.succeed(PathFilter.make(parsed.map(({ exclusion, matcher }): PathFilter.Rule =>
+    exclusion
+      ? { _tag: "Include", matcher, directoryOnly: false, scope: [], subtree: "inherit" }
+      : { _tag: "Exclude", matcher, directoryOnly: false, scope: [], subtree: "inherit" }
+  )))
 }
-
-/**
- * Combines two sets of rules of the same format, with `that` taking
- * precedence.
- *
- * **Details**
- *
- * The result evaluates the rules of `self` followed by those of `that`, so a
- * matching rule in `that` wins, like a deeper `.gitignore` or a later line.
- *
- * **Gotchas**
- *
- * Combining a `gitignore` with a `dockerignore` is a defect, because the two
- * formats treat excluded directories differently.
- *
- * **Example** (Combining nested .gitignore files)
- *
- * ```ts import.meta.vitest
- * import { IgnoreFile } from "effect"
- *
- * const root = IgnoreFile.gitignore("*.log\n")
- * const nested = IgnoreFile.gitignore("!/keep.log\n", { base: "logs" })
- * const ignore = IgnoreFile.concat(root, nested)
- *
- * IgnoreFile.ignores(ignore, "keep.log") // => true
- * IgnoreFile.ignores(ignore, "logs/keep.log") // => false
- * IgnoreFile.ignores(ignore, "logs/other.log") // => true
- * ```
- *
- * @stability experimental
- * @category combinators
- * @since 4.0.0
- */
-export const concat: {
-  (that: IgnoreFile): (self: IgnoreFile) => IgnoreFile
-  (self: IgnoreFile, that: IgnoreFile): IgnoreFile
-} = dual(2, (self: IgnoreFile, that: IgnoreFile): IgnoreFile => {
-  const left = self as IgnoreFileImpl
-  const right = that as IgnoreFileImpl
-  if (left.format === "gitignore" && right.format === "gitignore") {
-    return makeGit([...left.rules, ...right.rules])
-  }
-  if (left.format === "dockerignore" && right.format === "dockerignore") {
-    return makeDocker([...left.patterns, ...right.patterns])
-  }
-  throw new Error(`IgnoreFile.concat cannot combine ${left.format} with ${right.format}`)
-})
-
-/**
- * Tests whether rules ignore a `/`-separated path relative to the root.
- *
- * **Details**
- *
- * A trailing `/` marks the path as a directory, which Git directory-only rules
- * require; pass a symbolic link without it, even when it points to a
- * directory. Empty and `.` segments are dropped. A path is also ignored when
- * an ignored ancestor directory makes it so, following each format's rules.
- *
- * **Gotchas**
- *
- * A path with a `..` segment is a defect.
- *
- * **Example** (Filtering paths)
- *
- * ```ts import.meta.vitest
- * import { IgnoreFile, pipe } from "effect"
- *
- * const ignore = IgnoreFile.gitignore("dist/\n")
- * const paths = ["src/index.ts", "dist/index.js"]
- *
- * paths.filter((path) => !IgnoreFile.ignores(ignore, path)) // => ["src/index.ts"]
- * pipe(ignore, IgnoreFile.ignores("./dist/")) // => true
- * ```
- *
- * @stability experimental
- * @category predicates
- * @since 4.0.0
- */
-export const ignores: {
-  (path: string): (self: IgnoreFile) => boolean
-  (self: IgnoreFile, path: string): boolean
-} = dual(2, (self: IgnoreFile, path: string): boolean => (self as IgnoreFileImpl).ignores(path))
 
 const codePoint = (char: string): number => char.codePointAt(0)!
 
@@ -325,61 +206,14 @@ const lookup = <A>(table: Record<string, A>, name: string): A | undefined =>
   Object.hasOwn(table, name) ? table[name] : undefined
 
 // -----------------------------------------------------------------------------
-// paths
-// -----------------------------------------------------------------------------
-
-/**
- * Splits a root-relative path, dropping empty and `.` segments as
- * `Glob.match` does. A trailing `/` or `/.` marks a directory.
- */
-const splitPath = (path: string): { readonly segments: Array<string>; readonly directory: boolean } => {
-  const segments: Array<string> = []
-  const raw = path.split("/")
-  let directory = false
-  for (let i = 0; i < raw.length; i++) {
-    const segment = raw[i]
-    if (segment === "" || segment === ".") {
-      directory = i === raw.length - 1 && segments.length > 0
-    } else if (segment === "..") {
-      throw new Error(`IgnoreFile paths cannot contain ".." segments: ${path}`)
-    } else {
-      segments.push(segment)
-      directory = false
-    }
-  }
-  return { segments, directory }
-}
-
-interface Matcher {
-  readonly walker: Glob.IgnoreWalker
-  readonly ignores: (path: string) => boolean
-}
-
-// -----------------------------------------------------------------------------
 // gitignore
 // -----------------------------------------------------------------------------
 
 interface GitRule {
   readonly negated: boolean
   readonly directoryOnly: boolean
-  /** Segment nodes, base directory included, without the final `End`. */
+  /** Segment nodes relative to the scope, ending in `End`. */
   readonly nodes: ReadonlyArray<Glob.Node>
-}
-
-/**
- * Splits a `base` option into literal segments.
- */
-const splitBase = (base: string): Array<string> => {
-  if (base === "") {
-    return []
-  }
-  const segments = base.split("/")
-  for (const segment of segments) {
-    if (segment === "" || segment === "." || segment === "..") {
-      throw new Error(`IgnoreFile.gitignore base must not contain empty, "." or ".." segments: ${base}`)
-    }
-  }
-  return segments
 }
 
 // Git's `isspace` excludes vertical tab and form feed
@@ -539,7 +373,10 @@ const splitGitSegments = (pattern: string): Array<string> => {
   return segments
 }
 
-const parseGitRule = (line: string, base: ReadonlyArray<Glob.Node>): GitRule | undefined => {
+// The rule, not the automaton, restricts a trailing `/` to directories
+const end: Glob.Node = { _tag: "End", directoryOnly: false }
+
+const parseGitRule = (line: string): GitRule | undefined => {
   let pattern = trimTrailingSpaces(line)
   const negated = pattern.startsWith("!")
   if (negated) {
@@ -552,14 +389,14 @@ const parseGitRule = (line: string, base: ReadonlyArray<Glob.Node>): GitRule | u
   if (pattern === "") {
     return undefined
   }
-  const nodes = [...base]
+  const nodes: Array<Glob.Node> = []
   if (!pattern.includes("/")) {
-    // matches the basename at any depth below the base
+    // matches the basename at any depth below the scope
     const segment = compileGitSegment(pattern)
     if (segment === undefined) {
       return undefined
     }
-    nodes.push(globstar, segment)
+    nodes.push(globstar, segment, end)
     return { negated, directoryOnly, nodes }
   }
   const segments = splitGitSegments(pattern.startsWith("/") ? pattern.slice(1) : pattern)
@@ -583,11 +420,11 @@ const parseGitRule = (line: string, base: ReadonlyArray<Glob.Node>): GitRule | u
     }
     nodes.push(node)
   }
+  nodes.push(end)
   return { negated, directoryOnly, nodes }
 }
 
-const parseGitignore = (source: string, base: ReadonlyArray<string>): Array<GitRule> => {
-  const baseNodes = base.map((value): Glob.Node => ({ _tag: "Literal", value }))
+const parseGitignore = (source: string): Array<GitRule> => {
   const rules: Array<GitRule> = []
   for (let line of (source.startsWith("﻿") ? source.slice(1) : source).split("\n")) {
     if (line.endsWith("\r")) {
@@ -596,66 +433,12 @@ const parseGitignore = (source: string, base: ReadonlyArray<string>): Array<GitR
     if (line === "" || line.startsWith("#")) {
       continue
     }
-    const rule = parseGitRule(line, baseNodes)
+    const rule = parseGitRule(line)
     if (rule !== undefined) {
       rules.push(rule)
     }
   }
   return rules
-}
-
-const gitMatcher = (rules: ReadonlyArray<GitRule>): Matcher => {
-  const nodes: Array<Glob.Node> = []
-  const negated = new Set<number>()
-  const starts = new Set<number>()
-  for (const rule of rules) {
-    starts.add(nodes.length)
-    nodes.push(...rule.nodes, { _tag: "End", directoryOnly: rule.directoryOnly })
-    if (rule.negated) {
-      negated.add(nodes.length - 1)
-    }
-  }
-  const compiled: Glob.Compiled = { nodes, initial: Glob.closure(nodes, starts), dot: true, masks: undefined }
-
-  // `End` nodes follow rule order, so the highest accepting one is the last match
-  const step = (state: unknown, name: string, isDirectory: boolean): Glob.IgnoreStep => {
-    const states = state as Glob.States
-    if (states.size === 0) {
-      return { state: states, ignored: false, prune: false }
-    }
-    const next = Glob.union(Glob.step(compiled, states, name))
-    let last = -1
-    for (const index of next) {
-      const node = nodes[index]
-      if (node._tag === "End" && (isDirectory || !node.directoryOnly) && index > last) {
-        last = index
-      }
-    }
-    const ignored = last !== -1 && !negated.has(last)
-    // Git does not look inside an excluded directory
-    return { state: next, ignored, prune: ignored }
-  }
-
-  return {
-    walker: {
-      initial: compiled.initial,
-      needsDirectory: rules.some((rule) => rule.directoryOnly),
-      step
-    },
-    ignores: (path) => {
-      const { directory, segments } = splitPath(path)
-      let state: unknown = compiled.initial
-      for (let i = 0; i < segments.length; i++) {
-        const last = i === segments.length - 1
-        const result = step(state, segments[i], !last || directory)
-        if (last || result.ignored) {
-          return result.ignored
-        }
-        state = result.state
-      }
-      return false
-    }
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -664,9 +447,7 @@ const gitMatcher = (rules: ReadonlyArray<GitRule>): Matcher => {
 
 interface DockerPattern {
   readonly exclusion: boolean
-  /** The cleaned pattern, as `PatternMatcher` stores it. */
-  readonly pattern: string
-  readonly match: (path: string) => boolean
+  readonly matcher: PathFilter.PathMatcher
 }
 
 interface DockerError {
@@ -1179,7 +960,7 @@ const parseDockerignore = (source: string): Array<DockerPattern> | DockerError =
     if (typeof match === "string") {
       return { line: index + 1, pattern: trimmed, message: match }
     }
-    patterns.push({ exclusion, pattern, match })
+    patterns.push({ exclusion, matcher: dockerMatcher(pattern, match) })
   }
   return patterns
 }
@@ -1191,48 +972,19 @@ const wildcardChars = /[*[\]?^\\]/
 const withoutTrailingGlob = (pattern: string): string =>
   pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern.endsWith("/*") ? pattern.slice(0, -2) : pattern
 
-interface DockerState {
-  readonly path: string
-  /** Whether each pattern matched this path or one of its ancestors. */
-  readonly hits: ReadonlyArray<boolean>
-}
-
-const dockerMatcher = (patterns: ReadonlyArray<DockerPattern>): Matcher => {
-  const exceptions = patterns.filter((pattern) => pattern.exclusion).map((pattern) =>
-    `${withoutTrailingGlob(pattern.pattern)}/`
-  )
-  // Like BuildKit, only skip an ignored directory when every exception is a
-  // plain path and none of them lies inside it
-  const prefixOnly = exceptions.every((exception) => !wildcardChars.test(exception))
-  const canPrune = (path: string): boolean => {
-    if (!prefixOnly) {
-      return false
-    }
-    const directory = `${path}/`
-    return exceptions.every((exception) => !exception.startsWith(directory))
+// BuildKit's wildcard-free prefix rule. Docker's `**` crosses `/`, so a
+// stripped `/**` also matches everything below the prefix.
+const dockerMatcher = (pattern: string, match: (path: string) => boolean): PathFilter.PathMatcher => {
+  const prefix = withoutTrailingGlob(pattern)
+  const everything = pattern.endsWith("/**")
+  const matcher: PathFilter.PathMatcher = {
+    match,
+    matchesBelow: wildcardChars.test(prefix) ?
+      undefined :
+      (directory) =>
+        directory === "" || `${prefix}/`.startsWith(`${directory}/`) ||
+        (everything && directory.startsWith(`${prefix}/`))
   }
-
-  const step = (state: unknown, name: string): Glob.IgnoreStep => {
-    const parent = state as DockerState
-    const path = parent.path === "" ? name : `${parent.path}/${name}`
-    const hits = patterns.map((pattern, i) => parent.hits[i] || pattern.match(path))
-    const last = hits.lastIndexOf(true)
-    const ignored = last !== -1 && !patterns[last].exclusion
-    return { state: { path, hits }, ignored, prune: ignored && canPrune(path) }
-  }
-
-  const initial: DockerState = { path: "", hits: patterns.map(() => false) }
-  return {
-    walker: { initial, needsDirectory: false, step },
-    ignores: (path) => {
-      let state: unknown = initial
-      let ignored = false
-      for (const segment of splitPath(path).segments) {
-        const result = step(state, segment)
-        state = result.state
-        ignored = result.ignored
-      }
-      return ignored
-    }
-  }
+  // Docker ignores whether a path is a directory
+  return Engine.register(matcher, Engine.fromMatcher(matcher, false))
 }

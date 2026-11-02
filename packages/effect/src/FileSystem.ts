@@ -17,10 +17,10 @@ import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import { pipe } from "./Function.ts"
-import type { IgnoreFile } from "./IgnoreFile.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
+import type { PathFilter } from "./PathFilter.ts"
 import { badArgument, type PlatformError, systemError } from "./PlatformError.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Pull from "./Pull.ts"
@@ -150,18 +150,19 @@ export interface FileSystem {
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
-   * The `ignore` option filters results with an `IgnoreFile`, matched
-   * against paths relative to `root`. It only removes results: an exception
+   * The `filter` option drops results that a `PathFilter` excludes, matched
+   * against paths relative to `root`. It only removes results: an inclusion
    * never restores a path dropped by the pattern, `exclude`, `dot` or the
-   * symbolic link rules. Git rules skip ignored directories. Docker rules
-   * still read one when an exception such as `!node_modules/keep.txt` could
-   * apply inside it. A Git `dir/` rule never matches a link to a directory.
+   * symbolic link rules. Excluded directories are not read unless a later
+   * inclusion could still match inside them; a `barrier` exclusion is never
+   * read. Rules see each entry's own type, so a `directoryOnly` rule never
+   * matches a link to a directory.
    *
    * **Gotchas**
    *
    * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
    * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling. With `ignore`, a pattern that is absolute or contains
+   * pattern's spelling. With `filter`, a pattern that is absolute or contains
    * a `..` segment or an escaped `/` is a defect.
    */
   readonly glob: (
@@ -170,7 +171,7 @@ export interface FileSystem {
       readonly root?: string | undefined
       readonly exclude?: ReadonlyArray<string> | undefined
       readonly dot?: boolean | undefined
-      readonly ignore?: IgnoreFile | undefined
+      readonly filter?: PathFilter | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
