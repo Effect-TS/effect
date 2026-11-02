@@ -4,6 +4,10 @@ const codePoint = (char: string): number => char.codePointAt(0)!
 
 const single = (char: string): Array<number> => [codePoint(char), codePoint(char)]
 
+// Class names come from user input, so never resolve them through the prototype
+const lookup = <A>(table: Record<string, A>, name: string): A | undefined =>
+  Object.hasOwn(table, name) ? table[name] : undefined
+
 // -----------------------------------------------------------------------------
 // paths
 // -----------------------------------------------------------------------------
@@ -130,7 +134,7 @@ const parseGitClass = (
         // not a class name, so `[` is a member
         ranges.push(...single(char))
       } else {
-        const members = gitClasses[chars.slice(i + 2, end - 1).join("")]
+        const members = lookup(gitClasses, chars.slice(i + 2, end - 1).join(""))
         if (members === undefined) {
           return undefined
         }
@@ -377,10 +381,24 @@ type DockerToken =
   | { readonly _tag: "GroupStart" }
   | { readonly _tag: "GroupBody" }
 
-// Go's `strings.TrimSpace`, which unlike `String.prototype.trim` keeps U+FEFF
-const goSpace = "[\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
-const goTrimPattern = new RegExp(`^${goSpace}+|${goSpace}+$`, "g")
-const goTrim = (value: string): string => value.replace(goTrimPattern, "")
+// Go's `unicode.IsSpace`, which unlike `String.prototype.trim` excludes U+FEFF
+const isGoSpace = (code: number): boolean =>
+  (code >= 0x09 && code <= 0x0d) || code === 0x20 || code === 0x85 || code === 0xa0 || code === 0x1680 ||
+  (code >= 0x2000 && code <= 0x200a) || code === 0x2028 || code === 0x2029 || code === 0x202f ||
+  code === 0x205f || code === 0x3000
+
+// Go's `strings.TrimSpace`, scanning from both ends so the work stays linear
+const goTrim = (value: string): string => {
+  let start = 0
+  let end = value.length
+  while (start < end && isGoSpace(value.charCodeAt(start))) {
+    start++
+  }
+  while (end > start && isGoSpace(value.charCodeAt(end - 1))) {
+    end--
+  }
+  return value.slice(start, end)
+}
 
 // Go's `path.Clean`
 const clean = (path: string): string => {
@@ -545,6 +563,8 @@ const re2Classes: Record<string, ReadonlyArray<number>> = {
   xdigit: gitClasses.xdigit
 }
 
+const re2ClassNames = Object.keys(re2Classes).join(", ")
+
 // Sorted, non-overlapping ranges, as the POSIX tables are
 const complement = (ranges: ReadonlyArray<number>): Array<number> => {
   const out: Array<number> = []
@@ -563,11 +583,14 @@ const complement = (ranges: ReadonlyArray<number>): Array<number> => {
 
 const isAsciiAlphanumeric = (char: string): boolean => /^[A-Za-z0-9]$/.test(char)
 
-// A backslash before a letter, digit or non-ASCII character is Go regexp
-// syntax (`\d`) or invalid in Go, not an escaped literal.
+// A backslash before a letter or digit is Go regexp syntax (`\d`), and Go
+// rejects one before a non-ASCII character, so neither is an escaped literal.
 const escapeError = (char: string): string | undefined =>
-  isAsciiAlphanumeric(char) || codePoint(char) >= 0x80
-    ? `"\\${char}" is regular expression syntax, not an escaped character`
+  isAsciiAlphanumeric(char)
+    ? `"\\${char}" is regular expression syntax in Docker, not an escaped "${char}"; ` +
+      `write "${char}" without the backslash to match it literally`
+    : codePoint(char) >= 0x80
+    ? `"\\${char}" is not a valid escape in Docker; write "${char}" without the backslash to match it literally`
     : undefined
 
 type Parsed<A> = { readonly value: A; readonly end: number } | string
@@ -583,7 +606,8 @@ const parseDockerClass = (chars: ReadonlyArray<string>, open: number): Parsed<Do
   const member = (): Parsed<number> => {
     const char = chars[i]
     if (char === "*" || char === "?") {
-      return `"${char}" inside a bracket class is not supported`
+      return `"${char}" inside a bracket class is regular expression syntax in Docker; ` +
+        `escape it as "\\${char}" to match it literally`
     }
     if (char !== "\\") {
       return { value: codePoint(char), end: i + 1 }
@@ -612,9 +636,9 @@ const parseDockerClass = (chars: ReadonlyArray<string>, open: number): Parsed<Do
       }
       if (close !== -1) {
         const name = chars.slice(i + 2, close).join("")
-        const members = re2Classes[name.startsWith("^") ? name.slice(1) : name]
+        const members = lookup(re2Classes, name.startsWith("^") ? name.slice(1) : name)
         if (members === undefined) {
-          return `invalid character class "[:${name}:]"`
+          return `unknown character class "[:${name}:]"; the supported names are ${re2ClassNames}`
         }
         ranges.push(...(name.startsWith("^") ? complement(members) : members))
         i = close + 2
@@ -643,7 +667,8 @@ const parseDockerClass = (chars: ReadonlyArray<string>, open: number): Parsed<Do
   }
 }
 
-// Thompson simulation over code points: work is path length × token count.
+// Thompson simulation over code points: one match costs path length × token
+// count. A path is matched once per ancestor, which adds a depth factor.
 const matchTokens = (tokens: ReadonlyArray<DockerToken>, path: string): boolean => {
   const end = tokens.length
   const seen = new Int32Array(end + 1)
@@ -755,7 +780,8 @@ const compileDocker = (pattern: string): ((path: string) => boolean) | string =>
       const next = chars[i++]
       if (next === undefined) {
         // the generated expression would end in a lone backslash
-        return "trailing backslash at end of pattern"
+        return `a trailing backslash is regular expression syntax in Docker; ` +
+          `escape it as "\\\\" to match a literal backslash`
       }
       const error = escapeError(next)
       if (error !== undefined) {
@@ -775,7 +801,8 @@ const compileDocker = (pattern: string): ((path: string) => boolean) | string =>
       tokens.push({ _tag: "Char", code: codePoint(char) })
       kind = "tokens"
     } else if (char === "^") {
-      return `"^" outside a bracket class is not supported`
+      return `"^" outside a bracket class is regular expression syntax in Docker; ` +
+        `escape it as "\\^" to match it literally`
     } else {
       tokens.push({ _tag: "Char", code: codePoint(char) })
     }
@@ -856,11 +883,11 @@ export const parseDockerignore = (source: string): Array<DockerPattern> | Docker
 
 const wildcardChars = /[*[\]?^\\]/
 
-// fsutil's `patternWithoutTrailingGlob`
-const withoutTrailingGlob = (pattern: string): string => {
-  const trimmed = pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern
-  return trimmed.endsWith("/*") ? trimmed.slice(0, -2) : trimmed
-}
+// fsutil's `patternWithoutTrailingGlob`, except that it strips one trailing
+// glob, not both. Stripping `/*/**` would turn `d/*/**` into the plain prefix
+// `d` and skip `d/sub`, losing `d/sub/keep`, which the exception re-includes.
+const withoutTrailingGlob = (pattern: string): string =>
+  pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern.endsWith("/*") ? pattern.slice(0, -2) : pattern
 
 interface DockerState {
   readonly path: string
@@ -873,8 +900,8 @@ export const dockerMatcher = (patterns: ReadonlyArray<DockerPattern>): Matcher =
   const exceptions = patterns.filter((pattern) => pattern.exclusion).map((pattern) =>
     `${withoutTrailingGlob(pattern.pattern)}/`
   )
-  // BuildKit only skips an ignored directory when every exception is a plain
-  // path and none of them lies inside it
+  // Like BuildKit, only skip an ignored directory when every exception is a
+  // plain path and none of them lies inside it
   const prefixOnly = exceptions.every((exception) => !wildcardChars.test(exception))
   const canPrune = (path: string): boolean => {
     if (!prefixOnly) {
