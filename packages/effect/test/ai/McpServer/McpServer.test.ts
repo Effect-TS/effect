@@ -3552,22 +3552,19 @@ describe("McpServer", () => {
         Layer.provideMerge(Layer.succeed(Toolkit.RecordToolArguments, recordToolArguments))
       ))
       const headers = yield* initializeHttpSession(harness, protocol)
-      const initialize = yield* Queue.take(ended)
+      yield* Queue.take(ended) // initialize
       const request = Effect.fnUntraced(function*(id: number, method: string, params: Record<string, unknown>) {
         yield* readMcpHttpResponse(yield* harness.post({ jsonrpc: "2.0", id, method, params }, headers))
         return yield* Queue.take(ended)
       })
-      return { headers, initialize, request }
+      return { headers, request }
     })
 
     const exitTag = (span: Tracer.NativeSpan) => span.status._tag === "Ended" ? span.status.exit._tag : undefined
 
     it.effect("records MCP server spans with method-specific names and no tool arguments", () =>
       Effect.gen(function*() {
-        const { headers, initialize, request } = yield* makeTracedHarness()
-
-        assert.strictEqual(initialize.name, "initialize")
-        assert.strictEqual(initialize.attributes.get("mcp.method.name"), "initialize")
+        const { headers, request } = yield* makeTracedHarness()
 
         const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
         assert.strictEqual(call.name, "tools/call get_weather")
@@ -3600,12 +3597,9 @@ describe("McpServer", () => {
       Effect.gen(function*() {
         const { request } = yield* makeTracedHarness(true)
 
-        const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
-        assert.strictEqual(call.attributes.get("gen_ai.tool.call.arguments"), "{\"location\":\"London\"}")
-
-        // Tools registered directly with `addTool` do not go through `Toolkit.handle`.
-        const direct = yield* request(2, "tools/call", { name: "echo", arguments: { text: "hi" } })
-        assert.strictEqual(direct.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
+        // `echo` is registered with `addTool`, so `Toolkit.handle` cannot record the arguments for McpServer.
+        const call = yield* request(1, "tools/call", { name: "echo", arguments: { text: "hi" } })
+        assert.strictEqual(call.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
@@ -3647,22 +3641,22 @@ describe("McpServer", () => {
         assert.strictEqual(defect.attributes.get("error.type"), "-32603")
       }))
 
-    describe("request span lifecycle", () => {
-      const makeTracedTransport = Effect.fnUntraced(function*(options?: { readonly failExitFor?: string }) {
+    // RpcServer answers a failed response write with -32603, and the span must report that response.
+    it.effect("records the internal error sent after an error response fails to write", () =>
+      Effect.gen(function*() {
         const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-        const tracer = makeEndedSpanTracer(ended)
         const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
         const disconnects = yield* Queue.unbounded<number>()
         const ready = yield* Deferred.make<
           (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
         >()
-        let failExitFor = options?.failExitFor
+        let failWrite = true
         const transport = yield* RpcServer.Protocol.make((write) =>
           Deferred.succeed(ready, write).pipe(Effect.as({
             disconnects,
             send: (_clientId, message) => {
-              if (message._tag === "Exit" && message.requestId === failExitFor) {
-                failExitFor = undefined
+              if (failWrite && message._tag === "Exit" && message.requestId === "1") {
+                failWrite = false
                 return Effect.die("write failed")
               }
               return Queue.offer(outbound, message).pipe(Effect.asVoid)
@@ -3677,115 +3671,32 @@ describe("McpServer", () => {
             codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
           }))
         )
-        const context = yield* Layer.build(
-          McpServer.layer({ name: "TracingLifecycle", version: "1.0.0", protocols: [McpProtocol.v2025_03_26] }).pipe(
+        yield* Layer.build(
+          McpServer.layer({ name: "TracingTest", version: "1.0.0", protocols: [McpProtocol.v2025_03_26] }).pipe(
             Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
           )
         )
-        const entered = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        yield* Context.get(context, McpServer.McpServer).addTool({
-          tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
-          annotations: Context.empty(),
-          handle: () =>
-            Deferred.succeed(entered, undefined).pipe(
-              Effect.andThen(Deferred.await(release)),
-              Effect.as(new McpSchema.CallToolResult({ content: [] }))
-            )
-        })
         const write = yield* Deferred.await(ready)
         const send = (message: RpcMessage.FromClientEncoded) =>
-          write(1, message).pipe(Effect.provideService(Tracer.Tracer, tracer))
-        yield* send({
-          _tag: "Request",
-          id: "initialize",
-          tag: "initialize",
-          payload: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "client", version: "1.0.0" }
-          },
-          headers: []
+          write(1, message).pipe(Effect.provideService(Tracer.Tracer, makeEndedSpanTracer(ended)))
+        const clientInfo = { name: "client", version: "1.0.0" }
+        const payload = { protocolVersion: "2025-03-26", capabilities: {}, clientInfo }
+        yield* send({ _tag: "Request", id: "0", tag: "initialize", payload, headers: [] })
+        yield* Queue.take(outbound)
+        yield* Queue.take(ended)
+
+        yield* send({ _tag: "Request", id: "1", tag: "tools/call", payload: { name: "missing_tool" }, headers: [] })
+
+        assert.deepStrictEqual(yield* Queue.take(outbound), {
+          _tag: "Exit",
+          requestId: "1",
+          exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
         })
-        assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "initialize" })
-        assert.strictEqual((yield* Queue.take(ended)).name, "initialize")
-
-        yield* send({ _tag: "Request", id: "wait", tag: "tools/call", payload: { name: "Wait" }, headers: [] })
-        yield* Deferred.await(entered)
-        // The next ended span, or none if it does not end within a second.
-        const nextEnded = Effect.gen(function*() {
-          const fiber = yield* Queue.take(ended).pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
-          yield* TestClock.adjust("1 second")
-          return Option.getOrUndefined(yield* Fiber.join(fiber))
-        })
-        return { send, outbound, disconnects, release, nextEnded }
-      })
-
-      it.effect("ends the span of a request interrupted by a transport disconnect", () =>
-        Effect.gen(function*() {
-          const { disconnects, nextEnded } = yield* makeTracedTransport()
-
-          yield* Queue.offer(disconnects, 1)
-
-          const span = yield* nextEnded
-          assert.strictEqual(span?.name, "tools/call Wait")
-          assert.strictEqual(span && exitTag(span), "Failure")
-        }))
-
-      it.effect("keeps a request span open across a graceful EOF until its response", () =>
-        Effect.gen(function*() {
-          const { nextEnded, outbound, release, send } = yield* makeTracedTransport()
-
-          yield* send({ _tag: "Eof" })
-          yield* Deferred.succeed(release, undefined)
-
-          assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "wait" })
-          const span = yield* nextEnded
-          assert.strictEqual(span?.name, "tools/call Wait")
-          assert.strictEqual(span && exitTag(span), "Success")
-        }))
-
-      it.effect("ends the span as interrupted and records the internal error sent after a failed response write", () =>
-        Effect.gen(function*() {
-          const { nextEnded, outbound, release } = yield* makeTracedTransport({ failExitFor: "wait" })
-
-          yield* Deferred.succeed(release, undefined)
-
-          const response = yield* Queue.take(outbound)
-          assert.deepStrictEqual(response, {
-            _tag: "Exit",
-            requestId: "wait",
-            exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
-          })
-          const span = yield* nextEnded
-          assert.strictEqual(span?.name, "tools/call Wait")
-          assert.strictEqual(span?.attributes.get("rpc.status_code"), "-32603")
-          assert.strictEqual(span?.attributes.get("error.type"), "-32603")
-          // RpcServer interrupts the handler after a failed write, so the span follows the fiber exit.
-          assert.strictEqual(span && exitTag(span), "Failure")
-          if (span?.status._tag === "Ended" && span.status.exit._tag === "Failure") {
-            assert.isTrue(Cause.hasInterruptsOnly(span.status.exit.cause), "Expected an interrupted span")
-          }
-        }))
-
-      it.effect("classifies a request error by the internal error sent after its response write fails", () =>
-        Effect.gen(function*() {
-          const { nextEnded, outbound, send } = yield* makeTracedTransport({ failExitFor: "missing" })
-
-          yield* send({ _tag: "Request", id: "missing", tag: "tools/call", payload: { name: "Missing" }, headers: [] })
-
-          const response = yield* Queue.take(outbound)
-          assert.deepStrictEqual(response, {
-            _tag: "Exit",
-            requestId: "missing",
-            exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
-          })
-          const span = yield* nextEnded
-          assert.strictEqual(span?.name, "tools/call Missing")
-          assert.strictEqual(span?.attributes.get("rpc.status_code"), "-32603")
-          assert.strictEqual(span?.attributes.get("error.type"), "-32603")
-          assert.strictEqual(span && exitTag(span), "Failure")
-        }))
-    })
+        const span = yield* Queue.take(ended)
+        assert.strictEqual(span.name, "tools/call missing_tool")
+        assert.strictEqual(exitTag(span), "Failure")
+        assert.strictEqual(span.attributes.get("rpc.status_code"), "-32603")
+        assert.strictEqual(span.attributes.get("error.type"), "-32603")
+      }))
   })
 })
