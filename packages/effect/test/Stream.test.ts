@@ -2365,7 +2365,9 @@ describe("Stream", () => {
         assert.deepStrictEqual(result2, expected2)
         assert.deepStrictEqual(result3, expected3)
       }))
+  })
 
+  describe("buffer - dropping", () => {
     it.effect("buffers a stream with a failure", () =>
       Effect.gen(function*() {
         const error = "boom"
@@ -2542,7 +2544,9 @@ describe("Stream", () => {
         assert.deepStrictEqual(Array.fromIterable(result2), expected2)
         assert.deepStrictEqual(Array.fromIterable(result3), expected3)
       }))
+  })
 
+  describe("buffer - sliding", () => {
     it.effect("buffers a stream with a failure", () =>
       Effect.gen(function*() {
         const error = "boom"

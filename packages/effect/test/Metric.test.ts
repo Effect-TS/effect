@@ -909,158 +909,33 @@ describe("Metric", () => {
       }))
   })
 
-  describe("track", () => {
-    it.effect("updates on success", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.succeed(1).pipe(
-          Effect.track(counter)
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
+  describe("track, trackErrors and trackDefects", () => {
+    type Counter = Metric.Metric<unknown, Metric.CounterState<number>>
+    const exits = [Effect.succeed(1), Effect.fail(1), Effect.die(1)]
+    const cases: ReadonlyArray<
+      readonly [string, (self: Effect.Effect<number, number>, counter: Counter) => Effect.Effect<number, number>, [
+        number,
+        number,
+        number
+      ]]
+    > = [
+      ["track", (self, counter) => Effect.track(self, counter), [1, 2, 3]],
+      ["trackErrors", (self, counter) => Effect.trackErrors(self, counter), [0, 1, 1]],
+      ["trackDefects", (self, counter) => Effect.trackDefects(self, counter), [0, 0, 1]]
+    ]
 
-    it.effect("updates on failure", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.fail(1).pipe(
-          Effect.track(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-
-    it.effect("updates on defect", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.die(1).pipe(
-          Effect.track(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-  })
-
-  describe("track", () => {
-    it.effect("maps exits while preserving the instrumented effect result", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(
-          Metric.withConstantInput(1)
-        )
-        yield* Effect.succeed(1).pipe(
-          Effect.track(counter)
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-
-    it.effect("updates on failure", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(
-          Metric.withConstantInput(1)
-        )
-        yield* Effect.fail(1).pipe(
-          Effect.track(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-
-    it.effect("updates on defect", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(
-          Metric.withConstantInput(1)
-        )
-        yield* Effect.die(1).pipe(
-          Effect.track(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-  })
-
-  describe("trackErrors", () => {
-    it.effect("does not update on success", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.succeed(1).pipe(
-          Effect.trackErrors(counter)
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 0, incremental: false })
-      }))
-
-    it.effect("updates on failure", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.fail(1).pipe(
-          Effect.trackErrors(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
-
-    it.effect("does not update on defect", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.die(1).pipe(
-          Effect.trackErrors(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 0, incremental: false })
-      }))
-  })
-
-  describe("trackDefects", () => {
-    it.effect("does not update on success", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.succeed(1).pipe(
-          Effect.trackDefects(counter)
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 0, incremental: false })
-      }))
-
-    it.effect("does not update on failure", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.fail(1).pipe(
-          Effect.trackDefects(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 0, incremental: false })
-      }))
-
-    it.effect("updates on defect", () =>
-      Effect.gen(function*() {
-        const id = nextId()
-        const counter = Metric.counter(id).pipe(Metric.withConstantInput(1))
-        yield* Effect.die(1).pipe(
-          Effect.trackDefects(counter),
-          Effect.exit
-        )
-        const result = yield* Metric.value(counter)
-        assert.deepStrictEqual(result, { count: 1, incremental: false })
-      }))
+    for (const [name, track, expected] of cases) {
+      it.effect(`${name} updates after success, failure and defect: ${expected.join(", ")}`, () =>
+        Effect.gen(function*() {
+          const counter = Metric.counter(nextId()).pipe(Metric.withConstantInput(1))
+          const counts: Array<number> = []
+          for (const exit of exits) {
+            yield* Effect.exit(track(exit, counter))
+            counts.push((yield* Metric.value(counter)).count)
+          }
+          assert.deepStrictEqual(counts, expected)
+        }))
+    }
   })
 
   describe("trackDuration", () => {
