@@ -1783,6 +1783,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (spans!.size === 0) requestSpans.delete(clientId)
     endRequestSpan(tracked, exit)
   }
+  // A span ends only once its response is written. If the write fails, the
+  // span stays open for the internal error `RpcServer` sends in its place.
+  const sendExit = (clientId: number, response: RpcMessage.ResponseExitEncoded) =>
+    Effect.tap(
+      protocol.send(clientId, response),
+      () => Effect.sync(() => finishRequestSpan(clientId, response.requestId, response.exit))
+    )
   const endClientSpans = (clientId: number) => {
     const spans = requestSpans.get(clientId)
     if (spans === undefined) return
@@ -1836,7 +1843,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
     )
   }
   const disconnectClient = (clientId: number) => {
-    endClientSpans(clientId)
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1851,8 +1857,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       _tag: "Failure",
       cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
     }
-    finishRequestSpan(clientId, requestId, exit)
-    return protocol.send(clientId, { _tag: "Exit", requestId, exit })
+    return sendExit(clientId, { _tag: "Exit", requestId, exit })
   }
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
@@ -2058,11 +2063,22 @@ const runWithRuntime = Effect.fnUntraced(function*(
     )
   })
 
+  // A disconnected client's pending requests get no response, so their spans
+  // end as the disconnect is forwarded to `RpcServer`.
+  const disconnects = yield* Queue.unbounded<number>()
+  yield* Queue.take(protocol.disconnects).pipe(
+    Effect.flatMap((clientId) => {
+      endClientSpans(clientId)
+      return Queue.offer(disconnects, clientId)
+    }),
+    Effect.forever,
+    Effect.forkScoped
+  )
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
+    disconnects,
     send: (clientId, response) => {
       if (response._tag === "Exit") {
-        finishRequestSpan(clientId, response.requestId, response.exit)
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
         const active = requests?.get(key)
@@ -2070,10 +2086,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
           activeRequests.delete(clientId)
         }
         if (active?.cancelled === true) {
-          if (transport === "custom") return Effect.void
+          if (transport === "custom") {
+            return Effect.sync(() => finishRequestSpan(clientId, response.requestId, response.exit))
+          }
           if (active.httpPost !== undefined) active.httpPost.expected--
           cancelledResponses.set(response, response.requestId)
-          return protocol.send(clientId, response)
+          return sendExit(clientId, response)
         }
         if (
           response.exit._tag === "Failure" &&
@@ -2081,6 +2099,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
         ) {
           return sendRequestError(clientId, response.requestId, internalErrorResponse)
         }
+        return sendExit(clientId, response)
       }
       return protocol.send(clientId, response)
     },
@@ -2364,7 +2383,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientStates.keys()) {
         if (!clientIds.has(clientId)) {
-          endClientSpans(clientId)
           clientStates.delete(clientId)
           // HTTP UUID sessions are stored separately and outlive request-scoped client IDs.
           runtime.disconnect(clientId)
@@ -2474,6 +2492,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
     Effect.forkScoped
   )
 
+  // Spans still open when the server stops end on shutdown.
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      for (const clientId of Array.from(requestSpans.keys())) endClientSpans(clientId)
+    })
+  )
   return yield* RpcServer.make(runtime.clientRpcs, {
     disableTracing: true,
     disableFatalDefects: true
