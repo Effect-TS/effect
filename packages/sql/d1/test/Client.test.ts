@@ -6,7 +6,9 @@ import * as Reactivity from "effect/reactivity/Reactivity"
 import { Statement } from "effect/sql"
 import { D1Miniflare } from "./utils.ts"
 
-describe("Client", () => {
+// Each test starts its own Miniflare instance. Concurrent startups compete for
+// CPU and share one running timeout, so run them one at a time.
+describe("Client", { concurrent: false, timeout: 30_000 }, () => {
   it.effect("raw preserves the native result envelope", () =>
     Effect.gen(function*() {
       const sql = yield* D1Client.D1Client

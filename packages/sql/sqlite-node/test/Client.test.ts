@@ -37,7 +37,9 @@ const makeLockedDatabase = Effect.gen(function*() {
   return { filename, unlock: () => lock.exec("ROLLBACK") }
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
-describe("Client", () => {
+// node:sqlite blocks the Vitest worker; concurrent tests would share a running
+// timeout while waiting for each other's queries.
+describe("Client", { concurrent: false }, () => {
   it.effect("releases completed nested savepoints", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
@@ -376,7 +378,7 @@ describe("Client", () => {
           assert.deepStrictEqual(yield* sql`SELECT kind FROM race`, [{ kind: "plain" }])
         }))
       }
-    }))
+    }), { timeout: 30_000 })
 
   it.effect("releases the connection when a queued transaction is interrupted", () =>
     Effect.gen(function*() {
