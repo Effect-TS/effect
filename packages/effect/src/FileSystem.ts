@@ -154,10 +154,10 @@ export interface FileSystem {
    * against paths relative to `root`. It only removes results: an inclusion
    * never restores a path dropped by the pattern, `exclude`, `dot` or the
    * symbolic link rules. A directory excluded by a `barrier` rule is never
-   * read, and one excluded by an `inherit` rule is read only when an inclusion
-   * after the exclusion its contents inherit could match inside it. Rules see
-   * each entry's own type, so a `directoryOnly` rule never matches a link to a
-   * directory.
+   * read. Any other excluded directory is skipped only when its contents
+   * inherit an exclusion and no inclusion after that exclusion could match
+   * inside it. Rules see each entry's own type, so a `directoryOnly` rule
+   * never matches a link to a directory.
    *
    * **Gotchas**
    *
