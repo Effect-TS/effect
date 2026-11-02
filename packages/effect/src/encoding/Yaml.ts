@@ -296,6 +296,8 @@ const scalarKey = (
     return { key: parseKey(text), merge: text === "<<" }
   }
   const quoted = text.startsWith("\"") || text.startsWith("'")
+  // A flow collection used as a key is not a scalar, whatever its source looks like.
+  if (!quoted && (text.startsWith("[") || text.startsWith("{"))) fail(`A collection does not match the YAML tag ${tag}`)
   const value = resolveScalarTag(tag, quoted ? parseScalar(text) as string : text, fail)
   if (anchor !== undefined) anchors.set(anchor, value)
   return { key: value === null ? "" : String(value), merge: false }
@@ -794,6 +796,8 @@ const nodeProperties = (
       // A node has at most one anchor and one tag.
       if (tag !== undefined && rest.startsWith("!")) fail("Multiple tags on one node")
       if (anchor !== undefined && /^&[^ \t,[\]{}]/.test(rest)) fail("Multiple anchors on one node")
+      // YAML 1.2.2 §§5.3 and 6.9.2: `&` cannot start a plain scalar, so it must start a named anchor.
+      if (rest.startsWith("&")) fail("Invalid anchor")
       return { anchor, tag, rest }
     }
   }
