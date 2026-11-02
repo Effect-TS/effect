@@ -2157,9 +2157,8 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
-  // Anthropic server tools (tool search, web search, web fetch, code execution):
-  // `server_tool_use` and its result block, including errors, must replay in the
-  // assistant message as received, while only client tool results belong in the
+  // Server tool calls and their results, including errors, must replay in the
+  // assistant message as received; only client tool results belong in the
   // following user message (#10268).
   describe("tool search", () => {
     const ListContacts = Tool.make("ListContacts", {
