@@ -838,7 +838,7 @@ export const loadSkill = (client: McpClient.McpClient, name: string) =>
 
 ## Client task polling
 
-Enable polling when constructing a client with the July protocol. `callTool` returns the final result whether the server completes the call immediately or creates a task:
+Enable polling with `extensions.tasks` when constructing a client with the July protocol. Set `extensions.skills: true` alongside it to enable Skills too. Input handlers stay in the top-level `input` option. `callTool` returns the final result whether the server completes the call immediately or creates a task:
 
 ```ts
 import { Effect, Schema } from "effect"
@@ -849,7 +849,7 @@ const ClientLive = McpClient.layerHttp({
   version: "1.0.0",
   url: "http://localhost:3000/mcp",
   protocol: McpProtocol.v2026_07_28,
-  tasks: { mode: "poll" }
+  extensions: { tasks: { mode: "poll" } }
 })
 
 const report = Effect.gen(function*() {
@@ -882,7 +882,7 @@ Configure application-owned input handlers through the constructor or transport 
 const client = yield * McpClient.make({
   name: "report-app",
   version: "1.0.0",
-  tasks: { mode: "poll", requestTimeout: "30 seconds" },
+  extensions: { tasks: { mode: "poll", requestTimeout: "30 seconds" } },
   input: {
     elicitation: showPrompt,
     roots: listAllowedRoots,
@@ -895,10 +895,9 @@ const client = yield * McpClient.make({
 
 The client keeps polling while input handlers run in separate scopes. It submits ready answers through `tasks/update` without waiting for other prompts, and sends each acknowledged answer once. Withdrawn inputs and terminal task states interrupt pending handlers and release their resources. Ordinary tool input continuations use these handlers too, with the server's opaque `requestState` returned unchanged. Automatic retries of failed creation or polling requests are not included.
 
-`tasks.pollInterval` supplies the fallback interval when the server omits one. Server-provided intervals take precedence and may change. `tasks.requestTimeout` bounds each follow-up request and defaults to the client's discovery timeout. A `callTool` timeout bounds the whole call. A `startTool` timeout bounds creation and ordinary input continuations; `awaitResult` has its own optional timeout. Schema decoding requirements belong to `awaitResult`'s caller, while input-handler services belong to client construction.
+`extensions.tasks.pollInterval` supplies the fallback interval when the server omits one. Server-provided intervals take precedence and may change. `extensions.tasks.requestTimeout` bounds each follow-up request and defaults to the client's discovery timeout. A `callTool` timeout bounds the whole call. A `startTool` timeout bounds creation and ordinary input continuations; `awaitResult` has its own optional timeout. Schema decoding requirements belong to `awaitResult`'s caller, while input-handler services belong to client construction.
 
 The existing `McpClient.toolkit` integration also waits for task-backed calls before returning model tool output. Task subscriptions, persisted recovery, and November task support are not included.
-
 
 ## Tasks
 
@@ -1045,4 +1044,3 @@ reads report the actual outcome. Each backend supplies `ttlMs`, optional
 `ttlMs: null`. Workflow history retention still determines handle availability.
 Notifications, automatic inline fallback, and task-specific deadlines remain
 outside this implementation.
-

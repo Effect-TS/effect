@@ -36,8 +36,8 @@ import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
-import * as McpSkills from "./internal/mcpSkills.ts"
 import type * as TaskWire from "./internal/mcpSchema/v2026_07_28.ts"
+import * as McpSkills from "./internal/mcpSkills.ts"
 import {
   ClosedError,
   ConfigurationError,
@@ -113,12 +113,19 @@ export interface ClientOptions<R = never> {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
-  readonly tasks?: {
-    readonly mode: "poll"
-    /** Fallback when the server omits its polling interval. Defaults to one second. */
-    readonly pollInterval?: Duration.Input | undefined
-    /** Bounds each follow-up request. Defaults to the client's discovery timeout. */
-    readonly requestTimeout?: Duration.Input | undefined
+  readonly discoveryLimits?: {
+    readonly maxPages?: number | undefined
+    readonly maxItems?: number | undefined
+  } | undefined
+  readonly extensions?: {
+    readonly skills?: boolean | undefined
+    readonly tasks?: {
+      readonly mode: "poll"
+      /** Fallback when the server omits its polling interval. Defaults to one second. */
+      readonly pollInterval?: Duration.Input | undefined
+      /** Bounds each follow-up request. Defaults to the client's discovery timeout. */
+      readonly requestTimeout?: Duration.Input | undefined
+    } | undefined
   } | undefined
   readonly input?: InputHandlers<R> | undefined
 }
@@ -362,10 +369,10 @@ export const make = Effect.fnUntraced(function*<R = never>(options: ClientOption
   }
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
   const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
-  if (!modern && (options.tasks !== undefined || options.input !== undefined)) {
+  if (!modern && (options.extensions?.tasks !== undefined || options.input !== undefined)) {
     return yield* fail(new UnsupportedError({ description: "Tasks and input handlers require MCP 2026-07-28" }))
   }
-  
+
   const inputCapabilities = {
     ...(options.input?.roots === undefined ? {} : { roots: {} }),
     ...(options.input?.sampling === undefined ? {} : { sampling: {} }),
@@ -389,7 +396,11 @@ export const make = Effect.fnUntraced(function*<R = never>(options: ClientOption
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
-  const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
+  const extensions = {
+    ...(skillsEnabled ? { [McpSkills.EXTENSION_ID]: {} } : {}),
+    ...(options.extensions?.tasks === undefined ? {} : { "io.modelcontextprotocol/tasks": {} })
+  }
+  const clientCapabilities = Object.keys(extensions).length === 0 ? {} : { extensions }
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
     "io.modelcontextprotocol/clientInfo": clientInfo,
@@ -439,7 +450,7 @@ export const make = Effect.fnUntraced(function*<R = never>(options: ClientOption
 
     const validated = yield* decodeUnknown(rpc.successSchema, result)
     if (isRecord(result) && result.resultType === "task") {
-      if (method !== "tools/call" || options.tasks === undefined || !modern) {
+      if (method !== "tools/call" || options.extensions?.tasks === undefined || !modern) {
         return yield* fail(new ProtocolError({ description: "Unexpected MCP task result" }))
       }
       return validated as A
@@ -772,7 +783,7 @@ export const make = Effect.fnUntraced(function*<R = never>(options: ClientOption
     })
     const initialResult = yield* withDeadline(create, "tools/call", callOptions?.timeout)
     if (!("resultType" in initialResult) || initialResult.resultType !== "task") {
-      const result = yield* decodeUnknown(McpSchema.CallToolResult, initialResult)
+      const result = yield* decodeUnknown(Schema.toType(McpSchema.CallToolResult), initialResult)
       return {
         taskId: undefined,
         awaitResult: (waitOptions?: CallOptions) =>
@@ -788,20 +799,20 @@ export const make = Effect.fnUntraced(function*<R = never>(options: ClientOption
     const followup = <A>(
       method: string,
       payload: Record<string, unknown>,
-      duration = options.tasks?.requestTimeout ?? timeout
+      duration = options.extensions?.tasks?.requestTimeout ?? timeout
     ) => withDeadline(request<A>(method, { taskId, ...payload }), method, duration)
     const polling = Effect.scoped(Effect.gen(function*() {
       const activeInputs = new Map<string, Fiber.Fiber<Record<string, unknown>, McpClientError>>()
       // Keep acknowledged and withdrawn keys so a stale snapshot cannot reopen a prompt.
       const settledInputs = new Set<string>()
-      let interval: Duration.Input = options.tasks?.pollInterval ?? "1 second"
+      let interval: Duration.Input = options.extensions?.tasks?.pollInterval ?? "1 second"
       const poll = Effect.fnUntraced(function*() {
         const task = yield* followup<typeof TaskWire.GetTaskResult.Type>("tasks/get", {})
         if (task.taskId !== taskId) {
           return yield* fail(new ProtocolError({ description: "MCP task response does not match its task ID" }))
         }
         interval = task.pollIntervalMs === undefined
-          ? options.tasks?.pollInterval ?? "1 second"
+          ? options.extensions?.tasks?.pollInterval ?? "1 second"
           : Duration.millis(Math.max(1, task.pollIntervalMs))
         switch (task.status) {
           case "completed":
@@ -1540,7 +1551,6 @@ interface ToolCallParams<S extends Schema.Top = never> {
   readonly schema?: S | undefined
   readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
 }
-
 
 interface CallOptions {
   readonly timeout?: Duration.Input | undefined

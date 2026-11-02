@@ -350,19 +350,6 @@ export const makeHandlers = (
   _lifecycle: McpProtocol.LifecycleRuntime | undefined,
   context: McpProtocol.HandlerInstallationContext
 ) => {
-  const decodeInputResponses = Schema.decodeUnknownEffect(InputResponses)
-  const decodeDiscoverResult = Schema.decodeUnknownEffect(McpSchema.DiscoverResult)
-  const decodeListResourcesResult = Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)
-  const decodeListResourceTemplatesResult = Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)
-  const decodeReadResourceResult = Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)
-  const decodeListPromptsResult = Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)
-  const decodeGetPromptResult = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
-  const decodePromptOutcome = Schema.decodeUnknownEffect(Schema.Union([
-    McpSchema.GetPromptResult,
-    McpSchema.InputRequiredResult
-  ]))
-  const decodeCompleteResult = Schema.decodeUnknownEffect(McpSchema.CompleteResult)
-  const decodeListToolsResult = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
   const decodeListSkillsResult = Schema.decodeUnknownEffect(McpSkills.ListSkillsResult)
   const decodeGetSkillResult = Schema.decodeUnknownEffect(McpSkills.GetSkillResult)
   const decodeReadResourceDirectoryResult = Schema.decodeUnknownEffect(McpSkills.ReadResourceDirectoryResult)
