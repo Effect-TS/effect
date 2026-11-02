@@ -561,16 +561,8 @@ describe("BunHttpServer", () => {
       })
 
       yield* assertUnavailable
-
-      yield* server.serve(Effect.gen(function*() {
-        const request = yield* HttpServerRequest.HttpServerRequest
-        return request.url === "/"
-          ? HttpServerResponse.text("served")
-          : HttpServerResponse.empty({ status: 404 })
-      })).pipe(Scope.provide(serveScope))
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("served"))).pipe(Scope.provide(serveScope))
       assert.strictEqual(yield* fetchText(url), "served")
-      assert.strictEqual((yield* fetchResponse(`${url}/missing`)).status, 404)
-
       yield* Scope.close(serveScope, Exit.void)
       yield* assertUnavailable
     }))

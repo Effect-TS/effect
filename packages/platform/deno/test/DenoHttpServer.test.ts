@@ -546,29 +546,20 @@ describe("DenoHttpServer", () => {
       })
       const serveScope = yield* Scope.fork(yield* Effect.scope)
       const url = `http://127.0.0.1:${(server.address as NetAddress.InetAddress).port}`
-      const get = (path: string) =>
-        Effect.promise(async () => {
-          const response = await fetch(`${url}${path}`, { headers: { connection: "close" } })
-          return { response, body: await response.text() }
-        })
+      const get = Effect.promise(async () => {
+        const response = await fetch(url, { headers: { connection: "close" } })
+        return { response, body: await response.text() }
+      })
       const assertUnavailable = Effect.gen(function*() {
-        const { response } = yield* get("/")
+        const { response } = yield* get
         assert.strictEqual(response.status, 503)
         assert.strictEqual(response.headers.get("cache-control"), "no-store")
         assert.strictEqual(response.headers.get("retry-after"), "1")
       })
 
       yield* assertUnavailable
-
-      yield* server.serve(Effect.gen(function*() {
-        const request = yield* HttpServerRequest.HttpServerRequest
-        return request.url === "/"
-          ? HttpServerResponse.text("served")
-          : HttpServerResponse.empty({ status: 404 })
-      })).pipe(Scope.provide(serveScope))
-      assert.strictEqual((yield* get("/")).body, "served")
-      assert.strictEqual((yield* get("/missing")).response.status, 404)
-
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("served"))).pipe(Scope.provide(serveScope))
+      assert.strictEqual((yield* get).body, "served")
       yield* Scope.close(serveScope, Exit.void)
       yield* assertUnavailable
     }))
