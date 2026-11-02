@@ -52,7 +52,7 @@ import {
 } from "effect/process/ChildProcessSpawner"
 import * as CommandLine from "effect/process/CommandLine"
 import * as Redacted from "effect/Redacted"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
@@ -674,6 +674,9 @@ const make = Effect.gen(function*() {
         const env = resolveEnvironment(cmd.options)
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
+        // Input feeders are released after the child is terminated. Bun does not
+        // close a destroyed, backpressured stdin while its reader is alive.
+        const inputScope = yield* Scope.fork(yield* Effect.scope)
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
           spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
           Effect.fnUntraced(function*([childProcess, exitSignal]) {
@@ -717,13 +720,10 @@ const make = Effect.gen(function*() {
           return reref
         })
         const inputFailure = Deferred.makeUnsafe<never, PlatformError.PlatformError>()
-        const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig, inputFailure)
+        const stdin = yield* Scope.provide(inputScope)(setupChildStdin(cmd, childProcess, stdinConfig, inputFailure))
         const { all, stderr, stdout } = setupChildOutputStreams(cmd, childProcess, stdoutConfig, stderrConfig)
-        const { getInputFd, getOutputFd } = yield* setupAdditionalFds(
-          cmd,
-          childProcess,
-          resolvedAdditionalFds,
-          inputFailure
+        const { getInputFd, getOutputFd } = yield* Scope.provide(inputScope)(
+          setupAdditionalFds(cmd, childProcess, resolvedAdditionalFds, inputFailure)
         )
         const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
         // A failed input stream truncates the input of the child process, so
