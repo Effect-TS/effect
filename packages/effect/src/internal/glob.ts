@@ -31,8 +31,7 @@ export type Node =
   /** Ends one expanded pattern. */
   | { readonly _tag: "End"; readonly directoryOnly: boolean }
 
-/** @internal */
-export type States = ReadonlySet<number>
+type States = ReadonlySet<number>
 
 /**
  * Every expanded pattern's nodes laid out in one array, so a match state is an
@@ -549,8 +548,7 @@ const matchWildcard = (
 }
 
 // `**` also matches zero segments, so its successor is reachable too
-/** @internal */
-export const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<number> => {
+const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<number> => {
   for (const state of states) {
     if (nodes[state]._tag === "Globstar") {
       states.add(state + 1)
@@ -559,16 +557,14 @@ export const closure = (nodes: ReadonlyArray<Node>, states: Set<number>): Set<nu
   return states
 }
 
-/** @internal */
-export interface Step {
+interface Step {
   /** States reached by matching a literal or wildcard segment. */
   readonly explicit: States
   /** States reached by a `**` consuming the name. */
   readonly globstar: States
 }
 
-/** @internal */
-export const step = (compiled: Compiled, states: States, name: string): Step => {
+const step = (compiled: Compiled, states: States, name: string): Step => {
   const explicit = new Set<number>()
   const viaGlobstar = new Set<number>()
   // only a literal segment can name the root of an absolute path
@@ -599,8 +595,7 @@ export const step = (compiled: Compiled, states: States, name: string): Step => 
   return { explicit: closure(compiled.nodes, explicit), globstar: closure(compiled.nodes, viaGlobstar) }
 }
 
-/** @internal */
-export const union = (step: Step): States => {
+const union = (step: Step): States => {
   if (step.globstar.size === 0) {
     return step.explicit
   }
@@ -804,9 +799,6 @@ const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error
 
 const DIRECTORY_CONCURRENCY = 16
 
-// Listings never contain `.`, `..`, or the root of an absolute pattern
-const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
-
 const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
 
 /** @internal */
@@ -816,7 +808,7 @@ export const make = (
 (pattern, options) => {
   const compiled = compile([pattern], options?.dot ?? false)
   if (options?.filter === undefined) {
-    return walk(fs, compiled, options, undefined)
+    return walk(fs, compiled, options)
   }
   // Filters match root-relative paths one segment per entry. Check every
   // brace expansion, since compiling drops some branches.
@@ -835,11 +827,11 @@ export const make = (
 const walk = Effect.fnUntraced(function*(
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
-  options: {
+  options?: {
     readonly root?: string | undefined
     readonly exclude?: ReadonlyArray<string> | undefined
-  } | undefined,
-  filter: PathFilterEngine.Evaluator | undefined
+  },
+  filter?: PathFilterEngine.Evaluator
 ): Effect.fn.Return<Array<string>, PlatformError> {
   if (compiled.initial.size === 0) {
     return []
@@ -851,6 +843,9 @@ const walk = Effect.fnUntraced(function*(
 
   const toFsPath = (relative: string): string =>
     isAbsolute(relative) ? relative : relative === "" ? (root === "" ? "." : root) : join(root, relative)
+
+  // Listings never contain `.`, `..`, or the root of an absolute pattern
+  const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
 
   // Keep broken links so literal probes agree with directory listings. `stat`
   // follows links, so report a directory link as a link for filter rules.
