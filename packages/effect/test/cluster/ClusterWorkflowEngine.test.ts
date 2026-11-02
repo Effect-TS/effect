@@ -674,6 +674,72 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     )
   }
 
+  for (const discard of [false, true]) {
+    for (const ackLost of [false, true]) {
+      it.effect(
+        `runs a child workflow once after a transient failure ${ackLost ? "acknowledging" : "saving"} its ${
+          discard ? "discarded " : ""
+        }request`,
+        () =>
+          Effect.gen(function*() {
+            const Child = Workflow.make("ChildSaveRetry/Child", {
+              payload: {},
+              success: Schema.Number,
+              idempotencyKey: () => "one"
+            })
+            const Parent = Workflow.make("ChildSaveRetry/Parent", {
+              payload: {},
+              success: Schema.Number,
+              idempotencyKey: () => "one"
+            })
+            const storage = yield* makeSharedStorage
+            let saveFailures = 0
+            let inserts = 0
+            let runs = 0
+            const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+              ...storage,
+              saveRequest: (envelope) => {
+                if (envelope.envelope.address.entityType !== `Workflow/${Child._tag}`) {
+                  return storage.saveRequest(envelope)
+                }
+                const save = Effect.tap(storage.saveRequest(envelope), (result) =>
+                  Effect.sync(() => {
+                    if (result._tag === "Success") inserts++
+                  }))
+                if (saveFailures > 0) return save
+                saveFailures++
+                const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+                return ackLost ? Effect.andThen(save, failure) : failure
+              }
+            })
+            yield* Effect.gen(function*() {
+              const engine = yield* WorkflowEngine
+              yield* engine.register(Child, () =>
+                Effect.sync(() => {
+                  runs++
+                  return 42
+                }))
+              yield* engine.register(Parent, () =>
+                discard ? Effect.as(Child.execute({}, { discard: true }), 0) : Child.execute({}))
+              const executionId = yield* Parent.execute({}, { discard: true })
+              assert.deepStrictEqual(
+                yield* pollUntil(Parent, executionId, "Complete"),
+                new Workflow.Complete({ exit: Exit.succeed(discard ? 0 : 42) })
+              )
+              assert.deepStrictEqual(
+                yield* pollUntil(Child, yield* Child.executionId({}), "Complete"),
+                new Workflow.Complete({ exit: Exit.succeed(42) })
+              )
+              assert.strictEqual(runs, 1)
+              assert.strictEqual(saveFailures, 1)
+              assert.strictEqual(inserts, 1)
+            }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer })))
+          }),
+        20_000
+      )
+    }
+  }
+
   const RetrySignal = DurableDeferred.make("RetrySignal")
   const savesDeferred = (envelope: Message.OutgoingRequest<any>) => envelope.envelope.tag === "deferred"
   const durableSaveRetryCases = [
