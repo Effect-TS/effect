@@ -122,6 +122,12 @@ export type EntityState = {
     terminating?: boolean | undefined
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
+    /**
+     * Interrupts and the last ack delivered to the running request. Storage
+     * returns them again once their claims expire, until the request replies.
+     */
+    deliveredInterrupts?: Set<Snowflake.Snowflake> | undefined
+    deliveredAck?: Snowflake.Snowflake | undefined
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
@@ -316,6 +322,9 @@ export const make = Effect.fnUntraced(function*<
       for (const request of activeRequests.values()) {
         if (!request.delivered) continue
         request.sentExit = false
+        // the replayed handler has not seen them
+        request.deliveredInterrupts = undefined
+        request.deliveredAck = undefined
         yield* write(0, requestEnvelope(request), requestWriteOptions(request))
       }
     })
@@ -679,26 +688,37 @@ export const make = Effect.fnUntraced(function*<
   )
   yield* Scope.addFinalizer(managerScope, Effect.sync(entitiesSeries.remove))
 
+  // Interrupts and acks are delivered once to a running request. They stay in
+  // storage until the request replies, so they are delivered again when it is
+  // replayed, e.g. on another runner after a shutdown.
   function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
     const entry = server.activeRequests.get(message.envelope.requestId)
     if (!entry) {
       return Effect.void
-    } else if (
-      message.envelope._tag === "AckChunk" &&
-      Option.isSome(entry.lastSentChunk) &&
-      message.envelope.replyId !== entry.lastSentChunk.value.id
-    ) {
+    }
+    const envelope = message.envelope
+    if (envelope._tag === "AckChunk") {
+      if (
+        envelope.replyId === entry.deliveredAck ||
+        (Option.isSome(entry.lastSentChunk) && envelope.replyId !== entry.lastSentChunk.value.id)
+      ) {
+        return Effect.void
+      }
+      return Effect.map(
+        server.write(0, { _tag: "Ack", requestId: envelope.requestId as any }),
+        () => {
+          entry.deliveredAck = envelope.replyId
+        }
+      )
+    }
+    if (entry.deliveredInterrupts?.has(envelope.id)) {
       return Effect.void
     }
-    return server.write(
-      0,
-      message.envelope._tag === "AckChunk"
-        ? { _tag: "Ack", requestId: message.envelope.requestId as any }
-        : {
-          _tag: "Interrupt",
-          requestId: message.envelope.requestId as any,
-          interruptors: []
-        }
+    return Effect.map(
+      server.write(0, { _tag: "Interrupt", requestId: envelope.requestId as any, interruptors: [] }),
+      () => {
+        ;(entry.deliveredInterrupts ??= new Set()).add(envelope.id)
+      }
     )
   }
 

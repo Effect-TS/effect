@@ -17,7 +17,7 @@ import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import { constFalse, identity } from "../Function.ts"
+import { constFalse, constTrue, identity } from "../Function.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -989,6 +989,21 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
     const unprocessed = new Set<Envelope.Encoded>()
     const replyIds = new Set<string>()
     const lastRead = new Map<Envelope.Encoded, number>()
+    // Unprocessed interrupts and acks by request id. Like the SQL driver, they
+    // are claimed when read and processed with the request's exit reply.
+    const controls = new Map<string, Array<Envelope.Encoded>>()
+    const processControls = (requestId: string, predicate: Predicate<Envelope.Encoded>) => {
+      const envelopes = controls.get(requestId)
+      if (envelopes === undefined) return
+      const remaining = envelopes.filter((envelope) => {
+        if (!predicate(envelope)) return true
+        unprocessed.delete(envelope)
+        lastRead.delete(envelope)
+        return false
+      })
+      if (remaining.length === 0) controls.delete(requestId)
+      else controls.set(requestId, remaining)
+    }
 
     const journal: Array<Envelope.Encoded> = []
 
@@ -1083,13 +1098,20 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             if (primaryKey) {
               requestsByPrimaryKey.set(primaryKey, entry)
             }
-          } else if (envelope._tag === "AckChunk") {
-            const entry = requests.get(envelope.requestId)
-            if (entry) {
-              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                r._tag === "Chunk" && r.id === envelope.replyId
-              ) ?? entry.lastReceivedChunk
+          } else {
+            if (envelope._tag === "AckChunk") {
+              const entry = requests.get(envelope.requestId)
+              if (entry) {
+                entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+                  r._tag === "Chunk" && r.id === envelope.replyId
+                ) ?? entry.lastReceivedChunk
+              }
+              // a new ack supersedes the earlier ones
+              processControls(envelope.requestId, (control) => control._tag === "AckChunk")
             }
+            const envelopes = controls.get(envelope.requestId)
+            if (envelopes === undefined) controls.set(envelope.requestId, [envelope])
+            else envelopes.push(envelope)
           }
           unprocessed.add(envelope)
           journal.push(envelope)
@@ -1103,6 +1125,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           if (reply._tag === "WithExit") {
             unprocessed.delete(entry.envelope)
             lastRead.delete(entry.envelope)
+            processControls(reply.requestId, constTrue)
           }
           entry.replies.push(reply)
           replyIds.add(reply.id)
@@ -1126,6 +1149,9 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           if (
             options?.expectedReplyId !== undefined && entry.replies.at(-1)?.id !== String(options.expectedReplyId)
           ) return
+          if (options?.expectedReplyId === undefined) {
+            processControls(entry.envelope.requestId, (control) => control._tag === "Interrupt")
+          }
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
@@ -1158,13 +1184,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             if (addressFilter && !addressFilter.has(addressKey(envelope.address))) {
               continue
             }
+            const claimedAt = lastRead.get(envelope)
+            if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
+              continue
+            }
             if (envelope._tag === "Request") {
               const entry = requests.get(envelope.requestId)!
               if (entry.deliverAt && entry.deliverAt > now) {
-                continue
-              }
-              const claimedAt = lastRead.get(envelope)
-              if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
                 continue
               }
               // Memory storage models claim expiry, but not SQL reply filtering or transactions.
@@ -1172,14 +1198,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
               })
-              lastRead.set(envelope, now)
             } else {
               messages.push({
                 envelope,
                 lastSentReply: Option.none()
               })
-              unprocessed.delete(envelope)
             }
+            lastRead.set(envelope, now)
           }
           return messages
         }),
@@ -1218,6 +1243,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
             unprocessed.delete(envelope)
             lastRead.delete(envelope)
+            controls.delete(envelope.requestId)
             if (envelope._tag === "Request") {
               requests.delete(envelope.requestId)
             }
