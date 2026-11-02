@@ -528,40 +528,30 @@ class FlowParser {
   }
 
   // Reads a quoted scalar, pulling continuation lines until its closing quote.
-  // The scan resumes where it stopped, so long scalars stay linear.
+  // Each line is scanned once, so long scalars stay linear.
   private readQuoted(quote: string): string {
     const startOffset = this.offset + this.index
     const pieces: Array<string> = []
     let start = this.index
-    let index = start + 1
+    let from = start + 1
     while (true) {
-      const line = this.line
-      for (; index < line.length; index++) {
-        const character = line[index]
-        if (quote === "\"" && character === "\\") {
-          // Skips the escaped character, which may be the line break of the next line.
-          index++
-        } else if (character === quote) {
-          if (quote === "'" && line[index + 1] === "'") {
-            index++
-          } else {
-            this.index = index + 1
-            pieces.push(line.slice(start, this.index))
-            if (pieces.length > 1) {
-              // The rest of the closing line was read raw, so remove its comment now.
-              const rest = line.slice(this.index)
-              if (!rest.startsWith("#")) this.line = line.slice(0, this.index) + stripComment(rest, this.depth)
-            }
-            return foldQuotedLines(pieces.join(""))
-          }
+      const end = closingQuote(this.line, quote, from)
+      if (end !== -1) {
+        this.index = end + 1
+        pieces.push(this.line.slice(start, this.index))
+        if (pieces.length > 1) {
+          // The rest of the closing line was read raw, so remove its comment now.
+          const rest = this.line.slice(this.index)
+          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + stripComment(rest, this.depth)
         }
+        return foldQuotedLines(pieces.join(""))
       }
-      pieces.push(line.slice(start))
-      // 1 when an escape at the end of the line consumed the next line's "\n".
-      const skipped = index - line.length
+      pieces.push(this.line.slice(start))
+      // An escape at the end of the line consumes the next line's "\n".
+      const skipped = quote === "\"" && endsWithEscape(this.line) ? 1 : 0
       if (!this.nextChunk(true)) throw new SyntaxError(`Unterminated quoted scalar at flow offset ${startOffset}`)
       start = 0
-      index = skipped
+      from = skipped
     }
   }
 
@@ -825,14 +815,16 @@ class YamlParser {
   private parseSequenceEntry(entry: string, indent: number, line: Line): unknown {
     const item = trimWhiteStart(entry.slice(1))
     if (isExplicitKey(item)) this.fail(line, explicitKeyError)
+    const nested = isSequenceEntry(item)
+    const separator = nested ? -1 : mappingSeparator(item)
+    if (!nested && separator === -1) return this.parseNodeValue(item, indent)
     // A compact nested sequence or mapping is indented to its first character,
     // which may sit more than one space after the dash.
     const offset = entry.length - item.length
-    const compact = isSequenceEntry(item) ? -1 : mappingSeparator(item)
-    if (compact === -1 && !isSequenceEntry(item)) return this.parseNodeValue(item, indent)
     if (entry.slice(1, offset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
-    if (isSequenceEntry(item)) return this.parseSequence(indent + offset, { text: item, line })
-    return this.parseMapping(indent + offset, { text: item, separator: compact, line })
+    return nested
+      ? this.parseSequence(indent + offset, { text: item, line })
+      : this.parseMapping(indent + offset, { text: item, separator, line })
   }
 
   private enterCollection(): void {
