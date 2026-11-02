@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Logger,
+  Metric,
+  Option,
+  Queue,
+  Schema,
+  Stream
+} from "effect"
 import {
   ClusterError,
   ClusterSchema,
@@ -229,6 +243,37 @@ describe.concurrent("RunnerServer", () => {
         "the defect must identify the encode failure"
       )
     }).pipe(Effect.provide(RunnerServerHandlers)))
+
+  it.effect("a volatile request for an unknown RPC fails with MalformedMessage and is reported", () => {
+    const warnings: Array<string> = []
+    const registry: Metric.MetricRegistry = new Map()
+    const logger = Logger.make((options) => {
+      if (options.logLevel === "Warn") warnings.push(Logger.formatJson.log(options))
+    })
+    return Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const client = yield* RpcTest.makeClient(Runners.Rpcs)
+      const request = yield* makeRequest({ entityId: "unknown-1", tag: "Missing" })
+
+      const reply = yield* client.Effect({ request, persisted: false })
+      if (reply._tag !== "WithExit" || reply.exit._tag !== "Failure") {
+        return assert.fail("expected a WithExit reply with a failure exit")
+      }
+      assert.include(JSON.stringify(reply.exit.cause), "MalformedMessage")
+      assert.lengthOf(warnings, 1)
+      assert.include(warnings[0], "Missing")
+      assert.deepStrictEqual(
+        Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+          .filter((metric) => metric.id === "effect_cluster_undecodable_requests")
+          .map((metric) => [metric.attributes, metric.state]),
+        [[{ type: "BadReplyEntity", reason: "unknown_rpc" }, { count: 1, incremental: true }]]
+      )
+    }).pipe(
+      Effect.provide(RunnerServerHandlers),
+      Effect.provide(Logger.layer([logger])),
+      Effect.provideService(Metric.MetricRegistry, registry)
+    )
+  })
 })
 
 describe.concurrent("Runners.makeRpc", () => {
