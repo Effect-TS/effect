@@ -33,12 +33,9 @@
  *
  * Docker patterns use `/` as the separator on every platform. Docker turns
  * each pattern into a Go regular expression, and some patterns reach that
- * engine as regular expression syntax instead of glob syntax. These are
- * rejected with a {@link ParseError}: a backslash before a letter, digit or
- * non-ASCII character (`\d`), a trailing backslash, `^` outside a bracket
- * class, and `*` or `?` inside one. Patterns whose generated expression Docker
- * fails to compile, such as an unknown class name like `[[:foo:]]`, are also
- * rejected up front; Docker only reports them once a path reaches them.
+ * engine as regular expression syntax instead of glob syntax. Rather than
+ * reproduce that behavior, {@link dockerignore} rejects those patterns with a
+ * {@link ParseError}; see its documentation for the list.
  *
  * @stability unstable
  * @since 4.0.0
@@ -194,8 +191,29 @@ export const gitignore = (source: string, options?: {
  * matching directory.
  *
  * Fails with a {@link ParseError} where Docker rejects the file, such as for a
- * lone `!` or an unclosed `[`, and for the regular expression syntax described
- * in the module documentation.
+ * lone `!` or an unclosed `[`.
+ *
+ * **Gotchas**
+ *
+ * Docker passes some patterns to Go's regular expression engine as regular
+ * expression syntax, so they do not mean what they look like. These fail with
+ * a {@link ParseError} instead, and each has a spelling that works:
+ *
+ * - `*` or `?` inside a bracket class, such as `[*]`, which Docker reads as
+ *   part of a larger expression. Write `[\*]` or `[\?]` for the literal
+ *   character.
+ * - A trailing backslash, such as `a*\`, which Docker reads as a literal `$`.
+ *   Write `\\` for a literal backslash.
+ * - `^` outside a bracket class, which Docker reads as an anchor. Write `\^`.
+ * - A backslash before a letter or digit, such as `\d`, which Docker reads as
+ *   a regular expression class, and a backslash before a non-ASCII character,
+ *   which Docker rejects. Write the character without the backslash.
+ *
+ * Unknown character class names, such as `[[:foo:]]`, also fail. Escaping does
+ * not help here: Docker cannot compile the pattern at all, and only reports it
+ * once a path reaches it. The supported names are `alnum`, `alpha`, `ascii`,
+ * `blank`, `cntrl`, `digit`, `graph`, `lower`, `print`, `punct`, `space`,
+ * `upper`, `word` and `xdigit`, each optionally negated as `[:^name:]`.
  *
  * **Example** (Re-including a file)
  *

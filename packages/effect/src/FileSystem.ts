@@ -154,9 +154,10 @@ export interface FileSystem {
    * paths relative to `root`. It only removes results: an ignore exception
    * never brings back a path dropped by the pattern, `exclude`, `dot`, or the
    * symbolic link rules. Git rules never descend into an ignored directory.
-   * Docker rules descend into one unless BuildKit would skip it, so exceptions
-   * such as `!node_modules/keep.txt` still apply. Directory-only Git rules test
-   * the entry itself, so a link to a directory does not match `link/`.
+   * Docker rules descend into one unless no exception could apply inside it,
+   * so exceptions such as `!node_modules/keep.txt` still apply. Directory-only
+   * Git rules test the entry itself, so a link to a directory does not match
+   * `link/`, even when the pattern names the link.
    *
    * **Gotchas**
    *
