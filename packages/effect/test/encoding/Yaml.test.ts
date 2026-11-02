@@ -784,7 +784,17 @@ items:
           c: 7,
           d: 7
         }],
-        ["block and quoted scalars", "a: !!str |\n  x\nb: !!str 'y'\n", { a: "x\n", b: "y" }]
+        ["block and quoted scalars", "a: !!str |\n  x\nb: !!str 'y'\n", { a: "x\n", b: "y" }],
+        ["a root quoted scalar with a colon", "!!str \"x: y\"\n", "x: y"],
+        ["a quoted sequence item with a colon", "- !!str \"x: y\"\n", ["x: y"]],
+        ["quoted scalars with a hash", "a: !!str \"x # y\"\nb: [!!str \"x # y\"]\n", { a: "x # y", b: ["x # y"] }],
+        ["a root flow mapping", "!!map {a: 1}\n", { a: 1 }],
+        ["a tag before the end of a flow sequence", "a: [!!str]\n", { a: [""] }],
+        [
+          "properties split across lines",
+          "a: !!str\n  &a 0x10\nb: *a\nc: !!int\n  &c \"7\"\nd: *c\n",
+          { a: "0x10", b: "0x10", c: 7, d: 7 }
+        ]
       ] as const
     )("resolves %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
@@ -815,6 +825,20 @@ items:
       ["!!map", "a: !!map\n"]
     ])("rejects content that does not match %s in %j", (_, source) => {
       assert.match(failureMessage(source), /tag/i)
+    })
+
+    // YAML 1.2.2 §§6.9 and 7.1: a node has at most one tag and one anchor, an alias has none,
+    // and flow content is separated from its properties.
+    it.each([
+      ["a second tag on a block key", "!!str !!int 1: value\n"],
+      ["an explicit key after a tag", "!!str ? bad: value\n"],
+      ["two anchors after a flow tag", "[!!str &a &b foo, *a, *b]\n"],
+      ["a tagged alias on the next line", "a: &a 42\nb: !!str\n  *a\n"],
+      ["a second tag on the next line", "a: !!str\n  !!int 1\n"],
+      ["a second anchor on the next line", "a: &x\n  &y 1\n"],
+      ["flow content directly after a tag", "{a: !!seq[1]}\n"]
+    ])("rejects %s", (_, source) => {
+      failureMessage(source)
     })
 
     it("keeps exclamation marks inside plain scalars", () => {
