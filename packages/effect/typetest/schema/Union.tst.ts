@@ -1,4 +1,4 @@
-import { Effect, hole, Schema, Tuple } from "effect"
+import { Effect, hole, Schema, Struct, Tuple } from "effect"
 import type { Array as Arr } from "effect"
 import { describe, expect, it } from "tstyche"
 
@@ -373,6 +373,28 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+      })
+
+      it("mapCases should infer the mapped cases", () => {
+        const schema = Schema.TaggedUnion({
+          A: { a: Schema.String },
+          B: { b: Schema.FiniteFromString }
+        }).mapCases(Struct.map(Schema.fieldsAssign({ c: Schema.Number })))
+
+        expect(schema).type.toBe<
+          Schema.TaggedUnion<{
+            readonly A: Schema.Struct<{
+              readonly _tag: Schema.tag<"A">
+              readonly a: Schema.String
+              readonly c: Schema.Number
+            }>
+            readonly B: Schema.Struct<{
+              readonly _tag: Schema.tag<"B">
+              readonly b: Schema.FiniteFromString
+              readonly c: Schema.Number
+            }>
+          }>
+        >()
       })
     })
   })

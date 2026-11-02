@@ -9920,6 +9920,43 @@ pointed message
           "B"
         )
       })
+
+      it("mapCases should transform every case and keep the tagged union utilities", async () => {
+        const schema = Schema.TaggedUnion({
+          A: { a: Schema.String },
+          B: { b: Schema.FiniteFromString }
+        }).mapCases(Struct.map(Schema.fieldsAssign({ c: Schema.Number })))
+
+        strictEqual(schema.tag, "_tag")
+        strictEqual(schema.cases.A.fields._tag.ast.literal, "A")
+        strictEqual(schema.cases.A.fields.a, Schema.String)
+        strictEqual(schema.cases.A.fields.c, Schema.Number)
+        strictEqual(schema.cases.B.fields._tag.ast.literal, "B")
+
+        const decoding = new TestSchema.Asserts(schema).decoding()
+        await decoding.succeed({ _tag: "B", b: "1", c: 2 }, { _tag: "B", b: 1, c: 2 })
+        await decoding.fail(
+          { _tag: "A", a: "a" },
+          `Missing key
+  at ["c"]`
+        )
+
+        assertTrue(schema.guards.A({ _tag: "A", a: "a", c: 1 }))
+        assertFalse(schema.guards.A({ _tag: "A", a: "a" }))
+        strictEqual(schema.match({ _tag: "B", b: 1, c: 2 }, { A: (a) => a.a, B: (b) => b.c }), 2)
+      })
+
+      it("mapCases should drop checks unless unsafePreserveChecks is true", async () => {
+        const schema = Schema.TaggedUnion({ A: {}, B: {} }).check(
+          Schema.makeFilter((value) => value._tag === "A", { expected: "A" })
+        )
+
+        await new TestSchema.Asserts(schema.mapCases((cases) => cases)).decoding().succeed({ _tag: "B" })
+        await new TestSchema.Asserts(schema.mapCases((cases) => cases, { unsafePreserveChecks: true })).decoding().fail(
+          { _tag: "B" },
+          `Expected A`
+        )
+      })
     })
   })
 
