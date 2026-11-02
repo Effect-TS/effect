@@ -1,5 +1,12 @@
 # @effect/sql-sqlite-react-native
 
+## 4.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`5216684`](https://github.com/Effect-TS/effect/commit/52166841177ca39d32cc4c06ac5fcdd660656748), [`b707ad1`](https://github.com/Effect-TS/effect/commit/b707ad1bce3cbf1613fd97622901d7e81e2a34c7), [`46f48af`](https://github.com/Effect-TS/effect/commit/46f48afc88b4b4df3cc1c470ae01f31cc7f8d77c), [`92201bc`](https://github.com/Effect-TS/effect/commit/92201bcd47f1789590ff884542051e2123fdb529), [`cf329f3`](https://github.com/Effect-TS/effect/commit/cf329f3b694ba8659946ee74dbbb6cdb6e5535de), [`1d25d78`](https://github.com/Effect-TS/effect/commit/1d25d78d9639e2725f4ea8d056a77b3bde9afd78), [`d190d97`](https://github.com/Effect-TS/effect/commit/d190d973a7fb2ebb71bfaf1a01adbffef1833555), [`d7b3b6b`](https://github.com/Effect-TS/effect/commit/d7b3b6bd6be4d96babda9d191538fe25c7124f44), [`a478745`](https://github.com/Effect-TS/effect/commit/a4787453be8e4f360f0212fb0b25bc4a0e18fc72), [`69eaa29`](https://github.com/Effect-TS/effect/commit/69eaa29dfe5c33547ad12068f65d31b2123194c3), [`3711ba6`](https://github.com/Effect-TS/effect/commit/3711ba65343a0932840478aa758a2612be0327a7), [`715c5e4`](https://github.com/Effect-TS/effect/commit/715c5e4b4528889be2ce30163b130d422e7ab68f), [`2a10622`](https://github.com/Effect-TS/effect/commit/2a10622e906caccd7a9b4a90d1aaef090e8e00cc), [`6bccdd5`](https://github.com/Effect-TS/effect/commit/6bccdd54e1bc5d7f182972811d6827d1ad10f1aa), [`60be011`](https://github.com/Effect-TS/effect/commit/60be01136a530ec10d8b67efc812eee94804444c), [`e1edcdc`](https://github.com/Effect-TS/effect/commit/e1edcdc8d60bef515a2c5fa97706d4baaf0c0290), [`ef81e9d`](https://github.com/Effect-TS/effect/commit/ef81e9dbd1221ab8a9c38ce50f96129054e3b6e2), [`013fb34`](https://github.com/Effect-TS/effect/commit/013fb34f88f3451ede7e7333f205563f07716b13), [`113dbc7`](https://github.com/Effect-TS/effect/commit/113dbc74b259b7e56e618a506dc67e85794c36ed), [`519d66e`](https://github.com/Effect-TS/effect/commit/519d66eb5972ef3c801fb164dd652f25a71e0511), [`e7a6ea4`](https://github.com/Effect-TS/effect/commit/e7a6ea43fe8ac77f68329b84d26dc2d1e136d745), [`019f35e`](https://github.com/Effect-TS/effect/commit/019f35e0a7ebe050eae01d68cc14ae63158fd8e4), [`2a0d16c`](https://github.com/Effect-TS/effect/commit/2a0d16cd1ff63a69baf5d19a13dc2051b500150c), [`e5570c9`](https://github.com/Effect-TS/effect/commit/e5570c999651935f12a01441ab1e8979a7a6e94d)]:
+  - effect@4.1.2
+
 ## 4.1.1
 
 ### Patch Changes
