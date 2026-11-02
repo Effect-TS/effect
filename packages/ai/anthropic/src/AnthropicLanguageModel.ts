@@ -1893,7 +1893,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           } else {
             parts.push({
@@ -1901,7 +1902,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           }
 
@@ -1922,7 +1924,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           } else {
             parts.push({
@@ -1930,7 +1933,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           }
 
@@ -1990,7 +1994,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           } else {
             parts.push({
@@ -1998,7 +2003,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           }
 
@@ -2466,7 +2472,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 } else {
                   parts.push({
@@ -2474,7 +2481,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 }
 
@@ -2534,7 +2542,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 } else {
                   parts.push({
@@ -2542,7 +2551,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 }
                 break
@@ -2562,7 +2572,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 } else {
                   parts.push({
@@ -2570,7 +2581,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 }
                 break
