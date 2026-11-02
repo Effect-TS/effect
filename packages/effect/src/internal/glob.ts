@@ -4,8 +4,10 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import * as Order from "../Order.ts"
+import type { PathMatcher } from "../PathFilter.ts"
 import type { PlatformError } from "../PlatformError.ts"
 import * as Predicate from "../Predicate.ts"
+import * as PathFilterEngine from "./pathFilter.ts"
 
 /** @internal */
 export type Token =
@@ -80,6 +82,16 @@ export const compile = (patterns: ReadonlyArray<string>, dot: boolean): Compiled
       }
     }
   }
+  return fromNodes(nodes, starts, dot)
+}
+
+/**
+ * Builds an automaton from nodes laid out as `compile` does, starting at
+ * `starts`.
+ *
+ * @internal
+ */
+export const fromNodes = (nodes: ReadonlyArray<Node>, starts: Set<number>, dot: boolean): Compiled => {
   const initial = closure(nodes, starts)
   return { nodes, initial, dot, masks: nodes.length <= 32 ? compileMasks(nodes, initial) : undefined }
 }
@@ -703,6 +715,75 @@ export const match = (compiled: Compiled, path: string): boolean => {
 }
 
 // -----------------------------------------------------------------------------
+// path filter matchers
+// -----------------------------------------------------------------------------
+
+// Names stepped here come from canonical paths, so none is an absolute root
+const incremental = (compiled: Compiled): PathFilterEngine.Incremental<any> => {
+  const { masks } = compiled
+  if (masks !== undefined) {
+    return {
+      initial: masks.initial,
+      step: (states: number, name: string) => stepMasks(compiled, masks, states, name, false),
+      accepts: (states: number, directory: boolean) => (states & (directory ? masks.end : masks.endFile)) !== 0,
+      matchesBelow: (states: number) => (states & ~masks.end) !== 0,
+      directory: masks.end !== masks.endFile
+    }
+  }
+  return {
+    initial: compiled.initial,
+    step: (states: States, name: string) => union(step(compiled, states, name)),
+    accepts: (states: States, directory: boolean) => accepts(compiled, states, directory),
+    matchesBelow: (states: States) => canDescend(compiled, states),
+    directory: compiled.nodes.some((node) => node._tag === "End" && node.directoryOnly)
+  }
+}
+
+/**
+ * A `PathMatcher` backed by an automaton, which a filter steps one segment
+ * at a time and whose `matchesBelow` answers from the live states.
+ *
+ * @internal
+ */
+export const pathMatcher = (compiled: Compiled): PathMatcher => {
+  const machine = incremental(compiled)
+  const run = (path: string): { readonly state: unknown; readonly empty: boolean } => {
+    let state = machine.initial
+    let empty = true
+    for (const name of path.split("/")) {
+      if (name !== "" && name !== ".") {
+        state = machine.step(state, name)
+        empty = false
+      }
+    }
+    return { state, empty }
+  }
+  return PathFilterEngine.register({
+    match: (path: string, directory: boolean) => {
+      const { empty, state } = run(path)
+      return !empty && machine.accepts(state, directory)
+    },
+    matchesBelow: (directory: string) => machine.matchesBelow(run(directory).state)
+  }, machine)
+}
+
+/**
+ * Whether every brace expansion of `pattern` is relative with no `..`
+ * segment and, unless `escapedSeparator` is allowed, no escaped `/`, so
+ * that it names one path segment per entry.
+ *
+ * @internal
+ */
+export const isRelativePattern = (pattern: string, escapedSeparator: boolean): boolean =>
+  expandBraces(pattern).every((expanded) =>
+    !isAbsolute(expanded) &&
+    splitSegments(expanded).every((segment) => {
+      const decoded = segment.replace(/\\(.)/gsu, "$1")
+      return decoded !== ".." && (escapedSeparator || !decoded.includes("/"))
+    })
+  )
+
+// -----------------------------------------------------------------------------
 // file system walk
 // -----------------------------------------------------------------------------
 
@@ -726,35 +807,6 @@ const DIRECTORY_CONCURRENCY = 16
 // Listings never contain `.`, `..`, or the root of an absolute pattern
 const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
 
-/**
- * The traversal protocol an `IgnoreFile` implements for `FileSystem.glob`.
- *
- * @internal
- */
-export interface IgnoreWalker {
-  readonly initial: unknown
-  /** Whether matching depends on whether an entry is itself a directory. */
-  readonly needsDirectory: boolean
-  readonly step: (state: unknown, name: string, isDirectory: boolean) => IgnoreStep
-}
-
-/** @internal */
-export interface IgnoreStep {
-  readonly state: unknown
-  readonly ignored: boolean
-  /** Set for an ignored entry when nothing below it can be included. */
-  readonly prune: boolean
-}
-
-// Whether a segment, once unescaped, is `..` or contains `/`
-const spansSegments = (segment: string): boolean => {
-  const decoded = segment.replace(/\\(.)/gsu, "$1")
-  return decoded === ".." || decoded.includes("/")
-}
-
-/** @internal */
-export const ignoreWalker = (ignore: unknown): IgnoreWalker => (ignore as { readonly walker: IgnoreWalker }).walker
-
 const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
 
 /** @internal */
@@ -763,19 +815,19 @@ export const make = (
 ): FileSystem.FileSystem["glob"] =>
 (pattern, options) => {
   const compiled = compile([pattern], options?.dot ?? false)
-  if (options?.ignore === undefined) {
+  if (options?.filter === undefined) {
     return walk(fs, compiled, options, undefined)
   }
-  // Ignore rules match root-relative paths one segment per entry. Check every
+  // Filters match root-relative paths one segment per entry. Check every
   // brace expansion, since compiling drops some branches.
-  if (expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).some(spansSegments))) {
+  if (!isRelativePattern(pattern, false)) {
     return Effect.die(
       new Error(
-        `FileSystem.glob with ignore requires a relative pattern without ".." segments or escaped "/": ${pattern}`
+        `FileSystem.glob with filter requires a relative pattern without ".." segments or escaped "/": ${pattern}`
       )
     )
   }
-  return walk(fs, compiled, options, ignoreWalker(options.ignore))
+  return walk(fs, compiled, options, PathFilterEngine.evaluator(options.filter))
 }
 
 // Named directories (the root and those reached only through leading literal
@@ -787,7 +839,7 @@ const walk = Effect.fnUntraced(function*(
     readonly root?: string | undefined
     readonly exclude?: ReadonlyArray<string> | undefined
   } | undefined,
-  ignore: IgnoreWalker | undefined
+  filter: PathFilterEngine.Evaluator | undefined
 ): Effect.fn.Return<Array<string>, PlatformError> {
   if (compiled.initial.size === 0) {
     return []
@@ -795,13 +847,13 @@ const walk = Effect.fnUntraced(function*(
   const root = options?.root ?? ""
   const excludes = compile(options?.exclude ?? [], true)
   const excludeNeedsDirectory = excludes.nodes.some((node) => node._tag === "End" && node.directoryOnly)
-  const ignoreNeedsDirectory = ignore?.needsDirectory ?? false
+  const filterNeedsDirectory = filter?.needsDirectory ?? false
 
   const toFsPath = (relative: string): string =>
     isAbsolute(relative) ? relative : relative === "" ? (root === "" ? "." : root) : join(root, relative)
 
   // Keep broken links so literal probes agree with directory listings. `stat`
-  // follows links, so report a directory link as a link for ignore rules.
+  // follows links, so report a directory link as a link for filter rules.
   const probe = (
     parent: string,
     name: string,
@@ -817,7 +869,7 @@ const walk = Effect.fnUntraced(function*(
         )),
       Effect.catchIf(named ? isMissing : isIgnorable, () => Effect.succeed(undefined)),
       Effect.flatMap((type) =>
-        type === "Directory" && ignoreNeedsDirectory
+        type === "Directory" && filterNeedsDirectory
           ? fs.readLink(path).pipe(
             Effect.as("SymbolicLink" as const),
             Effect.catchIf(isNotLink, () => Effect.succeed(type))
@@ -865,7 +917,7 @@ const walk = Effect.fnUntraced(function*(
     readonly relative: string
     readonly accepted: boolean
     readonly excluded: States
-    readonly ignored: unknown
+    readonly filtered: PathFilterEngine.State | undefined
     readonly next: States | undefined
   }
 
@@ -875,7 +927,7 @@ const walk = Effect.fnUntraced(function*(
     parent: string,
     states: States,
     excluded: States,
-    ignored: unknown
+    filtered: PathFilterEngine.State | undefined
   ): Child | undefined | Effect.Effect<Child | undefined, PlatformError> => {
     const result = step(compiled, states, name)
     const next = union(result)
@@ -890,23 +942,23 @@ const walk = Effect.fnUntraced(function*(
       if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
         return undefined
       }
-      let nextIgnored = ignored
+      let nextFiltered = filtered
       let pruned = false
-      if (ignore !== undefined && name !== ".") {
-        // Ignore rules see the entry's own type, so a link is never a directory
-        const result = ignore.step(ignored, name, isDirectory && !link)
-        accepted &&= !result.ignored
-        pruned = result.prune
+      if (filter !== undefined && filtered !== undefined && name !== ".") {
+        // Filter rules see the entry's own type, so a link is never a directory
+        const verdict = filter.step(filtered, name, isDirectory && !link)
+        accepted &&= !verdict.excluded
+        pruned = verdict.prune
         if (!accepted && (!isDirectory || !descend || pruned)) {
           return undefined
         }
-        nextIgnored = result.state
+        nextFiltered = verdict.state
       }
       return {
         relative,
         accepted,
         excluded: nextExcluded,
-        ignored: nextIgnored,
+        filtered: nextFiltered,
         next: !isDirectory || !descend || pruned
           ? undefined
           : !link || result.globstar.size === 0
@@ -917,7 +969,7 @@ const walk = Effect.fnUntraced(function*(
           : undefined
       }
     }
-    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory && !ignoreNeedsDirectory) {
+    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory && !filterNeedsDirectory) {
       return child(false, false)
     }
     if (type !== "Unknown" && type !== "SymbolicLink") {
@@ -931,7 +983,7 @@ const walk = Effect.fnUntraced(function*(
         const resolved = child(isDirectory, type === "SymbolicLink")
         if (
           type === "SymbolicLink" || !isDirectory ||
-          ((resolved?.next === undefined || result.globstar.size === 0) && !ignoreNeedsDirectory)
+          ((resolved?.next === undefined || result.globstar.size === 0) && !filterNeedsDirectory)
         ) {
           return Effect.succeed(resolved)
         }
@@ -971,14 +1023,14 @@ const walk = Effect.fnUntraced(function*(
     relative: string,
     states: States,
     excluded: States,
-    ignored: unknown,
+    filtered: PathFilterEngine.State | undefined,
     named: boolean
   ): Effect.fn.Return<Array<string>, PlatformError> {
     const listing = yield* entries(relative, states, named)
     const children: Array<Child | undefined> = []
     const pending: Array<Effect.Effect<void, PlatformError>> = []
     for (const entry of listing.entries) {
-      const child = visit(entry, relative, states, excluded, ignored)
+      const child = visit(entry, relative, states, excluded, filtered)
       if (Effect.isEffect(child)) {
         const index = children.push(undefined) - 1
         pending.push(Effect.map(child, (child) => {
@@ -994,7 +1046,7 @@ const walk = Effect.fnUntraced(function*(
     const subtrees: Array<Effect.Effect<Array<string>, PlatformError>> = []
     for (const child of children) {
       if (child?.next !== undefined) {
-        const walk = directory(child.relative, child.next, child.excluded, child.ignored, listing.named)
+        const walk = directory(child.relative, child.next, child.excluded, child.filtered, listing.named)
         if (slots > 0) {
           slots--
           subtrees.push(Fiber.join(yield* fork(walk)))
@@ -1025,7 +1077,7 @@ const walk = Effect.fnUntraced(function*(
   // The losing walk is interrupted along with every fiber it forked
   return yield* Effect.raceFirst(
     Effect.ensuring(
-      directory("", compiled.initial, excludes.initial, ignore?.initial, true),
+      directory("", compiled.initial, excludes.initial, filter?.initial, true),
       Effect.sync(() => {
         finishing = true
       })
