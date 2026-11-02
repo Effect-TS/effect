@@ -707,10 +707,14 @@ items:
       assert.isTrue(Result.isSuccess(Yaml.parse(nested(1000))))
     })
 
-    it.each([["flow", flow], ["block", block]] as const)("rejects deeper %s nesting", (_, nested) => {
-      assert.match(failureMessage(nested(1001)), /depth/i)
-      assert.match(failureMessage(nested(100_000)), /depth/i)
-    })
+    // Block input grows quadratically with depth, so its deep case stays at 5000 levels.
+    it.each([["flow", flow, 100_000], ["block", block, 5000]] as const)(
+      "rejects deeper %s nesting",
+      (_, nested, deep) => {
+        assert.match(failureMessage(nested(1001)), /depth/i)
+        assert.match(failureMessage(nested(deep)), /depth/i)
+      }
+    )
   })
 
   // YAML 1.2.2 §5.5: only spaces and tabs are white space; NBSP and U+2028 are content.
