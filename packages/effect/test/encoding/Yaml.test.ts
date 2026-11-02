@@ -663,7 +663,9 @@ items:
       ["non-specific tag", "a: ! x\n"],
       ["verbatim tag", "a: !<tag:yaml.org,2002:str> x\n"],
       ["tag in a flow collection", "a: [!!str 1]\n"],
-      ["tag on a key", "!!str a: 1\n"]
+      ["tag on a key", "!!str a: 1\n"],
+      ["tag after an anchor on a key", "&k !!str foo: 1\n"],
+      ["tag after an anchor on a flow key", "{&k !!str foo: 1}\n"]
     ])("rejects a %s", (_, source) => {
       assert.match(failureMessage(source), /tag/i)
     })
@@ -681,6 +683,32 @@ items:
         key: 1,
         b: 1,
         c: { "1": 2 }
+      })
+    })
+
+    it("records anchors on keys", () => {
+      assert.deepStrictEqual(parse("&k foo: 1\nb: *k\nc: {&f bar: 2, d: *f}\n"), {
+        foo: 1,
+        b: "foo",
+        c: { bar: 2, d: "bar" }
+      })
+    })
+
+    it("reads colons that belong to alias names", () => {
+      assert.deepStrictEqual(parse("a: &a:b key\nb: {*a:b : 1}\nc: &c: other\n*c: : 2\n"), {
+        a: "key",
+        b: { key: 1 },
+        c: "other",
+        other: 2
+      })
+    })
+
+    it("does not merge through an alias that resolves to <<", () => {
+      assert.deepStrictEqual(parse("a: &k \"<<\"\nb: {*k : {x: 1}}\nc: &p <<\nd: {*p : {y: 2}}\n"), {
+        a: "<<",
+        b: { "<<": { x: 1 } },
+        c: "<<",
+        d: { "<<": { y: 2 } }
       })
     })
 
@@ -707,6 +735,11 @@ items:
       assert.isTrue(Result.isSuccess(Yaml.parse(nested(1000))))
     })
 
+    it("counts a sequence item's mapping before its first value", () => {
+      assert.isTrue(Result.isSuccess(Yaml.parse(`- k: ${flow(998)}\n`)))
+      assert.match(failureMessage(`- k: ${flow(999)}\n`), /depth/i)
+    })
+
     // Block input grows quadratically with depth, so its deep case stays at 5000 levels.
     it.each([["flow", flow, 100_000], ["block", block, 5000]] as const)(
       "rejects deeper %s nesting",
@@ -730,7 +763,12 @@ items:
         ["at a quoted continuation", "a: \"x\n   y\"\n", { a: "x  y" }],
         ["in flow keys and values", "{a : [ b, c ]}\n", { "a ": [" b", "c "] }],
         ["as a line separator", "a: x \n", { a: "x " }],
-        ["on a document start line", "---  a\n", " a"]
+        ["on a document start line", "---  a\n", " a"],
+        [
+          "in anchored values",
+          "a: &k \u2028x\nb: *k\nc: &q \"\u2029y\"\nd: *q\n",
+          { a: "\u2028x", b: "\u2028x", c: "\u2029y", d: "\u2029y" }
+        ]
       ] as const
     )("keeps NBSP and U+2028 %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
