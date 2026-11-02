@@ -746,8 +746,7 @@ export interface IgnoreStep {
   readonly prune: boolean
 }
 
-// A segment that decodes to `..` or contains an escaped `/`. A segment never
-// holds an unescaped `/`, so dropping each escaping backslash is enough.
+// Whether a segment, once unescaped, is `..` or contains `/`
 const spansSegments = (segment: string): boolean => {
   const decoded = segment.replace(/\\(.)/gsu, "$1")
   return decoded === ".." || decoded.includes("/")
@@ -767,10 +766,8 @@ export const make = (
   if (options?.ignore === undefined) {
     return walk(fs, compiled, options, undefined)
   }
-  // Ignore rules match root-relative paths one segment at a time, so every
-  // walked entry needs one. Check the expanded source text, since compiling
-  // drops some branches, and reject an escaped `/`, which would make one entry
-  // span several segments. Every compiled node comes from one of these segments.
+  // Ignore rules match root-relative paths one segment per entry. Check every
+  // brace expansion, since compiling drops some branches.
   if (expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).some(spansSegments))) {
     return Effect.die(
       new Error(
@@ -803,9 +800,8 @@ const walk = Effect.fnUntraced(function*(
   const toFsPath = (relative: string): string =>
     isAbsolute(relative) ? relative : relative === "" ? (root === "" ? "." : root) : join(root, relative)
 
-  // Keep broken links so literal probes agree with directory listings, and
-  // report a link to a directory as a link when ignore rules need the entry's
-  // own type, since `stat` follows it.
+  // Keep broken links so literal probes agree with directory listings. `stat`
+  // follows links, so report a directory link as a link for ignore rules.
   const probe = (
     parent: string,
     name: string,

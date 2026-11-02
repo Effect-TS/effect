@@ -425,9 +425,8 @@ const clean = (path: string): string => {
   return rooted ? `/${joined}` : joined === "" ? "." : joined
 }
 
-// `PatternMatcher` rejects a pattern when Go's `filepath.Match(pattern, ".")`
-// reports a syntax error. `Match` stops at the first chunk that fails to
-// match, so only the chunks it reaches are checked; this is a port of it.
+// Port of Go's `filepath.Match(pattern, ".")`, which `PatternMatcher` uses to
+// reject bad syntax. Only chunks reached before a mismatch are checked.
 const isGoMatchSyntax = (pattern: ReadonlyArray<string>): boolean => {
   // an escaped class member followed by more of the chunk, or `undefined`
   const member = (
@@ -883,9 +882,8 @@ export const parseDockerignore = (source: string): Array<DockerPattern> | Docker
 
 const wildcardChars = /[*[\]?^\\]/
 
-// fsutil's `patternWithoutTrailingGlob`, except that it strips one trailing
-// glob, not both. Stripping `/*/**` would turn `d/*/**` into the plain prefix
-// `d` and skip `d/sub`, losing `d/sub/keep`, which the exception re-includes.
+// fsutil's `patternWithoutTrailingGlob`, but stripping only one trailing glob:
+// stripping both from `d/*/**` would skip `d/sub` and lose `d/sub/keep`.
 const withoutTrailingGlob = (pattern: string): string =>
   pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern.endsWith("/*") ? pattern.slice(0, -2) : pattern
 
