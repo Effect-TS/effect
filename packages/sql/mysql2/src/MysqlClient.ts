@@ -614,19 +614,14 @@ function queryStream(
       return permit.release(1)
     })
     yield* Effect.acquireRelease(permit.take(1), () => release, { interruptible: true })
-    const command = (conn as any).query(sql, params)
-    const query = command.stream()
-    // The command, unlike its stream, reports when the server is done with the
-    // statement, even after the stream has been destroyed.
+    // The finalizer is registered before the command starts, so a stream
+    // interrupted once its statement is running still kills it. Interrupted
+    // before then, the finalizer has nothing to do.
+    let query: any
     const settlement = new Settlement()
-    const settle = () => {
-      if (settlement.settle()) Effect.runSync(release)
-    }
-    command.once("end", settle)
-    command.once("error", settle)
     yield* Effect.addFinalizer(() =>
       Effect.suspend(() => {
-        if (settlement.settled) return Effect.void
+        if (query === undefined || settlement.settled) return Effect.void
         // Destroying the stream resumes a paused connection, so the remaining
         // rows are read and discarded while the statement is killed. Rows that
         // were already buffered are replayed synchronously and can settle the
@@ -635,6 +630,15 @@ function queryStream(
         return cancelStatement(connectionOptions, conn, settlement)
       })
     )
+    const command = (conn as any).query(sql, params)
+    query = command.stream()
+    // The command, unlike its stream, reports when the server is done with the
+    // statement, even after the stream has been destroyed.
+    const settle = () => {
+      if (settlement.settle()) Effect.runSync(release)
+    }
+    command.once("end", settle)
+    command.once("error", settle)
 
     let buffer: Array<any> = []
     let taskPending = false
