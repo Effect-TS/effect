@@ -86,8 +86,9 @@ const gitDeviations: ReadonlyArray<{
 ]
 
 // `TestMatches` and `matchTests` from moby/patternmatcher@5a6d8429a19bb6948a372ff19e86fe83599a04b7
-// (patternmatcher_test.go), evaluated with `MatchesOrParentMatches`. The two
-// rows matching the path "/" are omitted because ignore paths are root-relative.
+// (patternmatcher_test.go), evaluated with `MatchesOrParentMatches`; BuildKit's
+// walk agrees on every row. The two rows matching the path "/" are omitted
+// because ignore paths are root-relative.
 const dockerReference: ReadonlyArray<readonly [pattern: string, path: string, ignored: boolean]> = [
   ["**", "file", true],
   ["**", "file/", true],
@@ -208,13 +209,15 @@ const dockerReference: ReadonlyArray<readonly [pattern: string, path: string, ig
 ]
 
 // Profile rows, checked against moby/patternmatcher@5a6d842 `ignorefile.ReadAll`
-// followed by `MatchesOrParentMatches`.
+// followed by BuildKit's walk, tonistiigi/fsutil@ca65610: `MatchesUsingParentResults`
+// applied from the root down. It skips a pattern that cannot change the result
+// at a directory, so that pattern's match is not passed down.
 const dockerCases: ReadonlyArray<{
   readonly source: string
   readonly ignored?: ReadonlyArray<string>
   readonly kept?: ReadonlyArray<string>
 }> = [
-  { source: "d/x\n!/d\n", kept: ["d/", "d/x"] },
+  { source: "d/x\n!/d\n", ignored: ["d/x"], kept: ["d/"] },
   {
     source: "node_modules\n!node_modules/keep.txt\n",
     ignored: ["node_modules/", "node_modules/x"],
@@ -224,7 +227,13 @@ const dockerCases: ReadonlyArray<{
   { source: "*.md\nREADME-secret.md\n!README*.md\n", ignored: ["x.md"], kept: ["README.md", "README-secret.md"] },
   { source: "temp?\n", ignored: ["tempa"], kept: ["a/tempa"] },
   { source: "*/temp*\n", ignored: ["a/temp1"], kept: ["temp1", "a/b/temp1"] },
-  { source: "d\n!d/keep\nd\n", ignored: ["d/keep"] },
+  { source: "d\n!d/keep\nd\n", ignored: ["d/", "d/x"], kept: ["d/keep"] },
+  {
+    source: "node_modules\n!node_modules/keep\n**/node_modules\n",
+    ignored: ["node_modules/x"],
+    kept: ["node_modules/keep"]
+  },
+  { source: "a\n!a\na\n", ignored: ["a/", "a/x"] },
   { source: "#x\n  #y\n\\#z\n", ignored: ["#y", "#z"], kept: ["#x"] },
   { source: "﻿bom\r\ncrlf\r\n", ignored: ["bom", "crlf"] },
   { source: "./a\n/b\nc/\nd/../e\n.\n", ignored: ["a", "b", "c", "e"], kept: ["d", "x"] },

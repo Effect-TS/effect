@@ -226,6 +226,12 @@ describe("FileSystem", () => {
         filter: Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\n")),
         expected: ["d/sub/keep"],
         reads: [".", "d", "d/sub"]
+      },
+      {
+        name: "dockerignore with a repeated exclusion",
+        filter: Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\nd\n")),
+        expected: ["d/sub/keep"],
+        reads: [".", "d", "d/sub"]
       }
     ])(
       "reads only directories a $name filter could include from",
