@@ -367,6 +367,7 @@ development:
         ["multiline quoted items", "a: [\"x\n  y\", 'p\n\n  q']\nb: 1\n", { a: ["x y", "p\nq"], b: 1 }],
         ["multiline quoted keys and values", "a: {k: \"v\n  w\", 'k2\n  x': 1}\n", { a: { k: "v w", "k2 x": 1 } }],
         ["escaped line break in a quoted item", "a: [\"x\\\n  y\"]\n", { a: ["xy"] }],
+        ["escaped trailing space before a quoted line break", "a: [\"x\\ \n  y\"]\n", { a: ["x  y"] }],
         ["hash on a quoted continuation line", "a: [\"x\n  # y\"]\n", { a: ["x # y"] }],
         ["escaped single quote across lines", "a: ['it''s\n  ok']\n", { a: ["it's ok"] }],
         ["white space around a quoted line break", "a: [\"x  \n  \ty\"]\n", { a: ["x y"] }],
@@ -381,7 +382,9 @@ development:
       ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
       ["content after the closing bracket", "a: [1,\n  2] extra\n"],
       ["quoted continuation at the parent indentation", "a: [\"x\ny\"]\n"],
-      ["unterminated multiline quoted item", "a: [\"x\n  y]\n"]
+      ["unterminated multiline quoted item", "a: [\"x\n  y]\n"],
+      ["quoted hash at the parent indentation", "a: [\"x\n# y\"]\n"],
+      ["quoted bracket at the parent indentation", "a: [\"x\n]y\"]\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
     })
