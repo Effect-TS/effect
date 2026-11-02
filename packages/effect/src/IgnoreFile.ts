@@ -120,17 +120,15 @@ export class ParseError extends Data.TaggedError("IgnoreFileParseError")<{
 export const gitignore = (source: string, options?: {
   /** The directory containing the file, relative to the root. */
   readonly scope?: string | undefined
-}): PathFilter.PathFilter => {
-  const scope = Engine.splitScope(options?.scope ?? "")
-  return PathFilter.make(
-    parseGitignore(source).map(({ directoryOnly, negated, nodes }): PathFilter.Rule => {
+}): PathFilter.PathFilter =>
+  PathFilter.make(
+    parseGitignore(source).map(({ directoryOnly, negated, nodes }) => {
       const matcher = Glob.pathMatcher(Glob.fromNodes(nodes, new Set([0]), true))
       return negated
-        ? { _tag: "Include", matcher, directoryOnly, scope, subtree: "self" }
-        : { _tag: "Exclude", matcher, directoryOnly, scope, subtree: "barrier" }
+        ? PathFilter.include(matcher, { directoryOnly, scope: options?.scope, subtree: "self" })
+        : PathFilter.exclude(matcher, { directoryOnly, scope: options?.scope, subtree: "barrier" })
     })
   )
-}
 
 /**
  * Parses the contents of a `.dockerignore` file into a `PathFilter`.
@@ -194,10 +192,10 @@ export const dockerignore = (source: string): Result.Result<PathFilter.PathFilte
   if (!Array.isArray(parsed)) {
     return Result.fail(new ParseError(parsed))
   }
-  return Result.succeed(PathFilter.make(parsed.map(({ exclusion, matcher }): PathFilter.Rule =>
+  return Result.succeed(PathFilter.make(parsed.map(({ exclusion, matcher }) =>
     exclusion
-      ? { _tag: "Include", matcher, directoryOnly: false, scope: [], subtree: "inherit" }
-      : { _tag: "Exclude", matcher, directoryOnly: false, scope: [], subtree: "inherit" }
+      ? PathFilter.include(matcher, { subtree: "inherit" })
+      : PathFilter.exclude(matcher, { subtree: "inherit" })
   )))
 }
 
