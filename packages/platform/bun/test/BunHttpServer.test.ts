@@ -187,6 +187,58 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 })
 
 describe("BunHttpServer", () => {
+  it.live("closes unread-body connections when the graceful shutdown timeout expires", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.fork(yield* Effect.scope)
+      const server = yield* BunHttpServer.make({
+        hostname: "127.0.0.1",
+        port: 0,
+        idleTimeout: 75,
+        gracefulShutdownTimeout: "100 millis"
+      }).pipe(Scope.provide(scope))
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("refused", { status: 403 }))).pipe(
+        Scope.provide(scope)
+      )
+      if (!NetAddress.isInetAddress(server.address)) return assert.fail("expected an InetAddress")
+      const port = server.address.port
+      const closed = yield* Deferred.make<void>()
+      const client = yield* Effect.acquireRelease(
+        Effect.sync(() => Net.createConnection({ host: "127.0.0.1", port })),
+        (client) => Effect.sync(() => client.destroy())
+      )
+      client.once("close", () => Deferred.doneUnsafe(closed, Exit.void))
+      const response = yield* Effect.callback<string, Error>((resume) => {
+        let received = ""
+        client.on("data", (chunk) => {
+          received += chunk.toString()
+          if (received.includes("refused")) resume(Effect.succeed(received))
+        })
+        client.on("error", (error) => resume(Effect.fail(error)))
+        client.once("connect", () =>
+          client.write([
+            "POST / HTTP/1.1",
+            `Host: 127.0.0.1:${port}`,
+            "Connection: keep-alive",
+            "Content-Length: 1048576",
+            "",
+            "x".repeat(1048576)
+          ].join("\r\n")))
+      })
+      assert.isTrue(response.startsWith("HTTP/1.1 403"))
+      let clientTimedOut = false
+      // Bound cleanup even on the regression: the client eventually closes its own connection.
+      const clientDeadline = yield* Effect.forkChild(
+        Effect.sleep("2 seconds").pipe(Effect.andThen(Effect.sync(() => {
+          clientTimedOut = true
+          client.destroy()
+        })))
+      )
+      yield* Scope.close(scope, Exit.void)
+      yield* Deferred.await(closed)
+      yield* Fiber.interrupt(clientDeadline)
+      assert.isFalse(clientTimedOut)
+    }))
+
   describe("serve scope ownership", { concurrent: false }, () => {
     it.live("closes the request scope when a streaming body is cancelled synchronously during construction", () =>
       Effect.gen(function*() {
