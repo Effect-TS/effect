@@ -14,5 +14,3 @@ const program = Effect.gen(function*() {
   return yield* fs.glob("**", { root: "context", dot: true, ignore })
 })
 ```
-
-`Glob.make` no longer throws for a class name that matches an `Object.prototype` property, such as `[[:toString:]]`; it is read as an unknown class.

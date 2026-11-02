@@ -287,8 +287,7 @@ const parsePosixClass = (
 ): { readonly ranges: ReadonlyArray<number>; readonly end: number } | undefined => {
   for (let i = open + 2; i < chars.length && i <= open + 8; i++) {
     if (chars[i] === ":" && chars[i + 1] === "]") {
-      const name = chars.slice(open + 2, i).join("")
-      const ranges = Object.hasOwn(posixClasses, name) ? posixClasses[name] : undefined
+      const ranges = posixClasses[chars.slice(open + 2, i).join("")]
       return ranges === undefined ? undefined : { ranges, end: i + 1 }
     }
   }
@@ -747,6 +746,12 @@ export interface IgnoreStep {
   readonly prune: boolean
 }
 
+// A literal `..` or root, or a segment with an escaped `/`
+const spansSegments = (node: Node): boolean =>
+  node._tag === "Literal"
+    ? node.value !== "." && (isUnlisted(node.value) || node.value.includes("/"))
+    : node._tag === "Wildcard" && node.tokens.some((token) => token._tag === "Char" && token.code === 0x2f)
+
 /** @internal */
 export const ignoreWalker = (ignore: unknown): IgnoreWalker => (ignore as { readonly walker: IgnoreWalker }).walker
 
@@ -766,14 +771,18 @@ export const make = (
   if (options?.ignore === undefined) {
     return walk(fs, compiled, options, undefined)
   }
-  // Ignore rules match root-relative paths, so every walked entry needs one.
-  // Check the expanded patterns too, since compiling drops some invalid ones.
+  // Ignore rules match root-relative paths one segment at a time, so every
+  // walked entry needs one. Check the expanded patterns too, since compiling
+  // drops some invalid ones, and reject an escaped `/`, which would make one
+  // entry span several segments.
   if (
     expandBraces(pattern).some((expanded) => isAbsolute(expanded) || splitSegments(expanded).includes("..")) ||
-    compiled.nodes.some((node) => node._tag === "Literal" && node.value !== "." && isUnlisted(node.value))
+    compiled.nodes.some(spansSegments)
   ) {
     return Effect.die(
-      new Error(`FileSystem.glob with ignore requires a relative pattern without ".." segments: ${pattern}`)
+      new Error(
+        `FileSystem.glob with ignore requires a relative pattern without ".." segments or escaped "/": ${pattern}`
+      )
     )
   }
   return walk(fs, compiled, options, ignoreWalker(options.ignore))
