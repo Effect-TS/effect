@@ -282,6 +282,63 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("delivers a stored interrupt again to a request replayed after an entity defect", () =>
+    Effect.gen(function*() {
+      const started = yield* Queue.make<number>()
+      let starts = 0
+      let defectAttempts = 0
+      const Replaying = Entity.make("InterruptDefectReplay", [
+        Rpc.make("Run").annotate(ClusterSchema.Uninterruptible, true),
+        Rpc.make("Defect")
+      ]).annotateRpcs(ClusterSchema.Persisted, true)
+      const layer = Replaying.toLayer(
+        Replaying.of({
+          Run: () => Rpc.fork(Effect.suspend(() => Queue.offer(started, ++starts)).pipe(Effect.andThen(Effect.never))),
+          Defect: () => Effect.suspend(() => ++defectAttempts === 1 ? Effect.die("restart entity") : Effect.void)
+        }),
+        { defectRetryPolicy: Schedule.forever }
+      ).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 })))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const client = (yield* Replaying.client)("replay")
+        yield* client.Run().pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(yield* Queue.take(started), 1)
+        const request = driver.journal[0]
+        assert.strictEqual(request._tag, "Request")
+
+        // A stored interrupt restarts the uninterruptible request once.
+        yield* driver.encoded.saveEnvelope({
+          envelope: {
+            _tag: "Interrupt",
+            id: String(yield* sharding.getSnowflake),
+            requestId: request.requestId,
+            address: request.address
+          },
+          primaryKey: null,
+          deliverAt: null
+        })
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* Queue.take(started), 2)
+
+        // Defecting another handler rebuilds the entity and replays Run.
+        yield* client.Defect()
+        assert.strictEqual(yield* Queue.take(started), 3)
+
+        // The replayed handler has not seen the interrupt, so it is delivered
+        // again once storage returns it.
+        yield* TestClock.adjust("10 minutes")
+        for (let i = 0; i < 3; i++) {
+          yield* sharding.pollStorage
+          yield* TestClock.adjust(1)
+        }
+        assert.strictEqual(starts, 4, "the replayed request must receive the stored interrupt")
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("keeps the claim of an active stream after an acknowledged chunk", () =>
     Effect.gen(function*() {
       const acked = yield* Deferred.make<void>()

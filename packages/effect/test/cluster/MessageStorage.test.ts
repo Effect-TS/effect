@@ -69,6 +69,25 @@ describe("MessageStorage", () => {
         expect(messages.map(({ envelope }) => envelope._tag)).toEqual([])
       }).pipe(Effect.provide(MemoryLayer)))
 
+    it.effect("clearReplies drops a queued Interrupt", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const snowflake = yield* Snowflake.Generator
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+          id: snowflake.nextUnsafe(),
+          requestId: request.envelope.requestId,
+          address: request.envelope.address
+        }))
+
+        // the request runs again from the start, without the earlier interrupt
+        yield* storage.clearReplies(request.envelope.requestId)
+
+        const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+        expect(messages.map(({ envelope }) => envelope._tag)).toEqual(["Request"])
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("encoded unprocessedMessages fails closed for an empty address filter", () =>
       Effect.gen(function*() {
         const driver = yield* MessageStorage.MemoryDriver
