@@ -92,7 +92,10 @@ interface CompiledRule {
 export interface State {
   /** Each rule's matcher state, or its position relative to its scope. */
   readonly rules: ReadonlyArray<unknown>
-  /** The highest-indexed `inherit` hit on this directory or an ancestor, or -1. */
+  /**
+   * The highest-indexed `inherit` hit passed down to this directory's
+   * children, or -1.
+   */
   readonly inherited: number
   /** The barrier exclusion that decided this directory or an ancestor, or -1. */
   readonly barrier: number
@@ -163,6 +166,7 @@ const reachable = (rule: CompiledRule, state: unknown): boolean => {
 
 const make = (rules: ReadonlyArray<Rule>): Evaluator => {
   const compiled = rules.map(compileRule)
+  const isExcluded = (index: number): boolean => index !== -1 && !compiled[index].include
   const step = (state: State, name: string, directory: boolean): Visit => {
     if (state.barrier !== -1) {
       return { state, decision: state.barrier, excluded: true, prune: true }
@@ -178,23 +182,26 @@ const make = (rules: ReadonlyArray<Rule>): Evaluator => {
         !(value instanceof Pending) && (directory || !rule.directoryOnly) &&
         rule.incremental.accepts(value, directory)
       ) {
+        // A fresh `inherit` hit passes down only if it changes the running
+        // decision, as BuildKit's `MatchesUsingParentResults` does. Here
+        // `decision` is the highest hit below `i`.
+        if (rule.inherit && i > inherited && rule.include === isExcluded(decision)) {
+          inherited = i
+        }
         // `i` only grows, but an inherited hit may outrank it
         if (i > decision) {
           decision = i
-        }
-        if (rule.inherit && i > inherited) {
-          inherited = i
         }
       }
     }
     const rule = compiled[decision]
     const excluded = rule !== undefined && !rule.include
     let prune = false
-    if (excluded && !rule.barrier && rule.inherit) {
-      // An inherited exclusion stays decisive below unless a later inclusion
-      // can match there; a `self` exclusion leaves its children undecided.
+    if (excluded && !rule.barrier && isExcluded(inherited)) {
+      // The children start from the inherited exclusion, which stays decisive
+      // unless a later inclusion can match below
       prune = true
-      for (let i = decision + 1; i < compiled.length && prune; i++) {
+      for (let i = inherited + 1; i < compiled.length && prune; i++) {
         prune = !compiled[i].include || !reachable(compiled[i], next[i])
       }
     }

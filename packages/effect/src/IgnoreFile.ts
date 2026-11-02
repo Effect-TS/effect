@@ -142,7 +142,8 @@ export const gitignore = (source: string, options?: {
  * matching directory.
  *
  * Every other line becomes one rule with `subtree: "inherit"`, in order: an
- * exclusion, or for a `!` line an inclusion.
+ * exclusion, or for a `!` line an inclusion. Paths inside a directory are
+ * decided as BuildKit decides them when it sends a build context.
  *
  * Fails with a {@link ParseError} where Docker rejects the file, such as for a
  * lone `!` or an unclosed `[`.
@@ -166,10 +167,6 @@ export const gitignore = (source: string, options?: {
  * cannot compile them. The supported names are `alnum`, `alpha`, `ascii`,
  * `blank`, `cntrl`, `digit`, `graph`, `lower`, `print`, `punct`, `space`,
  * `upper`, `word` and `xdigit`, each optionally negated as `[:^name:]`.
- *
- * A later pattern that repeats an exclusion already in effect for a directory
- * still applies inside it, so `d`, `!d/keep`, `d` excludes `d/keep`. BuildKit
- * skips such a pattern at the directory and keeps `d/keep`.
  *
  * **Example** (Re-including a file)
  *

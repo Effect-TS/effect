@@ -14,9 +14,10 @@
  *
  * - `barrier`: if the rule decides the directory, every path inside is
  *   excluded by it, as with Git exclusions.
- * - `inherit`: the match also counts for every path inside, even when a later
- *   rule decided the directory itself, and later rules can still override it,
- *   as with Docker rules.
+ * - `inherit`: if the match changed the directory's result at that point in
+ *   rule order, it also counts for every path inside, and later rules can
+ *   still override it, as with Docker rules. A match that repeats the result
+ *   so far, such as the second `d` in `d`, `!d/keep`, `d`, does not.
  * - `self`: the paths inside are left to their own rules, as with Git `!`
  *   inclusions.
  *
