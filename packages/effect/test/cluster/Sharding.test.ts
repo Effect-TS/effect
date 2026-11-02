@@ -1724,7 +1724,7 @@ describe.concurrent("Sharding", () => {
       // 1 request, 2 acks, 2 replies
       expect(driver.journal.length).toEqual(1 + 2)
       expect(driver.replyIds.size).toEqual(2)
-      expect(driver.unprocessed.size).toEqual(1)
+      expect(driver.unprocessed.has(driver.journal[0])).toBe(true)
 
       // third chunk
       yield* Queue.offerAll(state.streamMessages, [void 0, void 0])
@@ -5970,4 +5970,54 @@ describe("Sharding persisted message compatibility", () => {
 
   it.effect("a cancelled request held behind a deferred request stays cancelled when released into a full mailbox", () =>
     cancelledFollowerStaysCancelled({ occupiedMailbox: true }))
+
+  it.effect("a cancelled request an older runner held back stays cancelled on a compatible runner", () => {
+    const observer = makeCompatibilityObserver()
+    const served: Array<string> = []
+    let block: "idle" | "running" | "interrupted" = "idle"
+    return Effect.gen(function*() {
+      const storage = yield* makeSharedMemoryStorage
+
+      // The older runner defers `Remove`, holds `Block` behind it, and reads
+      // the interrupt for `Block` while holding it.
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const client = (yield* NewerCompatibilityEntity.client)("1")
+        yield* client.Remove(void 0, { discard: true })
+        yield* TestClock.adjust(1)
+        const fiber = yield* client.Block().pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        yield* Fiber.interrupt(fiber)
+        yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+      }).pipe(Effect.provide(RestartSharding(OlderCompatibilityLayer(Effect.void), storage)))
+      assert.strictEqual(block, "idle")
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(served, ["Remove"])
+        assert.notStrictEqual(block, "running", "the cancellation still applies to Block")
+      }).pipe(Effect.provide(RestartSharding(
+        NewerCompatibilityEntity.toLayer({
+          Add: () => Effect.void,
+          Remove: () =>
+            Effect.sync(() => {
+              served.push("Remove")
+            }),
+          Block: () =>
+            Effect.sync(() => {
+              block = "running"
+            }).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  block = "interrupted"
+                })
+              )
+            )
+        }),
+        storage,
+        { entityTerminationTimeout: 0 }
+      )))
+    }).pipe(observer.provide)
+  })
 })
