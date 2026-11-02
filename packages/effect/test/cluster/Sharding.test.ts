@@ -5665,6 +5665,76 @@ const leavesRequestForCompatibleRunner = (
   )
 }
 
+// `Remove` is deferred, a `Block` behind it is cancelled, and `Remove` is then
+// answered elsewhere. With an occupied one-slot mailbox, the released `Block`
+// is resumed from storage once an earlier `Block` frees the slot.
+const cancelledFollowerStaysCancelled = (options: { readonly occupiedMailbox: boolean }) => {
+  const observer = makeCompatibilityObserver()
+  const release = Latch.makeUnsafe(false)
+  let occupying = options.occupiedMailbox
+  let block: "idle" | "running" | "interrupted" = "idle"
+  const handler = Effect.suspend(() => {
+    if (occupying) {
+      occupying = false
+      return release.await
+    }
+    return Effect.sync(() => {
+      block = "running"
+    }).pipe(
+      Effect.andThen(Effect.never),
+      Effect.onInterrupt(() =>
+        Effect.sync(() => {
+          block = "interrupted"
+        })
+      )
+    )
+  })
+  return Effect.gen(function*() {
+    const driver = yield* MessageStorage.MemoryDriver
+    const storage = yield* MessageStorage.MessageStorage
+    const sharding = yield* Sharding.Sharding
+    yield* TestClock.adjust(1)
+    const client = (yield* NewerCompatibilityEntity.client)("1")
+    if (options.occupiedMailbox) {
+      // takes the only mailbox slot until released
+      yield* client.Block(void 0, { discard: true })
+      yield* TestClock.adjust(1)
+    }
+    yield* client.Remove(void 0, { discard: true })
+    yield* TestClock.adjust(1)
+
+    // `Block` waits behind the deferred `Remove`, and its caller cancels it
+    const fiber = yield* client.Block().pipe(Effect.forkChild)
+    yield* TestClock.adjust(1)
+    yield* Fiber.interrupt(fiber)
+    yield* TestClock.adjust(1)
+    assert.strictEqual(block, "idle")
+
+    const remove = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.tag === "Remove")!
+    yield* storage.saveReply(Reply.ReplyWithContext.fromDefect({
+      id: yield* sharding.getSnowflake,
+      requestId: Snowflake.Snowflake(remove.requestId),
+      defect: "answered elsewhere"
+    }))
+    yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
+
+    if (options.occupiedMailbox) {
+      assert.strictEqual(block, "idle", "Block waits for the mailbox slot")
+      yield* release.open
+      yield* TestClock.adjust(testConfigDefaults.sendRetryInterval as number)
+    }
+
+    assert.notStrictEqual(block, "running", "the cancellation still applies to Block")
+  }).pipe(
+    Effect.provide(
+      OlderCompatibilityLayer(handler).pipe(
+        Layer.provideMerge(UnregisteredSharding({ entityMailboxCapacity: options.occupiedMailbox ? 1 : 10 }))
+      )
+    ),
+    observer.provide
+  )
+}
+
 describe("Sharding persisted message compatibility", () => {
   it.effect("leaves a persisted request with an incompatible payload for a compatible runner", () =>
     leavesRequestForCompatibleRunner((client) => client.Add({ n: "x" })))
@@ -5895,50 +5965,9 @@ describe("Sharding persisted message compatibility", () => {
     )
   })
 
-  it.effect("a cancelled request held behind a deferred request stays cancelled once it is released", () => {
-    const observer = makeCompatibilityObserver()
-    let block: "idle" | "running" | "interrupted" = "idle"
-    return Effect.gen(function*() {
-      const driver = yield* MessageStorage.MemoryDriver
-      const storage = yield* MessageStorage.MessageStorage
-      const sharding = yield* Sharding.Sharding
-      yield* TestClock.adjust(1)
-      const client = (yield* NewerCompatibilityEntity.client)("1")
-      yield* client.Remove(void 0, { discard: true })
-      yield* TestClock.adjust(1)
+  it.effect("a cancelled request held behind a deferred request stays cancelled once it is released", () =>
+    cancelledFollowerStaysCancelled({ occupiedMailbox: false }))
 
-      // `Block` waits behind the deferred `Remove`, and its caller cancels it
-      const fiber = yield* client.Block().pipe(Effect.forkChild)
-      yield* TestClock.adjust(1)
-      yield* Fiber.interrupt(fiber)
-      yield* TestClock.adjust(1)
-      assert.strictEqual(block, "idle")
-
-      const remove = driver.journal.find((envelope) => envelope._tag === "Request" && envelope.tag === "Remove")!
-      yield* storage.saveReply(Reply.ReplyWithContext.fromDefect({
-        id: yield* sharding.getSnowflake,
-        requestId: Snowflake.Snowflake(remove.requestId),
-        defect: "answered elsewhere"
-      }))
-      yield* TestClock.adjust(testConfigDefaults.entityMessagePollInterval as number)
-
-      assert.notStrictEqual(block, "running", "the cancellation still applies to Block")
-    }).pipe(
-      Effect.provide(
-        OlderCompatibilityLayer(
-          Effect.sync(() => {
-            block = "running"
-          }).pipe(
-            Effect.andThen(Effect.never),
-            Effect.onInterrupt(() =>
-              Effect.sync(() => {
-                block = "interrupted"
-              })
-            )
-          )
-        ).pipe(Layer.provideMerge(UnregisteredSharding({})))
-      ),
-      observer.provide
-    )
-  })
+  it.effect("a cancelled request held behind a deferred request stays cancelled when released into a full mailbox", () =>
+    cancelledFollowerStaysCancelled({ occupiedMailbox: true }))
 })
