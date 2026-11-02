@@ -790,6 +790,11 @@ items:
         ["quoted scalars with a hash", "a: !!str \"x # y\"\nb: [!!str \"x # y\"]\n", { a: "x # y", b: ["x # y"] }],
         ["a root flow mapping", "!!map {a: 1}\n", { a: 1 }],
         ["a tag before the end of a flow sequence", "a: [!!str]\n", { a: [""] }],
+        ["quoted keys that look like collections", "!!str \"[1]\": a\nb: {!!str \"[2]\": c}\n", {
+          "[1]": "a",
+          b: { "[2]": "c" }
+        }],
+        ["a quoted ampersand", "a: !!str \"&\"\n", { a: "&" }],
         [
           "properties split across lines",
           "a: !!str\n  &a 0x10\nb: *a\nc: !!int\n  &c \"7\"\nd: *c\n",
@@ -836,9 +841,22 @@ items:
       ["a tagged alias on the next line", "a: &a 42\nb: !!str\n  *a\n"],
       ["a second tag on the next line", "a: !!str\n  !!int 1\n"],
       ["a second anchor on the next line", "a: &x\n  &y 1\n"],
-      ["flow content directly after a tag", "{a: !!seq[1]}\n"]
+      ["flow content directly after a tag", "{a: !!seq[1]}\n"],
+      ["a scalar tag on a flow sequence key", "!!str [1]: value\n"],
+      ["a scalar tag on a flow sequence key in a flow mapping", "{!!str [1]: value}\n"],
+      ["a scalar tag on a flow mapping key", "!!str {k: 1}: value\n"],
+      // YAML 1.2.2 §6.9.2: an anchor has a name, and `&` cannot start a plain scalar.
+      ["an empty anchor after a tag and anchor", "a: !!str &a &\nb: *a\n"],
+      ["an empty anchor after a tag", "a: !!str &\n"],
+      ["an empty anchor", "a: &\n"],
+      ["an empty anchor before content", "a: & x\n"],
+      ["an empty anchor on a key", "& : 1\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
+    })
+
+    it("keeps ampersands inside plain scalars", () => {
+      assert.deepStrictEqual(parse("a: x &\nb: [y &]\n"), { a: "x &", b: ["y &"] })
     })
 
     it("keeps exclamation marks inside plain scalars", () => {
