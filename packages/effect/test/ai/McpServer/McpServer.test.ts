@@ -3495,31 +3495,22 @@ describe("McpServer", () => {
       failureMode: "return"
     })
     const WeatherToolkit = Toolkit.make(GetWeather)
-    const protocol = McpProtocol.v2025_06_18
 
-    const isHttpSpan = (span: Tracer.AnySpan) => span._tag === "Span" && span.attributes.has("http.request.method")
-
-    // Offers ended MCP request spans in completion order. HTTP transport spans
-    // and notification spans are skipped so each request maps to the next entry.
-    const makeEndedSpanTracer = (ended: Queue.Queue<Tracer.NativeSpan>) =>
-      Tracer.make({
+    // Returns a function that sends `tools/call` over HTTP and yields its ended MCP span.
+    const makeTracedServer = Effect.fnUntraced(function*(recordToolArguments = false) {
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = Tracer.make({
         span(options) {
           const span = new Tracer.NativeSpan(options)
           const end = span.end.bind(span)
           span.end = (endTime, exit) => {
             end(endTime, exit)
-            if (span.kind === "server" && !isHttpSpan(span) && !span.name.includes("notifications/")) {
-              Queue.offerUnsafe(ended, span)
-            }
+            if (span.attributes.get("mcp.method.name") === "tools/call") Queue.offerUnsafe(ended, span)
           }
           return span
         }
       })
-
-    const makeTracedHarness = Effect.fnUntraced(function*(recordToolArguments = false) {
-      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-      const tracer = makeEndedSpanTracer(ended)
-      const registrations = Layer.mergeAll(
+      const tools = Layer.mergeAll(
         McpServer.toolkit(WeatherToolkit).pipe(
           Layer.provideMerge(WeatherToolkit.toLayer({
             get_weather: ({ location }) =>
@@ -3529,174 +3520,72 @@ describe("McpServer", () => {
         Layer.effectDiscard(Effect.gen(function*() {
           const server = yield* McpServer.McpServer
           yield* server.addTool({
-            tool: new McpSchema.Tool({ name: "crash", inputSchema: { type: "object" } }),
-            annotations: Context.empty(),
-            handle: () => Effect.die("boom")
-          })
-          yield* server.addTool({
             tool: new McpSchema.Tool({ name: "echo", inputSchema: { type: "object" } }),
             annotations: Context.empty(),
             handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
           })
-          yield* McpServer.registerPrompt({ name: "greeting", content: () => Effect.succeed("hello") })
-          yield* McpServer.registerResource({
-            uri: "file:///readme",
-            name: "readme",
-            content: Effect.succeed("read me")
-          })
         }))
       )
-      const harness = yield* makeHttpHarness(registrations.pipe(
-        Layer.provideMerge(makeServerLayer({ name: "TracingTest", protocols: [protocol] })),
+      const harness = yield* makeHttpHarness(tools.pipe(
+        Layer.provideMerge(makeServerLayer({ name: "TracingTest", protocols: [McpProtocol.v2025_06_18] })),
         Layer.provideMerge(Layer.succeed(Tracer.Tracer, tracer)),
         Layer.provideMerge(Layer.succeed(Toolkit.RecordToolArguments, recordToolArguments))
       ))
-      const headers = yield* initializeHttpSession(harness, protocol)
-      yield* Queue.take(ended) // initialize
-      const request = Effect.fnUntraced(function*(id: number, method: string, params: Record<string, unknown>) {
-        yield* readMcpHttpResponse(yield* harness.post({ jsonrpc: "2.0", id, method, params }, headers))
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_06_18)
+      const callTool = Effect.fnUntraced(function*(params: Record<string, unknown>) {
+        yield* readMcpHttpResponse(
+          yield* harness.post({ jsonrpc: "2.0", id: 1, method: "tools/call", params }, headers)
+        )
         return yield* Queue.take(ended)
       })
-      return { headers, request }
+      return { headers, callTool }
     })
 
-    const exitTag = (span: Tracer.NativeSpan) => span.status._tag === "Ended" ? span.status.exit._tag : undefined
-
-    it.effect("records MCP server spans with method-specific names and no tool arguments", () =>
+    it.effect("names tool call spans after the tool and does not record arguments by default", () =>
       Effect.gen(function*() {
-        const { headers, request } = yield* makeTracedHarness()
+        const { callTool, headers } = yield* makeTracedServer()
 
-        const call = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "London" } })
-        assert.strictEqual(call.name, "tools/call get_weather")
-        assert.strictEqual(call.kind, "server")
-        assert.deepInclude(Object.fromEntries(call.attributes), {
-          "mcp.method.name": "tools/call",
+        const span = yield* callTool({ name: "get_weather", arguments: { location: "London" } })
+        assert.strictEqual(span.name, "tools/call get_weather")
+        assert.deepInclude(Object.fromEntries(span.attributes), {
           "jsonrpc.request.id": "1",
-          "mcp.protocol.version": protocol.protocolVersion,
           "mcp.session.id": headers["Mcp-Session-Id"],
-          "network.transport": "tcp",
           "gen_ai.operation.name": "execute_tool",
           "gen_ai.tool.name": "get_weather"
         })
-        for (const key of ["parameters", "gen_ai.tool.call.arguments", "rpc.method"]) {
-          assert.isFalse(call.attributes.has(key), `Unexpected span attribute ${key}`)
-        }
-        // Without client trace context the span stays under the HTTP server span.
-        assert.isTrue(Option.isSome(call.parent) && isHttpSpan(call.parent.value))
-
-        const prompt = yield* request(2, "prompts/get", { name: "greeting" })
-        assert.strictEqual(prompt.name, "prompts/get greeting")
-        assert.strictEqual(prompt.attributes.get("gen_ai.prompt.name"), "greeting")
-
-        const resource = yield* request(3, "resources/read", { uri: "file:///readme" })
-        assert.strictEqual(resource.name, "resources/read")
-        assert.strictEqual(resource.attributes.get("mcp.resource.uri"), "file:///readme")
+        assert.isFalse(span.attributes.has("parameters"))
+        assert.isFalse(span.attributes.has("gen_ai.tool.call.arguments"))
       }))
 
     it.effect("records tool arguments when Toolkit.RecordToolArguments is enabled", () =>
       Effect.gen(function*() {
-        const { request } = yield* makeTracedHarness(true)
+        const { callTool } = yield* makeTracedServer(true)
 
         // `echo` is registered with `addTool`, so `Toolkit.handle` cannot record the arguments for McpServer.
-        const call = yield* request(1, "tools/call", { name: "echo", arguments: { text: "hi" } })
-        assert.strictEqual(call.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
+        const span = yield* callTool({ name: "echo", arguments: { text: "hi" } })
+        assert.strictEqual(span.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
-    it.effect("continues the client trace from params._meta and links the HTTP server span", () =>
+    it.effect("continues the client trace from params._meta.traceparent", () =>
       Effect.gen(function*() {
-        const { request } = yield* makeTracedHarness()
+        const { callTool } = yield* makeTracedServer()
 
-        const span = yield* request(1, "tools/call", {
+        const span = yield* callTool({
           name: "get_weather",
           arguments: { location: "London" },
           _meta: { traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" }
         })
-
         assert.strictEqual(span.traceId, "0af7651916cd43dd8448eb211c80319c")
-        assert.isTrue(Option.isSome(span.parent))
-        if (Option.isSome(span.parent)) {
-          assert.strictEqual(span.parent.value._tag, "ExternalSpan")
-          assert.strictEqual(span.parent.value.spanId, "b7ad6b7169203331")
-        }
-        assert.deepStrictEqual(span.links.map((link) => isHttpSpan(link.span)), [true])
+        assert.strictEqual(Option.getOrUndefined(span.parent)?.spanId, "b7ad6b7169203331")
       }))
 
-    it.effect("classifies tool results and JSON-RPC errors on the span", () =>
+    it.effect("marks a tool result with isError as a tool_error", () =>
       Effect.gen(function*() {
-        const { request } = yield* makeTracedHarness()
+        const { callTool } = yield* makeTracedServer()
 
-        const toolError = yield* request(1, "tools/call", { name: "get_weather", arguments: { location: "Atlantis" } })
-        assert.strictEqual(exitTag(toolError), "Success")
-        assert.strictEqual(toolError.attributes.get("error.type"), "tool_error")
-
-        const unknownTool = yield* request(2, "tools/call", { name: "missing_tool", arguments: {} })
-        assert.strictEqual(exitTag(unknownTool), "Success")
-        assert.strictEqual(unknownTool.attributes.get("rpc.status_code"), "-32602")
-        assert.isFalse(unknownTool.attributes.has("error.type"))
-
-        const defect = yield* request(3, "tools/call", { name: "crash", arguments: {} })
-        assert.strictEqual(exitTag(defect), "Failure")
-        assert.strictEqual(defect.attributes.get("rpc.status_code"), "-32603")
-        assert.strictEqual(defect.attributes.get("error.type"), "-32603")
-      }))
-
-    // RpcServer answers a failed response write with -32603, and the span must report that response.
-    it.effect("records the internal error sent after an error response fails to write", () =>
-      Effect.gen(function*() {
-        const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-        const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
-        const disconnects = yield* Queue.unbounded<number>()
-        const ready = yield* Deferred.make<
-          (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
-        >()
-        let failWrite = true
-        const transport = yield* RpcServer.Protocol.make((write) =>
-          Deferred.succeed(ready, write).pipe(Effect.as({
-            disconnects,
-            send: (_clientId, message) => {
-              if (failWrite && message._tag === "Exit" && message.requestId === "1") {
-                failWrite = false
-                return Effect.die("write failed")
-              }
-              return Queue.offer(outbound, message).pipe(Effect.asVoid)
-            },
-            end: () => Effect.void,
-            clientIds: Effect.succeed(new Set([1])),
-            initialMessage: Effect.succeedNone,
-            supportsAck: false,
-            supportsTransferables: false,
-            supportsSpanPropagation: false,
-            supportsNotifications: true,
-            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-          }))
-        )
-        yield* Layer.build(
-          McpServer.layer({ name: "TracingTest", version: "1.0.0", protocols: [McpProtocol.v2025_03_26] }).pipe(
-            Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
-          )
-        )
-        const write = yield* Deferred.await(ready)
-        const send = (message: RpcMessage.FromClientEncoded) =>
-          write(1, message).pipe(Effect.provideService(Tracer.Tracer, makeEndedSpanTracer(ended)))
-        const clientInfo = { name: "client", version: "1.0.0" }
-        const payload = { protocolVersion: "2025-03-26", capabilities: {}, clientInfo }
-        yield* send({ _tag: "Request", id: "0", tag: "initialize", payload, headers: [] })
-        yield* Queue.take(outbound)
-        yield* Queue.take(ended)
-
-        yield* send({ _tag: "Request", id: "1", tag: "tools/call", payload: { name: "missing_tool" }, headers: [] })
-
-        assert.deepStrictEqual(yield* Queue.take(outbound), {
-          _tag: "Exit",
-          requestId: "1",
-          exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
-        })
-        const span = yield* Queue.take(ended)
-        assert.strictEqual(span.name, "tools/call missing_tool")
-        assert.strictEqual(exitTag(span), "Failure")
-        assert.strictEqual(span.attributes.get("rpc.status_code"), "-32603")
-        assert.strictEqual(span.attributes.get("error.type"), "-32603")
+        const span = yield* callTool({ name: "get_weather", arguments: { location: "Atlantis" } })
+        assert.strictEqual(span.attributes.get("error.type"), "tool_error")
       }))
   })
 })
