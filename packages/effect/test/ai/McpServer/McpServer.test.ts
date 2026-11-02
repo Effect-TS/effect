@@ -3767,6 +3767,25 @@ describe("McpServer", () => {
             assert.isTrue(Cause.hasInterruptsOnly(span.status.exit.cause), "Expected an interrupted span")
           }
         }))
+
+      it.effect("classifies a request error by the internal error sent after its response write fails", () =>
+        Effect.gen(function*() {
+          const { nextEnded, outbound, send } = yield* makeTracedTransport({ failExitFor: "missing" })
+
+          yield* send({ _tag: "Request", id: "missing", tag: "tools/call", payload: { name: "Missing" }, headers: [] })
+
+          const response = yield* Queue.take(outbound)
+          assert.deepStrictEqual(response, {
+            _tag: "Exit",
+            requestId: "missing",
+            exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
+          })
+          const span = yield* nextEnded
+          assert.strictEqual(span?.name, "tools/call Missing")
+          assert.strictEqual(span?.attributes.get("rpc.status_code"), "-32603")
+          assert.strictEqual(span?.attributes.get("error.type"), "-32603")
+          assert.strictEqual(span && exitTag(span), "Failure")
+        }))
     })
   })
 })
