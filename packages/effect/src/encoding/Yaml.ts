@@ -307,6 +307,8 @@ const parseDoubleQuoted = (input: string): string => {
       f: "\f",
       r: "\r",
       e: "\x1b",
+      // YAML 1.2.2 §5.7: a backslash followed by a literal tab also escapes a tab.
+      "\t": "\t",
       " ": " ",
       "\"": "\"",
       "/": "/",
