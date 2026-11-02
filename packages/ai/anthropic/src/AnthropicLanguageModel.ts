@@ -34,7 +34,7 @@ import type { Span } from "effect/Tracer"
 import type { Mutable, Simplify } from "effect/Types"
 import { AnthropicClient, type MessageStreamEvent } from "./AnthropicClient.ts"
 import { addGenAIAnnotations } from "./AnthropicTelemetry.ts"
-import type { AnthropicTool } from "./AnthropicTool.ts"
+import * as AnthropicTool from "./AnthropicTool.ts"
 import type * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
 
@@ -1218,7 +1218,9 @@ const prepareMessages = Effect.fnUntraced(
                     content.push({
                       type: "tool_search_tool_result",
                       tool_use_id: part.id,
-                      content: part.result as any
+                      content: Array.isArray(part.result)
+                        ? { type: "tool_search_tool_search_result", tool_references: part.result }
+                        : part.result as any
                     })
                     break
                   }
@@ -1449,7 +1451,8 @@ const prepareTools = Effect.fnUntraced(
           name: tool.name,
           input_schema: input_schema as any,
           ...(Predicate.isNotUndefined(description) ? { description } : undefined),
-          ...(Predicate.isNotUndefined(strict) ? { strict } : undefined)
+          ...(Predicate.isNotUndefined(strict) ? { strict } : undefined),
+          ...(Context.get(tool.annotations, AnthropicTool.DeferLoading) ? { defer_loading: true } : undefined)
         })
 
         if (capabilities.supportsStructuredOutput === true) {
@@ -1458,7 +1461,7 @@ const prepareTools = Effect.fnUntraced(
       }
 
       if (Tool.isProviderDefined(tool)) {
-        const providerTool = tool as AnthropicTool
+        const providerTool = tool as AnthropicTool.AnthropicTool
         switch (providerTool.id) {
           case "anthropic.bash_20241022": {
             betas.add("computer-use-2024-10-22")
@@ -1956,7 +1959,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content.tool_references
+              result: part.content.tool_references,
+              providerExecuted: true
             })
           } else {
             parts.push({
@@ -1964,7 +1968,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           }
 
@@ -2009,7 +2014,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: true,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
           } else {
             const idGenerator = yield* IdGenerator.IdGenerator
@@ -2019,7 +2025,8 @@ const makeResponse = Effect.fnUntraced(
               id: part.tool_use_id,
               name: toolName,
               isFailure: false,
-              result: part.content
+              result: part.content,
+              providerExecuted: true
             })
 
             const content = part.content as ReadonlyArray<Generated.BetaResponseWebSearchResultBlock>
@@ -2484,7 +2491,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 } else {
                   const idGenerator = yield* IdGenerator.IdGenerator
@@ -2494,7 +2502,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
 
                   const content = part.content as ReadonlyArray<Generated.BetaResponseWebSearchResultBlock>
@@ -2590,7 +2599,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: false,
-                    result: part.content.tool_references
+                    result: part.content.tool_references,
+                    providerExecuted: true
                   })
                 } else {
                   parts.push({
@@ -2598,7 +2608,8 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.tool_use_id,
                     name: toolName,
                     isFailure: true,
-                    result: part.content
+                    result: part.content,
+                    providerExecuted: true
                   })
                 }
                 break
