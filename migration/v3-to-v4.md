@@ -14317,7 +14317,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Annotations.GenericSchema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
-- `Schema.Annotations.Schema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
+- `Schema.Annotations.Schema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Schema.annotate accepts any string key, so the removed concurrency, batching, and parseOptions keys still type-check but are ignored at runtime. Pass concurrency and other parse options at runtime through SchemaAST.ParseOptions when creating or calling a parser; requests from sibling children share a batch only when that concurrency lets them be pending together, although requests started concurrently inside a transformation or by other fibers can still batch.
 
 - `Schema.Any` -> `Schema.Any`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
@@ -15213,9 +15213,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ArbitraryAnnotationId` -> `Schema.Annotations.ToArbitrary`: Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint.
 
-- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. They have no direct replacement. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
+- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed and have no direct replacement; Schema.annotate accepts the key but ignores it. A RequestResolver batches requests that are pending when its delay ends, so pass concurrency in runtime ParseOptions to let requests from sibling children share a batch. With sequential parsing, the default, children that each await one request send them in separate batches; requests started concurrently inside a transformation, or by other fibers using the same resolver, can still share a batch. Bound batch sizes with the resolver (for example RequestResolver.batchN), not with the parse option.
 
-- `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation.
+- `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation. Requests from sibling children share a batch only when ParseOptions.concurrency lets them be pending together; requests started concurrently inside a transformation or by other fibers can still batch.
 
 - `SchemaAST.BigIntKeyword` -> `SchemaAST.BigInt`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
@@ -15385,7 +15385,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getAnnotation` -> `SchemaAST.resolveAt`: Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription.
 
-- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
+- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. Requests from sibling children share a batch only when ParseOptions.concurrency lets them be pending together; with sequential parsing, children that each await one request send them in separate batches. Requests started concurrently inside a transformation or by other fibers using the same resolver can still batch.
 
 - `SchemaAST.getBrandAnnotation` -> `none`: Runtime brand inspection was removed because Schema.brand is type-only and does not store brand metadata in the AST.
 
