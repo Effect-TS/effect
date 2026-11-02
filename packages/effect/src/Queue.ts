@@ -857,7 +857,7 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
     MutableList.appendAll(self.messages, messages)
     if (self.strategy === "sliding") {
       const capacity = self.capacity <= 0 ? self.state.takers.size : self.capacity
-      MutableList.takeN(self.messages, self.messages.length - capacity)
+      MutableList.takeNVoid(self.messages, self.messages.length - capacity)
     }
     scheduleReleaseTaker(self as Queue<A, E>)
     return []
