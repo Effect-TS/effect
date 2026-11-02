@@ -11,10 +11,11 @@ import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
 import { AuthClient, AuthLayer, TimingLayer, User, UserRpcs, UsersLayer } from "./rpc-schemas.ts"
 
-export class UsersClient extends Context.Service<
-  UsersClient,
-  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>, RpcClientError>
->()("UsersClient") {
+// An interface rather than an inline type: TypeScript 7.1 cannot serialize the
+// inferred class type otherwise (TS5088).
+interface UsersClientService extends RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>, RpcClientError> {}
+
+export class UsersClient extends Context.Service<UsersClient, UsersClientService>()("UsersClient") {
   static readonly layer = Layer.effect(UsersClient)(RpcClient.make(UserRpcs)).pipe(
     Layer.provide(AuthClient)
   )

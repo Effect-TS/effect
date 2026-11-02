@@ -418,12 +418,19 @@ export const catchTag: {
   ): HttpClient.With<E1 | ExcludeTag<E, K extends NonEmptyReadonlyArray<string> ? K[number] : K>, R1 | R> =>
     transformResponse(
       self,
+      // TypeScript 7.1 does not relate the error type `Effect.catchTag` returns
+      // to the `ExcludeTag` declared here, because each declares its own copy
+      // of the conditional on `K`. The assertion restates the declared type.
       (effect) =>
         Effect.catchTag<HttpClientResponse.HttpClientResponse, E, R, K, R1, E1, HttpClientResponse.HttpClientResponse>(
           effect,
           tag,
           f
-        )
+        ) as Effect.Effect<
+          HttpClientResponse.HttpClientResponse,
+          E1 | ExcludeTag<E, K extends NonEmptyReadonlyArray<string> ? K[number] : K>,
+          R | R1
+        >
     )
 )
 
