@@ -159,7 +159,10 @@ export const make = Effect.fnUntraced(
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
         function(_request, _server) {
-          return new Response("not found", { status: 404 })
+          return new Response("service unavailable", {
+            status: 503,
+            headers: { "cache-control": "no-store", "retry-after": "1" }
+          })
         }
       ]
     const server = Bun.serve<WebSocketContext, R>({
