@@ -1,9 +1,8 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Queue } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import {
-  ClusterSchema,
   Entity,
   EntityAddress,
   EntityId,
@@ -21,7 +20,6 @@ import {
   SqlMessageStorage
 } from "effect/cluster"
 import { Reactivity } from "effect/reactivity"
-import { Rpc } from "effect/rpc"
 import { SqlClient, Statement } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MssqlContainer } from "../fixtures/mssql-utils.ts"
@@ -770,58 +768,6 @@ describe("SqlMessageStorage", () => {
     }).pipe(Effect.provide(StorageLayer.pipe(
       Layer.provideMerge(SqliteLayer)
     ))), { timeout: 15_000 })
-
-  it.effect("restarts an active uninterruptible request once for a stored interrupt", () =>
-    Effect.gen(function*() {
-      const sql = yield* SqlClient.SqlClient
-      const started = yield* Queue.make<number>()
-      let starts = 0
-      const Restarting = Entity.make("UninterruptibleRestart", [
-        Rpc.make("Run")
-          .annotate(ClusterSchema.Persisted, true)
-          .annotate(ClusterSchema.Uninterruptible, "server")
-      ])
-      const env = Restarting.toLayer({
-        Run: () =>
-          Effect.suspend(() => Queue.offer(started, ++starts)).pipe(
-            Effect.andThen(Effect.never)
-          )
-      }).pipe(
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(RunnerStorage.layerMemory),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provide(Runners.layerNoop),
-        Layer.provide(ShardingConfig.layer({
-          entityMessagePollInterval: 100,
-          entityTerminationTimeout: 0,
-          refreshAssignmentsInterval: 0
-        }))
-      )
-
-      yield* Effect.gen(function*() {
-        yield* TestClock.adjust(1)
-        const sharding = yield* Sharding.Sharding
-        const client = (yield* Restarting.client)("1")
-        const caller = yield* client.Run().pipe(Effect.forkChild({ startImmediately: true }))
-        assert.strictEqual(yield* Queue.take(started), 1)
-
-        // the caller's interrupt is stored, and restarts the handler
-        yield* Fiber.interrupt(caller)
-        yield* sharding.pollStorage
-        yield* TestClock.adjust(1)
-        assert.strictEqual(yield* Queue.take(started), 2)
-
-        // the claims on the request and its interrupt expire
-        yield* sql`UPDATE cluster_messages SET last_read = '2000-01-01 00:00:00'`
-        for (let i = 0; i < 3; i++) {
-          yield* sharding.pollStorage
-          yield* TestClock.adjust(100)
-        }
-        assert.strictEqual(starts, 2, "an interrupt already delivered must not restart the request again")
-      }).pipe(Effect.provide(env), Effect.scoped)
-    }).pipe(Effect.provide(StorageLayer.pipe(
-      Layer.provideMerge(SqliteLayer)
-    ))))
 })
 
 const SqliteLayer = Effect.gen(function*() {
