@@ -1189,7 +1189,11 @@ const make = Effect.gen(function*() {
 
         if (exhaustive && releasedHeld !== undefined) {
           for (const address of releasedHeld) {
-            if (!isHeldBack(address)) MutableHashMap.remove(heldEnvelopes, address)
+            // A request handed to mailbox resumption has not been delivered
+            // yet, and resumption sends its envelopes once it is. Leftovers
+            // are dropped by the first exhaustive read after it finishes.
+            if (isHeldBack(address) || MutableHashMap.has(entityResumptionState, address)) continue
+            MutableHashMap.remove(heldEnvelopes, address)
           }
         }
 
