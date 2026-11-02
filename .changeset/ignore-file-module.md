@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add the unstable `IgnoreFile` module for `.gitignore` and `.dockerignore` rules, and an `ignore` option on `FileSystem.glob`. Both may receive breaking changes in minor releases.
+Add the experimental `IgnoreFile` module for `.gitignore` and `.dockerignore` rules, which may change in patch releases, and an unstable `ignore` option on `FileSystem.glob`, which may change in minor releases.

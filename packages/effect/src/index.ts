@@ -327,7 +327,7 @@ export * as HashSet from "./HashSet.ts"
 export * as HKT from "./HKT.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 export * as IgnoreFile from "./IgnoreFile.ts"
