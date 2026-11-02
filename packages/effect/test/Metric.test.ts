@@ -1,7 +1,7 @@
 import * as OtelMetrics from "@effect/opentelemetry/OtelMetrics"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Context, Duration, Fiber, Layer, Metric, Ref, String } from "effect"
+import { Context, Duration, Exit, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
 import { constVoid } from "effect/Function"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
@@ -911,7 +911,7 @@ describe("Metric", () => {
 
   describe("track, trackErrors and trackDefects", () => {
     type Counter = Metric.Metric<unknown, Metric.CounterState<number>>
-    const exits = [Effect.succeed(1), Effect.fail(1), Effect.die(1)]
+    const effects = [Effect.succeed(1), Effect.fail(1), Effect.die(1)]
     const cases: ReadonlyArray<
       readonly [string, (self: Effect.Effect<number, number>, counter: Counter) => Effect.Effect<number, number>, [
         number,
@@ -919,20 +919,22 @@ describe("Metric", () => {
         number
       ]]
     > = [
-      ["track", (self, counter) => Effect.track(self, counter), [1, 2, 3]],
-      ["trackErrors", (self, counter) => Effect.trackErrors(self, counter), [0, 1, 1]],
-      ["trackDefects", (self, counter) => Effect.trackDefects(self, counter), [0, 0, 1]]
+      ["track", (self, counter) => self.pipe(Effect.track(counter)), [1, 2, 3]],
+      ["trackErrors", (self, counter) => self.pipe(Effect.trackErrors(counter)), [0, 1, 1]],
+      ["trackDefects", (self, counter) => self.pipe(Effect.trackDefects(counter)), [0, 0, 1]]
     ]
 
     for (const [name, track, expected] of cases) {
       it.effect(`${name} updates after success, failure and defect: ${expected.join(", ")}`, () =>
         Effect.gen(function*() {
           const counter = Metric.counter(nextId()).pipe(Metric.withConstantInput(1))
+          const exits: Array<Exit.Exit<number, number>> = []
           const counts: Array<number> = []
-          for (const exit of exits) {
-            yield* Effect.exit(track(exit, counter))
+          for (const effect of effects) {
+            exits.push(yield* Effect.exit(track(effect, counter)))
             counts.push((yield* Metric.value(counter)).count)
           }
+          assert.deepStrictEqual(exits, [Exit.succeed(1), Exit.fail(1), Exit.die(1)])
           assert.deepStrictEqual(counts, expected)
         }))
     }
