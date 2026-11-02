@@ -1239,7 +1239,10 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
             ["..\\/a\\/x.ts", src],
             [`${escapedRoot}\\/src\\/index.ts`, root],
             // one literal entry would skip the ignored `src` ancestor
-            ["src\\/index.ts", root]
+            ["src\\/index.ts", root],
+            // compiling discards a branch with `.` after `**`, which must not hide it
+            ["{**/src\\/index.ts/.,README.md}", root],
+            ["**/\\.\\./.", root]
           ]
         ) {
           const exit = yield* Effect.exit(fs.glob(pattern, { root: base, ignore }))
