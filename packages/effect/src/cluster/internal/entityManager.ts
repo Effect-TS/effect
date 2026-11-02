@@ -123,10 +123,11 @@ export type EntityState = {
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
     /**
-     * Interrupts and the last ack delivered to the running request. Storage
-     * returns them again once their claims expire, until the request replies.
+     * Whether an interrupt, and which ack, was delivered to the running
+     * request. Storage returns them again once their claims expire, until the
+     * request replies.
      */
-    deliveredInterrupts?: Set<Snowflake.Snowflake> | undefined
+    interrupted?: boolean | undefined
     deliveredAck?: Snowflake.Snowflake | undefined
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
@@ -323,7 +324,7 @@ export const make = Effect.fnUntraced(function*<
         if (!request.delivered) continue
         request.sentExit = false
         // the replayed handler has not seen them
-        request.deliveredInterrupts = undefined
+        request.interrupted = undefined
         request.deliveredAck = undefined
         yield* write(0, requestEnvelope(request), requestWriteOptions(request))
       }
@@ -690,7 +691,8 @@ export const make = Effect.fnUntraced(function*<
 
   // Interrupts and acks are delivered once to a running request. They stay in
   // storage until the request replies, so they are delivered again when it is
-  // replayed, e.g. on another runner after a shutdown.
+  // replayed, e.g. on another runner after a shutdown. Interrupts carry nothing
+  // but the cancellation, so one per activation is enough.
   function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
     const entry = server.activeRequests.get(message.envelope.requestId)
     if (!entry) {
@@ -711,13 +713,13 @@ export const make = Effect.fnUntraced(function*<
         }
       )
     }
-    if (entry.deliveredInterrupts?.has(envelope.id)) {
+    if (entry.interrupted) {
       return Effect.void
     }
     return Effect.map(
       server.write(0, { _tag: "Interrupt", requestId: envelope.requestId as any, interruptors: [] }),
       () => {
-        ;(entry.deliveredInterrupts ??= new Set()).add(envelope.id)
+        entry.interrupted = true
       }
     )
   }
