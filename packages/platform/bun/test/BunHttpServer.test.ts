@@ -29,6 +29,13 @@ import { join } from "node:path"
 const fetchText = (url: string) =>
   Effect.promise(() => fetch(url, { headers: { connection: "close" } }).then((response) => response.text()))
 
+const fetchResponse = (url: string) =>
+  Effect.promise(async () => {
+    const response = await fetch(url, { headers: { connection: "close" } })
+    await response.arrayBuffer()
+    return response
+  })
+
 const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>, path = "/") =>
   Effect.callback<number, Error>((resume) => {
     const socket = Net.createConnection({ host: "127.0.0.1", port })
@@ -539,6 +546,25 @@ describe("BunHttpServer", () => {
       assert.strictEqual(yield* fetchText(url), "second")
       yield* Scope.close(secondScope, Exit.void)
       assert.strictEqual(yield* fetchText(url), "first")
+    }))
+
+  it.effect("answers 503 while no app is served", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0, disablePreemptiveShutdown: true })
+      const serveScope = yield* Scope.fork(yield* Effect.scope)
+      const url = NetAddress.formatUrlUnsafe(server.address)
+      const assertUnavailable = Effect.gen(function*() {
+        const response = yield* fetchResponse(url)
+        assert.strictEqual(response.status, 503)
+        assert.strictEqual(response.headers.get("cache-control"), "no-store")
+        assert.strictEqual(response.headers.get("retry-after"), "1")
+      })
+
+      yield* assertUnavailable
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("served"))).pipe(Scope.provide(serveScope))
+      assert.strictEqual(yield* fetchText(url), "served")
+      yield* Scope.close(serveScope, Exit.void)
+      yield* assertUnavailable
     }))
 
   it.effect("preserves configured routes while changing handlers", () =>
