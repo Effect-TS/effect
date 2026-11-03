@@ -12,7 +12,7 @@
  */
 import { dual } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
-import type { TupleOf, TupleOfAtLeast } from "./Types.ts"
+import type { Tags, TupleOf, TupleOfAtLeast } from "./Types.ts"
 
 /**
  * A function that decides whether a value of type `A` satisfies a condition.
@@ -1201,6 +1201,7 @@ export const hasProperty: {
  * ```
  *
  * @see {@link hasProperty}
+ * @see {@link isTaggedStrict} for values already typed as a tagged union
  * @stability stable
  * @category guards
  * @since 2.0.0
@@ -1212,6 +1213,73 @@ export const isTagged: {
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
+
+type StrictTag<T> = [Tags<T>] extends [never] ? string : Tags<T>
+
+// `T` reaches the members only through `infer U`, so a typed `filter` result cannot
+// infer `T` from the guard; `Extract` keeps the guard assignable to `T`. Primitive
+// members drop out because the runtime check requires an object, and members whose
+// `_tag` cannot be `K` reduce to `never` through the intersection.
+type StrictTagged<T, K extends string> = Extract<
+  T extends infer U ? U extends string | number | boolean | bigint | symbol | null | undefined ? never
+    : U extends { readonly _tag: K } ? U
+    : U & { _tag: K }
+    : never,
+  T
+>
+
+/**
+ * Checks whether a value has a `_tag` property equal to the given tag, accepting
+ * only the tags of the value's type.
+ *
+ * **When to use**
+ *
+ * Use when the value is already typed as a tagged union, so a misspelled tag is
+ * a type error, both branches narrow, and the guard keeps the member's fields
+ * when passed as a callback.
+ *
+ * **Details**
+ *
+ * The runtime check is the same as `isTagged`. When the input type has no
+ * `_tag`, such as `unknown` or `Error`, any tag is accepted and the value
+ * narrows as with `isTagged`.
+ *
+ * **Gotchas**
+ *
+ * When the input is typed by a type parameter, such as `size: A` with
+ * `A extends Size`, its tags are not known at the call site and the call does
+ * not compile; use `isTagged` there.
+ *
+ * The curried form learns the input type from the call it is passed to, such
+ * as `Array.filter` or `Predicate.or` inside it. Called on its own, as in
+ * `const isPx = Predicate.isTaggedStrict("Px")`, the input is `unknown` and
+ * any tag is accepted.
+ *
+ * **Example** (Narrowing a tagged union)
+ *
+ * ```ts import.meta.vitest
+ * import { Array, Predicate } from "effect"
+ *
+ * type Size =
+ *   | { readonly _tag: "Auto" }
+ *   | { readonly _tag: "Px"; readonly value: number }
+ *
+ * const width = (size: Size): number => Predicate.isTaggedStrict(size, "Auto") ? 0 : size.value
+ * const sizes: ReadonlyArray<Size> = [{ _tag: "Auto" }, { _tag: "Px", value: 10 }]
+ *
+ * width({ _tag: "Px", value: 10 }) // => 10
+ * Array.filter(sizes, Predicate.isTaggedStrict("Px")) // => [{ _tag: "Px", value: 10 }]
+ * ```
+ *
+ * @see {@link isTagged} for values typed by a type parameter
+ * @stability stable
+ * @category guards
+ * @since 4.2.0
+ */
+export const isTaggedStrict: {
+  <T, K extends StrictTag<T>>(tag: K): (self: T) => self is StrictTagged<T, K>
+  <T, K extends StrictTag<T>>(self: T, tag: K): self is StrictTagged<T, K>
+} = isTagged as any
 
 /**
  * Checks whether a value is an `Error`.
