@@ -163,6 +163,7 @@ export interface ServerRuntimeShape {
   readonly clientRpcs: McpProtocolRegistry.ProtocolRegistry<PublicMcpProtocol.AnyProtocolAdapter>["clientRpcs"]
   readonly selectProtocol: (offeredVersion: string) => PublicMcpProtocol.AnyProtocolAdapter
   readonly protocolForInternalTag: (tag: string) => PublicMcpProtocol.AnyProtocolAdapter
+  readonly methodForInternalTag: (tag: string) => string
   readonly routeClientRequest: (
     protocol: PublicMcpProtocol.AnyProtocolAdapter,
     request: RpcMessage.RequestEncoded
@@ -332,6 +333,7 @@ export const make = Effect.fnUntraced(function*(
     clientRpcs: registry.clientRpcs,
     selectProtocol: registry.select,
     protocolForInternalTag: registry.protocolForInternalTag,
+    methodForInternalTag: registry.methodForInternalTag,
     routeClientRequest: registry.routeClientRequest,
     prepareRequest: Effect.fnUntraced(function*(clientId, headers, request) {
       const metadata = asRecord(request.payload)?._meta
