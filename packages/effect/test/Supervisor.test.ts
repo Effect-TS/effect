@@ -285,9 +285,16 @@ describe("Supervisor", () => {
         assert.deepStrictEqual(block.members, [first, second])
       }))
 
-    it.effect("Effect.never reports itself, and external waits report undefined", () =>
+    it.effect("Effect.never reports itself, Effect.callback its blockedOn option, and external waits undefined", () =>
       Effect.gen(function*() {
         assert.strictEqual((yield* blockOf(Effect.never)).blockedOn, Effect.never)
+        const blockedOn = {}
+        let signal: AbortSignal | undefined
+        const explicit = Effect.callback<void>((_resume, signal_) => {
+          signal = signal_
+        }, { blockedOn })
+        assert.strictEqual((yield* blockOf(explicit)).blockedOn, blockedOn)
+        assert.isTrue(signal?.aborted)
         assert.isUndefined((yield* blockOf(Effect.callback<void>(() => {}))).blockedOn)
         assert.isUndefined((yield* blockOf(Effect.promise(() => new Promise<void>(() => {})))).blockedOn)
         assert.isUndefined((yield* blockOf(TestClock.withLive(Effect.sleep("1 hour")))).blockedOn)
