@@ -2110,6 +2110,63 @@ describe("HttpServer", () => {
       }
     }).pipe(Effect.provide(layerTestWebsocket)))
 
+  // Node 26 parses chunked upgrade bodies, so only older versions refuse them.
+  it.effect.skipIf(Number(process.versions.node.split(".")[0]) >= 26)(
+    "closes a refused chunked upgrade when the body arrives after the 411",
+    () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.add("POST", "/attach", Effect.succeed(HttpServerResponse.empty())).pipe(
+          HttpRouter.serve,
+          Layer.build
+        )
+        const server = yield* HttpServer.HttpServer
+        const port = (server.address as NetAddress.InetAddress).port
+        const response = yield* Effect.callback<string>((resume) => {
+          // Half-open, so the body is still sent after the server ends its side.
+          const socket = Net.createConnection({ host: "127.0.0.1", port, allowHalfOpen: true })
+          let received = ""
+          socket.on("connect", () =>
+            socket.write(
+              "POST /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\nTransfer-Encoding: chunked\r\n\r\n"
+            ))
+          socket.once("data", () => socket.end("5\r\nhello\r\n0\r\n\r\n"))
+          socket.on("data", (data) => {
+            received += data.toString()
+          })
+          socket.on("error", constVoid)
+          socket.on("close", () => resume(Effect.succeed(received)))
+          return Effect.sync(() => socket.destroy())
+        })
+        assert.match(response, /^HTTP\/1\.1 411 /)
+      }).pipe(Effect.provide(layerTestWebsocket))
+  )
+
+  it.effect("closes an upgrade answered with a response when more bytes arrive after it", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add("GET", "/other", Effect.succeed(HttpServerResponse.empty())).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const response = yield* Effect.callback<string>((resume) => {
+        // Half-open, so the bytes are still sent after the server ends its side.
+        const socket = Net.createConnection({ host: "127.0.0.1", port, allowHalfOpen: true })
+        let received = ""
+        socket.on("connect", () =>
+          socket.write("GET /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n"))
+        socket.once("data", () =>
+          socket.end("early"))
+        socket.on("data", (data) => {
+          received += data.toString()
+        })
+        socket.on("error", constVoid)
+        socket.on("close", () => resume(Effect.succeed(received)))
+        return Effect.sync(() => socket.destroy())
+      })
+      assert.match(response, /^HTTP\/1\.1 404 /)
+    }).pipe(Effect.provide(layerTestWebsocket)))
+
   it.effect.each([
     {
       name: "when the unread body exceeds MaxBodySize",
