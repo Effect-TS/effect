@@ -4,7 +4,12 @@ import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import { InMemorySpanExporter, SimpleSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base"
+import {
+  InMemorySpanExporter,
+  type ReadableSpan,
+  SimpleSpanProcessor,
+  type SpanExporter
+} from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -13,6 +18,7 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as ScopedCache from "effect/ScopedCache"
 import * as EffectTracer from "effect/Tracer"
 import * as Version from "effect/Version"
 
@@ -150,6 +156,28 @@ describe("Tracer", () => {
 
         assert.isTrue(Option.isNone(child.parent))
       }).pipe(Effect.provide(TracingLayer)))
+
+    it.effect("parents ScopedCache lookups to the local requesting span", () =>
+      Effect.gen(function*() {
+        const cache = yield* ScopedCache.make({
+          capacity: 16,
+          lookup: (_key: string) => OtelTracer.currentOtelSpan.pipe(Effect.withSpan("lookup"))
+        })
+        const lookup =
+          (yield* ScopedCache.get(cache, "key").pipe(Effect.withSpan("request"))) as unknown as ReadableSpan
+        assert.deepStrictEqual(
+          [lookup.parentSpanContext?.isRemote ?? false, lookup.spanContext().traceState?.serialize()],
+          [false, "vendor=value"]
+        )
+      }).pipe(
+        Effect.withParentSpan(OtelTracer.makeExternalSpan({
+          traceId: "1".repeat(32),
+          spanId: "2".repeat(16),
+          traceFlags: OtelApi.TraceFlags.SAMPLED,
+          traceState: "vendor=value"
+        })),
+        Effect.provide(TracingLayer)
+      ))
 
     it.effect("supervisor sets context", () =>
       Effect.sync(() => {
