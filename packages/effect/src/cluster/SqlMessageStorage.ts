@@ -983,8 +983,16 @@ export const makeEncodedStorage: (options?: {
 
     deleteProcessed: Effect.fnUntraced(
       function*({ completedBefore, entityType, limit }) {
-        // last_reply_id is the WithExit reply id, so its timestamp is the completion time
-        const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
+        // No reply is older than -Infinity, the cutoff of an infinite retention
+        if (!(completedBefore > -Infinity)) return 0
+        // last_reply_id is the WithExit reply id, so its timestamp is the
+        // completion time. Reply timestamps are whole milliseconds, so rounding
+        // a fractional cutoff up keeps every reply before it.
+        const cutoff = Snowflake.make({
+          timestamp: Math.ceil(completedBefore),
+          machineId: MachineId.make(0),
+          sequence: 0
+        })
         // Lock the selected requests so a concurrent clearReplies cannot reset
         // them before the delete. Skipped requests wait for a later call.
         const rows = yield* lockDeletable(
