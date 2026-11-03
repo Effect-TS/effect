@@ -983,10 +983,11 @@ export const makeEncodedStorage: (options?: {
 
     deleteProcessed: Effect.fnUntraced(
       function*({ completedBefore, entityType, limit }) {
-        // Reply ids start at the snowflake epoch, so no reply completed before
-        // a cutoff at or before it. This also covers -Infinity, the cutoff of
-        // an infinite retention, and NaN.
-        if (!(completedBefore > Snowflake.constEpochMillis)) return 0
+        // Snowflake ids are signed, so a reply completed before the snowflake
+        // epoch has a negative id, down to 2 ** 41 milliseconds before it. No
+        // reply completed before a cutoff at or below that. This also covers
+        // -Infinity, the cutoff of an infinite retention, and NaN.
+        if (!(completedBefore > Snowflake.constEpochMillis - 2 ** 41)) return 0
         // last_reply_id is the WithExit reply id, so its timestamp is the
         // completion time. Reply timestamps are whole milliseconds, so rounding
         // a fractional cutoff up keeps every reply before it. Every id is below
