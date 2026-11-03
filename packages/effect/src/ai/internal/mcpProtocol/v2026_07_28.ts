@@ -1,7 +1,5 @@
 /**
  * MCP v2026-07-28 wire projections.
- *
- * @internal
  */
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"

@@ -1,7 +1,5 @@
 /**
  * Runtime descriptors for MCP protocol adapters.
- *
- * @internal
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"

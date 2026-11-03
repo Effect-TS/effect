@@ -1,6 +1,3 @@
-/**
- * @internal
- */
 import * as Effect from "../../../Effect.ts"
 import * as Base64 from "../../../encoding/Base64.ts"
 import * as Match from "../../../Match.ts"

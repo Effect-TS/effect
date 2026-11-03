@@ -1,8 +1,6 @@
 /**
  * The Skills extension (SEP-2640): wire schemas and the catalog behind a
  * static skill.
- *
- * @internal
  */
 import * as Cause from "../../Cause.ts"
 import * as Digest from "../../crypto/Digest.ts"
