@@ -9,7 +9,7 @@
  * bound.
  *
  * @stability unstable
- * @since 4.2.0
+ * @since 4.1.3
  */
 import * as Clock from "../Clock.ts"
 import * as Duration from "../Duration.ts"
@@ -79,7 +79,7 @@ const batchSize = 1000
  *
  * @stability unstable
  * @category constructors
- * @since 4.2.0
+ * @since 4.1.3
  */
 export const make = <Type extends string, Rpcs extends Rpc.Any>(options: {
   readonly entity: Entity<Type, Rpcs>
