@@ -553,8 +553,9 @@ export const make = Effect.fnUntraced(function*(
                   : {}),
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
-              const extensions = McpSkills.declareExtension(options.serverInfo.extensions, presence.skills)
-              if (extensions !== undefined) capabilities.extensions = extensions
+              const extensions = { ...options.serverInfo.extensions }
+              delete extensions[McpSkills.EXTENSION_ID]
+              if (Object.keys(extensions).length > 0) capabilities.extensions = extensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,

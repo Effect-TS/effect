@@ -1,6 +1,6 @@
 /**
- * The Skills extension (SEP-2640): its wire vocabulary, the catalog behind a
- * static skill, and the handlers shared by the sessionful adapters.
+ * The Skills extension (SEP-2640): wire schemas and the catalog behind a
+ * static skill.
  *
  * @internal
  */
@@ -60,41 +60,6 @@ const Skill = Schema.Struct({
 // Listed entries are checked one at a time, so that a client can leave out an
 // invalid entry instead of rejecting the whole page.
 const ListedSkills = Schema.Array(Schema.Unknown)
-
-/**
- * @internal
- */
-export class LegacyListSkills extends Rpc.make("skills/list", {
-  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, skills: ListedSkills }),
-  error: Legacy.McpError,
-  payload: Schema.UndefinedOr(Legacy.PaginatedRequest)
-}) {}
-
-/**
- * @internal
- */
-export class LegacyGetSkill extends Rpc.make("skills/get", {
-  success: Schema.Struct({ ...Legacy.ResultMeta.fields, skill: Skill }),
-  error: Legacy.McpError,
-  payload: { ...Legacy.RequestMeta.fields, uri: Schema.String }
-}) {}
-
-/**
- * @internal
- */
-export class LegacyReadResourceDirectory extends Rpc.make("resources/directory/read", {
-  success: Schema.Struct({ ...Legacy.PaginatedResult.fields, resources: Schema.Array(Legacy.Resource) }),
-  error: Legacy.McpError,
-  payload: { ...Legacy.PaginatedRequest.fields, uri: Schema.String }
-}) {}
-
-/**
- * The extension's methods on revisions before 2026-07-28, which have no
- * result caching attributes.
- *
- * @internal
- */
-export class LegacyRpcs extends RpcGroup.make(LegacyListSkills, LegacyGetSkill, LegacyReadResourceDirectory) {}
 
 /**
  * @internal
@@ -191,39 +156,6 @@ export const requireSkills = (core: McpCore.McpCore, method: string) =>
  */
 export const rejectCursor = (cursor: string | undefined) =>
   cursor === undefined ? Effect.void : Effect.fail(unknownCursor)
-
-/**
- * Handlers for {@link LegacyRpcs}, for the sessionful adapters.
- *
- * @internal
- */
-export const legacyHandlers = (core: McpCore.McpCore) => ({
-  "skills/list": Effect.fnUntraced(function*(request: typeof LegacyListSkills.payloadSchema.Type) {
-    yield* requireSkills(core, "skills/list")
-    yield* rejectCursor(request?.cursor)
-    const skills = yield* McpProtocol.listForClient(core.skills.list)
-    return { skills }
-  }),
-  "skills/get": Effect.fnUntraced(function*(request: typeof LegacyGetSkill.payloadSchema.Type) {
-    yield* requireSkills(core, "skills/get")
-    const client = yield* PublicMcpSchema.McpServerClient
-    const skill = yield* core.skills.get(request.uri, McpProtocol.invocationFromClient(client)).pipe(
-      Effect.mapError(McpProtocol.ProtocolError.fromFeature)
-    )
-    return { skill }
-  }),
-  "resources/directory/read": Effect.fnUntraced(function*(
-    request: typeof LegacyReadResourceDirectory.payloadSchema.Type
-  ) {
-    yield* requireSkills(core, "resources/directory/read")
-    yield* rejectCursor(request.cursor)
-    const client = yield* PublicMcpSchema.McpServerClient
-    const resources = yield* core.skills.readDirectory(request.uri, McpProtocol.invocationFromClient(client)).pipe(
-      Effect.mapError(McpProtocol.ProtocolError.fromFeature)
-    )
-    return { resources }
-  })
-})
 
 // =============================================================================
 // Static skills

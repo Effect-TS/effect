@@ -9,13 +9,20 @@ import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 import { createHash } from "node:crypto"
-import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 
-// https://github.com/modelcontextprotocol/ext-skills/blob/main/specification/stable/skills.mdx
+// https://skills.extensions.modelcontextprotocol.io/specification/beta/skills
 
 const modern = McpProtocol.v2026_07_28
+
+const legacyProtocols = [
+  McpProtocol.v2024_11_05,
+  McpProtocol.v2025_03_26,
+  McpProtocol.v2025_06_18,
+  McpProtocol.v2025_11_25
+] as const
 
 const metadata = {
   "io.modelcontextprotocol/protocolVersion": modern.protocolVersion,
@@ -267,53 +274,77 @@ describe("McpServer skills", () => {
       }))
   })
 
-  describe("sessionful revisions", () => {
-    for (const protocol of [McpProtocol.v2025_11_25, McpProtocol.v2024_11_05]) {
-      it.effect(`serves the extension without cache attributes on ${protocol.protocolVersion}`, () =>
+  describe("mixed protocol server", () => {
+    for (const protocols of [[modern, ...legacyProtocols], [...legacyProtocols, modern]] as const) {
+      // https://skills.extensions.modelcontextprotocol.io/specification/beta/skills#protocol-revision
+      // https://skills.extensions.modelcontextprotocol.io/specification/beta/skills#capability-negotiation
+      // https://skills.extensions.modelcontextprotocol.io/specification/beta/skills#resource-mapping
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#backward-compatibility
+      it.effect(`should preserve modern Skills support when legacy sessions share a server with ${protocols[0].protocolVersion} configured first`, () =>
         Effect.gen(function*() {
           const harness = yield* makeHttpHarness(Skills.pipe(Layer.provideMerge(makeServerLayer({
             name: "SkillsServer",
-            protocols: [protocol],
-            extensions: { "example/other": {} }
+            protocols,
+            extensions: { "example/other": {}, "io.modelcontextprotocol/skills": { directoryRead: true } }
           }))))
-          const initialize = yield* harness.post({
-            jsonrpc: "2.0",
-            id: "initialize",
-            method: "initialize",
-            params: {
-              protocolVersion: protocol.protocolVersion,
-              capabilities: {},
-              clientInfo: { name: "test", version: "1.0.0" }
-            }
-          })
-          const initialized = (yield* readMcpHttpResponse(initialize)) as any
-          assert.deepStrictEqual(initialized.result.capabilities.extensions, {
+          const uri = "skill://acme/billing/refunds/SKILL.md"
+          const { message: before } = yield* call(harness, "server/discover")
+          assert.deepStrictEqual(before.result.capabilities.extensions, {
             "example/other": {},
             "io.modelcontextprotocol/skills": { directoryRead: true }
           })
+          assert.isDefined(before.result.capabilities.resources)
 
-          const headers = yield* initializeHttpSession(harness, protocol)
-          const post = (method: string, params: Record<string, unknown>) =>
-            harness.post({ jsonrpc: "2.0", id: 2, method, params }, headers).pipe(
-              Effect.flatMap(readMcpHttpResponse),
-              Effect.map((message) => message as any)
-            )
+          for (const protocol of legacyProtocols) {
+            const initialized = yield* harness.post({
+              jsonrpc: "2.0",
+              id: "initialize",
+              method: "initialize",
+              params: {
+                protocolVersion: protocol.protocolVersion,
+                capabilities: {},
+                clientInfo: { name: "legacy", version: "1.0.0" }
+              }
+            })
+            const response = (yield* readMcpHttpResponse(initialized)) as any
+            assert.strictEqual(response.result.protocolVersion, protocol.protocolVersion)
+            assert.deepStrictEqual(response.result.capabilities.extensions, { "example/other": {} })
+            assert.isDefined(response.result.capabilities.resources)
+            const sessionId = initialized.headers.get("Mcp-Session-Id")
+            assert.isNotNull(sessionId)
+            const headers = { "Mcp-Session-Id": sessionId, "Mcp-Protocol-Version": protocol.protocolVersion }
+            yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, headers)
 
-          const list = yield* post("skills/list", {})
-          assert.deepStrictEqual(Object.keys(list.result), ["skills"])
-          assert.strictEqual(list.result.skills.length, 2)
+            for (const method of ["skills/list", "skills/get", "resources/directory/read"]) {
+              const legacyResponse = yield* harness.post({ jsonrpc: "2.0", id: 2, method, params: { uri } }, headers)
+              const message = (yield* readMcpHttpResponse(legacyResponse)) as any
+              assert.strictEqual(message.error.code, -32601, `${protocol.protocolVersion}: ${method}`)
+            }
+            const resourceResponse = yield* harness.post({
+              jsonrpc: "2.0",
+              id: 3,
+              method: "resources/read",
+              params: { uri }
+            }, headers)
+            const resource = (yield* readMcpHttpResponse(resourceResponse)) as any
+            assert.strictEqual(resource.result.contents[0].text, REFUNDS_SKILL_MD)
 
-          const get = yield* post("skills/get", { uri: "skill://acme/billing/refunds/SKILL.md" })
-          assert.deepStrictEqual(Object.keys(get.result), ["skill"])
-          assert.strictEqual(get.result.skill.frontmatter.name, "refunds")
-
-          const missing = yield* post("skills/get", { uri: "skill://acme/missing/SKILL.md" })
-          assert.strictEqual(missing.error.code, -32602)
-
-          const directory = yield* post("resources/directory/read", { uri: "skill://acme" })
-          assert.deepStrictEqual(directory.result, {
-            resources: [{ uri: "skill://acme/billing", name: "billing", mimeType: "inode/directory" }]
-          })
+            for (
+              const [method, params] of [
+                ["skills/list", {}],
+                ["skills/get", { uri }],
+                ["resources/directory/read", { uri: "skill://acme/billing/refunds" }]
+              ] as const
+            ) {
+              const { message } = yield* call(harness, method, params)
+              assert.strictEqual(message.result.resultType, "complete", method)
+              if (method === "skills/list") assert.strictEqual(message.result.skills.length, 2)
+              if (method === "skills/get") assert.strictEqual(message.result.skill.uri, uri)
+              if (method === "resources/directory/read") assert.isAbove(message.result.resources.length, 0)
+            }
+          }
+          const { message: after } = yield* call(harness, "server/discover")
+          assert.deepStrictEqual(after.result.capabilities, before.result.capabilities)
         }))
     }
   })

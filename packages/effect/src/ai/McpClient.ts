@@ -291,6 +291,9 @@ export const make: (options: {
   const protocol = transport.protocol
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
+  if (!modern && options.extensions?.skills === true) {
+    return yield* fail(new UnsupportedError({ description: "Skills require MCP 2026-07-28" }))
+  }
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
   const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
   const closed = yield* Deferred.make<never, McpClientError>()
