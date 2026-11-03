@@ -2109,6 +2109,34 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("uses call_id for streamed shell calls and keeps the item ID in metadata", () =>
+      Effect.gen(function*() {
+        const item = {
+          type: "shell_call",
+          id: "shell_item_123",
+          call_id: "call_shell_456",
+          status: "completed",
+          environment: null,
+          action: { commands: ["ls"], timeout_ms: null, max_output_length: null }
+        } as const
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "Run a shell command",
+          toolkit: Toolkit.make(OpenAiTool.Shell({})),
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([
+            { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+          ]))
+        )
+
+        const call = parts.find((part) => part.type === "tool-call")
+        assert.isDefined(call)
+        deepStrictEqual([call.id, call.metadata.openai?.itemId], [item.call_id, item.id])
+      }))
+
     it.effect.each(
       [
         {
