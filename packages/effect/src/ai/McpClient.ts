@@ -298,7 +298,9 @@ export const make: (options: {
   const modern = version === "2026-07-28"
   const skillsEnabled = options.extensions?.skills === true
   if (skillsEnabled && !modern) {
-    return yield* fail(new UnsupportedError({ description: "The MCP Skills extension requires protocol 2026-07-28" }))
+    return yield* fail(
+      new UnsupportedError({ description: "The MCP Skills extension requires at least protocol 2026-07-28" })
+    )
   }
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
   const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
