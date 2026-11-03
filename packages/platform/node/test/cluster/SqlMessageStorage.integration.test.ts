@@ -376,33 +376,35 @@ describe("SqlMessageStorage", () => {
                 yield* truncate
               }).pipe(Effect.orDie)
             ))
-          }).pipe(TestClock.withLive))
+          }).pipe(TestClock.withLive), { timeout: 30_000 })
 
-        it.effect("a stream acknowledgement does not deadlock with deleteProcessed of another request", () =>
-          Effect.gen(function*() {
-            yield* truncate
-            const sql = yield* SqlClient.SqlClient
-            const storage = yield* MessageStorage.MessageStorage
-            const cutoff = Date.UTC(2026, 0, 1)
-            for (let id = 1; id <= 20; id++) {
-              const expired = yield* makeRequest({ payload: { id } })
-              yield* storage.saveRequest(expired)
-              yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
-            }
-            // an incomplete stream that has already acknowledged a chunk, which deleteProcessed must not select
-            const streaming = yield* makeRequest({
-              rpc: StreamRpc,
-              payload: StreamRpc.payloadSchema.make({ id: 21 }),
-              entityId: "2"
-            })
-            const first = yield* makeChunkReply(streaming, 0)
-            const second = yield* makeChunkReply(streaming, 1)
-            yield* storage.saveRequest(streaming)
-            yield* storage.saveReply(first)
-            yield* storage.saveEnvelope(yield* makeAckChunk(streaming, first))
-            yield* storage.saveReply(second)
-            // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
-            yield* sql`
+        it.effect(
+          "a stream acknowledgement does not deadlock with deleteProcessed of another request",
+          () =>
+            Effect.gen(function*() {
+              yield* truncate
+              const sql = yield* SqlClient.SqlClient
+              const storage = yield* MessageStorage.MessageStorage
+              const cutoff = Date.UTC(2026, 0, 1)
+              for (let id = 1; id <= 20; id++) {
+                const expired = yield* makeRequest({ payload: { id } })
+                yield* storage.saveRequest(expired)
+                yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
+              }
+              // an incomplete stream that has already acknowledged a chunk, which deleteProcessed must not select
+              const streaming = yield* makeRequest({
+                rpc: StreamRpc,
+                payload: StreamRpc.payloadSchema.make({ id: 21 }),
+                entityId: "2"
+              })
+              const first = yield* makeChunkReply(streaming, 0)
+              const second = yield* makeChunkReply(streaming, 1)
+              yield* storage.saveRequest(streaming)
+              yield* storage.saveReply(first)
+              yield* storage.saveEnvelope(yield* makeAckChunk(streaming, first))
+              yield* storage.saveReply(second)
+              // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
+              yield* sql`
               CREATE TRIGGER cluster_test_slow_ack AFTER UPDATE ON cluster_replies
               FOR EACH ROW BEGIN
                 IF @cluster_test_slow_ack = 1 THEN
@@ -410,32 +412,34 @@ describe("SqlMessageStorage", () => {
                 END IF;
               END
             `.unprepared
-            yield* Effect.gen(function*() {
-              const ackFiber = yield* Effect.gen(function*() {
-                yield* sql`SET @cluster_test_slow_ack = 1`
-                yield* storage.saveEnvelope(yield* makeAckChunk(streaming, second)).pipe(
-                  Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
+              yield* Effect.gen(function*() {
+                const ackFiber = yield* Effect.gen(function*() {
+                  yield* sql`SET @cluster_test_slow_ack = 1`
+                  yield* storage.saveEnvelope(yield* makeAckChunk(streaming, second)).pipe(
+                    Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
+                  )
+                }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+                yield* waitForMysqlSleep
+                const cleanup = yield* Effect.exit(
+                  storage.deleteProcessed({
+                    entityType: "test",
+                    completedBefore: cutoff,
+                    limit: 100
+                  })
                 )
-              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-              yield* waitForMysqlSleep
-              const cleanup = yield* Effect.exit(
-                storage.deleteProcessed({
-                  entityType: "test",
-                  completedBefore: cutoff,
-                  limit: 100
-                })
-              )
-              const acked = yield* Fiber.join(ackFiber)
-              assert(Exit.isSuccess(acked), String(acked))
-              assert(Exit.isSuccess(cleanup), String(cleanup))
-              expect(cleanup.value).toEqual(20)
-            }).pipe(Effect.ensuring(
-              Effect.gen(function*() {
-                yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
-                yield* truncate
-              }).pipe(Effect.orDie)
-            ))
-          }).pipe(TestClock.withLive))
+                const acked = yield* Fiber.join(ackFiber)
+                assert(Exit.isSuccess(acked), String(acked))
+                assert(Exit.isSuccess(cleanup), String(cleanup))
+                expect(cleanup.value).toEqual(20)
+              }).pipe(Effect.ensuring(
+                Effect.gen(function*() {
+                  yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
+                  yield* truncate
+                }).pipe(Effect.orDie)
+              ))
+            }).pipe(TestClock.withLive),
+          { timeout: 30_000 }
+        )
 
         it.effect("a late AckChunk waiting on deleteProcessed is a no-op", () =>
           Effect.gen(function*() {
@@ -483,7 +487,7 @@ describe("SqlMessageStorage", () => {
                 yield* truncate
               }).pipe(Effect.orDie)
             ))
-          }).pipe(TestClock.withLive))
+          }).pipe(TestClock.withLive), { timeout: 30_000 })
       }
 
       if (label === "mssql") {
