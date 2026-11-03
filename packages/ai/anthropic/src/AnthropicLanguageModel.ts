@@ -1167,6 +1167,7 @@ const prepareMessages = Effect.fnUntraced(
                   if (toolName === "code_execution" && Predicate.hasProperty(part.result, "type")) {
                     if (
                       part.result.type === "code_execution_result" ||
+                      part.result.type === "encrypted_code_execution_result" ||
                       part.result.type === "code_execution_tool_result_error"
                     ) {
                       content.push({
@@ -1894,7 +1895,7 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.tool_use_id,
             name: toolName,
-            isFailure: part.content.type !== "code_execution_result",
+            isFailure: part.content.type === "code_execution_tool_result_error",
             result: part.content,
             providerExecuted: true
           })
@@ -2512,7 +2513,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: part.tool_use_id,
                   name: toolName,
-                  isFailure: part.content.type !== "code_execution_result",
+                  isFailure: part.content.type === "code_execution_tool_result_error",
                   result: part.content,
                   providerExecuted: true
                 })

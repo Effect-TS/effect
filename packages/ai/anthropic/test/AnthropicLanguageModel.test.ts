@@ -2298,6 +2298,18 @@ describe("AnthropicLanguageModel", () => {
         tool_use_id: "srvtoolu_7",
         content: { type: "code_execution_tool_result_error", error_code: "unavailable" }
       },
+      { type: "server_tool_use", id: "srvtoolu_8", name: "code_execution", input: { code: "print(3)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_8",
+        content: {
+          type: "encrypted_code_execution_result",
+          encrypted_stdout: "encrypted",
+          stderr: "",
+          return_code: 0,
+          content: []
+        }
+      },
       { type: "tool_use", id: "toolu_1", name: "ListContacts", input: { name: "Anna" } }
     ]
 
@@ -2372,6 +2384,12 @@ describe("AnthropicLanguageModel", () => {
             .find((part) => part.id === "srvtoolu_1")
           assertDefined(searchResult)
           assert.deepStrictEqual(searchResult.result, toolReferences)
+
+          const encryptedResult = firstParts
+            .filter((part) => part.type === "tool-result")
+            .find((part) => part.id === "srvtoolu_8")
+          assertDefined(encryptedResult)
+          assert.isFalse(encryptedResult.isFailure)
 
           yield* LanguageModel.generateText({
             prompt: Prompt.concat(prompt, Prompt.fromResponseParts(firstParts)),

@@ -431,7 +431,10 @@ export const CodeExecution_20250522 = Tool.providerDefined({
   customName: "AnthropicCodeExecution",
   providerName: "code_execution",
   parameters: CodeExecution_20250522_Parameters,
-  success: Generated.BetaResponseCodeExecutionResultBlock,
+  success: Schema.Union([
+    Generated.BetaResponseCodeExecutionResultBlock,
+    Generated.BetaResponseEncryptedCodeExecutionResultBlock
+  ]),
   failure: Generated.BetaResponseCodeExecutionToolResultError
 })
 
@@ -462,6 +465,7 @@ export const CodeExecution_20250825 = Tool.providerDefined({
   parameters: CodeExecution_20250825_Parameters,
   success: Schema.Union([
     Generated.BetaResponseCodeExecutionResultBlock,
+    Generated.BetaResponseEncryptedCodeExecutionResultBlock,
     Generated.BetaResponseBashCodeExecutionResultBlock,
     Generated.BetaResponseTextEditorCodeExecutionViewResultBlock,
     Generated.BetaResponseTextEditorCodeExecutionCreateResultBlock,
