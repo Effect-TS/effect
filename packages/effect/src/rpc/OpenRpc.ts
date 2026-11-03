@@ -4,7 +4,7 @@
  * does not install discovery methods or change the transport.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import * as Context from "../Context.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -25,7 +25,7 @@ import * as RpcSchema from "./RpcSchema.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCSpec {
   readonly openrpc: "1.3.2"
@@ -40,7 +40,7 @@ export interface OpenRPCSpec {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCInfo {
   readonly title: string
@@ -56,7 +56,7 @@ export interface OpenRPCInfo {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCServer {
   readonly name: string
@@ -79,7 +79,7 @@ export interface OpenRPCServer {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCExternalDocs {
   readonly url: string
@@ -91,7 +91,7 @@ export interface OpenRPCExternalDocs {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCTag {
   readonly name: string
@@ -105,7 +105,7 @@ export interface OpenRPCTag {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCExample {
   readonly name: string
@@ -119,7 +119,7 @@ export interface OpenRPCExample {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCExamplePairing {
   readonly name: string
@@ -135,7 +135,7 @@ export interface OpenRPCExamplePairing {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCError {
   readonly code: number
@@ -148,7 +148,7 @@ export interface OpenRPCError {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCContentDescriptor {
   readonly name: string
@@ -164,7 +164,7 @@ export interface OpenRPCContentDescriptor {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCMethod {
   readonly name: string
@@ -210,7 +210,7 @@ export interface OpenRPCMethod {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface OpenRPCEffectStream {
   readonly encoding: "effect-jsonrpc"
@@ -227,7 +227,7 @@ export interface OpenRPCEffectStream {
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Summary extends Context.Service<Summary, string>()("effect/rpc/OpenRpc/Summary") {}
 
@@ -236,7 +236,7 @@ export class Summary extends Context.Service<Summary, string>()("effect/rpc/Open
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Description extends Context.Service<Description, string>()("effect/rpc/OpenRpc/Description") {}
 
@@ -245,7 +245,7 @@ export class Description extends Context.Service<Description, string>()("effect/
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Tags extends Context.Service<Tags, ReadonlyArray<OpenRPCTag>>()("effect/rpc/OpenRpc/Tags") {}
 
@@ -254,7 +254,7 @@ export class Tags extends Context.Service<Tags, ReadonlyArray<OpenRPCTag>>()("ef
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Examples
   extends Context.Service<Examples, ReadonlyArray<OpenRPCExamplePairing>>()("effect/rpc/OpenRpc/Examples")
@@ -265,7 +265,7 @@ export class Examples
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/rpc/OpenRpc/Deprecated") {}
 
@@ -274,7 +274,7 @@ export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/r
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class ExternalDocs
   extends Context.Service<ExternalDocs, OpenRPCExternalDocs>()("effect/rpc/OpenRpc/ExternalDocs")
@@ -287,7 +287,7 @@ export class ExternalDocs
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class Errors extends Context.Service<Errors, ReadonlyArray<OpenRPCError>>()("effect/rpc/OpenRpc/Errors") {}
 
@@ -334,7 +334,7 @@ type AnnotationKey = keyof typeof annotationKeys
  *
  * @stability unstable
  * @category annotations
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const annotations = (
   options: Pick<
@@ -413,7 +413,7 @@ export const annotations = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export function fromRpcGroup<R extends Rpc.Any>(
   group: RpcGroup.RpcGroup<R>,

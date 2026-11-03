@@ -7,7 +7,7 @@
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as OpenRpc from "./OpenRpc.ts"
 
