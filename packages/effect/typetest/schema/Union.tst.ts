@@ -210,7 +210,7 @@ describe("Union", () => {
 
         expect(schema.isAnyOf).type.toBeCallableWith(["a", 1])
         expect(schema.isAnyOf).type.not.toBeCallableWith(["a", 2])
-        expect(schema.isAnyOf).type.not.toBeCallableWith(hole<ReadonlyArray<string>>())
+        expect(schema.isAnyOf).type.toBeCallableWith(hole<ReadonlyArray<string>>())
       })
 
       it("should flatten discriminants", () => {
@@ -400,7 +400,7 @@ describe("Union", () => {
           expect(value).type.toBe<typeof schema.cases.C.Type>()
         }
         expect(schema.isAnyOf).type.not.toBeCallableWith(["A", "D"])
-        expect(schema.isAnyOf).type.not.toBeCallableWith(hole<ReadonlyArray<string>>())
+        expect(schema.isAnyOf).type.toBeCallableWith(hole<ReadonlyArray<string>>())
       })
     })
   })
