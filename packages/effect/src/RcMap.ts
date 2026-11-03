@@ -209,6 +209,7 @@ const makeUnsafe = <K, A, E>(options: {
  * - `capacity`: The maximum number of entries, including idle entries. A new key
  *   fails with `ExceededCapacityError` when full; existing entries are not evicted.
  * - `idleTimeToLive`: When the reference count reaches zero, the resource will be released after this duration.
+ *   Idle time, including `touch`, is measured on the `Clock` of the context the map is made in.
  *
  * **Example** (Creating a reference-counted map)
  *
@@ -509,8 +510,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
       return Effect.void
     }
 
-    // The idle timer belongs to the map, not to the last borrower: it runs on the
-    // clock and in the context the map was made with.
+    // The idle timer belongs to the map, not to the last borrower.
     const clock = Context.get(self.context, Clock)
     entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
     if (entry.fiber) return Effect.void
@@ -742,7 +742,6 @@ export const touch: {
       const o = MutableHashMap.get(self.state.map, key)
       if (o._tag === "None" || Duration.isZero(o.value.idleTimeToLive)) return
       const entry = o.value
-      // measured on the clock the map's idle timers run on
       entry.expiresAt = Context.get(self.context, Clock).currentTimeMillisUnsafe() +
         Duration.toMillis(entry.idleTimeToLive)
     })
