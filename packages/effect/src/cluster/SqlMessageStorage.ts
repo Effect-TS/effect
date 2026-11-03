@@ -1297,6 +1297,34 @@ export const migrations = (options?: {
           ], { discard: true }),
         orElse: () => Effect.void
       })
+    }),
+
+    // Serves MessageRetention's deleteProcessed, which looks for an entity
+    // type's processed requests by the id of their final reply.
+    "0005_retention_index": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const retentionIndex = `${messagesTable}_retention_idx`
+      const columns = sql.literal("entity_type, processed, last_reply_id")
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${retentionIndex} AND object_id = OBJECT_ID(${messagesTable}))
+            CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})
+          `,
+        mysql: () =>
+          sql`
+            SELECT 1 FROM information_schema.statistics
+            WHERE table_schema = DATABASE() AND table_name = ${messagesTable} AND index_name = ${retentionIndex}
+          `.pipe(
+            Effect.flatMap((rows) =>
+              rows.length > 0
+                ? Effect.void
+                : sql`CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`.unprepared
+            )
+          ),
+        orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`
+      })
     })
   })
 }
