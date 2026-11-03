@@ -1171,6 +1171,11 @@ describe("OpenAiLanguageModel", () => {
             )
 
             deepStrictEqual(outputs.map((item: any) => item.type), ["shell_call_output"])
+            deepStrictEqual(outputs[0].output, [{
+              stdout: "hello\n",
+              stderr: "",
+              outcome: { type: "exit", exit_code: 0 }
+            }])
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("emits only the specialized output for local_shell results", () =>
@@ -1216,6 +1221,52 @@ describe("OpenAiLanguageModel", () => {
             )
 
             deepStrictEqual(outputs.map((item: any) => item.type), ["local_shell_call_output"])
+            strictEqual(outputs[0].output, "hello\n")
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("sends returned local_shell failures as the output string", () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(OpenAiTool.LocalShell({ failureMode: "return" }).setFailure(Schema.String))
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Run a local shell command" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_local_shell",
+                    name: "OpenAiLocalShell",
+                    params: {
+                      action: {
+                        type: "exec",
+                        command: ["echo", "hello"],
+                        env: {}
+                      }
+                    },
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_local_shell",
+                    name: "OpenAiLocalShell",
+                    isFailure: true,
+                    result: "permission denied",
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              toolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const output = body.input.find((item: any) =>
+              item.call_id === "call_local_shell" && item.type === "local_shell_call_output"
+            )
+
+            strictEqual(output.output, "permission denied")
           }).pipe(Effect.provide(makeTestLayer())))
       })
     })
