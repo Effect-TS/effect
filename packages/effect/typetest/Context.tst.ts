@@ -82,6 +82,16 @@ describe("Only", () => {
     expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, [], {})
   })
 
+  it("rejects members that are not single literal keys, since only those are known to be present", () => {
+    const member = Math.random() < 0.5 ? "readFile" : "writeFile"
+    const rest: Array<"readFile" | "writeFile"> = []
+    const implementation = { readFile: (_path: string) => Effect.succeed(""), writeFile: () => Effect.void }
+
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, [member], implementation)
+    expect(Layer.effectOnly).type.not.toBeCallableWith(FileSystem, [member], Effect.succeed(implementation))
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, ["readFile", ...rest], implementation)
+  })
+
   it("rejects symbol members, whose slice keys would collide", () => {
     const member = Symbol("readFile")
     class Symbolic extends Context.Service<Symbolic, { readonly [member]: () => Effect.Effect<void> }>()("Symbolic") {}
