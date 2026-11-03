@@ -6541,6 +6541,8 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "Iso": { [K in keyof Cases]: Cases[K]["Type"] }[keyof Cases]
   readonly tag: "_tag"
   readonly cases: Cases
+  readonly members: ReadonlyArray<Cases[keyof Cases]>
+  readonly discriminants: ReadonlyArray<keyof Cases>
   readonly isAnyOf: <const Keys>(
     keys: ReadonlyArray<Keys>
   ) => (value: Cases[keyof Cases]["Type"]) => value is Extract<Cases[keyof Cases]["Type"], { _tag: Keys }>
@@ -6551,7 +6553,18 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
  * Each key becomes the `_tag` literal and the value is passed to {@link TaggedStruct}.
- * The result includes `tag`, `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
+ * The result includes `tag`, `cases`, `members`, `discriminants`, `guards`, `isAnyOf`, `match`, and
+ * `matchOrElse` utilities.
+ *
+ * **Details**
+ *
+ * `members` and `discriminants` are index-aligned arrays in the enumeration
+ * order of the record's keys, so `members[i]` is `cases[discriminants[i]]`.
+ *
+ * **Gotchas**
+ *
+ * Key enumeration order follows `Object.keys`, so integer-like keys such as
+ * `"1"` come before other keys regardless of where they are written.
  *
  * **Example** (Pattern matching a discriminated union)
  *
@@ -6587,8 +6600,8 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
     members.push(member)
   }
   const union = Union(members)
-  const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse })
+  const { tag, discriminants, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  return make(union.ast, { tag, cases, members, discriminants, isAnyOf, guards, match, matchOrElse })
 }
 /**
  * Type-level representation returned by {@link Opaque}.
