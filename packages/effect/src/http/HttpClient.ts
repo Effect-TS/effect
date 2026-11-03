@@ -33,7 +33,7 @@ import * as Ref from "../Ref.ts"
 import * as References from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type { EqualsWith, ExcludeTag, ExtractTag, NoExcessProperties, NoInfer, Tags } from "../Types.ts"
@@ -698,7 +698,7 @@ export const make = (
     Effect.flatMap(effect, (request) =>
       Effect.withFiber((fiber) => {
         const scopedController = scopedRequests.get(request)
-        const controller = scopedController ?? new AbortController()
+        const controller = scopedController?.controller ?? new AbortController()
         const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
@@ -2017,14 +2017,7 @@ export const withScope = <E, R>(
 ): HttpClient.With<E, R | Scope.Scope> =>
   transform(
     self,
-    (effect, request) => {
-      const controller = new AbortController()
-      scopedRequests.set(request, controller)
-      return Effect.andThen(
-        Effect.addFinalizer(() => Effect.sync(() => controller.abort())),
-        effect
-      )
-    }
+    (effect, request) => Effect.flatMap(Effect.scope, (scope) => Effect.andThen(scopeRequest(request, scope), effect))
   )
 
 /**
@@ -2080,9 +2073,11 @@ export const followRedirects: {
       ): Effect.Effect<HttpClientResponse.HttpClientResponse, E, R> =>
         Effect.suspend(() => {
           let currentRequest: HttpClientRequest.HttpClientRequest | undefined
+          let currentScope: Scope.Scope | undefined
           return Effect.flatMap(
             self.postprocess(Effect.map(request, (request) => {
               currentRequest = request
+              currentScope = scopedRequests.get(request)?.scope
               return request
             })),
             (response) => {
@@ -2128,7 +2123,12 @@ export const followRedirects: {
               // Abort the discarded response to release its connection without reading the body
               return Effect.andThen(
                 Effect.sync(() => responseControllers.get(response)?.abort()),
-                loop(Effect.succeed(nextRequest), redirects + 1)
+                loop(
+                  currentScope === undefined
+                    ? Effect.succeed(nextRequest)
+                    : Effect.as(scopeRequest(nextRequest, currentScope), nextRequest),
+                  redirects + 1
+                )
               )
             }
           )
@@ -2266,7 +2266,16 @@ const responseRegistry = (() => {
   }
 })()
 
-const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
+const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, {
+  readonly scope: Scope.Scope
+  readonly controller: AbortController
+}>()
+
+const scopeRequest = (request: HttpClientRequest.HttpClientRequest, scope: Scope.Scope) => {
+  const controller = new AbortController()
+  scopedRequests.set(request, { scope, controller })
+  return Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))
+}
 
 const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
 
