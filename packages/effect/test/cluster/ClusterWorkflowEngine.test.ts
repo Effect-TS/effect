@@ -740,6 +740,91 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }
   }
 
+  it.effect("recovers an awaited deferred after a read outage exceeds the old retry budget", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("DeferredReadRetry/Gate", { success: Schema.String })
+      const workflow = Workflow.make("DeferredReadRetry", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const storage = yield* makeSharedStorage
+      const reading = yield* Latch.make()
+      let failures = 0
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        requestIdForPrimaryKey: (options) =>
+          Effect.suspend(() =>
+            options.tag === "deferred" && options.id === gate.name && failures++ < 5
+              ? Effect.andThen(
+                reading.open,
+                Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+              )
+              : storage.requestIdForPrimaryKey(options)
+          )
+      })
+      yield* Effect.gen(function*() {
+        const engine = yield* WorkflowEngine
+        yield* engine.register(workflow, () => DurableDeferred.await(gate))
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* reading.await
+        yield* TestClock.adjust("1 minute")
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* DurableDeferred.done(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          exit: Exit.succeed("opened")
+        })
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("opened") })
+        )
+      }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer })))
+    }))
+
+  it.effect("shuts down during a deferred read outage", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("DeferredReadShutdown/Gate")
+      const workflow = Workflow.make("DeferredReadShutdown", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const storage = yield* makeSharedStorage
+      const reading = yield* Latch.make()
+      let awaitingGate = false
+      let recovered = false
+      // Once the gate is awaited, its reads and the interrupt signal reads
+      // made by shutdown cleanup fail until storage recovers.
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        requestIdForPrimaryKey: (options) =>
+          Effect.suspend(() => {
+            if (options.tag === "deferred" && options.id === gate.name) awaitingGate = true
+            return options.tag === "deferred" && awaitingGate && !recovered
+              ? Effect.andThen(
+                reading.open,
+                Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
+              )
+              : storage.requestIdForPrimaryKey(options)
+          })
+      })
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+        ),
+        scope
+      )
+      yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* reading.await
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* TestClock.adjust("2 seconds")
+      const closedDuringOutage = shutdown.pollUnsafe() !== undefined
+      recovered = true
+      yield* TestClock.adjust("1 minute")
+      yield* Fiber.join(shutdown)
+      assert.isTrue(closedDuringOutage, "shutdown must finish while deferred reads still fail")
+    }))
+
   const RetrySignal = DurableDeferred.make("RetrySignal")
   const savesDeferred = (envelope: Message.OutgoingRequest<any>) => envelope.envelope.tag === "deferred"
   const durableSaveRetryCases = [
