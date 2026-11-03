@@ -36,7 +36,7 @@ import * as Response from "./Response.ts"
 import * as ResponseIdTracker from "./ResponseIdTracker.ts"
 import type { SpanTransformer } from "./Telemetry.ts"
 import { CurrentSpanTransformer } from "./Telemetry.ts"
-import type * as Tool from "./Tool.ts"
+import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
 /**
@@ -2204,7 +2204,7 @@ const isApprovalNeeded = Effect.fnUntraced(function*<T extends Tool.Any>(
   }
 
   if (typeof tool.needsApproval === "function") {
-    const params = yield* Schema.decodeUnknownEffect(tool.parametersSchema)(
+    const params = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))(
       toolCall.params
     ) as any
 
@@ -2500,8 +2500,14 @@ const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any
     tools = {}
     parameterModeTools.set(tool, tools)
   }
+  // Provider-defined parameters describe the provider's payload; other tool
+  // calls carry the JSON encoding of their parameters.
   return tools[mode] ??= tool.setParameters(
-    mode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown
+    mode === "encoded"
+      ? Schema.toEncoded(
+        Tool.isProviderDefined(tool) ? tool.parametersSchema : Schema.toCodecJson(tool.parametersSchema)
+      )
+      : Schema.Unknown
   )
 }
 
