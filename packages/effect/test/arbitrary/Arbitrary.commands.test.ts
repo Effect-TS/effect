@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Arbitrary, Cause, Context, Data, Effect, Exit, Fiber, Schema } from "effect"
+import { Arbitrary, Cause, Context, Data, Effect, Exit, Fiber, Option, Schema } from "effect"
 
 const int = (minimum: number, maximum: number) =>
   Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum, maximum })))
@@ -82,10 +82,10 @@ describe("Arbitrary.commands", () => {
       assert.throws(() => Arbitrary.commands({ initial: undefined, commands: [noop, noop] }))
     }))
 
-  it.effect("resolves references in arguments before running a command", () =>
+  it.effect("passes the generated arguments and resolves references on request", () =>
     Effect.gen(function*() {
       type Model = ReadonlyArray<Arbitrary.Reference<{ readonly handle: number }>>
-      const received: Array<unknown> = []
+      const received: Array<{ readonly args: unknown; readonly handle: unknown; readonly all: unknown }> = []
       let handles = 0
       const commands = Arbitrary.commands({
         initial: [] as Model,
@@ -101,9 +101,9 @@ describe("Arbitrary.commands", () => {
               element(model)?.pipe(
                 Arbitrary.map((handle) => ({ handle, all: [handle, ...model], count: model.length }))
               ),
-            run: (args) =>
+            run: (args, resolve) =>
               Effect.sync(() => {
-                received.push(args)
+                received.push({ args, handle: resolve(args.handle), all: args.all.map(resolve) })
               })
           })
         ]
@@ -122,15 +122,12 @@ describe("Arbitrary.commands", () => {
           const args = step.args as {
             handle: Arbitrary.Reference<unknown>
             all: ReadonlyArray<Arbitrary.Reference<unknown>>
-            count: number
           }
-          return [{
-            handle: opened.get(args.handle),
-            all: args.all.map((handle) => opened.get(handle)),
-            count: args.count
-          }]
+          return [{ args, handle: opened.get(args.handle), all: args.all.map((handle) => opened.get(handle)) }]
         })
         assert.deepStrictEqual(received, expected)
+        // `run` receives the generated arguments themselves.
+        received.forEach(({ args }, index) => assert.strictEqual(args, expected[index].args))
       }
     }))
 
@@ -150,7 +147,7 @@ describe("Arbitrary.commands", () => {
           Arbitrary.command({
             name: "use",
             args: element<Arbitrary.Reference<number>>,
-            run: (handle) => handle === 1 ? Effect.fail("unusable") : Effect.void
+            run: (handle, resolve) => resolve(handle) === 1 ? Effect.fail("unusable") : Effect.void
           }),
           Arbitrary.command({ name: "noop", run: () => Effect.void })
         ]
@@ -169,6 +166,159 @@ describe("Arbitrary.commands", () => {
       assert.notStrictEqual(first.reference, second.reference)
       assert.strictEqual(use.args, second.reference)
       assert.isAbove(result.initialInput.steps.length, 3)
+    }))
+
+  it.effect("rechecks availability while shrinking", () =>
+    Effect.gen(function*() {
+      // `fail` is only available after `open`, and always fails. Removing `open` must also remove `fail`.
+      const commands = Arbitrary.commands({
+        initial: 0,
+        commands: [
+          Arbitrary.command({ name: "open", next: (model: number) => model + 1, run: () => Effect.void }),
+          Arbitrary.command({
+            name: "fail",
+            args: (model: number) => model === 0 ? undefined : int(0, 3),
+            run: () => Effect.fail("failed")
+          })
+        ]
+      })
+      const result = yield* Arbitrary.checkEffect(
+        commands,
+        (sequence) => Arbitrary.runCommands(sequence).pipe(Effect.as(true)),
+        { seed: "availability", size: 20 }
+      )
+      assert.strictEqual(result._tag, "Falsified")
+      if (result._tag !== "Falsified") return
+      assert.deepStrictEqual(result.shrunkInput.steps.map((step) => [step.command, step.args]), [
+        ["open", undefined],
+        ["fail", 0]
+      ])
+    }))
+
+  it.effect("keeps references in scope wherever the arguments hold them", () =>
+    Effect.gen(function*() {
+      class Holder extends Data.Class<{ readonly handle: Arbitrary.Reference<number> }> {}
+      const shapes: ReadonlyArray<{
+        readonly name: string
+        readonly wrap: (handle: Arbitrary.Reference<number>) => unknown
+        readonly unwrap: (args: any) => Arbitrary.Reference<number>
+      }> = [
+        { name: "nested object", wrap: (handle) => ({ at: [{ handle }] }), unwrap: (args) => args.at[0].handle },
+        { name: "Option", wrap: Option.some, unwrap: Option.getOrThrow },
+        { name: "Data class", wrap: (handle) => new Holder({ handle }), unwrap: (args) => args.handle },
+        { name: "Map value", wrap: (handle) => new Map([["handle", handle]]), unwrap: (args) => args.get("handle") },
+        { name: "Set", wrap: (handle) => new Set([handle]), unwrap: (args) => [...args][0] }
+      ]
+      for (const { name, unwrap, wrap } of shapes) {
+        // The system fails to use the second handle it created.
+        type Model = ReadonlyArray<Arbitrary.Reference<number>>
+        class Handles extends Context.Service<Handles, { next: number }>()("Handles") {}
+        const commands = Arbitrary.commands({
+          initial: [] as Model,
+          commands: [
+            Arbitrary.command({
+              name: "create",
+              next: (model: Model, _, handle) => [...model, handle],
+              run: () => Handles.useSync((handles) => handles.next++)
+            }),
+            Arbitrary.command({
+              name: "use",
+              args: (model: Model) => element(model)?.pipe(Arbitrary.map(wrap)),
+              run: (args, resolve) => resolve(unwrap(args)) === 1 ? Effect.fail("unusable") : Effect.void
+            })
+          ]
+        })
+        const result = yield* Arbitrary.checkEffect(
+          commands,
+          (sequence) =>
+            Arbitrary.runCommands(sequence).pipe(Effect.as(true), Effect.provideService(Handles, { next: 0 })),
+          { seed: "scope", size: 20 }
+        )
+        assert.strictEqual(result._tag, "Falsified", name)
+        if (result._tag !== "Falsified" || result.failure._tag !== "PropertyError") {
+          assert.fail(`${name}: expected the property to fail with CommandsFailure`)
+          return
+        }
+        // Without the scope check, shrinking would remove both `create` commands and fail on the dangling reference.
+        assert.deepStrictEqual(result.shrunkInput.steps.map((step) => step.command), ["create", "create", "use"], name)
+        const failure = result.failure.error
+        assert.strictEqual(failure.reason, "Postcondition", name)
+        assert.deepStrictEqual(failure.steps[2].exit, Exit.fail("unusable"), name)
+      }
+    }))
+
+  it.effect("lets postconditions compare results with values returned by earlier commands", () =>
+    Effect.gen(function*() {
+      type Model = ReadonlyArray<Arbitrary.Reference<string>>
+      class Registry extends Context.Service<Registry, {
+        readonly register: Effect.Effect<string>
+        readonly list: Effect.Effect<ReadonlyArray<string>>
+      }>()("Registry") {}
+      // `forgetFirst` loses the first registration once there are three.
+      const makeRegistry = (forgetFirst: boolean) => {
+        const ids: Array<string> = []
+        return Registry.of({
+          register: Effect.sync(() => {
+            const id = `id-${ids.length}`
+            ids.push(id)
+            return id
+          }),
+          list: Effect.sync(() => forgetFirst && ids.length >= 3 ? ids.slice(1) : ids.slice())
+        })
+      }
+      const commands = Arbitrary.commands({
+        initial: [] as Model,
+        commands: [
+          Arbitrary.command({
+            name: "register",
+            next: (model: Model, _, id) => [...model, id],
+            run: () => Registry.use((registry) => registry.register)
+          }),
+          Arbitrary.command({
+            name: "list",
+            run: () => Registry.use((registry) => registry.list),
+            postcondition: (model: Model, _, exit, resolve) =>
+              Exit.isSuccess(exit) && exit.value.join() === model.map(resolve).join()
+          })
+        ]
+      })
+      const check = (forgetFirst: boolean) =>
+        Arbitrary.checkEffect(
+          commands,
+          (sequence) =>
+            Arbitrary.runCommands(sequence).pipe(
+              Effect.as(true),
+              Effect.provideService(Registry, makeRegistry(forgetFirst))
+            ),
+          { seed: "registry", size: 20 }
+        )
+      assert.strictEqual((yield* check(false))._tag, "Passed")
+      const result = yield* check(true)
+      assert.strictEqual(result._tag, "Falsified")
+      if (result._tag !== "Falsified") return
+      assert.deepStrictEqual(result.shrunkInput.steps.map((step) => step.command), [
+        "register",
+        "register",
+        "register",
+        "list"
+      ])
+    }))
+
+  it.effect("checks the invariant before the first command", () =>
+    Effect.gen(function*() {
+      let runs = 0
+      const commands = Arbitrary.commands({
+        initial: 0,
+        commands: [Arbitrary.command({ name: "step", run: () => Effect.sync(() => runs++) })],
+        invariant: () => false
+      })
+      for (const sequence of yield* sample(commands, 10, 10)) {
+        const failure = yield* Effect.flip(Arbitrary.runCommands(sequence))
+        assert.strictEqual(failure.reason, "Invariant")
+        assert.deepStrictEqual(failure.steps, [])
+        assert.strictEqual(failure.model, 0)
+      }
+      assert.strictEqual(runs, 0)
     }))
 
   it.effect("reports postcondition and invariant failures with the step trace", () =>
@@ -335,7 +485,7 @@ describe("Arbitrary.commands bank account model", () => {
         args: transfer,
         next: (model: Model, { account, amount }) =>
           amount > 0 ? new Map(model).set(account, model.get(account)! + amount) : model,
-        run: ({ account, amount }) => Bank.use((bank) => bank.deposit(account, amount)),
+        run: ({ account, amount }, resolve) => Bank.use((bank) => bank.deposit(resolve(account), amount)),
         postcondition: (_, { amount }, exit) =>
           amount > 0 ? Exit.isSuccess(exit) : Exit.isFailure(exit) && Cause.squash(exit.cause) instanceof InvalidAmount
       }),
@@ -345,7 +495,7 @@ describe("Arbitrary.commands bank account model", () => {
         precondition: (_: Model, { amount }) => amount > 0,
         next: (model: Model, { account, amount }) =>
           amount <= model.get(account)! ? new Map(model).set(account, model.get(account)! - amount) : model,
-        run: ({ account, amount }) => Bank.use((bank) => bank.withdraw(account, amount)),
+        run: ({ account, amount }, resolve) => Bank.use((bank) => bank.withdraw(resolve(account), amount)),
         // Overdrawing is an expected failure.
         postcondition: (model, { account, amount }, exit) =>
           amount <= model.get(account)!
@@ -355,7 +505,7 @@ describe("Arbitrary.commands bank account model", () => {
       Arbitrary.command({
         name: "balance",
         args: (model: Model) => element([...model.keys()]),
-        run: (account) => Bank.use((bank) => bank.balance(account)),
+        run: (account, resolve) => Bank.use((bank) => bank.balance(resolve(account))),
         postcondition: (model, account, exit) => Exit.isSuccess(exit) && exit.value === model.get(account)
       })
     ],

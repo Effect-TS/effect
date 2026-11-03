@@ -689,7 +689,8 @@ When commands depend on the state, such as withdrawing only from an account that
 - `postcondition` compares the command's `Exit` with the model. Without one, the command must succeed.
 
 `next` receives a reference to the command's result, such as a new account id. Store it in the model and use it in
-later arguments; `Arbitrary.runCommands` replaces it with the real value before calling `run`.
+later arguments. While `Arbitrary.runCommands` executes the sequence, `run`, `postcondition`, and `invariant` receive a
+`resolve` function that returns the real value behind a reference.
 
 ```ts
 import { Arbitrary, Effect, Exit, Schema } from "effect"
@@ -718,13 +719,13 @@ const commands = Arbitrary.commands({
       precondition: (_: Model, { amount }) => amount > 0,
       next: (model: Model, { amount, id }) =>
         amount <= model.get(id)! ? new Map(model).set(id, model.get(id)! - amount) : model,
-      run: ({ amount, id }) => Bank.use((bank) => bank.withdraw(id, amount)),
+      run: ({ amount, id }, resolve) => Bank.use((bank) => bank.withdraw(resolve(id), amount)),
       // Overdrawing is an expected failure.
       postcondition: (model, { amount, id }, exit) =>
         amount <= model.get(id)! ? Exit.isSuccess(exit) : Exit.isFailure(exit)
     })
   ],
-  // Checked after every command, against the real system.
+  // Checked before the first command and after every command, against the real system.
   invariant: (model) => Bank.use((bank) => bank.total).pipe(Effect.map((total) => total === sum(model.values())))
 })
 
@@ -739,9 +740,10 @@ const program = Arbitrary.checkEffect(commands, (sequence) =>
 Sequences grow with `size`, up to the `maxCommands` option. When a postcondition or the invariant fails,
 `runCommands` fails with a `CommandsFailure` holding the executed steps, each with its command, arguments, model
 before it, and `Exit`. Simplification removes commands and simplifies their arguments, then replays the model and drops
-every command whose precondition no longer holds or whose reference disappeared, so the counterexample is a short
-program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`. Each run also reports how often every command
-ran and how many of its generated candidates were rejected, so a test can fail when a command never ran.
+every command that is no longer available, whose precondition no longer holds, or whose reference disappeared, so the
+counterexample is a short program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`. Each run also reports
+how often every command ran and how many of its generated candidates were rejected, so a test can fail when a command
+never ran.
 
 ## Replaying a Failure
 
@@ -1393,7 +1395,9 @@ can alter generated values, simplification, replay, performance, or bundle size 
   Replay follows the recorded positions directly, so it ignores `maxShrinks`.
 - `Arbitrary.commands` keeps the model symbolic: `next` runs during generation and simplification, and sees references
   instead of results. A reference's id is the position of its command in the generated sequence, so it stays stable
-  while commands are removed. `runCommands` resolves references found in arrays and plain objects. When no candidate
-  is accepted for a position after a bounded number of draws, the sequence ends early instead of being discarded.
+  while commands are removed. Commands resolve references themselves through `resolve`; arguments are never rewritten.
+  The scope check while simplifying finds references in arrays, `Map` and `Set` entries, and own enumerable
+  properties, but not in closures or private fields. When no candidate is accepted for a position after a bounded
+  number of draws, the sequence ends early instead of being discarded.
 - Long synchronous generation loops occasionally yield control according to `Scheduler.MaxOpsBeforeYield`. Generation
   that uses Effects, declaration conversion, property evaluation, and simplification can all be interrupted normally.

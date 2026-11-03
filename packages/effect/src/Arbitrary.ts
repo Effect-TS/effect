@@ -697,10 +697,11 @@ export function checkEffect<A, E = never, R = never>(
  *
  * **Details**
  *
- * Generation, shrinking, preconditions, next-state steps, and postconditions see the placeholder. {@link runCommands}
- * replaces each placeholder found in arrays and plain objects of the arguments with the success value of the command
- * that defined it before calling {@link Command.run}. `id` is the position of the defining command in the originally
- * generated sequence, so it stays stable while shrinking removes commands. A reference formats as `$<id>`.
+ * Generation, shrinking, preconditions, and next-state steps only see the placeholder. While {@link runCommands}
+ * executes a sequence, {@link Command.run}, {@link Command.postcondition}, and the invariant receive a {@link Resolve}
+ * function that returns the success value of the command that defined a reference. `id` is the position of the
+ * defining command in the originally generated sequence, so it stays stable while shrinking removes commands. A
+ * reference formats as `$<id>`.
  *
  * **Gotchas**
  *
@@ -717,27 +718,25 @@ export interface Reference<out A> {
 }
 
 /**
- * Replaces every {@link Reference} in arguments with the type of the value it refers to.
+ * Returns the value behind a {@link Reference} while {@link runCommands} executes a sequence.
+ *
+ * **Details**
+ *
+ * The value is the success value of the command that defined the reference. {@link Command.run},
+ * {@link Command.postcondition}, and the invariant of {@link CommandsOptions} receive this function, so a command
+ * resolves exactly the references it needs, wherever its arguments or model keep them.
+ *
+ * **Gotchas**
+ *
+ * Resolving a reference whose command failed throws. A model can only produce such a reference by accepting the
+ * failure in a postcondition while keeping the reference. The throw is a defect of the command, or the cause of the
+ * failing postcondition or invariant.
  *
  * @stability unstable
  * @category models
  * @since 4.1.2
  */
-export type Resolved<T> = T extends Reference<infer A> ? A
-  : T extends
-    | string
-    | number
-    | boolean
-    | bigint
-    | symbol
-    | null
-    | undefined
-    | ((...args: ReadonlyArray<any>) => any)
-    | Date
-    | RegExp
-    | ReadonlyMap<any, any>
-    | ReadonlySet<any> ? T
-  : { [K in keyof T]: Resolved<T[K]> }
+export type Resolve = <A>(reference: Reference<A>) => A
 
 /**
  * Describes one operation of a model-based test: how to generate it from the model state, when it is allowed, how
@@ -750,14 +749,17 @@ export type Resolved<T> = T extends Reference<infer A> ? A
  * **Details**
  *
  * - `args` returns the Arbitrary for the arguments in the current model state, or `undefined` when the command is not
- *   available in that state. Omit it for a command without arguments.
+ *   available in that state. Omit it for a command without arguments. Shrinking rechecks availability after removing
+ *   earlier commands.
  * - `precondition` decides whether the command is allowed with these arguments in this model state. Generation retries
  *   rejected candidates, and shrinking rechecks it after removing earlier commands.
  * - `next` returns the model after the command. It receives a {@link Reference} to the command's result. Omit it for a
  *   command that does not change the model.
- * - `run` receives the arguments with every reference replaced by its value.
- * - `postcondition` receives the model before the command and the command's `Exit`, so expected failures are part of
- *   the model. Omit it to require success. Interruption is never passed to the postcondition; it interrupts the run.
+ * - `run` receives the generated arguments and a {@link Resolve} function for the references they contain.
+ * - `postcondition` receives the model before the command, the arguments, the command's `Exit`, and a
+ *   {@link Resolve} function, so it can compare results with values returned by earlier commands. Expected failures
+ *   are part of the model. Omit it to require success. Interruption is never passed to the postcondition; it
+ *   interrupts the run.
  *
  * **Gotchas**
  *
@@ -777,8 +779,8 @@ export interface Command<M, Args, A, E, R> {
   args?(model: M): Arbitrary<Args> | undefined
   precondition?(model: M, args: Args): boolean
   next?(model: M, args: Args, result: Reference<A>): M
-  run(args: Resolved<Args>): Effect.Effect<A, E, R>
-  postcondition?(model: M, args: Args, exit: Exit.Exit<A, E>): boolean
+  run(args: Args, resolve: Resolve): Effect.Effect<A, E, R>
+  postcondition?(model: M, args: Args, exit: Exit.Exit<A, E>, resolve: Resolve): boolean
 }
 
 /**
@@ -788,8 +790,9 @@ export interface Command<M, Args, A, E, R> {
  *
  * - `initial` is the model before the first command.
  * - `commands` lists the available commands. Their names must be unique.
- * - `invariant` is checked after every command, over the model after the command. It can be an Effect that inspects
- *   the real system through its requirements. Returning anything but `true`, failing, or throwing fails the run.
+ * - `invariant` is checked before the first command and after every command, over the current model. It receives a
+ *   {@link Resolve} function and can be an Effect that inspects the real system through its requirements. Returning
+ *   anything but `true`, failing, or throwing fails the run.
  * - `maxCommands` caps the sequence length, which otherwise follows the check's `size`.
  *
  * @stability unstable
@@ -799,7 +802,7 @@ export interface Command<M, Args, A, E, R> {
 export interface CommandsOptions<M, R> {
   readonly initial: M
   readonly commands: ReadonlyArray<Command<M, any, any, any, R>>
-  readonly invariant?: ((model: M) => boolean | Effect.Effect<boolean, unknown, R>) | undefined
+  readonly invariant?: ((model: M, resolve: Resolve) => boolean | Effect.Effect<boolean, unknown, R>) | undefined
   readonly maxCommands?: number | undefined
 }
 
@@ -897,8 +900,9 @@ export interface CommandsRun<out M> {
  *
  * **Details**
  *
- * `steps` is the executed trace ending with the failing command, and `model` is the model after it. `cause` is
- * present when the postcondition or invariant threw, or when the invariant Effect failed.
+ * `steps` is the executed trace ending with the failing command, and `model` is the model after it. When the invariant
+ * fails before the first command, `steps` is empty and `model` is the initial model. `cause` is present when the
+ * postcondition or invariant threw, or when the invariant Effect failed.
  *
  * @stability unstable
  * @category errors
@@ -942,8 +946,10 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  * {@link Reference} to its result.
  *
  * Shrinking removes commands, in progressively smaller blocks at each position, and shrinks the arguments of the
- * remaining commands. After every change it replays the model from `initial`, drops each command whose precondition
- * fails or whose arguments use a reference that is no longer defined, and continues with the commands after it.
+ * remaining commands. After every change it replays the model from `initial`, drops each command that is no longer
+ * available, whose precondition fails, or whose arguments use a reference that is no longer defined, and continues
+ * with the commands after it. References are found in arrays, `Map` and `Set` entries, and the own enumerable
+ * properties of objects in the arguments.
  *
  * Pass the sequence to {@link checkEffect} with {@link runCommands} as the property, so replay tokens and
  * concurrency work as for any other property.
@@ -951,7 +957,8 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  * **Gotchas**
  *
  * Invalid options and duplicate command names throw when this function is called. Each evaluation must run against
- * a fresh system, for example by providing a new layer inside the property.
+ * a fresh system, for example by providing a new layer inside the property. A reference kept only in a closure or a
+ * private field is not found while shrinking, so its command may be removed while the reference is still used.
  *
  * **Example** (Finding a lost update in a counter store)
  *
@@ -997,12 +1004,12 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  *       name: "increment",
  *       args: counter,
  *       next: (model: Model, id) => new Map(model).set(id, model.get(id)! + 1),
- *       run: (id) => Store.use((store) => store.increment(id))
+ *       run: (id, resolve) => Store.use((store) => store.increment(resolve(id)))
  *     }),
  *     Arbitrary.command({
  *       name: "get",
  *       args: counter,
- *       run: (id) => Store.use((store) => store.get(id)),
+ *       run: (id, resolve) => Store.use((store) => store.get(resolve(id))),
  *       postcondition: (model: Model, id, exit) => Exit.isSuccess(exit) && exit.value === model.get(id)
  *     })
  *   ]
@@ -1042,16 +1049,14 @@ export const commands: <M, R = never>(options: CommandsOptions<M, R>) => Arbitra
  *
  * **Details**
  *
- * Commands run in order. Before each command, references in its arguments are replaced by the success values of the
- * commands that defined them. After each command, its postcondition and then the invariant are checked. The first
- * failure fails with {@link CommandsFailure}, whose trace ends at the failing command. A successful run returns the
- * trace, the final model, and per-command counts.
+ * The invariant is checked on the initial model, then commands run in order. Each command receives its generated
+ * arguments and a {@link Resolve} function for the references they contain. After each command, its postcondition
+ * and then the invariant are checked. The first failure fails with {@link CommandsFailure}, whose trace ends at the
+ * failing command. A successful run returns the trace, the final model, and per-command counts.
  *
  * **Gotchas**
  *
- * Interruption of a command or invariant interrupts the run instead of becoming a result. A reference to a command
- * that failed, which a model can only produce by accepting the failure in its postcondition while keeping the
- * reference, is a defect.
+ * Interruption of a command or invariant interrupts the run instead of becoming a result.
  *
  * @see {@link commands} for generating sequences
  * @stability unstable

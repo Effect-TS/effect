@@ -8,7 +8,8 @@ import type {
   CommandsOptions,
   CommandsRun,
   CommandStep,
-  Reference
+  Reference,
+  Resolve
 } from "../../Arbitrary.ts"
 import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
@@ -36,47 +37,31 @@ class ReferenceImpl {
 
 const isReference = (u: unknown): u is ReferenceImpl => hasProperty(u, ReferenceTypeId)
 
-const isPlainObject = (u: unknown): u is Record<PropertyKey, unknown> => {
-  if (typeof u !== "object" || u === null) return false
-  const proto = Object.getPrototypeOf(u)
-  return proto === Object.prototype || proto === null
-}
-
-// References are found in arrays and plain objects, the shapes produced by Schema-derived and composed Arbitraries.
+// Collects the references used by arguments for the scope check while shrinking. Values that cannot contain a
+// reference are skipped, and `seen` guards against cycles and shared substructures.
 function forEachReference(value: unknown, f: (reference: ReferenceImpl) => void): void {
-  if (isReference(value)) return f(value)
-  if (Array.isArray(value)) {
-    for (const item of value) forEachReference(item, f)
-  } else if (isPlainObject(value)) {
-    for (const key of Reflect.ownKeys(value)) forEachReference(value[key], f)
-  }
-}
-
-function substitute(value: unknown, f: (reference: ReferenceImpl) => unknown): unknown {
-  if (isReference(value)) return f(value)
-  if (Array.isArray(value)) {
-    let out: Array<unknown> | undefined
-    for (let index = 0; index < value.length; index++) {
-      const item = substitute(value[index], f)
-      if (item !== value[index]) {
-        out ??= value.slice()
-        out[index] = item
+  const seen = new Set<object>()
+  const visit = (value: unknown): void => {
+    if (typeof value !== "object" || value === null || seen.has(value)) return
+    seen.add(value)
+    if (isReference(value)) return f(value)
+    if (ArrayBuffer.isView(value)) return
+    if (value instanceof Map) {
+      for (const [key, item] of value) {
+        visit(key)
+        visit(item)
       }
+      return
     }
-    return out ?? value
-  }
-  if (isPlainObject(value)) {
-    let out: Record<PropertyKey, unknown> | undefined
+    if (value instanceof Set) {
+      for (const item of value) visit(item)
+      return
+    }
     for (const key of Reflect.ownKeys(value)) {
-      const item = substitute(value[key], f)
-      if (item !== value[key]) {
-        out ??= Object.assign(Object.create(Object.getPrototypeOf(value)), value)
-        out![key] = item
-      }
+      if (Object.prototype.propertyIsEnumerable.call(value, key)) visit((value as Record<PropertyKey, unknown>)[key])
     }
-    return out ?? value
   }
-  return value
+  visit(value)
 }
 
 type AnyCommand<M> = Command<M, any, any, any, any>
@@ -84,7 +69,7 @@ type AnyCommand<M> = Command<M, any, any, any, any>
 interface Definition<M> {
   readonly initial: M
   readonly commands: ReadonlyArray<AnyCommand<M>>
-  readonly invariant: ((model: M) => boolean | Effect.Effect<boolean, unknown, any>) | undefined
+  readonly invariant: ((model: M, resolve: Resolve) => boolean | Effect.Effect<boolean, unknown, any>) | undefined
   readonly maxCommands: number
 }
 
@@ -128,14 +113,18 @@ function makeCommands<M>(program: Program<M>): Commands<M, never> {
   return commands as unknown as Commands<M, never>
 }
 
+const available = <M>(command: AnyCommand<M>, model: M): boolean =>
+  command.args === undefined || command.args(model) !== undefined
+
 const allowed = <M>(command: AnyCommand<M>, model: M, args: unknown): boolean =>
   command.precondition === undefined || command.precondition(model, args)
 
 const step = <M>(command: AnyCommand<M>, model: M, args: unknown, reference: ReferenceImpl): M =>
   command.next === undefined ? model : command.next(model, args, reference as unknown as Reference<unknown>)
 
-// Replays the model along a candidate sequence and drops every step whose precondition fails or whose arguments use a
-// reference that no earlier retained step defines. Dropping a step also removes its reference from scope.
+// Replays the model along a candidate sequence and drops every step that is no longer available, whose precondition
+// fails, or whose arguments use a reference that no earlier retained step defines. Dropping a step also removes its
+// reference from scope.
 function validate<M>(definition: Definition<M>, steps: ReadonlyArray<Planned>): Program<M> {
   const retained: Array<Planned> = []
   const models: Array<M> = []
@@ -148,7 +137,7 @@ function validate<M>(definition: Definition<M>, steps: ReadonlyArray<Planned>): 
     forEachReference(args, (reference) => {
       if (!scope.has(reference)) inScope = false
     })
-    if (!inScope || !allowed(command, model, args)) continue
+    if (!inScope || !available(command, model) || !allowed(command, model, args)) continue
     retained.push(planned)
     models.push(model)
     scope.add(planned.reference)
@@ -317,7 +306,9 @@ export const runCommands = <M, R>(
         counts: counts(),
         ...(cause === undefined ? undefined : { cause })
       })
-    const resolve = (reference: ReferenceImpl): unknown => {
+    const resolve: Resolve = <A>(input: Reference<A>): A => {
+      const reference = input as unknown as ReferenceImpl
+      if (!isReference(reference)) throw new Error("Arbitrary.runCommands: expected a reference")
       const exit = results.get(reference)
       if (exit === undefined || Exit.isFailure(exit)) {
         throw new Error(
@@ -326,17 +317,35 @@ export const runCommands = <M, R>(
           }`
         )
       }
-      return exit.value
+      return exit.value as A
     }
+    const checkInvariant = Effect.fnUntraced(function*(model: M) {
+      if (definition.invariant === undefined) return
+      let output: boolean | Effect.Effect<boolean, unknown, any>
+      try {
+        output = definition.invariant(model, resolve)
+      } catch (defect) {
+        return yield* fail("Invariant", model, Cause.die(defect))
+      }
+      if (Effect.isEffect(output)) {
+        const checked = yield* Effect.exit(output)
+        if (Exit.isFailure(checked)) {
+          if (isInterruption(checked.cause)) return yield* Effect.failCause(checked.cause)
+          return yield* fail("Invariant", model, checked.cause)
+        }
+        output = checked.value
+      }
+      if (output !== true) return yield* fail("Invariant", model)
+    })
     return Effect.gen(function*() {
+      yield* checkInvariant(models[0])
       for (let index = 0; index < steps.length; index++) {
         const planned = steps[index]
         const command = definition.commands[planned.command]
         const model = models[index]
         const next = models[index + 1]
         const args = planned.args.value
-        const resolved = substitute(args, resolve)
-        const exit = yield* Effect.exit(Effect.suspend(() => command.run(resolved)))
+        const exit = yield* Effect.exit(Effect.suspend(() => command.run(args, resolve)))
         if (Exit.isFailure(exit) && isInterruption(exit.cause)) return yield* Effect.failCause(exit.cause)
         runs[planned.command]++
         results.set(planned.reference, exit)
@@ -351,28 +360,12 @@ export const runCommands = <M, R>(
         try {
           accepted = command.postcondition === undefined
             ? Exit.isSuccess(exit)
-            : command.postcondition(model, args, exit) === true
+            : command.postcondition(model, args, exit, resolve) === true
         } catch (defect) {
           return yield* fail("Postcondition", next, Cause.die(defect))
         }
         if (!accepted) return yield* fail("Postcondition", next)
-        if (definition.invariant !== undefined) {
-          let output: boolean | Effect.Effect<boolean, unknown, any>
-          try {
-            output = definition.invariant(next)
-          } catch (defect) {
-            return yield* fail("Invariant", next, Cause.die(defect))
-          }
-          if (Effect.isEffect(output)) {
-            const checked = yield* Effect.exit(output)
-            if (Exit.isFailure(checked)) {
-              if (isInterruption(checked.cause)) return yield* Effect.failCause(checked.cause)
-              return yield* fail("Invariant", next, checked.cause)
-            }
-            output = checked.value
-          }
-          if (output !== true) return yield* fail("Invariant", next)
-        }
+        yield* checkInvariant(next)
       }
       return { steps: trace, model: models[models.length - 1], counts: counts() } satisfies CommandsRun<M>
     })

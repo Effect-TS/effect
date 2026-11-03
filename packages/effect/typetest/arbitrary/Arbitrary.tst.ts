@@ -33,6 +33,7 @@ describe("Arbitrary", () => {
 
   it("infers commands, references and requirements", () => {
     type Model = ReadonlyArray<Arbitrary.Reference<string>>
+    const resolveNumber = hole<Arbitrary.Resolve>()
     const open = Arbitrary.command({
       name: "open",
       next: (model: Model, args, account) => {
@@ -48,24 +49,33 @@ describe("Arbitrary", () => {
       name: "deposit",
       args: (model: Model) =>
         Arbitrary.all({ account: Arbitrary.Constant(model[0]!), amounts: Arbitrary.array(Arbitrary.Constant(1)) }),
-      run: (args) => {
-        expect(args).type.toBe<{ account: string; amounts: Array<1> }>()
+      run: (args, resolve) => {
+        expect(args).type.toBe<{ account: Arbitrary.Reference<string>; amounts: Array<1> }>()
+        expect(resolve(args.account)).type.toBe<string>()
         return hole<Effect.Effect<void, "error", "b">>()
       },
-      postcondition: (_, args, exit) => {
+      postcondition: (_, args, exit, resolve) => {
         expect(args.account).type.toBe<Arbitrary.Reference<string>>()
         expect(exit).type.toBe<Exit.Exit<void, "error">>()
+        expect(resolve).type.toBe<Arbitrary.Resolve>()
         return true
       }
     })
 
-    const commands = Arbitrary.commands({ initial: [] as Model, commands: [open, deposit] })
+    expect(resolveNumber).type.not.toBeCallableWith("account")
+
+    const commands = Arbitrary.commands({
+      initial: [] as Model,
+      commands: [open, deposit],
+      invariant: (model, resolve) => {
+        expect(model).type.toBe<Model>()
+        expect(model.map(resolve)).type.toBe<Array<string>>()
+        return true
+      }
+    })
     expect(commands).type.toBe<Arbitrary.Arbitrary<Arbitrary.Commands<Model, "a" | "b">>>()
     expect(Arbitrary.runCommands(hole<Arbitrary.Commands<Model, "a" | "b">>())).type.toBe<
       Effect.Effect<Arbitrary.CommandsRun<Model>, Arbitrary.CommandsFailure<Model>, "a" | "b">
-    >()
-    expect<Arbitrary.Resolved<readonly [Arbitrary.Reference<number>, { readonly at: Date }]>>().type.toBe<
-      readonly [number, { readonly at: Date }]
     >()
   })
 
