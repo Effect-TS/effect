@@ -255,6 +255,17 @@ describe("TestClock", () => {
       assert.isTrue(later)
     }).pipe(Effect.provide(TestClock.layer({ warningDelay: "10 millis" }))))
 
+  it.effect("withLive - uses a supplied clock that inherits from a TestClock", () =>
+    Effect.gen(function*() {
+      const outer = yield* TestClock.make()
+      const wrapper: Clock.Clock = Object.assign(Object.create(outer), {
+        currentTimeMillisUnsafe: () => 42,
+        currentTimeMillis: Effect.succeed(42)
+      })
+      const inner = yield* TestClock.make().pipe(Effect.provideService(Clock.Clock, wrapper))
+      assert.strictEqual(yield* inner.withLive(Clock.currentTimeMillis), 42)
+    }))
+
   it.effect("adjust - waits for woken fibers when the advancing fiber yields on its operation budget", () =>
     Effect.gen(function*() {
       let done = false
