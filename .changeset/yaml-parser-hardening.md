@@ -2,7 +2,7 @@
 "effect": minor
 ---
 
-`Yaml.parse` and `Yaml.parseAll` now reject input they used to misread. Tags such as `!!str 123` and `!custom x` used to be kept as part of the string, and now fail. Explicit keys (`? key`) now fail with a clear error, where the flow form `{? a : 1}` used to produce the key `"? a"`. Collections nested more than 1000 levels deep fail with an `EncodingError` instead of exhausting the stack.
+`Yaml.parse` and `Yaml.parseAll` now reject input they used to misread. Tags outside the YAML 1.2 core schema, such as `!custom x`, used to be kept as part of the string, and now fail. Explicit keys (`? key`) now fail with a clear error, where the flow form `{? a : 1}` used to produce the key `"? a"`. Collections nested more than 1000 levels deep fail with an `EncodingError` instead of exhausting the stack.
 
 An alias may now be a mapping key when it refers to a scalar, so `*name : value` uses the anchored value as the key instead of the literal text `*name`. An alias to a collection used as a key fails. Anchors on keys (`&name key: value`) are now recorded instead of becoming part of the key text.
 
