@@ -837,16 +837,16 @@ describe("Layer", () => {
     interface FileSystemShape {
       readonly readFile: (path: string) => Effect.Effect<string>
       readonly writeFile: (path: string, data: string) => Effect.Effect<void>
-      readonly stat: (path: string) => Effect.Effect<number>
     }
     class FileSystem extends Context.Service<FileSystem, FileSystemShape>()("FileSystem") {}
-    const full = Layer.succeed(FileSystem, {
-      readFile: (path) => Effect.succeed(`full:${path}`),
-      writeFile: () => Effect.void,
-      stat: () => Effect.succeed(0)
-    })
+    const fullLayer = (prefix: string) =>
+      Layer.succeed(FileSystem, {
+        readFile: (path) => Effect.succeed(`${prefix}:${path}`),
+        writeFile: () => Effect.void
+      })
+    const full = fullLayer("full")
     const readA = Effect.gen(function*() {
-      const { readFile } = yield* FileSystem.only("readFile")
+      const readFile = yield* FileSystem.only("readFile")
       return yield* readFile("a.txt")
     })
 
@@ -857,33 +857,44 @@ describe("Layer", () => {
 
     it.effect("a slice provided on top of the full service wins", () =>
       Effect.gen(function*() {
-        const mock = Layer.succeedOnly(FileSystem, ["readFile"], { readFile: (path) => Effect.succeed(`mock:${path}`) })
+        const mock = Layer.succeed(FileSystem.only("readFile"), (path) => Effect.succeed(`mock:${path}`))
         assert.strictEqual(yield* readA.pipe(Effect.provide(mock), Effect.provide(full)), "mock:a.txt")
       }))
 
-    it.effect("merged slice layers satisfy a program without the full service", () =>
+    it.effect("merged single-member layers satisfy a program without the full service", () =>
       Effect.gen(function*() {
         const writes: Array<string> = []
-        const readAndStat = Layer.succeedOnly(FileSystem, ["readFile", "stat"], {
-          readFile: (path) => Effect.succeed(`slice:${path}`),
-          stat: (path) => Effect.succeed(path.length)
-        })
-        const writeFile = Layer.effectOnly(
-          FileSystem,
-          ["writeFile"],
-          Effect.succeed({
-            writeFile: (path: string, data: string) => Effect.sync(() => void writes.push(`${path}=${data}`))
-          })
+        const readFile = Layer.succeed(FileSystem.only("readFile"), (path) => Effect.succeed(`slice:${path}`))
+        const writeFile = Layer.effect(
+          FileSystem.only("writeFile"),
+          Effect.succeed((path: string, data: string) => Effect.sync(() => void writes.push(`${path}=${data}`)))
         )
         const result = yield* Effect.gen(function*() {
-          const fs = yield* FileSystem.only("readFile", "writeFile", "stat")
-          const content = yield* fs.readFile("a.txt")
-          yield* fs.writeFile("b.txt", content)
-          return [content, yield* fs.stat("b.txt")] as const
-        }).pipe(Effect.provide(Layer.merge(readAndStat, writeFile)))
-        assert.deepStrictEqual(result, ["slice:a.txt", 5])
+          const read = yield* FileSystem.only("readFile")
+          const write = yield* FileSystem.only("writeFile")
+          const content = yield* read("a.txt")
+          yield* write("b.txt", content)
+          return content
+        }).pipe(Effect.provide(Layer.merge(readFile, writeFile)))
+        assert.strictEqual(result, "slice:a.txt")
         assert.deepStrictEqual(writes, ["b.txt=slice:a.txt"])
       }))
+
+    it.effect("a slice key works with Effect.provideService", () =>
+      Effect.gen(function*() {
+        const result = yield* readA.pipe(
+          Effect.provideService(FileSystem.only("readFile"), (path) => Effect.succeed(`service:${path}`))
+        )
+        assert.strictEqual(result, "service:a.txt")
+      }))
+
+    it.effect("a fallback does not survive a later provide of the full service", () =>
+      Effect.gen(function*() {
+        const first = yield* readA
+        const second = yield* readA.pipe(Effect.provide(fullLayer("b")))
+        const third = yield* readA
+        assert.deepStrictEqual([first, second, third], ["a:a.txt", "b:a.txt", "a:a.txt"])
+      }).pipe(Effect.provide(fullLayer("a"))))
   })
 })
 

@@ -43,6 +43,9 @@ describe("Only", () => {
 
   it("a slice layer removes only its own slice", () => {
     expect(needsSlices.pipe(Effect.provide(writeFile))).type.toBe<Effect.Effect<void, never, ReadFile | Other>>()
+    expect(Effect.provideService(needsSlices, FileSystem.only("writeFile"), () => Effect.void)).type.toBe<
+      Effect.Effect<void, never, ReadFile | Other>
+    >()
   })
 
   it("a slice layer does not satisfy a requirement for the whole service", () => {
@@ -64,8 +67,8 @@ describe("Only", () => {
     expect(Context.get).type.not.toBeCallableWith(sliceContext, FileSystem)
   })
 
-  it("displays a missing slice by name, including slices derived from the accessor", () => {
-    const program = Effect.flatMap(FileSystem.only("readFile", "writeFile"), ({ readFile }) => readFile("a.txt"))
+  it("displays a missing slice by name", () => {
+    const program = Effect.flatMap(FileSystem.only("readFile"), (readFile) => readFile("a.txt"))
 
     // @ts-expect-error Only<FileSystem, "readFile">
     const displayed: never = program.pipe(Effect.provide(writeFile))
@@ -73,55 +76,27 @@ describe("Only", () => {
     void displayed
   })
 
-  it("rejects a widened or empty array of members, whose contents are not statically known", () => {
-    const members: Array<"readFile" | "writeFile"> = ["readFile"]
-    const implementation = { readFile: (_path: string) => Effect.succeed(""), writeFile: () => Effect.void }
-
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, members, implementation)
-    expect(Layer.effectOnly).type.not.toBeCallableWith(FileSystem, members, Effect.succeed(implementation))
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, [], {})
-  })
-
-  it("rejects members that are not single literal keys, since only those are known to be present", () => {
-    const member = Math.random() < 0.5 ? "readFile" : "writeFile"
-    const rest: Array<"readFile" | "writeFile"> = []
-    const implementation = { readFile: (_path: string) => Effect.succeed(""), writeFile: () => Effect.void }
-
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, [member], implementation)
-    expect(Layer.effectOnly).type.not.toBeCallableWith(FileSystem, [member], Effect.succeed(implementation))
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, ["readFile", ...rest], implementation)
-  })
-
   it("rejects symbol members, whose slice keys would collide", () => {
     const member = Symbol("readFile")
     class Symbolic extends Context.Service<Symbolic, { readonly [member]: () => Effect.Effect<void> }>()("Symbolic") {}
 
     expect(Symbolic.only).type.not.toBeCallableWith(member)
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(Symbolic, [member], { [member]: () => Effect.void })
   })
 
   it("distributes over a union of member names", () => {
     expect<Context.Only<FileSystem, "readFile" | "writeFile">>().type.toBe<ReadFile | WriteFile>()
   })
 
-  it("the accessor and layer constructors derive the slice from the member name", () => {
-    expect(FileSystem.only("readFile", "writeFile")).type.toBe<
-      Effect.Effect<Pick<FileSystemShape, "readFile" | "writeFile">, never, ReadFile | WriteFile>
-    >()
-    expect(Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: (_path, _data) => Effect.void })).type.toBe<
+  it("the accessor returns a single-member key that the existing key-based APIs accept", () => {
+    expect(FileSystem.only("readFile")).type.toBe<Context.Key<ReadFile, FileSystemShape["readFile"]>>()
+    expect(FileSystem.only).type.not.toBeCallableWith("readFile", "writeFile")
+    expect(Layer.succeed(FileSystem.only("writeFile"), (_path, _data) => Effect.void)).type.toBe<
       Layer.Layer<WriteFile>
     >()
     expect(
-      Layer.succeedOnly(FileSystem, ["readFile", "writeFile"], {
-        readFile: (_path) => Effect.succeed(""),
-        writeFile: (_path, _data) => Effect.void
-      })
-    ).type.toBe<Layer.Layer<ReadFile | WriteFile>>()
-    expect(
-      Layer.effectOnly(
-        FileSystem,
-        ["copy"],
-        Effect.map(FileSystem.only("stat"), ({ stat }) => ({ copy: (from, _to) => Effect.asVoid(stat(from)) }))
+      Layer.effect(
+        FileSystem.only("copy"),
+        Effect.map(FileSystem.only("stat"), (stat) => (from, _to) => Effect.asVoid(stat(from)))
       )
     ).type.toBe<Layer.Layer<Context.Only<FileSystem, "copy">, never, Context.Only<FileSystem, "stat">>>()
   })
