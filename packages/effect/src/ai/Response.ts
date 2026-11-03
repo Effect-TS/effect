@@ -491,9 +491,7 @@ type ToolCallPartForName<
 // handled tool calls carry the JSON encoding of their parameters.
 type ToolCallParametersEncoded<T extends Tool.Any> = T extends Tool.ProviderDefined<any, any, any, false> ?
   Tool.ParametersEncoded<T>
-  : JsonEncoded<Tool.ParametersEncoded<T>>
-
-type JsonEncoded<E> = E extends Schema.Json ? E : Schema.Json
+  : Schema.Json
 
 /**
  * Utility type that extracts tool result parts from a set of tools.
