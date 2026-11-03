@@ -441,12 +441,7 @@ export const make = Effect.gen(function*() {
 
       return requestId
     },
-    Effect.retry({
-      while: (e) => e._tag === "PersistenceError",
-      times: 3,
-      schedule: Schedule.exponential(250)
-    }),
-    Effect.orDie
+    retryPersistenceBounded
   )
 
   const engine = WorkflowEngine.makeUnsafe({
@@ -851,17 +846,7 @@ export const make = Effect.gen(function*() {
         })),
         // Exit cleanup reads the interrupt signal uninterruptibly, so that read
         // keeps a bounded retry and cannot hold up shutdown during an outage.
-        (effect) =>
-          deferred.name === InterruptSignal.name
-            ? effect.pipe(
-              Effect.retry({
-                while: (e) => e._tag === "PersistenceError",
-                times: 3,
-                schedule: Schedule.exponential(250)
-              }),
-              Effect.orDie
-            )
-            : retryPersistence(effect)
+        deferred.name === InterruptSignal.name ? retryPersistenceBounded : retryPersistence
       ),
 
     deferredDone: Effect.fnUntraced(
@@ -938,6 +923,12 @@ const retryPolicy = Schedule.min([
 const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),
+    Effect.orDie
+  )
+
+const retryPersistenceBounded = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.retry({ times: 3, schedule: Schedule.exponential(250), while: (e) => e._tag === "PersistenceError" }),
     Effect.orDie
   )
 
