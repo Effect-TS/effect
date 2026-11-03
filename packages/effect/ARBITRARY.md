@@ -729,12 +729,15 @@ const commands = Arbitrary.commands({
     Arbitrary.command({
       name: "deposit",
       args: transfer,
+      // Simplification can keep a deposit into an account that an earlier `close` removed.
+      precondition: (model: Model, { id }) => model.has(id),
       next: (model: Model, { amount, id }) => new Map(model).set(id, model.get(id)! + amount),
       run: ({ amount, id }, resolve) => Bank.use((bank) => bank.deposit(resolve(id), amount))
     }),
     Arbitrary.command({
       name: "withdraw",
       args: transfer,
+      precondition: (model: Model, { id }) => model.has(id),
       next: (model: Model, { amount, id }) =>
         amount <= model.get(id)! ? new Map(model).set(id, model.get(id)! - amount) : model,
       run: ({ amount, id }, resolve) => Bank.use((bank) => bank.withdraw(resolve(id), amount)),
@@ -771,7 +774,9 @@ Sequences grow with `size`, up to the `maxCommands` option. When a postcondition
 `runCommands` fails with a `CommandsFailure` holding the executed steps, each with its command, arguments, model
 before it, and `Exit`. Simplification removes commands and simplifies their arguments, then replays the model and drops
 every command that is no longer available, whose precondition no longer holds, or whose reference disappeared, so the
-counterexample is a short program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`.
+counterexample is a short program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`. It does not check
+that the simplified arguments could still be generated in the replayed model: once `close` targets a different
+account, a later deposit can refer to a closed one. The membership preconditions in the example reject such programs.
 
 ## Replaying a Failure
 
