@@ -2,4 +2,6 @@
 "effect": patch
 ---
 
-Restrict the MCP Skills extension to protocol version 2026-07-28, including server capabilities, methods, and client opt-in.
+Restrict the MCP Skills extension to protocol 2026-07-28: `McpServer` no longer declares or serves it on earlier revisions, and `McpClient` fails with `UnsupportedError` when `extensions: { skills: true }` is combined with an earlier protocol.
+
+Clients that use Skills must select `McpProtocol.v2026_07_28`. On earlier revisions, read known skill files with `readResource` instead.

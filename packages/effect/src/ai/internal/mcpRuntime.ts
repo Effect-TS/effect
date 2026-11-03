@@ -15,6 +15,7 @@ import * as HttpServerResponse from "../../http/HttpServerResponse.ts"
 import * as Layer from "../../Layer.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Rec from "../../Record.ts"
 import * as Result from "../../Result.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
@@ -553,9 +554,10 @@ export const make = Effect.fnUntraced(function*(
                   : {}),
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
-              const extensions = { ...options.serverInfo.extensions }
-              delete extensions[McpSkills.EXTENSION_ID]
-              if (Object.keys(extensions).length > 0) capabilities.extensions = extensions
+              // Skills requires 2026-07-28, so sessionful revisions never declare it.
+              if (options.serverInfo.extensions !== undefined) {
+                capabilities.extensions = Rec.remove(options.serverInfo.extensions, McpSkills.EXTENSION_ID)
+              }
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,

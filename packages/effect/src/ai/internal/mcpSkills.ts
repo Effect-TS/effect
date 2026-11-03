@@ -17,7 +17,6 @@ import * as Schema from "../../Schema.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
-import * as Legacy from "./mcpSchema/v2024_11_05.ts"
 import * as Stateless from "./mcpSchema/v2026_07_28.ts"
 
 /**
@@ -50,7 +49,7 @@ export const declareExtension = <A>(
 
 const Skill = Schema.Struct({
   uri: Schema.String,
-  frontmatter: Legacy.UnknownObject,
+  frontmatter: Stateless.UnknownObject,
   resources: Schema.Union([
     Schema.Array(Schema.Struct(PublicMcpSchema.SkillResource.fields)),
     Schema.Literal("dynamic")
