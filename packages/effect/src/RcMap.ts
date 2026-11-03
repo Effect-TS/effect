@@ -491,6 +491,10 @@ const closeEntry = <A, E>(entry: State.Entry<A, E>) =>
     ? Fiber.interrupt(entry.fiber).pipe(Effect.andThen(Scope.close(entry.scope, Exit.void)))
     : Scope.close(entry.scope, Exit.void)
 
+const resetExpiresAt = <A, E>(entry: State.Entry<A, E>, clock: Clock) => {
+  entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
+}
+
 const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>) =>
   Effect.suspend(() => {
     entry.refCount--
@@ -512,7 +516,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
 
     // The idle timer belongs to the map, not to the last borrower.
     const clock = Context.get(self.context, Clock)
-    entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
+    resetExpiresAt(entry, clock)
     if (entry.fiber) return Effect.void
 
     entry.fiber = Effect.uninterruptibleMask(function loop(restore): Effect.Effect<void> {
@@ -741,8 +745,6 @@ export const touch: {
       if (self.state._tag === "Closed") return
       const o = MutableHashMap.get(self.state.map, key)
       if (o._tag === "None" || Duration.isZero(o.value.idleTimeToLive)) return
-      const entry = o.value
-      entry.expiresAt = Context.get(self.context, Clock).currentTimeMillisUnsafe() +
-        Duration.toMillis(entry.idleTimeToLive)
+      resetExpiresAt(o.value, Context.get(self.context, Clock))
     })
 )
