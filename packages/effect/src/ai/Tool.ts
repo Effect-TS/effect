@@ -219,6 +219,7 @@ export interface Tool<
   out Requirements = never
 > {
   readonly [TypeId]: {
+    readonly _Config: Types.Covariant<Config>
     readonly _Requirements: Types.Covariant<Requirements>
   }
 
@@ -425,7 +426,8 @@ export interface ProviderDefined<
     readonly failure: Schema.Constraint
     readonly failureMode: FailureMode
   },
-  out RequiresHandler extends boolean = false
+  out RequiresHandler extends boolean = false,
+  out Requirements = never
 > extends
   Tool<
     Name,
@@ -434,7 +436,8 @@ export interface ProviderDefined<
       readonly success: Config["success"]
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
-    }
+    },
+    Requirements
   >
 {
   readonly [ProviderDefinedTypeId]: typeof ProviderDefinedTypeId
@@ -472,17 +475,87 @@ export interface ProviderDefined<
    */
   setNeedsApproval(
     needsApproval: NeedsApproval<Config["parameters"]>
-  ): ProviderDefined<Identifier, Name, Config, RequiresHandler>
+  ): ProviderDefined<Identifier, Name, Config, RequiresHandler, Requirements>
+
+  /**
+   * Adds a _request-level_ dependency which must be provided before the tool
+   * call handler can be executed.
+   */
+  addDependency<I, S>(
+    tag: Context.Key<I, S>
+  ): ProviderDefined<Identifier, Name, Config, RequiresHandler, I | Requirements>
+
+  /**
+   * Set the schema to use to validate the result of a tool call when successful.
+   */
+  setSuccess<SuccessSchema extends Schema.Constraint>(
+    schema: SuccessSchema
+  ): ProviderDefined<
+    Identifier,
+    Name,
+    {
+      readonly args: Config["args"]
+      readonly parameters: Config["parameters"]
+      readonly success: SuccessSchema
+      readonly failure: Config["failure"]
+      readonly failureMode: Config["failureMode"]
+    },
+    RequiresHandler,
+    Requirements
+  >
+
+  /**
+   * Set the schema to use to validate the result of a tool call when it fails.
+   */
+  setFailure<FailureSchema extends Schema.Constraint>(
+    schema: FailureSchema
+  ): ProviderDefined<
+    Identifier,
+    Name,
+    {
+      readonly args: Config["args"]
+      readonly parameters: Config["parameters"]
+      readonly success: Config["success"]
+      readonly failure: FailureSchema
+      readonly failureMode: Config["failureMode"]
+    },
+    RequiresHandler,
+    Requirements
+  >
+
+  /**
+   * Set the schema to use to validate the parameters of a tool call.
+   */
+  setParameters<ParametersSchema extends Schema.Constraint>(
+    schema: ParametersSchema
+  ): ProviderDefined<
+    Identifier,
+    Name,
+    {
+      readonly args: Config["args"]
+      readonly parameters: ParametersSchema
+      readonly success: Config["success"]
+      readonly failure: Config["failure"]
+      readonly failureMode: Config["failureMode"]
+    },
+    RequiresHandler,
+    Requirements
+  >
 
   /**
    * Add an annotation to the tool.
    */
-  annotate<I, S>(tag: Context.Key<I, S>, value: S): ProviderDefined<Identifier, Name, Config, RequiresHandler>
+  annotate<I, S>(
+    tag: Context.Key<I, S>,
+    value: S
+  ): ProviderDefined<Identifier, Name, Config, RequiresHandler, Requirements>
 
   /**
    * Add many annotations to the tool.
    */
-  annotateMerge<I>(context: Context.Context<I>): ProviderDefined<Identifier, Name, Config, RequiresHandler>
+  annotateMerge<I>(
+    context: Context.Context<I>
+  ): ProviderDefined<Identifier, Name, Config, RequiresHandler, Requirements>
 }
 
 /**
@@ -710,13 +783,19 @@ export interface Any extends
  * @since 4.0.0
  */
 export interface AnyProviderDefined extends
-  ProviderDefined<any, any, {
-    readonly args: Schema.Top
-    readonly parameters: Schema.Top
-    readonly success: Schema.Top
-    readonly failure: Schema.Top
-    readonly failureMode: FailureMode
-  }, any>
+  ProviderDefined<
+    any,
+    any,
+    {
+      readonly args: Schema.Top
+      readonly parameters: Schema.Top
+      readonly success: Schema.Top
+      readonly failure: Schema.Top
+      readonly failureMode: FailureMode
+    },
+    any,
+    any
+  >
 {}
 
 /**
@@ -1149,9 +1228,11 @@ export type HandlersFor<Tools extends Record<string, Any>> = {
  * @since 4.0.0
  */
 export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
+  infer _Identifier,
   infer _Name,
   infer _Config,
-  infer _RequiresHandler
+  infer _RequiresHandler,
+  infer _Requirements
 > ? _RequiresHandler
   : true
 
@@ -1166,7 +1247,7 @@ const clone = (self: Any, overrides?: Record<string, unknown>): any =>
   Object.assign(Object.create(Object.getPrototypeOf(self)), self, overrides)
 
 const Proto = {
-  [TypeId]: { _Requirements: identity },
+  [TypeId]: { _Config: identity, _Requirements: identity },
   pipe() {
     return pipeArguments(this, arguments)
   },

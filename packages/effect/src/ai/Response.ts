@@ -491,7 +491,7 @@ type ToolCallPartForName<
 // calls carry the JSON encoding of their parameters. Distributes over a
 // non-literal handler flag, which may be either at runtime.
 type ToolCallParametersEncoded<T extends Tool.Any> = T extends
-  Tool.ProviderDefined<any, any, any, infer RequiresHandler>
+  Tool.ProviderDefined<any, any, any, infer RequiresHandler, any>
   ? RequiresHandler extends true ? Schema.Json : Tool.ParametersEncoded<T>
   : Schema.Json
 
