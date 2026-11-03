@@ -1,4 +1,4 @@
-import { hole, pipe, Predicate } from "effect"
+import { Array, Effect, hole, Option, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const u: unknown
@@ -7,6 +7,13 @@ declare const unknowns: ReadonlyArray<unknown>
 declare const numberOrNull: ReadonlyArray<number | null>
 declare const numberOrUndefined: ReadonlyArray<number | undefined>
 declare const numberOrNullOrUndefined: ReadonlyArray<number | null | undefined>
+
+type Auto = { readonly _tag: "Auto" }
+type Px = { readonly _tag: "Px"; readonly value: number }
+type Percent = { readonly _tag: "Percent"; readonly value: number }
+type Size = Auto | Px | Percent
+declare const size: Size
+declare const sizes: ReadonlyArray<Size>
 
 describe("Predicate", () => {
   it("isString", () => {
@@ -55,8 +62,60 @@ describe("Predicate", () => {
     expect(anys.filter(Predicate.isUnknown)).type.toBe<Array<unknown>>()
   })
 
-  it("isTagged", () => {
-    expect(anys.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a" }>>()
+  describe("isTagged", () => {
+    it("keeps the current types for untyped inputs", () => {
+      expect(anys.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a" }>>()
+      expect(Predicate.isTagged("a")).type.toBe<(self: unknown) => self is { _tag: "a" }>()
+      if (Predicate.isTagged(u, "a")) {
+        expect(u).type.toBe<{ _tag: "a" }>()
+      }
+      const error = hole<Error>()
+      if (Predicate.isTagged(error, "a")) {
+        expect(error).type.toBe<Error & { _tag: "a" }>()
+      }
+      const errorOrPx = hole<Error | Px>()
+      if (Predicate.isTagged(errorOrPx, "a")) {
+        expect(errorOrPx).type.toBe<Error & { _tag: "a" }>()
+      }
+    })
+
+    it("narrows both branches of a data-first call", () => {
+      if (Predicate.isTagged(size, "Auto")) {
+        expect(size).type.toBe<Auto>()
+      } else {
+        expect(size).type.toBe<Px | Percent>()
+      }
+      const mixed = hole<{ readonly _tag: "Concat"; readonly parts: ReadonlyArray<string> } | string | null>()
+      if (Predicate.isTagged(mixed, "Concat")) {
+        expect(mixed).type.toBe<{ readonly _tag: "Concat"; readonly parts: ReadonlyArray<string> }>()
+      } else {
+        expect(mixed).type.toBe<string | null>()
+      }
+    })
+
+    it("keeps the full member when used as a callback", () => {
+      expect(sizes.filter(Predicate.isTagged("Px"))).type.toBe<Array<Px>>()
+      expect(Array.filter(sizes, Predicate.isTagged("Px"))).type.toBe<Array<Px>>()
+      expect(pipe(sizes, Array.filter(Predicate.isTagged("Px")))).type.toBe<Array<Px>>()
+      expect(sizes.filter(Predicate.or(Predicate.isTagged("Px"), Predicate.isTagged("Percent"))))
+        .type.toBe<Array<Px | Percent>>()
+      expect(Option.filter(hole<Option.Option<Size>>(), Predicate.isTagged("Px"))).type.toBe<Option.Option<Px>>()
+      expect(Effect.filterOrFail(hole<Effect.Effect<Size>>(), Predicate.isTagged("Px"), () => "error" as const))
+        .type.toBe<Effect.Effect<Px, "error">>()
+      const isPx: Predicate.Refinement<Size, Px> = Predicate.isTagged("Px")
+      expect(isPx).type.toBe<Predicate.Refinement<Size, Px>>()
+    })
+
+    it("accepts generic callers", () => {
+      expect(<K extends string>(tag: K) => Predicate.isTagged(size, tag)).type.not.toRaiseError()
+      expect(<E>(e: E) => Predicate.isTagged(e, "Foo") && e._tag).type.not.toRaiseError()
+      expect(<E extends { readonly _tag: string }>(e: E, tag: E["_tag"]) => Predicate.isTagged(e, tag))
+        .type.not.toRaiseError()
+      expect(<K extends string>(tag: K) => sizes.filter(Predicate.isTagged(tag as string))).type.not.toRaiseError()
+      expect(<K extends string>(tag: K) =>
+        Effect.catchIf(hole<Effect.Effect<void, Size>>(), Predicate.isTagged(tag as string), () => Effect.void)
+      ).type.not.toRaiseError()
+    })
   })
 
   it("isNullish", () => {
