@@ -30,6 +30,7 @@ import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
+import * as Tracer from "./Tracer.ts"
 
 const TypeId = "~effect/ScopedCache"
 
@@ -135,6 +136,11 @@ export interface Entry<A, E> {
  * `requireServicesAt` controls whether lookup services are captured at
  * construction time or required when lookup operations run.
  *
+ * Lookups do not inherit the span active when `get` or `refresh` runs them,
+ * because a cached entry is shared by every later request. Spans created inside
+ * a lookup are children of the span active when the cache was constructed, if
+ * any.
+ *
  * @see {@link make} for creating a scoped cache with one fixed time-to-live
  *
  * @stability stable
@@ -163,7 +169,9 @@ export const makeWith = <
     self.lookup = (key: Key): Effect.Effect<A, E> =>
       effect.updateContext(
         options.lookup(key),
-        (input) => Context.merge(context, input)
+        // Entry finalizers capture this context until the entry is removed, so
+        // drop the requester's span to avoid retaining it and its exit value.
+        (input) => Context.merge(context, omitParentSpan(input))
       )
     const map = MutableHashMap.empty<Key, Entry<A, E>>()
     self.state = { _tag: "Open", map }
@@ -183,6 +191,8 @@ export const makeWith = <
     )
   })
 
+const omitParentSpan = Context.omit(Tracer.ParentSpan)
+
 /**
  * Creates a `ScopedCache` with a fixed time-to-live for every lookup result.
  *
@@ -198,6 +208,8 @@ export const makeWith = <
  * entry scopes are closed when entries are invalidated, are evicted, or when
  * the cache's owning scope closes. Expiry cleanup is lazy: expired entries close
  * on access to that key or a `keys`/`values`/`entries` scan, not in the background.
+ * Lookups do not inherit the span active when `get` or `refresh` runs them;
+ * they use the span active when the cache was constructed, if any.
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
