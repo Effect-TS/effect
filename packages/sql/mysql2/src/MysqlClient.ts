@@ -60,8 +60,8 @@ const mysqlConstraintErrorCodes = new Set([1022, 1048, 1169, 1216, 1217, 1451, 1
 
 const setTransaction = /^\s*SET\s+TRANSACTION\b/i
 
-// SET TRANSACTION without SESSION or GLOBAL applies to the next transaction
-// on the connection, so it has to be followed by the BEGIN it is meant for.
+// SET TRANSACTION without SESSION or GLOBAL applies to the next transaction,
+// so it must directly precede its BEGIN
 const begin = (conn: Connection, statement: string | undefined) =>
   statement === undefined
     ? conn.executeUnprepared("BEGIN", [], undefined)
@@ -236,10 +236,9 @@ export interface MysqlClientConfig {
  *
  * **Details**
  *
- * `START TRANSACTION` can't set an isolation level, so a
- * `SqlClient.BeginTransaction` that starts with `SET TRANSACTION`, such as
- * `SET TRANSACTION ISOLATION LEVEL READ COMMITTED`, runs on the transaction's
- * connection just before the client's `BEGIN`. Any other provided statement
+ * A `SqlClient.BeginTransaction` starting with `SET TRANSACTION`, such as
+ * `SET TRANSACTION ISOLATION LEVEL READ COMMITTED`, runs just before `BEGIN`,
+ * since `START TRANSACTION` can't set an isolation level. Any other statement
  * replaces `BEGIN`.
  *
  * @stability unstable

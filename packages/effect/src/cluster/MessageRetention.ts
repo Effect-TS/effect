@@ -1,12 +1,10 @@
 /**
- * Deletes the completed requests of a persisted cluster entity from message
- * storage once they are older than a retention.
+ * Deletes a persisted cluster entity's completed requests from message storage
+ * once they are older than a retention.
  *
- * Persisted entities keep every request and its replies in `MessageStorage`
- * so duplicates can be answered and interrupted work can resume. This module
- * provides a singleton that periodically forgets requests whose final reply is
- * older than the retention, so long-lived entities do not grow storage without
- * bound.
+ * Persisted entities keep every request and its replies in `MessageStorage` to
+ * answer duplicates and resume interrupted work, so without a retention their
+ * storage grows without bound.
  *
  * @stability unstable
  * @since 4.1.3
@@ -34,28 +32,27 @@ const batchSize = 1000
  *
  * **Details**
  *
- * Every `interval` (default 1 minute) the singleton deletes, in batches, each
- * request of the entity type whose final reply is older than `retention`,
- * together with its acknowledgements, interrupts and replies. Requests still
- * running, or reset with `MessageStorage.clearReplies`, are kept. Failures are
- * logged and retried on the next interval.
+ * Every `interval` (default 1 minute), the singleton deletes in batches each
+ * request of the entity type whose final reply is older than `retention`, with
+ * its acknowledgements, interrupts and replies. Running requests and requests
+ * reset with `MessageStorage.clearReplies` are kept. Failures are logged and
+ * retried on the next interval.
  *
- * The singleton runs in `shardGroup` (default `"default"`), independently of
- * the entity's own shard group.
+ * The singleton runs in `shardGroup` (default `"default"`), not the entity's
+ * shard group.
  *
  * **Gotchas**
  *
- * - A request sent again with the same primary key after it was deleted is a
- *   new request, so the handler runs again.
- * - Choose a retention longer than any client retry window, and longer than any
- *   consumer still reading the request's stored replies.
- * - Do not use it for workflow or `ClusterCron` entities. They rely on stored
+ * - A request sent again with the same primary key after deletion runs the
+ *   handler again.
+ * - Choose a retention longer than any client retry window or reader of the
+ *   stored replies.
+ * - Do not use it for workflow or `ClusterCron` entities, which rely on stored
  *   replies to know what already ran.
- * - Like any singleton, include the layer on every runner that can be assigned
- *   `shardGroup`, so it keeps running when shards move.
- * - With SQL storage on MySQL, cleanup runs at READ COMMITTED, which requires
- *   `binlog_format` `ROW` or `MIXED`. With `STATEMENT` every cleanup fails
- *   and is logged.
+ * - Include the layer on every runner that can be assigned `shardGroup`, so it
+ *   keeps running when shards move.
+ * - SQL storage on MySQL needs `binlog_format` `ROW` or `MIXED`. With
+ *   `STATEMENT`, every cleanup fails and is logged.
  *
  * **Example** (Forgetting a week-old request)
  *

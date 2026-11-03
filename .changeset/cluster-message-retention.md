@@ -1,8 +1,9 @@
 ---
 "effect": patch
+"@effect/sql-mysql2": patch
 ---
 
-Add `MessageRetention.make`, a cluster singleton layer that deletes a persisted entity's completed requests and their replies from message storage once they are older than a retention.
+Add `MessageRetention.make` to delete a persisted entity's old completed requests, and fix `@effect/sql-mysql2` not starting a transaction for a `SET TRANSACTION` `BeginTransaction`.
 
-- Custom `MessageStorage` implementations must add `deleteProcessed`, which deletes an entity type's requests completed before a cutoff along with their replies.
-- On MySQL, SQL message storage deletes at READ COMMITTED, which requires `binlog_format` `ROW` or `MIXED`.
+- Custom `MessageStorage` implementations must add `deleteProcessed`.
+- SQL message storage on MySQL needs `binlog_format` `ROW` or `MIXED`.

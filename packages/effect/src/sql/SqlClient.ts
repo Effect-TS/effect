@@ -254,10 +254,9 @@ export declare namespace SqlClient {
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
     /**
-     * Starts a top-level transaction on the connection, given the
-     * `BeginTransaction` provided to it, if any. Overrides
-     * `beginTransaction`, for a database that needs more than one statement
-     * to start some transactions.
+     * Starts a top-level transaction on the connection with the provided
+     * `BeginTransaction` statement, if any. Overrides `beginTransaction` for
+     * databases that need more than one statement to start a transaction.
      */
     readonly begin?:
       | ((conn: Connection.Connection, statement: string | undefined) => Effect.Effect<void, SqlError>)
@@ -830,9 +829,9 @@ export const SafeIntegers = Context.Reference<boolean>("effect/sql/SqlClient/Saf
  * `withTransaction` it is meant for. `@effect/sql-libsql`, `@effect/sql-mssql`
  * and `@effect/sql-sqlite-do` don't start transactions with a SQL statement
  * and ignore it. MySQL can't set an isolation level in `START TRANSACTION`,
- * so `@effect/sql-mysql2` runs a statement starting with `SET TRANSACTION`
- * before its `BEGIN` rather than in place of it. The statement is sent as raw
- * SQL, so never build it from untrusted input.
+ * so `@effect/sql-mysql2` runs a `SET TRANSACTION` statement before its
+ * `BEGIN`. The statement is sent as raw SQL, so never build it from untrusted
+ * input.
  *
  * **Example** (Starting a serializable transaction)
  *

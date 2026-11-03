@@ -222,22 +222,21 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Deletes up to `limit` completed requests of an entity type with their
-   * messages and replies, returning how many requests were deleted.
+   * Deletes up to `limit` of an entity type's completed requests with their
+   * messages and replies, returning the number of requests deleted.
    *
    * **Details**
    *
-   * A request is eligible when its final `WithExit` reply has an id timestamp
-   * before `completedBefore`, in Unix milliseconds. Requests without a final
-   * reply, including ones reset by `clearReplies`, are kept. A request sent
-   * again with the same primary key after deletion is saved as a new request.
+   * A request is eligible when its `WithExit` reply id has a timestamp before
+   * `completedBefore`, in Unix milliseconds. Requests without one, including
+   * ones reset by `clearReplies`, are kept. A request saved again with the same
+   * primary key after deletion is a new request.
    *
    * **Gotchas**
    *
-   * SQL storage on MySQL deletes at READ COMMITTED. Inside a caller's
-   * transaction it keeps that transaction's isolation level, which must also be
-   * READ COMMITTED on MySQL before 8.0.20 and on MariaDB, or the delete can
-   * deadlock with a concurrent reply.
+   * Inside a caller's transaction on MySQL before 8.0.20 or MariaDB, SQL storage
+   * needs that transaction at READ COMMITTED, or the delete can deadlock with a
+   * concurrent reply.
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string
@@ -514,16 +513,14 @@ export type Encoded = {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Deletes up to `limit` completed requests of an entity type with every
-   * message and reply sharing their request id, returning how many requests
-   * were deleted.
+   * Deletes up to `limit` of an entity type's completed requests with every
+   * message and reply sharing their request id, returning the number deleted.
    *
    * **Details**
    *
-   * A request is eligible when its final `WithExit` reply has an id timestamp
-   * before `completedBefore`, in Unix milliseconds. Selecting and deleting the
-   * requests must be atomic. Requests locked by a concurrent transaction may be
-   * skipped; they stay eligible for a later call.
+   * A request is eligible when its `WithExit` reply id has a timestamp before
+   * `completedBefore`, in Unix milliseconds. Selecting and deleting must be
+   * atomic. Requests locked by another transaction may be left for a later call.
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string

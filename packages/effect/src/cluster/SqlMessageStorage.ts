@@ -18,12 +18,11 @@
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
- * On MySQL, `deleteProcessed` runs its own transaction at READ COMMITTED.
- * Called inside a caller's transaction, it runs at that transaction's
- * isolation level, which must also be READ COMMITTED on servers older than
- * MySQL 8.0.20 and on MariaDB, or it can deadlock with a concurrent reply.
- * READ COMMITTED needs `binlog_format` `ROW` or `MIXED`; with `STATEMENT`
- * the server rejects the delete.
+ * On MySQL, `deleteProcessed` runs at READ COMMITTED, which needs
+ * `binlog_format` `ROW` or `MIXED`. Inside a caller's transaction it keeps
+ * that transaction's isolation level, which must also be READ COMMITTED on
+ * MySQL before 8.0.20 and on MariaDB, or it can deadlock with a concurrent
+ * reply.
  *
  * @stability unstable
  * @since 4.0.0
@@ -353,15 +352,14 @@ export const makeEncodedStorage: (options?: {
       WHERE m.message_id = ${message_id}
     `
   const maxInsertAttempts = 3
-  // Wraps a dialect insert that reports whether it stored the row. When a row
-  // with the same message_id already exists, returns that row instead.
+  // Runs an insert that reports whether it stored the row, returning the
+  // existing row with the same message_id when it did not
   const insertUnlessExists = (
     insert: (row: MessageRow, message_id: string) => Effect.Effect<boolean, SqlError>
   ) =>
   (row: MessageRow, message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> => {
-    // The existing row can be deleted, for example by deleteProcessed, between
-    // the conflicting insert and the read. Insert again instead of reporting a
-    // save that stored nothing.
+    // deleteProcessed can delete the existing row before it is read, so insert
+    // again rather than report a save that stored nothing
     const loop = (attempt: number): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
       Effect.flatMap(
         insert(row, message_id),
@@ -419,8 +417,7 @@ export const makeEncodedStorage: (options?: {
           (rows) => rows.length > 0
         )
       ),
-    // SQLite allows a single writer, so the read and insert in one transaction
-    // cannot interleave with a delete.
+    // SQLite has a single writer, so no delete can run between read and insert
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -457,10 +454,8 @@ export const makeEncodedStorage: (options?: {
     mssql: () => sql.literal("WITH (UPDLOCK)"),
     orElse: () => sql.literal("")
   })
-  // Locks rows like updateLock and forUpdate, but skips rows another
-  // transaction has locked instead of waiting for them. mssql only accepts
-  // READPAST at READ COMMITTED or REPEATABLE READ, so the REPEATABLEREAD table
-  // hint keeps it valid under any session isolation level.
+  // Like updateLock and forUpdate, but skips locked rows. REPEATABLEREAD keeps
+  // mssql's READPAST valid at any session isolation level.
   const skipLockedHint = sql.onDialectOrElse({
     mssql: () => sql.literal("WITH (UPDLOCK, READPAST, REPEATABLEREAD)"),
     orElse: () => sql.literal("")
@@ -470,15 +465,12 @@ export const makeEncodedStorage: (options?: {
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
   })
-  // Every write that touches a request's replies locks the request row first,
-  // in the same order as deleteProcessed, so the two cannot deadlock. An empty
-  // result means the request has been deleted.
+  // Writes to a request's replies lock its row first, in deleteProcessed's
+  // order, so they cannot deadlock. An empty result means it was deleted.
   const lockRequest = (requestId: string) =>
     sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
-  // On small tables mssql can scan the clustered index for request_id
-  // filters, taking locks on other requests' rows and deadlocking with
-  // concurrent writers. These statements reach rows only through the
-  // request_id indexes, so they lock just the request's own rows.
+  // mssql can scan the clustered index on small tables and deadlock on other
+  // requests' rows, so these statements force the request_id indexes
   const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
     mssql: () => (requestId) =>
       sql`
@@ -504,12 +496,9 @@ export const makeEncodedStorage: (options?: {
           WHERE m.request_id IN (${ids})
         `
       ),
-    // A DELETE that scans the table locks every row it reads, so it waits
-    // on, and can deadlock with, writes to unrelated requests. MySQL ignores
-    // FORCE INDEX here and can choose a scan even for an IN list on the
-    // primary key, so only an optimizer hint keeps it on the index. Servers
-    // without optimizer hints (MySQL before 8.0.20, MariaDB) read it as a
-    // comment and rely on cleanupIsolation instead.
+    // A scanning DELETE locks every row it reads and can deadlock. MySQL
+    // ignores FORCE INDEX here, so an optimizer hint keeps it on the index.
+    // Servers without hints (before 8.0.20, MariaDB) rely on cleanupIsolation.
     mysql: () => (ids) =>
       Effect.andThen(
         sql`
@@ -527,30 +516,23 @@ export const makeEncodedStorage: (options?: {
         sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
       )
   })
-  // At MySQL's default REPEATABLE READ, a scanning DELETE keeps next-key locks
-  // on every row and gap it reads, so it can block a saveReply of another
-  // request that already holds its request row, and deadlock. READ COMMITTED
-  // takes no gap locks and releases rows that don't match, so the DELETE only
-  // waits. There is no fallback: with binlog_format STATEMENT the server
-  // rejects the DELETE, and the error is returned. A caller's transaction
-  // keeps its own isolation level.
+  // Gap locks at MySQL's default REPEATABLE READ let a scanning DELETE
+  // deadlock with saveReply. READ COMMITTED takes none, but the server rejects
+  // it with binlog_format STATEMENT. A caller's transaction keeps its level.
   const cleanupIsolation: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = sql
     .onDialectOrElse({
       mysql: () => Effect.provideService(SqlClient.BeginTransaction, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"),
       orElse: () => identity
     })
-  // Locks up to limit eligible request rows, skipping rows another
-  // transaction holds, such as a reset or a late acknowledgement. Waiting for
-  // them can deadlock on gap locks in MySQL.
+  // Locks up to limit eligible requests, skipping locked ones, since waiting
+  // can deadlock on MySQL gap locks
   const lockDeletable: (
     eligible: Fragment,
     limit: number
   ) => Effect.Effect<ReadonlyArray<{ id: string | bigint }>, SqlError> = sql.onDialectOrElse({
-    // A locking scan in MySQL locks every row it reads, including rows of
-    // requests that are not eligible, and reaches each row through the
-    // primary key before the id index, the opposite of lockRequest. So find
-    // the candidates without locks, then lock them through the id index and
-    // check them again, in case a reset committed in between.
+    // A MySQL locking scan also locks ineligible rows, in the opposite order
+    // to lockRequest, so find candidates unlocked, then lock them by id and
+    // recheck them
     mysql: () => (eligible, limit) =>
       Effect.flatMap(
         sql<{ id: string | bigint }>`
@@ -735,8 +717,7 @@ export const makeEncodedStorage: (options?: {
           const insertRow = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
           insert = envelope._tag !== "AckChunk" ? insertRow : lockRequest(envelope.requestId).pipe(
             Effect.flatMap((request) =>
-              // the request was deleted, for example by deleteProcessed, so
-              // there is nothing left to acknowledge
+              // the request was deleted, so there is nothing left to acknowledge
               request.length === 0 ?
                 Effect.succeed([]) :
                 sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
@@ -983,23 +964,16 @@ export const makeEncodedStorage: (options?: {
 
     deleteProcessed: Effect.fnUntraced(
       function*({ completedBefore, entityType, limit }) {
-        // Snowflake ids are signed, so a reply completed before the snowflake
-        // epoch has a negative id, down to 2 ** 41 milliseconds before it. No
-        // reply completed before a cutoff at or below that. This also covers
-        // -Infinity, the cutoff of an infinite retention, and NaN.
+        // No signed snowflake id is at or before this. Also covers -Infinity and NaN.
         if (!(completedBefore > Snowflake.constEpochMillis - 2 ** 41)) return 0
-        // last_reply_id is the WithExit reply id, so its timestamp is the
-        // completion time. Reply timestamps are whole milliseconds, so rounding
-        // a fractional cutoff up keeps every reply before it. Every id is below
-        // the first timestamp past the signed 64-bit range, so a later cutoff,
-        // including Infinity, is capped there and matches every reply.
+        // Reply timestamps are whole milliseconds, so round up. Every signed
+        // snowflake id is below the cap, which also covers Infinity.
         const cutoff = Snowflake.make({
           timestamp: Math.min(Math.ceil(completedBefore), Snowflake.constEpochMillis + 2 ** 41),
           machineId: MachineId.make(0),
           sequence: 0
         })
-        // Lock the selected requests so a concurrent clearReplies cannot reset
-        // them before the delete. Skipped requests wait for a later call.
+        // Locked so a concurrent clearReplies cannot reset them first
         const rows = yield* lockDeletable(
           sql`
             entity_type = ${entityType}
@@ -1359,9 +1333,8 @@ export const migrations = (options?: {
       })
     }),
 
-    // mssql index names are scoped to their table, but 0001 used to look them
-    // up by name alone, so a same-named index on another table skipped them.
-    // Writes force these indexes, so create any that are missing.
+    // 0001 looked mssql indexes up by name alone, so a same-named index on
+    // another table skipped them. Writes force them, so create any missing.
     "0004_mssql_lookup_indexes": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       const ensureIndex = (index: string, table: string, columns: string) =>
@@ -1380,8 +1353,7 @@ export const migrations = (options?: {
       })
     }),
 
-    // Serves MessageRetention's deleteProcessed, which looks for an entity
-    // type's processed requests by the id of their final reply.
+    // Serves deleteProcessed's lookup by entity type and final reply id
     "0005_retention_index": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       const messagesTableSql = sql(messagesTable)
