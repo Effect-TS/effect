@@ -1,7 +1,5 @@
 /**
  * Version-neutral MCP server records and semantic operations.
- *
- * @internal
  */
 
 import * as Arr from "../../Array.ts"

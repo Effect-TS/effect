@@ -3823,7 +3823,9 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  * `skills/list` and `skills/get` with a manifest of every file's SHA-256
  * digest and size, computed from the bytes served. Every directory of the
  * skill namespace is readable with `resources/directory/read`. The server
- * declares the extension once any skill is registered.
+ * declares the extension on protocol 2026-07-28 once any skill is registered.
+ * Earlier revisions neither declare it nor answer its methods, but still serve
+ * the skill's files through `resources/read`.
  *
  * Fails when the skill breaks the extension's rules: a name that does not
  * match the URI, a `SKILL.md` without YAML frontmatter, frontmatter that is

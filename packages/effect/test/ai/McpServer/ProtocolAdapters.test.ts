@@ -1366,7 +1366,7 @@ describe("McpServer protocol adapters", () => {
         assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
       }
       assert.strictEqual(sends, 0)
-    }).pipe(Effect.scoped))
+    }))
 
   it.effect("should reject direct reverse operations when the selected protocol is stateless", () =>
     Effect.gen(function*() {
@@ -1424,7 +1424,7 @@ describe("McpServer protocol adapters", () => {
         assert.strictEqual(error.protocolVersion, protocol.protocolVersion)
       }
       assert.strictEqual(sends, 0)
-    }).pipe(Effect.scoped))
+    }))
 
   // Old wire projections map true to {} and false to { not: {} } without changing nested semantics.
   // https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2

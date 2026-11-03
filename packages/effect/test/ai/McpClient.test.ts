@@ -123,7 +123,7 @@ describe("McpClient", () => {
           const [resource] = yield* client.listResources()
           const contents = yield* client.readResource({ uri: resource.uri })
           assert.deepStrictEqual(contents.contents, [{ uri: "demo://guide", text: "Guide" }])
-        }).pipe(Effect.scoped))
+        }))
 
       // isError is a tool result; supplying a schema turns it into a ToolError retaining the result.
       it.effect("should fail with ToolError when a schema call reports isError", () =>
@@ -136,7 +136,7 @@ describe("McpClient", () => {
           const error = yield* client.callTool({ tool, schema: Schema.String }).pipe(Effect.flip)
           assert(error.reason._tag === "ToolError")
           assert.deepStrictEqual(error.reason.result, raw)
-        }).pipe(Effect.scoped))
+        }))
 
       // Resource not found is -32002 in 2025-11-25 and -32602 in 2026-07-28.
       it.effect("should preserve JSON-RPC error code when the server rejects a request", () =>
@@ -145,7 +145,7 @@ describe("McpClient", () => {
           const error = yield* client.readResource({ uri: "demo://missing" }).pipe(Effect.flip)
           assert(error.reason._tag === "ProtocolError")
           assert.strictEqual(error.reason.code, protocol.protocolVersion === "2025-11-25" ? -32002 : -32602)
-        }).pipe(Effect.scoped))
+        }))
 
       it.effect("should time out when a call exceeds its deadline", () =>
         Effect.gen(function*() {
@@ -154,7 +154,7 @@ describe("McpClient", () => {
           const call = yield* client.callTool({ tool }, { timeout: "1 second" }).pipe(Effect.flip, Effect.forkChild)
           yield* TestClock.adjust("1 second")
           assert.strictEqual((yield* Fiber.join(call)).reason._tag, "TimeoutError")
-        }).pipe(Effect.scoped))
+        }))
 
       it.effect("should expose remote tools to a language model through McpClient.toolkit", () =>
         Effect.gen(function*() {
@@ -168,7 +168,7 @@ describe("McpClient", () => {
             })
           )
           assert.deepStrictEqual(response.toolResults.map((part) => part.result), ["{\"total\":42}"])
-        }).pipe(Effect.scoped))
+        }))
     })
   }
 
@@ -901,70 +901,76 @@ describe("McpClient skills", () => {
     }))
   )
 
-  for (const protocol of protocols) {
-    describe(protocol.protocolVersion, () => {
-      it.effect("should list, get and browse skills and read their files verified", () =>
-        Effect.gen(function*() {
-          const client = yield* connect(protocol, skillsServerLayer, { skills: true })
-          const skills = yield* client.listSkills()
-          assert.deepStrictEqual(skills.map((skill) => skill.uri).sort(), [
-            "skill://acme/invoices/SKILL.md",
-            "skill://acme/refunds/SKILL.md"
-          ])
-          const refunds = yield* client.getSkill({ uri: "skill://acme/refunds/SKILL.md" })
-          assert.deepStrictEqual(refunds, skills.find((skill) => skill.uri === refunds.uri))
-          assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
+  it.effect("should list, get and browse skills and read their files verified", () =>
+    Effect.gen(function*() {
+      const client = yield* connect(McpProtocol.v2026_07_28, skillsServerLayer, { skills: true })
+      const skills = yield* client.listSkills()
+      assert.deepStrictEqual(skills.map((skill) => skill.uri).sort(), [
+        "skill://acme/invoices/SKILL.md",
+        "skill://acme/refunds/SKILL.md"
+      ])
+      const refunds = yield* client.getSkill({ uri: "skill://acme/refunds/SKILL.md" })
+      assert.deepStrictEqual(refunds, skills.find((skill) => skill.uri === refunds.uri))
+      assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
 
-          const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
-          assert.deepStrictEqual(children.map((child) => child.name), ["refunds", "assets", "references"])
+      const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
+      assert.deepStrictEqual(children.map((child) => child.name), ["refunds", "assets", "references"])
 
-          assert(refunds.resources !== "dynamic")
-          for (const { uri } of refunds.resources) {
-            const result = yield* client.readSkillResource({ skill: refunds, uri })
-            assert.strictEqual(result.contents[0].uri, uri)
-          }
-          const logo = yield* client.readSkillResource({ skill: refunds, uri: "skill://acme/refunds/assets/logo.png" })
-          assert.deepStrictEqual("blob" in logo.contents[0] ? logo.contents[0].blob : undefined, PNG)
-        }).pipe(Effect.scoped))
+      assert(refunds.resources !== "dynamic")
+      for (const { uri } of refunds.resources) {
+        const result = yield* client.readSkillResource({ skill: refunds, uri })
+        assert.strictEqual(result.contents[0].uri, uri)
+      }
+      const logo = yield* client.readSkillResource({ skill: refunds, uri: "skill://acme/refunds/assets/logo.png" })
+      assert.deepStrictEqual("blob" in logo.contents[0] ? logo.contents[0].blob : undefined, PNG)
+    }))
 
-      it.effect("should not call the extension's methods on a server that does not declare it", () =>
-        Effect.gen(function*() {
-          const client = yield* connect(protocol, serverLayer, { skills: true })
-          assert.deepStrictEqual(yield* client.listSkills(), [])
-          for (
-            const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
-              client.getSkill({ uri: "skill://acme/refunds/SKILL.md" }),
-              client.readResourceDirectory({ uri: "skill://acme" })
-            ]
-          ) {
-            assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "UnsupportedError")
-          }
-        }).pipe(Effect.scoped))
-    })
-  }
+  it.effect("should not call the extension's methods on a server that does not declare it", () =>
+    Effect.gen(function*() {
+      const client = yield* connect(McpProtocol.v2026_07_28, serverLayer, { skills: true })
+      assert.deepStrictEqual(yield* client.listSkills(), [])
+      for (
+        const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
+          client.getSkill({ uri: "skill://acme/refunds/SKILL.md" }),
+          client.readResourceDirectory({ uri: "skill://acme" })
+        ]
+      ) {
+        assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "UnsupportedError")
+      }
+    }))
+
+  it.effect("should reject the extension on legacy protocols", () =>
+    Effect.gen(function*() {
+      const error = yield* scriptedHttp(
+        (message) => scriptedReply(McpProtocol.v2025_11_25, message),
+        { protocol: McpProtocol.v2025_11_25, extensions: { skills: true } }
+      ).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "UnsupportedError")
+    }))
 
   it.effect("should declare the extension only when enabled", () =>
     Effect.gen(function*() {
-      for (const skills of [true, false]) {
-        const { sent } = yield* scriptedHttp(
-          (message) => scriptedReply(McpProtocol.v2025_11_25, message),
-          { protocol: McpProtocol.v2025_11_25, extensions: { skills } }
-        )
-        const initialize = sent.map(({ message }) => message).find((message) => methodOf(message) === "initialize")
-        assert.deepStrictEqual(
-          (initialize as McpSchema.JsonRpcRequest).params?.capabilities,
-          skills ? { extensions: { "io.modelcontextprotocol/skills": {} } } : {}
-        )
+      const discoveredCapabilities = (
+        sent: ReadonlyArray<{ readonly message?: McpSchema.JsonRpcMessage | undefined }>
+      ) => {
+        const discover = sent.map(({ message }) => message).find((message) => methodOf(message) === "server/discover")
+        const meta = (discover as McpSchema.JsonRpcRequest).params!._meta as Record<string, unknown>
+        return meta["io.modelcontextprotocol/clientCapabilities"]
       }
+      const enabled = yield* scriptedHttp(
+        (message) => scriptedReply(McpProtocol.v2026_07_28, message),
+        { extensions: { skills: true } }
+      )
+      assert.deepStrictEqual(discoveredCapabilities(enabled.sent), {
+        extensions: { "io.modelcontextprotocol/skills": {} }
+      })
 
       const { client, sent } = yield* scriptedHttp((message) =>
         message.method === "server/discover"
           ? jsonRpcResult(message, skillsDiscovery(true))
           : scriptedReply(McpProtocol.v2026_07_28, message)
       )
-      const discover = sent.map(({ message }) => message).find((message) => methodOf(message) === "server/discover")
-      const meta = (discover as McpSchema.JsonRpcRequest).params!._meta as Record<string, unknown>
-      assert.deepStrictEqual(meta["io.modelcontextprotocol/clientCapabilities"], {})
+      assert.deepStrictEqual(discoveredCapabilities(sent), {})
       const skill = McpSchema.Skill.make(entry as any)
       for (
         const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [

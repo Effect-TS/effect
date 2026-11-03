@@ -268,13 +268,20 @@ describe("McpServer skills", () => {
   })
 
   describe("sessionful revisions", () => {
-    for (const protocol of [McpProtocol.v2025_11_25, McpProtocol.v2024_11_05]) {
-      it.effect(`serves the extension without cache attributes on ${protocol.protocolVersion}`, () =>
+    for (
+      const protocol of [
+        McpProtocol.v2024_11_05,
+        McpProtocol.v2025_03_26,
+        McpProtocol.v2025_06_18,
+        McpProtocol.v2025_11_25
+      ]
+    ) {
+      it.effect(`does not serve the extension on ${protocol.protocolVersion}`, () =>
         Effect.gen(function*() {
           const harness = yield* makeHttpHarness(Skills.pipe(Layer.provideMerge(makeServerLayer({
             name: "SkillsServer",
             protocols: [protocol],
-            extensions: { "example/other": {} }
+            extensions: { "example/other": {}, "io.modelcontextprotocol/skills": { directoryRead: true } }
           }))))
           const initialize = yield* harness.post({
             jsonrpc: "2.0",
@@ -287,33 +294,17 @@ describe("McpServer skills", () => {
             }
           })
           const initialized = (yield* readMcpHttpResponse(initialize)) as any
-          assert.deepStrictEqual(initialized.result.capabilities.extensions, {
-            "example/other": {},
-            "io.modelcontextprotocol/skills": { directoryRead: true }
-          })
+          assert.deepStrictEqual(initialized.result.capabilities.extensions, { "example/other": {} })
 
           const headers = yield* initializeHttpSession(harness, protocol)
-          const post = (method: string, params: Record<string, unknown>) =>
-            harness.post({ jsonrpc: "2.0", id: 2, method, params }, headers).pipe(
-              Effect.flatMap(readMcpHttpResponse),
-              Effect.map((message) => message as any)
+          for (const method of ["skills/list", "skills/get", "resources/directory/read"]) {
+            const response = yield* harness.post(
+              { jsonrpc: "2.0", id: 2, method, params: { uri: "skill://acme" } },
+              headers
             )
-
-          const list = yield* post("skills/list", {})
-          assert.deepStrictEqual(Object.keys(list.result), ["skills"])
-          assert.strictEqual(list.result.skills.length, 2)
-
-          const get = yield* post("skills/get", { uri: "skill://acme/billing/refunds/SKILL.md" })
-          assert.deepStrictEqual(Object.keys(get.result), ["skill"])
-          assert.strictEqual(get.result.skill.frontmatter.name, "refunds")
-
-          const missing = yield* post("skills/get", { uri: "skill://acme/missing/SKILL.md" })
-          assert.strictEqual(missing.error.code, -32602)
-
-          const directory = yield* post("resources/directory/read", { uri: "skill://acme" })
-          assert.deepStrictEqual(directory.result, {
-            resources: [{ uri: "skill://acme/billing", name: "billing", mimeType: "inode/directory" }]
-          })
+            const message = (yield* readMcpHttpResponse(response)) as any
+            assert.strictEqual(message.error.code, -32601, method)
+          }
         }))
     }
   })

@@ -1,7 +1,5 @@
 /**
  * Runtime descriptors for MCP protocol adapters.
- *
- * @internal
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
@@ -15,6 +13,7 @@ import * as HttpServerResponse from "../../http/HttpServerResponse.ts"
 import * as Layer from "../../Layer.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Rec from "../../Record.ts"
 import * as Result from "../../Result.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
@@ -532,6 +531,10 @@ export const make = Effect.fnUntraced(function*(
         registrationPresence: options.core.registrationPresence
       }
       const handlerTarget = registry.handlerTarget(contextMap, installationContext)
+      // Skills requires 2026-07-28, so sessionful revisions never declare it.
+      const sessionfulExtensions = options.serverInfo.extensions === undefined
+        ? undefined
+        : Rec.remove(options.serverInfo.extensions, McpSkills.EXTENSION_ID)
       for (const protocol of registry.protocols) {
         if (protocol.runtime._tag === "Stateless") {
           yield* protocol.installHandlers(options.core, undefined, handlerTarget)
@@ -555,8 +558,7 @@ export const make = Effect.fnUntraced(function*(
                   : {}),
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
-              const extensions = McpSkills.declareExtension(options.serverInfo.extensions, presence.skills)
-              if (extensions !== undefined) capabilities.extensions = extensions
+              if (sessionfulExtensions !== undefined) capabilities.extensions = sessionfulExtensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,
