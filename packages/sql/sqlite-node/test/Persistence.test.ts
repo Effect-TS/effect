@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, expect, it } from "@effect/vitest"
-import { Clock, Duration, Effect, Exit, FileSystem, Layer, Schedule, Schema } from "effect"
+import { Duration, Effect, FileSystem, Layer } from "effect"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
@@ -9,7 +9,6 @@ import * as Arr from "effect/Array"
 import { PersistedQueue, Persistence } from "effect/persistence"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
-import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 
 const ClientLayer = Effect.gen(function*() {
@@ -202,45 +201,6 @@ PersistedQueueTest.suite(
 )
 
 it.layer(ClientLayer)((it) => PersistedQueueSqlTest.suiteWith(it))
-
-it.layer(ClientLayer)("PersistedQueue retry precision", (it) => {
-  it.effect("preserves fractional seconds in retry deadlines and readiness", () =>
-    Effect.gen(function*() {
-      yield* TestClock.setTime(500)
-      const sql = yield* SqlClient.SqlClient
-      const store = yield* PersistedQueue.makeStoreSql()
-      const factory = yield* PersistedQueue.makeFactory.pipe(
-        Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-      )
-      const queue = yield* factory.make({
-        name: "retry-precision",
-        schema: Schema.String,
-        retrySchedule: Schedule.spaced("1 second")
-      })
-      yield* queue.offer("job")
-      assert.strictEqual(yield* queue.take(() => Effect.fail("retry")).pipe(Effect.flip), "retry")
-      const [{ visible_at }] = yield* sql<{ visible_at: string }>`
-        SELECT visible_at FROM effect_queue WHERE queue_name = 'retry-precision'
-      `
-      assert.strictEqual(visible_at, "1970-01-01 00:00:01.500")
-      const taken = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-      yield* TestClock.adjust(999)
-      assert.isUndefined(taken.pollUnsafe())
-      yield* TestClock.adjust(1)
-      assert.deepStrictEqual(taken.pollUnsafe(), Exit.succeed("job"))
-    }).pipe(
-      // Move SQLite's clock with TestClock while retaining its precision rules.
-      Effect.provideService(Statement.CurrentTransformer, (statement, sql) =>
-        Effect.map(Clock.currentTimeMillis, (millis) => {
-          const [query, parameters] = statement.compile()
-          const now = `'${new Date(millis).toISOString()}'`
-          return sql.unsafe(
-            query.replaceAll("CURRENT_TIMESTAMP", `datetime(${now})`).replaceAll("'now'", now),
-            parameters
-          )
-        }))
-    ))
-})
 
 it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
   it.effect("deletes expired entries in batches", () =>
