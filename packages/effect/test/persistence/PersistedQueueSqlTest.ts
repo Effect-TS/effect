@@ -1,6 +1,6 @@
 import { assert } from "@effect/vitest"
 import type { Vitest } from "@effect/vitest"
-import { Clock, type Duration, Effect, Fiber, Latch, Layer, Option, Schedule, Schema } from "effect"
+import { Clock, type Duration, Effect, Fiber, Latch, Layer, Option, Predicate, Schedule, Schema } from "effect"
 import { PersistedQueue } from "effect/persistence"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
@@ -60,7 +60,7 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
         // time both handlers, leaving out the acknowledgement writes
         const failedAt = yield* queue.take(() =>
           awaitMidSecond.pipe(Effect.andThen(Clock.currentTimeMillis), Effect.flatMap(Effect.fail))
-        ).pipe(Effect.flip)
+        ).pipe(Effect.catchIf(Predicate.isNumber, Effect.succeed))
         const retriedAt = yield* queue.take(() => Clock.currentTimeMillis)
 
         assert.isAtLeast(retriedAt - failedAt, 1000 - clockTolerance)
