@@ -9947,6 +9947,14 @@ pointed message
           "B"
         )
       })
+
+      it("should key cases by the record keys even when a field overrides _tag", () => {
+        const schema = Schema.TaggedUnion({
+          A: { _tag: Schema.tag("B"), value: Schema.Number }
+        })
+        deepStrictEqual(Object.keys(schema.cases), ["A"])
+        strictEqual(schema.cases.A.fields.value, Schema.Number)
+      })
     })
   })
 
