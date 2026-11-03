@@ -1236,7 +1236,7 @@ export const hasProperty: {
  */
 export const isTagged: {
   <K extends string, T = unknown>(tag: K): (self: T) => self is NarrowTagged<T, K>
-  <T, K extends string>(self: T, tag: K): self is NarrowTagged<T, K>
+  <K extends string, T = unknown>(self: T, tag: K): self is NarrowTagged<T, K>
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
@@ -1255,7 +1255,10 @@ export const isTagged: {
  * - Members of `T` whose `_tag` is `K` are kept whole.
  * - Members whose `_tag` is a wider string type are kept and intersected with
  *   `{ _tag: K }`.
- * - Other members are dropped when at least one member matches.
+ * - Open members that `{ _tag: K }` is assignable to, such as `object` or
+ *   `Record<string, unknown>`, contribute `{ _tag: K }`.
+ * - Other members, such as objects with other required fields, are dropped
+ *   when at least one member matches.
  * - When no member has a matching `_tag`, the result is `T & { _tag: K }`,
  *   so `unknown`, `object`, and `Error` inputs keep narrowing as before.
  * - An `any` input gives `{ _tag: K }`.
@@ -1332,8 +1335,9 @@ export declare namespace NarrowTagged {
    * **Details**
    *
    * A member whose `_tag` is `K` is kept as is. A member whose `_tag` is a
-   * wider string type is intersected with `{ _tag: K }`. Every other member,
-   * including members without a `_tag`, becomes `never`.
+   * wider string type is intersected with `{ _tag: K }`. A member that
+   * `{ _tag: K }` is assignable to, such as `object`, becomes `{ _tag: K }`.
+   * Every other member becomes `never`.
    *
    * @see {@link NarrowTagged.Members}
    * @category utility types
@@ -1341,6 +1345,7 @@ export declare namespace NarrowTagged {
    */
   export type Member<T, K extends string> = T extends { readonly _tag: K } ? T
     : T extends { readonly _tag: infer Tag extends string } ? K extends Tag ? T & { _tag: K } : never
+    : { readonly _tag: K } extends T ? { _tag: K }
     : never
 }
 
