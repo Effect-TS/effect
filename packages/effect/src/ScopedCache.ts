@@ -187,11 +187,26 @@ export const makeWith = <
 // Lookup finalizers capture the lookup context for the life of the entry, so
 // keep only the requester's span ids: the span itself retains its exit value.
 const detachParentSpan = <R>(context: Context.Context<R>): Context.Context<R> => {
-  const parent = Context.getOrUndefinedUnsafe<Tracer.AnySpan>(context, Tracer.ParentSpanKey)
-  return parent === undefined || parent._tag === "ExternalSpan"
-    ? context
-    : Context.add(context, Tracer.ParentSpan, Tracer.externalSpan(parent))
+  let parent = Context.getOrUndefinedUnsafe<Tracer.AnySpan>(context, Tracer.ParentSpanKey)
+  if (parent === undefined || parent._tag === "ExternalSpan") return context
+  // Resolve propagation-disabled spans to the parent child spans would use.
+  while (parent?._tag === "Span" && Context.get(parent.annotations, Tracer.DisablePropagation)) {
+    parent = Option.getOrUndefined(parent.parent)
+  }
+  return Context.add(
+    context,
+    Tracer.ParentSpan,
+    parent === undefined ? detachedRoot : parent._tag === "ExternalSpan" ? parent : Tracer.externalSpan(parent)
+  )
 }
+
+// Keeps lookup spans as roots when no requester span propagates.
+const detachedRoot = Tracer.externalSpan({
+  spanId: "noop",
+  traceId: "noop",
+  sampled: false,
+  annotations: Tracer.DisablePropagation.context(true)
+})
 
 /**
  * Creates a `ScopedCache` with a fixed time-to-live for every lookup result.

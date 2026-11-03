@@ -428,7 +428,6 @@ export class OtelSpan implements Tracer.Span {
   ) {
     this[OtelSpanTypeId] = OtelSpanTypeId
     this.name = options.name
-    this.annotations = options.annotations
     this.links = options.links
     this.kind = options.kind
     const active = contextApi.active()
@@ -454,6 +453,8 @@ export class OtelSpan implements Tracer.Span {
         populateContext(active, this.parent.value, options.annotations)
     )
     const spanContext = this.span.spanContext()
+    // Lets detached copies of this span keep its exact OpenTelemetry context.
+    this.annotations = Context.add(options.annotations, OtelParentSpanContext, spanContext)
     this.spanId = spanContext.spanId
     this.traceId = spanContext.traceId
     this.status = {
