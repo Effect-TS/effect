@@ -454,6 +454,18 @@ describe("Queue", () => {
       assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
+  it.effect("offer sliding with zero capacity trims to the takers left after an interruption", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.sliding<number>(0)
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      const interrupted = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2]), [])
+      yield* Fiber.interrupt(interrupted)
+      assert.isTrue(yield* Queue.offer(queue, 3))
+      assert.strictEqual(yield* Fiber.join(taker), 3)
+      assert.strictEqual(yield* Queue.size(queue), 0)
+    }))
+
   it.effect("offerAll can be interrupted", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(2)
