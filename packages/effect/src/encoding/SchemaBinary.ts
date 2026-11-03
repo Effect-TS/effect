@@ -93,11 +93,7 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * Derived codecs are memoized by schema identity and wire mode.
  *
  * Encoded results may be views into a larger shared buffer. Use
- * `bytes.slice()` when independent ownership is required. `Uint8Array` values
- * of 16 KiB or more are copied just before the encode call returns, not when
- * they are reached, so they must not change until the call returns. Resizing
- * or detaching their buffer before then fails the encode with a
- * `SchemaError`.
+ * `bytes.slice()` when independent ownership is required.
  *
  * **Gotchas**
  *
@@ -106,6 +102,11 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * mode requires an identical encoded layout. Most union codecs prefix values
  * with a member selector, so they cannot read bytes written by a member's own
  * codec.
+ *
+ * `Uint8Array` values of 16 KiB or more are copied when the encode call
+ * returns, not when they are reached, so they must not change until then. If
+ * such a value's length changes before then, for example because its buffer
+ * is detached, the encode fails with a `SchemaError`.
  *
  * **Example** (Deriving a binary codec)
  *
@@ -397,12 +398,11 @@ function requireDictionary(exact: boolean, options: StreamOptions | undefined): 
  * dictionary that the matching {@link parser} rebuilds as it reads them, so the
  * two have to be created from the same schema and the same options.
  *
- * **Details**
+ * **Gotchas**
  *
  * As with {@link toCodec}, `Uint8Array` values of 16 KiB or more are copied
- * just before the call returns. For `encodeMany`, that is after every frame
- * has been written, so no value in the batch may change until the call
- * returns.
+ * when the call returns. For `encodeMany`, that is after the whole batch is
+ * written, so no value in the batch may change until the call returns.
  *
  * @stability unstable
  * @category constructors
@@ -1370,9 +1370,8 @@ function decodeAscii(buf: Uint8Array, start: number, end: number): string | unde
 
 const OUTPUT_ARENA_SIZE = 64 * 1024
 
-// Byte payloads at least this large are not copied into the arena: the writer
-// keeps a reference and the finished frame is assembled once, so they are
-// copied exactly once however deeply they are nested.
+// Payloads this large are referenced instead of copied into the arena, then
+// copied once when the frame is assembled, however deeply they are nested.
 const DEFERRED_BYTES_MIN = 16 * 1024
 
 // Bound attacker-controlled keys retained between parser feeds.
@@ -1398,8 +1397,8 @@ let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
 
 interface DeferredBytes {
   readonly bytes: Uint8Array
-  // Recorded when the payload is written. Every length prefix counts this
-  // value, so the payload is checked against it before it is copied out.
+  // Length when written. Length prefixes count this value, so `assemble`
+  // rejects a payload whose length has since changed.
   readonly length: number
   at: number
 }
@@ -1411,7 +1410,7 @@ class Writer {
   start = 0
   limit = 0
   len = 0
-  // Large payloads and the arena positions they belong at, in write order.
+  // Large payloads and their arena positions, in write order.
   readonly deferred: Array<DeferredBytes> = []
   reset() {
     let arena = outputArena
@@ -1606,8 +1605,7 @@ class Writer {
     this.len = p - this.start
   }
   out(): Uint8Array<ArrayBuffer> {
-    // An assembled frame owns its bytes, so the arena is released as if
-    // nothing had been written.
+    // An assembled frame owns its bytes, so the arena is released as if unused.
     if (this.deferred.length > 0) {
       const out = this.assemble()
       this.abort()
@@ -1625,7 +1623,6 @@ class Writer {
     let size = this.len
     for (let k = 0; k < deferred.length; k++) {
       const { bytes, length } = deferred[k]
-      // A resized or detached buffer would no longer match its length prefix.
       if (bytes.length !== length) invalid("Uint8Array whose length does not change during encoding")
       size += length
     }
