@@ -1233,7 +1233,7 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
   infer _Config,
   infer _RequiresHandler,
   infer _Requirements
-> ? _RequiresHandler
+> ? [_RequiresHandler] extends [false] ? false : true
   : true
 
 // =============================================================================
