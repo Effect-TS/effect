@@ -481,11 +481,19 @@ type ToolCallPartForName<
   Name extends keyof Tools
 > = Name extends string ? ToolCallPart<
     Name,
-    ParametersMode extends "encoded" ? Tool.ParametersEncoded<Tools[Name]>
+    ParametersMode extends "encoded" ? ToolCallParametersEncoded<Tools[Name]>
       : ParametersMode extends "opaque" ? unknown
       : Tool.Parameters<Tools[Name]>
   >
   : never
+
+// Provider-executed tools receive the provider's payload as is; locally
+// handled tool calls carry the JSON encoding of their parameters.
+type ToolCallParametersEncoded<T extends Tool.Any> = T extends Tool.ProviderDefined<any, any, any, false> ?
+  Tool.ParametersEncoded<T>
+  : JsonEncoded<Tool.ParametersEncoded<T>>
+
+type JsonEncoded<E> = E extends Schema.Json ? E : Schema.Json
 
 /**
  * Utility type that extracts tool result parts from a set of tools.

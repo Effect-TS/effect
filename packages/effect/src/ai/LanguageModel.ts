@@ -2471,13 +2471,13 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // =============================================================================
 
 // Cache one decoder per model and response kind, keyed by validation mode
-// and tool names and schema identities in insertion order.
+// and tool names, parameter encodings and schema identities in insertion order.
 const makeResponseDecoder = <Decode>(make: (toolkit: Toolkit.Any, deferred: boolean) => Decode) => {
   let cached: { readonly key: ReadonlyArray<unknown>; readonly decode: Decode } | undefined
   return (toolkit: Toolkit.WithHandler<any>, encoded: boolean, deferred: boolean): Decode => {
     const key: Array<unknown> = [encoded, deferred]
     for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-      key.push(tool.name, tool.parametersSchema, tool.successSchema, tool.failureSchema)
+      key.push(tool.name, hasProviderParameters(tool), tool.parametersSchema, tool.successSchema, tool.failureSchema)
     }
     if (cached !== undefined && cached.key.length === key.length && cached.key.every((part, i) => part === key[i])) {
       return cached.decode
@@ -2500,16 +2500,18 @@ const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any
     tools = {}
     parameterModeTools.set(tool, tools)
   }
-  // Provider-defined parameters describe the provider's payload; other tool
-  // calls carry the JSON encoding of their parameters.
   return tools[mode] ??= tool.setParameters(
     mode === "encoded"
       ? Schema.toEncoded(
-        Tool.isProviderDefined(tool) ? tool.parametersSchema : Schema.toCodecJson(tool.parametersSchema)
+        hasProviderParameters(tool) ? tool.parametersSchema : Schema.toCodecJson(tool.parametersSchema)
       )
       : Schema.Unknown
   )
 }
+
+// Provider-executed tools receive the provider's payload as is; locally
+// handled tool calls carry the JSON encoding of their parameters.
+const hasProviderParameters = (tool: Tool.Any): boolean => Tool.isProviderDefined(tool) && !tool.requiresHandler
 
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
