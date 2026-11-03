@@ -849,12 +849,19 @@ export const make = Effect.gen(function*() {
           // It was processed after the first read, so its reply is stored now.
           return Option.map(yield* replyForRequestId(requestId.value), deferredReplyExit)
         })),
-        Effect.retry({
-          while: (e) => e._tag === "PersistenceError",
-          times: deferred.name === InterruptSignal.name ? 3 : undefined,
-          schedule: deferred.name === InterruptSignal.name ? Schedule.exponential(250) : retryPolicy
-        }),
-        Effect.orDie
+        // Exit cleanup reads the interrupt signal uninterruptibly, so that read
+        // keeps a bounded retry and cannot hold up shutdown during an outage.
+        (effect) =>
+          deferred.name === InterruptSignal.name
+            ? effect.pipe(
+              Effect.retry({
+                while: (e) => e._tag === "PersistenceError",
+                times: 3,
+                schedule: Schedule.exponential(250)
+              }),
+              Effect.orDie
+            )
+            : retryPersistence(effect)
       ),
 
     deferredDone: Effect.fnUntraced(
