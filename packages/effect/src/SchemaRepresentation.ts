@@ -1982,7 +1982,7 @@ export const SemVerRangeReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.Rational} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const RationalReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Rational",

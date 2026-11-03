@@ -6,7 +6,7 @@
  * `Rational` when a ratio must stay exact until an explicit conversion.
  *
  * @stability unstable
- * @since 4.0.7
+ * @since 4.1.3
  */
 
 import * as BigDecimal from "./BigDecimal.ts"
@@ -55,7 +55,7 @@ const MIN_SUBNORMAL_EXPONENT = -1074
  *
  * @stability unstable
  * @category models
- * @since 4.0.7
+ * @since 4.1.3
  */
 export interface Rational extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: typeof TypeId
@@ -124,7 +124,7 @@ const one = canonical(bigint1, bigint1)
  *
  * @stability unstable
  * @category guards
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isRational = (u: unknown): u is Rational => hasProperty(u, TypeId)
 
@@ -150,7 +150,7 @@ export const isRational = (u: unknown): u is Rational => hasProperty(u, TypeId)
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const make = (numerator: bigint, denominator: bigint): Option.Option<Rational> =>
   denominator === bigint0 ? Option.none() : Option.some(reduce(numerator, denominator))
@@ -174,7 +174,7 @@ export const make = (numerator: bigint, denominator: bigint): Option.Option<Rati
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const makeUnsafe = (numerator: bigint, denominator: bigint): Rational => {
   if (denominator === bigint0) {
@@ -196,7 +196,7 @@ export const makeUnsafe = (numerator: bigint, denominator: bigint): Rational => 
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromBigInt = (n: bigint): Rational => canonical(n, bigint1)
 
@@ -220,7 +220,7 @@ export const fromBigInt = (n: bigint): Rational => canonical(n, bigint1)
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromBigDecimal = (n: BigDecimal.BigDecimal): Rational => {
   const normalized = BigDecimal.normalize(n)
@@ -257,7 +257,7 @@ export const fromBigDecimal = (n: BigDecimal.BigDecimal): Rational => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromNumber = (n: number): Option.Option<Rational> => {
   if (!Number.isFinite(n)) {
@@ -296,7 +296,7 @@ export const fromNumber = (n: number): Option.Option<Rational> => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromNumberUnsafe = (n: number): Rational =>
   Option.getOrThrowWith(fromNumber(n), () => new RangeError(`Number must be finite, got ${n}`))
@@ -325,7 +325,7 @@ export const fromNumberUnsafe = (n: number): Rational =>
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromString = (s: string): Option.Option<Rational> => {
   const match = FRACTION_REGEXP.exec(s)
@@ -355,7 +355,7 @@ export const fromString = (s: string): Option.Option<Rational> => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const fromStringUnsafe = (s: string): Rational =>
   Option.getOrThrowWith(fromString(s), () => new Error(`Invalid rational string: ${s}`))
@@ -373,7 +373,7 @@ export const fromStringUnsafe = (s: string): Rational =>
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const sum: {
   (that: Rational): (self: Rational) => Rational
@@ -399,7 +399,7 @@ export const sum: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const sumAll = (collection: Iterable<Rational>): Rational => {
   let out = zero
@@ -422,7 +422,7 @@ export const sumAll = (collection: Iterable<Rational>): Rational => {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const subtract: {
   (that: Rational): (self: Rational) => Rational
@@ -446,7 +446,7 @@ export const subtract: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const multiply: {
   (that: Rational): (self: Rational) => Rational
@@ -471,7 +471,7 @@ export const multiply: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const multiplyAll = (collection: Iterable<Rational>): Rational => {
   let out = one
@@ -502,7 +502,7 @@ export const multiplyAll = (collection: Iterable<Rational>): Rational => {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const divide: {
   (that: Rational): (self: Rational) => Option.Option<Rational>
@@ -534,7 +534,7 @@ export const divide: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const divideUnsafe: {
   (that: Rational): (self: Rational) => Rational
@@ -573,7 +573,7 @@ const divisionByZero = () => new RangeError("Division by zero")
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const pow: {
   (exponent: number): (self: Rational) => Option.Option<Rational>
@@ -620,7 +620,7 @@ export const pow: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const powUnsafe: {
   (exponent: number): (self: Rational) => Rational
@@ -632,7 +632,7 @@ export const powUnsafe: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const negate = (n: Rational): Rational => canonical(-n.numerator, n.denominator)
 
@@ -641,7 +641,7 @@ export const negate = (n: Rational): Rational => canonical(-n.numerator, n.denom
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const abs = (n: Rational): Rational => n.numerator < bigint0 ? negate(n) : n
 
@@ -650,7 +650,7 @@ export const abs = (n: Rational): Rational => n.numerator < bigint0 ? negate(n) 
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const sign = (n: Rational): Ordering => n.numerator === bigint0 ? 0 : n.numerator < bigint0 ? -1 : 1
 
@@ -677,7 +677,7 @@ const compare = (self: Rational, that: Rational): Ordering => {
  *
  * @stability unstable
  * @category instances
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const Order: order.Order<Rational> = order.make(compare)
 
@@ -687,7 +687,7 @@ export const Order: order.Order<Rational> = order.make(compare)
  *
  * @stability unstable
  * @category instances
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const Equivalence: Equ.Equivalence<Rational> = Equ.make((self, that) =>
   self.numerator === that.numerator && self.denominator === that.denominator
@@ -700,7 +700,7 @@ export const Equivalence: Equ.Equivalence<Rational> = Equ.make((self, that) =>
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const equals: {
   (that: Rational): (self: Rational) => boolean
@@ -712,7 +712,7 @@ export const equals: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isLessThan: {
   (that: Rational): (self: Rational) => boolean
@@ -724,7 +724,7 @@ export const isLessThan: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isLessThanOrEqualTo: {
   (that: Rational): (self: Rational) => boolean
@@ -736,7 +736,7 @@ export const isLessThanOrEqualTo: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isGreaterThan: {
   (that: Rational): (self: Rational) => boolean
@@ -748,7 +748,7 @@ export const isGreaterThan: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isGreaterThanOrEqualTo: {
   (that: Rational): (self: Rational) => boolean
@@ -760,7 +760,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const between: {
   (options: {
@@ -778,7 +778,7 @@ export const between: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const clamp: {
   (options: {
@@ -796,7 +796,7 @@ export const clamp: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const min: {
   (that: Rational): (self: Rational) => Rational
@@ -808,7 +808,7 @@ export const min: {
  *
  * @stability unstable
  * @category math
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const max: {
   (that: Rational): (self: Rational) => Rational
@@ -820,7 +820,7 @@ export const max: {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isZero = (n: Rational): boolean => n.numerator === bigint0
 
@@ -829,7 +829,7 @@ export const isZero = (n: Rational): boolean => n.numerator === bigint0
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isNegative = (n: Rational): boolean => n.numerator < bigint0
 
@@ -838,7 +838,7 @@ export const isNegative = (n: Rational): boolean => n.numerator < bigint0
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isPositive = (n: Rational): boolean => n.numerator > bigint0
 
@@ -848,7 +848,7 @@ export const isPositive = (n: Rational): boolean => n.numerator > bigint0
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const isInteger = (n: Rational): boolean => n.denominator === bigint1
 
@@ -871,7 +871,7 @@ export const isInteger = (n: Rational): boolean => n.denominator === bigint1
  *
  * @stability unstable
  * @category converting
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const format = (n: Rational): string => `${n.numerator}/${n.denominator}`
 
@@ -904,7 +904,7 @@ const bitLength = (n: bigint): number => n.toString(2).length
  *
  * @stability unstable
  * @category converting
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const toNumberUnsafe = (n: Rational): number => {
   if (n.numerator === bigint0) {
@@ -970,7 +970,7 @@ export const toNumberUnsafe = (n: Rational): number => {
  *
  * @stability unstable
  * @category converting
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const toBigDecimal: {
   (

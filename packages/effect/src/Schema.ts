@@ -10956,17 +10956,20 @@ const rationalFromString: SchemaTransformation.Transformation<Rational_.Rational
     },
     encode: (rational) => Effect.succeed(Rational_.format(rational))
   })
+
 /**
  * Type-level representation of {@link Rational}.
  *
  * @stability unstable
  * @category models
- * @since 4.0.7
+ * @since 4.1.3
  */
 export interface Rational extends declare<Rational_.Rational> {
   readonly "Rebuild": Rational
 }
+
 const RationalString = String.annotate({ expected: "a string that will be decoded as a Rational" })
+
 /**
  * Schema for `Rational` values.
  *
@@ -10979,7 +10982,7 @@ const RationalString = String.annotate({ expected: "a string that will be decode
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const Rational: Rational = declare(
   Rational_.isRational,
@@ -11010,16 +11013,18 @@ export const Rational: Rational = declare(
     toFormatter: () => Rational_.format
   }
 )
+
 /**
  * Type-level representation of {@link RationalFromString}.
  *
  * @stability unstable
  * @category models
- * @since 4.0.7
+ * @since 4.1.3
  */
 export interface RationalFromString extends decodeTo<Rational, String> {
   readonly "Rebuild": RationalFromString
 }
+
 /**
  * Schema that parses a fraction string into a `Rational`.
  *
@@ -11036,7 +11041,7 @@ export interface RationalFromString extends decodeTo<Rational, String> {
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.7
+ * @since 4.1.3
  */
 export const RationalFromString: RationalFromString = RationalString.pipe(
   decodeTo(Rational, rationalFromString)

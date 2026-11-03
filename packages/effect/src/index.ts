@@ -544,7 +544,7 @@ export * as Random from "./Random.ts"
 
 /**
  * @stability unstable
- * @since 4.0.7
+ * @since 4.1.3
  */
 export * as Rational from "./Rational.ts"
 
