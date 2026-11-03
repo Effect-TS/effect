@@ -709,7 +709,7 @@ export function checkEffect<A, E = never, R = never>(
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface Reference<out A> {
   readonly "~effect/arbitrary/Reference": "~effect/arbitrary/Reference"
@@ -734,7 +734,7 @@ export interface Reference<out A> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export type Resolve = <A>(reference: Reference<A>) => A
 
@@ -780,11 +780,12 @@ export type Resolve = <A>(reference: Reference<A>) => A
  * @see {@link runCommands} for running a sequence against the real system
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface Command<M, Args, A, E, R> {
   readonly name: string
-  // Method signatures keep commands with different argument, result, and error types assignable to one list.
+  // Method signatures are bivariant in their parameters. `Args`, `A` and `E` appear both as inputs and outputs, so
+  // with property signatures a command with `E = never` would not be assignable to `Command<M, any, any, any, R>`.
   args?(model: M): Arbitrary<Args> | undefined
   precondition?(model: M, args: Args): boolean
   next?(model: M, args: Args, result: Reference<A>): M
@@ -811,7 +812,7 @@ export interface Command<M, Args, A, E, R> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface CommandsOptions<M, R> {
   readonly initial: M
@@ -830,7 +831,7 @@ export interface CommandsOptions<M, R> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface CommandCall {
   readonly command: string
@@ -848,7 +849,7 @@ export interface CommandCall {
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface Commands<out M, out R> {
   readonly "~M": Types.Covariant<M>
@@ -865,7 +866,7 @@ export interface Commands<out M, out R> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface CommandStep<out M> extends CommandCall {
   readonly model: M
@@ -873,40 +874,19 @@ export interface CommandStep<out M> extends CommandCall {
 }
 
 /**
- * Counts how often a command ran in one sequence and how many of its candidates generation rejected.
- *
- * **Details**
- *
- * `rejected` counts the candidates of this command that were rejected by its precondition or discarded by its
- * argument Arbitrary while generating the sequence. It is zero for sequences produced by shrinking. Sum the counts of
- * every evaluation to find commands that never ran.
- *
- * @stability unstable
- * @category models
- * @since 4.1.2
- */
-export interface CommandCount {
-  readonly name: string
-  readonly runs: number
-  readonly rejected: number
-}
-
-/**
  * Reports a sequence whose every postcondition and invariant held.
  *
  * **Details**
  *
- * `steps` is the executed trace, `model` is the final model, and `counts` has one entry per command in the order of
- * {@link CommandsOptions.commands}.
+ * `steps` is the executed trace and `model` is the final model.
  *
  * @stability unstable
  * @category models
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface CommandsRun<out M> {
   readonly steps: ReadonlyArray<CommandStep<M>>
   readonly model: M
-  readonly counts: ReadonlyArray<CommandCount>
 }
 
 /**
@@ -920,7 +900,7 @@ export interface CommandsRun<out M> {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.2
+ * @since 4.1.3
  */
 export interface CommandsFailure<out M> extends CommandsRun<M> {
   readonly _tag: "CommandsFailure"
@@ -938,7 +918,7 @@ export interface CommandsFailure<out M> extends CommandsRun<M> {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.2
+ * @since 4.1.3
  */
 export const command = <M, Args = undefined, A = void, E = never, R = never>(
   command: Command<M, Args, A, E, R>
@@ -955,8 +935,8 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  * **Details**
  *
  * The sequence length grows with the check's `size` and is capped by `maxCommands`. Each position draws a command
- * whose `args` is available in the current model, generates its arguments, and retries rejected candidates; when no
- * candidate is accepted the sequence ends early. Every accepted command advances the model with `next` and defines a
+ * whose `args` is available in the current model, generates its arguments, and retries candidates that the argument
+ * Arbitrary discards or the precondition rejects. Every accepted command advances the model with `next` and defines a
  * {@link Reference} to its result.
  *
  * Shrinking removes commands, in progressively smaller blocks at each position, and shrinks the arguments of the
@@ -969,6 +949,11 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  * concurrency work as for any other property.
  *
  * **Gotchas**
+ *
+ * Each position draws at most 100 candidates. When none of them is accepted, the sequence ends early at that position
+ * instead of being discarded, so preconditions that reject most candidates silently shorten sequences rather than
+ * exhausting the check. Express static bounds in the argument Arbitrary and keep preconditions for constraints that
+ * depend on the model.
  *
  * Invalid options and duplicate command names throw when this function is called. Each evaluation must run against
  * a fresh system, for example by providing a new layer inside the property. A reference kept only in a closure or a
@@ -1048,7 +1033,7 @@ export const command = <M, Args = undefined, A = void, E = never, R = never>(
  * @see {@link array} for sequences without a model
  * @stability unstable
  * @category constructors
- * @since 4.1.2
+ * @since 4.1.3
  */
 export const commands: <M, R = never>(options: CommandsOptions<M, R>) => Arbitrary<Commands<M, R>> =
   InternalCommands.commands
@@ -1066,7 +1051,7 @@ export const commands: <M, R = never>(options: CommandsOptions<M, R>) => Arbitra
  * The invariant is checked on the initial model, then commands run in order. Each command receives its generated
  * arguments and a {@link Resolve} function for the references they contain. After each command, its postcondition
  * and then the invariant are checked. The first failure fails with {@link CommandsFailure}, whose trace ends at the
- * failing command. A successful run returns the trace, the final model, and per-command counts.
+ * failing command. A successful run returns the trace and the final model.
  *
  * **Gotchas**
  *
@@ -1075,7 +1060,7 @@ export const commands: <M, R = never>(options: CommandsOptions<M, R>) => Arbitra
  * @see {@link commands} for generating sequences
  * @stability unstable
  * @category running
- * @since 4.1.2
+ * @since 4.1.3
  */
 export const runCommands: <M, R>(commands: Commands<M, R>) => Effect.Effect<CommandsRun<M>, CommandsFailure<M>, R> =
   InternalCommands.runCommands
