@@ -5,4 +5,4 @@
 `isAnyOf` on `Schema.TaggedUnion` and `Schema.toTaggedUnion` unions now rejects keys that are not tags of the union, so misspelled tags and wide `string` arrays are type errors.
 
 - Bound generic key parameters by the union's tags, for example `<K extends Types.Tags<typeof Shape.Type>>` or `<K extends keyof typeof Shape.cases>`, instead of `<K extends string>`.
-- Narrow a `ReadonlyArray<string>` to the union's tags before passing it, for example with `names.filter(Schema.is(Schema.Literals(U.discriminants)))` on a `Schema.toTaggedUnion` union, or by listing the tags in `Schema.Literals` for a `Schema.TaggedUnion`.
+- For a tag list only known at runtime, use a plain boolean predicate such as `(value: Shape): boolean => names.includes(value._tag)`. Filtering the list down to the union's tags makes `isAnyOf` compile, but its false branch then excludes every tag in the filtered type, even if the list is empty at runtime.

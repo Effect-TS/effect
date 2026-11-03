@@ -2206,7 +2206,7 @@ const Tags = Schema.Literals(tagged.discriminants)
 
 #### Checking Membership in a Subset of Tags
 
-The `isAnyOf` method lets you check if a value belongs to a selected subset of tags. It only accepts tags of the union, and the returned guard narrows the value in both branches.
+The `isAnyOf` method lets you check if a value belongs to a selected subset of tags. It only accepts tags of the union, and narrows the value in both branches based on the tags in the key list's type. For a tag list only known at runtime, use a plain boolean check such as `names.includes(value.type)` instead, because the false branch would also exclude tags the list does not contain at runtime.
 
 **Example** (Checking membership in a subset of union tags)
 
