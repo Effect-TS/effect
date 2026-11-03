@@ -84,6 +84,21 @@ describe("LanguageModel", () => {
       expect<ToolCallParams>().type.toBeAssignableTo<Schema.Json>()
     })
 
+    it("does not type JSON-encoded number parameters as numbers when tool call resolution is disabled", () => {
+      const toolkit = Toolkit.make(Tool.make("Measure", { parameters: Schema.Struct({ value: Schema.Number }) }))
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true
+      })
+
+      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
+      type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
+
+      // The JSON codec encodes non-finite numbers as strings, e.g. "Infinity"
+      expect<ToolCallParams>().type.not.toBeAssignableTo<{ readonly value: number }>()
+    })
+
     it("uses opaque tool parameters when tool call resolution is enabled", () => {
       const toolkit = Toolkit.make(TransformTool)
       const program = LanguageModel.generateText({
