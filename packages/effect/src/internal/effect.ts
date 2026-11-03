@@ -568,7 +568,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 
   // set in setContext
   declare context: Context.Context<never>
-  declare cache: FiberCache
+  declare cache: Fiber.Fiber.Cache
 
   declare _dispatcher: Scheduler.SchedulerDispatcher | undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
@@ -785,7 +785,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: FiberCache = root._fiberCache ??= makeFiberContextCache(context)
+    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
@@ -797,12 +797,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-/** The fiber's cache, with the Supervisor that the public `Fiber.Fiber.Cache` doesn't show */
-interface FiberCache extends Fiber.Fiber.Cache {
-  readonly supervisor: Supervisor.Supervisor | undefined
-}
-
-const makeFiberContextCache = (context: Context.Context<never>): FiberCache => {
+const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
@@ -5956,7 +5951,10 @@ export const runSync: <A, E>(effect: Effect.Effect<A, E>) => A = runSyncWith(Con
 const succeedTrue = succeed(true)
 const succeedFalse = succeed(false)
 
+const LatchTypeId = "~effect/Latch"
+
 class Latch implements _Latch.Latch {
+  readonly [LatchTypeId] = LatchTypeId
   waiters: Array<(_: Effect.Effect<void>) => void> = []
   scheduled: Array<(_: Effect.Effect<void>) => void> | undefined = undefined
   private _isOpen: boolean
@@ -6045,7 +6043,7 @@ class Latch implements _Latch.Latch {
 export const makeLatchUnsafe = (open?: boolean | undefined): _Latch.Latch => new Latch(open ?? false)
 
 /** @internal */
-export const isLatch = (u: unknown): u is _Latch.Latch => u instanceof Latch
+export const isLatch = (u: unknown): u is _Latch.Latch => hasProperty(u, LatchTypeId)
 
 /** @internal */
 export const makeLatch = (open?: boolean | undefined) => sync(() => makeLatchUnsafe(open))

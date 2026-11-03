@@ -108,6 +108,7 @@ import { constUndefined, dual } from "./Function.ts"
 import { withFiber } from "./internal/core.ts"
 import * as effect from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
+import { hasProperty } from "./Predicate.ts"
 
 /**
  * Receives the lifecycle events of the fibers created in a context that
@@ -206,7 +207,10 @@ export const Supervisor: Context.Reference<Supervisor | undefined> = Context.Ref
   { fiberCached: true, defaultValue: constUndefined }
 )
 
+const CombinedTypeId = "~effect/Supervisor/Combined"
+
 class Combined implements Supervisor {
+  readonly [CombinedTypeId] = CombinedTypeId
   readonly members: ReadonlyArray<Supervisor>
   constructor(members: ReadonlyArray<Supervisor>) {
     this.members = members
@@ -226,7 +230,7 @@ class Combined implements Supervisor {
 }
 
 const membersOf = (supervisor: Supervisor): ReadonlyArray<Supervisor> =>
-  supervisor instanceof Combined ? supervisor.members : [supervisor]
+  hasProperty(supervisor, CombinedTypeId) ? (supervisor as Combined).members : [supervisor]
 
 /**
  * Combines two Supervisors into one that calls `outer`, then `inner`, on

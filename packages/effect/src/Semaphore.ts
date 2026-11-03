@@ -17,6 +17,7 @@ import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import type * as Option from "./Option.ts"
+import { hasProperty } from "./Predicate.ts"
 import type * as Scope from "./Scope.ts"
 
 /**
@@ -245,7 +246,7 @@ export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(perm
  * @category guards
  * @since 4.1.2
  */
-export const isSemaphore = (u: unknown): u is Semaphore => u instanceof SemaphoreImpl
+export const isSemaphore = (u: unknown): u is Semaphore => hasProperty(u, TypeId)
 
 interface Waiter {
   readonly permits: number
@@ -297,7 +298,10 @@ const takePermits = <A, E, R>(
     return loop
   })
 
+const TypeId = "~effect/Semaphore"
+
 class SemaphoreImpl implements Semaphore {
+  readonly [TypeId] = TypeId
   public waiters = new Set<Waiter>()
   public taken = 0
   public permits: number
