@@ -36,31 +36,35 @@ class ReferenceImpl {
 
 const isReference = (u: unknown): u is ReferenceImpl => hasProperty(u, ReferenceTypeId)
 
-// Collects the references used by arguments for the scope check while shrinking. Values that cannot contain a
-// reference are skipped, and `seen` guards against cycles and shared substructures.
-function forEachReference(value: unknown, f: (reference: ReferenceImpl) => void): void {
+// Whether the arguments hold a reference that is out of scope, for the scope check while shrinking. Values that cannot
+// contain a reference are skipped, and `seen` guards against cycles and shared substructures.
+function usesReferenceOutside(scope: ReadonlySet<ReferenceImpl>, value: unknown): boolean {
   const seen = new Set<object>()
-  const visit = (value: unknown): void => {
-    if (typeof value !== "object" || value === null || seen.has(value)) return
+  const visit = (value: unknown): boolean => {
+    if (typeof value !== "object" || value === null || seen.has(value)) return false
     seen.add(value)
-    if (isReference(value)) return f(value)
-    if (ArrayBuffer.isView(value)) return
+    if (isReference(value)) return !scope.has(value)
+    if (ArrayBuffer.isView(value)) return false
     if (value instanceof Map) {
       for (const [key, item] of value) {
-        visit(key)
-        visit(item)
+        if (visit(key) || visit(item)) return true
       }
-      return
+      return false
     }
     if (value instanceof Set) {
-      for (const item of value) visit(item)
-      return
+      for (const item of value) {
+        if (visit(item)) return true
+      }
+      return false
     }
     for (const key of Reflect.ownKeys(value)) {
-      if (Object.prototype.propertyIsEnumerable.call(value, key)) visit((value as Record<PropertyKey, unknown>)[key])
+      if (
+        Object.prototype.propertyIsEnumerable.call(value, key) && visit((value as Record<PropertyKey, unknown>)[key])
+      ) return true
     }
+    return false
   }
-  visit(value)
+  return visit(value)
 }
 
 type AnyCommand<M> = Command<M, any, any, any, any>
@@ -131,11 +135,7 @@ function validate<M>(definition: Definition<M>, steps: ReadonlyArray<Planned>): 
   for (const planned of steps) {
     const command = definition.commands[planned.command]
     const args = planned.args.value
-    let inScope = true
-    forEachReference(args, (reference) => {
-      if (!scope.has(reference)) inScope = false
-    })
-    if (!inScope || !available(command, model) || !allowed(command, model, args)) continue
+    if (usesReferenceOutside(scope, args) || !available(command, model) || !allowed(command, model, args)) continue
     retained.push(planned)
     models.push(model)
     scope.add(planned.reference)
@@ -213,9 +213,9 @@ const generate = Effect.fnUntraced(function*<M>(definition: Definition<M>, state
       const choice = Model.randomIndex(state, eligible.length)
       const index = eligible[choice]
       const command = definition.commands[index]
-      const arbitrary: Arbitrary<unknown> | undefined = command.args === undefined ? undefined : command.args(model)
       let attempt: Model.Attempt<unknown> = noArgs
       if (command.args !== undefined) {
+        const arbitrary: Arbitrary<unknown> | undefined = command.args(model)
         if (arbitrary === undefined) {
           eligible.splice(choice, 1)
           continue
@@ -265,8 +265,6 @@ export function commands<M, R>(options: CommandsOptions<M, R>): Arbitrary<Comman
   }
   return make(Model.makeGenerator(0, (state) => generate(definition, state))) as Arbitrary<Commands<M, R>>
 }
-
-const isInterruption = (cause: Cause.Cause<unknown>) => Cause.hasInterrupts(cause)
 
 /** @internal */
 export const runCommands = <M, R>(
@@ -321,7 +319,7 @@ export const runCommands = <M, R>(
       if (Effect.isEffect(output)) {
         const checked = yield* Effect.exit(output)
         if (Exit.isFailure(checked)) {
-          if (isInterruption(checked.cause)) return yield* Effect.failCause(checked.cause)
+          if (Cause.hasInterrupts(checked.cause)) return yield* Effect.failCause(checked.cause)
           return yield* fail(reason, model, checked.cause)
         }
         output = checked.value
@@ -341,7 +339,7 @@ export const runCommands = <M, R>(
         const next = models[index + 1]
         const args = planned.args.value
         const exit = yield* Effect.exit(Effect.suspend(() => command.run(args, resolve)))
-        if (Exit.isFailure(exit) && isInterruption(exit.cause)) return yield* Effect.failCause(exit.cause)
+        if (Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)) return yield* Effect.failCause(exit.cause)
         results.set(planned.reference, exit)
         trace.push({
           command: command.name,
@@ -350,12 +348,15 @@ export const runCommands = <M, R>(
           model,
           exit
         })
-        const postcondition = command.postcondition
-        if (postcondition === undefined) {
-          if (Exit.isFailure(exit)) return yield* fail("Postcondition", next)
-        } else {
-          yield* check("Postcondition", next, () => postcondition(model, args, exit, resolve))
-        }
+        // Without a postcondition, the command must succeed.
+        yield* check(
+          "Postcondition",
+          next,
+          () =>
+            command.postcondition === undefined
+              ? Exit.isSuccess(exit)
+              : command.postcondition(model, args, exit, resolve)
+        )
         yield* checkInvariant(next)
       }
       return { steps: trace, model: models[models.length - 1] } satisfies CommandsRun<M>
