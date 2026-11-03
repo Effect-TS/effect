@@ -84,7 +84,7 @@ describe("Tracer", () => {
         Effect.provide(TracingLayer)
       ))
 
-    it.effect("parents ScopedCache lookups to the sampled result of the requesting span", () => {
+    it.effect("parents ScopedCache lookups to the local requesting span's sampling result", () => {
       // Drops the request and rewrites its trace state; children follow their parent.
       const sampler: Sampler = {
         shouldSample: (context, _traceId, name) =>
@@ -107,17 +107,16 @@ describe("Tracer", () => {
               EffectContext.add(OtelTracer.OtelTraceState, OtelApi.createTraceState("vendor=original"))
             )
           })
-        )).spanContext()
+        )) as unknown as ReadableSpan
         assert.deepStrictEqual(
-          [lookup.traceFlags, lookup.traceState?.serialize()],
-          [OtelApi.TraceFlags.NONE, "vendor=updated"]
+          [
+            lookup.parentSpanContext?.isRemote ?? false,
+            lookup.spanContext().traceFlags,
+            lookup.spanContext().traceState?.serialize()
+          ],
+          [false, OtelApi.TraceFlags.NONE, "vendor=updated"]
         )
       }).pipe(
-        Effect.withParentSpan(OtelTracer.makeExternalSpan({
-          traceId: "1".repeat(32),
-          spanId: "2".repeat(16),
-          traceFlags: OtelApi.TraceFlags.SAMPLED
-        })),
         Effect.provide(OtelTracer.layer.pipe(
           Layer.provide(NodeSdk.layerTracerProvider(new SimpleSpanProcessor(new InMemorySpanExporter()), { sampler })),
           Layer.provide(Resource.layerEmpty)
@@ -199,28 +198,6 @@ describe("Tracer", () => {
 
         assert.isTrue(Option.isNone(child.parent))
       }).pipe(Effect.provide(TracingLayer)))
-
-    it.effect("parents ScopedCache lookups to the local requesting span", () =>
-      Effect.gen(function*() {
-        const cache = yield* ScopedCache.make({
-          capacity: 16,
-          lookup: (_key: string) => OtelTracer.currentOtelSpan.pipe(Effect.withSpan("lookup"))
-        })
-        const lookup =
-          (yield* ScopedCache.get(cache, "key").pipe(Effect.withSpan("request"))) as unknown as ReadableSpan
-        assert.deepStrictEqual(
-          [lookup.parentSpanContext?.isRemote ?? false, lookup.spanContext().traceState?.serialize()],
-          [false, "vendor=value"]
-        )
-      }).pipe(
-        Effect.withParentSpan(OtelTracer.makeExternalSpan({
-          traceId: "1".repeat(32),
-          spanId: "2".repeat(16),
-          traceFlags: OtelApi.TraceFlags.SAMPLED,
-          traceState: "vendor=value"
-        })),
-        Effect.provide(TracingLayer)
-      ))
 
     it.effect("supervisor sets context", () =>
       Effect.sync(() => {

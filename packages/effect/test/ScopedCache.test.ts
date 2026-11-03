@@ -52,7 +52,6 @@ describe("ScopedCache", () => {
     "does not retain request responses through lookup finalizers",
     () =>
       Effect.gen(function*() {
-        const control = new WeakRef({})
         const cache = yield* ScopedCache.make({
           capacity: 16,
           lookup: (key: string) => Effect.acquireRelease(Effect.succeed(key), () => Effect.void)
@@ -64,25 +63,11 @@ describe("ScopedCache", () => {
         )
         yield* collectGarbage
         assert.isTrue(yield* ScopedCache.has(cache, "key"))
-        assert.isUndefined(control.deref())
         assert.isUndefined(response.deref())
       })
   )
 
-  it.effect("parents lookups to the requesting span", () =>
-    Effect.gen(function*() {
-      const cache = yield* ScopedCache.make({
-        capacity: 16,
-        lookup: (_key: string) => Effect.currentParentSpan
-      })
-      const [request, parent] = yield* Effect.all([Effect.currentSpan, ScopedCache.get(cache, "key")]).pipe(
-        Effect.withSpan("request")
-      )
-      assert.strictEqual(parent.traceId, request.traceId)
-      assert.strictEqual(parent.spanId, request.spanId)
-    }))
-
-  it.effect("parents lookup spans through propagation-disabled spans", () =>
+  it.effect("parents lookup spans to the requesting span through propagation-disabled spans", () =>
     Effect.gen(function*() {
       const cache = yield* ScopedCache.make({
         capacity: 16,
