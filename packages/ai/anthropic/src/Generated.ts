@@ -8617,16 +8617,18 @@ export const CitationsDelta = Schema.Struct({
   "type": Schema.Literal("citations_delta").annotate({ "title": "Type", "default": "citations_delta" })
 }).annotate({ "title": "CitationsDelta", "identifier": "CitationsDelta" })
 export type ResponseDocumentBlock = {
-  readonly "citations": ResponseCitationsConfig | null
+  readonly "citations"?: ResponseCitationsConfig | null
   readonly "source": Base64PDFSource | PlainTextSource
   readonly "title": string | null
   readonly "type": "document"
 }
 export const ResponseDocumentBlock = Schema.Struct({
-  "citations": Schema.Union([ResponseCitationsConfig, Schema.Null]).annotate({
-    "description": "Citation configuration for the document",
-    "default": null
-  }),
+  "citations": Schema.optionalKey(
+    Schema.Union([ResponseCitationsConfig, Schema.Null]).annotate({
+      "description": "Citation configuration for the document",
+      "default": null
+    })
+  ),
   "source": Schema.Union([Base64PDFSource, PlainTextSource], { mode: "oneOf" }).annotate({ "title": "Source" }),
   "title": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Title",
@@ -11398,16 +11400,18 @@ export const BetaCitationsDelta = Schema.Struct({
   "type": Schema.Literal("citations_delta").annotate({ "title": "Type", "default": "citations_delta" })
 }).annotate({ "title": "CitationsDelta", "identifier": "BetaCitationsDelta" })
 export type BetaResponseDocumentBlock = {
-  readonly "citations": BetaResponseCitationsConfig | null
+  readonly "citations"?: BetaResponseCitationsConfig | null
   readonly "source": BetaBase64PDFSource | BetaPlainTextSource
   readonly "title": string | null
   readonly "type": "document"
 }
 export const BetaResponseDocumentBlock = Schema.Struct({
-  "citations": Schema.Union([BetaResponseCitationsConfig, Schema.Null]).annotate({
-    "description": "Citation configuration for the document",
-    "default": null
-  }),
+  "citations": Schema.optionalKey(
+    Schema.Union([BetaResponseCitationsConfig, Schema.Null]).annotate({
+      "description": "Citation configuration for the document",
+      "default": null
+    })
+  ),
   "source": Schema.Union([BetaBase64PDFSource, BetaPlainTextSource], { mode: "oneOf" }).annotate({ "title": "Source" }),
   "title": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Title",

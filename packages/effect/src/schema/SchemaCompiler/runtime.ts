@@ -70,7 +70,7 @@ const makeObjectBase = (
     pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
   ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
     const property = properties![index]
-    return Effect.flatMap(Effect.exit(pending), (exit) => {
+    return Effect.flatMap(Effect.exit(pending), (exit): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       // Each execution gets its own output; `issues` is still undefined here
       // because `errors: "all"` is routed to the fallback before suspending.
       const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }

@@ -6,7 +6,8 @@
  * back-reference repeated strings, so both stay off the wire on later rows.
  * Fingerprint mode uses positional layouts and rejects mismatches for smaller
  * frames; its row shapes are presence masks instead of field id lists. Encoded
- * results are arena-backed views; see {@link toCodec} for ownership details.
+ * results may be views into a shared buffer; see {@link toCodec} for ownership
+ * details.
  *
  * @stability unstable
  * @since 4.0.0
@@ -91,7 +92,7 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * encode/decode handles exactly one frame; use {@link parser} for streams.
  * Derived codecs are memoized by schema identity and wire mode.
  *
- * Encoded results are arena-backed views and may share a larger buffer. Use
+ * Encoded results may be views into a larger shared buffer. Use
  * `bytes.slice()` when independent ownership is required.
  *
  * **Gotchas**
@@ -101,6 +102,11 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * mode requires an identical encoded layout. Most union codecs prefix values
  * with a member selector, so they cannot read bytes written by a member's own
  * codec.
+ *
+ * `Uint8Array` values of 16 KiB or more are copied when the encode call
+ * returns, not when they are reached, so they must not change until then. If
+ * such a value's length changes before then, for example because its buffer
+ * is detached, the encode fails with a `SchemaError`.
  *
  * **Example** (Deriving a binary codec)
  *
@@ -391,6 +397,12 @@ function requireDictionary(exact: boolean, options: StreamOptions | undefined): 
  * A writer for one connection. Every frame it produces shares the string
  * dictionary that the matching {@link parser} rebuilds as it reads them, so the
  * two have to be created from the same schema and the same options.
+ *
+ * **Gotchas**
+ *
+ * As with {@link toCodec}, `Uint8Array` values of 16 KiB or more are copied
+ * when the call returns. For `encodeMany`, that is after the whole batch is
+ * written, so no value in the batch may change until the call returns.
  *
  * @stability unstable
  * @category constructors
@@ -1358,6 +1370,10 @@ function decodeAscii(buf: Uint8Array, start: number, end: number): string | unde
 
 const OUTPUT_ARENA_SIZE = 64 * 1024
 
+// Payloads this large are referenced instead of copied into the arena, then
+// copied once when the frame is assembled, however deeply they are nested.
+const DEFERRED_BYTES_MIN = 16 * 1024
+
 // Bound attacker-controlled keys retained between parser feeds.
 const PARSER_INDEX_SIGNATURE_CACHE_SIZE = 256
 
@@ -1379,6 +1395,14 @@ function makeOutputArena(size: number): OutputArena {
 
 let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
 
+interface DeferredBytes {
+  readonly bytes: Uint8Array
+  // Length when written. Length prefixes count this value, so `assemble`
+  // rejects a payload whose length has since changed.
+  readonly length: number
+  at: number
+}
+
 class Writer {
   buf: Uint8Array<ArrayBuffer> = new Uint8Array(0)
   view = new DataView(this.buf.buffer)
@@ -1386,6 +1410,8 @@ class Writer {
   start = 0
   limit = 0
   len = 0
+  // Large payloads and their arena positions, in write order.
+  readonly deferred: Array<DeferredBytes> = []
   reset() {
     let arena = outputArena
     // Nested codecs cannot share the active arena tail.
@@ -1422,6 +1448,10 @@ class Writer {
     this.buf[this.start + this.len++] = b
   }
   bytes(b: Uint8Array) {
+    if (b.length >= DEFERRED_BYTES_MIN) {
+      this.deferred.push({ bytes: b, length: b.length, at: this.len })
+      return
+    }
     this.ensure(b.length)
     this.buf.set(b, this.start + this.len)
     this.len += b.length
@@ -1509,15 +1539,22 @@ class Writer {
     return this.len++
   }
   endSized(mark: number) {
-    const code = this.len - mark - 1
+    const code = this.sizeAfter(mark)
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
   }
   // Row-run regions prefix `length * 2`; odd codes are back-references.
   endSizedRun(mark: number) {
-    const code = (this.len - mark - 1) * 2
+    const code = this.sizeAfter(mark) * 2
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
+  }
+  // Bytes written after the reserved prefix at `mark`, deferred ones included.
+  private sizeAfter(mark: number): number {
+    let size = this.len - mark - 1
+    const deferred = this.deferred
+    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) size += deferred[k].length
+    return size
   }
   private growSized(mark: number, code: number) {
     const size = uvarintSize(code)
@@ -1526,6 +1563,8 @@ class Writer {
     const absoluteMark = this.start + mark
     this.buf.copyWithin(absoluteMark + size, absoluteMark + 1, this.start + this.len)
     this.len += extra
+    const deferred = this.deferred
+    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) deferred[k].at += extra
     let n = code
     let p = absoluteMark
     while (n > 0x7F) {
@@ -1566,6 +1605,12 @@ class Writer {
     this.len = p - this.start
   }
   out(): Uint8Array<ArrayBuffer> {
+    // An assembled frame owns its bytes, so the arena is released as if unused.
+    if (this.deferred.length > 0) {
+      const out = this.assemble()
+      this.abort()
+      return out
+    }
     const arena = this.arena!
     const out = new Uint8Array(arena.buf.buffer, this.start, this.len)
     if (arena === outputArena) arena.offset = this.start + this.len
@@ -1573,7 +1618,32 @@ class Writer {
     this.arena = undefined
     return out
   }
+  private assemble(): Uint8Array<ArrayBuffer> {
+    const deferred = this.deferred
+    let size = this.len
+    for (let k = 0; k < deferred.length; k++) {
+      const { bytes, length } = deferred[k]
+      if (bytes.length !== length) invalid("Uint8Array whose length does not change during encoding")
+      size += length
+    }
+    const out = new Uint8Array(size)
+    const buf = this.buf
+    const start = this.start
+    let from = 0
+    let to = 0
+    for (let k = 0; k < deferred.length; k++) {
+      const { at, bytes, length } = deferred[k]
+      out.set(buf.subarray(start + from, start + at), to)
+      to += at - from
+      out.set(bytes, to)
+      to += length
+      from = at
+    }
+    out.set(buf.subarray(start + from, start + this.len), to)
+    return out
+  }
   abort() {
+    if (this.deferred.length > 0) this.deferred.length = 0
     const arena = this.arena
     if (arena === undefined) return
     if (arena === outputArena) arena.offset = this.start
@@ -4003,6 +4073,8 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
       issuePath[issuePathLen++] = i
       encodeFail("a number", value, ctx.options)
     }
+    // Once both narrower modes are ruled out, only the type check remains.
+    if (!varint && !decimal) continue
     if (isVarintNumber(value)) {
       const magnitude = value < 0 ? -value : value
       if (magnitude > DECIMAL_MANTISSA_MAX) decimal = false
@@ -4012,7 +4084,6 @@ function encodeNumberRun(ctx: EncodeContext, arr: ReadonlyArray<unknown>, count:
       if (scale === 0) decimal = false
       else numberRunScales[i] = scale
     }
-    if (!varint && !decimal) break
   }
   if (varint) {
     w.byte(NUMBER_RUN_VARINT)

@@ -105,7 +105,23 @@ import * as NodeWS from "./NodeWS.ts"
  * @since 4.0.0
  */
 export interface Options extends Net.ListenOptions {
+  /**
+   * Skips the `gracefulShutdownTimeout` wait, so shutdown interrupts request
+   * fibers as soon as the server stops serving. Uninterruptible handlers still
+   * run to completion.
+   *
+   * @default false
+   */
   readonly disablePreemptiveShutdown?: boolean | undefined
+  /**
+   * Bounds how long shutdown waits for the server to close its connections
+   * before it interrupts the remaining request fibers. Handlers run
+   * uninterruptibly unless wrapped in `Effect.interruptible` or served by
+   * interruptible `HttpRouter` routes, so shutdown still waits for them after
+   * the timeout.
+   *
+   * @default "20 seconds"
+   */
   readonly gracefulShutdownTimeout?: Duration.Input | undefined
   /**
    * Options forwarded to the underlying `ws` `WebSocketServer`, minus the
@@ -272,6 +288,13 @@ export const make = Effect.fnUntraced(function*(
  * client closes the response before it finishes. It accepts both HTTP/1.1 and
  * HTTP/2 compatibility requests.
  *
+ * **Gotchas**
+ *
+ * `httpEffect` runs uninterruptibly by default, so a client disconnect or
+ * closing `scope` stops it only once it has produced a response. Wrap it in
+ * `Effect.interruptible`, or serve interruptible `HttpRouter` routes, to let
+ * them interrupt it earlier.
+ *
  * @stability unstable
  * @category handlers
  * @since 4.0.0
@@ -341,6 +364,12 @@ export const makeHandler = <
  * the connection with `Content-Length`; chunked bodies get
  * `411 Length Required` there. `Expect: 100-continue` is not answered on
  * upgrade requests.
+ *
+ * **Gotchas**
+ *
+ * `httpEffect` runs uninterruptibly by default, so an early socket close or
+ * closing `scope` stops it only once it has produced a response. Wrap it in
+ * `Effect.interruptible` to let them interrupt it earlier.
  *
  * @stability unstable
  * @category handlers

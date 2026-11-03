@@ -346,6 +346,51 @@ export const PreliminaryBuffer = Context.Reference<number | "unbounded">("effect
   defaultValue: () => "unbounded"
 })
 
+/**
+ * Controls whether tool call arguments are recorded on the current span.
+ *
+ * **Details**
+ *
+ * Defaults to `false`: `Toolkit.handle` records only `gen_ai.tool.name` and,
+ * when a call id is given, `gen_ai.tool.call.id`. Provide `true` to also record
+ * the arguments as JSON in `gen_ai.tool.call.arguments`. `McpServer` reads the
+ * same setting for `tools/call` requests.
+ *
+ * **Gotchas**
+ *
+ * Arguments can contain user data. Only enable this where your traces may hold
+ * it.
+ *
+ * **Example** (Recording tool arguments)
+ *
+ * ```ts import.meta.vitest
+ * import { Layer } from "effect"
+ * import { Toolkit } from "effect/ai"
+ *
+ * export const RecordToolArgumentsLive = Layer.succeed(Toolkit.RecordToolArguments, true)
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.3
+ */
+export const RecordToolArguments = Context.Reference<boolean>("effect/ai/Toolkit/RecordToolArguments", {
+  defaultValue: () => false
+})
+
+/**
+ * Formats tool arguments for the `gen_ai.tool.call.arguments` span attribute.
+ *
+ * @internal
+ */
+export const stringifyToolArguments = (params: unknown): string => {
+  try {
+    return JSON.stringify(params) ?? "null"
+  } catch {
+    return String(params)
+  }
+}
+
 const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
 
@@ -396,10 +441,13 @@ const Proto = {
       ) {
         const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
 
-        yield* Effect.annotateCurrentSpan({
-          tool: name,
-          parameters: params
-        })
+        yield* Effect.annotateCurrentSpan("gen_ai.tool.name", name)
+        if (toolCallId !== undefined) {
+          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.id", toolCallId)
+        }
+        if (yield* RecordToolArguments) {
+          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.arguments", stringifyToolArguments(params))
+        }
 
         if (Predicate.isUndefined(tool)) {
           return yield* AiError.make({

@@ -91,9 +91,15 @@ export const make = Effect.fnUntraced(function*(
 ) {
   const scope = yield* Effect.scope
   type Handler = (request: Request, info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>) => Promise<Response>
-  const notFound: Handler = (_request, _info) => Promise.resolve(new Response("not found", { status: 404 }))
-  const handlerStack: Array<Handler> = [notFound]
-  let currentHandler = notFound
+  const unavailable: Handler = (_request, _info) =>
+    Promise.resolve(
+      new Response("service unavailable", {
+        status: 503,
+        headers: { "cache-control": "no-store", "retry-after": "1" }
+      })
+    )
+  const handlerStack: Array<Handler> = [unavailable]
+  let currentHandler = unavailable
   const {
     disablePreemptiveShutdown,
     gracefulShutdownTimeout,
@@ -170,7 +176,7 @@ export const make = Effect.fnUntraced(function*(
       yield* Scope.addFinalizerExit(serveScope, () => {
         const index = handlerStack.lastIndexOf(handler)
         if (index !== -1) handlerStack.splice(index, 1)
-        currentHandler = handlerStack[handlerStack.length - 1] ?? notFound
+        currentHandler = handlerStack[handlerStack.length - 1]
         return preemptiveShutdown
       })
       handlerStack.push(handler)

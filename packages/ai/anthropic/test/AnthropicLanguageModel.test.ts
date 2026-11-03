@@ -985,6 +985,59 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(response.usage.inputTokens, { uncached: 3, total: 3, cacheRead: 0, cacheWrite: 0 })
       }))
 
+    it.effect("decodes a web fetch result whose document omits citations", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [
+                  {
+                    type: "server_tool_use",
+                    id: "srvtoolu_1",
+                    name: "web_fetch",
+                    input: { url: "https://example.com" }
+                  },
+                  {
+                    type: "web_fetch_tool_result",
+                    tool_use_id: "srvtoolu_1",
+                    content: {
+                      type: "web_fetch_result",
+                      url: "https://example.com",
+                      retrieved_at: "2026-03-03T15:05:04.091000+00:00",
+                      content: {
+                        type: "document",
+                        source: { type: "text", media_type: "text/plain", data: "Example Domain" },
+                        title: "Example Domain"
+                      }
+                    }
+                  }
+                ],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: { input_tokens: 3, output_tokens: 1 }
+              }))
+            )
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({
+          prompt: "What is on https://example.com?",
+          toolkit: Toolkit.make(AnthropicTool.WebFetch_20250910({}))
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const result = response.content.find((part) => part.type === "tool-result")
+        assertDefined(result)
+        assert.strictEqual(result.isFailure, false)
+      }))
+
     it.effect("emits response metadata for a fallback block and keeps fallback usage iterations", () =>
       Effect.gen(function*() {
         const fallback = {
@@ -2157,9 +2210,9 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
-  // Anthropic tool search runs on the server: `server_tool_use` and its
-  // `tool_search_tool_result` must replay in the assistant message as received,
-  // while only client tool results belong in the following user message (#10268).
+  // Server tool calls and their results, including errors, must replay in the
+  // assistant message as received; only client tool results belong in the
+  // following user message (#10268).
   describe("tool search", () => {
     const ListContacts = Tool.make("ListContacts", {
       parameters: Schema.Struct({ name: Schema.String }),
@@ -2169,7 +2222,9 @@ describe("AnthropicLanguageModel", () => {
       ListContacts,
       AnthropicTool.ToolSearchRegex_20251119(),
       AnthropicTool.ToolSearchBM25_20251119(),
-      AnthropicTool.WebSearch_20250305({})
+      AnthropicTool.WebSearch_20250305({}),
+      AnthropicTool.WebFetch_20250910({}),
+      AnthropicTool.CodeExecution_20250522()
     )
     const toolkitLayer = toolkit.toLayer({ ListContacts: () => Effect.succeed([]) })
 
@@ -2208,6 +2263,52 @@ describe("AnthropicLanguageModel", () => {
           encrypted_content: "encrypted",
           page_age: null
         }]
+      },
+      { type: "server_tool_use", id: "srvtoolu_4", name: "web_fetch", input: { url: "https://example.com/contacts" } },
+      {
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_4",
+        content: {
+          type: "web_fetch_result",
+          url: "https://example.com/contacts",
+          retrieved_at: null,
+          content: {
+            type: "document",
+            source: { type: "text", media_type: "text/plain", data: "Anna" },
+            title: null,
+            citations: { enabled: true }
+          }
+        }
+      },
+      { type: "server_tool_use", id: "srvtoolu_5", name: "web_fetch", input: { url: "https://example.com/missing" } },
+      {
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_5",
+        content: { type: "web_fetch_tool_result_error", error_code: "url_not_accessible" }
+      },
+      { type: "server_tool_use", id: "srvtoolu_6", name: "code_execution", input: { code: "print(1)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_6",
+        content: { type: "code_execution_result", stdout: "1\n", stderr: "", return_code: 0, content: [] }
+      },
+      { type: "server_tool_use", id: "srvtoolu_7", name: "code_execution", input: { code: "print(2)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_7",
+        content: { type: "code_execution_tool_result_error", error_code: "unavailable" }
+      },
+      { type: "server_tool_use", id: "srvtoolu_8", name: "code_execution", input: { code: "print(3)" } },
+      {
+        type: "code_execution_tool_result",
+        tool_use_id: "srvtoolu_8",
+        content: {
+          type: "encrypted_code_execution_result",
+          encrypted_stdout: "encrypted",
+          stderr: "",
+          return_code: 0,
+          content: []
+        }
       },
       { type: "tool_use", id: "toolu_1", name: "ListContacts", input: { name: "Anna" } }
     ]
@@ -2283,6 +2384,12 @@ describe("AnthropicLanguageModel", () => {
             .find((part) => part.id === "srvtoolu_1")
           assertDefined(searchResult)
           assert.deepStrictEqual(searchResult.result, toolReferences)
+
+          const encryptedResult = firstParts
+            .filter((part) => part.type === "tool-result")
+            .find((part) => part.id === "srvtoolu_8")
+          assertDefined(encryptedResult)
+          assert.isFalse(encryptedResult.isFailure)
 
           yield* LanguageModel.generateText({
             prompt: Prompt.concat(prompt, Prompt.fromResponseParts(firstParts)),

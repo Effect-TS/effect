@@ -1305,7 +1305,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "shell_call_output",
                 call_id: part.id,
-                output: part.result as any,
+                output: getShellOutput(part),
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue
@@ -1316,7 +1316,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "local_shell_call_output",
                 call_id: part.id,
-                output: part.result as any,
+                output: getShellOutput(part),
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue
@@ -1639,6 +1639,10 @@ const makeResponse = Effect.fnUntraced(
         }
 
         case "message": {
+          // Commentary text would be joined with the final answer and break JSON decoding
+          if (options.responseFormat.type === "json" && part.phase === "commentary") {
+            break
+          }
           for (const contentPart of part.content) {
             switch (contentPart.type) {
               case "output_text": {
@@ -3162,6 +3166,8 @@ const getStatus = (
 const getEncryptedContent = (
   part: Prompt.ReasoningPart
 ): string | null => part.options.openai?.encryptedContent ?? null
+// Shell tool successes are `{ output }`; failure results are passed through unchanged
+const getShellOutput = (part: Prompt.ToolResultPart): any => part.isFailure ? part.result : (part.result as any).output
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 

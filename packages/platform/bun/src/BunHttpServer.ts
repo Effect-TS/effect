@@ -119,6 +119,13 @@ export type WebSocketOptions =
  * and `Effect` timeouts in your handlers or middleware. An explicit value is
  * passed to Bun unchanged.
  *
+ * On shutdown the server waits up to `gracefulShutdownTimeout` (default 20
+ * seconds) for in-flight requests, then interrupts the remaining request
+ * fibers. `disablePreemptiveShutdown: true` skips the wait and interrupts
+ * them immediately. Handlers run uninterruptibly unless wrapped in
+ * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so a
+ * client disconnect does not stop them and shutdown waits for them to finish.
+ *
  * **Gotchas**
  *
  * Without an idle timeout, Bun also keeps idle keep-alive connections and
@@ -159,7 +166,10 @@ export const make = Effect.fnUntraced(
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
         function(_request, _server) {
-          return new Response("not found", { status: 404 })
+          return new Response("service unavailable", {
+            status: 503,
+            headers: { "cache-control": "no-store", "retry-after": "1" }
+          })
         }
       ]
     const server = Bun.serve<WebSocketContext, R>({
@@ -194,7 +204,7 @@ export const make = Effect.fnUntraced(
     )
     const preemptiveShutdown = options.disablePreemptiveShutdown ? Effect.void : Effect.timeoutOrElse(shutdown, {
       duration: options.gracefulShutdownTimeout ?? Duration.seconds(20),
-      orElse: () => Effect.void
+      orElse: () => Effect.promise(() => server.stop(true))
     })
 
     yield* Scope.addFinalizer(scope, shutdown)

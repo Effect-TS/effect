@@ -73,7 +73,9 @@ import { withRun } from "./Utils.ts"
  */
 export interface RpcServer<A extends Rpc.Any> {
   readonly write: (clientId: number, message: FromClient<A>, options?: {
-    readonly onRequest?: (<A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) | undefined
+    readonly onRequest?:
+      | (<X, E, R>(effect: Effect.Effect<X, E, R>, request: Request<A>) => Effect.Effect<X, E, R>)
+      | undefined
   }) => Effect.Effect<void>
   readonly disconnect: (clientId: number) => Effect.Effect<void>
 }
@@ -377,7 +379,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       return close ? Effect.ensuring(write, close) : write
     })
     if (opts?.onRequest) {
-      effect = opts.onRequest(effect)
+      effect = opts.onRequest(effect, request)
     }
     if (enableTracing) {
       const parentSpan = Context.getOrUndefined(
@@ -634,6 +636,12 @@ const applyMiddleware = <A, E, R>(
  * client's requests, so use the `onDisconnect` option to observe disconnects
  * instead of taking from that queue.
  *
+ * `onRequest` wraps the effect that runs one decoded request: its middleware
+ * and handler and, when the handler returns its result directly, the response
+ * write. The wrapped effect is interrupted when the request is cancelled, its
+ * client disconnects or the server stops. It runs inside the request's tracing
+ * span unless tracing is disabled.
+ *
  * `onDisconnect` is called for each disconnect reported by the `Protocol`,
  * after the server has requested interruption of that client's in-flight
  * requests. It does not wait for those requests to finish. It is not called
@@ -644,6 +652,12 @@ const applyMiddleware = <A, E, R>(
  * cleanup for other clients, and callbacks may run concurrently. Pending
  * callbacks are interrupted when the server stops. Failures are ignored and
  * logged at `References.UnhandledLogLevel`.
+ *
+ * **Gotchas**
+ *
+ * When a handler succeeds with a `Deferred`, the effect wrapped by
+ * `onRequest` ends at that point. The reply is sent once the `Deferred`
+ * completes, outside the wrapped effect.
  *
  * @stability unstable
  * @category running
@@ -658,6 +672,9 @@ export const make: <Rpcs extends Rpc.Any>(
       readonly spanAttributes?: Record<string, unknown> | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
+      readonly onRequest?:
+        | (<X, E, R>(effect: Effect.Effect<X, E, R>, request: Request<Rpcs>) => Effect.Effect<X, E, R>)
+        | undefined
       readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
     }
     | undefined
@@ -676,6 +693,9 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onRequest?:
+      | (<X, E, R>(effect: Effect.Effect<X, E, R>, request: Request<Rpcs>) => Effect.Effect<X, E, R>)
+      | undefined
     readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   }
 ) {
@@ -693,6 +713,7 @@ export const make: <Rpcs extends Rpc.Any>(
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
+  const writeOptions = options?.onRequest ? { onRequest: options.onRequest } : undefined
   const server = yield* makeNoSerialization(group, {
     ...options,
     disableClientAcks: !supportsAck,
@@ -931,7 +952,7 @@ export const make: <Rpcs extends Rpc.Any>(
     decoded.id = requestId
     decoded.payload = payload
     decoded.headers = headers as any
-    return server.write(client.id, decoded as any)
+    return server.write(client.id, decoded as any, writeOptions)
   }
 
   let notificationCount = 0

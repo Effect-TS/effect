@@ -710,7 +710,9 @@ export const make = Effect.gen(function*() {
             { discard }
           )
         ),
-        Effect.orDie,
+        // A failed save inside a workflow would be stored as its result. Top-level
+        // calls still fail, so their callers are not blocked during an outage.
+        parent ? retryPersistence : Effect.orDie,
         Effect.scoped
       )
     },
@@ -924,8 +926,8 @@ const retryPolicy = Schedule.min([
 ])
 
 // A transient storage failure must not become the workflow result. Activity,
-// clock and deferred requests are saved under a primary key, so a retry after
-// a lost acknowledgement is deduplicated instead of stored twice.
+// clock, deferred and child run requests are saved under a primary key, so a
+// retry after a lost acknowledgement is deduplicated instead of stored twice.
 const retryPersistence = <A, E extends { readonly _tag: string }, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.retry({ schedule: retryPolicy, while: (e) => e._tag === "PersistenceError" }),

@@ -51,9 +51,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # CI type checks with the official compiler; `pnpm check` runs tsrs locally.
           - name: Check
             deno: ""
-            command: pnpm check
+            command: pnpm check-tsc
           - name: Deno
             deno: v2.9.6
             command: deno check .

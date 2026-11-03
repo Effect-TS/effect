@@ -395,6 +395,17 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.strictEqual(error.reason.operation, "commit")
     }))
 
+  it.effect("keeps the typed error when the server ends the session in a nested transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const cause = yield* sql.withTransaction(
+        sql.withTransaction(sql`SELECT pg_terminate_backend(pg_backend_pid())`)
+      ).pipe(Effect.sandbox, Effect.flip)
+
+      assert.isFalse(Cause.hasDies(cause))
+      assert.instanceOf(Cause.squash(cause), SqlError.SqlError)
+    }))
+
   it.effect("afterCommit runs once other connections see the transaction's rows", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
