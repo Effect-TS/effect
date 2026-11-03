@@ -492,4 +492,51 @@ describe("Stream", () => {
       assert.strictEqual(error, "maxBytes exceeded")
       assert.isTrue(stream.destroyed)
     }))
+
+  it.effect("toArrayBuffer collects streams that already decode", () =>
+    Effect.gen(function*() {
+      const expected = Buffer.from("café")
+      for (const encoding of ["utf8", "latin1"] as const) {
+        const readable = Readable.from([expected], { objectMode: false })
+        readable.setEncoding(encoding)
+        const result = yield* NodeStream.toArrayBuffer(() => readable, { maxBytes: expected.length })
+
+        assert.deepStrictEqual(Buffer.from(result), expected)
+      }
+      const result = yield* NodeStream.toUint8Array(() =>
+        Readable.from([expected], { objectMode: false }).setEncoding("utf8")
+      )
+      assert.deepStrictEqual(Buffer.from(result), expected)
+    }))
+
+  it.effect("toArrayBuffer collects string and mixed chunks", () =>
+    Effect.gen(function*() {
+      for (
+        const chunks of [
+          ["café"],
+          ["ca", "fé"],
+          ["ca", Buffer.from("fé")],
+          [Buffer.from("ca"), "fé"]
+        ]
+      ) {
+        const result = yield* NodeStream.toArrayBuffer(() => Readable.from(chunks))
+
+        assert.deepStrictEqual(Buffer.from(result), Buffer.from("café"))
+      }
+    }))
+
+  it.effect("toArrayBuffer limits string chunks by encoded byte length", () =>
+    Effect.gen(function*() {
+      const result = yield* NodeStream.toArrayBuffer(() => Readable.from(["é"]), { maxBytes: 2 })
+      assert.deepStrictEqual(Buffer.from(result), Buffer.from("é"))
+
+      const readable = Readable.from(["é"])
+      const error = yield* NodeStream.toArrayBuffer(() => readable, {
+        maxBytes: 1,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
+      assert.isTrue(readable.destroyed)
+    }))
 })

@@ -394,9 +394,10 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
         Effect.succeed(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer)
       )
     })
-    function onData(chunk: Uint8Array) {
-      buffers.push(chunk)
-      bytes += chunk.length
+    function onData(chunk: string | Uint8Array) {
+      const buffer = typeof chunk === "string" ? Buffer.from(chunk, stream.readableEncoding ?? "utf8") : chunk
+      buffers.push(buffer)
+      bytes += buffer.byteLength
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
         if (options?.destroyOnOverflow === false) {
