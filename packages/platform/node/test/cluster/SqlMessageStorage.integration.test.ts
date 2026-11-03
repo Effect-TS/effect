@@ -441,6 +441,66 @@ describe("SqlMessageStorage", () => {
           { timeout: 30_000 }
         )
 
+        it.effect(
+          "a stream reply does not deadlock with deleteProcessed of another request",
+          () =>
+            Effect.gen(function*() {
+              yield* truncate
+              const sql = yield* SqlClient.SqlClient
+              const storage = yield* MessageStorage.MessageStorage
+              const cutoff = Date.UTC(2026, 0, 1)
+              for (let id = 1; id <= 20; id++) {
+                const expired = yield* makeRequest({ payload: { id } })
+                yield* storage.saveRequest(expired)
+                yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
+              }
+              // an incomplete stream, which deleteProcessed must not select
+              const streaming = yield* makeRequest({
+                rpc: StreamRpc,
+                payload: StreamRpc.payloadSchema.make({ id: 21 }),
+                entityId: "2"
+              })
+              yield* storage.saveRequest(streaming)
+              yield* storage.saveReply(yield* makeChunkReply(streaming, 0))
+              // Pause saveReply after it updates the request row, before it inserts the reply, only on the
+              // connection that opts in.
+              yield* sql`
+              CREATE TRIGGER cluster_test_slow_reply AFTER UPDATE ON cluster_messages
+              FOR EACH ROW BEGIN
+                IF @cluster_test_slow_reply = 1 THEN
+                  DO SLEEP(2);
+                END IF;
+              END
+            `.unprepared
+              yield* Effect.gen(function*() {
+                const replyFiber = yield* Effect.gen(function*() {
+                  yield* sql`SET @cluster_test_slow_reply = 1`
+                  yield* storage.saveReply(yield* makeChunkReply(streaming, 1)).pipe(
+                    Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_reply = NULL`))
+                  )
+                }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+                yield* waitForMysqlSleep
+                const cleanup = yield* Effect.exit(
+                  storage.deleteProcessed({
+                    entityType: "test",
+                    completedBefore: cutoff,
+                    limit: 100
+                  })
+                )
+                const replied = yield* Fiber.join(replyFiber)
+                assert(Exit.isSuccess(replied), String(replied))
+                assert(Exit.isSuccess(cleanup), String(cleanup))
+                expect(cleanup.value).toEqual(20)
+              }).pipe(Effect.ensuring(
+                Effect.gen(function*() {
+                  yield* sql`DROP TRIGGER cluster_test_slow_reply`.unprepared
+                  yield* truncate
+                }).pipe(Effect.orDie)
+              ))
+            }).pipe(TestClock.withLive),
+          { timeout: 30_000 }
+        )
+
         it.effect("a late AckChunk waiting on deleteProcessed is a no-op", () =>
           Effect.gen(function*() {
             yield* truncate
