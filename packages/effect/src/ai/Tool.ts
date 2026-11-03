@@ -466,6 +466,23 @@ export interface ProviderDefined<
    * this tool into a `Layer`.
    */
   readonly requiresHandler: RequiresHandler
+
+  /**
+   * Set whether user approval is required before executing this tool.
+   */
+  setNeedsApproval(
+    needsApproval: NeedsApproval<Config["parameters"]>
+  ): ProviderDefined<Identifier, Name, Config, RequiresHandler>
+
+  /**
+   * Add an annotation to the tool.
+   */
+  annotate<I, S>(tag: Context.Key<I, S>, value: S): ProviderDefined<Identifier, Name, Config, RequiresHandler>
+
+  /**
+   * Add many annotations to the tool.
+   */
+  annotateMerge<I>(context: Context.Context<I>): ProviderDefined<Identifier, Name, Config, RequiresHandler>
 }
 
 /**
