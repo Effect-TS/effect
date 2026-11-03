@@ -938,19 +938,34 @@ describe("SqlMessageStorage", () => {
           expect(yield* deleteProcessed).toEqual(0)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
-      it.effect("deleteProcessed takes an infinite or fractional cutoff", () =>
+      it.effect("deleteProcessed takes an unbounded, extreme or fractional cutoff", () =>
         Effect.gen(function*() {
           yield* truncate
           const storage = yield* MessageStorage.MessageStorage
           const completedAt = Date.UTC(2026, 0, 1)
-          const request = yield* makeRequest()
-          yield* storage.saveRequest(request)
-          yield* storage.saveReply(yield* makeReply(request, completedAt))
+          for (let id = 1; id <= 6; id++) {
+            const request = yield* makeRequest({ payload: { id } })
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(yield* makeReply(request, completedAt + id - 1))
+          }
+          const makeRunning = makeRequest({
+            rpc: PrimaryKeyTest,
+            payload: PrimaryKeyTest.payloadSchema.make({ id: 7 })
+          })
+          // still running, so never eligible
+          yield* storage.saveRequest(yield* makeRunning)
           const deleteProcessed = (completedBefore: number) =>
-            storage.deleteProcessed({ entityType: "test", completedBefore, limit: 100 })
-          // MessageRetention's cutoff for an infinite or sub-millisecond retention
+            storage.deleteProcessed({ entityType: "test", completedBefore, limit: 2 })
+          // MessageRetention's cutoffs for an infinite, huge, sub-millisecond,
+          // negative huge and negative infinite retention
           expect(yield* deleteProcessed(-Infinity)).toEqual(0)
+          expect(yield* deleteProcessed(-Number.MAX_VALUE)).toEqual(0)
           expect(yield* deleteProcessed(completedAt + 0.5)).toEqual(1)
+          expect(yield* deleteProcessed(Number.MAX_VALUE)).toEqual(2)
+          expect(yield* deleteProcessed(Infinity)).toEqual(2)
+          expect(yield* deleteProcessed(Infinity)).toEqual(1)
+          const running = yield* storage.saveRequest(yield* makeRunning)
+          expect(running._tag).toEqual("Duplicate")
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
       it.effect("saveRequest", () =>
