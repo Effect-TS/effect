@@ -2067,6 +2067,13 @@ describe("HttpServer", () => {
       read: true,
       // Node 25 and older do not parse upgrade request bodies, and only Content-Length is framed by hand.
       upgrades: Number(process.versions.node.split(".")[0]) >= 26
+    },
+    {
+      name: "a chunked body sent with the head",
+      input:
+        "POST /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\nearly",
+      read: true,
+      upgrades: Number(process.versions.node.split(".")[0]) >= 26
     }
   ])("reads $name before switching protocols", ({ input, read, upgrades }) =>
     Effect.gen(function*() {
