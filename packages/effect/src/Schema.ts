@@ -6328,13 +6328,12 @@ export function TaggedStruct<const Tag extends SchemaAST.LiteralValue, const Fie
   return Struct({ _tag: tag(value), ...fields }) as any
 }
 /**
- * Recursively flatten any nested Schema.Union members into a single tuple of leaf schemas.
- * A member list typed as an array, or the rest element of a tuple, flattens to an array.
+ * Flattens nested `Union` members into a tuple of leaf schemas. Arrays and tuple rest elements flatten to an array.
  */
-type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail] ? [...Leaves<Head>, ...Flatten<Tail>]
+type Flatten<Schemas extends ReadonlyArray<unknown>> = Schemas extends readonly [infer Head, ...infer Tail]
+  ? [...Leaves<Head>, ...Flatten<Tail>]
   : Schemas extends readonly [] ? []
-  : Schemas extends ReadonlyArray<infer Member> ? Array<Leaves<Member>[number]>
-  : []
+  : Array<Leaves<Schemas[number]>[number]>
 type Leaves<Member> = Member extends Union<infer Inner> ? Flatten<Inner> : [Member]
 type MatchCasesResult<Cases> = {
   [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Schema.toTaggedUnion` types for member lists typed as arrays, such as `Object.values(cases)` or a `NonEmptyReadonlyArray`: `discriminants`, `cases`, `guards`, `match` and `matchOrElse` no longer drop the array's members.
+Fix `Schema.toTaggedUnion` dropping members from `discriminants`, `cases`, `guards` and `match` when the member list is typed as an array, such as `Object.values(members)` or a `NonEmptyReadonlyArray`.
