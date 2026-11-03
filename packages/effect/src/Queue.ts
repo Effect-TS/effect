@@ -740,7 +740,7 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
   if (self.state._tag !== "Open") {
     return false
   } else if (self.messages.length >= self.capacity) {
-    if (self.capacity <= 0 && self.state.takers.size > 0) {
+    if (self.capacity <= 0 && self.state.takers.size > (self.strategy === "sliding" ? 0 : self.messages.length)) {
       MutableList.append(self.messages, message)
       if (self.strategy === "sliding") {
         MutableList.takeNVoid(self.messages, self.messages.length - self.state.takers.size)
@@ -862,10 +862,8 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
     scheduleReleaseTaker(self as Queue<A, E>)
     return []
   }
-  const free = self.capacity <= 0
-    ? self.state.takers.size
-    : self.capacity - self.messages.length
-  if (free === 0) {
+  const free = (self.capacity <= 0 ? self.state.takers.size : self.capacity) - self.messages.length
+  if (free <= 0) {
     return Arr.fromIterable(messages)
   }
   const remaining: Array<A> = []
