@@ -73,6 +73,15 @@ describe("Only", () => {
     void displayed
   })
 
+  it("rejects a widened or empty array of members, whose contents are not statically known", () => {
+    const members: Array<"readFile" | "writeFile"> = ["readFile"]
+    const implementation = { readFile: (_path: string) => Effect.succeed(""), writeFile: () => Effect.void }
+
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, members, implementation)
+    expect(Layer.effectOnly).type.not.toBeCallableWith(FileSystem, members, Effect.succeed(implementation))
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(FileSystem, [], {})
+  })
+
   it("rejects symbol members, whose slice keys would collide", () => {
     const member = Symbol("readFile")
     class Symbolic extends Context.Service<Symbolic, { readonly [member]: () => Effect.Effect<void> }>()("Symbolic") {}
