@@ -2231,6 +2231,24 @@ describe("Stream", () => {
         assert.deepStrictEqual(result1, [1, 2])
         assert.deepStrictEqual(arr, [1, 2, 3, 4])
       }))
+
+    it.effect("zero capacity suspends the producer until the consumer pulls", () =>
+      Effect.gen(function*() {
+        let produced = 0
+        const received = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const fiber = yield* Stream.range(1, 100, 1).pipe(
+          Stream.tap(() => Effect.sync(() => produced++)),
+          Stream.buffer({ capacity: 0 }),
+          Stream.runForEach(() => Deferred.succeed(received, void 0).pipe(Effect.andThen(Deferred.await(gate)))),
+          Effect.forkChild
+        )
+        yield* Deferred.await(received)
+        assert.strictEqual(produced, 2)
+        yield* Deferred.succeed(gate, void 0)
+        yield* Fiber.join(fiber)
+        assert.strictEqual(produced, 100)
+      }))
   })
 
   describe("bufferArray - suspend", () => {

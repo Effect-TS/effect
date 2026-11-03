@@ -916,6 +916,25 @@ describe("Queue", () => {
       assert.strictEqual(result, 2)
     }))
 
+  it.effect.each(["offer", "offerAll"] as const)(
+    "zero-capacity %s after offerAll waits for another taker",
+    (method) =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(0)
+        const taker = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.deepStrictEqual(yield* Queue.offerAll(queue, [1]), [])
+        const producer = yield* Effect.forkChild(
+          method === "offer" ? Queue.offer(queue, 2) : Queue.offerAll(queue, [2]),
+          { startImmediately: true }
+        )
+
+        assert.strictEqual(yield* Fiber.join(taker), 1)
+        assert.isUndefined(producer.pollUnsafe())
+        assert.strictEqual(yield* Queue.take(queue), 2)
+        assert.isDefined(producer.pollUnsafe())
+      })
+  )
+
   it.effect("zero-capacity takeAll consumes buffered messages before pending offers", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(0)
