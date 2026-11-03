@@ -2502,6 +2502,25 @@ Missing key
       assert.isTrue((yield* Deferred.await(helperStarted)).aborted)
     }))
 
+  it.effect("keeps withScope aborting a request forwarded through another client's execute", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<AbortSignal>()
+      const transport = HttpClient.make((_request, _url, signal) =>
+        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
+      )
+      const client = HttpClient.makeWith(
+        Effect.flatMap((request: HttpClientRequest.HttpClientRequest) => transport.execute(request)),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
+      ).pipe(HttpClient.withScope)
+      const scope = yield* Scope.make()
+
+      yield* client.get("https://origin.test/").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
+
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
     const source = new Response(null, { headers: { "content-type": "text/plain" } })
