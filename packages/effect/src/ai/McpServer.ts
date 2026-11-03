@@ -3654,8 +3654,8 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  * Each file is registered as a resource, and the skill is listed by
  * `skills/list` and `skills/get` with a manifest of every file's SHA-256
  * digest and size, computed from the bytes served. Every directory of the
- * skill namespace is readable with `resources/directory/read`. Once any skill
- * is registered, the server declares the extension on protocol 2026-07-28.
+ * skill namespace is readable with `resources/directory/read`. The server
+ * declares the extension on protocol 2026-07-28 once any skill is registered.
  * Earlier revisions neither declare it nor answer its methods, but still serve
  * the skill's files through `resources/read`.
  *

@@ -531,6 +531,10 @@ export const make = Effect.fnUntraced(function*(
         registrationPresence: options.core.registrationPresence
       }
       const handlerTarget = registry.handlerTarget(contextMap, installationContext)
+      // Skills requires 2026-07-28, so sessionful revisions never declare it.
+      const sessionfulExtensions = options.serverInfo.extensions === undefined
+        ? undefined
+        : Rec.remove(options.serverInfo.extensions, McpSkills.EXTENSION_ID)
       for (const protocol of registry.protocols) {
         if (protocol.runtime._tag === "Stateless") {
           yield* protocol.installHandlers(options.core, undefined, handlerTarget)
@@ -554,10 +558,7 @@ export const make = Effect.fnUntraced(function*(
                   : {}),
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
-              // Skills requires 2026-07-28, so sessionful revisions never declare it.
-              if (options.serverInfo.extensions !== undefined) {
-                capabilities.extensions = Rec.remove(options.serverInfo.extensions, McpSkills.EXTENSION_ID)
-              }
+              if (sessionfulExtensions !== undefined) capabilities.extensions = sessionfulExtensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,
