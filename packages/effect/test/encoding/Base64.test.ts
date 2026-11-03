@@ -86,6 +86,13 @@ describe("Base64", () => {
       new Uint8Array([72, 101, 108, 108, 111])
     )
     assert.strictEqual(Result.getOrThrow(Base64.decodeString("8J+Riw==")), "👋")
+    assert.strictEqual(Result.getOrThrow(Base64.decodeString("/w==")), "\uFFFD")
+  })
+
+  it("preserves U+FEFF when round-tripping strings", () => {
+    for (const value of ["\uFEFF", "\uFEFFreport", "\uFEFF\uFEFFreport", "a\uFEFFb"]) {
+      assert.strictEqual(Result.getOrThrow(Base64.decodeString(Base64.encode(value))), value)
+    }
   })
 
   it("rejects invalid input with format information", () => {

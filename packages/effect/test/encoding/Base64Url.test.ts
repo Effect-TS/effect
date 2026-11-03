@@ -22,6 +22,14 @@ describe("Base64Url", () => {
     assert.strictEqual(Result.getOrThrow(Base64Url.decodeString("8J-Riw==")), "👋")
   })
 
+  it("preserves U+FEFF when round-tripping strings", () => {
+    for (const value of ["\uFEFF", "\uFEFFreport", "\uFEFF\uFEFFreport", "a\uFEFFb"]) {
+      for (const encoded of [Base64Url.encode(value), Base64Url.encodePadded(value)]) {
+        assert.strictEqual(Result.getOrThrow(Base64Url.decodeString(encoded)), value)
+      }
+    }
+  })
+
   it("rejects the standard Base64 alphabet and malformed lengths", () => {
     const invalidAlphabet = Base64Url.decode("+/8=")
     assert.isTrue(Result.isFailure(invalidAlphabet))

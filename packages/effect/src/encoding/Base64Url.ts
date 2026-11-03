@@ -183,4 +183,4 @@ for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
  */
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
-const decoder = new TextDecoder()
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true })

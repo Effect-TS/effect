@@ -245,7 +245,7 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 const byteToHex: Array<string> = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"))
 

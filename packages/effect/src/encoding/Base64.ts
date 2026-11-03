@@ -208,7 +208,7 @@ const encodeLong = (bytes: Uint8Array): string => {
 }
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 const stripCrlf = (str: string) => str.replace(/[\n\r]/g, "")
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 const alphabetCodes = encoder.encode(alphabet)
