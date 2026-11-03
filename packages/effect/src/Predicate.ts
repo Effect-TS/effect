@@ -1255,12 +1255,12 @@ export const isTagged: {
  * - Members of `T` whose `_tag` is `K` are kept whole.
  * - Members whose `_tag` is a wider string type are kept and intersected with
  *   `{ _tag: K }`.
- * - Open members that `{ _tag: K }` is assignable to, such as `object` or
- *   `Record<string, unknown>`, contribute `{ _tag: K }`.
- * - Other members, such as objects with other required fields, are dropped
- *   when at least one member matches.
- * - When no member has a matching `_tag`, the result is `T & { _tag: K }`,
- *   so `unknown`, `object`, and `Error` inputs keep narrowing as before.
+ * - Members that `{ _tag: K }` is assignable to, such as `unknown`, `object`
+ *   or `Record<string, unknown>`, become `{ _tag: K }`.
+ * - Other members, such as primitives or objects with other required fields,
+ *   are dropped when at least one member matches.
+ * - When no member matches, the result is `T & { _tag: K }`, so an `Error`
+ *   input keeps narrowing to `Error & { _tag: K }` as before.
  * - An `any` input gives `{ _tag: K }`.
  *
  * **Example** (Naming a narrowed member)
@@ -1336,8 +1336,8 @@ export declare namespace NarrowTagged {
    *
    * A member whose `_tag` is `K` is kept as is. A member whose `_tag` is a
    * wider string type is intersected with `{ _tag: K }`. A member that
-   * `{ _tag: K }` is assignable to, such as `object`, becomes `{ _tag: K }`.
-   * Every other member becomes `never`.
+   * `{ _tag: K }` is assignable to, such as `unknown` or `object`, becomes
+   * `{ _tag: K }`. Every other member becomes `never`.
    *
    * @see {@link NarrowTagged.Members}
    * @category utility types
