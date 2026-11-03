@@ -66,6 +66,19 @@ describe("Response", () => {
     expect(opaque.params).type.toBe<unknown>()
   })
 
+  it("keeps raw encoded parameters possible for provider-defined tools with a non-literal handler flag", () => {
+    const ScheduleTool = Tool.providerDefined({
+      id: "test.schedule",
+      customName: "ScheduleTool",
+      providerName: "schedule",
+      requiresHandler: hole<boolean>(),
+      parameters: Schema.Struct({ at: Schema.Date })
+    })()
+
+    const encoded = null as unknown as Response.ToolCallParts<{ readonly ScheduleTool: typeof ScheduleTool }, "encoded">
+    expect(encoded.params).type.toBe<{ readonly at: Date } | Schema.Json>()
+  })
+
   it("preserves tool names with success and failure results", () => {
     const result = null as unknown as Response.ToolResultParts<Tools>
     if (result.name === "BooleanTool") {
