@@ -93,9 +93,11 @@ const strictCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  * Derived codecs are memoized by schema identity and wire mode.
  *
  * Encoded results may be views into a larger shared buffer. Use
- * `bytes.slice()` when independent ownership is required. Large `Uint8Array`
- * values are copied once the frame is complete, so they must not change while
- * the encode runs.
+ * `bytes.slice()` when independent ownership is required. `Uint8Array` values
+ * of 16 KiB or more are copied just before the encode call returns, not when
+ * they are reached, so they must not change until the call returns. Resizing
+ * or detaching their buffer before then fails the encode with a
+ * `SchemaError`.
  *
  * **Gotchas**
  *
@@ -394,6 +396,13 @@ function requireDictionary(exact: boolean, options: StreamOptions | undefined): 
  * A writer for one connection. Every frame it produces shares the string
  * dictionary that the matching {@link parser} rebuilds as it reads them, so the
  * two have to be created from the same schema and the same options.
+ *
+ * **Details**
+ *
+ * As with {@link toCodec}, `Uint8Array` values of 16 KiB or more are copied
+ * just before the call returns. For `encodeMany`, that is after every frame
+ * has been written, so no value in the batch may change until the call
+ * returns.
  *
  * @stability unstable
  * @category constructors
@@ -1389,6 +1398,9 @@ let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
 
 interface DeferredBytes {
   readonly bytes: Uint8Array
+  // Recorded when the payload is written. Every length prefix counts this
+  // value, so the payload is checked against it before it is copied out.
+  readonly length: number
   at: number
 }
 
@@ -1438,7 +1450,7 @@ class Writer {
   }
   bytes(b: Uint8Array) {
     if (b.length >= DEFERRED_BYTES_MIN) {
-      this.deferred.push({ bytes: b, at: this.len })
+      this.deferred.push({ bytes: b, length: b.length, at: this.len })
       return
     }
     this.ensure(b.length)
@@ -1542,7 +1554,7 @@ class Writer {
   private sizeAfter(mark: number): number {
     let size = this.len - mark - 1
     const deferred = this.deferred
-    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) size += deferred[k].bytes.length
+    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) size += deferred[k].length
     return size
   }
   private growSized(mark: number, code: number) {
@@ -1611,7 +1623,12 @@ class Writer {
   private assemble(): Uint8Array<ArrayBuffer> {
     const deferred = this.deferred
     let size = this.len
-    for (let k = 0; k < deferred.length; k++) size += deferred[k].bytes.length
+    for (let k = 0; k < deferred.length; k++) {
+      const { bytes, length } = deferred[k]
+      // A resized or detached buffer would no longer match its length prefix.
+      if (bytes.length !== length) invalid("Uint8Array whose length does not change during encoding")
+      size += length
+    }
     const out = new Uint8Array(size)
     const buf = this.buf
     const start = this.start
