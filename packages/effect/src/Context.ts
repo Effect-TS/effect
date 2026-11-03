@@ -116,6 +116,12 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    * wins, so a single member can be mocked or overridden without replacing the
    * service.
    *
+   * **Gotchas**
+   *
+   * Slices are stored under `<service key>#<member>`, so `#` in a service key
+   * is reserved for slices: a service keyed `"api#read"` would share its slot
+   * with the `read` slice of a service keyed `"api"`.
+   *
    * **Example** (Requiring two members of a service)
    *
    * ```ts import.meta.vitest
@@ -142,6 +148,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    * Effect.runSync(Effect.provide(copy, layer)) // => "contents of a.txt"
    * ```
    *
+   * @stability unstable
    * @since 4.2.0
    */
   only<const K extends keyof Shape & string>(
@@ -518,6 +525,10 @@ export declare namespace Service {
  * Yielding the whole service key anywhere in a program requires the full `S`;
  * use `Service.only` to depend on individual members.
  *
+ * Slices are stored under `<service key>#<member>`, so `#` in a service key is
+ * reserved for slices and must not appear in keys of services that are used
+ * alongside them.
+ *
  * **Example** (Typing a program and a layer against a single member)
  *
  * ```ts import.meta.vitest
@@ -538,7 +549,7 @@ export declare namespace Service {
  * const runnable: Effect.Effect<void> = Effect.provide(program, writeFileLayer)
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category utility types
  * @since 4.2.0
  */

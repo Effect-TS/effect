@@ -41,6 +41,8 @@ import { StorageLayer } from "./fixtures/worker.ts"
 // - Keep tests and in-memory implementations out of the production root's
 //   import graph, as this file does by living next to the root instead of
 //   inside it.
+// - Slices are stored under `<service key>#<member>`, so `#` in a service key
+//   is reserved for slices.
 
 // Tests override a single member by providing its slice on top of the
 // production layers. A slice always wins over the full service and over an
