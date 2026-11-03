@@ -136,9 +136,10 @@ export interface Entry<A, E> {
  * `requireServicesAt` controls whether lookup services are captured at
  * construction time or required when lookup operations run.
  *
- * Lookups do not inherit the span of the effect that requested them, because
- * a cached entry is shared by every later request. Spans created inside a
- * lookup are therefore not children of the requesting span.
+ * Lookups do not inherit the span active when `get` or `refresh` runs them,
+ * because a cached entry is shared by every later request. Spans created inside
+ * a lookup are children of the span active when the cache was constructed, if
+ * any.
  *
  * @see {@link make} for creating a scoped cache with one fixed time-to-live
  *
@@ -207,7 +208,8 @@ const omitParentSpan = Context.omit(Tracer.ParentSpan)
  * entry scopes are closed when entries are invalidated, are evicted, or when
  * the cache's owning scope closes. Expiry cleanup is lazy: expired entries close
  * on access to that key or a `keys`/`values`/`entries` scan, not in the background.
- * Lookups do not inherit the span of the effect that requested them.
+ * Lookups do not inherit the span active when `get` or `refresh` runs them;
+ * they use the span active when the cache was constructed, if any.
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
