@@ -88,6 +88,16 @@ describe("Predicate", () => {
       expect(sizes.filter(Predicate.isTaggedStrict("Px"))).type.toBe<Array<Px>>()
     })
 
+    it("infers the input from the value when the result is already typed", () => {
+      const native: ReadonlyArray<Px> = sizes.filter(Predicate.isTaggedStrict("Px"))
+      const dataFirst: ReadonlyArray<Px> = Arr.filter(sizes, Predicate.isTaggedStrict("Px"))
+      const piped: ReadonlyArray<Px> = pipe(sizes, Arr.filter(Predicate.isTaggedStrict("Px")))
+      // @ts-expect-error Type 'Px[]' is not assignable to type 'readonly Auto[]'
+      const wrong: ReadonlyArray<Auto> = sizes.filter(Predicate.isTaggedStrict("Px"))
+
+      void [native, dataFirst, piped, wrong]
+    })
+
     it("narrows a string `_tag` to the given tag", () => {
       const value = hole<{ readonly _tag: string; readonly n: number }>()
       if (Predicate.isTaggedStrict(value, "a")) {
