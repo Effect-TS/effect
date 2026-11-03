@@ -487,13 +487,12 @@ type ToolCallPartForName<
   >
   : never
 
-// Provider-executed tools receive the provider's payload as is; locally
-// handled tool calls carry the JSON encoding of their parameters. A
-// non-literal handler flag may be either at runtime.
+// Provider-executed tools keep the provider's payload; locally handled tool
+// calls carry the JSON encoding of their parameters. Distributes over a
+// non-literal handler flag, which may be either at runtime.
 type ToolCallParametersEncoded<T extends Tool.Any> = T extends
-  Tool.ProviderDefined<any, any, any, infer RequiresHandler> ? [RequiresHandler] extends [true] ? Schema.Json
-  : [RequiresHandler] extends [false] ? Tool.ParametersEncoded<T>
-  : Tool.ParametersEncoded<T> | Schema.Json
+  Tool.ProviderDefined<any, any, any, infer RequiresHandler>
+  ? RequiresHandler extends true ? Schema.Json : Tool.ParametersEncoded<T>
   : Schema.Json
 
 /**

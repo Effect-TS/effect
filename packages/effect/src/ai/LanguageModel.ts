@@ -2470,6 +2470,10 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
+// Provider-executed tools keep the provider's payload; locally handled tool
+// calls carry the JSON encoding of their parameters.
+const hasProviderParameters = (tool: Tool.Any): boolean => Tool.isProviderDefined(tool) && !tool.requiresHandler
+
 // Cache one decoder per model and response kind, keyed by validation mode
 // and tool names, parameter encodings and schema identities in insertion order.
 const makeResponseDecoder = <Decode>(make: (toolkit: Toolkit.Any, deferred: boolean) => Decode) => {
@@ -2501,17 +2505,13 @@ const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any
     parameterModeTools.set(tool, tools)
   }
   return tools[mode] ??= tool.setParameters(
-    mode === "encoded"
-      ? Schema.toEncoded(
-        hasProviderParameters(tool) ? tool.parametersSchema : Schema.toCodecJson(tool.parametersSchema)
-      )
-      : Schema.Unknown
+    mode === "opaque"
+      ? Schema.Unknown
+      : hasProviderParameters(tool)
+      ? Schema.toEncoded(tool.parametersSchema)
+      : Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema))
   )
 }
-
-// Provider-executed tools receive the provider's payload as is; locally
-// handled tool calls carry the JSON encoding of their parameters.
-const hasProviderParameters = (tool: Tool.Any): boolean => Tool.isProviderDefined(tool) && !tool.requiresHandler
 
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
