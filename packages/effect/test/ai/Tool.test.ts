@@ -46,6 +46,21 @@ describe("Tool", () => {
         strictEqual(results[0]?.result, 42)
       }))
 
+    it.effect("decodes parameters from their JSON encoding", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Schedule", {
+          parameters: Schema.Struct({ at: Schema.Date }),
+          success: Schema.Number
+        }))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Schedule: ({ at }) => Effect.succeed(at.getTime())
+        })))
+        const results = yield* handlers.handle("Schedule", { at: "2026-01-01T00:00:00.000Z" }).pipe(
+          Effect.flatMap(Stream.runCollect)
+        )
+        strictEqual(results[0]?.result, 1767225600000)
+      }))
+
     it.effect("should return tool call handler successes", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
