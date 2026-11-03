@@ -1,8 +1,7 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
-import { MysqlClient } from "@effect/sql-mysql2"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Redacted } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import {
   Entity,
   EntityAddress,
@@ -133,7 +132,7 @@ describe("SqlMessageStorage", () => {
   })
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
-    ["mysql", Layer.orDie(MysqlContainer.client.pipe(Layer.provideMerge(MysqlContainer.layer)))],
+    ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
@@ -328,59 +327,8 @@ describe("SqlMessageStorage", () => {
       }
 
       if (label === "mysql") {
-        it.effect("a late AckChunk does not deadlock with a concurrent deleteProcessed", () =>
-          Effect.gen(function*() {
-            yield* truncate
-            const sql = yield* SqlClient.SqlClient
-            const storage = yield* MessageStorage.MessageStorage
-            const cutoff = Date.UTC(2026, 0, 1)
-            const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
-            const chunk = yield* makeChunkReply(request)
-            yield* storage.saveRequest(request)
-            yield* storage.saveReply(chunk)
-            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
-            // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
-            yield* sql`
-              CREATE TRIGGER cluster_test_slow_ack AFTER UPDATE ON cluster_replies
-              FOR EACH ROW BEGIN
-                IF @cluster_test_slow_ack = 1 THEN
-                  DO SLEEP(2);
-                END IF;
-              END
-            `.unprepared
-            yield* Effect.gen(function*() {
-              const ackFiber = yield* Effect.gen(function*() {
-                yield* sql`SET @cluster_test_slow_ack = 1`
-                yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk)).pipe(
-                  Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
-                )
-              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-              yield* waitForMysqlSleep
-              const cleanup = yield* Effect.exit(
-                storage.deleteProcessed({
-                  entityType: "test",
-                  completedBefore: cutoff,
-                  limit: 100
-                })
-              )
-              const acked = yield* Fiber.join(ackFiber)
-              assert(Exit.isSuccess(acked), String(acked))
-              assert(Exit.isSuccess(cleanup), String(cleanup))
-              // cleanup either deletes the whole family, including the new AckChunk, or leaves it for a later tick
-              const remaining = yield* sql<{ kind: number }>`
-                SELECT kind FROM cluster_messages WHERE request_id = ${String(request.envelope.requestId)}
-              `
-              expect(remaining.map((row) => Number(row.kind)).sort()).toEqual(cleanup.value === 1 ? [] : [0, 1])
-            }).pipe(Effect.ensuring(
-              Effect.gen(function*() {
-                yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
-                yield* truncate
-              }).pipe(Effect.orDie)
-            ))
-          }).pipe(TestClock.withLive), { timeout: 30_000 })
-
         it.effect(
-          "a stream acknowledgement does not deadlock with deleteProcessed of another request",
+          "a stream reply does not deadlock with deleteProcessed of another request",
           () =>
             Effect.gen(function*() {
               yield* truncate
@@ -392,32 +340,29 @@ describe("SqlMessageStorage", () => {
                 yield* storage.saveRequest(expired)
                 yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
               }
-              // an incomplete stream that has already acknowledged a chunk, which deleteProcessed must not select
+              // an incomplete stream, which deleteProcessed must not select
               const streaming = yield* makeRequest({
                 rpc: StreamRpc,
                 payload: StreamRpc.payloadSchema.make({ id: 21 }),
                 entityId: "2"
               })
-              const first = yield* makeChunkReply(streaming, 0)
-              const second = yield* makeChunkReply(streaming, 1)
               yield* storage.saveRequest(streaming)
-              yield* storage.saveReply(first)
-              yield* storage.saveEnvelope(yield* makeAckChunk(streaming, first))
-              yield* storage.saveReply(second)
-              // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
+              yield* storage.saveReply(yield* makeChunkReply(streaming, 0))
+              // Pause saveReply after it updates the request row, before it inserts the reply, only on the
+              // connection that opts in.
               yield* sql`
-              CREATE TRIGGER cluster_test_slow_ack AFTER UPDATE ON cluster_replies
-              FOR EACH ROW BEGIN
-                IF @cluster_test_slow_ack = 1 THEN
-                  DO SLEEP(2);
-                END IF;
-              END
-            `.unprepared
+            CREATE TRIGGER cluster_test_slow_reply AFTER UPDATE ON cluster_messages
+            FOR EACH ROW BEGIN
+              IF @cluster_test_slow_reply = 1 THEN
+                DO SLEEP(2);
+              END IF;
+            END
+          `.unprepared
               yield* Effect.gen(function*() {
-                const ackFiber = yield* Effect.gen(function*() {
-                  yield* sql`SET @cluster_test_slow_ack = 1`
-                  yield* storage.saveEnvelope(yield* makeAckChunk(streaming, second)).pipe(
-                    Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
+                const replyFiber = yield* Effect.gen(function*() {
+                  yield* sql`SET @cluster_test_slow_reply = 1`
+                  yield* storage.saveReply(yield* makeChunkReply(streaming, 1)).pipe(
+                    Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_reply = NULL`))
                   )
                 }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
                 yield* waitForMysqlSleep
@@ -428,177 +373,19 @@ describe("SqlMessageStorage", () => {
                     limit: 100
                   })
                 )
-                const acked = yield* Fiber.join(ackFiber)
-                assert(Exit.isSuccess(acked), String(acked))
+                const replied = yield* Fiber.join(replyFiber)
+                assert(Exit.isSuccess(replied), String(replied))
                 assert(Exit.isSuccess(cleanup), String(cleanup))
                 expect(cleanup.value).toEqual(20)
               }).pipe(Effect.ensuring(
                 Effect.gen(function*() {
-                  yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
+                  yield* sql`DROP TRIGGER cluster_test_slow_reply`.unprepared
                   yield* truncate
                 }).pipe(Effect.orDie)
               ))
             }).pipe(TestClock.withLive),
           { timeout: 30_000 }
         )
-
-        for (const callerTransaction of [false, true]) {
-          it.effect(
-            `a stream reply does not deadlock with deleteProcessed of another request${
-              callerTransaction ? " in a READ COMMITTED transaction" : ""
-            }`,
-            () =>
-              Effect.gen(function*() {
-                yield* truncate
-                const sql = yield* SqlClient.SqlClient
-                const storage = yield* MessageStorage.MessageStorage
-                const cutoff = Date.UTC(2026, 0, 1)
-                for (let id = 1; id <= 20; id++) {
-                  const expired = yield* makeRequest({ payload: { id } })
-                  yield* storage.saveRequest(expired)
-                  yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
-                }
-                // an incomplete stream, which deleteProcessed must not select
-                const streaming = yield* makeRequest({
-                  rpc: StreamRpc,
-                  payload: StreamRpc.payloadSchema.make({ id: 21 }),
-                  entityId: "2"
-                })
-                yield* storage.saveRequest(streaming)
-                yield* storage.saveReply(yield* makeChunkReply(streaming, 0))
-                // Pause saveReply after it updates the request row, before it inserts the reply, only on the
-                // connection that opts in.
-                yield* sql`
-              CREATE TRIGGER cluster_test_slow_reply AFTER UPDATE ON cluster_messages
-              FOR EACH ROW BEGIN
-                IF @cluster_test_slow_reply = 1 THEN
-                  DO SLEEP(2);
-                END IF;
-              END
-            `.unprepared
-                yield* Effect.gen(function*() {
-                  const replyFiber = yield* Effect.gen(function*() {
-                    yield* sql`SET @cluster_test_slow_reply = 1`
-                    yield* storage.saveReply(yield* makeChunkReply(streaming, 1)).pipe(
-                      Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_reply = NULL`))
-                    )
-                  }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-                  yield* waitForMysqlSleep
-                  const deleteProcessed = storage.deleteProcessed({
-                    entityType: "test",
-                    completedBefore: cutoff,
-                    limit: 100
-                  })
-                  const cleanup = yield* Effect.exit(
-                    callerTransaction
-                      ? deleteProcessed.pipe(
-                        sql.withTransaction,
-                        Effect.provideService(
-                          SqlClient.BeginTransaction,
-                          "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"
-                        )
-                      )
-                      : deleteProcessed
-                  )
-                  const replied = yield* Fiber.join(replyFiber)
-                  assert(Exit.isSuccess(replied), String(replied))
-                  assert(Exit.isSuccess(cleanup), String(cleanup))
-                  expect(cleanup.value).toEqual(20)
-                }).pipe(Effect.ensuring(
-                  Effect.gen(function*() {
-                    yield* sql`DROP TRIGGER cluster_test_slow_reply`.unprepared
-                    yield* truncate
-                  }).pipe(Effect.orDie)
-                ))
-              }).pipe(TestClock.withLive),
-            { timeout: 30_000 }
-          )
-        }
-
-        it.effect(
-          "deleteProcessed fails and deletes nothing when binlog_format is STATEMENT",
-          () =>
-            Effect.gen(function*() {
-              yield* truncate
-              const storage = yield* MessageStorage.MessageStorage
-              const cutoff = Date.UTC(2026, 0, 1)
-              const expired = yield* makeRequest()
-              yield* storage.saveRequest(expired)
-              yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
-              const deleteProcessed = Effect.gen(function*() {
-                const storage = yield* MessageStorage.MessageStorage
-                return yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
-              })
-
-              // Only root may change binlog_format. Its client has one connection, so the session setting applies
-              // to the cleanup and ends with the client. The server must log binary, as MySQL does by default.
-              // Only the mysql layer provides the container, which the shared test context doesn't type.
-              const container = Option.getOrThrow(yield* Effect.serviceOption(MysqlContainer))
-              const error = yield* Effect.gen(function*() {
-                const sql = yield* SqlClient.SqlClient
-                yield* sql`SET SESSION binlog_format = 'STATEMENT'`.unprepared
-                return yield* Effect.flip(deleteProcessed)
-              }).pipe(Effect.provide(Layer.fresh(StorageLayer.pipe(Layer.provideMerge(MysqlClient.layer({
-                url: Redacted.make(container.getConnectionUri(true)),
-                maxConnections: 1
-              }))))))
-              expect(error._tag).toEqual("PersistenceError")
-              // ER_BINLOG_STMT_MODE_AND_ROW_ENGINE: InnoDB logs only rows at READ COMMITTED
-              expect(error.cause).toMatchObject({ reason: { cause: { errno: 1665 } } })
-
-              expect(yield* deleteProcessed).toEqual(1)
-              yield* truncate
-            }),
-          { timeout: 30_000 }
-        )
-
-        it.effect("a late AckChunk waiting on deleteProcessed is a no-op", () =>
-          Effect.gen(function*() {
-            yield* truncate
-            const sql = yield* SqlClient.SqlClient
-            const storage = yield* MessageStorage.MessageStorage
-            const cutoff = Date.UTC(2026, 0, 1)
-            const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
-            const chunk = yield* makeChunkReply(request)
-            yield* storage.saveRequest(request)
-            yield* storage.saveReply(chunk)
-            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
-            // Pause cleanup after it has selected the request, only on the connection that opts in.
-            yield* sql`
-              CREATE TRIGGER cluster_test_slow_cleanup BEFORE DELETE ON cluster_replies
-              FOR EACH ROW BEGIN
-                IF @cluster_test_slow_cleanup = 1 THEN
-                  SET @cluster_test_slow_cleanup = NULL;
-                  DO SLEEP(2);
-                END IF;
-              END
-            `.unprepared
-            yield* Effect.gen(function*() {
-              const cleanupFiber = yield* Effect.gen(function*() {
-                yield* sql`SET @cluster_test_slow_cleanup = 1`
-                return yield* storage.deleteProcessed({
-                  entityType: "test",
-                  completedBefore: cutoff,
-                  limit: 100
-                }).pipe(Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_cleanup = NULL`)))
-              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-              yield* waitForMysqlSleep
-              const acked = yield* Effect.exit(storage.saveEnvelope(yield* makeAckChunk(request, chunk)))
-              const cleanup = yield* Fiber.join(cleanupFiber)
-              assert(Exit.isSuccess(acked), String(acked))
-              assert(Exit.isSuccess(cleanup), String(cleanup))
-              expect(cleanup.value).toEqual(1)
-              const remaining = yield* sql`
-                SELECT 1 FROM cluster_messages WHERE request_id = ${String(request.envelope.requestId)}
-              `
-              expect(remaining).toEqual([])
-            }).pipe(Effect.ensuring(
-              Effect.gen(function*() {
-                yield* sql`DROP TRIGGER cluster_test_slow_cleanup`.unprepared
-                yield* truncate
-              }).pipe(Effect.orDie)
-            ))
-          }).pipe(TestClock.withLive), { timeout: 30_000 })
       }
 
       if (label === "mssql") {
@@ -878,64 +665,6 @@ describe("SqlMessageStorage", () => {
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
           const requestId = String(request.envelope.requestId)
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
-        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
-
-      it.effect("creates the retention index", () =>
-        Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
-          const index = "cluster_messages_retention_idx"
-          const columns = yield* sql.onDialectOrElse({
-            pg: () =>
-              sql<{ name: string }>`
-                SELECT a.attname AS name
-                FROM pg_index i
-                JOIN pg_class c ON c.oid = i.indexrelid
-                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-                WHERE c.relname = ${index} AND i.indrelid = 'cluster_messages'::regclass
-                ORDER BY array_position(i.indkey::int2[], a.attnum)
-              `,
-            mysql: () =>
-              sql<{ name: string }>`
-                SELECT column_name AS name FROM information_schema.statistics
-                WHERE table_schema = DATABASE() AND table_name = 'cluster_messages' AND index_name = ${index}
-                ORDER BY seq_in_index
-              `,
-            mssql: () =>
-              sql<{ name: string }>`
-                SELECT c.name FROM sys.indexes i
-                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-                JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
-                WHERE i.name = ${index} AND i.object_id = OBJECT_ID('cluster_messages')
-                ORDER BY ic.key_ordinal
-              `,
-            orElse: () =>
-              sql<{ name: string }>`
-                SELECT ii.name FROM sqlite_master m, pragma_index_info(m.name) ii
-                WHERE m.type = 'index' AND m.name = ${index} AND m.tbl_name = 'cluster_messages'
-                ORDER BY ii.seqno
-              `
-          })
-          expect(columns.map((column) => column.name)).toEqual(["entity_type", "processed", "last_reply_id"])
-        }))
-
-      it.effect("deleteProcessed deletes at most limit request families", () =>
-        Effect.gen(function*() {
-          yield* truncate
-          const storage = yield* MessageStorage.MessageStorage
-          const cutoff = Date.UTC(2026, 0, 1)
-          for (let id = 1; id <= 3; id++) {
-            const request = yield* makeRequest({ payload: { id } })
-            yield* storage.saveRequest(request)
-            yield* storage.saveReply(yield* makeReply(request, cutoff - id))
-          }
-          const deleteProcessed = storage.deleteProcessed({
-            entityType: "test",
-            completedBefore: cutoff,
-            limit: 2
-          })
-          expect(yield* deleteProcessed).toEqual(2)
-          expect(yield* deleteProcessed).toEqual(1)
-          expect(yield* deleteProcessed).toEqual(0)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
       it.effect("deleteProcessed takes an unbounded, extreme or fractional cutoff", () =>

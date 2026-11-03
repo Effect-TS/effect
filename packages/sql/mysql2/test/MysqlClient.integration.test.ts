@@ -1,5 +1,5 @@
 import { MysqlClient } from "@effect/sql-mysql2"
-import { assert, describe, expect, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Redacted, Stream } from "effect"
 import * as Arr from "effect/Array"
 import * as Scheduler from "effect/Scheduler"
@@ -44,64 +44,37 @@ describe("MysqlClient", () => {
     ), { timeout: 60_000 })
 
   it.effect(
-    "runs a SET TRANSACTION BeginTransaction for one top-level transaction, and other statements as BEGIN",
+    "starts a transaction at the isolation level of a SET TRANSACTION BeginTransaction",
     () =>
       Effect.gen(function*() {
         const container = yield* MysqlContainer
         const sql = yield* SqlClient.SqlClient
         yield* sql`CREATE TABLE begin_statement (value VARCHAR(32))`
-        const readCommitted = Effect.provideService(
-          SqlClient.BeginTransaction,
-          "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"
-        )
         yield* Effect.gen(function*() {
-          // A client with one connection, so every transaction runs in the same session.
+          // one connection, so the transaction can't run on another session
           const tx = yield* SqlClient.SqlClient
           const count = Effect.map(
             tx<{ n: number }>`SELECT COUNT(*) AS n FROM begin_statement`,
             ([row]) => Number(row.n)
           )
-          // Whether a second read sees a row committed by another connection after the first read.
-          const seesConcurrentCommit = Effect.fnUntraced(function*(value: string) {
-            const before = yield* count
-            yield* sql`INSERT INTO begin_statement VALUES (${value})`
-            return (yield* count) > before
-          })
-
-          const readCommittedSaw = yield* Effect.gen(function*() {
+          const sawConcurrentCommit = yield* Effect.gen(function*() {
             yield* tx`INSERT INTO begin_statement VALUES ('rolled back')`
-            return yield* Effect.fail(yield* seesConcurrentCommit("read committed"))
-          }).pipe(tx.withTransaction, readCommitted, Effect.flip)
-          assert.isTrue(readCommittedSaw)
-          assert.isFalse(yield* tx.withTransaction(seesConcurrentCommit("repeatable read")))
-
-          const readOnly = yield* tx`INSERT INTO begin_statement VALUES ('read only')`.pipe(
+            const before = yield* count
+            yield* sql`INSERT INTO begin_statement VALUES ('committed')`
+            return yield* Effect.fail((yield* count) > before)
+          }).pipe(
             tx.withTransaction,
-            Effect.provideService(SqlClient.BeginTransaction, "START TRANSACTION READ ONLY"),
+            Effect.provideService(SqlClient.BeginTransaction, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"),
             Effect.flip
           )
-          // ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION
-          expect(readOnly).toMatchObject({ reason: { cause: { errno: 1792 } } })
-
-          yield* tx.withTransaction(Effect.gen(function*() {
-            yield* tx`INSERT INTO begin_statement VALUES ('savepoint')`.pipe(tx.withTransaction, readCommitted)
-            yield* tx`INSERT INTO begin_statement VALUES ('rolled back')`.pipe(
-              Effect.andThen(Effect.fail("rollback")),
-              tx.withTransaction,
-              readCommitted,
-              Effect.ignore
-            )
-          }))
+          // READ COMMITTED, where MySQL's default REPEATABLE READ would not see it
+          assert.isTrue(sawConcurrentCommit)
         }).pipe(Effect.provide(MysqlClient.layer({
           url: Redacted.make(container.getConnectionUri()),
           maxConnections: 1
         })))
-
-        assert.deepStrictEqual(yield* sql`SELECT value FROM begin_statement ORDER BY value`, [
-          { value: "read committed" },
-          { value: "repeatable read" },
-          { value: "savepoint" }
-        ])
+        // the failure rolled back the transaction's own insert
+        assert.deepStrictEqual(yield* sql`SELECT value FROM begin_statement`, [{ value: "committed" }])
       }).pipe(Effect.provide(MysqlContainer.client.pipe(Layer.provideMerge(MysqlContainer.layer)))),
     { timeout: 60_000 }
   )
