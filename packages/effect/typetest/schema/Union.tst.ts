@@ -202,6 +202,16 @@ describe("Union", () => {
         }
       })
 
+      it("isAnyOf should reject keys outside the union", () => {
+        const schema = Schema.Union([
+          Schema.Struct({ kind: Schema.tag("a"), a: Schema.Number }),
+          Schema.Struct({ kind: Schema.tag("b"), b: Schema.String })
+        ]).pipe(Schema.toTaggedUnion("kind"))
+
+        expect(schema.isAnyOf).type.toBeCallableWith(["a", "b"])
+        expect(schema.isAnyOf).type.not.toBeCallableWith(["a", "c"])
+      })
+
       it("should flatten discriminants", () => {
         const schema = Schema.Union([
           Schema.Struct({ event: Schema.Literal("A") }),
@@ -373,6 +383,20 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+      })
+
+      it("isAnyOf should narrow to the given cases and reject other tags", () => {
+        const schema = Schema.TaggedUnion({
+          A: { a: Schema.String },
+          B: { b: Schema.Number },
+          C: { c: Schema.Boolean }
+        })
+        const value = hole<typeof schema.Type>()
+
+        if (schema.isAnyOf(["A", "B"])(value)) {
+          expect(value).type.toBe<typeof schema.cases.A.Type | typeof schema.cases.B.Type>()
+        }
+        expect(schema.isAnyOf).type.not.toBeCallableWith(["A", "D"])
       })
     })
   })
