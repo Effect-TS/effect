@@ -1305,7 +1305,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "shell_call_output",
                 call_id: part.id,
-                output: part.result as any,
+                output: (part.result as any).output,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue
@@ -1316,7 +1316,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "local_shell_call_output",
                 call_id: part.id,
-                output: part.result as any,
+                output: (part.result as any).output,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue

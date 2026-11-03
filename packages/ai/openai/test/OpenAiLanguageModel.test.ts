@@ -1171,6 +1171,11 @@ describe("OpenAiLanguageModel", () => {
             )
 
             deepStrictEqual(outputs.map((item: any) => item.type), ["shell_call_output"])
+            deepStrictEqual(outputs[0].output, [{
+              stdout: "hello\n",
+              stderr: "",
+              outcome: { type: "exit", exit_code: 0 }
+            }])
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("emits only the specialized output for local_shell results", () =>
@@ -1216,6 +1221,7 @@ describe("OpenAiLanguageModel", () => {
             )
 
             deepStrictEqual(outputs.map((item: any) => item.type), ["local_shell_call_output"])
+            strictEqual(outputs[0].output, "hello\n")
           }).pipe(Effect.provide(makeTestLayer())))
       })
     })
