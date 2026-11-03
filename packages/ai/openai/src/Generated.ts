@@ -5217,6 +5217,11 @@ export class OutputMessageContent extends S.Union(OutputTextContent, RefusalCont
 export class OutputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
 
 /**
+ * The phase of the output message. One of `commentary` or `final_answer`.
+ */
+export class OutputMessagePhase extends S.Literal("commentary", "final_answer") {}
+
+/**
  * An output message from the model.
  */
 export class OutputMessage extends S.Class<OutputMessage>("OutputMessage")({
@@ -5236,6 +5241,10 @@ export class OutputMessage extends S.Class<OutputMessage>("OutputMessage")({
    * The content of the output message.
    */
   "content": S.Array(OutputMessageContent),
+  /**
+   * The phase of the output message. One of `commentary` or `final_answer`.
+   */
+  "phase": S.optionalWith(OutputMessagePhase, { nullable: true }),
   /**
    * The status of the message input. One of `in_progress`, `completed`, or
    * `incomplete`. Populated when input items are returned via API.

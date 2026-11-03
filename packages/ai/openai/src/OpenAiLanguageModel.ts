@@ -597,6 +597,10 @@ const makeResponse: (
       }
       switch (part.type) {
         case "message": {
+          // Commentary text would be joined with the final answer and break JSON decoding
+          if (options.responseFormat.type === "json" && part.phase === "commentary") {
+            break
+          }
           for (const contentPart of part.content) {
             switch (contentPart.type) {
               case "output_text": {
