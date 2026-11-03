@@ -425,8 +425,9 @@ export const makeUpgradeHandler = <
             nodeResponse_.end()
           } else {
             nodeResponse_.assignSocket(socket as any)
+            // Nothing reads the socket after an upgrade, so close it once the response is sent.
             nodeResponse_.on("finish", () => {
-              socket.end()
+              socket.end(() => socket.destroy())
             })
           }
         }
