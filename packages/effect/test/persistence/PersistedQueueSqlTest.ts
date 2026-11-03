@@ -56,13 +56,14 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
       Effect.gen(function*() {
         const queue = yield* makeQueue("effect_queue_retry_boundary", "10 millis", Schedule.spaced("1 second"))
         yield* queue.offer("job")
-        yield* awaitMidSecond
 
-        yield* queue.take(() => Effect.fail("retry")).pipe(Effect.flip)
-        const failedAt = yield* Clock.currentTimeMillis
-        yield* queue.take(Effect.succeed)
+        // time both handlers, leaving out the acknowledgement writes
+        const failedAt = yield* queue.take(() =>
+          awaitMidSecond.pipe(Effect.andThen(Clock.currentTimeMillis), Effect.flatMap(Effect.fail))
+        ).pipe(Effect.flip)
+        const retriedAt = yield* queue.take(() => Clock.currentTimeMillis)
 
-        assert.isAtLeast((yield* Clock.currentTimeMillis) - failedAt, 1000 - clockTolerance)
+        assert.isAtLeast(retriedAt - failedAt, 1000 - clockTolerance)
       }).pipe(TestClock.withLive), { timeout: 30000 })
 
     it.effect("measures the delay from an offer made inside a transaction", () =>
