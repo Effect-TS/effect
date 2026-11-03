@@ -106,21 +106,27 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
   use<A, E, R>(f: (service: Shape) => Effect<A, E, R>): Effect<A, E, R | Identifier>
   useSync<A>(f: (service: Shape) => A): Effect<A, never, Identifier>
   /**
-   * Accesses one or more members of the service, requiring only the matching
-   * `Only` slices instead of the whole service.
+   * Returns a key for a single member of the service, so a program can require
+   * and a layer can provide `Only<Identifier, K>` instead of the whole service.
    *
    * **Details**
    *
-   * Each member is read from its slice when one is provided, and falls back to
-   * the full service otherwise. A slice provided on top of the full service
-   * wins, so a single member can be mocked or overridden without replacing the
-   * service.
+   * The key is a `Context.Key` whose value is the member itself, so it works
+   * with every key-based API: yield it to read the member, or pass it to
+   * `Layer.succeed`, `Layer.effect`, `Effect.provideService`, or
+   * `Context.make`. Reading a slice checks its own context entry first and
+   * falls back to the member of the full service, so a full service satisfies
+   * every slice and a slice provided on top of the full service wins. Keys for
+   * the same member are memoized, so separate calls behave identically.
    *
    * **Gotchas**
    *
    * Slices are stored under `<service key>#<member>`, so `#` in a service key
    * is reserved for slices: a service keyed `"api#read"` would share its slot
    * with the `read` slice of a service keyed `"api"`.
+   *
+   * Removing a slice with `Context.omit` while the full service is present
+   * still resolves the member through the fallback.
    *
    * **Example** (Requiring two members of a service)
    *
@@ -135,15 +141,16 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    *
    * // The program requires Only<FileSystem, "readFile"> | Only<FileSystem, "writeFile">
    * const copy = Effect.gen(function*() {
-   *   const { readFile, writeFile } = yield* FileSystem.only("readFile", "writeFile")
+   *   const readFile = yield* FileSystem.only("readFile")
+   *   const writeFile = yield* FileSystem.only("writeFile")
    *   const data = yield* readFile("a.txt")
    *   yield* writeFile("b.txt", data)
    *   return data
    * })
    *
    * const layer = Layer.merge(
-   *   Layer.succeedOnly(FileSystem, ["readFile"], { readFile: (path) => Effect.succeed(`contents of ${path}`) }),
-   *   Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: () => Effect.void })
+   *   Layer.succeed(FileSystem.only("readFile"), (path) => Effect.succeed(`contents of ${path}`)),
+   *   Layer.succeed(FileSystem.only("writeFile"), () => Effect.void)
    * )
    * Effect.runSync(Effect.provide(copy, layer)) // => "contents of a.txt"
    * ```
@@ -151,9 +158,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    * @stability unstable
    * @since 4.2.0
    */
-  only<const K extends keyof Shape & string>(
-    ...members: ReadonlyArray<K>
-  ): Effect<Pick<Shape, K>, never, K extends any ? Only<Identifier, K> : never>
+  only<const K extends keyof Shape & string>(member: K): Key<Only<Identifier, K>, Shape[K]>
 }
 
 /**
@@ -352,9 +357,60 @@ const ServiceProto: any = {
   useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
     return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
   },
-  only(this: Service<never, any>, ...members: Array<string>): Effect<any, never, never> {
-    return withFiber((fiber) => exitSucceed(getOnlyUnsafe(fiber.context, this, members)))
+  only(this: Service<never, any>, member: string): OnlyKey {
+    const slices: Map<string, OnlyKey> = (this as any)[OnlySlicesKey] ??= new Map()
+    let slice = slices.get(member)
+    if (slice === undefined) {
+      slice = Object.assign(Object.create(OnlyProto), {
+        key: `${this.key}#${member}`,
+        [OnlyKeyTypeId]: this,
+        member
+      })
+      slices.set(member, slice!)
+    }
+    return slice!
   }
+}
+
+const OnlyKeyTypeId = "~effect/Context/OnlyKey" as const
+const OnlySlicesKey = "~effect/Context/OnlySlices" as const
+
+// A key for a single member of a service, created by `Service.only`
+interface OnlyKey extends Key<any, any> {
+  readonly [OnlyKeyTypeId]: Key<any, any>
+  readonly member: string
+}
+
+const OnlyProto: any = {
+  [ServiceTypeId]: ServiceTypeId,
+  ...Effectable.Prototype<Key<never, any>>({
+    label: "Service",
+    evaluate(fiber) {
+      return exitSucceed(get(fiber.context, this))
+    }
+  }),
+  toJSON(this: OnlyKey) {
+    return {
+      _id: "Service",
+      key: this.key
+    }
+  }
+}
+
+const isOnlyKey = (key: Key<any, any>): key is OnlyKey => hasProperty(key, OnlyKeyTypeId)
+
+// Resolves a key that is absent from the context: a slice falls back to the
+// member of its full service, and a reference to its default value. Nothing
+// is cached, so a fallback never outlives a later provide of the full service
+// or of the slice.
+const resolveMiss = (self: Context<any>, key: Key<any, any>): unknown => {
+  if (isOnlyKey(key)) {
+    const parent = key[OnlyKeyTypeId]
+    const service = lookup(self, parent.key)
+    if (service !== notFound) return (service as any)[key.member]
+    return isReference(parent) ? getDefaultValue(parent)[key.member] : notFound
+  }
+  return isReference(key) ? getDefaultValue(key) : notFound
 }
 
 const cacheKeys = new Set<string>()
@@ -516,9 +572,10 @@ export declare namespace Service {
  * - A layer for `Only<S, K>` satisfies only that slice, never the whole `S`.
  * - `Only<S, "a" | "b">` is `Only<S, "a"> | Only<S, "b">`.
  *
- * At runtime each slice lives under its own context key. A slice lookup reads
- * the slice first and falls back to the member of the full service, so a slice
- * provided on top of the full service overrides that member.
+ * At runtime each slice lives under its own context key, `<service key>#<member>`.
+ * A slice lookup reads the slice first and falls back to the member of the
+ * full service, so a slice provided on top of the full service overrides that
+ * member.
  *
  * **Gotchas**
  *
@@ -541,10 +598,10 @@ export declare namespace Service {
  *
  * // Only the writeFile member is required, so a writeFile slice layer is enough
  * const program: Effect.Effect<void, never, Context.Only<FileSystem, "writeFile">> =
- *   Effect.flatMap(FileSystem.only("writeFile"), ({ writeFile }) => writeFile("out.txt", "hello"))
+ *   Effect.flatMap(FileSystem.only("writeFile"), (writeFile) => writeFile("out.txt", "hello"))
  *
  * const writeFileLayer: Layer.Layer<Context.Only<FileSystem, "writeFile">> =
- *   Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: () => Effect.void })
+ *   Layer.succeed(FileSystem.only("writeFile"), () => Effect.void)
  *
  * const runnable: Effect.Effect<void> = Effect.provide(program, writeFileLayer)
  * ```
@@ -556,37 +613,6 @@ export declare namespace Service {
 export type Only<S, K extends string> =
   & S
   & (K extends any ? { readonly "~effect/Context/Only": { readonly member: K } } : never)
-
-/** @internal */
-export const onlyKey = (service: Key<any, any>, member: string): string => `${service.key}#${member}`
-
-/** @internal */
-export const getOnlyUnsafe = <Services>(
-  self: Context<Services>,
-  service: Key<any, any>,
-  members: ReadonlyArray<string>
-): Record<string, unknown> => {
-  // A null prototype so a member named "__proto__" is stored like any other
-  const result: Record<string, unknown> = Object.create(null)
-  let full: any = notFound
-  for (const member of members) {
-    const key = onlyKey(service, member)
-    const value = lookup(self, key)
-    if (value !== notFound) {
-      result[member] = value
-      continue
-    }
-    if (full === notFound) {
-      full = lookup(self, service.key)
-      if (full === notFound) {
-        if (!isReference(service)) throw serviceNotFoundError(key)
-        full = getDefaultValue(service)
-      }
-    }
-    result[member] = full[member]
-  }
-  return result
-}
 
 const TypeId = "~effect/Context" as const
 
@@ -1105,7 +1131,8 @@ export const getOrElse: {
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
   const value = lookup(self, key.key)
   if (value !== notFound) return value as any
-  return isReference(key) ? getDefaultValue(key) : orElse()
+  const resolved = resolveMiss(self, key)
+  return resolved === notFound ? orElse() : resolved as any
 })
 
 /**
@@ -1185,11 +1212,10 @@ export const getUnsafe: {
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
     const value = lookup(self, service.key)
-    if (value === notFound) {
-      if (isReference(service)) return getDefaultValue(service as any)
-      throw serviceNotFoundError(service.key)
-    }
-    return value as any
+    if (value !== notFound) return value as any
+    const resolved = resolveMiss(self, service)
+    if (resolved === notFound) throw serviceNotFoundError(service.key)
+    return resolved as any
   }
 )
 
@@ -1291,7 +1317,8 @@ export const getOption: {
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
   const value = lookup(self, service.key)
   if (value !== notFound) return Option.some(value as any)
-  return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
+  const resolved = resolveMiss(self, service)
+  return resolved === notFound ? Option.none() : Option.some(resolved as any)
 })
 
 /**

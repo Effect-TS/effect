@@ -179,10 +179,11 @@ export type DatabaseService = Database["Service"]
   `Layer.provideMerge` based on what services you want to expose.
 - **[Creating Layers from configuration and/or Effects](./ai-docs/src/01_effect/03_services/20_layer-unwrap.ts)**: Build a layer dynamically from an Effect / Config with `Layer.unwrap`.
 - **[Service slices](./ai-docs/src/01_effect/03_services/30_service-slices.ts)**:
-  Depend on individual members of a service with `Service.only`, and implement
-  each member in its own module with `Layer.succeedOnly` or `Layer.effectOnly`.
-  The composition root then imports only the member implementations the
-  program requires, so a bundler drops the rest. This matters for cold start on
+  Depend on individual members of a service with `Service.only`, which returns
+  a key for one member, and implement each member in its own module with
+  `Layer.succeed` or `Layer.effect` on that key. The composition root then
+  imports only the member implementations the program requires, so a bundler
+  drops the rest. This matters for cold start on
   platforms like Cloudflare Workers: a bundler cannot remove properties from a
   service object, but it can remove modules that are never imported.
 
