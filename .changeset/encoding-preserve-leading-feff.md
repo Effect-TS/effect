@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve leading U+FEFF in strings decoded from Base64, Base64Url, and Hex, including the corresponding schema codecs.
+Keep a leading U+FEFF when decoding strings with `Base64`, `Base64Url`, `Hex`, and their `Schema.StringFrom*` codecs, including `HttpApiSecurity.basic` usernames.
