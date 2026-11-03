@@ -10,6 +10,7 @@ import {
   Fiber,
   Layer,
   Option,
+  Queue,
   Redacted,
   Ref,
   Schedule,
@@ -668,35 +669,56 @@ Missing key
   })
 
   describe("followRedirects", () => {
-    it.effect("keeps redirected requests scoped while response headers are pending", () =>
-      Effect.gen(function*() {
-        const started = yield* Deferred.make<AbortSignal>()
-        const signals: Array<AbortSignal> = []
-        const client = HttpClient.make((request, _url, signal) => {
-          signals.push(signal)
-          if (request.url.endsWith("/final")) {
-            return Effect.andThen(
-              Deferred.succeed(started, signal),
-              Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
-            )
-          }
-          return Effect.succeed(HttpClientResponse.fromWeb(
-            request,
-            new Response(null, {
-              status: 302,
-              headers: { location: request.url.endsWith("/start") ? "/next" : "/final" }
+    it.effect.each(["outside", "inside"] as const)(
+      "keeps concurrent redirected executions of one request in their own scopes (withScope %s)",
+      (order) =>
+        Effect.gen(function*() {
+          const exchanges = yield* Queue.unbounded<AbortSignal>()
+          const paused = yield* Deferred.make<void>()
+          const resume = yield* Deferred.make<void>()
+          let started = 0
+          let pausing = true
+          const transport = HttpClient.make((request, _url, signal) => {
+            const response = ++started === 2
+              ? Effect.succeed(HttpClientResponse.fromWeb(
+                request,
+                new Response(null, { status: 302, headers: { location: "/final" } })
+              ))
+              : Effect.never
+            return Effect.andThen(Queue.offer(exchanges, signal), response)
+          })
+          // Yields between withScope and the transport while another execution starts
+          const pauseFirst = <E, R>(client: HttpClient.HttpClient.With<E, R>) =>
+            HttpClient.transformResponse(client, (effect) => {
+              if (!pausing) return effect
+              pausing = false
+              return Deferred.succeed(paused, undefined).pipe(
+                Effect.andThen(Deferred.await(resume)),
+                Effect.andThen(effect)
+              )
             })
-          ))
-        }).pipe(HttpClient.followRedirects(), HttpClient.withScope)
-        const scope = yield* Scope.make()
+          const client = order === "outside"
+            ? transport.pipe(HttpClient.followRedirects(), pauseFirst, HttpClient.withScope)
+            : transport.pipe(pauseFirst, HttpClient.withScope, HttpClient.followRedirects())
+          const request = HttpClientRequest.get("https://origin.test/start")
+          const scopeA = yield* Scope.make()
+          const scopeB = yield* Scope.make()
 
-        yield* client.get("https://origin.test/start").pipe(Scope.provide(scope), Effect.forkChild)
-        const signal = yield* Deferred.await(started)
-        assert.deepStrictEqual(signals.map((signal) => signal.aborted), [true, true, false])
+          yield* client.execute(request).pipe(Scope.provide(scopeA), Effect.forkChild)
+          yield* Deferred.await(paused)
+          yield* client.execute(request).pipe(Scope.provide(scopeB), Effect.forkChild)
+          const pendingB = yield* Queue.take(exchanges)
+          yield* Deferred.succeed(resume, undefined)
+          const redirectA = yield* Queue.take(exchanges)
+          const finalA = yield* Queue.take(exchanges)
 
-        yield* Scope.close(scope, Exit.void)
-        assert.isTrue(signal.aborted)
-      }))
+          assert.deepStrictEqual([redirectA.aborted, pendingB.aborted, finalA.aborted], [true, false, false])
+          yield* Scope.close(scopeB, Exit.void)
+          assert.deepStrictEqual([pendingB.aborted, finalA.aborted], [true, false])
+          yield* Scope.close(scopeA, Exit.void)
+          assert.isTrue(finalA.aborted)
+        })
+    )
 
     it.effect("aborts a redirect dispatched after its owning scope closes", () =>
       Effect.gen(function*() {
@@ -717,50 +739,6 @@ Missing key
         yield* client.get("https://origin.test/start").pipe(Scope.provide(scope))
 
         assert.deepStrictEqual(aborted, [false, true])
-      }))
-
-    it.effect("keeps concurrent executions of one request in their own scopes", () =>
-      Effect.gen(function*() {
-        const firstStarted = yield* Deferred.make<void>()
-        const secondStarted = yield* Deferred.make<AbortSignal>()
-        const redirect = yield* Deferred.make<void>()
-        const finalStarted = yield* Deferred.make<AbortSignal>()
-        let first = true
-        const client = HttpClient.make((request, _url, signal) => {
-          if (request.url.endsWith("/final")) {
-            return Effect.andThen(Deferred.succeed(finalStarted, signal), Effect.never)
-          }
-          if (first) {
-            first = false
-            return Effect.andThen(
-              Deferred.succeed(firstStarted, undefined),
-              Effect.as(
-                Deferred.await(redirect),
-                HttpClientResponse.fromWeb(
-                  request,
-                  new Response(null, { status: 302, headers: { location: "/final" } })
-                )
-              )
-            )
-          }
-          return Effect.andThen(Deferred.succeed(secondStarted, signal), Effect.never)
-        }).pipe(HttpClient.followRedirects(), HttpClient.withScope)
-        const request = HttpClientRequest.get("https://origin.test/start")
-        const firstScope = yield* Scope.make()
-        const secondScope = yield* Scope.make()
-
-        yield* client.execute(request).pipe(Scope.provide(firstScope), Effect.forkChild)
-        yield* Deferred.await(firstStarted)
-        yield* client.execute(request).pipe(Scope.provide(secondScope), Effect.forkChild)
-        const secondSignal = yield* Deferred.await(secondStarted)
-        yield* Deferred.succeed(redirect, undefined)
-        const finalSignal = yield* Deferred.await(finalStarted)
-
-        yield* Scope.close(secondScope, Exit.void)
-        assert.isTrue(secondSignal.aborted)
-        assert.isFalse(finalSignal.aborted)
-        yield* Scope.close(firstScope, Exit.void)
-        assert.isTrue(finalSignal.aborted)
       }))
 
     it.effect("preserves preprocessing error recovery", () =>
