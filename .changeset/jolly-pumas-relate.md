@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 "@effect/ai-anthropic": patch
 "@effect/ai-openai": patch
 "@effect/ai-openai-compat": patch
