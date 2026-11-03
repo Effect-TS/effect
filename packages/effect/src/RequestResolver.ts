@@ -478,7 +478,7 @@ export const fromEffect = <A extends Request.Any>(
   effect.interruptChildrenPatch() // ensure middleware is registered
   return make((entries) => {
     const fibers = new Set<Fiber.Fiber<unknown, unknown>>()
-    return effect.callbackBlocked<void>(fibers, (resume) => {
+    return effect.callback<void>((resume) => {
       const parent = effect.getCurrentFiber()!
       let done = 0
       for (let i = 0; i < entries.length; i++) {
@@ -497,7 +497,7 @@ export const fromEffect = <A extends Request.Any>(
           }
         })
       }
-    })
+    }, { blockedOn: fibers })
   })
 }
 

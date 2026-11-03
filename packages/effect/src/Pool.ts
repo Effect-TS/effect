@@ -725,7 +725,7 @@ const makeWaiter = <A, E>(): Waiter<A, E> => {
 }
 
 const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effect<void, E> =>
-  internal.callbackBlocked(self, (resume) => {
+  internal.callback((resume) => {
     const state = self.state
     if (
       state.isShuttingDown ||
@@ -744,7 +744,7 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
         state.waiters.delete(waiter)
       }
     })
-  })
+  }, { blockedOn: self })
 
 const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown>, count: number) => {
   const waiters = self.state.waiters

@@ -280,14 +280,14 @@ const takePermits = <A, E, R>(
     }
     self.waiters.add(waiter)
     internal.onExitUnsafe(fiber, remove)
-    const wait = restore(internal.callbackBlocked<void>(self, (resume) => {
+    const wait = restore(internal.callback<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
       if (firstAvailableWaiter(self) === waiter) {
         resume(internal.void)
       } else {
         waiter.resume = resume
       }
-    }))
+    }, { blockedOn: self }))
     const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
       if (firstAvailableWaiter(self) !== waiter) return loop
       self.taken += n

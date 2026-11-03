@@ -1255,6 +1255,11 @@ export {
  * the fiber; later calls are ignored. Return an optional cleanup effect from
  * the registration function to run if the fiber is interrupted.
  *
+ * Pass `blockedOn` when only the program itself can complete the wait, as in
+ * a custom synchronization primitive. A `Supervisor` receives it in
+ * `onBlock` while the fiber waits; without it, `onBlock` receives
+ * `undefined`.
+ *
  * **Gotchas**
  *
  * The parameter check reads the registration function's `length` property,
@@ -1291,7 +1296,10 @@ export const callback: <A, E = never, R = never>(
     this: Scheduler,
     resume: (effect: Effect<A, E, R>) => void,
     signal: AbortSignal
-  ) => void | Effect<void, never, R>
+  ) => void | Effect<void, never, R>,
+  options?: {
+    readonly blockedOn?: object | undefined
+  } | undefined
 ) => Effect<A, E, R> = internal.callback
 
 /**
@@ -16017,7 +16025,7 @@ const isTransactionConsistent = (state: TransactionMeta) => {
 
 const awaitPendingTransaction = (state: TransactionMeta) => {
   const refs = Array.from(state.journal.keys())
-  return internal.callbackBlocked<void>(refs, (resume) => {
+  return internal.callback<void>((resume) => {
     // Validate the read set and register the waiter in one synchronous step.
     // A commit that landed after the reads has already signalled its waiters
     // and will not signal this one, so a stale read set reruns immediately.
@@ -16038,7 +16046,7 @@ const awaitPendingTransaction = (state: TransactionMeta) => {
       ref.pending.set(key, onCall)
     }
     return sync(clearPending)
-  })
+  }, { blockedOn: refs })
 }
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: TransactionMeta) {

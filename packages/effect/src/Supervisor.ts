@@ -49,8 +49,9 @@
  *   `TxDeferred` and the other Tx structures show up as their `TxRef`s.
  * - `Effect.never`: `Effect.never` itself.
  * - A `TestClock` sleep: the Latch of that sleep (see `TestClock.stateUnsafe`).
- * - `Effect.callback`, `Effect.promise`, `Effect.tryPromise`, a sleep on the
- *   live clock, and anything else: `undefined`.
+ * - `Effect.callback`: its `blockedOn` option.
+ * - `Effect.promise`, `Effect.tryPromise`, a sleep on the live clock, and
+ *   anything else: `undefined`.
  *
  * A collection means "these fibers" (or "these refs"), not whether the wait
  * completes on one of them or on all of them. It is full when `onBlock` is

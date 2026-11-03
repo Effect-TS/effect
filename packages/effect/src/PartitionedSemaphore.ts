@@ -244,7 +244,7 @@ export const makeUnsafe = <K = unknown>(options: {
         return Effect.void
       }
 
-      return internalEffect.callbackBlocked<void>(self, (resume) => {
+      return internalEffect.callback<void>((resume) => {
         if (totalPermits >= permits) {
           resume(take(key, permits))
           return
@@ -288,7 +288,7 @@ export const makeUnsafe = <K = unknown>(options: {
           waitingPermits -= entry.permits
           releaseUnsafe(permits - entry.permits)
         })
-      })
+      }, { blockedOn: self })
     })
   }
 
