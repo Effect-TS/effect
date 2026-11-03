@@ -91,6 +91,18 @@ describe("Response", () => {
     expect(encoded.params).type.toBe<{ readonly at: Date }>()
   })
 
+  it("keeps raw encoded parameters for provider-defined tools with a replaced success schema", () => {
+    const ScheduleTool = Tool.providerDefined({
+      id: "test.schedule",
+      customName: "ScheduleTool",
+      providerName: "schedule",
+      parameters: Schema.Struct({ at: Schema.Date })
+    })().setSuccess(Schema.String)
+
+    const encoded = null as unknown as Response.ToolCallParts<{ readonly ScheduleTool: typeof ScheduleTool }, "encoded">
+    expect(encoded.params).type.toBe<{ readonly at: Date }>()
+  })
+
   it("preserves tool names with success and failure results", () => {
     const result = null as unknown as Response.ToolResultParts<Tools>
     if (result.name === "BooleanTool") {
