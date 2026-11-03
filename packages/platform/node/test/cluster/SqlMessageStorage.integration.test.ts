@@ -1,7 +1,8 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
+import { MysqlClient } from "@effect/sql-mysql2"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Redacted } from "effect"
 import {
   Entity,
   EntityAddress,
@@ -132,7 +133,7 @@ describe("SqlMessageStorage", () => {
   })
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
-    ["mysql", Layer.orDie(MysqlContainer.layerClient)],
+    ["mysql", Layer.orDie(MysqlContainer.client.pipe(Layer.provideMerge(MysqlContainer.layer)))],
     ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
@@ -441,30 +442,33 @@ describe("SqlMessageStorage", () => {
           { timeout: 30_000 }
         )
 
-        it.effect(
-          "a stream reply does not deadlock with deleteProcessed of another request",
-          () =>
-            Effect.gen(function*() {
-              yield* truncate
-              const sql = yield* SqlClient.SqlClient
-              const storage = yield* MessageStorage.MessageStorage
-              const cutoff = Date.UTC(2026, 0, 1)
-              for (let id = 1; id <= 20; id++) {
-                const expired = yield* makeRequest({ payload: { id } })
-                yield* storage.saveRequest(expired)
-                yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
-              }
-              // an incomplete stream, which deleteProcessed must not select
-              const streaming = yield* makeRequest({
-                rpc: StreamRpc,
-                payload: StreamRpc.payloadSchema.make({ id: 21 }),
-                entityId: "2"
-              })
-              yield* storage.saveRequest(streaming)
-              yield* storage.saveReply(yield* makeChunkReply(streaming, 0))
-              // Pause saveReply after it updates the request row, before it inserts the reply, only on the
-              // connection that opts in.
-              yield* sql`
+        for (const callerTransaction of [false, true]) {
+          it.effect(
+            `a stream reply does not deadlock with deleteProcessed of another request${
+              callerTransaction ? " in a READ COMMITTED transaction" : ""
+            }`,
+            () =>
+              Effect.gen(function*() {
+                yield* truncate
+                const sql = yield* SqlClient.SqlClient
+                const storage = yield* MessageStorage.MessageStorage
+                const cutoff = Date.UTC(2026, 0, 1)
+                for (let id = 1; id <= 20; id++) {
+                  const expired = yield* makeRequest({ payload: { id } })
+                  yield* storage.saveRequest(expired)
+                  yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
+                }
+                // an incomplete stream, which deleteProcessed must not select
+                const streaming = yield* makeRequest({
+                  rpc: StreamRpc,
+                  payload: StreamRpc.payloadSchema.make({ id: 21 }),
+                  entityId: "2"
+                })
+                yield* storage.saveRequest(streaming)
+                yield* storage.saveReply(yield* makeChunkReply(streaming, 0))
+                // Pause saveReply after it updates the request row, before it inserts the reply, only on the
+                // connection that opts in.
+                yield* sql`
               CREATE TRIGGER cluster_test_slow_reply AFTER UPDATE ON cluster_messages
               FOR EACH ROW BEGIN
                 IF @cluster_test_slow_reply = 1 THEN
@@ -472,32 +476,79 @@ describe("SqlMessageStorage", () => {
                 END IF;
               END
             `.unprepared
-              yield* Effect.gen(function*() {
-                const replyFiber = yield* Effect.gen(function*() {
-                  yield* sql`SET @cluster_test_slow_reply = 1`
-                  yield* storage.saveReply(yield* makeChunkReply(streaming, 1)).pipe(
-                    Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_reply = NULL`))
-                  )
-                }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-                yield* waitForMysqlSleep
-                const cleanup = yield* Effect.exit(
-                  storage.deleteProcessed({
+                yield* Effect.gen(function*() {
+                  const replyFiber = yield* Effect.gen(function*() {
+                    yield* sql`SET @cluster_test_slow_reply = 1`
+                    yield* storage.saveReply(yield* makeChunkReply(streaming, 1)).pipe(
+                      Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_reply = NULL`))
+                    )
+                  }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+                  yield* waitForMysqlSleep
+                  const deleteProcessed = storage.deleteProcessed({
                     entityType: "test",
                     completedBefore: cutoff,
                     limit: 100
                   })
-                )
-                const replied = yield* Fiber.join(replyFiber)
-                assert(Exit.isSuccess(replied), String(replied))
-                assert(Exit.isSuccess(cleanup), String(cleanup))
-                expect(cleanup.value).toEqual(20)
-              }).pipe(Effect.ensuring(
-                Effect.gen(function*() {
-                  yield* sql`DROP TRIGGER cluster_test_slow_reply`.unprepared
-                  yield* truncate
-                }).pipe(Effect.orDie)
-              ))
-            }).pipe(TestClock.withLive),
+                  const cleanup = yield* Effect.exit(
+                    callerTransaction
+                      ? deleteProcessed.pipe(
+                        sql.withTransaction,
+                        Effect.provideService(
+                          SqlClient.BeginTransaction,
+                          "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"
+                        )
+                      )
+                      : deleteProcessed
+                  )
+                  const replied = yield* Fiber.join(replyFiber)
+                  assert(Exit.isSuccess(replied), String(replied))
+                  assert(Exit.isSuccess(cleanup), String(cleanup))
+                  expect(cleanup.value).toEqual(20)
+                }).pipe(Effect.ensuring(
+                  Effect.gen(function*() {
+                    yield* sql`DROP TRIGGER cluster_test_slow_reply`.unprepared
+                    yield* truncate
+                  }).pipe(Effect.orDie)
+                ))
+              }).pipe(TestClock.withLive),
+            { timeout: 30_000 }
+          )
+        }
+
+        it.effect(
+          "deleteProcessed fails and deletes nothing when binlog_format is STATEMENT",
+          () =>
+            Effect.gen(function*() {
+              yield* truncate
+              const storage = yield* MessageStorage.MessageStorage
+              const cutoff = Date.UTC(2026, 0, 1)
+              const expired = yield* makeRequest()
+              yield* storage.saveRequest(expired)
+              yield* storage.saveReply(yield* makeReply(expired, cutoff - 1))
+              const deleteProcessed = Effect.gen(function*() {
+                const storage = yield* MessageStorage.MessageStorage
+                return yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })
+              })
+
+              // Only root may change binlog_format. Its client has one connection, so the session setting applies
+              // to the cleanup and ends with the client. The server must log binary, as MySQL does by default.
+              // Only the mysql layer provides the container, which the shared test context doesn't type.
+              const container = Option.getOrThrow(yield* Effect.serviceOption(MysqlContainer))
+              const error = yield* Effect.gen(function*() {
+                const sql = yield* SqlClient.SqlClient
+                yield* sql`SET SESSION binlog_format = 'STATEMENT'`.unprepared
+                return yield* Effect.flip(deleteProcessed)
+              }).pipe(Effect.provide(Layer.fresh(StorageLayer.pipe(Layer.provideMerge(MysqlClient.layer({
+                url: Redacted.make(container.getConnectionUri(true)),
+                maxConnections: 1
+              }))))))
+              expect(error._tag).toEqual("PersistenceError")
+              // ER_BINLOG_STMT_MODE_AND_ROW_ENGINE: InnoDB logs only rows at READ COMMITTED
+              expect(error.cause).toMatchObject({ reason: { cause: { errno: 1665 } } })
+
+              expect(yield* deleteProcessed).toEqual(1)
+              yield* truncate
+            }),
           { timeout: 30_000 }
         )
 

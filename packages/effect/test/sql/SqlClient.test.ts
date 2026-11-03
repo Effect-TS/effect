@@ -145,6 +145,7 @@ const makeHarness = (options: {
  */
 const makeClient = (options: {
   readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
+  readonly begin?: SqlClient.SqlClient.MakeOptions["begin"]
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
   readonly prepareTransactionControls?: boolean | undefined
   readonly release?: Effect.Effect<void> | undefined
@@ -176,6 +177,7 @@ const makeClient = (options: {
     compiler: Statement.makeCompilerSqlite(),
     spanAttributes: [],
     prepareTransactionControls: options.prepareTransactionControls,
+    begin: options.begin,
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
     Effect.flatMap((sql) =>
@@ -317,6 +319,28 @@ describe("SqlClient", () => {
         "COMMIT",
         "release",
         "after(1)"
+      ])
+    }))
+
+  it.effect("starts top-level transactions with the driver's begin, given the BeginTransaction statement", () =>
+    Effect.gen(function*() {
+      const { calls, sql } = yield* makeClient({
+        begin: (conn, statement) => Effect.asVoid(conn.executeUnprepared(`begin(${statement})`, [], undefined))
+      })
+
+      yield* sql.withTransaction(sql.withTransaction(Effect.void)).pipe(
+        Effect.provideService(SqlClient.BeginTransaction, "SET TRANSACTION READ ONLY")
+      )
+      yield* sql.withTransaction(Effect.void)
+
+      assert.deepStrictEqual(calls, [
+        "begin(SET TRANSACTION READ ONLY)",
+        "SAVEPOINT effect_sql_1",
+        "COMMIT",
+        "release",
+        "begin(undefined)",
+        "COMMIT",
+        "release"
       ])
     }))
 

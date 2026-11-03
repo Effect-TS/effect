@@ -1,8 +1,9 @@
 import { MysqlClient } from "@effect/sql-mysql2"
-import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Stream } from "effect"
+import { assert, describe, expect, it } from "@effect/vitest"
+import { Effect, Fiber, Layer, Redacted, Stream } from "effect"
 import * as Arr from "effect/Array"
 import * as Scheduler from "effect/Scheduler"
+import { SqlClient } from "effect/sql"
 import * as Mysql from "mysql2"
 import { EventEmitter } from "node:events"
 import { Readable } from "node:stream"
@@ -41,6 +42,69 @@ describe("MysqlClient", () => {
       Effect.provide(MysqlContainer.layerClient),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60_000 })
+
+  it.effect(
+    "runs a SET TRANSACTION BeginTransaction for one top-level transaction, and other statements as BEGIN",
+    () =>
+      Effect.gen(function*() {
+        const container = yield* MysqlContainer
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`CREATE TABLE begin_statement (value VARCHAR(32))`
+        const readCommitted = Effect.provideService(
+          SqlClient.BeginTransaction,
+          "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"
+        )
+        yield* Effect.gen(function*() {
+          // A client with one connection, so every transaction runs in the same session.
+          const tx = yield* SqlClient.SqlClient
+          const count = Effect.map(
+            tx<{ n: number }>`SELECT COUNT(*) AS n FROM begin_statement`,
+            ([row]) => Number(row.n)
+          )
+          // Whether a second read sees a row committed by another connection after the first read.
+          const seesConcurrentCommit = Effect.fnUntraced(function*(value: string) {
+            const before = yield* count
+            yield* sql`INSERT INTO begin_statement VALUES (${value})`
+            return (yield* count) > before
+          })
+
+          const readCommittedSaw = yield* Effect.gen(function*() {
+            yield* tx`INSERT INTO begin_statement VALUES ('rolled back')`
+            return yield* Effect.fail(yield* seesConcurrentCommit("read committed"))
+          }).pipe(tx.withTransaction, readCommitted, Effect.flip)
+          assert.isTrue(readCommittedSaw)
+          assert.isFalse(yield* tx.withTransaction(seesConcurrentCommit("repeatable read")))
+
+          const readOnly = yield* tx`INSERT INTO begin_statement VALUES ('read only')`.pipe(
+            tx.withTransaction,
+            Effect.provideService(SqlClient.BeginTransaction, "START TRANSACTION READ ONLY"),
+            Effect.flip
+          )
+          // ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION
+          expect(readOnly).toMatchObject({ reason: { cause: { errno: 1792 } } })
+
+          yield* tx.withTransaction(Effect.gen(function*() {
+            yield* tx`INSERT INTO begin_statement VALUES ('savepoint')`.pipe(tx.withTransaction, readCommitted)
+            yield* tx`INSERT INTO begin_statement VALUES ('rolled back')`.pipe(
+              Effect.andThen(Effect.fail("rollback")),
+              tx.withTransaction,
+              readCommitted,
+              Effect.ignore
+            )
+          }))
+        }).pipe(Effect.provide(MysqlClient.layer({
+          url: Redacted.make(container.getConnectionUri()),
+          maxConnections: 1
+        })))
+
+        assert.deepStrictEqual(yield* sql`SELECT value FROM begin_statement ORDER BY value`, [
+          { value: "read committed" },
+          { value: "repeatable read" },
+          { value: "savepoint" }
+        ])
+      }).pipe(Effect.provide(MysqlContainer.client.pipe(Layer.provideMerge(MysqlContainer.layer)))),
+    { timeout: 60_000 }
+  )
 
   // These replace mysql2's pool with fakes through one-shot mocks, so they
   // must not run alongside each other.
