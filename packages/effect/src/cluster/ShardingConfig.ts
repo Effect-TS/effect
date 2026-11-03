@@ -203,20 +203,16 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly sendRetryInterval: Duration.Input
   /**
-   * The interval at which the runner hosting the runner health singleton
-   * checks runners and reports unhealthy ones to runner storage, which removes
-   * them from shard assignments.
+   * The interval at which runners are health checked. Unhealthy runners are
+   * removed from shard assignments.
    *
-   * **Gotchas**
-   *
-   * Health checks only run on the singleton's host, so they cannot detect a
-   * crash of that runner. It is removed from shard assignments once runner
-   * storage stops listing it; `SqlRunnerStorage` stops listing a runner when
-   * its last heartbeat is older than `shardLockExpiration`. Setting this
-   * interval below `shardLockExpiration` speeds up recovery from crashes of
-   * other runners, but not of the singleton's host. To detect that crash
-   * sooner, lower `shardLockExpiration`, which also gives runners less
-   * tolerance for slow or unavailable lock storage.
+   * The checks run on one runner, the host of the runner health singleton, so
+   * they cannot detect a crash of that runner. It leaves shard assignments
+   * only once runner storage stops listing it, which for `SqlRunnerStorage`
+   * is when its last heartbeat is older than `shardLockExpiration`. Lowering
+   * this interval detects crashes of other runners sooner, but not a crash of
+   * the singleton's host. For that, lower `shardLockExpiration`, at the cost
+   * of less tolerance for slow or unavailable lock storage.
    *
    * Defaults to 1 minute.
    */
