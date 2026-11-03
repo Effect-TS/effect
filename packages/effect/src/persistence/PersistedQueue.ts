@@ -82,9 +82,15 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If an element with the same id already exists in the queue, it will not be
-   * added again, and the `delay` of the duplicate offer is ignored.
-   * De-duplication survives completion until the id is removed by
-   * `layerCleanup`.
+   * added again, and the `delay` of the duplicate offer is ignored. By default
+   * (`deduplicate: "untilCleanup"`), de-duplication survives completion until
+   * the id is removed by `layerCleanup`.
+   *
+   * With `deduplicate: "untilCompleted"`, an offer whose id belongs to a
+   * completed element enqueues a new element under that id, ordered like any
+   * other new offer. Offers for an id that is pending, processing or failed are
+   * still ignored: a failed element is the dead-letter record, so its id is
+   * only released when `layerCleanup` removes it after `failedTimeToLive`.
    *
    * `delay` postpones the first delivery. Measured by the store's clock, the
    * element is never delivered before the delay elapses, and is typically
@@ -103,6 +109,7 @@ export interface PersistedQueue<in out A, out R = never> {
   readonly offer: (value: A, options?: {
     readonly id?: string | undefined
     readonly delay?: Duration.Input | undefined
+    readonly deduplicate?: "untilCleanup" | "untilCompleted" | undefined
   }) => Effect.Effect<string, PersistedQueueError | Schema.SchemaError, R>
 
   /**
@@ -265,7 +272,8 @@ export const makeFactory = Effect.gen(function*() {
                     id,
                     element,
                     isCustomId: opts?.id !== undefined,
-                    delay
+                    delay,
+                    deduplicate: opts?.deduplicate
                   }),
                   id
                 )
@@ -486,6 +494,10 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * An offered `delay` is always finite and positive, and the element must not
  * be taken before it elapses. It is `undefined` for immediate elements.
  *
+ * An offer for an existing id is ignored, unless `deduplicate` is
+ * `"untilCompleted"` and the existing element has completed: then the offer
+ * replaces it with a new element, ordered like a fresh offer.
+ *
  * Claiming an element counts an attempt, so the `attempts` returned by `take`
  * is 1-based. When the take scope closes with a success the element is marked
  * completed; a failure retries it according to `retryDelay` or marks it failed
@@ -506,6 +518,7 @@ export class PersistedQueueStore extends Context.Service<
         readonly element: unknown
         readonly isCustomId: boolean
         readonly delay?: Duration.Duration | undefined
+        readonly deduplicate?: "untilCleanup" | "untilCompleted" | undefined
       }
     ) => Effect.Effect<void, PersistedQueueError>
 
@@ -590,7 +603,11 @@ export const layerStoreMemory: Layer.Layer<
         Effect.sync(() => {
           const now = clock.currentTimeMillisUnsafe()
           const queue = getOrCreateQueue(options.name)
-          if (queue.entries.has(options.id)) return
+          const existing = queue.entries.get(options.id)
+          if (
+            existing !== undefined &&
+            (options.deduplicate !== "untilCompleted" || existing.state !== "completed")
+          ) return
           const entry: Entry = {
             id: options.id,
             element: options.element,
@@ -907,21 +924,22 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   })
 
   return PersistedQueueStore.of({
-    offer: ({ delay, element, id, isCustomId, name }) => {
+    offer: ({ deduplicate, delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
       // replace lone surrogates like Redis' UTF-8 encoding does, so the id in
       // the payload matches the id keys
       id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
       const payload = JSON.stringify({ id, element })
+      const untilCompleted = deduplicate === "untilCompleted" ? 1 : 0
       const send = Effect.suspend(() => {
         if (delay === undefined) {
           return isCustomId
-            ? offer(keys.queue, keys.ids, id, payload)
+            ? offer(keys.queue, keys.ids, id, payload, untilCompleted)
             : redis.send("RPUSH", keys.queue, payload)
         }
         const visibleAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(delay)
         return isCustomId
-          ? offerDelayed(keys.delayed, keys.ids, id, payload, visibleAt)
+          ? offerDelayed(keys.delayed, keys.ids, id, payload, visibleAt, untilCompleted)
           : redis.send("ZADD", keys.delayed, visibleAt.toString(), payload)
       })
       return send.pipe(
@@ -1056,19 +1074,32 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   })
 })
 
+// Parks the dedupe entry outside the timeToLive trim range until the element
+// completes, so unprocessed and failed elements never lose dedupe protection.
+// Completion scores the entry with its completion time, which is the only
+// finite score, so GT CH also claims the id of a completed element.
+const claimIdRedis = `
+local function claim_id(key_ids, id, until_completed)
+  if until_completed == "1" then
+    return redis.call("ZADD", key_ids, "GT", "CH", "+inf", id)
+  end
+  return redis.call("ZADD", key_ids, "NX", "+inf", id)
+end
+`
+
 const offerRedis = Redis.script(
-  (...args: [keyQueue: string, keyIds: string, id: string, payload: string]) => args,
+  (...args: [keyQueue: string, keyIds: string, id: string, payload: string, untilCompleted: number]) => args,
   {
     lua: `
 local key_queue = KEYS[1]
 local key_ids = KEYS[2]
 local id = ARGV[1]
 local payload = ARGV[2]
+local until_completed = ARGV[3]
 
--- park the dedupe entry outside the timeToLive trim range until the element
--- completes, so unprocessed elements never lose dedupe protection
-local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
-if result == 1 then
+${claimIdRedis}
+
+if claim_id(key_ids, id, until_completed) == 1 then
   redis.call("RPUSH", key_queue, payload)
 end
 `,
@@ -1077,7 +1108,16 @@ end
 )
 
 const offerDelayedRedis = Redis.script(
-  (...args: [keyDelayed: string, keyIds: string, id: string, payload: string, visibleAt: number]) => args,
+  (
+    ...args: [
+      keyDelayed: string,
+      keyIds: string,
+      id: string,
+      payload: string,
+      visibleAt: number,
+      untilCompleted: number
+    ]
+  ) => args,
   {
     lua: `
 local key_delayed = KEYS[1]
@@ -1085,9 +1125,11 @@ local key_ids = KEYS[2]
 local id = ARGV[1]
 local payload = ARGV[2]
 local visible_at = ARGV[3]
+local until_completed = ARGV[4]
 
-local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
-if result == 1 then
+${claimIdRedis}
+
+if claim_id(key_ids, id, until_completed) == 1 then
   redis.call("ZADD", key_delayed, visible_at, payload)
 end
 `,
@@ -1605,6 +1647,15 @@ export const makeStoreSql: (
       `
   })
 
+  // Deleting the completed row, rather than resetting it, lets the re-offered
+  // element take a fresh sequence. A concurrent offer that inserts in between
+  // turns the following insert into an ignored duplicate.
+  const deleteCompleted = (id: string, name: string) =>
+    sql`
+      DELETE FROM ${tableNameSql}
+      WHERE id = ${id} AND queue_name = ${name} AND state = 'completed'
+    `
+
   const wrapString = sql.onDialectOrElse({
     mssql: () => (s: string) => `N'${s}'`,
     orElse: () => (s: string) => `'${s}'`
@@ -1921,16 +1972,19 @@ export const makeStoreSql: (
     )
 
   return PersistedQueueStore.of({
-    offer: ({ delay, element, id, name }) =>
+    offer: ({ deduplicate, delay, element, id, isCustomId, name }) =>
       Effect.catchCause(
-        Effect.suspend(() =>
-          offer(
+        Effect.suspend(() => {
+          const insert = offer(
             id,
             name,
             JSON.stringify(element),
             delay === undefined ? sqlNow : delayedVisibleAt(delay)
           )
-        ),
+          return isCustomId && deduplicate === "untilCompleted"
+            ? Effect.andThen(deleteCompleted(id, name), insert)
+            : insert
+        }),
         (cause) =>
           Effect.fail(
             new PersistedQueueError({

@@ -270,6 +270,73 @@ export const suiteWith = <R>(
         yield* assertNotDelivered(fiber2)
       }), testOptions)
 
+    it.effect("deduplicate untilCompleted re-offers an id once its element completed", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-deduplicate-until-completed",
+          schema: Item
+        })
+        const options = { id: "order-1", deduplicate: "untilCompleted" } as const
+
+        // ignored while pending
+        yield* queue.offer({ n: 1n }, options)
+        yield* queue.offer({ n: 2n }, options)
+
+        // ignored while processing
+        const taken = Latch.makeUnsafe()
+        const release = Latch.makeUnsafe()
+        const processing = yield* queue.take((value) => Effect.andThen(taken.open, Effect.as(release.await, value)))
+          .pipe(Effect.forkScoped)
+        yield* taken.await
+        yield* queue.offer({ n: 3n }, options)
+        yield* release.open
+        assert.deepStrictEqual(yield* Fiber.join(processing), { n: 1n })
+
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber)
+
+        // enqueued anew once completed
+        yield* queue.offer({ n: 4n }, options)
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 4n })
+      }), testOptions)
+
+    it.effect("deduplicate untilCompleted orders a re-offered id after earlier offers", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-deduplicate-until-completed-order",
+          schema: Item
+        })
+        const options = { id: "order-1", deduplicate: "untilCompleted" } as const
+
+        yield* queue.offer({ n: 1n }, options)
+        yield* queue.take(Effect.succeed)
+
+        yield* queue.offer({ n: 2n }, { id: "order-2" })
+        yield* queue.offer({ n: 3n }, options)
+
+        const first = yield* queue.take(Effect.succeed)
+        const second = yield* queue.take(Effect.succeed)
+        assert.deepStrictEqual([first, second], [{ n: 2n }, { n: 3n }])
+      }), testOptions)
+
+    it.effect("deduplicate untilCompleted keeps failed ids deduplicated", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-deduplicate-until-completed-failed",
+          schema: Item,
+          maxAttempts: 1
+        })
+        const options = { id: "order-1", deduplicate: "untilCompleted" } as const
+
+        yield* queue.offer({ n: 1n }, options)
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+        assert.strictEqual(error, "boom")
+
+        yield* queue.offer({ n: 2n }, options)
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber)
+      }), testOptions)
+
     it.effect("settling a custom id does not release the same id in another queue", () =>
       Effect.gen(function*() {
         const emails = yield* PersistedQueue.make({ name: "isolated-emails", schema: Item })
