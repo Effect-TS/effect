@@ -67,7 +67,7 @@ describe("LanguageModel", () => {
       type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
       type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
 
-      expect<ToolCallParams>().type.toBe<string>()
+      expect<ToolCallParams>().type.toBe<Schema.Json>()
     })
 
     it("types encoded tool parameters as JSON when tool call resolution is disabled", () => {
@@ -339,7 +339,7 @@ describe("LanguageModel", () => {
       type StreamPart = typeof stream extends Stream.Stream<infer A, any, any> ? A : never
       type ToolCallParams = Extract<StreamPart, { readonly type: "tool-call" }>["params"]
 
-      expect<ToolCallParams>().type.toBe<string>()
+      expect<ToolCallParams>().type.toBe<Schema.Json>()
     })
 
     it("returns undeclared tool names with opaque parameters when tool call validation is deferred", () => {
@@ -417,7 +417,7 @@ describe("LanguageModel", () => {
       type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
       type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
 
-      expect<ToolCallParams>().type.toBe<string>()
+      expect<ToolCallParams>().type.toBe<Schema.Json>()
     })
   })
 
@@ -434,7 +434,7 @@ describe("LanguageModel", () => {
       type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
       type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
 
-      expect<ToolCallParams>().type.toBe<string>()
+      expect<ToolCallParams>().type.toBe<Schema.Json>()
     })
   })
 })
