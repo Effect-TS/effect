@@ -467,7 +467,7 @@ describe("RcMap", () => {
       assert.deepStrictEqual(released, ["foo", "bar", "baz"])
     }))
 
-  it.effect("measures idleTimeToLive on the clock of the map's maker, not of the last borrower or of touch", () =>
+  it.effect("measures idle time on the map's clock", () =>
     Effect.gen(function*() {
       const released: Array<string> = []
       const map = yield* RcMap.make({
@@ -476,7 +476,7 @@ describe("RcMap", () => {
         idleTimeToLive: 1000
       })
 
-      // the borrower and the touch run on the live clock
+      // release and touch run on a different clock than the map's TestClock
       yield* TestClock.withLive(Effect.scoped(RcMap.get(map, "foo")))
       yield* TestClock.adjust(500)
       yield* TestClock.withLive(RcMap.touch(map, "foo"))
