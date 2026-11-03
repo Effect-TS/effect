@@ -912,7 +912,7 @@ export const makeEncodedStorage: (options?: {
       ),
 
     deleteProcessed: Effect.fnUntraced(
-      function*({ completedBefore, entityType, limit, shardIds }) {
+      function*({ completedBefore, entityType, limit }) {
         // last_reply_id is the WithExit reply id, so its timestamp is the completion time
         const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
         // Lock the selected requests so a concurrent clearReplies cannot reset
@@ -921,8 +921,7 @@ export const makeEncodedStorage: (options?: {
         // because waiting for them can deadlock on gap locks in MySQL.
         const rows = yield* sql<{ id: string | bigint }>`
           SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
-          WHERE ${sql.in("shard_id", shardIds)}
-          AND entity_type = ${entityType}
+          WHERE entity_type = ${entityType}
           AND kind = ${messageKindRequest}
           AND processed = ${sqlTrue}
           AND last_reply_id < ${sql.literal(String(cutoff))}
