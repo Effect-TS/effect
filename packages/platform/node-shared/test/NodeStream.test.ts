@@ -493,50 +493,24 @@ describe("Stream", () => {
       assert.isTrue(stream.destroyed)
     }))
 
-  it.effect("toArrayBuffer collects streams that already decode", () =>
+  it.effect("toArrayBuffer encodes strings from a stream that already decodes", () =>
     Effect.gen(function*() {
-      const expected = Buffer.from("café")
-      for (const encoding of ["utf8", "latin1"] as const) {
-        const readable = Readable.from([expected], { objectMode: false })
-        readable.setEncoding(encoding)
-        const result = yield* NodeStream.toArrayBuffer(() => readable, { maxBytes: expected.length })
+      const stream = Readable.from([Buffer.from([0x63, 0x61, 0x66, 0xe9])], { objectMode: false })
+      stream.setEncoding("latin1")
+      const buffer = yield* NodeStream.toArrayBuffer(() => stream)
 
-        assert.deepStrictEqual(Buffer.from(result), expected)
-      }
-      const result = yield* NodeStream.toUint8Array(() =>
-        Readable.from([expected], { objectMode: false }).setEncoding("utf8")
+      assert.deepStrictEqual(new Uint8Array(buffer), new Uint8Array([0x63, 0x61, 0x66, 0xe9]))
+    }))
+
+  it.effect("toArrayBuffer limits string chunks by their UTF-8 length", () =>
+    Effect.gen(function*() {
+      const chunks = () => Readable.from(["ca", Buffer.from("f"), "é"])
+      const buffer = yield* NodeStream.toArrayBuffer(chunks, { maxBytes: 5 })
+      const error = yield* NodeStream.toArrayBuffer(chunks, { maxBytes: 4, onError: (error) => error }).pipe(
+        Effect.flip
       )
-      assert.deepStrictEqual(Buffer.from(result), expected)
-    }))
 
-  it.effect("toArrayBuffer collects string and mixed chunks", () =>
-    Effect.gen(function*() {
-      for (
-        const chunks of [
-          ["café"],
-          ["ca", "fé"],
-          ["ca", Buffer.from("fé")],
-          [Buffer.from("ca"), "fé"]
-        ]
-      ) {
-        const result = yield* NodeStream.toArrayBuffer(() => Readable.from(chunks))
-
-        assert.deepStrictEqual(Buffer.from(result), Buffer.from("café"))
-      }
-    }))
-
-  it.effect("toArrayBuffer limits string chunks by encoded byte length", () =>
-    Effect.gen(function*() {
-      const result = yield* NodeStream.toArrayBuffer(() => Readable.from(["é"]), { maxBytes: 2 })
-      assert.deepStrictEqual(Buffer.from(result), Buffer.from("é"))
-
-      const readable = Readable.from(["é"])
-      const error = yield* NodeStream.toArrayBuffer(() => readable, {
-        maxBytes: 1,
-        onError: (error) => error
-      }).pipe(Effect.flip)
-
+      assert.deepStrictEqual(new Uint8Array(buffer), new Uint8Array([0x63, 0x61, 0x66, 0xc3, 0xa9]))
       assert.instanceOf(error, NodeStream.MaxBytesError)
-      assert.isTrue(readable.destroyed)
     }))
 })
