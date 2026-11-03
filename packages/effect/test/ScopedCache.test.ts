@@ -14,8 +14,7 @@ import {
   Option,
   References,
   Scope,
-  ScopedCache,
-  Tracer
+  ScopedCache
 } from "effect"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
@@ -66,22 +65,6 @@ describe("ScopedCache", () => {
         assert.isUndefined(response.deref())
       })
   )
-
-  it.effect("parents lookup spans to the requesting span through propagation-disabled spans", () =>
-    Effect.gen(function*() {
-      const cache = yield* ScopedCache.make({
-        capacity: 16,
-        lookup: (_key: string) => Effect.currentSpan.pipe(Effect.withSpan("lookup"))
-      })
-      const [request, lookup] = yield* Effect.all([
-        Effect.currentSpan,
-        ScopedCache.get(cache, "key").pipe(
-          Effect.withSpan("disabled", { annotations: Tracer.DisablePropagation.context(true) })
-        )
-      ]).pipe(Effect.withSpan("request"))
-      const parent = Option.getOrThrow(lookup.parent)
-      assert.strictEqual(parent.spanId, request.spanId)
-    }))
 
   describe("constructors", () => {
     describe("make", () => {

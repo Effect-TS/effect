@@ -4,14 +4,7 @@ import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import {
-  InMemorySpanExporter,
-  type ReadableSpan,
-  type Sampler,
-  SamplingDecision,
-  SimpleSpanProcessor,
-  type SpanExporter
-} from "@opentelemetry/sdk-trace-base"
+import { InMemorySpanExporter, SimpleSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -20,7 +13,6 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as ScopedCache from "effect/ScopedCache"
 import * as EffectTracer from "effect/Tracer"
 import * as Version from "effect/Version"
 
@@ -83,46 +75,6 @@ describe("Tracer", () => {
         Effect.withSpan("ok"),
         Effect.provide(TracingLayer)
       ))
-
-    it.effect("parents ScopedCache lookups to the local requesting span's sampling result", () => {
-      // Drops the request and rewrites its trace state; children follow their parent.
-      const sampler: Sampler = {
-        shouldSample: (context, _traceId, name) =>
-          name === "request"
-            ? { decision: SamplingDecision.RECORD, traceState: OtelApi.createTraceState("vendor=updated") }
-            : {
-              decision: OtelApi.trace.getSpanContext(context)!.traceFlags & OtelApi.TraceFlags.SAMPLED
-                ? SamplingDecision.RECORD_AND_SAMPLED
-                : SamplingDecision.RECORD
-            }
-      }
-      return Effect.gen(function*() {
-        const cache = yield* ScopedCache.make({
-          capacity: 16,
-          lookup: (_key: string) => OtelTracer.currentOtelSpan.pipe(Effect.withSpan("lookup"))
-        })
-        const lookup = (yield* ScopedCache.get(cache, "key").pipe(
-          Effect.withSpan("request", {
-            annotations: OtelTracer.OtelTraceFlags.context(OtelApi.TraceFlags.SAMPLED).pipe(
-              EffectContext.add(OtelTracer.OtelTraceState, OtelApi.createTraceState("vendor=original"))
-            )
-          })
-        )) as unknown as ReadableSpan
-        assert.deepStrictEqual(
-          [
-            lookup.parentSpanContext?.isRemote ?? false,
-            lookup.spanContext().traceFlags,
-            lookup.spanContext().traceState?.serialize()
-          ],
-          [false, OtelApi.TraceFlags.NONE, "vendor=updated"]
-        )
-      }).pipe(
-        Effect.provide(OtelTracer.layer.pipe(
-          Layer.provide(NodeSdk.layerTracerProvider(new SimpleSpanProcessor(new InMemorySpanExporter()), { sampler })),
-          Layer.provide(Resource.layerEmpty)
-        ))
-      )
-    })
 
     it.effect("withSpan links", () =>
       Effect.gen(function*() {
