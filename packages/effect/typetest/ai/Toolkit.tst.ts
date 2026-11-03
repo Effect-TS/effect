@@ -14,6 +14,8 @@ const toolkit = Toolkit.make(Tool.make("Decode", {
   success: Schema.Number
 }))
 
+declare const requiresHandler: boolean
+
 describe("Toolkit", () => {
   it("requires parameter decoder services on the outer handle Effect", () => {
     const handle = Effect.gen(function*() {
@@ -28,5 +30,19 @@ describe("Toolkit", () => {
       Effect.flatMap((stream) => Stream.runCollect(stream).pipe(Effect.provideService(Decoder, { value: 1 })))
     )
     expect<[Decoder] extends [Effect.Services<typeof streamOnly>] ? true : false>().type.toBe<true>()
+  })
+
+  it("requires a handler for a provider-defined tool whose handler flag may be true", () => {
+    const flagged = Toolkit.make(
+      Tool.providerDefined({
+        id: "test.flagged",
+        customName: "Flagged",
+        providerName: "flagged",
+        requiresHandler
+      })({})
+    )
+
+    expect(flagged.toLayer).type.toBeCallableWith({ Flagged: () => Effect.void })
+    expect(flagged.toLayer).type.not.toBeCallableWith({})
   })
 })

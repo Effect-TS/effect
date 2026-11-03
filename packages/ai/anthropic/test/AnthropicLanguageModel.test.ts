@@ -1246,6 +1246,58 @@ describe("AnthropicLanguageModel", () => {
         assert.notProperty(body, "strictJsonSchema")
       }))
 
+    it.effect("passes tool call params with non-JSON types to the Toolkit", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{
+                  type: "tool_use",
+                  id: "toolu_1",
+                  name: "Schedule",
+                  input: { at: "2026-01-01T00:00:00.000Z" }
+                }],
+                stop_reason: "tool_use",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null
+                }
+              }))
+            )
+          ))
+        )
+        let approvalAt: number | undefined
+        const toolkit = Toolkit.make(Tool.make("Schedule", {
+          parameters: Schema.Struct({ at: Schema.Date }),
+          success: Schema.Number,
+          needsApproval: ({ at }) => {
+            approvalAt = at.getTime()
+            return false
+          }
+        }))
+
+        const response = yield* LanguageModel.generateText({ prompt: "Schedule it", toolkit }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(toolkit.toLayer({ Schedule: ({ at }) => Effect.succeed(at.getTime()) })),
+          Effect.provide(layer)
+        )
+
+        assert.strictEqual(approvalAt, 1767225600000)
+        assert.strictEqual(response.toolResults[0]?.result, 1767225600000)
+      }))
+
     it.effect("preserves string tool results", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
@@ -1594,9 +1646,8 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(inputSchema.properties.filter, { $ref: "#/$defs/Filter" })
         assert.deepStrictEqual(inputSchema.$defs.Filter.properties.OR.items, { $ref: "#/$defs/Filter" })
         assert.strictEqual(response.toolCalls.length, 1)
-        const { filter } = response.toolCalls[0].params
-        assert.isUndefined(filter.name)
-        assert.deepStrictEqual(filter.OR, [{ name: "Anna" }, { name: "Ben" }])
+        // Encoded params hold the JSON encoding, where an omitted optional is `null`
+        assert.deepStrictEqual(response.toolCalls[0].params, params)
       }))
 
     it.effect("rejects recursive parameters for a strict tool", () =>

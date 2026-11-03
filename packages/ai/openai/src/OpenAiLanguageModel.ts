@@ -3411,7 +3411,10 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     Schema.decodeEffect(codec)(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
   ).pipe(
     Effect.flatMap((decoded) =>
-      Schema.encodeUnknownEffect(tool.parametersSchema)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
+      Schema.encodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))(decoded) as Effect.Effect<
+        unknown,
+        Schema.SchemaError
+      >
     ),
     Effect.orElseSucceed(() => toolParams)
   )

@@ -2034,14 +2034,14 @@ describe("McpServer", () => {
 
         const error = yield* client.callTool({
           name: "OptionalStringTool",
-          arguments: { signature: null }
+          arguments: { signature: false }
         }).pipe(Effect.flip)
 
         assert.isFalse(handlerInvoked)
         assert.isTrue("code" in error)
         if ("code" in error) assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
         assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
-        assert.match(error.message, /Expected string \| undefined/)
+        assert.match(error.message, /Expected string \| null/)
         assert.match(error.message, /at \["signature"\]/)
         assert.lengthOf(reported, 1)
         assert.isTrue(Cause.hasFails(reported[0]))
