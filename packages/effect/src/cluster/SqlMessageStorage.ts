@@ -18,6 +18,13 @@
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
+ * On MySQL, `deleteProcessed` runs its own transaction at READ COMMITTED.
+ * Called inside a caller's transaction, it runs at that transaction's
+ * isolation level, which must also be READ COMMITTED on servers older than
+ * MySQL 8.0.20 and on MariaDB, or it can deadlock with a concurrent reply.
+ * READ COMMITTED needs `binlog_format` `ROW` or `MIXED`; with `STATEMENT`
+ * the server rejects the delete.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -25,6 +32,7 @@
 import * as Arr from "../Array.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
+import { identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -500,7 +508,8 @@ export const makeEncodedStorage: (options?: {
     // on, and can deadlock with, writes to unrelated requests. MySQL ignores
     // FORCE INDEX here and can choose a scan even for an IN list on the
     // primary key, so only an optimizer hint keeps it on the index. Servers
-    // without optimizer hints (before 8.0.20) read it as a comment.
+    // without optimizer hints (MySQL before 8.0.20, MariaDB) read it as a
+    // comment and rely on cleanupIsolation instead.
     mysql: () => (ids) =>
       Effect.andThen(
         sql`
@@ -518,6 +527,18 @@ export const makeEncodedStorage: (options?: {
         sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
       )
   })
+  // At MySQL's default REPEATABLE READ, a scanning DELETE keeps next-key locks
+  // on every row and gap it reads, so it can block a saveReply of another
+  // request that already holds its request row, and deadlock. READ COMMITTED
+  // takes no gap locks and releases rows that don't match, so the DELETE only
+  // waits. There is no fallback: with binlog_format STATEMENT the server
+  // rejects the DELETE, and the error is returned. A caller's transaction
+  // keeps its own isolation level.
+  const cleanupIsolation: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = sql
+    .onDialectOrElse({
+      mysql: () => Effect.provideService(SqlClient.BeginTransaction, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"),
+      orElse: () => identity
+    })
   // Locks up to limit eligible request rows, skipping rows another
   // transaction holds, such as a reset or a late acknowledgement. Waiting for
   // them can deadlock on gap locks in MySQL.
@@ -981,6 +1002,7 @@ export const makeEncodedStorage: (options?: {
         return rows.length
       },
       sql.withTransaction,
+      cleanupIsolation,
       Effect.provideService(SqlClient.SafeIntegers, true),
       PersistenceError.refail,
       withTracerDisabled

@@ -231,6 +231,13 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * before `completedBefore`, in Unix milliseconds. Requests without a final
    * reply, including ones reset by `clearReplies`, are kept. A request sent
    * again with the same primary key after deletion is saved as a new request.
+   *
+   * **Gotchas**
+   *
+   * SQL storage on MySQL deletes at READ COMMITTED. Inside a caller's
+   * transaction it keeps that transaction's isolation level, which must also be
+   * READ COMMITTED on MySQL before 8.0.20 and on MariaDB, or the delete can
+   * deadlock with a concurrent reply.
    */
   readonly deleteProcessed: (options: {
     readonly entityType: string

@@ -253,6 +253,15 @@ export declare namespace SqlClient {
      */
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
+    /**
+     * Starts a top-level transaction on the connection, given the
+     * `BeginTransaction` provided to it, if any. Overrides
+     * `beginTransaction`, for a database that needs more than one statement
+     * to start some transactions.
+     */
+    readonly begin?:
+      | ((conn: Connection.Connection, statement: string | undefined) => Effect.Effect<void, SqlError>)
+      | undefined
     readonly rollback?: string | undefined
     /** Commit SQL, or an effect that commits on the connection and checks the result. */
     readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
@@ -323,7 +332,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     spanAttributes: options.spanAttributes,
     acquireConnection: (restore) => restore(transactionAcquirer!),
     // Unlike the client's own, a provided statement isn't fixed, so it isn't prepared.
-    begin: (conn, statement) => statement === undefined ? control(conn, beginTransaction) : unprepared(conn, statement),
+    begin: options.begin ??
+      ((conn, statement) => statement === undefined ? control(conn, beginTransaction) : unprepared(conn, statement)),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => cleanup(conn, releaseSavepoint(`effect_sql_${id}`))
@@ -819,8 +829,10 @@ export const SafeIntegers = Context.Reference<boolean>("effect/sql/SqlClient/Saf
  * including in forked fibers, so provide it around the single
  * `withTransaction` it is meant for. `@effect/sql-libsql`, `@effect/sql-mssql`
  * and `@effect/sql-sqlite-do` don't start transactions with a SQL statement
- * and ignore it. The statement is sent as raw SQL, so never build it from
- * untrusted input.
+ * and ignore it. MySQL can't set an isolation level in `START TRANSACTION`,
+ * so `@effect/sql-mysql2` runs a statement starting with `SET TRANSACTION`
+ * before its `BEGIN` rather than in place of it. The statement is sent as raw
+ * SQL, so never build it from untrusted input.
  *
  * **Example** (Starting a serializable transaction)
  *

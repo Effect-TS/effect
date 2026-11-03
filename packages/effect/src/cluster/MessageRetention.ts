@@ -53,6 +53,9 @@ const batchSize = 1000
  *   replies to know what already ran.
  * - Like any singleton, include the layer on every runner that can be assigned
  *   `shardGroup`, so it keeps running when shards move.
+ * - With SQL storage on MySQL, cleanup runs at READ COMMITTED, which requires
+ *   `binlog_format` `ROW` or `MIXED`. With `STATEMENT` every cleanup fails
+ *   and is logged.
  *
  * **Example** (Forgetting a week-old request)
  *
