@@ -6366,6 +6366,17 @@ type TaggedUnionMatchOrElse<Cases extends Record<PropertyKey, Constraint>, Value
     orElse: OrElse & ((value: Exclude<Value, { readonly [K in Tag]: keyof Handlers }>) => any)
   ): (value: Value) => MatchOrElseResult<Handlers, OrElse>
 }
+// Accepts the union's tags, or a wide key type such as `ReadonlyArray<string>`.
+type TaggedUnionIsAnyOf<Valid, Tag extends PropertyKey, Value> = {
+  <const Keys extends Valid>(
+    keys: ReadonlyArray<Keys>
+  ): (value: Value) => value is Extract<Value, { readonly [K in Tag]: Keys }>
+  <const Keys>(
+    keys:
+      & ReadonlyArray<Keys>
+      & (string extends Keys ? unknown : number extends Keys ? unknown : symbol extends Keys ? unknown : never)
+  ): (value: Value) => value is Extract<Value, { readonly [K in Tag]: Keys }>
+}
 type TaggedUnionUtils<
   Tag extends PropertyKey,
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>,
@@ -6382,9 +6393,7 @@ type TaggedUnionUtils<
    */
   readonly discriminants: { readonly [I in keyof Flattened]: Flattened[I]["Type"][Tag] }
   readonly cases: Simplify<{ [M in Flattened[number] as M["Type"][Tag]]: M }>
-  readonly isAnyOf: <const Keys extends Members[number]["Type"][Tag]>(
-    keys: ReadonlyArray<Keys>
-  ) => (value: Members[number]["Type"]) => value is Extract<Members[number]["Type"], { readonly [K in Tag]: Keys }>
+  readonly isAnyOf: TaggedUnionIsAnyOf<Members[number]["Type"][Tag], Tag, Members[number]["Type"]>
   readonly guards: { [M in Flattened[number] as M["Type"][Tag]]: (u: unknown) => u is M["Type"] }
   readonly match: TaggedUnionMatch<
     { readonly [M in Flattened[number] as M["Type"][Tag]]: M },
@@ -6540,9 +6549,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "Iso": { [K in keyof Cases]: Cases[K]["Type"] }[keyof Cases]
   readonly tag: "_tag"
   readonly cases: Cases
-  readonly isAnyOf: <const Keys extends keyof Cases>(
-    keys: ReadonlyArray<Keys>
-  ) => (value: Cases[keyof Cases]["Type"]) => value is Extract<Cases[keyof Cases]["Type"], { _tag: Keys }>
+  readonly isAnyOf: TaggedUnionIsAnyOf<keyof Cases, "_tag", Cases[keyof Cases]["Type"]>
   readonly guards: { [K in keyof Cases]: (u: unknown) => u is Cases[K]["Type"] }
   readonly match: TaggedUnionMatch<Cases, Cases[keyof Cases]["Type"]>
   readonly matchOrElse: TaggedUnionMatchOrElse<Cases, Cases[keyof Cases]["Type"], "_tag">
