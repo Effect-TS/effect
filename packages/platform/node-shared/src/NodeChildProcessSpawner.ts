@@ -693,16 +693,15 @@ const make = Effect.gen(function*() {
           }
           yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
         })
-        // Input feeders are released concurrently with process termination,
-        // since either may wait on the other: Bun does not settle a destroyed,
-        // backpressured stdin while the child is alive, and a child may wait for
-        // stdin EOF before exiting.
-        const [childProcess, exitSignal, inputScope] = yield* Effect.acquireRelease(
-          Effect.map(
-            spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
-            ([childProcess, exitSignal]) => [childProcess, exitSignal, Scope.makeUnsafe()] as const
-          ),
-          ([childProcess, exitSignal, inputScope], exit) =>
+        // The input feeders run in a standalone scope, so a failed spawn leaves
+        // nothing behind in the caller's scope. It is closed concurrently with
+        // process termination, since either may wait on the other: Bun does not
+        // settle a destroyed, backpressured stdin while the child is alive, and
+        // a child may wait for stdin EOF before exiting.
+        const inputScope = Scope.makeUnsafe()
+        const [childProcess, exitSignal] = yield* Effect.acquireRelease(
+          spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
+          ([childProcess, exitSignal], exit) =>
             Effect.all([Scope.close(inputScope, exit), releaseProcess(childProcess, exitSignal)], {
               concurrency: "unbounded",
               discard: true
