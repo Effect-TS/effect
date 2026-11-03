@@ -220,6 +220,54 @@ describe("Union", () => {
 
         expect(schema.discriminants).type.toBe<readonly []>()
       })
+
+      describe("array members", () => {
+        const A = Schema.TaggedStruct("A", { a: Schema.String })
+        const B = Schema.TaggedStruct("B", { b: Schema.Number })
+        const C = Schema.TaggedStruct("C", { c: Schema.Boolean })
+
+        it("should keep every member of an array", () => {
+          const members = hole<ReadonlyArray<typeof A | typeof B>>()
+          const schema = Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+          expect(schema.discriminants).type.toBe<ReadonlyArray<"A" | "B">>()
+          expect(schema.cases).type.toBe<{ A: typeof A; B: typeof B }>()
+          expect(schema.guards).type.toBe<{
+            A: (u: unknown) => u is typeof A.Type
+            B: (u: unknown) => u is typeof B.Type
+          }>()
+          expect(schema.match(hole<typeof schema.Type>(), { A: (a) => a.a, B: (b) => b.b })).type.toBe<
+            string | number
+          >()
+          expect(schema.match).type.not.toBeCallableWith({ A: (a: typeof A.Type) => a.a })
+        })
+
+        it("should keep the rest of a non-empty array", () => {
+          const members = hole<Arr.NonEmptyReadonlyArray<typeof A | typeof B>>()
+          const schema = Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+          expect(schema.discriminants).type.toBe<
+            readonly ["A", ...Array<"A" | "B">] | readonly ["B", ...Array<"A" | "B">]
+          >()
+          expect(schema.cases).type.toBe<{ A: typeof A; B: typeof B }>()
+        })
+
+        it("should flatten nested unions in an array", () => {
+          const members = hole<ReadonlyArray<typeof A | Schema.Union<readonly [typeof B, typeof C]>>>()
+          const schema = Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+          expect(schema.discriminants).type.toBe<ReadonlyArray<"A" | "B" | "C">>()
+          expect(schema.cases).type.toBe<{ A: typeof A; B: typeof B; C: typeof C }>()
+        })
+
+        it("should keep the rest after the elements of a tuple", () => {
+          const members = hole<readonly [typeof A, ...Array<typeof B | typeof C>]>()
+          const schema = Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+          expect(schema.discriminants).type.toBe<readonly ["A", ...Array<"B" | "C">]>()
+          expect(schema.cases).type.toBe<{ A: typeof A; B: typeof B; C: typeof C }>()
+        })
+      })
     })
 
     describe("matching", () => {
