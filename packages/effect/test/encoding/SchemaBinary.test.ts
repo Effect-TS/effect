@@ -368,6 +368,29 @@ describe("SchemaBinary", () => {
       assert.deepStrictEqual(encodeEnvelope(envelope), expected)
       assert.deepStrictEqual(earlier, earlierBytes)
     })
+
+    it("reads large payloads when the encode call returns", () => {
+      const Message = Schema.Struct({
+        data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
+        n: Schema.Number.pipe(SchemaBinary.fieldId(2))
+      })
+      const data = new Uint8Array(20_000).fill(3)
+      // The getter runs after `data` has been visited.
+      const mutating = (payload: Uint8Array, value: number) => ({
+        data: payload,
+        get n() {
+          data[0] = value
+          return 1
+        }
+      })
+      const codec = SchemaBinary.toCodec(Message)
+      const bytes = Schema.encodeUnknownSync(codec)(mutating(data, 9))
+      assert.strictEqual(Schema.decodeUnknownSync(codec)(bytes).data[0], 9)
+
+      // A later frame of the same call still reaches an earlier frame's payload.
+      const batch = SchemaBinary.encoder(Message).encodeMany([{ data, n: 1 }, mutating(new Uint8Array(4), 5)])
+      assert.strictEqual(SchemaBinary.parser(Message).feedSync(batch)[0].data[0], 5)
+    })
   })
 
   describe("numbers", () => {
