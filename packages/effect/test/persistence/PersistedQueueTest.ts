@@ -173,8 +173,6 @@ export const suiteWith = <R>(
         const queue = yield* PersistedQueue.make({
           name: "test-queue-retry-schedule",
           schema: Item,
-          // MySQL truncates retry timestamps to whole seconds.
-          // Leave room for that truncation before the real-time assertion below.
           retrySchedule: Schedule.spaced("2 seconds")
         })
 

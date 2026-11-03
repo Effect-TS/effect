@@ -1532,23 +1532,19 @@ export const makeStoreSql: (
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
-  const secondsFromNow = (seconds: number) => {
-    const rounded = Math.max(Math.ceil(seconds), 0)
+  // Deadline for a delayed offer or retry, which must never land before the
+  // delay elapses. pg reads clock_timestamp() since NOW() is fixed at
+  // transaction start. mysql stores whole seconds from a clock that drops the
+  // fraction of the current second, so it gets a whole extra second to cover
+  // it. sqlite keeps the fraction, matching the take query's readiness check.
+  const visibleAfter = (delay: Duration.Duration) => {
+    const seconds = Math.max(Math.ceil(Duration.toSeconds(delay)), 0)
+    const s = sql.literal(seconds.toString())
     return sql.onDialectOrElse({
-      sqlite: () => sql`strftime('%Y-%m-%d %H:%M:%f', 'now', '${sql.literal(rounded.toString())} seconds')`,
-      orElse: () => secondsOffset(rounded)
-    })
-  }
-  // Deadline for a delayed offer, which must never land before the delay
-  // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
-  // start. mysql and sqlite clocks drop the fraction of the current second, so
-  // they get a whole extra second to cover it.
-  const delayedVisibleAt = (delay: Duration.Duration) => {
-    const seconds = Math.ceil(Duration.toSeconds(delay))
-    return sql.onDialectOrElse({
-      pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
+      pg: () => sql`clock_timestamp() + INTERVAL '${s} seconds'`,
+      mysql: () => secondsOffset(seconds + 1),
       mssql: () => secondsOffset(seconds),
-      orElse: () => secondsOffset(seconds + 1)
+      orElse: () => sql`strftime('%Y-%m-%d %H:%M:%f', 'now', '${s} seconds')`
     })
   }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
@@ -1674,9 +1670,8 @@ export const makeStoreSql: (
     ack(
       sql`
         UPDATE ${tableNameSql}
-        SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
-        secondsFromNow(Duration.toSeconds(delay))
-      }, last_failure = ${Cause.pretty(cause)}
+        SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${visibleAfter(delay)},
+          last_failure = ${Cause.pretty(cause)}
         WHERE sequence = ${element.sequence}
         AND acquired_by = ${stringLiteral(element.lock)}
       `,
@@ -1934,7 +1929,7 @@ export const makeStoreSql: (
             id,
             name,
             JSON.stringify(element),
-            delay === undefined ? sqlNow : delayedVisibleAt(delay)
+            delay === undefined ? sqlNow : visibleAfter(delay)
           )
         ),
         (cause) =>

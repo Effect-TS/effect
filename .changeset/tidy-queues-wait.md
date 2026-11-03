@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix SQLite-backed `PersistedQueue` jobs retrying before their scheduled delay has elapsed.
+Fix SQL-backed `PersistedQueue` jobs retrying up to a second early on SQLite and MySQL, and remove an extra second of delay from delayed offers on SQLite.
