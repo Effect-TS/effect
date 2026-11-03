@@ -64,6 +64,15 @@ describe("Only", () => {
     expect(Context.get).type.not.toBeCallableWith(sliceContext, FileSystem)
   })
 
+  it("displays a missing slice by name, including slices derived from the accessor", () => {
+    const program = Effect.flatMap(FileSystem.only("readFile", "writeFile"), ({ readFile }) => readFile("a.txt"))
+
+    // @ts-expect-error Only<FileSystem, "readFile">
+    const displayed: never = program.pipe(Effect.provide(writeFile))
+
+    void displayed
+  })
+
   it("distributes over a union of member names", () => {
     expect<Context.Only<FileSystem, "readFile" | "writeFile">>().type.toBe<ReadFile | WriteFile>()
   })

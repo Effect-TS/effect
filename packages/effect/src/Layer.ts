@@ -1082,6 +1082,114 @@ const effectImpl = <I, S, E, R>(
   effectContext(internalEffect.map(effect, (value) => Context.make(service, value)))
 
 /**
+ * Constructs a layer that provides a single member of a service from an
+ * already available implementation.
+ *
+ * **When to use**
+ *
+ * Use when each member of a large service lives in its own module, so a
+ * composition root can import and provide only the members a program
+ * requires and bundlers can drop the rest.
+ *
+ * **Details**
+ *
+ * The layer's output is `Context.Only<I, K>`, which satisfies programs that
+ * access the member through `Service.only` but not programs that yield the
+ * whole service. Provided on top of a full service, the slice overrides that
+ * member.
+ *
+ * **Example** (Providing one member of a service)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * class FileSystem extends Context.Service<FileSystem, {
+ *   readonly readFile: (path: string) => Effect.Effect<string>
+ *   readonly writeFile: (path: string, data: string) => Effect.Effect<void>
+ * }>()("FileSystem") {}
+ *
+ * // Typically each of these lives in its own module
+ * const readFileLayer = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`))
+ *
+ * const program = Effect.flatMap(FileSystem.only("readFile"), ({ readFile }) => readFile("a.txt"))
+ * Effect.runSync(Effect.provide(program, readFileLayer)) // => "contents of a.txt"
+ * ```
+ *
+ * @see {@link effectOnly} for constructing a member with an effect
+ * @see {@link succeed} for providing the whole service
+ *
+ * @stability stable
+ * @category constructors
+ * @since 4.2.0
+ */
+export const succeedOnly = <I, S, const K extends keyof S>(
+  service: Context.Key<I, S>,
+  member: K,
+  implementation: Types.NoInfer<S[K]>
+): Layer<Context.Only<I, K>> => succeedContext(onlyContext(service, member, implementation))
+
+/**
+ * Constructs a layer that provides a single member of a service from an effect
+ * that produces its implementation.
+ *
+ * **When to use**
+ *
+ * Use when a member needs shared state such as a connection pool, a scoped
+ * resource, or sibling members of the same service accessed through
+ * `Service.only`.
+ *
+ * **Details**
+ *
+ * The effect runs in the scope of the layer, and its requirements become the
+ * layer's requirements. Depending on a sibling through `Service.only` keeps
+ * the requirement at `Context.Only<I, "sibling">` rather than the whole
+ * service.
+ *
+ * **Example** (Implementing a member with a sibling member)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * class FileSystem extends Context.Service<FileSystem, {
+ *   readonly readFile: (path: string) => Effect.Effect<string>
+ *   readonly size: (path: string) => Effect.Effect<number>
+ * }>()("FileSystem") {}
+ *
+ * const readFileLayer = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`))
+ *
+ * // size requires Only<FileSystem, "readFile">, not the whole FileSystem
+ * const sizeLayer = Layer.effectOnly(
+ *   FileSystem,
+ *   "size",
+ *   Effect.map(FileSystem.only("readFile"), ({ readFile }) => (path) => Effect.map(readFile(path), (s) => s.length))
+ * )
+ *
+ * const program = Effect.flatMap(FileSystem.only("size"), ({ size }) => size("a.txt"))
+ * Effect.runSync(Effect.provide(program, Layer.provide(sizeLayer, readFileLayer))) // => 17
+ * ```
+ *
+ * @see {@link succeedOnly} for providing a member from a value
+ * @see {@link effect} for providing the whole service
+ *
+ * @stability stable
+ * @category constructors
+ * @since 4.2.0
+ */
+export const effectOnly = <I, S, const K extends keyof S, E, R>(
+  service: Context.Key<I, S>,
+  member: K,
+  effect: Effect<Types.NoInfer<S[K]>, E, R>
+): Layer<Context.Only<I, K>, E, Exclude<R, Scope.Scope>> =>
+  effectContext(internalEffect.map(effect, (value) => onlyContext(service, member, value)))
+
+const onlyContext = <I, S, K extends keyof S>(
+  service: Context.Key<I, S>,
+  member: K,
+  implementation: unknown
+): Context.Context<Context.Only<I, K>> =>
+  Context.makeUnsafe(new Map([[Context.onlyKey(service, member), implementation]]))
+
+/**
  * Constructs a layer from an effect that produces all services in a `Context`.
  *
  * **When to use**

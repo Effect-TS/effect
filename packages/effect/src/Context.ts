@@ -105,6 +105,48 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
   context(self: Shape): Context<Identifier>
   use<A, E, R>(f: (service: Shape) => Effect<A, E, R>): Effect<A, E, R | Identifier>
   useSync<A>(f: (service: Shape) => A): Effect<A, never, Identifier>
+  /**
+   * Accesses one or more members of the service, requiring only the matching
+   * `Only` slices instead of the whole service.
+   *
+   * **Details**
+   *
+   * Each member is read from its slice when one is provided, and falls back to
+   * the full service otherwise. A slice provided on top of the full service
+   * wins, so a single member can be mocked or overridden without replacing the
+   * service.
+   *
+   * **Example** (Requiring two members of a service)
+   *
+   * ```ts import.meta.vitest
+   * import { Context, Effect, Layer } from "effect"
+   *
+   * class FileSystem extends Context.Service<FileSystem, {
+   *   readonly readFile: (path: string) => Effect.Effect<string>
+   *   readonly writeFile: (path: string, data: string) => Effect.Effect<void>
+   *   readonly remove: (path: string) => Effect.Effect<void>
+   * }>()("FileSystem") {}
+   *
+   * // The program requires Only<FileSystem, "readFile"> | Only<FileSystem, "writeFile">
+   * const copy = Effect.gen(function*() {
+   *   const { readFile, writeFile } = yield* FileSystem.only("readFile", "writeFile")
+   *   const data = yield* readFile("a.txt")
+   *   yield* writeFile("b.txt", data)
+   *   return data
+   * })
+   *
+   * const layer = Layer.merge(
+   *   Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`)),
+   *   Layer.succeedOnly(FileSystem, "writeFile", () => Effect.void)
+   * )
+   * Effect.runSync(Effect.provide(copy, layer)) // => "contents of a.txt"
+   * ```
+   *
+   * @since 4.2.0
+   */
+  only<const K extends keyof Shape>(
+    ...members: ReadonlyArray<K>
+  ): Effect<Pick<Shape, K>, never, K extends any ? Only<Identifier, K> : never>
 }
 
 /**
@@ -302,6 +344,9 @@ const ServiceProto: any = {
   },
   useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
     return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
+  },
+  only(this: Service<never, any>, ...members: Array<PropertyKey>): Effect<any, never, never> {
+    return withFiber((fiber) => exitSucceed(getOnlyUnsafe(fiber.context, this, members)))
   }
 }
 
@@ -442,6 +487,134 @@ export declare namespace Service {
    * @since 2.0.0
    */
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
+}
+
+/**
+ * String literal type used as the runtime type identifier for `Only` service
+ * slices.
+ *
+ * @stability stable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export type OnlyTypeId = "~effect/Context/Only"
+
+/**
+ * Runtime type identifier that brands an `Only` service slice with the member
+ * it covers.
+ *
+ * @stability stable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export const OnlyTypeId: OnlyTypeId = "~effect/Context/Only"
+
+/**
+ * Brand that narrows a service identifier to a single member in an `Only`
+ * slice.
+ *
+ * **Details**
+ *
+ * `Only<S, K>` is `S & OnlyMember<K>`, so this is the type TypeScript shows
+ * when it expands a slice, for example `FileSystem & OnlyMember<"readFile">`.
+ *
+ * @see {@link Only} for the slice type this brand belongs to
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface OnlyMember<in out K extends PropertyKey> {
+  readonly [OnlyTypeId]: {
+    readonly member: K
+  }
+}
+
+/**
+ * Requirement for a single member `K` of the service identified by `S`.
+ *
+ * **When to use**
+ *
+ * Use as the `R` type of a program that calls one or two members of a large
+ * service, and as the output of a layer that implements just that member, so
+ * the composition root only imports the implementations the program needs and
+ * the rest can be tree-shaken.
+ *
+ * **Details**
+ *
+ * An `Only<S, K>` slice is a subtype of the full identifier `S`, so the
+ * existing variance of `Effect`, `Layer`, and `Context` gives the following
+ * rules with no special cases:
+ *
+ * - Providing the full service `S` satisfies every `Only<S, K>`.
+ * - A layer for `Only<S, K>` satisfies only that slice, never the whole `S`.
+ * - `Only<S, "a" | "b">` is `Only<S, "a"> | Only<S, "b">`.
+ *
+ * At runtime each slice lives under its own context key. A slice lookup reads
+ * the slice first and falls back to the member of the full service, so a slice
+ * provided on top of the full service overrides that member.
+ *
+ * **Gotchas**
+ *
+ * Yielding the whole service key anywhere in a program requires the full `S`;
+ * use `Service.only` to depend on individual members.
+ *
+ * **Example** (Typing a program and a layer against a single member)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * class FileSystem extends Context.Service<FileSystem, {
+ *   readonly readFile: (path: string) => Effect.Effect<string>
+ *   readonly writeFile: (path: string, data: string) => Effect.Effect<void>
+ * }>()("FileSystem") {}
+ *
+ * // Only the writeFile member is required, so a writeFile slice layer is enough
+ * const program: Effect.Effect<void, never, Context.Only<FileSystem, "writeFile">> =
+ *   Effect.flatMap(FileSystem.only("writeFile"), ({ writeFile }) => writeFile("out.txt", "hello"))
+ *
+ * const writeFileLayer: Layer.Layer<Context.Only<FileSystem, "writeFile">> =
+ *   Layer.succeedOnly(FileSystem, "writeFile", () => Effect.void)
+ *
+ * const runnable: Effect.Effect<void> = Effect.provide(program, writeFileLayer)
+ * ```
+ *
+ * @see {@link OnlyMember} for the brand applied to the identifier
+ *
+ * @stability stable
+ * @category utility types
+ * @since 4.2.0
+ */
+export type Only<S, K extends PropertyKey> = S & (K extends any ? OnlyMember<K> : never)
+
+/** @internal */
+export const onlyKey = (service: Key<any, any>, member: PropertyKey): string => `${service.key}#${String(member)}`
+
+/** @internal */
+export const getOnlyUnsafe = <Services>(
+  self: Context<Services>,
+  service: Key<any, any>,
+  members: ReadonlyArray<PropertyKey>
+): Record<PropertyKey, unknown> => {
+  const result: Record<PropertyKey, unknown> = {}
+  let full: any = notFound
+  for (const member of members) {
+    const key = onlyKey(service, member)
+    const value = lookup(self, key)
+    if (value !== notFound) {
+      result[member] = value
+      continue
+    }
+    if (full === notFound) {
+      full = lookup(self, service.key)
+      if (full === notFound) {
+        if (!isReference(service)) throw serviceNotFoundError(key)
+        full = getDefaultValue(service)
+      }
+    }
+    result[member] = full[member]
+  }
+  return result
 }
 
 const TypeId = "~effect/Context" as const
@@ -1043,7 +1216,7 @@ export const getUnsafe: {
     const value = lookup(self, service.key)
     if (value === notFound) {
       if (isReference(service)) return getDefaultValue(service as any)
-      throw serviceNotFoundError(service)
+      throw serviceNotFoundError(service.key)
     }
     return value as any
   }
@@ -1095,9 +1268,9 @@ const getDefaultValue = (ref: Reference<any>) => {
   return (ref as any)[defaultValueCacheKey] = ref.defaultValue()
 }
 
-const serviceNotFoundError = (service: Key<any, any>) => {
+const serviceNotFoundError = (key: string) => {
   const error = new Error(
-    `Service not found${service.key ? `: ${String(service.key)}` : ""}`
+    `Service not found${key ? `: ${key}` : ""}`
   )
   if (error.stack) {
     const lines = error.stack.split("\n")
