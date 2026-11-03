@@ -154,6 +154,13 @@ describe("Arbitrary.commands", () => {
         "register",
         "list"
       ])
+      // Shrinking keeps the id each reference had at its position in the generated sequence.
+      const ids = result.shrunkInput.steps.map((step) => step.reference.id)
+      assert.isTrue(ids.some((id, index) => id !== index))
+      assert.deepStrictEqual(
+        ids.map((id) => result.initialInput.steps[id].reference),
+        result.shrunkInput.steps.map((step) => step.reference)
+      )
     }))
 
   it.effect("checks results with Exit-based postconditions and invariants", () =>

@@ -74,6 +74,19 @@ describe("Arbitrary", () => {
     })
     expect(read).type.toBe<Arbitrary.Command<Model, undefined, number, never, "c" | "d">>()
 
+    // Callbacks must accept every generated argument.
+    expect(Arbitrary.command).type.not.toBeCallableWith({
+      name: "use",
+      args: (_: number) => hole<Arbitrary.Arbitrary<string | number>>(),
+      run: (_value: string) => hole<Effect.Effect<string>>()
+    })
+    // Arguments other than `undefined` need a generator.
+    expect(Arbitrary.command).type.not.toBeCallableWith({
+      name: "number",
+      next: (model: number, value: number) => model + value,
+      run: (_value: number) => hole<Effect.Effect<string>>()
+    })
+
     const commands = Arbitrary.commands({
       initial: [] as Model,
       commands: [open, deposit],
