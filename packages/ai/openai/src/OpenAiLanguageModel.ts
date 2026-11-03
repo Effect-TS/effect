@@ -2145,7 +2145,7 @@ const makeStreamResponse = Effect.fnUntraced(
               case "shell_call": {
                 const toolName = toolNameMapper.getCustomName("shell")
                 activeToolCalls[event.output_index] = {
-                  id: event.item.id ?? event.item.call_id,
+                  id: event.item.call_id,
                   name: toolName
                 }
                 break
@@ -2466,7 +2466,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 const toolName = toolNameMapper.getCustomName("shell")
                 parts.push({
                   type: "tool-call",
-                  id: event.item.id ?? event.item.call_id,
+                  id: event.item.call_id,
                   name: toolName,
                   params: { action: event.item.action },
                   metadata: { openai: makeItemIdMetadata(event.item.id) }

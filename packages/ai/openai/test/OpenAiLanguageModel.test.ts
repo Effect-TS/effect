@@ -2,7 +2,7 @@ import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAi
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
-import { AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
+import { AiError, Chat, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const webSearchFailures = [
@@ -2109,6 +2109,79 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("preserves streamed shell call IDs in stored Chat history", () =>
+      Effect.gen(function*() {
+        const item = {
+          type: "shell_call",
+          id: "shell_item_123",
+          call_id: "call_shell_456",
+          status: "completed",
+          environment: null,
+          action: { commands: ["fixture-only-never-execute"], timeout_ms: null, max_output_length: null }
+        } as const
+        const events = [
+          {
+            type: "response.output_item.added",
+            sequence_number: 1,
+            output_index: 0,
+            item: { ...item, status: "in_progress" }
+          },
+          { type: "response.output_item.done", sequence_number: 2, output_index: 0, item },
+          { type: "response.completed", sequence_number: 3, response: makeDefaultResponse({ output: [item] }) }
+        ]
+        const requests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
+        const client = HttpClient.make(Effect.fnUntraced(function*(request) {
+          const captured = yield* Ref.updateAndGet(requests, Array.append(request))
+          const streaming = captured.length === 1
+          return HttpClientResponse.fromWeb(
+            request,
+            new Response(
+              streaming
+                ? events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
+                : JSON.stringify(makeDefaultResponse()),
+              { headers: { "content-type": streaming ? "text/event-stream" : "application/json" } }
+            )
+          )
+        }))
+        const toolkit = Toolkit.make(OpenAiTool.Shell({}))
+        const parts = yield* Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          const parts = yield* chat.streamText({ prompt: "Use the fixture tool", toolkit }).pipe(Stream.runCollect)
+          yield* chat.generateText({ prompt: "Continue", toolkit })
+          return parts
+        }).pipe(
+          Effect.provide(toolkit.toLayer({
+            OpenAiShell: () =>
+              Effect.succeed({
+                output: [{ stdout: "fixture", stderr: "", outcome: { type: "exit", exit_code: 0 } }]
+              })
+          })),
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+        const captured = yield* Ref.get(requests)
+        const body = yield* Schema.decodeUnknownEffect(Schema.Struct({
+          input: Schema.Array(Schema.Record(Schema.String, Schema.Unknown))
+        }))(yield* getRequestBody(captured[1]))
+        const call = parts.find((part) => part.type === "tool-call")
+        const result = parts.find((part) => part.type === "tool-result")
+
+        deepStrictEqual({
+          callId: call?.id,
+          itemId: call?.metadata.openai?.itemId,
+          resultId: result?.id,
+          reference: body.input.find((part) => part.type === "item_reference"),
+          outputCallId: body.input.find((part) => part.type === "shell_call_output")?.call_id
+        }, {
+          callId: item.call_id,
+          itemId: item.id,
+          resultId: item.call_id,
+          reference: { type: "item_reference", id: item.id },
+          outputCallId: item.call_id
+        })
+      }))
+
     it.effect.each(
       [
         {
