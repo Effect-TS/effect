@@ -454,7 +454,13 @@ export class OtelSpan implements Tracer.Span {
     )
     const spanContext = this.span.spanContext()
     // Lets detached copies of this span keep its exact OpenTelemetry context.
-    this.annotations = Context.add(options.annotations, OtelParentSpanContext, spanContext)
+    // The SDK result replaces any requested trace flags or state.
+    let annotations = Context.add(options.annotations, OtelParentSpanContext, spanContext)
+    if (overridesTraceContext(annotations)) {
+      annotations = Context.add(annotations, OtelTraceFlags, spanContext.traceFlags)
+      annotations = Context.add(annotations, OtelTraceState, spanContext.traceState!)
+    }
+    this.annotations = annotations
     this.spanId = spanContext.spanId
     this.traceId = spanContext.traceId
     this.status = {
