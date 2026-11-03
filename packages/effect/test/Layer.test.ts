@@ -832,6 +832,52 @@ describe("Layer", () => {
         assert.strictEqual(Context.get(context, SpanId), parent.spanId)
       }))
   })
+
+  describe("slices", () => {
+    interface FileSystemShape {
+      readonly readFile: (path: string) => Effect.Effect<string>
+      readonly writeFile: (path: string, data: string) => Effect.Effect<void>
+    }
+    class FileSystem extends Context.Service<FileSystem, FileSystemShape>()("FileSystem") {}
+    const full = Layer.succeed(FileSystem, {
+      readFile: (path) => Effect.succeed(`full:${path}`),
+      writeFile: () => Effect.void
+    })
+    const readA = Effect.gen(function*() {
+      const { readFile } = yield* FileSystem.only("readFile")
+      return yield* readFile("a.txt")
+    })
+
+    it.effect("a slice falls back to the full service", () =>
+      Effect.gen(function*() {
+        assert.strictEqual(yield* readA.pipe(Effect.provide(full)), "full:a.txt")
+      }))
+
+    it.effect("a slice provided on top of the full service wins", () =>
+      Effect.gen(function*() {
+        const mock = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`mock:${path}`))
+        assert.strictEqual(yield* readA.pipe(Effect.provide(mock), Effect.provide(full)), "mock:a.txt")
+      }))
+
+    it.effect("merged slice layers satisfy a program without the full service", () =>
+      Effect.gen(function*() {
+        const writes: Array<string> = []
+        const readFile = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`slice:${path}`))
+        const writeFile = Layer.effectOnly(
+          FileSystem,
+          "writeFile",
+          Effect.succeed((path: string, data: string) => Effect.sync(() => void writes.push(`${path}=${data}`)))
+        )
+        const result = yield* Effect.gen(function*() {
+          const fs = yield* FileSystem.only("readFile", "writeFile")
+          const content = yield* fs.readFile("a.txt")
+          yield* fs.writeFile("b.txt", content)
+          return content
+        }).pipe(Effect.provide(Layer.merge(readFile, writeFile)))
+        assert.strictEqual(result, "slice:a.txt")
+        assert.deepStrictEqual(writes, ["b.txt=slice:a.txt"])
+      }))
+  })
 })
 
 const acquire1 = "Acquiring Module 1"
