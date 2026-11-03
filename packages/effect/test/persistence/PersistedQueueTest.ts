@@ -419,6 +419,99 @@ export const suiteWith = <R>(
         yield* assertNotDelivered(fiber)
       }), testOptions)
 
+    it.effect("untilExecuted coalesces an id until its element completes", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-until-executed-completed",
+          schema: Item
+        })
+        const id = "until-executed-completed-id"
+        const offerOptions = { id, deduplicate: "untilExecuted" } as const
+
+        // offers are coalesced while the element is pending and processing
+        yield* queue.offer({ n: 1n }, offerOptions)
+        yield* queue.offer({ n: 2n }, offerOptions)
+        const taken = Latch.makeUnsafe()
+        const release = Latch.makeUnsafe()
+        const first = yield* queue.take((value) => Effect.as(Effect.andThen(taken.open, release.await), value)).pipe(
+          Effect.forkScoped
+        )
+        yield* taken.await
+        yield* queue.offer({ n: 3n }, offerOptions)
+        yield* release.open
+        assert.deepStrictEqual(yield* Fiber.join(first), { n: 1n })
+        const next = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(next)
+
+        // once completed the id is released, and the re-offer queues behind
+        // work offered before it
+        yield* queue.offer({ n: 4n })
+        yield* queue.offer({ n: 5n }, offerOptions)
+        assert.deepStrictEqual(yield* awaitDelivery(next), { n: 4n })
+        const reoffered = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        assert.deepStrictEqual(yield* awaitDelivery(reoffered), { n: 5n })
+      }), testOptions)
+
+    it.effect("untilExecuted releases the id of a failed element", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-until-executed-failed",
+          schema: Item,
+          maxAttempts: 1
+        })
+        const id = "until-executed-failed-id"
+        const offerOptions = { id, deduplicate: "untilExecuted" } as const
+
+        yield* queue.offer({ n: 1n }, offerOptions)
+        const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+        assert.strictEqual(error, "boom")
+
+        // the re-offer is new work and honours its own delay
+        yield* queue.offer({ n: 2n }, { ...offerOptions, delay: "3 seconds" })
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber)
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 2n })
+      }), testOptions)
+
+    it.effect(
+      "untilExecuted keeps an id reserved when cleanup expires an earlier failure",
+      () =>
+        Effect.gen(function*() {
+          const store = yield* PersistedQueue.PersistedQueueStore
+          const queue = yield* PersistedQueue.make({
+            name: "test-queue-until-executed-cleanup",
+            schema: Item,
+            maxAttempts: 1
+          })
+          const id = "until-executed-cleanup-id"
+          const offerOptions = { id, deduplicate: "untilExecuted" } as const
+          const fail = queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+          const cleanupFailed = store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
+
+          // two elements with the same id fail, and cleanup expires only the first
+          yield* queue.offer({ n: 1n }, offerOptions)
+          yield* fail
+          yield* advancePastTtl
+          yield* queue.offer({ n: 2n }, offerOptions)
+          yield* fail
+          yield* cleanupFailed
+
+          // the second failure is retained, so a default-mode offer is ignored
+          yield* queue.offer({ n: 9n }, { id })
+
+          // expiring the second failure must not release the pending element
+          yield* queue.offer({ n: 3n }, offerOptions)
+          yield* advancePastTtl
+          yield* cleanupFailed
+          yield* queue.offer({ n: 4n }, offerOptions)
+
+          assert.deepStrictEqual(yield* queue.take(Effect.succeed), { n: 3n })
+          const duplicate = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+          yield* assertNotDelivered(duplicate)
+        }),
+      testOptions
+    )
+
     it.effect("processes concurrent elements exactly once with retries", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({

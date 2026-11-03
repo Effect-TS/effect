@@ -103,6 +103,48 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
       }).pipe(TestClock.withLive), { timeout: 30000 })
   })
 
+  testApi.layer(Layer.empty, { concurrent: false, timeout: "90 seconds" })("PersistedQueue SQL offers", (it) => {
+    it.effect(
+      "untilExecuted offers of the same new id from concurrent transactions succeed",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const queue = yield* makeQueue("effect_queue_until_executed_transactions")
+
+          // each round's id is new, so both transactions find no row for it
+          for (let round = 0; round < 10; round++) {
+            yield* Effect.all(
+              [1, 2].map((n) =>
+                queue.offer(`offer-${n}`, { id: `job-${round}`, deduplicate: "untilExecuted" }).pipe(
+                  sql.withTransaction
+                )
+              ),
+              { concurrency: "unbounded", discard: true }
+            )
+          }
+        }).pipe(TestClock.withLive),
+      { timeout: 30000 }
+    )
+
+    it.effect("an untilExecuted re-offer is atomic with concurrent default offers", () =>
+      Effect.gen(function*() {
+        const queue = yield* makeQueue("effect_queue_until_executed_mixed")
+        const id = "mixed-id"
+        yield* queue.offer("first", { id })
+        yield* queue.take(Effect.succeed)
+
+        // default offers either see the completed element or the re-offer, so
+        // none of them is stored
+        const reoffer = yield* queue.offer("reoffer", { id, deduplicate: "untilExecuted" }).pipe(Effect.forkChild)
+        while (reoffer.pollUnsafe() === undefined) {
+          yield* queue.offer("retry", { id })
+        }
+        yield* Fiber.join(reoffer)
+
+        assert.strictEqual(yield* queue.take(Effect.succeed), "reoffer")
+      }).pipe(TestClock.withLive), { timeout: 30000 })
+  })
+
   testApi.layer(Layer.empty, { concurrent: false, timeout: "90 seconds" })("PersistedQueue SQL claims", (it) => {
     const makeOwnershipQueue = Effect.fnUntraced(function*(tableName: string) {
       const store = yield* PersistedQueue.makeStoreSql({
