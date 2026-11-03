@@ -1188,7 +1188,20 @@ export const hasProperty: {
  *
  * **Details**
  *
- * Uses `hasProperty` and strict equality on `_tag`.
+ * Uses `hasProperty` and strict equality on `_tag`. The guard narrows with
+ * {@link NarrowTagged}: on a typed union the true branch keeps the full
+ * matching members and the false branch keeps the rest. The curried form picks
+ * up the input type from its call site, such as `Array.filter` or
+ * `Option.filter`. For untyped inputs such as `unknown` the guard narrows to
+ * `{ _tag: K }`.
+ *
+ * **Gotchas**
+ *
+ * - Any string tag is accepted, so a misspelled tag still compiles and narrows
+ *   the true branch to `never`.
+ * - A curried guard stored in a variable, such as
+ *   `const isOk = Predicate.isTagged("Ok")`, has no input type and narrows to
+ *   `{ _tag: "Ok" }`.
  *
  * **Example** (Guarding tagged values)
  *
@@ -1200,18 +1213,136 @@ export const hasProperty: {
  * isOk({ _tag: "Ok", value: 1 }) // => true
  * ```
  *
+ * **Example** (Filtering a tagged union)
+ *
+ * ```ts import.meta.vitest
+ * import { Array, Predicate } from "effect"
+ *
+ * type Size =
+ *   | { readonly _tag: "Auto" }
+ *   | { readonly _tag: "Px"; readonly value: number }
+ *
+ * const sizes: ReadonlyArray<Size> = [{ _tag: "Auto" }, { _tag: "Px", value: 8 }]
+ *
+ * // The result keeps `value` from the `Px` member
+ * Array.filter(sizes, Predicate.isTagged("Px")).map((size) => size.value) // => [8]
+ * ```
+ *
  * @see {@link hasProperty}
+ * @see {@link NarrowTagged}
  * @stability stable
  * @category guards
  * @since 2.0.0
  */
 export const isTagged: {
-  <K extends string>(tag: K): (self: unknown) => self is { _tag: K }
-  <K extends string>(self: unknown, tag: K): self is { _tag: K }
+  <K extends string, T = unknown>(tag: K): (self: T) => self is NarrowTagged<T, K>
+  <T, K extends string>(self: T, tag: K): self is NarrowTagged<T, K>
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
+
+/**
+ * The type that {@link isTagged} narrows a value of type `T` to when its
+ * `_tag` equals `K`.
+ *
+ * **When to use**
+ *
+ * Use to name the result of `isTagged` in your own guards or generic helpers.
+ *
+ * **Details**
+ *
+ * - Members of `T` whose `_tag` is `K` are kept whole.
+ * - Members whose `_tag` is a wider string type are kept and intersected with
+ *   `{ _tag: K }`.
+ * - Other members are dropped when at least one member matches.
+ * - When no member has a matching `_tag`, the result is `T & { _tag: K }`,
+ *   so `unknown`, `object`, and `Error` inputs keep narrowing as before.
+ * - An `any` input gives `{ _tag: K }`.
+ *
+ * **Example** (Naming a narrowed member)
+ *
+ * ```ts import.meta.vitest
+ * import type { Predicate } from "effect"
+ *
+ * type Size =
+ *   | { readonly _tag: "Auto" }
+ *   | { readonly _tag: "Px"; readonly value: number }
+ *
+ * // { readonly _tag: "Px"; readonly value: number }
+ * type Px = Predicate.NarrowTagged<Size, "Px">
+ * ```
+ *
+ * @see {@link isTagged}
+ * @stability stable
+ * @category utility types
+ * @since 4.2.0
+ */
+export type NarrowTagged<T, K extends string> = Extract<NarrowTagged.Members<T, K>, T>
+
+/**
+ * Helper types behind {@link NarrowTagged}.
+ *
+ * **When to use**
+ *
+ * Use when a declaration file needs to name the unresolved narrowed type of a
+ * generic {@link isTagged} call.
+ *
+ * **Details**
+ *
+ * These utilities are type-only, create no runtime values, and the namespace is
+ * erased at runtime.
+ *
+ * @see {@link NarrowTagged}
+ * @stability stable
+ * @since 4.2.0
+ */
+export declare namespace NarrowTagged {
+  /**
+   * Selects the candidate members of `T` for the tag `K` before they are
+   * checked against `T`.
+   *
+   * **When to use**
+   *
+   * Use when you need the candidate members on their own; most code should use
+   * {@link NarrowTagged}.
+   *
+   * **Details**
+   *
+   * Returns `{ _tag: K }` for `any`, the matching members when there are any,
+   * and `T & { _tag: K }` otherwise.
+   *
+   * @see {@link NarrowTagged.Member}
+   * @category utility types
+   * @since 4.2.0
+   */
+  export type Members<T, K extends string> = [T] extends [infer U] ? 0 extends 1 & U ? { _tag: K }
+    : [Member<U, K>] extends [never] ? U & { _tag: K }
+    : Member<U, K>
+    : never
+
+  /**
+   * Keeps the members of `T` whose `_tag` can equal `K`.
+   *
+   * **When to use**
+   *
+   * Use when you need the matching members of a union without the fallback
+   * applied by {@link NarrowTagged.Members}.
+   *
+   * **Details**
+   *
+   * A member whose `_tag` is `K` is kept as is. A member whose `_tag` is a
+   * wider string type is intersected with `{ _tag: K }`. Every other member,
+   * including members without a `_tag`, becomes `never`.
+   *
+   * @see {@link NarrowTagged.Members}
+   * @category utility types
+   * @since 4.2.0
+   */
+  export type Member<T, K extends string> = T extends { readonly _tag: K } ? T
+    : T extends { readonly _tag: infer Tag extends string } ? K extends Tag ? T & { _tag: K } : never
+    : never
+}
 
 /**
  * Checks whether a value is an `Error`.
