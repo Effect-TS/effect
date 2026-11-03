@@ -144,7 +144,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    *
    * @since 4.2.0
    */
-  only<const K extends keyof Shape>(
+  only<const K extends keyof Shape & string>(
     ...members: ReadonlyArray<K>
   ): Effect<Pick<Shape, K>, never, K extends any ? Only<Identifier, K> : never>
 }
@@ -345,7 +345,7 @@ const ServiceProto: any = {
   useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
     return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
   },
-  only(this: Service<never, any>, ...members: Array<PropertyKey>): Effect<any, never, never> {
+  only(this: Service<never, any>, ...members: Array<string>): Effect<any, never, never> {
     return withFiber((fiber) => exitSucceed(getOnlyUnsafe(fiber.context, this, members)))
   }
 }
@@ -490,47 +490,6 @@ export declare namespace Service {
 }
 
 /**
- * String literal type used as the runtime type identifier for `Only` service
- * slices.
- *
- * @stability stable
- * @category type IDs
- * @since 4.2.0
- */
-export type OnlyTypeId = "~effect/Context/Only"
-
-/**
- * Runtime type identifier that brands an `Only` service slice with the member
- * it covers.
- *
- * @stability stable
- * @category type IDs
- * @since 4.2.0
- */
-export const OnlyTypeId: OnlyTypeId = "~effect/Context/Only"
-
-/**
- * Brand that narrows a service identifier to a single member in an `Only`
- * slice.
- *
- * **Details**
- *
- * `Only<S, K>` is `S & OnlyMember<K>`, so this is the type TypeScript shows
- * when it expands a slice, for example `FileSystem & OnlyMember<"readFile">`.
- *
- * @see {@link Only} for the slice type this brand belongs to
- *
- * @stability stable
- * @category models
- * @since 4.2.0
- */
-export interface OnlyMember<in out K extends PropertyKey> {
-  readonly [OnlyTypeId]: {
-    readonly member: K
-  }
-}
-
-/**
  * Requirement for a single member `K` of the service identified by `S`.
  *
  * **When to use**
@@ -579,24 +538,25 @@ export interface OnlyMember<in out K extends PropertyKey> {
  * const runnable: Effect.Effect<void> = Effect.provide(program, writeFileLayer)
  * ```
  *
- * @see {@link OnlyMember} for the brand applied to the identifier
- *
  * @stability stable
  * @category utility types
  * @since 4.2.0
  */
-export type Only<S, K extends PropertyKey> = S & (K extends any ? OnlyMember<K> : never)
+export type Only<S, K extends string> =
+  & S
+  & (K extends any ? { readonly "~effect/Context/Only": { readonly member: K } } : never)
 
 /** @internal */
-export const onlyKey = (service: Key<any, any>, member: PropertyKey): string => `${service.key}#${String(member)}`
+export const onlyKey = (service: Key<any, any>, member: string): string => `${service.key}#${member}`
 
 /** @internal */
 export const getOnlyUnsafe = <Services>(
   self: Context<Services>,
   service: Key<any, any>,
-  members: ReadonlyArray<PropertyKey>
-): Record<PropertyKey, unknown> => {
-  const result: Record<PropertyKey, unknown> = {}
+  members: ReadonlyArray<string>
+): Record<string, unknown> => {
+  // A null prototype so a member named "__proto__" is stored like any other
+  const result: Record<string, unknown> = Object.create(null)
   let full: any = notFound
   for (const member of members) {
     const key = onlyKey(service, member)

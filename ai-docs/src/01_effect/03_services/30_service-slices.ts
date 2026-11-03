@@ -10,7 +10,8 @@
  */
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { Bucket } from "./fixtures/storage/Bucket.ts"
+import { Bucket, type BucketClient } from "./fixtures/storage/Bucket.ts"
+import { BucketMemoryLayer } from "./fixtures/storage/BucketMemory.ts"
 import { StorageGetLayer } from "./fixtures/storage/get.ts"
 import { StoragePutLayer } from "./fixtures/storage/put.ts"
 import { Storage } from "./fixtures/storage/Storage.ts"
@@ -22,6 +23,7 @@ import { Storage } from "./fixtures/storage/Storage.ts"
 //   src/storage/get.ts       Layer.effectOnly(Storage, "get", ...)
 //   src/storage/put.ts       Layer.effectOnly(Storage, "put", ...)
 //   src/storage/list.ts      Layer.effectOnly(Storage, "list", ...)
+//   test/storage/BucketMemory.ts   an in-memory Bucket, imported by tests only
 //
 // Requirements:
 //
@@ -46,35 +48,19 @@ export const copyKey = Effect.fn("copyKey")(function*(from: string, to: string) 
   return Option.isSome(value)
 })
 
-// In a Worker the binding comes from the environment, for example
-// `Layer.succeed(Bucket, env.MY_BUCKET)` inside the fetch handler. An in-memory
-// bucket keeps this example runnable.
-const BucketLayer = Layer.sync(Bucket, () => {
-  const objects = new Map<string, string>([["greeting", "hello"]])
-  return {
-    get: (key) => Promise.resolve(objects.get(key) ?? null),
-    put: (key, value) => {
-      objects.set(key, value)
-      return Promise.resolve()
-    },
-    list: ({ prefix }) =>
-      Promise.resolve(
-        Array.from(objects.keys(), (key) => ({ key })).filter((object) => object.key.startsWith(prefix))
-      )
-  }
-})
-
 // The composition root imports only the member modules the program needs.
-// `src/storage/list.ts` is never imported, so it is not in the bundle. Leaving
-// out a member the program uses is a type error that names the missing slice,
-// for example `Context.Only<Storage, "put">`.
-export const StorageLayer = Layer.mergeAll(StorageGetLayer, StoragePutLayer).pipe(
-  Layer.provide(BucketLayer)
-)
+// `src/storage/list.ts` is never imported, so it is not in the bundle. The
+// shared `Bucket` is the platform binding itself, provided from the Worker
+// environment, so the root contains no implementation of any other member.
+// Leaving out a member the program uses is a type error that names the missing
+// slice, for example `Context.Only<Storage, "put">`.
+export const StorageLayer = Layer.mergeAll(StorageGetLayer, StoragePutLayer)
 
-export const program = copyKey("greeting", "greeting-copy").pipe(
-  Effect.provide(StorageLayer)
-)
+export const handler = (env: { readonly MY_BUCKET: BucketClient }) =>
+  copyKey("greeting", "greeting-copy").pipe(
+    Effect.provide(StorageLayer.pipe(Layer.provide(Layer.succeed(Bucket, env.MY_BUCKET)))),
+    Effect.runPromise
+  )
 
 // Tests override a single member by providing its slice on top of the real
 // layers. A slice always wins over the full service and over an earlier slice,
@@ -85,5 +71,6 @@ it.effect("copies a key when the source exists", () =>
     assert.isTrue(copied)
   }).pipe(
     Effect.provide(Layer.succeedOnly(Storage, "get", () => Effect.succeed(Option.some("stubbed")))),
-    Effect.provide(StorageLayer)
+    Effect.provide(StorageLayer),
+    Effect.provide(BucketMemoryLayer)
   ))

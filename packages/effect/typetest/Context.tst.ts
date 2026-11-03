@@ -73,6 +73,14 @@ describe("Only", () => {
     void displayed
   })
 
+  it("rejects symbol members, whose slice keys would collide", () => {
+    const member = Symbol("readFile")
+    class Symbolic extends Context.Service<Symbolic, { readonly [member]: () => Effect.Effect<void> }>()("Symbolic") {}
+
+    expect(Symbolic.only).type.not.toBeCallableWith(member)
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(Symbolic, member, () => Effect.void)
+  })
+
   it("distributes over a union of member names", () => {
     expect<Context.Only<FileSystem, "readFile" | "writeFile">>().type.toBe<ReadFile | WriteFile>()
   })

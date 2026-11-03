@@ -1122,7 +1122,7 @@ const effectImpl = <I, S, E, R>(
  * @category constructors
  * @since 4.2.0
  */
-export const succeedOnly = <I, S, const K extends keyof S>(
+export const succeedOnly = <I, S, const K extends keyof S & string>(
   service: Context.Key<I, S>,
   member: K,
   implementation: Types.NoInfer<S[K]>
@@ -1175,14 +1175,14 @@ export const succeedOnly = <I, S, const K extends keyof S>(
  * @category constructors
  * @since 4.2.0
  */
-export const effectOnly = <I, S, const K extends keyof S, E, R>(
+export const effectOnly = <I, S, const K extends keyof S & string, E, R>(
   service: Context.Key<I, S>,
   member: K,
   effect: Effect<Types.NoInfer<S[K]>, E, R>
 ): Layer<Context.Only<I, K>, E, Exclude<R, Scope.Scope>> =>
   effectContext(internalEffect.map(effect, (value) => onlyContext(service, member, value)))
 
-const onlyContext = <I, S, K extends keyof S>(
+const onlyContext = <I, S, K extends keyof S & string>(
   service: Context.Key<I, S>,
   member: K,
   implementation: unknown
