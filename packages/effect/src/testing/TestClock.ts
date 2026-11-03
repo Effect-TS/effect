@@ -212,15 +212,11 @@ const busyWarningMessage = "A fiber woken by the test clock is still running " +
   "starts later may be scheduled relative to a later time."
 
 /**
- * The key of a `TestClock`'s live clock, so a `TestClock` constructed while
+ * The live clock of each `TestClock`, so a `TestClock` constructed while
  * another one is the current clock uses the outer clock's live clock instead
- * of the outer `TestClock`, which only advances when adjusted. A property, not
- * a WeakMap entry: a clock is made per test.
+ * of the outer `TestClock`, which only advances when adjusted.
  */
-const liveClockKey: unique symbol = Symbol("effect/testing/TestClock/liveClock")
-
-const liveClockOf = (clock: Clock.Clock): Clock.Clock | undefined =>
-  (clock as { readonly [liveClockKey]?: Clock.Clock })[liveClockKey]
+const liveClocks = new WeakMap<Clock.Clock, Clock.Clock>()
 
 interface WakeTracker {
   pending: number
@@ -291,7 +287,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
   }> = []
   const context = yield* Effect.context<never>()
   const currentClock = Context.get(context, Clock.Clock)
-  const liveClock = liveClockOf(currentClock) ?? currentClock
+  const liveClock = liveClocks.get(currentClock) ?? currentClock
   const liveConsole = Context.get(context, Console.Console)
   const warningSemaphore = Semaphore.makeUnsafe(1)
   const parentScheduler = Context.get(context, Scheduler.Scheduler)
@@ -521,8 +517,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     sleep,
     withLive
   }
-  // Not enumerable, so a spread copy of the clock does not carry it
-  Object.defineProperty(testClock, liveClockKey, { value: liveClock })
+  liveClocks.set(testClock, liveClock)
   return [testClock, scheduler] as const
 })
 
