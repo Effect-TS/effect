@@ -358,11 +358,11 @@ export const toString = <E = Cause.UnknownError>(
  * Consumes a Node readable stream into an `ArrayBuffer`, failing through
  * `onError` on stream errors or when `maxBytes` is exceeded and destroying the
  * stream on interruption or failure.
- * String chunks are encoded with the stream's declared encoding, or UTF-8 when
- * none is set, and `maxBytes` counts the encoded bytes. For a stream that
- * already decodes, these bytes can differ from the bytes originally read.
  * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
  * destroying the stream when the byte limit is exceeded.
+ * String chunks are encoded with the stream's declared encoding, or UTF-8 when
+ * none is set, and `maxBytes` counts those encoded bytes, which can differ from
+ * the bytes originally read.
  *
  * @stability unstable
  * @category converting
