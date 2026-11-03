@@ -70,6 +70,20 @@ describe("LanguageModel", () => {
       expect<ToolCallParams>().type.toBe<string>()
     })
 
+    it("types encoded tool parameters as JSON when tool call resolution is disabled", () => {
+      const toolkit = Toolkit.make(Tool.make("Schedule", { parameters: Schema.Struct({ at: Schema.Date }) }))
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true
+      })
+
+      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
+      type ToolCallParams = ProgramSuccess["toolCalls"][number]["params"]
+
+      expect<ToolCallParams>().type.toBeAssignableTo<Schema.Json>()
+    })
+
     it("uses opaque tool parameters when tool call resolution is enabled", () => {
       const toolkit = Toolkit.make(TransformTool)
       const program = LanguageModel.generateText({

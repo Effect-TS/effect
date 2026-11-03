@@ -1278,9 +1278,14 @@ describe("AnthropicLanguageModel", () => {
             )
           ))
         )
+        let approvalAt: number | undefined
         const toolkit = Toolkit.make(Tool.make("Schedule", {
           parameters: Schema.Struct({ at: Schema.Date }),
-          success: Schema.Number
+          success: Schema.Number,
+          needsApproval: ({ at }) => {
+            approvalAt = at.getTime()
+            return false
+          }
         }))
 
         const response = yield* LanguageModel.generateText({ prompt: "Schedule it", toolkit }).pipe(
@@ -1289,6 +1294,7 @@ describe("AnthropicLanguageModel", () => {
           Effect.provide(layer)
         )
 
+        assert.strictEqual(approvalAt, 1767225600000)
         assert.strictEqual(response.toolResults[0]?.result, 1767225600000)
       }))
 
