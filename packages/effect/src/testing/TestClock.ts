@@ -212,11 +212,15 @@ const busyWarningMessage = "A fiber woken by the test clock is still running " +
   "starts later may be scheduled relative to a later time."
 
 /**
- * The live clock of each `TestClock`, so a `TestClock` constructed while
+ * The key of a `TestClock`'s live clock, so a `TestClock` constructed while
  * another one is the current clock uses the outer clock's live clock instead
- * of the outer `TestClock`, which only advances when adjusted.
+ * of the outer `TestClock`, which only advances when adjusted. A property, not
+ * a WeakMap entry: a clock is made per test.
  */
-const liveClocks = new WeakMap<Clock.Clock, Clock.Clock>()
+const liveClockKey: unique symbol = Symbol("effect/testing/TestClock/liveClock")
+
+const liveClockOf = (clock: Clock.Clock): Clock.Clock | undefined =>
+  (clock as { readonly [liveClockKey]?: Clock.Clock })[liveClockKey]
 
 interface WakeTracker {
   pending: number
@@ -285,13 +289,14 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     readonly timestamp: number
     readonly latch: Latch.Latch
   }> = []
-  const currentClock = yield* Clock.clockWith(Effect.succeed)
-  const liveClock = liveClocks.get(currentClock) ?? currentClock
-  const liveConsole = yield* Console.Console
-  const warningSemaphore = yield* Semaphore.make(1)
-  const parentScheduler = yield* Scheduler.Scheduler
+  const context = yield* Effect.context<never>()
+  const currentClock = Context.get(context, Clock.Clock)
+  const liveClock = liveClockOf(currentClock) ?? currentClock
+  const liveConsole = Context.get(context, Console.Console)
+  const warningSemaphore = Semaphore.makeUnsafe(1)
+  const parentScheduler = Context.get(context, Scheduler.Scheduler)
 
-  let currentTimestamp: number = new Date(0).getTime()
+  let currentTimestamp = 0
   let currentWallNanos = BigInt(0)
   let currentMonotonicNanos = BigInt(0)
   let warningState: WarningState = WarningState.Start()
@@ -457,7 +462,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
       )
     })
 
-  const runSemaphore = yield* Semaphore.make(1)
+  const runSemaphore = Semaphore.makeUnsafe(1)
   const run = Effect.fnUntraced(function*(
     step: (currentTimestamp: number) => number,
     adjustmentNanos?: bigint
@@ -516,7 +521,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     sleep,
     withLive
   }
-  liveClocks.set(testClock, liveClock)
+  // Not enumerable, so a spread copy of the clock does not carry it
+  Object.defineProperty(testClock, liveClockKey, { value: liveClock })
   return [testClock, scheduler] as const
 })
 
