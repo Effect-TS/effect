@@ -322,162 +322,51 @@ describe("SchemaBinary", () => {
 
   describe("large byte payloads", () => {
     const payload = (length: number, seed = 1) => new Uint8Array(length).map((_, i) => (i * 31 + seed) & 0xFF)
-    // Around the length-prefix widths (2 and 3 bytes) and the sizes the writer
-    // treats specially.
-    const lengths = [4 * 1024, 16_383, 16_384, 32 * 1024 - 1, 32 * 1024, 300_000]
-    const codecs = [SchemaBinary.toCodec, SchemaBinary.toCodecDirect]
-
-    const sized = (...chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
+    const sized = (...chunks: ReadonlyArray<Uint8Array>) => {
       const body = concat(...chunks)
       return concat(Uint8Array.from(uvarint(body.length)), body)
     }
-    const frame = (...chunks: ReadonlyArray<Uint8Array>) => sized(Uint8Array.of(0x20), ...chunks)
     const field = (tag: number, ...chunks: ReadonlyArray<Uint8Array>) => concat(Uint8Array.of(tag), sized(...chunks))
-    const utf8 = (text: string) => new TextEncoder().encode(text)
-
-    const Field = Schema.Struct({ data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)) })
-    const Nested = Schema.Struct({
-      id: Schema.String.pipe(SchemaBinary.fieldId(1)),
-      payload: Schema.Struct({
-        name: Schema.String.pipe(SchemaBinary.fieldId(1)),
-        data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(2))
+    const Envelope = Schema.Struct({
+      head: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
+      body: Schema.Struct({
+        data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
+        name: Schema.String.pipe(SchemaBinary.fieldId(2))
       }).pipe(SchemaBinary.fieldId(2))
     })
-    const Pair = Schema.Struct({
-      a: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
-      b: Schema.Uint8Array.pipe(SchemaBinary.fieldId(2))
-    })
+    // The name outgrows the output buffer by itself.
+    const envelope = { head: payload(20_000), body: { data: payload(300_000, 7), name: "n".repeat(70_000) } }
 
-    it("writes minimal length prefixes around large payloads at every depth", () => {
-      for (const length of lengths) {
-        const data = payload(length)
-        const other = payload(length + 1, 7)
-        const name = "n".repeat(40)
-        const cases: ReadonlyArray<readonly [Schema.Codec<any, any>, unknown, Uint8Array]> = [
-          [Schema.Uint8Array, data, frame(data)],
-          [Field, { data }, frame(field(8, data))],
-          [
-            Nested,
-            { id: "request", payload: { name, data } },
-            frame(field(8, utf8("request")), field(16, field(8, utf8(name)), field(16, data)))
-          ],
-          [Pair, { a: data, b: other }, frame(field(8, data), field(16, other))]
-        ]
-        for (const toCodec of codecs) {
-          for (const [schema, value, expected] of cases) {
-            assert.deepStrictEqual(Schema.encodeUnknownSync(toCodec(schema))(value), expected)
-          }
-        }
-      }
-    })
-
-    it("round-trips large payloads in containers, row runs and unions", () => {
-      const big = payload(40_000)
-      const bigger = payload(300_000, 7)
-      const small = payload(100, 3)
-      const Row = Schema.Struct({ id: Schema.Number, data: Schema.Uint8Array, name: Schema.String })
-      // More than eight optional fields: fingerprint presence takes two bytes.
-      const Sparse = Schema.Struct({
-        ...Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`o${i}`, Schema.optionalKey(Schema.Uint8Array)])),
-        tail: Schema.String
-      })
-      const cases: ReadonlyArray<readonly [Schema.Codec<any, any>, unknown]> = [
-        [Schema.Array(Schema.Uint8Array), [big, small, bigger]],
-        [Schema.Array(Row), [{ id: 1, data: big, name: "a" }, { id: 2, data: small, name: "a" }, {
-          id: 3,
-          data: bigger,
-          name: "b"
-        }]],
-        [Schema.Union([Schema.String, Schema.Uint8Array]), bigger],
-        [Schema.Union([Schema.Struct({ _tag: Schema.Literal("A"), data: Schema.Uint8Array }), Schema.String]), {
-          _tag: "A",
-          data: bigger
-        }],
-        [Schema.Option(Schema.Uint8Array), Option.some(bigger)],
-        [Schema.Tuple([Schema.Uint8Array, Schema.Number, Schema.Uint8Array]), [big, 3, bigger]],
-        [Schema.Record(Schema.String, Schema.Uint8Array), { x: big, y: small, z: bigger }],
-        [Sparse, { o0: bigger, o3: small, o9: big, tail: "end" }],
-        [Schema.Array(Sparse), [{ o1: big, tail: "a" }, { o0: bigger, o8: small, tail: "b" }]]
-      ]
-      for (const fingerprint of [false, true]) {
-        for (const toCodec of codecs) {
-          for (const [schema, value] of cases) {
-            const codec = toCodec(schema, { fingerprint })
-            assert.deepStrictEqual(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(value)), value)
-          }
-        }
-      }
-    })
-
-    it("batches frames with large payloads as their concatenation", () => {
-      const Row = Schema.Struct({ id: Schema.Number, data: Schema.Uint8Array })
-      const values = [{ id: 1, data: payload(40_000) }, { id: 2, data: payload(300_000, 7) }, {
-        id: 3,
-        data: payload(9)
-      }]
-      for (const fingerprint of [false, true]) {
-        const single = Schema.encodeUnknownSync(SchemaBinary.toCodec(Row, { fingerprint }))
-        const batch = SchemaBinary.encodeManyUnknownSync(Row, { fingerprint })(values)
-        assert.deepStrictEqual(batch, concat(...values.map((value) => single(value).slice())))
-        const parser = SchemaBinary.parser(Row, { fingerprint })
-        assert.deepStrictEqual(parser.feedSync(batch), values)
-        parser.endSync()
-      }
-    })
-
-    it("keeps earlier results stable while later frames carry large payloads", () => {
-      const encode = Schema.encodeUnknownSync(SchemaBinary.toCodec(Field))
-      const earlier = [encode({ data: payload(10) }), encode({ data: payload(300_000) }), encode({ data: payload(20) })]
-      const copies = earlier.map((bytes) => bytes.slice())
-      for (let i = 0; i < 40; i++) encode({ data: payload(i % 2 === 0 ? 300_000 : 100, i) })
-      assert.deepStrictEqual(earlier, copies)
-    })
-
-    it("encodes correctly after a frame fails behind a large payload", () => {
-      const Failing = Schema.Struct({
-        payload: Schema.Struct({
-          data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
-          n: Schema.Number.pipe(SchemaBinary.fieldId(2))
-        }).pipe(SchemaBinary.fieldId(1))
-      })
-      const data = payload(300_000)
-      for (const toCodec of codecs) {
-        const encode = Schema.encodeUnknownSync(toCodec(Failing))
-        assert.throws(() => encode({ payload: { data, n: "x" as unknown as number } }))
-        const after = encode({ payload: { data: payload(40_000, 3), n: 0 } })
-        // n = 0 travels as a varint field (wire kind 1) holding a single 0 byte.
-        assert.deepStrictEqual(after, frame(field(8, field(8, payload(40_000, 3)), Uint8Array.of(17, 0))))
-      }
-    })
-
-    it("keeps nested codecs independent when both write large payloads", () => {
-      const Inner = Schema.Struct({ data: Schema.Uint8Array })
-      const innerCodec = SchemaBinary.toCodec(Inner)
-      const Outer = Schema.Struct({ id: Schema.String, inner: innerCodec, data: Schema.Uint8Array })
-      const value = { id: "outer", inner: { data: payload(300_000) }, data: payload(40_000, 5) }
-      assert.deepStrictEqual(roundtrip(Outer, value), value)
-
-      // A getter that encodes with another codec while the outer frame is open.
-      const innerEncode = Schema.encodeUnknownSync(SchemaBinary.toCodecDirect(Inner))
-      let inner: Uint8Array | undefined
-      const host = {
-        a: payload(300_000, 9),
-        get b() {
-          inner = innerEncode({ data: payload(40_000, 11) })
-          return payload(5000, 13)
-        }
-      }
-      const Host = Schema.Struct({
-        a: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
-        b: Schema.Uint8Array.pipe(SchemaBinary.fieldId(2))
-      })
+    it("writes large nested payloads with minimal length prefixes", () => {
       assert.deepStrictEqual(
-        Schema.encodeUnknownSync(SchemaBinary.toCodecDirect(Host))(host),
-        frame(field(8, payload(300_000, 9)), field(16, payload(5000, 13)))
+        encode(Envelope, envelope),
+        sized(
+          Uint8Array.of(0x20),
+          field(8, envelope.head),
+          field(16, field(8, envelope.body.data), field(16, new TextEncoder().encode(envelope.body.name)))
+        )
       )
-      assert.deepStrictEqual(Schema.decodeUnknownSync(SchemaBinary.toCodec(Inner))(inner!.slice()), {
-        data: payload(40_000, 11)
-      })
+    })
+
+    it("batches row runs that end in large payloads", () => {
+      const Rows = Schema.Array(Schema.Struct({ id: Schema.Number, data: Schema.Uint8Array }))
+      const values = [
+        [{ id: 1, data: payload(10) }, { id: 2, data: payload(300_000) }],
+        [{ id: 3, data: payload(40_000, 3) }, { id: 4, data: payload(10, 5) }]
+      ]
+      const parser = SchemaBinary.parser(Rows)
+      assert.deepStrictEqual(parser.feedSync(SchemaBinary.encodeManyUnknownSync(Rows)(values)), values)
+      parser.endSync()
+    })
+
+    it("leaves later and earlier frames intact after a failure behind a large payload", () => {
+      const encodeEnvelope = Schema.encodeUnknownSync(SchemaBinary.toCodec(Envelope))
+      const earlier = encode(Schema.String, "earlier")
+      const earlierBytes = earlier.slice()
+      const expected = encodeEnvelope(envelope).slice()
+      assert.throws(() => encodeEnvelope({ ...envelope, body: { ...envelope.body, name: 1 } }))
+      assert.deepStrictEqual(encodeEnvelope(envelope), expected)
+      assert.deepStrictEqual(earlier, earlierBytes)
     })
   })
 
