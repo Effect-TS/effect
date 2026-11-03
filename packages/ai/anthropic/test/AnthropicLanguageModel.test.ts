@@ -1646,9 +1646,8 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(inputSchema.properties.filter, { $ref: "#/$defs/Filter" })
         assert.deepStrictEqual(inputSchema.$defs.Filter.properties.OR.items, { $ref: "#/$defs/Filter" })
         assert.strictEqual(response.toolCalls.length, 1)
-        const { filter } = response.toolCalls[0].params
-        assert.isUndefined(filter.name)
-        assert.deepStrictEqual(filter.OR, [{ name: "Anna" }, { name: "Ben" }])
+        // Encoded params hold the JSON encoding, where an omitted optional is `null`
+        assert.deepStrictEqual(response.toolCalls[0].params, params)
       }))
 
     it.effect("rejects recursive parameters for a strict tool", () =>
