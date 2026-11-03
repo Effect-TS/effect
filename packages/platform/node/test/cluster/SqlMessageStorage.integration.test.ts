@@ -938,6 +938,21 @@ describe("SqlMessageStorage", () => {
           expect(yield* deleteProcessed).toEqual(0)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
+      it.effect("deleteProcessed takes an infinite or fractional cutoff", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const completedAt = Date.UTC(2026, 0, 1)
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          yield* storage.saveReply(yield* makeReply(request, completedAt))
+          const deleteProcessed = (completedBefore: number) =>
+            storage.deleteProcessed({ entityType: "test", completedBefore, limit: 100 })
+          // MessageRetention's cutoff for an infinite or sub-millisecond retention
+          expect(yield* deleteProcessed(-Infinity)).toEqual(0)
+          expect(yield* deleteProcessed(completedAt + 0.5)).toEqual(1)
+        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
