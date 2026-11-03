@@ -219,14 +219,14 @@ describe("String", () => {
     })
   })
 
-  describe("isNonBlank", () => {
+  describe("hasNonWhitespace", () => {
     it("requires a character that trim does not remove", () => {
-      assertFalse(S.isNonBlank(""))
-      assertFalse(S.isNonBlank(" \t\n\r\v\f"))
-      assertFalse(S.isNonBlank("\u00a0\u1680\u2000\u2028\u2029\u202f\u205f\u3000\ufeff"))
-      assertTrue(S.isNonBlank("  a  "))
-      assertTrue(S.isNonBlank("\u200b"))
-      assertTrue(S.isNonBlank("\u0085"))
+      assertFalse(S.hasNonWhitespace(""))
+      assertFalse(S.hasNonWhitespace(" \t\n\r\v\f"))
+      assertFalse(S.hasNonWhitespace("\u00a0\u1680\u2000\u2028\u2029\u202f\u205f\u3000\ufeff"))
+      assertTrue(S.hasNonWhitespace("  a  "))
+      assertTrue(S.hasNonWhitespace("\u200b"))
+      assertTrue(S.hasNonWhitespace("\u0085"))
     })
   })
 
