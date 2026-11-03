@@ -289,8 +289,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
   const currentClock = Context.get(context, Clock.Clock)
   const liveClock = liveClocks.get(currentClock) ?? currentClock
   const liveConsole = Context.get(context, Console.Console)
-  const warningSemaphore = Semaphore.makeUnsafe(1)
   const parentScheduler = Context.get(context, Scheduler.Scheduler)
+  const warningSemaphore = Semaphore.makeUnsafe(1)
 
   let currentTimestamp = 0
   let currentWallNanos = BigInt(0)
