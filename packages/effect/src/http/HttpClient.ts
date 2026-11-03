@@ -650,7 +650,11 @@ export const makeWith = <E2, R2, E, R>(
   self.preprocess = preprocess
   self.postprocess = postprocess
   self.execute = function(request: HttpClientRequest.HttpClientRequest) {
-    return postprocess(preprocess(request))
+    const effect = postprocess(preprocess(request))
+    // Another client's withScope owner must not apply to this execution
+    return Effect.withFiber((fiber) =>
+      fiber.getRef(RequestOwner) === undefined ? effect : Effect.provideService(effect, RequestOwner, undefined)
+    )
   }
   return self
 }
