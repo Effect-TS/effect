@@ -75,9 +75,7 @@ const largeRows = Array.from({ length: repeatedRecordStreamSize }, (_, index) =>
   requiresManualReview: index % 17 === 0
 }))
 
-// A blob alone in a struct, and two struct levels deep like an RPC envelope.
-const Blob = Schema.Struct({ data: Schema.Uint8Array })
-
+// A blob two struct levels deep, like an RPC envelope.
 const BlobEnvelope = Schema.Struct({
   id: Schema.String,
   tag: Schema.String,
@@ -170,10 +168,6 @@ const protobufRoot = protobuf.parse(`
     repeated LargeRow values = 1;
   }
 
-  message Blob {
-    bytes data = 1;
-  }
-
   message BlobPayload {
     string name = 1;
     bytes data = 2;
@@ -255,17 +249,7 @@ const largeRowProtobufFixture = directProtobufFixture("LargeRow")
 // protobufjs decodes `bytes` as a Node Buffer; view it as a plain Uint8Array.
 const asUint8Array = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length)
 
-const blobProtobufType = protobufRoot.lookupType("Blob")
 const blobEnvelopeProtobufType = protobufRoot.lookupType("BlobEnvelope")
-
-const blobProtobufFixture: ProtobufFixture = {
-  type: blobProtobufType,
-  encodeInput: (value) => value as object,
-  decodeOutput: (message) => {
-    const { data } = protobufObject<{ data: Uint8Array }>(blobProtobufType, message)
-    return { data: asUint8Array(data) }
-  }
-}
 
 const blobEnvelopeProtobufFixture: ProtobufFixture = {
   type: blobEnvelopeProtobufType,
@@ -350,14 +334,8 @@ const cases = [
   }
 ] as const
 
-// Single-value cases only: streams of 256 KiB frames would dominate the run.
+// Single-value only: streams of 256 KiB frames would dominate the run.
 const blobCases = [
-  {
-    name: "256 KiB blob",
-    schema: Blob,
-    value: { data: blob },
-    protobuf: blobProtobufFixture
-  },
   {
     name: "256 KiB blob / two levels deep",
     schema: BlobEnvelope,

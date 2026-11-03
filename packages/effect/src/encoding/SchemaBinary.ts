@@ -1361,9 +1361,6 @@ function decodeAscii(buf: Uint8Array, start: number, end: number): string | unde
 
 const OUTPUT_ARENA_SIZE = 64 * 1024
 
-// Room left after a large reservation for the bytes that close its frame.
-const OUTPUT_GROWTH_SLACK = 4 * 1024
-
 // Byte payloads at least this large are not copied into the arena: the writer
 // keeps a reference and the finished frame is assembled once, so they are
 // copied exactly once however deeply they are nested.
@@ -1390,6 +1387,11 @@ function makeOutputArena(size: number): OutputArena {
 
 let outputArena = makeOutputArena(OUTPUT_ARENA_SIZE)
 
+interface DeferredBytes {
+  readonly bytes: Uint8Array
+  at: number
+}
+
 class Writer {
   buf: Uint8Array<ArrayBuffer> = new Uint8Array(0)
   view = new DataView(this.buf.buffer)
@@ -1397,11 +1399,8 @@ class Writer {
   start = 0
   limit = 0
   len = 0
-  // Deferred payloads and the arena positions they belong at, in write order.
-  // Length prefixes count them; `growSized` moves only arena bytes.
-  readonly deferred: Array<Uint8Array> = []
-  readonly deferredAt: Array<number> = []
-  deferredLen = 0
+  // Large payloads and the arena positions they belong at, in write order.
+  readonly deferred: Array<DeferredBytes> = []
   reset() {
     let arena = outputArena
     // Nested codecs cannot share the active arena tail.
@@ -1417,22 +1416,21 @@ class Writer {
     this.len = 0
   }
   ensure(n: number) {
-    if (this.len + n > this.limit) this.grow(n)
-  }
-  // Doubling follows what is already written, so one large reservation gets
-  // its own size plus slack instead of the next power of two.
-  private grow(n: number) {
-    const previous = this.arena!
-    const size = Math.max(OUTPUT_ARENA_SIZE, this.len * 2, this.len + n + OUTPUT_GROWTH_SLACK)
-    const next = makeOutputArena(size)
-    next.writing = true
-    next.buf.set(this.buf.subarray(this.start, this.start + this.len))
-    previous.writing = false
-    this.arena = outputArena = next
-    this.buf = next.buf
-    this.view = next.view
-    this.start = 0
-    this.limit = next.buf.length
+    if (this.len + n > this.limit) {
+      const previous = this.arena!
+      const required = this.len + n
+      let size = OUTPUT_ARENA_SIZE
+      while (size < required) size *= 2
+      const next = makeOutputArena(size)
+      next.writing = true
+      next.buf.set(this.buf.subarray(this.start, this.start + this.len))
+      previous.writing = false
+      this.arena = outputArena = next
+      this.buf = next.buf
+      this.view = next.view
+      this.start = 0
+      this.limit = next.buf.length
+    }
   }
   byte(b: number) {
     this.ensure(1)
@@ -1440,9 +1438,7 @@ class Writer {
   }
   bytes(b: Uint8Array) {
     if (b.length >= DEFERRED_BYTES_MIN) {
-      this.deferred.push(b)
-      this.deferredAt.push(this.len)
-      this.deferredLen += b.length
+      this.deferred.push({ bytes: b, at: this.len })
       return
     }
     this.ensure(b.length)
@@ -1532,22 +1528,22 @@ class Writer {
     return this.len++
   }
   endSized(mark: number) {
-    const code = this.len - mark - 1 + (this.deferredLen === 0 ? 0 : this.deferredAfter(mark))
+    const code = this.sizeAfter(mark)
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
   }
   // Row-run regions prefix `length * 2`; odd codes are back-references.
   endSizedRun(mark: number) {
-    const code = (this.len - mark - 1 + (this.deferredLen === 0 ? 0 : this.deferredAfter(mark))) * 2
+    const code = this.sizeAfter(mark) * 2
     if (code < 0x80) this.buf[this.start + mark] = code
     else this.growSized(mark, code)
   }
-  // Deferred bytes inside the region opened at `mark`.
-  private deferredAfter(mark: number): number {
-    const at = this.deferredAt
-    let sum = 0
-    for (let k = at.length - 1; k >= 0 && at[k] > mark; k--) sum += this.deferred[k].length
-    return sum
+  // Bytes written after the reserved prefix at `mark`, deferred ones included.
+  private sizeAfter(mark: number): number {
+    let size = this.len - mark - 1
+    const deferred = this.deferred
+    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) size += deferred[k].bytes.length
+    return size
   }
   private growSized(mark: number, code: number) {
     const size = uvarintSize(code)
@@ -1556,8 +1552,8 @@ class Writer {
     const absoluteMark = this.start + mark
     this.buf.copyWithin(absoluteMark + size, absoluteMark + 1, this.start + this.len)
     this.len += extra
-    const at = this.deferredAt
-    for (let k = at.length - 1; k >= 0 && at[k] > mark; k--) at[k] += extra
+    const deferred = this.deferred
+    for (let k = deferred.length - 1; k >= 0 && deferred[k].at > mark; k--) deferred[k].at += extra
     let n = code
     let p = absoluteMark
     while (n > 0x7F) {
@@ -1613,14 +1609,16 @@ class Writer {
     return out
   }
   private assemble(): Uint8Array<ArrayBuffer> {
-    const out = new Uint8Array(this.len + this.deferredLen)
+    const deferred = this.deferred
+    let size = this.len
+    for (let k = 0; k < deferred.length; k++) size += deferred[k].bytes.length
+    const out = new Uint8Array(size)
     const buf = this.buf
     const start = this.start
     let from = 0
     let to = 0
-    for (let k = 0; k < this.deferred.length; k++) {
-      const at = this.deferredAt[k]
-      const bytes = this.deferred[k]
+    for (let k = 0; k < deferred.length; k++) {
+      const { at, bytes } = deferred[k]
       out.set(buf.subarray(start + from, start + at), to)
       to += at - from
       out.set(bytes, to)
@@ -1628,17 +1626,11 @@ class Writer {
       from = at
     }
     out.set(buf.subarray(start + from, start + this.len), to)
-    this.clearDeferred()
+    deferred.length = 0
     return out
   }
-  private clearDeferred() {
-    if (this.deferred.length === 0) return
-    this.deferred.length = 0
-    this.deferredAt.length = 0
-    this.deferredLen = 0
-  }
   abort() {
-    this.clearDeferred()
+    if (this.deferred.length > 0) this.deferred.length = 0
     const arena = this.arena
     if (arena === undefined) return
     if (arena === outputArena) arena.offset = this.start
