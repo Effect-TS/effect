@@ -25,6 +25,13 @@ import * as Tracer from "effect/Tracer"
 import { inspect } from "node:util"
 import { collectGarbage } from "../utils/gc.ts"
 
+// A client built with the public constructor that forwards each request to another client's execute
+const forwardTo = (client: HttpClient.HttpClient) =>
+  HttpClient.makeWith(
+    Effect.flatMap((request: HttpClientRequest.HttpClientRequest) => client.execute(request)),
+    Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
+  )
+
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
   const attempts = yield* Ref.make(0)
   const client = HttpClient.make((request) =>
@@ -720,11 +727,11 @@ Missing key
         })
     )
 
-    it.effect("aborts a redirect dispatched after its owning scope closes", () =>
+    it.effect("aborts a forwarded redirect dispatched after its owning scope closes", () =>
       Effect.gen(function*() {
         const scope = yield* Scope.make()
         const aborted: Array<boolean> = []
-        const client = HttpClient.make((request, _url, signal) => {
+        const transport = HttpClient.make((request, _url, signal) => {
           aborted.push(signal.aborted)
           const redirect = request.url.endsWith("/start")
           const response = HttpClientResponse.fromWeb(
@@ -734,7 +741,8 @@ Missing key
           return redirect
             ? Effect.as(Scope.close(scope, Exit.void), response)
             : Effect.succeed(response)
-        }).pipe(HttpClient.followRedirects(), HttpClient.withScope)
+        })
+        const client = forwardTo(transport).pipe(HttpClient.followRedirects(), HttpClient.withScope)
 
         yield* client.get("https://origin.test/start").pipe(Scope.provide(scope))
 
@@ -2449,27 +2457,26 @@ Missing key
       assert.deepStrictEqual(seen, [undefined, "a=1", "b=1"])
     }))
 
-  it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
+  it.effect("keeps withScope aborting a forwarded request that withCookiesRef adds cookies to", () =>
     Effect.gen(function*() {
       const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
       yield* Ref.update(
         jar,
         Cookies.mergeIntoArray("https://api.example.com/", Cookies.fromSetCookie(["session=abc"]), 0)
       )
-      const started = yield* Deferred.make<AbortSignal>()
-      const client = HttpClient.make((request, _url, signal) =>
+      const started = yield* Deferred.make<readonly [string | undefined, AbortSignal]>()
+      const transport = HttpClient.make((request, _url, signal) =>
         Effect.andThen(
-          Deferred.succeed(started, signal),
-          Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
+          Deferred.succeed(started, [request.headers.cookie, signal] as const),
+          Effect.never
         )
-      ).pipe(
-        HttpClient.withCookiesRef(jar),
-        HttpClient.withScope
       )
+      const client = forwardTo(transport).pipe(HttpClient.withCookiesRef(jar), HttpClient.withScope)
 
       const scope = yield* Scope.make()
       yield* client.get("https://api.example.com/slow").pipe(Scope.provide(scope), Effect.forkChild)
-      const signal = yield* Deferred.await(started)
+      const [cookie, signal] = yield* Deferred.await(started)
+      assert.strictEqual(cookie, "session=abc")
       assert.isFalse(signal.aborted)
       yield* Scope.close(scope, Exit.void)
       assert.isTrue(signal.aborted)
@@ -2500,25 +2507,6 @@ Missing key
       yield* client.get("https://origin.test/").pipe(Scope.provide(scope))
 
       assert.isTrue((yield* Deferred.await(helperStarted)).aborted)
-    }))
-
-  it.effect("keeps withScope aborting a request forwarded through another client's execute", () =>
-    Effect.gen(function*() {
-      const started = yield* Deferred.make<AbortSignal>()
-      const transport = HttpClient.make((_request, _url, signal) =>
-        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
-      )
-      const client = HttpClient.makeWith(
-        Effect.flatMap((request: HttpClientRequest.HttpClientRequest) => transport.execute(request)),
-        Effect.succeed as HttpClient.HttpClient.Preprocess<never, never>
-      ).pipe(HttpClient.withScope)
-      const scope = yield* Scope.make()
-
-      yield* client.get("https://origin.test/").pipe(Scope.provide(scope), Effect.forkChild)
-      const signal = yield* Deferred.await(started)
-      assert.isFalse(signal.aborted)
-      yield* Scope.close(scope, Exit.void)
-      assert.isTrue(signal.aborted)
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
