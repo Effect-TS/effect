@@ -1,5 +1,16 @@
 # @effect/ai-openai
 
+## 0.41.1
+
+### Patch Changes
+
+- [#10340](https://github.com/Effect-TS/effect/pull/10340) [`a67af3d`](https://github.com/Effect-TS/effect/commit/a67af3d016d40ad1f46a182c22e160c5346389c0) Thanks @titouancreach! - Skip OpenAI `commentary` messages in structured output so `LanguageModel.generateObject` no longer fails when one precedes the final answer.
+
+- Updated dependencies [[`279d70f`](https://github.com/Effect-TS/effect/commit/279d70fe2e45e0929a1064e9a9e6f7126d24c87f), [`c4b7934`](https://github.com/Effect-TS/effect/commit/c4b7934093807e5742e13dada2adf3691bd98e63), [`be0ab4c`](https://github.com/Effect-TS/effect/commit/be0ab4cf695e62640e9d2011842a035d284106a8)]:
+  - @effect/platform@0.97.4
+  - effect@3.22.5
+  - @effect/experimental@0.61.3
+
 ## 0.41.0
 
 ### Patch Changes

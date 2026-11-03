@@ -1,5 +1,11 @@
 # effect
 
+## 3.22.5
+
+### Patch Changes
+
+- [#9991](https://github.com/Effect-TS/effect/pull/9991) [`c4b7934`](https://github.com/Effect-TS/effect/commit/c4b7934093807e5742e13dada2adf3691bd98e63) Thanks @sarankumar1325! - Fix `PubSub` subscribers retaining every later message once their replay window is exhausted
+
 ## 3.22.4
 
 ### Patch Changes
