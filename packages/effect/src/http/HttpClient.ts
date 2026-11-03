@@ -651,10 +651,13 @@ export const makeWith = <E2, R2, E, R>(
   self.postprocess = postprocess
   self.execute = function(request: HttpClientRequest.HttpClientRequest) {
     const effect = postprocess(preprocess(request))
-    // Another client's withScope owner must not apply to this execution
-    return Effect.withFiber((fiber) =>
-      fiber.getRef(RequestOwner) === undefined ? effect : Effect.provideService(effect, RequestOwner, undefined)
-    )
+    // A withScope owner only follows its own request, not unrelated requests made from middleware
+    return Effect.withFiber((fiber) => {
+      const owner = fiber.getRef(RequestOwner)
+      return owner === undefined || owner.request === request
+        ? effect
+        : Effect.provideService(effect, RequestOwner, undefined)
+    })
   }
   return self
 }
@@ -2017,7 +2020,8 @@ export const withScope = <E, R>(
 ): HttpClient.With<E, R | Scope.Scope> =>
   transform(
     self,
-    (effect) => Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestOwner, scope))
+    (effect, request) =>
+      Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestOwner, { scope, request }))
   )
 
 /**
@@ -2259,14 +2263,16 @@ const responseRegistry = (() => {
   }
 })()
 
-// Set by withScope on the executing fiber, so ownership follows the execution rather than the request
-const RequestOwner = Context.Reference<Scope.Scope | undefined>("effect/http/HttpClient/RequestOwner", {
+// Set by withScope on the executing fiber, so concurrent executions of one request keep separate owners
+const RequestOwner = Context.Reference<
+  { readonly scope: Scope.Scope; readonly request: HttpClientRequest.HttpClientRequest } | undefined
+>("effect/http/HttpClient/RequestOwner", {
   defaultValue: () => undefined
 })
 
 // Each exchange gets its own controller, aborted when the owning scope closes
 const owned = Effect.withFiber((fiber) => {
-  const owner = fiber.getRef(RequestOwner)
+  const owner = fiber.getRef(RequestOwner)?.scope
   if (owner === undefined) return Effect.undefined
   const controller = new AbortController()
   return Effect.as(Scope.addFinalizer(owner, Effect.sync(() => controller.abort())), controller)
