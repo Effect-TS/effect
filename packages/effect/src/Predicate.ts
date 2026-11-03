@@ -1217,10 +1217,14 @@ export const isTagged: {
 type StrictTag<T> = [Tags<T>] extends [never] ? string : Tags<T>
 
 // `T` reaches the members only through `infer U`, so a typed `filter` result cannot
-// infer `T` from the guard; `Extract` keeps the guard assignable to `T`. Members
-// whose `_tag` cannot be `K` reduce to `never` through the intersection.
+// infer `T` from the guard; `Extract` keeps the guard assignable to `T`. Primitive
+// members drop out because the runtime check requires an object, and members whose
+// `_tag` cannot be `K` reduce to `never` through the intersection.
 type StrictTagged<T, K extends string> = Extract<
-  T extends infer U ? U extends { readonly _tag: K } ? U : U & { _tag: K } : never,
+  T extends infer U ? U extends string | number | boolean | bigint | symbol | null | undefined ? never
+    : U extends { readonly _tag: K } ? U
+    : U & { _tag: K }
+    : never,
   T
 >
 

@@ -107,6 +107,24 @@ describe("Predicate", () => {
       }
     })
 
+    it("drops primitive members, which the runtime check never accepts", () => {
+      const value = hole<Px | boolean | null | number | string | undefined>()
+      if (Predicate.isTaggedStrict(value, "Px")) {
+        expect(value).type.toBe<Px>()
+      } else {
+        expect(value).type.toBe<boolean | null | number | string | undefined>()
+      }
+    })
+
+    it("keeps an untagged object member, which may carry the tag at runtime", () => {
+      const value = hole<Px | { readonly foo: number }>()
+      if (Predicate.isTaggedStrict(value, "Px")) {
+        expect(value).type.toBe<Px | ({ readonly foo: number } & { _tag: "Px" })>()
+      } else {
+        expect(value).type.toBe<{ readonly foo: number }>()
+      }
+    })
+
     it("types values without a `_tag` as isTagged does", () => {
       expect(Predicate.isTaggedStrict("a")).type.toBe(Predicate.isTagged("a"))
       expect(unknowns.filter(Predicate.isTaggedStrict("a"))).type.toBe<Array<{ _tag: "a" }>>()
