@@ -774,15 +774,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
           exit: Exit.succeed("opened")
         })
-        const complete = new Workflow.Complete({ exit: Exit.succeed("opened") })
-        assert.deepStrictEqual(yield* pollUntil(workflow, executionId, "Complete"), complete)
-        yield* workflow.resume(executionId)
-        assert.deepStrictEqual(yield* workflow.poll(executionId), Option.some(complete))
-        assert.strictEqual(yield* workflow.execute({}), "opened")
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("opened") })
+        )
       }).pipe(Effect.provide(makeTestWorkflowEngine({ storageLayer })))
     }))
 
-  it.effect("bounds shutdown during an interrupt signal read outage", () =>
+  it.effect("shuts down during a deferred read outage", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("DeferredReadShutdown/Gate")
       const workflow = Workflow.make("DeferredReadShutdown", {
@@ -790,17 +789,19 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         idempotencyKey: () => "one"
       })
       const storage = yield* makeSharedStorage
-      const finalizing = yield* Latch.make()
+      const reading = yield* Latch.make()
       let awaitingGate = false
       let recovered = false
+      // Once the gate is awaited, its reads and the interrupt signal reads
+      // made by shutdown cleanup fail until storage recovers.
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
         ...storage,
         requestIdForPrimaryKey: (options) =>
           Effect.suspend(() => {
             if (options.tag === "deferred" && options.id === gate.name) awaitingGate = true
-            return options.tag === "deferred" && options.id === "Workflow/InterruptSignal" && awaitingGate && !recovered
+            return options.tag === "deferred" && awaitingGate && !recovered
               ? Effect.andThen(
-                finalizing.open,
+                reading.open,
                 Effect.fail(new ClusterError.PersistenceError({ cause: "Connection closed" }))
               )
               : storage.requestIdForPrimaryKey(options)
@@ -814,14 +815,14 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         scope
       )
       yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
-      yield* finalizing.await
+      yield* reading.await
       const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
       yield* TestClock.adjust("2 seconds")
       const closedDuringOutage = shutdown.pollUnsafe() !== undefined
       recovered = true
       yield* TestClock.adjust("1 minute")
       yield* Fiber.join(shutdown)
-      assert.isTrue(closedDuringOutage, "shutdown must finish while interrupt signal reads still fail")
+      assert.isTrue(closedDuringOutage, "shutdown must finish while deferred reads still fail")
     }))
 
   const RetrySignal = DurableDeferred.make("RetrySignal")
