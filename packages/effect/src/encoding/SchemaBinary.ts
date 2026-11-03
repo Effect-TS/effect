@@ -1606,16 +1606,16 @@ class Writer {
     this.len = p - this.start
   }
   out(): Uint8Array<ArrayBuffer> {
-    const arena = this.arena!
-    let out: Uint8Array<ArrayBuffer>
-    if (this.deferred.length === 0) {
-      out = new Uint8Array(arena.buf.buffer, this.start, this.len)
-      if (arena === outputArena) arena.offset = this.start + this.len
-    } else {
-      out = this.assemble()
-      // The frame was copied out, so its arena region is free again.
-      if (arena === outputArena) arena.offset = this.start
+    // An assembled frame owns its bytes, so the arena is released as if
+    // nothing had been written.
+    if (this.deferred.length > 0) {
+      const out = this.assemble()
+      this.abort()
+      return out
     }
+    const arena = this.arena!
+    const out = new Uint8Array(arena.buf.buffer, this.start, this.len)
+    if (arena === outputArena) arena.offset = this.start + this.len
     arena.writing = false
     this.arena = undefined
     return out
@@ -1635,15 +1635,14 @@ class Writer {
     let from = 0
     let to = 0
     for (let k = 0; k < deferred.length; k++) {
-      const { at, bytes } = deferred[k]
+      const { at, bytes, length } = deferred[k]
       out.set(buf.subarray(start + from, start + at), to)
       to += at - from
       out.set(bytes, to)
-      to += bytes.length
+      to += length
       from = at
     }
     out.set(buf.subarray(start + from, start + this.len), to)
-    deferred.length = 0
     return out
   }
   abort() {
