@@ -247,6 +247,18 @@ describe("Arbitrary.commands", () => {
         assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)), command.name)
       }
     }))
+
+  it("omits callbacks passed as undefined", () => {
+    const command = Arbitrary.command({
+      name: "step",
+      args: undefined,
+      precondition: undefined,
+      next: undefined,
+      postcondition: undefined,
+      run: () => Effect.void
+    })
+    assert.deepStrictEqual(Object.keys(command).sort(), ["name", "run"])
+  })
 })
 
 describe("Arbitrary.commands bank account model", () => {

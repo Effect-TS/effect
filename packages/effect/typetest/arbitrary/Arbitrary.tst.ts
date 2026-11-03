@@ -86,6 +86,15 @@ describe("Arbitrary", () => {
       next: (model: number, value: number) => model + value,
       run: (_value: number) => hole<Effect.Effect<string>>()
     })
+    // Callbacks may be passed as `undefined` to omit them.
+    expect(Arbitrary.command({
+      name: "step",
+      args: undefined,
+      precondition: undefined,
+      next: undefined,
+      postcondition: undefined,
+      run: () => hole<Effect.Effect<void>>()
+    })).type.toBe<Arbitrary.Command<unknown, undefined, void, never, never>>()
 
     const commands = Arbitrary.commands({
       initial: [] as Model,
