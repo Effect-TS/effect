@@ -2482,31 +2482,50 @@ Missing key
       assert.isTrue(signal.aborted)
     }))
 
-  it.effect("keeps interruption cleanup for unscoped clients called by withScope middleware", () =>
+  it.effect("aborts requests made by other clients from withScope middleware on interruption or scope close", () =>
     Effect.gen(function*() {
-      const helperStarted = yield* Deferred.make<AbortSignal>()
-      const helper = HttpClient.make((_request, _url, signal) =>
-        Effect.andThen(Deferred.succeed(helperStarted, signal), Effect.never)
-      )
-      const client = HttpClient.make((request) =>
-        Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
-      )
-        .pipe(
-          HttpClient.transformResponse((effect) =>
-            Effect.gen(function*() {
-              const fiber = yield* helper.get("https://helper.test/").pipe(Effect.forkChild)
-              yield* Deferred.await(helperStarted)
-              yield* Fiber.interrupt(fiber)
-              return yield* effect
-            })
-          ),
-          HttpClient.withScope
+      const interruptedStarted = yield* Deferred.make<AbortSignal>()
+      const pendingStarted = yield* Deferred.make<AbortSignal>()
+      const helper = HttpClient.make((request, _url, signal) =>
+        Effect.andThen(
+          Deferred.succeed(request.url.endsWith("/interrupted") ? interruptedStarted : pendingStarted, signal),
+          Effect.never
         )
+      )
+      const client = HttpClient.make(() => Effect.never).pipe(
+        HttpClient.transformResponse((effect) =>
+          Effect.gen(function*() {
+            const fiber = yield* helper.get("https://helper.test/interrupted").pipe(Effect.forkChild)
+            yield* Deferred.await(interruptedStarted)
+            yield* Fiber.interrupt(fiber)
+            yield* helper.get("https://helper.test/pending").pipe(Effect.forkChild)
+            return yield* effect
+          })
+        ),
+        HttpClient.withScope
+      )
       const scope = yield* Scope.make()
 
-      yield* client.get("https://origin.test/").pipe(Scope.provide(scope))
+      yield* client.get("https://origin.test/").pipe(Scope.provide(scope), Effect.forkChild)
+      const pending = yield* Deferred.await(pendingStarted)
+      assert.isTrue((yield* Deferred.await(interruptedStarted)).aborted)
+      assert.isFalse(pending.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(pending.aborted)
+    }))
 
-      assert.isTrue((yield* Deferred.await(helperStarted)).aborted)
+  it.effect("aborts a withScope request interrupted before its response arrives", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((_request, _url, signal) =>
+        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
+      ).pipe(HttpClient.withScope)
+      const scope = yield* Scope.make()
+
+      const fiber = yield* client.get("https://origin.test/").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(signal.aborted)
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
