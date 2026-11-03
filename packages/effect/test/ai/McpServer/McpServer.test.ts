@@ -3496,10 +3496,9 @@ describe("McpServer", () => {
     })
     const WeatherToolkit = Toolkit.make(GetWeather)
 
-    // Returns a function that sends `tools/call` over HTTP and yields its ended MCP span.
-    const makeTracedServer = Effect.fnUntraced(function*(recordToolArguments = false) {
-      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-      const tracer = Tracer.make({
+    // Offers each ended `tools/call` span to `ended`.
+    const makeToolCallTracer = (ended: Queue.Queue<Tracer.NativeSpan>) =>
+      Tracer.make({
         span(options) {
           const span = new Tracer.NativeSpan(options)
           const end = span.end.bind(span)
@@ -3510,6 +3509,11 @@ describe("McpServer", () => {
           return span
         }
       })
+
+    // Returns a function that sends `tools/call` over HTTP and yields its ended MCP span.
+    const makeTracedServer = Effect.fnUntraced(function*(recordToolArguments = false) {
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = makeToolCallTracer(ended)
       const tools = Layer.mergeAll(
         McpServer.toolkit(WeatherToolkit).pipe(
           Layer.provideMerge(WeatherToolkit.toLayer({
@@ -3586,6 +3590,63 @@ describe("McpServer", () => {
 
         const span = yield* callTool({ name: "get_weather", arguments: { location: "Atlantis" } })
         assert.strictEqual(span.attributes.get("error.type"), "tool_error")
+      }))
+
+    // When writing an error response fails, RpcServer sends -32603 instead, and the span must report that response.
+    it.effect("records the internal error sent after an error response fails to write", () =>
+      Effect.gen(function*() {
+        const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+        const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+        const disconnects = yield* Queue.unbounded<number>()
+        const ready = yield* Deferred.make<
+          (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+        >()
+        let failWrite = true
+        const transport = yield* RpcServer.Protocol.make((write) =>
+          Deferred.succeed(ready, write).pipe(Effect.as({
+            disconnects,
+            send: (_clientId, message) => {
+              if (failWrite && message._tag === "Exit" && message.requestId === "1") {
+                failWrite = false
+                return Effect.die("write failed")
+              }
+              return Queue.offer(outbound, message).pipe(Effect.asVoid)
+            },
+            end: () => Effect.void,
+            clientIds: Effect.succeed(new Set([1])),
+            initialMessage: Effect.succeedNone,
+            supportsAck: false,
+            supportsTransferables: false,
+            supportsSpanPropagation: false,
+            supportsNotifications: true,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          }))
+        )
+        yield* Layer.build(
+          McpServer.layer({ name: "TracingTest", version: "1.0.0", protocols: [McpProtocol.v2025_03_26] }).pipe(
+            Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
+          )
+        )
+        const write = yield* Deferred.await(ready)
+        const send = (message: RpcMessage.FromClientEncoded) =>
+          write(1, message).pipe(Effect.provideService(Tracer.Tracer, makeToolCallTracer(ended)))
+        const clientInfo = { name: "client", version: "1.0.0" }
+        const payload = { protocolVersion: "2025-03-26", capabilities: {}, clientInfo }
+        yield* send({ _tag: "Request", id: "0", tag: "initialize", payload, headers: [] })
+        yield* Queue.take(outbound)
+
+        // An unknown tool fails with the request error -32602, whose write then fails.
+        yield* send({ _tag: "Request", id: "1", tag: "tools/call", payload: { name: "missing_tool" }, headers: [] })
+
+        assert.deepStrictEqual(yield* Queue.take(outbound), {
+          _tag: "Exit",
+          requestId: "1",
+          exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32603, message: "Internal error" } }] }
+        })
+        const span = yield* Queue.take(ended)
+        assert.strictEqual(span.status._tag === "Ended" && span.status.exit._tag, "Failure")
+        assert.strictEqual(span.attributes.get("rpc.status_code"), "-32603")
+        assert.strictEqual(span.attributes.get("error.type"), "-32603")
       }))
   })
 })
