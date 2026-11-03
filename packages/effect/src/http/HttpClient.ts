@@ -695,10 +695,10 @@ export const make = (
   ) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error.HttpClientError>
 ): HttpClient =>
   makeWith((effect) =>
-    Effect.flatMap(effect, (request) =>
+    Effect.flatMap(Effect.zip(effect, owned), (exchange) =>
       Effect.withFiber((fiber) => {
-        const scopedController = scopedRequests.get(request)
-        const controller = scopedController?.controller ?? new AbortController()
+        let [request, scopedController] = exchange
+        const controller = scopedController ?? new AbortController()
         const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
@@ -1988,11 +1988,7 @@ export const withCookiesRef: {
       Effect.map(Ref.get(ref), (cookies) => {
         const header = Cookies.toRequestCookieHeader(cookies, request.url, now())
         if (header === undefined) return request
-        const withCookies = HttpClientRequest.setHeader(request, "cookie", header)
-        // setHeader returns a new request, so carry over the withScope controller
-        const controller = scopedRequests.get(request)
-        if (controller !== undefined) scopedRequests.set(withCookies, controller)
-        return withCookies
+        return HttpClientRequest.setHeader(request, "cookie", header)
       })
     return makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
@@ -2017,7 +2013,7 @@ export const withScope = <E, R>(
 ): HttpClient.With<E, R | Scope.Scope> =>
   transform(
     self,
-    (effect, request) => Effect.flatMap(Effect.scope, (scope) => Effect.andThen(scopeRequest(request, scope), effect))
+    (effect) => Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestOwner, scope))
   )
 
 /**
@@ -2073,11 +2069,9 @@ export const followRedirects: {
       ): Effect.Effect<HttpClientResponse.HttpClientResponse, E, R> =>
         Effect.suspend(() => {
           let currentRequest: HttpClientRequest.HttpClientRequest | undefined
-          let currentScope: Scope.Scope | undefined
           return Effect.flatMap(
             self.postprocess(Effect.map(request, (request) => {
               currentRequest = request
-              currentScope = scopedRequests.get(request)?.scope
               return request
             })),
             (response) => {
@@ -2123,12 +2117,7 @@ export const followRedirects: {
               // Abort the discarded response to release its connection without reading the body
               return Effect.andThen(
                 Effect.sync(() => responseControllers.get(response)?.abort()),
-                loop(
-                  currentScope === undefined
-                    ? Effect.succeed(nextRequest)
-                    : Effect.as(scopeRequest(nextRequest, currentScope), nextRequest),
-                  redirects + 1
-                )
+                loop(Effect.succeed(nextRequest), redirects + 1)
               )
             }
           )
@@ -2266,16 +2255,18 @@ const responseRegistry = (() => {
   }
 })()
 
-const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, {
-  readonly scope: Scope.Scope
-  readonly controller: AbortController
-}>()
+// Set by withScope on the executing fiber, so ownership follows the execution rather than the request
+const RequestOwner = Context.Reference<Scope.Scope | undefined>("effect/http/HttpClient/RequestOwner", {
+  defaultValue: () => undefined
+})
 
-const scopeRequest = (request: HttpClientRequest.HttpClientRequest, scope: Scope.Scope) => {
+// Each exchange gets its own controller, aborted when the owning scope closes
+const owned = Effect.withFiber((fiber) => {
+  const owner = fiber.getRef(RequestOwner)
+  if (owner === undefined) return Effect.undefined
   const controller = new AbortController()
-  scopedRequests.set(request, { scope, controller })
-  return Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))
-}
+  return Effect.as(Scope.addFinalizer(owner, Effect.sync(() => controller.abort())), controller)
+})
 
 const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
 
