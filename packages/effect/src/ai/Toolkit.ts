@@ -217,9 +217,9 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
      */
     name: Name,
     /**
-     * Encoded parameters to decode and pass to the tool handler.
+     * JSON-encoded parameters to decode and pass to the tool handler.
      */
-    params: Tool.ParametersEncoded<Tools[Name]>,
+    params: Schema.Json,
     /**
      * The unique identifier of the tool call.
      */
@@ -417,7 +417,7 @@ const Proto = {
         if (Predicate.isUndefined(schemas)) {
           const handler = services.mapUnsafe.get(tool.id)! as Tool.Handler<any>
           const decodeParameters = Schema.isSchema(tool.parametersSchema)
-            ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
+            ? Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema)) as any
             : (u: unknown) => Effect.succeed(u)
           const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
           const encodeFailure = Schema.encodeUnknownEffect(Tool.failureResultSchema(tool)) as any
