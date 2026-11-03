@@ -405,7 +405,11 @@ export const makeUpgradeHandler = <
       if (!isWebSocket && legacyUpgradeBody) {
         if (nodeRequest.headers["transfer-encoding"] !== undefined) {
           socket.on("error", () => {})
-          socket.end("HTTP/1.1 411 Length Required\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+          // Nothing reads the socket after an upgrade, so close it once the 411 is sent.
+          socket.end(
+            "HTTP/1.1 411 Length Required\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
+            () => socket.destroy()
+          )
           return
         }
         const framed = Upgrade.frameBody(socket, head, Number(nodeRequest.headers["content-length"] ?? 0))
