@@ -219,6 +219,24 @@ describe("String", () => {
     })
   })
 
+  describe("isNonBlank", () => {
+    it("returns false for empty and whitespace-only strings", () => {
+      for (const value of ["", " ", "\t\n\r\v\f", "\u00a0\u1680\u2000\u2028\u2029\u202f\u205f\u3000\ufeff"]) {
+        assertFalse(S.isNonBlank(value))
+      }
+    })
+
+    it("returns true for strings containing non-whitespace characters", () => {
+      for (const value of ["a", "  hello  ", "\t0\n", "\u00a0hello\ufeff", "\u200b", "\u0085"]) {
+        assertTrue(S.isNonBlank(value))
+      }
+    })
+
+    it("can be used as a predicate without trimming the original values", () => {
+      deepStrictEqual(["", " ", "  hello  ", "world"].filter(S.isNonBlank), ["  hello  ", "world"])
+    })
+  })
+
   describe("isEmpty", () => {
     it("returns true for empty string", () => {
       assertTrue(S.isEmpty(""))

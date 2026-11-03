@@ -433,6 +433,31 @@ export const isEmpty = (self: string): self is "" => self.length === 0
 export const isNonEmpty = (self: string): boolean => self.length > 0
 
 /**
+ * Checks whether a string contains at least one non-whitespace character.
+ *
+ * **Details**
+ *
+ * Uses JavaScript whitespace semantics, matching `trim`. Empty strings and
+ * whitespace-only strings return `false`; the input is not modified.
+ *
+ * **Example** (Checking for non-blank strings)
+ *
+ * ```ts import.meta.vitest
+ * import { String } from "effect"
+ *
+ * String.isNonBlank("hello") // => true
+ * String.isNonBlank("  hello  ") // => true
+ * String.isNonBlank("") // => false
+ * String.isNonBlank(" \t\n") // => false
+ * ```
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isNonBlank = (self: string): boolean => /\S/u.test(self)
+
+/**
  * Returns the JavaScript string length, measured in UTF-16 code units.
  *
  * **Example** (Getting string length)
