@@ -78,7 +78,7 @@ describe("Only", () => {
     class Symbolic extends Context.Service<Symbolic, { readonly [member]: () => Effect.Effect<void> }>()("Symbolic") {}
 
     expect(Symbolic.only).type.not.toBeCallableWith(member)
-    expect(Layer.succeedOnly).type.not.toBeCallableWith(Symbolic, member, () => Effect.void)
+    expect(Layer.succeedOnly).type.not.toBeCallableWith(Symbolic, [member], { [member]: () => Effect.void })
   })
 
   it("distributes over a union of member names", () => {
@@ -89,14 +89,20 @@ describe("Only", () => {
     expect(FileSystem.only("readFile", "writeFile")).type.toBe<
       Effect.Effect<Pick<FileSystemShape, "readFile" | "writeFile">, never, ReadFile | WriteFile>
     >()
-    expect(Layer.succeedOnly(FileSystem, "writeFile", (_path, _data) => Effect.void)).type.toBe<
+    expect(Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: (_path, _data) => Effect.void })).type.toBe<
       Layer.Layer<WriteFile>
     >()
     expect(
+      Layer.succeedOnly(FileSystem, ["readFile", "writeFile"], {
+        readFile: (_path) => Effect.succeed(""),
+        writeFile: (_path, _data) => Effect.void
+      })
+    ).type.toBe<Layer.Layer<ReadFile | WriteFile>>()
+    expect(
       Layer.effectOnly(
         FileSystem,
-        "copy",
-        Effect.map(FileSystem.only("stat"), ({ stat }) => (from, _to) => Effect.asVoid(stat(from)))
+        ["copy"],
+        Effect.map(FileSystem.only("stat"), ({ stat }) => ({ copy: (from, _to) => Effect.asVoid(stat(from)) }))
       )
     ).type.toBe<Layer.Layer<Context.Only<FileSystem, "copy">, never, Context.Only<FileSystem, "stat">>>()
   })
