@@ -2,4 +2,4 @@
 "@effect/ai-openai": patch
 ---
 
-Fix `LanguageModel.generateObject` failing when an OpenAI model returns a commentary message before its final answer.
+Skip OpenAI `commentary` messages in structured output so `LanguageModel.generateObject` no longer fails when one precedes the final answer.

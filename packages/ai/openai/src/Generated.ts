@@ -5217,8 +5217,7 @@ export class OutputMessageContent extends S.Union(OutputTextContent, RefusalCont
 export class OutputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
 
 /**
- * Labels an assistant message as intermediate commentary (`commentary`) or the
- * final answer (`final_answer`).
+ * The phase of the output message. One of `commentary` or `final_answer`.
  */
 export class OutputMessagePhase extends S.Literal("commentary", "final_answer") {}
 
@@ -5243,7 +5242,7 @@ export class OutputMessage extends S.Class<OutputMessage>("OutputMessage")({
    */
   "content": S.Array(OutputMessageContent),
   /**
-   * The phase of an assistant message.
+   * The phase of the output message. One of `commentary` or `final_answer`.
    */
   "phase": S.optionalWith(OutputMessagePhase, { nullable: true }),
   /**
