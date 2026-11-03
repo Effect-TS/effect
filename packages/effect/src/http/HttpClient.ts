@@ -694,36 +694,79 @@ export const make = (
     fiber: Fiber.Fiber<HttpClientResponse.HttpClientResponse, Error.HttpClientError>
   ) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error.HttpClientError>
 ): HttpClient =>
-  makeWith(
-    (effect) =>
-      Effect.flatMap(effect, (request) =>
-        Effect.flatMap(scopedController(request), (scopedController) =>
-          Effect.withFiber((fiber) => {
-            const controller = scopedController ?? new AbortController()
-            const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
-            if (Result.isFailure(urlResult)) {
-              return Effect.fail(
-                new Error.HttpClientError({
-                  reason: new Error.InvalidUrlError({
-                    request,
-                    cause: urlResult.failure
-                  })
-                })
-              )
-            }
-            const url = urlResult.success
-            const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
-              fiber.getRef(TracerDisabledWhen)(request)
-            if (tracerDisabled) {
-              const effect = f(request, url, controller.signal, fiber as any)
-              if (scopedController) {
-                return Effect.map(effect, (response) =>
-                  trackResponse(response, controller, true))
+  makeWith((effect) =>
+    Effect.flatMap(effect, (request) =>
+      Effect.withFiber((fiber) => {
+        const scope = fiber.getRef(RequestScope)
+        const controller = new AbortController()
+        const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
+        if (Result.isFailure(urlResult)) {
+          return Effect.fail(
+            new Error.HttpClientError({
+              reason: new Error.InvalidUrlError({
+                request,
+                cause: urlResult.failure
+              })
+            })
+          )
+        }
+        const url = urlResult.success
+        const send = (request: HttpClientRequest.HttpClientRequest) =>
+          scope === undefined
+            ? f(request, url, controller.signal, fiber as any)
+            : Effect.andThen(
+              Scope.addFinalizer(scope, Effect.sync(() => controller.abort())),
+              () => f(request, url, controller.signal, fiber as any)
+            )
+        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
+          fiber.getRef(TracerDisabledWhen)(request)
+        if (tracerDisabled) {
+          const effect = send(request)
+          return Effect.uninterruptibleMask((restore) =>
+            Effect.matchCauseEffect(restore(effect), {
+              onSuccess(response) {
+                return Effect.succeed(trackResponse(response, controller, scope !== undefined))
+              },
+              onFailure(cause) {
+                if (Cause.hasInterrupts(cause)) {
+                  controller.abort()
+                }
+                return Effect.failCause(cause)
               }
-              return Effect.uninterruptibleMask((restore) =>
-                Effect.matchCauseEffect(restore(effect), {
-                  onSuccess(response) {
-                    return Effect.succeed(trackResponse(response, controller, false))
+            })
+          )
+        }
+        return Effect.useSpan(
+          fiber.getRef(SpanNameGenerator)(request),
+          { kind: "client" },
+          (span) => {
+            span.attribute("http.request.method", request.method)
+            const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+            tracing.addUrlAttributes(
+              span,
+              url,
+              tracing.redactedNames(request.urlParams, fiber.getRef(UrlParams.CurrentRedactedNames))
+            )
+            const headerFilter = fiber.getRef(TracerHeaderFilter)
+            tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
+            request = fiber.getRef(TracerPropagationEnabled)
+              ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
+              : request
+            return Effect.uninterruptibleMask((restore) =>
+              restore(send(request)).pipe(
+                Effect.withParentSpan(span, { captureStackTrace: false }),
+                Effect.matchCauseEffect({
+                  onSuccess: (response) => {
+                    span.attribute("http.response.status_code", response.status)
+                    tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+                    // OpenTelemetry marks client spans as failed for 4xx and
+                    // 5xx responses, while the response itself still succeeds.
+                    if (response.status >= 400 && response.status < 600) {
+                      span.attribute("error.type", String(response.status))
+                      endSpanWithStatusError(fiber, span, request, response)
+                    }
+
+                    return Effect.succeed(trackResponse(response, controller, scope !== undefined))
                   },
                   onFailure(cause) {
                     if (Cause.hasInterrupts(cause)) {
@@ -733,59 +776,10 @@ export const make = (
                   }
                 })
               )
-            }
-            return Effect.useSpan(
-              fiber.getRef(SpanNameGenerator)(request),
-              { kind: "client" },
-              (span) => {
-                span.attribute("http.request.method", request.method)
-                const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-                tracing.addUrlAttributes(
-                  span,
-                  url,
-                  tracing.redactedNames(request.urlParams, fiber.getRef(UrlParams.CurrentRedactedNames))
-                )
-                const headerFilter = fiber.getRef(TracerHeaderFilter)
-                tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
-                request = fiber.getRef(TracerPropagationEnabled)
-                  ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
-                  : request
-                return Effect.uninterruptibleMask((restore) =>
-                  restore(f(request, url, controller.signal, fiber as any)).pipe(
-                    Effect.withParentSpan(span, { captureStackTrace: false }),
-                    Effect.matchCauseEffect({
-                      onSuccess: (response) => {
-                        span.attribute("http.response.status_code", response.status)
-                        tracing.addHeaderAttributes(
-                          span,
-                          "response",
-                          response.headers,
-                          headerFilter,
-                          redactedHeaderNames
-                        )
-                        // OpenTelemetry marks client spans as failed for 4xx and
-                        // 5xx responses, while the response itself still succeeds.
-                        if (response.status >= 400 && response.status < 600) {
-                          span.attribute("error.type", String(response.status))
-                          endSpanWithStatusError(fiber, span, request, response)
-                        }
-
-                        return Effect.succeed(trackResponse(response, controller, scopedController !== undefined))
-                      },
-                      onFailure(cause) {
-                        if (!scopedController && Cause.hasInterrupts(cause)) {
-                          controller.abort()
-                        }
-                        return Effect.failCause(cause)
-                      }
-                    })
-                  )
-                )
-              }
             )
-          }))),
-    Effect.succeed as HttpClient.Preprocess<never, never>
-  )
+          }
+        )
+      })), Effect.succeed as HttpClient.Preprocess<never, never>)
 
 const endSpanWithStatusError = (
   fiber: Fiber.Fiber<unknown, unknown>,
@@ -2000,7 +1994,7 @@ export const withCookiesRef: {
       Effect.map(Ref.get(ref), (cookies) => {
         const header = Cookies.toRequestCookieHeader(cookies, request.url, now())
         if (header === undefined) return request
-        return inheritScope(request, HttpClientRequest.setHeader(request, "cookie", header))
+        return HttpClientRequest.setHeader(request, "cookie", header)
       })
     return makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
@@ -2023,23 +2017,9 @@ export const withCookiesRef: {
 export const withScope = <E, R>(
   self: HttpClient.With<E, R>
 ): HttpClient.With<E, R | Scope.Scope> =>
-  makeWith(
-    Effect.flatMap((request) =>
-      Effect.flatMap(Effect.scope, (scope) => {
-        // A private copy gives this execution its own key, so concurrent executions of one request keep separate scopes
-        const scoped = HttpClientRequest.makeWith(
-          request.method,
-          request.url,
-          request.urlParams,
-          request.hash,
-          request.headers,
-          request.body
-        )
-        scopedRequests.set(scoped, scope)
-        return self.postprocess(Effect.succeed(scoped))
-      })
-    ),
-    self.preprocess
+  transformResponse(
+    self,
+    (effect) => Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestScope, scope))
   )
 
 /**
@@ -2143,7 +2123,7 @@ export const followRedirects: {
               // Abort the discarded response to release its connection without reading the body
               return Effect.andThen(
                 Effect.sync(() => responseControllers.get(response)?.abort()),
-                loop(Effect.succeed(inheritScope(request, nextRequest)), redirects + 1)
+                loop(Effect.succeed(nextRequest), redirects + 1)
               )
             }
           )
@@ -2281,27 +2261,9 @@ const responseRegistry = (() => {
   }
 })()
 
-const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, Scope.Scope>()
-
-// Built-in middleware that replaces a scoped request keeps its replacement in the same scope
-const inheritScope = (
-  request: HttpClientRequest.HttpClientRequest,
-  replacement: HttpClientRequest.HttpClientRequest
-): HttpClientRequest.HttpClientRequest => {
-  const scope = scopedRequests.get(request)
-  if (scope !== undefined) scopedRequests.set(replacement, scope)
-  return replacement
-}
-
-// A controller for a scoped request's exchange, aborted when its scope closes
-const scopedController = (
-  request: HttpClientRequest.HttpClientRequest
-): Effect.Effect<AbortController | undefined> => {
-  const scope = scopedRequests.get(request)
-  if (scope === undefined) return Effect.undefined
-  const controller = new AbortController()
-  return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => controller.abort())), controller)
-}
+const RequestScope = Context.Reference<Scope.Scope | undefined>("effect/http/HttpClient/RequestScope", {
+  defaultValue: () => undefined
+})
 
 const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
 
