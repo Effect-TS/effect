@@ -1,4 +1,4 @@
-import { Arbitrary, type Effect, hole, Result, Schema, type SchemaAST } from "effect"
+import { Arbitrary, type Effect, type Exit, hole, Result, Schema, type SchemaAST } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Arbitrary", () => {
@@ -28,6 +28,44 @@ describe("Arbitrary", () => {
 
     expect(Arbitrary.checkEffect(arbitrary, property)).type.toBe<
       Effect.Effect<Arbitrary.CheckResult<string, "error">, never, "service">
+    >()
+  })
+
+  it("infers commands, references and requirements", () => {
+    type Model = ReadonlyArray<Arbitrary.Reference<string>>
+    const open = Arbitrary.command({
+      name: "open",
+      next: (model: Model, args, account) => {
+        expect(args).type.toBe<undefined>()
+        expect(account).type.toBe<Arbitrary.Reference<string>>()
+        return [...model, account]
+      },
+      run: () => hole<Effect.Effect<string, never, "a">>()
+    })
+    expect(open).type.toBe<Arbitrary.Command<Model, undefined, string, never, "a">>()
+
+    const deposit = Arbitrary.command({
+      name: "deposit",
+      args: (model: Model) =>
+        Arbitrary.all({ account: Arbitrary.Constant(model[0]!), amounts: Arbitrary.array(Arbitrary.Constant(1)) }),
+      run: (args) => {
+        expect(args).type.toBe<{ account: string; amounts: Array<1> }>()
+        return hole<Effect.Effect<void, "error", "b">>()
+      },
+      postcondition: (_, args, exit) => {
+        expect(args.account).type.toBe<Arbitrary.Reference<string>>()
+        expect(exit).type.toBe<Exit.Exit<void, "error">>()
+        return true
+      }
+    })
+
+    const commands = Arbitrary.commands({ initial: [] as Model, commands: [open, deposit] })
+    expect(commands).type.toBe<Arbitrary.Arbitrary<Arbitrary.Commands<Model, "a" | "b">>>()
+    expect(Arbitrary.runCommands(hole<Arbitrary.Commands<Model, "a" | "b">>())).type.toBe<
+      Effect.Effect<Arbitrary.CommandsRun<Model>, Arbitrary.CommandsFailure<Model>, "a" | "b">
+    >()
+    expect<Arbitrary.Resolved<readonly [Arbitrary.Reference<number>, { readonly at: Date }]>>().type.toBe<
+      readonly [number, { readonly at: Date }]
     >()
   })
 

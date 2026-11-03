@@ -675,6 +675,74 @@ The property compares two things:
 When this test fails, Effect simplifies the command list and its values. The final counterexample is often a short
 history that clearly shows which state change the implementation handled incorrectly.
 
+### Testing a Stateful System with Commands
+
+The command list above is generated without looking at the model, so every command must make sense in every state.
+When commands depend on the state, such as withdrawing only from an account that was opened, use
+`Arbitrary.commands`. Each `Arbitrary.command` describes one operation:
+
+- `args` returns the Arbitrary for its arguments in the current model, or `undefined` when the command is not
+  available;
+- `precondition` rejects arguments that the model does not allow;
+- `next` returns the model after the command;
+- `run` performs the operation on the real system;
+- `postcondition` compares the command's `Exit` with the model. Without one, the command must succeed.
+
+`next` receives a reference to the command's result, such as a new account id. Store it in the model and use it in
+later arguments; `Arbitrary.runCommands` replaces it with the real value before calling `run`.
+
+```ts
+import { Arbitrary, Effect, Exit, Schema } from "effect"
+
+type Model = ReadonlyMap<Arbitrary.Reference<string>, number>
+
+const account = (model: Model) =>
+  model.size === 0
+    ? undefined
+    : Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: model.size - 1 }))).pipe(
+      Arbitrary.map((index) => [...model.keys()][index])
+    )
+
+const commands = Arbitrary.commands({
+  initial: new Map() as Model,
+  commands: [
+    Arbitrary.command({
+      name: "open",
+      next: (model: Model, _, id) => new Map(model).set(id, 0),
+      run: () => Bank.use((bank) => bank.open)
+    }),
+    Arbitrary.command({
+      name: "withdraw",
+      args: (model: Model) =>
+        model.size === 0 ? undefined : Arbitrary.all({ id: account(model)!, amount: Arbitrary.schema(Schema.Int) }),
+      precondition: (_: Model, { amount }) => amount > 0,
+      next: (model: Model, { amount, id }) =>
+        amount <= model.get(id)! ? new Map(model).set(id, model.get(id)! - amount) : model,
+      run: ({ amount, id }) => Bank.use((bank) => bank.withdraw(id, amount)),
+      // Overdrawing is an expected failure.
+      postcondition: (model, { amount, id }, exit) =>
+        amount <= model.get(id)! ? Exit.isSuccess(exit) : Exit.isFailure(exit)
+    })
+  ],
+  // Checked after every command, against the real system.
+  invariant: (model) => Bank.use((bank) => bank.total).pipe(Effect.map((total) => total === sum(model.values())))
+})
+
+const program = Arbitrary.checkEffect(commands, (sequence) =>
+  Arbitrary.runCommands(sequence).pipe(
+    Effect.as(true),
+    // A fresh system for every evaluation.
+    Effect.provide(BankLive)
+  ))
+```
+
+Sequences grow with `size`, up to the `maxCommands` option. When a postcondition or the invariant fails,
+`runCommands` fails with a `CommandsFailure` holding the executed steps, each with its command, arguments, model
+before it, and `Exit`. Simplification removes commands and simplifies their arguments, then replays the model and drops
+every command whose precondition no longer holds or whose reference disappeared, so the counterexample is a short
+program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`. Each run also reports how often every command
+ran and how many of its generated candidates were rejected, so a test can fail when a command never ran.
+
 ## Replaying a Failure
 
 Every `Falsified` result contains a `replay` token. It is a string produced by Effect and is not meant to be edited. The
@@ -1011,7 +1079,8 @@ the allowed inputs and a rule that comes from the requirement:
   program;
 - write laws directly and remember the limits of JavaScript numbers;
 - when two values are considered equal, check that public operations treat them the same way;
-- use command sequences and a simple model for stateful behavior;
+- use command sequences and a simple model for stateful behavior, and `Arbitrary.commands` when commands depend on
+  the state;
 - pay attention to rejected values, simplification, and replay because they affect what the test actually checks.
 
 The most important choice is not how many random inputs to generate. It is choosing inputs and a rule that make a small
@@ -1322,5 +1391,9 @@ can alter generated values, simplification, replay, performance, or bundle size 
   position no longer exists or no longer fails in the same way. It does not compare the exact final input or Effect
   error. Malformed tokens may fail with a defect, and tokens need not work across releases while the module is unstable.
   Replay follows the recorded positions directly, so it ignores `maxShrinks`.
+- `Arbitrary.commands` keeps the model symbolic: `next` runs during generation and simplification, and sees references
+  instead of results. A reference's id is the position of its command in the generated sequence, so it stays stable
+  while commands are removed. `runCommands` resolves references found in arrays and plain objects. When no candidate
+  is accepted for a position after a bounded number of draws, the sequence ends early instead of being discarded.
 - Long synchronous generation loops occasionally yield control according to `Scheduler.MaxOpsBeforeYield`. Generation
   that uses Effects, declaration conversion, property evaluation, and simplification can all be interrupted normally.
