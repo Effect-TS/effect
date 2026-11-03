@@ -651,10 +651,10 @@ export const makeWith = <E2, R2, E, R>(
   self.postprocess = postprocess
   self.execute = function(request: HttpClientRequest.HttpClientRequest) {
     const effect = postprocess(preprocess(request))
-    // A withScope owner only follows its own request, not unrelated requests made from middleware
+    // A withScope owner only follows its own requests, not unrelated requests made from middleware
     return Effect.withFiber((fiber) => {
       const owner = fiber.getRef(RequestOwner)
-      return owner === undefined || owner.request === request
+      return owner === undefined || owner.requests.has(request)
         ? effect
         : Effect.provideService(effect, RequestOwner, undefined)
     })
@@ -1995,7 +1995,7 @@ export const withCookiesRef: {
       Effect.map(Ref.get(ref), (cookies) => {
         const header = Cookies.toRequestCookieHeader(cookies, request.url, now())
         if (header === undefined) return request
-        return HttpClientRequest.setHeader(request, "cookie", header)
+        return adoptRequest(HttpClientRequest.setHeader(request, "cookie", header))
       })
     return makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
@@ -2021,7 +2021,8 @@ export const withScope = <E, R>(
   transform(
     self,
     (effect, request) =>
-      Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestOwner, { scope, request }))
+      Effect.flatMap(Effect.scope, (scope) =>
+        Effect.provideService(effect, RequestOwner, { scope, requests: new Set([request]) }))
   )
 
 /**
@@ -2125,7 +2126,7 @@ export const followRedirects: {
               // Abort the discarded response to release its connection without reading the body
               return Effect.andThen(
                 Effect.sync(() => responseControllers.get(response)?.abort()),
-                loop(Effect.succeed(nextRequest), redirects + 1)
+                loop(Effect.succeed(adoptRequest(nextRequest)), redirects + 1)
               )
             }
           )
@@ -2265,10 +2266,16 @@ const responseRegistry = (() => {
 
 // Set by withScope on the executing fiber, so concurrent executions of one request keep separate owners
 const RequestOwner = Context.Reference<
-  { readonly scope: Scope.Scope; readonly request: HttpClientRequest.HttpClientRequest } | undefined
+  { readonly scope: Scope.Scope; readonly requests: Set<HttpClientRequest.HttpClientRequest> } | undefined
 >("effect/http/HttpClient/RequestOwner", {
   defaultValue: () => undefined
 })
+
+// Built-in middleware that replaces the request passes the current execution's owner on to the replacement
+const adoptRequest = (request: HttpClientRequest.HttpClientRequest) => {
+  Fiber.getCurrent()?.getRef(RequestOwner)?.requests.add(request)
+  return request
+}
 
 // Each exchange gets its own controller, aborted when the owning scope closes
 const owned = Effect.withFiber((fiber) => {
