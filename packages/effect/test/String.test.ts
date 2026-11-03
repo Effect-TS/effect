@@ -179,6 +179,17 @@ describe("String", () => {
     })
   })
 
+  describe("hasNonWhitespace", () => {
+    it("requires a character that trim does not remove", () => {
+      assertFalse(S.hasNonWhitespace(""))
+      assertFalse(S.hasNonWhitespace(" \t\n\r\v\f"))
+      assertFalse(S.hasNonWhitespace("\u00a0\u1680\u2000\u2028\u2029\u202f\u205f\u3000\ufeff"))
+      assertTrue(S.hasNonWhitespace("  a  "))
+      assertTrue(S.hasNonWhitespace("\u200b"))
+      assertTrue(S.hasNonWhitespace("\u0085"))
+    })
+  })
+
   describe("isEmpty", () => {
     it("returns true for empty string", () => {
       assertTrue(S.isEmpty(""))
