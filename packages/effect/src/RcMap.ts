@@ -491,7 +491,7 @@ const closeEntry = <A, E>(entry: State.Entry<A, E>) =>
     : Scope.close(entry.scope, Exit.void)
 
 const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>) =>
-  Effect.withFiber((fiber) => {
+  Effect.suspend(() => {
     entry.refCount--
     if (entry.refCount > 0) {
       return Effect.void
@@ -509,7 +509,9 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
       return Effect.void
     }
 
-    const clock = fiber.getRef(Clock)
+    // The idle timer belongs to the map, not to the last borrower: it runs on the
+    // clock and in the context the map was made with.
+    const clock = Context.get(self.context, Clock)
     entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
     if (entry.fiber) return Effect.void
 
@@ -531,7 +533,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
       Effect.ensuring(Effect.sync(() => {
         entry.fiber = undefined
       })),
-      Effect.runForkWith(fiber.context),
+      Effect.runForkWith(self.context),
       Fiber.runIn(self.scope)
     )
     return Effect.void
@@ -735,16 +737,13 @@ export const touch: {
 } = dual(
   2,
   <K, A, E>(self: RcMap<K, A, E>, key: K) =>
-    Effect.clockWith((clock) => {
-      if (self.state._tag === "Closed") {
-        return Effect.void
-      }
+    Effect.sync(() => {
+      if (self.state._tag === "Closed") return
       const o = MutableHashMap.get(self.state.map, key)
-      if (o._tag === "None" || Duration.isZero(o.value.idleTimeToLive)) {
-        return Effect.void
-      }
+      if (o._tag === "None" || Duration.isZero(o.value.idleTimeToLive)) return
       const entry = o.value
-      entry.expiresAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(entry.idleTimeToLive)
-      return Effect.void
+      // measured on the clock the map's idle timers run on
+      entry.expiresAt = Context.get(self.context, Clock).currentTimeMillisUnsafe() +
+        Duration.toMillis(entry.idleTimeToLive)
     })
 )
