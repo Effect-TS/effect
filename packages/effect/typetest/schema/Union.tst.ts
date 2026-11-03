@@ -373,6 +373,10 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+
+        // members / discriminants
+        expect(schema.members).type.toBe<ReadonlyArray<typeof A | typeof B | typeof C>>()
+        expect(schema.discriminants).type.toBe<ReadonlyArray<"A" | "B" | "C">>()
       })
     })
   })

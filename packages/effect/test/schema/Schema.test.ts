@@ -9889,6 +9889,10 @@ pointed message
         strictEqual(C.fields._tag.ast.literal, "C")
         strictEqual(C.fields.c, Schema.Boolean)
 
+        // members / discriminants follow the constructor's case enumeration order
+        deepStrictEqual(schema.discriminants, ["A", "C", "B"])
+        deepStrictEqual(schema.members, [A, C, B])
+
         // isAnyOf
         const isAOrB = schema.isAnyOf(["A", "B"])
         assertTrue(isAOrB({ _tag: "A", a: "a" }))
