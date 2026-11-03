@@ -948,6 +948,10 @@ describe("SqlMessageStorage", () => {
             yield* storage.saveRequest(request)
             yield* storage.saveReply(yield* makeReply(request, completedAt + id - 1))
           }
+          // completed before the Snowflake epoch, so its reply id is negative
+          const preEpoch = yield* makeRequest({ payload: { id: 0 } })
+          yield* storage.saveRequest(preEpoch)
+          yield* storage.saveReply(yield* makeReply(preEpoch, Snowflake.constEpochMillis - 1))
           const makeRunning = makeRequest({
             rpc: PrimaryKeyTest,
             payload: PrimaryKeyTest.payloadSchema.make({ id: 7 })
@@ -960,6 +964,7 @@ describe("SqlMessageStorage", () => {
           // negative huge and negative infinite retention
           expect(yield* deleteProcessed(-Infinity)).toEqual(0)
           expect(yield* deleteProcessed(-Number.MAX_VALUE)).toEqual(0)
+          expect(yield* deleteProcessed(Snowflake.constEpochMillis)).toEqual(1)
           expect(yield* deleteProcessed(completedAt + 0.5)).toEqual(1)
           expect(yield* deleteProcessed(Number.MAX_VALUE)).toEqual(2)
           expect(yield* deleteProcessed(Infinity)).toEqual(2)
