@@ -895,6 +895,22 @@ describe("Layer", () => {
         const third = yield* readA
         assert.deepStrictEqual([first, second, third], ["a:a.txt", "b:a.txt", "a:a.txt"])
       }).pipe(Effect.provide(fullLayer("a"))))
+
+    it.effect("a slice of a Reference reads the default, then a provided parent, then the slice", () =>
+      Effect.gen(function*() {
+        const Config = Context.Reference<{ readonly name: string; readonly port: number }>("ConfigRef", {
+          defaultValue: () => ({ name: "default", port: 1 })
+        })
+        const readName = Config.only("name")
+        const provided = { name: "provided", port: 2 }
+        const fromDefault = yield* readName
+        const fromParent = yield* readName.pipe(Effect.provideService(Config, provided))
+        const fromSlice = yield* readName.pipe(
+          Effect.provideService(readName, "slice"),
+          Effect.provideService(Config, provided)
+        )
+        assert.deepStrictEqual([fromDefault, fromParent, fromSlice], ["default", "provided", "slice"])
+      }))
   })
 })
 
