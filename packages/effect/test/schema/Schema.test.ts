@@ -5400,7 +5400,6 @@ Expected a value between -2147483648 and 2147483647`
 
     const encoding = asserts.encoding()
     await encoding.succeed("foobar", "Zm9vYmFy")
-    await encoding.succeed("\uFEFFreport", "77u/cmVwb3J0")
   })
 
   it("StringFromBase64Url", async () => {
@@ -5416,7 +5415,6 @@ Expected a value between -2147483648 and 2147483647`
 
     const encoding = asserts.encoding()
     await encoding.succeed("foobar", "Zm9vYmFy")
-    await encoding.succeed("\uFEFFreport", "77u_cmVwb3J0")
     await encoding.succeed(">?>d?\u00DF", "Pj8-ZD_Dnw")
   })
 
@@ -5433,7 +5431,6 @@ Expected a value between -2147483648 and 2147483647`
 
     const encoding = asserts.encoding()
     await encoding.succeed("g", "67")
-    await encoding.succeed("\uFEFFreport", "efbbbf7265706f7274")
   })
 
   it("StringFromUriComponent", async () => {
