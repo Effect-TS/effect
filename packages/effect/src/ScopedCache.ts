@@ -136,6 +136,10 @@ export interface Entry<A, E> {
  * `requireServicesAt` controls whether lookup services are captured at
  * construction time or required when lookup operations run.
  *
+ * Lookups do not inherit the span of the effect that requested them, because
+ * a cached entry is shared by every later request. Spans created inside a
+ * lookup are therefore not children of the requesting span.
+ *
  * @see {@link make} for creating a scoped cache with one fixed time-to-live
  *
  * @stability stable
@@ -164,7 +168,9 @@ export const makeWith = <
     self.lookup = (key: Key): Effect.Effect<A, E> =>
       effect.updateContext(
         options.lookup(key),
-        (input) => Context.merge(context, detachParentSpan(input))
+        // Entry finalizers capture this context until the entry is removed, so
+        // drop the requester's span to avoid retaining it and its exit value.
+        (input) => Context.merge(context, omitParentSpan(input))
       )
     const map = MutableHashMap.empty<Key, Entry<A, E>>()
     self.state = { _tag: "Open", map }
@@ -184,21 +190,7 @@ export const makeWith = <
     )
   })
 
-// Lookup finalizers capture the lookup context for the life of the entry, so
-// keep only the requester's span ids: the span itself retains its exit value.
-const detachParentSpan = <R>(context: Context.Context<R>): Context.Context<R> => {
-  let parent = Context.getOrUndefinedUnsafe<Tracer.AnySpan>(context, Tracer.ParentSpanKey)
-  if (parent === undefined || parent._tag === "ExternalSpan") return context
-  // Resolve propagation-disabled spans to the parent child spans would use. A
-  // disabled span without one stays disabled, so lookup spans remain roots.
-  while (
-    parent._tag === "Span" && Option.isSome(parent.parent) &&
-    Context.get(parent.annotations, Tracer.DisablePropagation)
-  ) {
-    parent = parent.parent.value
-  }
-  return Context.add(context, Tracer.ParentSpan, parent._tag === "Span" ? Tracer.externalSpan(parent) : parent)
-}
+const omitParentSpan = Context.omit(Tracer.ParentSpan)
 
 /**
  * Creates a `ScopedCache` with a fixed time-to-live for every lookup result.
@@ -215,6 +207,7 @@ const detachParentSpan = <R>(context: Context.Context<R>): Context.Context<R> =>
  * entry scopes are closed when entries are invalidated, are evicted, or when
  * the cache's owning scope closes. Expiry cleanup is lazy: expired entries close
  * on access to that key or a `keys`/`values`/`entries` scan, not in the background.
+ * Lookups do not inherit the span of the effect that requested them.
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
