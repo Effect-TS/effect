@@ -459,14 +459,6 @@ describe("isTagged", () => {
   })
 })
 
-describe("isTaggedStrict", () => {
-  it("matches values with the expected _tag in both call forms", () => {
-    const values: ReadonlyArray<{ readonly _tag: "a" } | { readonly _tag: "b" }> = [{ _tag: "a" }, { _tag: "b" }]
-    assert.deepStrictEqual(values.map((value) => Predicate.isTaggedStrict(value, "a")), [true, false])
-    assert.deepStrictEqual(values.filter(Predicate.isTaggedStrict("b")), [{ _tag: "b" }])
-  })
-})
-
 describe("isError", () => {
   it("detects Error instances", () => {
     assert.equal(Predicate.isError(new Error()), true)

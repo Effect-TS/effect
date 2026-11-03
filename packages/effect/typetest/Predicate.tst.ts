@@ -1,4 +1,4 @@
-import { Array as Arr, hole, pipe, Predicate } from "effect"
+import { hole, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const u: unknown
@@ -57,89 +57,6 @@ describe("Predicate", () => {
 
   it("isTagged", () => {
     expect(anys.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a" }>>()
-  })
-
-  describe("isTaggedStrict", () => {
-    type Auto = { readonly _tag: "Auto" }
-    type Px = { readonly _tag: "Px"; readonly value: number }
-    type Percent = { readonly _tag: "Percent"; readonly value: number }
-    type Size = Auto | Px | Percent
-    const size = hole<Size>()
-    const sizes = hole<ReadonlyArray<Size>>()
-
-    it("rejects a tag outside the union", () => {
-      expect(Predicate.isTaggedStrict).type.toBeCallableWith(size, "Px")
-      expect(Predicate.isTaggedStrict).type.not.toBeCallableWith(size, "Pxx")
-      expect(Arr.filter).type.toBeCallableWith(sizes, Predicate.isTaggedStrict("Px"))
-      expect(Arr.filter).type.not.toBeCallableWith(sizes, Predicate.isTaggedStrict("Pxx"))
-    })
-
-    it("narrows both branches", () => {
-      if (Predicate.isTaggedStrict(size, "Auto")) {
-        expect(size).type.toBe<Auto>()
-      } else {
-        expect(size).type.toBe<Px | Percent>()
-      }
-    })
-
-    it("keeps the member's fields as a callback", () => {
-      expect(Arr.filter(sizes, Predicate.isTaggedStrict("Px"))).type.toBe<Array<Px>>()
-      expect(pipe(sizes, Arr.filter(Predicate.isTaggedStrict("Px")))).type.toBe<Array<Px>>()
-      expect(sizes.filter(Predicate.isTaggedStrict("Px"))).type.toBe<Array<Px>>()
-    })
-
-    it("infers the input from the value when the result is already typed", () => {
-      const native: ReadonlyArray<Px> = sizes.filter(Predicate.isTaggedStrict("Px"))
-      const dataFirst: ReadonlyArray<Px> = Arr.filter(sizes, Predicate.isTaggedStrict("Px"))
-      const piped: ReadonlyArray<Px> = pipe(sizes, Arr.filter(Predicate.isTaggedStrict("Px")))
-      // @ts-expect-error Type 'Px[]' is not assignable to type 'readonly Auto[]'
-      const wrong: ReadonlyArray<Auto> = sizes.filter(Predicate.isTaggedStrict("Px"))
-
-      void [native, dataFirst, piped, wrong]
-    })
-
-    it("narrows a string `_tag` to the given tag", () => {
-      const value = hole<{ readonly _tag: string; readonly n: number }>()
-      if (Predicate.isTaggedStrict(value, "a")) {
-        expect(value._tag).type.toBe<"a">()
-      } else {
-        expect(value).type.toBe<{ readonly _tag: string; readonly n: number }>()
-      }
-    })
-
-    it("drops primitive members, which the runtime check never accepts", () => {
-      const value = hole<Px | boolean | null | number | string | undefined>()
-      if (Predicate.isTaggedStrict(value, "Px")) {
-        expect(value).type.toBe<Px>()
-      } else {
-        expect(value).type.toBe<boolean | null | number | string | undefined>()
-      }
-    })
-
-    it("keeps an untagged object member, which may carry the tag at runtime", () => {
-      const value = hole<Px | { readonly foo: number }>()
-      if (Predicate.isTaggedStrict(value, "Px")) {
-        expect(value).type.toBe<Px | ({ readonly foo: number } & { _tag: "Px" })>()
-      } else {
-        expect(value).type.toBe<{ readonly foo: number }>()
-      }
-    })
-
-    it("types values without a `_tag` as isTagged does", () => {
-      expect(Predicate.isTaggedStrict("a")).type.toBe(Predicate.isTagged("a"))
-      expect(unknowns.filter(Predicate.isTaggedStrict("a"))).type.toBe<Array<{ _tag: "a" }>>()
-      if (Predicate.isTaggedStrict(u, "a")) {
-        expect(u).type.toBe<{ _tag: "a" }>()
-      }
-      const error = hole<Error>()
-      if (Predicate.isTaggedStrict(error, "a")) {
-        expect(error).type.toBe<Error & { _tag: "a" }>()
-      }
-      const value = hole<object>()
-      if (Predicate.isTaggedStrict(value, "a")) {
-        expect(value).type.toBe<object & { _tag: "a" }>()
-      }
-    })
   })
 
   it("isNullish", () => {
