@@ -449,7 +449,8 @@ describe("Queue", () => {
       const queue = yield* Queue.sliding<number>(0)
       const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
       assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2]), [])
-      assert.strictEqual(yield* Fiber.join(taker), 2)
+      assert.isTrue(yield* Queue.offer(queue, 3))
+      assert.strictEqual(yield* Fiber.join(taker), 3)
       assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
