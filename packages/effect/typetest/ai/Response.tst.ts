@@ -57,9 +57,9 @@ describe("Response", () => {
 
     const encoded = null as unknown as Response.ToolCallParts<Tools, "encoded">
     if (encoded.name === "BooleanTool") {
-      expect(encoded.params).type.toBe<boolean>()
+      expect(encoded.params).type.toBe<Schema.Json>()
     } else {
-      expect(encoded.params).type.toBe<string>()
+      expect(encoded.params).type.toBe<Schema.Json>()
     }
 
     const opaque = null as unknown as Response.ToolCallParts<Tools, "opaque">
