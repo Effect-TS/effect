@@ -5393,6 +5393,7 @@ Expected a value between -2147483648 and 2147483647`
 
     const decoding = asserts.decoding()
     await decoding.succeed("Zm9vYmFy", "foobar")
+    await decoding.succeed("77u/cmVwb3J0", "\uFEFFreport")
     await decoding.fail("Zm9vY", "Expected a valid Base64 string")
     await decoding.fail("Zm9vYmF-", "Expected a valid Base64 string")
     await decoding.fail("=Zm9vYmF", "Expected a valid Base64 string")
@@ -5407,6 +5408,7 @@ Expected a value between -2147483648 and 2147483647`
 
     const decoding = asserts.decoding()
     await decoding.succeed("Zm9vYmFy", "foobar")
+    await decoding.succeed("77u_cmVwb3J0", "\uFEFFreport")
     await decoding.fail("Zm9vY", "Expected a valid Base64Url string")
     await decoding.succeed("Pj8-ZD_Dnw", ">?>d?\u00DF")
     await decoding.fail("Pj8/ZD+Dnw", "Expected a valid Base64Url string")
@@ -5422,6 +5424,7 @@ Expected a value between -2147483648 and 2147483647`
 
     const decoding = asserts.decoding()
     await decoding.succeed("67", "g")
+    await decoding.succeed("efbbbf7265706f7274", "\uFEFFreport")
     await decoding.fail("0", "Expected a valid hexadecimal string")
     await decoding.fail("zd4aa", "Expected a valid hexadecimal string")
     await decoding.fail("0\x01", "Expected a valid hexadecimal string")

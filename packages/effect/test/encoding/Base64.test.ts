@@ -88,6 +88,10 @@ describe("Base64", () => {
     assert.strictEqual(Result.getOrThrow(Base64.decodeString("8J+Riw==")), "👋")
   })
 
+  it("preserves a leading U+FEFF when round-tripping strings", () => {
+    assert.strictEqual(Result.getOrThrow(Base64.decodeString(Base64.encode("\uFEFFa"))), "\uFEFFa")
+  })
+
   it("rejects invalid input with format information", () => {
     const invalidLength = Base64.decode("abc")
     assert.isTrue(Result.isFailure(invalidLength))
