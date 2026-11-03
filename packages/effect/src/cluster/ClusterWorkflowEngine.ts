@@ -851,8 +851,8 @@ export const make = Effect.gen(function*() {
         })),
         Effect.retry({
           while: (e) => e._tag === "PersistenceError",
-          times: 3,
-          schedule: Schedule.exponential(250)
+          times: deferred.name === InterruptSignal.name ? 3 : undefined,
+          schedule: deferred.name === InterruptSignal.name ? Schedule.exponential(250) : retryPolicy
         }),
         Effect.orDie
       ),
