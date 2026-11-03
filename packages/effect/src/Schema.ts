@@ -5288,7 +5288,7 @@ export interface brand<S extends Constraint, B extends string> extends
   readonly "EncodingServices": S["EncodingServices"]
   readonly "~type.make.in": S["~type.make.in"]
   readonly "~type.make": S["Type"] & Brand.Brand<B>
-  readonly "Iso": S["Type"] & Brand.Brand<B>
+  readonly "Iso": S["Iso"] & Brand.Brand<B>
   readonly schema: S
   readonly identifier: string
 }
@@ -6538,7 +6538,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "EncodingServices": { [K in keyof Cases]: Cases[K]["EncodingServices"] }[keyof Cases]
   readonly "~type.make.in": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
   readonly "~type.make": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
-  readonly "Iso": { [K in keyof Cases]: Cases[K]["Type"] }[keyof Cases]
+  readonly "Iso": { [K in keyof Cases]: Cases[K]["Iso"] }[keyof Cases]
   readonly tag: "_tag"
   readonly cases: Cases
   readonly isAnyOf: <const Keys>(
