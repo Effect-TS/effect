@@ -64,6 +64,16 @@ describe("Arbitrary", () => {
 
     expect(resolveNumber).type.not.toBeCallableWith("account")
 
+    const read = Arbitrary.command({
+      name: "read",
+      run: () => hole<Effect.Effect<number, never, "c">>(),
+      postcondition: (_: Model, __, exit) => {
+        expect(exit).type.toBe<Exit.Exit<number, never>>()
+        return hole<Effect.Effect<boolean, "mismatch", "d">>()
+      }
+    })
+    expect(read).type.toBe<Arbitrary.Command<Model, undefined, number, never, "c" | "d">>()
+
     const commands = Arbitrary.commands({
       initial: [] as Model,
       commands: [open, deposit],

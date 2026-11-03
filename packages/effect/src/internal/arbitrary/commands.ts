@@ -319,24 +319,33 @@ export const runCommands = <M, R>(
       }
       return exit.value as A
     }
-    const checkInvariant = Effect.fnUntraced(function*(model: M) {
-      if (definition.invariant === undefined) return
+    // Checks a postcondition or the invariant. A throw, a failed Effect, or anything but `true` fails the run with
+    // `reason`; interruption interrupts it.
+    const check = Effect.fnUntraced(function*(
+      reason: CommandsFailure<M>["reason"],
+      model: M,
+      evaluate: () => boolean | Effect.Effect<boolean, unknown, any>
+    ) {
       let output: boolean | Effect.Effect<boolean, unknown, any>
       try {
-        output = definition.invariant(model, resolve)
+        output = evaluate()
       } catch (defect) {
-        return yield* fail("Invariant", model, Cause.die(defect))
+        return yield* fail(reason, model, Cause.die(defect))
       }
       if (Effect.isEffect(output)) {
         const checked = yield* Effect.exit(output)
         if (Exit.isFailure(checked)) {
           if (isInterruption(checked.cause)) return yield* Effect.failCause(checked.cause)
-          return yield* fail("Invariant", model, checked.cause)
+          return yield* fail(reason, model, checked.cause)
         }
         output = checked.value
       }
-      if (output !== true) return yield* fail("Invariant", model)
+      if (output !== true) return yield* fail(reason, model)
     })
+    const checkInvariant = (model: M) =>
+      definition.invariant === undefined
+        ? Effect.void
+        : check("Invariant", model, () => definition.invariant!(model, resolve))
     return Effect.gen(function*() {
       yield* checkInvariant(models[0])
       for (let index = 0; index < steps.length; index++) {
@@ -356,15 +365,12 @@ export const runCommands = <M, R>(
           model,
           exit
         })
-        let accepted: boolean
-        try {
-          accepted = command.postcondition === undefined
-            ? Exit.isSuccess(exit)
-            : command.postcondition(model, args, exit, resolve) === true
-        } catch (defect) {
-          return yield* fail("Postcondition", next, Cause.die(defect))
+        const postcondition = command.postcondition
+        if (postcondition === undefined) {
+          if (Exit.isFailure(exit)) return yield* fail("Postcondition", next)
+        } else {
+          yield* check("Postcondition", next, () => postcondition(model, args, exit, resolve))
         }
-        if (!accepted) return yield* fail("Postcondition", next)
         yield* checkInvariant(next)
       }
       return { steps: trace, model: models[models.length - 1], counts: counts() } satisfies CommandsRun<M>

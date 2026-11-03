@@ -749,17 +749,26 @@ export type Resolve = <A>(reference: Reference<A>) => A
  * **Details**
  *
  * - `args` returns the Arbitrary for the arguments in the current model state, or `undefined` when the command is not
- *   available in that state. Omit it for a command without arguments. Shrinking rechecks availability after removing
- *   earlier commands.
+ *   available in that state. Omit it for a command without arguments.
  * - `precondition` decides whether the command is allowed with these arguments in this model state. Generation retries
- *   rejected candidates, and shrinking rechecks it after removing earlier commands.
+ *   rejected candidates.
  * - `next` returns the model after the command. It receives a {@link Reference} to the command's result. Omit it for a
  *   command that does not change the model.
  * - `run` receives the generated arguments and a {@link Resolve} function for the references they contain.
  * - `postcondition` receives the model before the command, the arguments, the command's `Exit`, and a
- *   {@link Resolve} function, so it can compare results with values returned by earlier commands. Expected failures
- *   are part of the model. Omit it to require success. Interruption is never passed to the postcondition; it
- *   interrupts the run.
+ *   {@link Resolve} function, so it can compare results with values returned by earlier commands. It returns a boolean
+ *   or an Effect, which can observe the real system again through its requirements, such as reading back a record
+ *   after an update. Omit it to require success. Interruption is never passed to the postcondition; it interrupts the
+ *   run.
+ *
+ * Availability and the precondition together decide whether a command is valid in a model state, during generation
+ * and again during shrinking after earlier commands are removed. They describe whether a command makes sense to
+ * attempt, not whether it should succeed: an operation that the system must reject, such as overdrawing an account,
+ * stays valid, and its postcondition expects the failure.
+ *
+ * A postcondition can explain a failure instead of returning `false`: a thrown error, such as a failed assertion with
+ * expected and actual values, or a failure of the returned Effect becomes the `cause` of {@link CommandsFailure},
+ * separate from the command's own `Exit`.
  *
  * **Gotchas**
  *
@@ -780,7 +789,12 @@ export interface Command<M, Args, A, E, R> {
   precondition?(model: M, args: Args): boolean
   next?(model: M, args: Args, result: Reference<A>): M
   run(args: Args, resolve: Resolve): Effect.Effect<A, E, R>
-  postcondition?(model: M, args: Args, exit: Exit.Exit<A, E>, resolve: Resolve): boolean
+  postcondition?(
+    model: M,
+    args: Args,
+    exit: Exit.Exit<A, E>,
+    resolve: Resolve
+  ): boolean | Effect.Effect<boolean, unknown, R>
 }
 
 /**
@@ -902,7 +916,7 @@ export interface CommandsRun<out M> {
  *
  * `steps` is the executed trace ending with the failing command, and `model` is the model after it. When the invariant
  * fails before the first command, `steps` is empty and `model` is the initial model. `cause` is present when the
- * postcondition or invariant threw, or when the invariant Effect failed.
+ * postcondition or invariant threw, or when its Effect failed.
  *
  * @stability unstable
  * @category errors

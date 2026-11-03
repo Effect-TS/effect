@@ -686,7 +686,14 @@ When commands depend on the state, such as withdrawing only from an account that
 - `precondition` rejects arguments that the model does not allow;
 - `next` returns the model after the command;
 - `run` performs the operation on the real system;
-- `postcondition` compares the command's `Exit` with the model. Without one, the command must succeed.
+- `postcondition` compares the command's `Exit` with the model. It can return an Effect to observe the system again,
+  for example to read back what an update wrote. Without one, the command must succeed.
+
+`args` and `precondition` decide whether a command makes sense to attempt, during generation and again while
+simplifying. They do not decide whether it should succeed: an overdraft below stays a valid command, and its
+postcondition expects the rejection. A postcondition that throws, for example a failed assertion with expected and
+actual values, or whose Effect fails, reports that error as the cause of the failure, separately from the command's
+own `Exit`.
 
 `next` receives a reference to the command's result, such as a new account id. Store it in the model and use it in
 later arguments. While `Arbitrary.runCommands` executes the sequence, `run`, `postcondition`, and `invariant` receive a

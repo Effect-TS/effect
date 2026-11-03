@@ -304,6 +304,50 @@ describe("Arbitrary.commands", () => {
       ])
     }))
 
+  it.effect("lets postconditions observe the system through an Effect", () =>
+    Effect.gen(function*() {
+      class Store extends Context.Service<Store, {
+        readonly set: (key: number, value: number) => Effect.Effect<void>
+        readonly get: (key: number) => Effect.Effect<number | undefined>
+      }>()("Store") {}
+      // `dropKey` silently ignores writes to one key.
+      const makeStore = (dropKey: number | undefined) => {
+        const values = new Map<number, number>()
+        return Store.of({
+          set: (key, value) =>
+            Effect.sync(() => {
+              if (key !== dropKey) values.set(key, value)
+            }),
+          get: (key) => Effect.sync(() => values.get(key))
+        })
+      }
+      const commands = Arbitrary.commands({
+        initial: undefined,
+        commands: [
+          Arbitrary.command({
+            name: "set",
+            args: () => Arbitrary.all([int(0, 3), int(0, 9)]),
+            run: ([key, value]) => Store.use((store) => store.set(key, value)),
+            // The write itself returns nothing, so the check reads the value back.
+            postcondition: (_: undefined, [key, value]) =>
+              Store.use((store) => store.get(key)).pipe(Effect.map((stored) => stored === value))
+          })
+        ]
+      })
+      const check = (dropKey: number | undefined) =>
+        Arbitrary.checkEffect(
+          commands,
+          (sequence) =>
+            Arbitrary.runCommands(sequence).pipe(Effect.as(true), Effect.provideService(Store, makeStore(dropKey))),
+          { seed: "store", size: 20 }
+        )
+      assert.strictEqual((yield* check(undefined))._tag, "Passed")
+      const result = yield* check(2)
+      assert.strictEqual(result._tag, "Falsified")
+      if (result._tag !== "Falsified") return
+      assert.deepStrictEqual(result.shrunkInput.steps.map((step) => step.args), [[2, 0]])
+    }))
+
   it.effect("checks the invariant before the first command", () =>
     Effect.gen(function*() {
       let runs = 0
@@ -326,7 +370,11 @@ describe("Arbitrary.commands", () => {
       type Model = number
       const cases: ReadonlyArray<{
         readonly name: string
-        readonly postcondition?: (model: Model, args: undefined, exit: Exit.Exit<number, string>) => boolean
+        readonly postcondition?: (
+          model: Model,
+          args: undefined,
+          exit: Exit.Exit<number, string>
+        ) => boolean | Effect.Effect<boolean, string>
         readonly invariant?: (model: Model) => boolean | Effect.Effect<boolean, string>
         readonly reason?: Arbitrary.CommandsFailure<Model>["reason"]
         readonly cause?: Cause.Cause<unknown>
@@ -342,6 +390,13 @@ describe("Arbitrary.commands", () => {
           },
           reason: "Postcondition",
           cause: Cause.die("postcondition")
+        },
+        { name: "postcondition Effect", postcondition: (_, __, exit) => Effect.succeed(Exit.isFailure(exit)) },
+        {
+          name: "failing postcondition Effect",
+          postcondition: () => Effect.fail("postcondition"),
+          reason: "Postcondition",
+          cause: Cause.fail("postcondition")
         },
         {
           name: "invariant",
@@ -390,15 +445,18 @@ describe("Arbitrary.commands", () => {
       }
     }))
 
-  it.effect("propagates interruption of a command instead of reporting a result", () =>
+  it.effect("propagates interruption of a command or postcondition instead of reporting a result", () =>
     Effect.gen(function*() {
-      const commands = Arbitrary.commands({
-        initial: undefined,
-        commands: [Arbitrary.command({ name: "interrupt", run: () => Effect.interrupt })]
-      })
-      const [sequence] = yield* sample(commands.pipe(Arbitrary.filter((c) => c.steps.length > 0)), 5, 1)
-      const fiber = yield* Effect.forkChild(Arbitrary.runCommands(sequence))
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      const interrupting = [
+        Arbitrary.command({ name: "command", run: () => Effect.interrupt }),
+        Arbitrary.command({ name: "postcondition", run: () => Effect.void, postcondition: () => Effect.interrupt })
+      ]
+      for (const command of interrupting) {
+        const commands = Arbitrary.commands({ initial: undefined, commands: [command] })
+        const [sequence] = yield* sample(commands.pipe(Arbitrary.filter((c) => c.steps.length > 0)), 5, 1)
+        const fiber = yield* Effect.forkChild(Arbitrary.runCommands(sequence))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)), command.name)
+      }
     }))
 
   it.effect("counts runs and rejected candidates per command", () =>
