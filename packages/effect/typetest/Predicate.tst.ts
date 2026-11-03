@@ -69,6 +69,9 @@ describe("Predicate", () => {
       if (Predicate.isTagged(u, "a")) {
         expect(u).type.toBe<{ _tag: "a" }>()
       }
+      if (Predicate.isTagged<"a">(u, "a")) {
+        expect(u).type.toBe<{ _tag: "a" }>()
+      }
       const error = hole<Error>()
       if (Predicate.isTagged(error, "a")) {
         expect(error).type.toBe<Error & { _tag: "a" }>()
@@ -76,6 +79,14 @@ describe("Predicate", () => {
       const errorOrPx = hole<Error | Px>()
       if (Predicate.isTagged(errorOrPx, "a")) {
         expect(errorOrPx).type.toBe<Error & { _tag: "a" }>()
+      }
+      const recordOrPx = hole<Record<string, unknown> | Px>()
+      if (Predicate.isTagged(recordOrPx, "Px")) {
+        expect(recordOrPx).type.toBe<Px | { _tag: "Px" }>()
+      }
+      const objectOrPx = hole<object | Px>()
+      if (Predicate.isTagged(objectOrPx, "Px")) {
+        expect(objectOrPx).type.toBe<Px | { _tag: "Px" }>()
       }
     })
 
