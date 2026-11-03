@@ -65,6 +65,19 @@ const waitForPgSleep = Effect.gen(function*() {
   }
 }).pipe(Effect.timeout("5 seconds"))
 
+// Waits until another connection is paused in a test trigger's SLEEP.
+const waitForMysqlSleep = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  while (true) {
+    const waiting = yield* sql`
+      SELECT 1 FROM information_schema.PROCESSLIST
+      WHERE ID <> CONNECTION_ID() AND STATE = 'User sleep'
+    `
+    if (waiting.length > 0) return
+    yield* Effect.sleep("10 millis")
+  }
+}).pipe(Effect.timeout("5 seconds"))
+
 describe("SqlMessageStorage", () => {
   it.effect("preserves ids above 2^53 with a number-returning SQLite driver", () => {
     let id = 9007199254740993n
@@ -341,16 +354,7 @@ describe("SqlMessageStorage", () => {
                   Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
                 )
               }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
-              yield* Effect.gen(function*() {
-                while (true) {
-                  const waiting = yield* sql`
-                    SELECT 1 FROM information_schema.PROCESSLIST
-                    WHERE ID <> CONNECTION_ID() AND STATE = 'User sleep'
-                  `
-                  if (waiting.length > 0) return
-                  yield* Effect.sleep("10 millis")
-                }
-              }).pipe(Effect.timeout("5 seconds"))
+              yield* waitForMysqlSleep
               const cleanup = yield* Effect.exit(
                 storage.deleteProcessed({
                   entityType: "test",
@@ -369,6 +373,113 @@ describe("SqlMessageStorage", () => {
             }).pipe(Effect.ensuring(
               Effect.gen(function*() {
                 yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
+                yield* truncate
+              }).pipe(Effect.orDie)
+            ))
+          }).pipe(TestClock.withLive))
+
+        it.effect("a stream acknowledgement does not deadlock with deleteProcessed of another request", () =>
+          Effect.gen(function*() {
+            yield* truncate
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const cutoff = Date.UTC(2026, 0, 1)
+            for (let id = 1; id <= 20; id++) {
+              const expired = yield* makeRequest({ payload: { id } })
+              yield* storage.saveRequest(expired)
+              yield* storage.saveReply(yield* makeReply(expired, cutoff - id))
+            }
+            // an incomplete stream that has already acknowledged a chunk, which deleteProcessed must not select
+            const streaming = yield* makeRequest({
+              rpc: StreamRpc,
+              payload: StreamRpc.payloadSchema.make({ id: 21 }),
+              entityId: "2"
+            })
+            const first = yield* makeChunkReply(streaming, 0)
+            const second = yield* makeChunkReply(streaming, 1)
+            yield* storage.saveRequest(streaming)
+            yield* storage.saveReply(first)
+            yield* storage.saveEnvelope(yield* makeAckChunk(streaming, first))
+            yield* storage.saveReply(second)
+            // Pause the acknowledgement after it updates the chunk reply, only on the connection that opts in.
+            yield* sql`
+              CREATE TRIGGER cluster_test_slow_ack AFTER UPDATE ON cluster_replies
+              FOR EACH ROW BEGIN
+                IF @cluster_test_slow_ack = 1 THEN
+                  DO SLEEP(2);
+                END IF;
+              END
+            `.unprepared
+            yield* Effect.gen(function*() {
+              const ackFiber = yield* Effect.gen(function*() {
+                yield* sql`SET @cluster_test_slow_ack = 1`
+                yield* storage.saveEnvelope(yield* makeAckChunk(streaming, second)).pipe(
+                  Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_ack = NULL`))
+                )
+              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+              yield* waitForMysqlSleep
+              const cleanup = yield* Effect.exit(
+                storage.deleteProcessed({
+                  entityType: "test",
+                  completedBefore: cutoff,
+                  limit: 100
+                })
+              )
+              const acked = yield* Fiber.join(ackFiber)
+              assert(Exit.isSuccess(acked), String(acked))
+              assert(Exit.isSuccess(cleanup), String(cleanup))
+              expect(cleanup.value).toEqual(20)
+            }).pipe(Effect.ensuring(
+              Effect.gen(function*() {
+                yield* sql`DROP TRIGGER cluster_test_slow_ack`.unprepared
+                yield* truncate
+              }).pipe(Effect.orDie)
+            ))
+          }).pipe(TestClock.withLive))
+
+        it.effect("a late AckChunk waiting on deleteProcessed is a no-op", () =>
+          Effect.gen(function*() {
+            yield* truncate
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const cutoff = Date.UTC(2026, 0, 1)
+            const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+            const chunk = yield* makeChunkReply(request)
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(chunk)
+            yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+            // Pause cleanup after it has selected the request, only on the connection that opts in.
+            yield* sql`
+              CREATE TRIGGER cluster_test_slow_cleanup BEFORE DELETE ON cluster_replies
+              FOR EACH ROW BEGIN
+                IF @cluster_test_slow_cleanup = 1 THEN
+                  SET @cluster_test_slow_cleanup = NULL;
+                  DO SLEEP(2);
+                END IF;
+              END
+            `.unprepared
+            yield* Effect.gen(function*() {
+              const cleanupFiber = yield* Effect.gen(function*() {
+                yield* sql`SET @cluster_test_slow_cleanup = 1`
+                return yield* storage.deleteProcessed({
+                  entityType: "test",
+                  completedBefore: cutoff,
+                  limit: 100
+                }).pipe(Effect.ensuring(Effect.orDie(sql`SET @cluster_test_slow_cleanup = NULL`)))
+              }).pipe(sql.withTransaction, Effect.exit, Effect.forkChild)
+              yield* waitForMysqlSleep
+              const acked = yield* Effect.exit(storage.saveEnvelope(yield* makeAckChunk(request, chunk)))
+              const cleanup = yield* Fiber.join(cleanupFiber)
+              assert(Exit.isSuccess(acked), String(acked))
+              assert(Exit.isSuccess(cleanup), String(cleanup))
+              expect(cleanup.value).toEqual(1)
+              const remaining = yield* sql`
+                SELECT 1 FROM cluster_messages WHERE request_id = ${String(request.envelope.requestId)}
+              `
+              expect(remaining).toEqual([])
+            }).pipe(Effect.ensuring(
+              Effect.gen(function*() {
+                yield* sql`DROP TRIGGER cluster_test_slow_cleanup`.unprepared
                 yield* truncate
               }).pipe(Effect.orDie)
             ))
