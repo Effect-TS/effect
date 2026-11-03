@@ -965,9 +965,17 @@ export function command<M, A = void, E = never, R = never>(
 export function command<M, Args, A = void, E = never, R = never>(
   options: CommandOptions<M, Args, A, E, R>
 ): Command<M, Args, A, E, R>
-export function command(options: unknown): Command<any, any, any, any, any> {
-  // `CommandOptions` allows `undefined` for omitted callbacks, which the runner treats as absent.
-  return options as Command<any, any, any, any, any>
+export function command(
+  options: Omit<CommandOptions<any, any, any, any, any>, "args"> & {
+    readonly args?: CommandOptions<any, any, any, any, any>["args"] | undefined
+  }
+): Command<any, any, any, any, any> {
+  // `Command` has no key for a callback passed as `undefined`. Fields are read by name to keep inherited callbacks.
+  const out: Record<string, unknown> = { name: options.name, run: options.run }
+  for (const key of ["args", "precondition", "next", "postcondition"] as const) {
+    if (options[key] !== undefined) out[key] = options[key]
+  }
+  return out as unknown as Command<any, any, any, any, any>
 }
 
 /**
