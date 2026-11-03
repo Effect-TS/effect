@@ -496,11 +496,60 @@ export const makeEncodedStorage: (options?: {
           WHERE m.request_id IN (${ids})
         `
       ),
+    // A DELETE that scans the table locks every row it reads, so it waits
+    // on, and can deadlock with, writes to unrelated requests. MySQL ignores
+    // FORCE INDEX here and can choose a scan even for an IN list on the
+    // primary key, so only an optimizer hint keeps it on the index. Servers
+    // without optimizer hints (before 8.0.20) read it as a comment.
+    mysql: () => (ids) =>
+      Effect.andThen(
+        sql`
+          DELETE /*+ INDEX(${repliesTableSql} ${sql(repliesTable + "_request_lookup_idx")}) */
+          FROM ${repliesTableSql} WHERE request_id IN (${ids})
+        `,
+        sql`
+          DELETE /*+ INDEX(${messagesTableSql} ${sql(messagesTable + "_request_id_idx")}) */
+          FROM ${messagesTableSql} WHERE request_id IN (${ids})
+        `
+      ),
     orElse: () => (ids) =>
       Effect.andThen(
         sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`,
         sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
       )
+  })
+  // Locks up to limit eligible request rows, skipping rows another
+  // transaction holds, such as a reset or a late acknowledgement. Waiting for
+  // them can deadlock on gap locks in MySQL.
+  const lockDeletable: (
+    eligible: Fragment,
+    limit: number
+  ) => Effect.Effect<ReadonlyArray<{ id: string | bigint }>, SqlError> = sql.onDialectOrElse({
+    // A locking scan in MySQL locks every row it reads, including rows of
+    // requests that are not eligible, and reaches each row through the
+    // primary key before the id index, the opposite of lockRequest. So find
+    // the candidates without locks, then lock them through the id index and
+    // check them again, in case a reset committed in between.
+    mysql: () => (eligible, limit) =>
+      Effect.flatMap(
+        sql<{ id: string | bigint }>`
+          SELECT id FROM ${messagesTableSql} WHERE ${eligible} ORDER BY rowid ASC ${limitFragment(limit)}
+        `,
+        (candidates) =>
+          candidates.length === 0 ? Effect.succeed(candidates) : sql<{ id: string | bigint }>`
+            SELECT id FROM ${messagesTableSql} FORCE INDEX (id)
+            WHERE id IN (${sql.literal(candidates.map((row) => String(row.id)).join(","))}) AND ${eligible}
+            FOR UPDATE SKIP LOCKED
+          `
+      ),
+    orElse: () => (eligible, limit) =>
+      sql<{ id: string | bigint }>`
+        SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
+        WHERE ${eligible}
+        ORDER BY rowid ASC
+        ${limitFragment(limit)}
+        ${forUpdateSkipLocked}
+      `
   })
 
   const emptyFragment = sql.literal("")
@@ -916,19 +965,16 @@ export const makeEncodedStorage: (options?: {
         // last_reply_id is the WithExit reply id, so its timestamp is the completion time
         const cutoff = Snowflake.make({ timestamp: completedBefore, machineId: MachineId.make(0), sequence: 0 })
         // Lock the selected requests so a concurrent clearReplies cannot reset
-        // them before the delete. Requests another transaction holds, such as
-        // a reset or a late acknowledgement, are skipped until a later call,
-        // because waiting for them can deadlock on gap locks in MySQL.
-        const rows = yield* sql<{ id: string | bigint }>`
-          SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
-          WHERE entity_type = ${entityType}
-          AND kind = ${messageKindRequest}
-          AND processed = ${sqlTrue}
-          AND last_reply_id < ${sql.literal(String(cutoff))}
-          ORDER BY rowid ASC
-          ${limitFragment(limit)}
-          ${forUpdateSkipLocked}
-        `
+        // them before the delete. Skipped requests wait for a later call.
+        const rows = yield* lockDeletable(
+          sql`
+            entity_type = ${entityType}
+            AND kind = ${messageKindRequest}
+            AND processed = ${sqlTrue}
+            AND last_reply_id < ${sql.literal(String(cutoff))}
+          `,
+          limit
+        )
         if (rows.length === 0) return 0
         const ids = sql.literal(rows.map((row) => String(row.id)).join(","))
         yield* deleteRequests(ids)
