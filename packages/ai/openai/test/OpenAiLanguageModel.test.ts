@@ -1533,6 +1533,42 @@ describe("OpenAiLanguageModel", () => {
             output: [makeTextOutput(JSON.stringify({ name: "John", age: 30 }))]
           }
         }))))
+
+      it.effect("ignores commentary messages for structured output", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateObject({
+            prompt: "Give me a person",
+            schema: Schema.Struct({
+              name: Schema.String,
+              age: Schema.Number
+            })
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+          deepStrictEqual(result.value, { name: "John", age: 30 })
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            output: [
+              makeTextOutput("Building the person.", { id: "msg_commentary", phase: "commentary" }),
+              makeTextOutput(JSON.stringify({ name: "John", age: 30 }), { phase: "final_answer" })
+            ]
+          }
+        }))))
+
+      it.effect("keeps commentary messages for text output", () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({
+            prompt: "Hello"
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+          strictEqual(result.text, "Thinking. Hello!")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            output: [
+              makeTextOutput("Thinking. ", { id: "msg_commentary", phase: "commentary" }),
+              makeTextOutput("Hello!", { phase: "final_answer" })
+            ]
+          }
+        }))))
     })
 
     describe("response handling", () => {
