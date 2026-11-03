@@ -136,8 +136,8 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
    * })
    *
    * const layer = Layer.merge(
-   *   Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`)),
-   *   Layer.succeedOnly(FileSystem, "writeFile", () => Effect.void)
+   *   Layer.succeedOnly(FileSystem, ["readFile"], { readFile: (path) => Effect.succeed(`contents of ${path}`) }),
+   *   Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: () => Effect.void })
    * )
    * Effect.runSync(Effect.provide(copy, layer)) // => "contents of a.txt"
    * ```
@@ -533,7 +533,7 @@ export declare namespace Service {
  *   Effect.flatMap(FileSystem.only("writeFile"), ({ writeFile }) => writeFile("out.txt", "hello"))
  *
  * const writeFileLayer: Layer.Layer<Context.Only<FileSystem, "writeFile">> =
- *   Layer.succeedOnly(FileSystem, "writeFile", () => Effect.void)
+ *   Layer.succeedOnly(FileSystem, ["writeFile"], { writeFile: () => Effect.void })
  *
  * const runnable: Effect.Effect<void> = Effect.provide(program, writeFileLayer)
  * ```

@@ -8,14 +8,15 @@ import { Storage, StorageError } from "./Storage.ts"
 // enough for programs that call `Storage.only("get")`, and nothing more.
 export const StorageGetLayer = Layer.effectOnly(
   Storage,
-  "get",
+  ["get"],
   Effect.gen(function*() {
     const bucket = yield* Bucket
-    return Effect.fn("Storage.get")((key: string) =>
+    const get = Effect.fn("Storage.get")((key: string) =>
       Effect.tryPromise({
         try: () => bucket.get(key),
         catch: (cause) => new StorageError({ cause })
       }).pipe(Effect.map(Option.fromNullOr))
     )
+    return { get }
   })
 )

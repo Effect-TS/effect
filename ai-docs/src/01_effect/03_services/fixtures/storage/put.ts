@@ -5,14 +5,15 @@ import { Storage, StorageError } from "./Storage.ts"
 
 export const StoragePutLayer = Layer.effectOnly(
   Storage,
-  "put",
+  ["put"],
   Effect.gen(function*() {
     const bucket = yield* Bucket
-    return Effect.fn("Storage.put")((key: string, value: string) =>
+    const put = Effect.fn("Storage.put")((key: string, value: string) =>
       Effect.tryPromise({
         try: () => bucket.put(key, value),
         catch: (cause) => new StorageError({ cause })
       })
     )
+    return { put }
   })
 )

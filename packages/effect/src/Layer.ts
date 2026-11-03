@@ -1082,21 +1082,21 @@ const effectImpl = <I, S, E, R>(
   effectContext(internalEffect.map(effect, (value) => Context.make(service, value)))
 
 /**
- * Constructs a layer that provides a single member of a service from an
- * already available implementation.
+ * Constructs a layer that provides some members of a service from an already
+ * available implementation of just those members.
  *
  * **When to use**
  *
- * Use when each member of a large service lives in its own module, so a
+ * Use when the members of a large service live in their own modules, so a
  * composition root can import and provide only the members a program
  * requires and bundlers can drop the rest.
  *
  * **Details**
  *
- * The layer's output is `Context.Only<I, K>`, which satisfies programs that
- * access the member through `Service.only` but not programs that yield the
- * whole service. Provided on top of a full service, the slice overrides that
- * member.
+ * The layer's output is one `Context.Only<I, K>` per listed member, which
+ * satisfies programs that access those members through `Service.only` but not
+ * programs that yield the whole service. Provided on top of a full service,
+ * the slices override those members.
  *
  * **Example** (Providing one member of a service)
  *
@@ -1109,13 +1109,15 @@ const effectImpl = <I, S, E, R>(
  * }>()("FileSystem") {}
  *
  * // Typically each of these lives in its own module
- * const readFileLayer = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`))
+ * const readFileLayer = Layer.succeedOnly(FileSystem, ["readFile"], {
+ *   readFile: (path) => Effect.succeed(`contents of ${path}`)
+ * })
  *
  * const program = Effect.flatMap(FileSystem.only("readFile"), ({ readFile }) => readFile("a.txt"))
  * Effect.runSync(Effect.provide(program, readFileLayer)) // => "contents of a.txt"
  * ```
  *
- * @see {@link effectOnly} for constructing a member with an effect
+ * @see {@link effectOnly} for constructing members with an effect
  * @see {@link succeed} for providing the whole service
  *
  * @stability stable
@@ -1124,13 +1126,13 @@ const effectImpl = <I, S, E, R>(
  */
 export const succeedOnly = <I, S, const K extends keyof S & string>(
   service: Context.Key<I, S>,
-  member: K,
-  implementation: Types.NoInfer<S[K]>
-): Layer<Context.Only<I, K>> => succeedContext(onlyContext(service, member, implementation))
+  members: ReadonlyArray<K>,
+  implementation: Types.NoInfer<Pick<S, K>>
+): Layer<K extends any ? Context.Only<I, K> : never> => succeedContext(onlyContext(service, members, implementation))
 
 /**
- * Constructs a layer that provides a single member of a service from an effect
- * that produces its implementation.
+ * Constructs a layer that provides some members of a service from an effect
+ * that produces an implementation of just those members.
  *
  * **When to use**
  *
@@ -1155,20 +1157,24 @@ export const succeedOnly = <I, S, const K extends keyof S & string>(
  *   readonly size: (path: string) => Effect.Effect<number>
  * }>()("FileSystem") {}
  *
- * const readFileLayer = Layer.succeedOnly(FileSystem, "readFile", (path) => Effect.succeed(`contents of ${path}`))
+ * const readFileLayer = Layer.succeedOnly(FileSystem, ["readFile"], {
+ *   readFile: (path) => Effect.succeed(`contents of ${path}`)
+ * })
  *
  * // size requires Only<FileSystem, "readFile">, not the whole FileSystem
  * const sizeLayer = Layer.effectOnly(
  *   FileSystem,
- *   "size",
- *   Effect.map(FileSystem.only("readFile"), ({ readFile }) => (path) => Effect.map(readFile(path), (s) => s.length))
+ *   ["size"],
+ *   Effect.map(FileSystem.only("readFile"), ({ readFile }) => ({
+ *     size: (path) => Effect.map(readFile(path), (s) => s.length)
+ *   }))
  * )
  *
  * const program = Effect.flatMap(FileSystem.only("size"), ({ size }) => size("a.txt"))
  * Effect.runSync(Effect.provide(program, Layer.provide(sizeLayer, readFileLayer))) // => 17
  * ```
  *
- * @see {@link succeedOnly} for providing a member from a value
+ * @see {@link succeedOnly} for providing members from a value
  * @see {@link effect} for providing the whole service
  *
  * @stability stable
@@ -1177,17 +1183,22 @@ export const succeedOnly = <I, S, const K extends keyof S & string>(
  */
 export const effectOnly = <I, S, const K extends keyof S & string, E, R>(
   service: Context.Key<I, S>,
-  member: K,
-  effect: Effect<Types.NoInfer<S[K]>, E, R>
-): Layer<Context.Only<I, K>, E, Exclude<R, Scope.Scope>> =>
-  effectContext(internalEffect.map(effect, (value) => onlyContext(service, member, value)))
+  members: ReadonlyArray<K>,
+  effect: Effect<Types.NoInfer<Pick<S, K>>, E, R>
+): Layer<K extends any ? Context.Only<I, K> : never, E, Exclude<R, Scope.Scope>> =>
+  effectContext(internalEffect.map(effect, (value) => onlyContext(service, members, value)))
 
 const onlyContext = <I, S, K extends keyof S & string>(
   service: Context.Key<I, S>,
-  member: K,
-  implementation: unknown
-): Context.Context<Context.Only<I, K>> =>
-  Context.makeUnsafe(new Map([[Context.onlyKey(service, member), implementation]]))
+  members: ReadonlyArray<K>,
+  implementation: any
+): Context.Context<K extends any ? Context.Only<I, K> : never> => {
+  const map = new Map<string, unknown>()
+  for (const member of members) {
+    map.set(Context.onlyKey(service, member), implementation[member])
+  }
+  return Context.makeUnsafe(map)
+}
 
 /**
  * Constructs a layer from an effect that produces all services in a `Context`.
