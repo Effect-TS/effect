@@ -6383,7 +6383,7 @@ type TaggedUnionUtils<
    */
   readonly discriminants: { readonly [I in keyof Flattened]: Flattened[I]["Type"][Tag] }
   readonly cases: Simplify<{ [M in Flattened[number] as M["Type"][Tag]]: M }>
-  readonly isAnyOf: <const Keys>(
+  readonly isAnyOf: <const Keys extends Members[number]["Type"][Tag]>(
     keys: ReadonlyArray<Keys>
   ) => (value: Members[number]["Type"]) => value is Extract<Members[number]["Type"], { readonly [K in Tag]: Keys }>
   readonly guards: { [M in Flattened[number] as M["Type"][Tag]]: (u: unknown) => u is M["Type"] }
@@ -6541,7 +6541,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "Iso": { [K in keyof Cases]: Cases[K]["Iso"] }[keyof Cases]
   readonly tag: "_tag"
   readonly cases: Cases
-  readonly isAnyOf: <const Keys>(
+  readonly isAnyOf: <const Keys extends keyof Cases>(
     keys: ReadonlyArray<Keys>
   ) => (value: Cases[keyof Cases]["Type"]) => value is Extract<Cases[keyof Cases]["Type"], { _tag: Keys }>
   readonly guards: { [K in keyof Cases]: (u: unknown) => u is Cases[K]["Type"] }
