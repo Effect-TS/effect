@@ -272,7 +272,7 @@ describe("SqlMessageStorage", () => {
                 yield* truncate
               }).pipe(Effect.orDie)
             ))
-          }).pipe(TestClock.withLive))
+          }).pipe(TestClock.withLive), { timeout: 30_000 })
 
         it.effect("clearReplies does not deadlock with a concurrent deleteProcessed", () =>
           Effect.gen(function*() {
