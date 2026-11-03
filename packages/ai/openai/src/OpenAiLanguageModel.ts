@@ -1305,7 +1305,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "shell_call_output",
                 call_id: part.id,
-                output: part.isFailure ? part.result as any : (part.result as any).output,
+                output: getShellOutput(part),
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue
@@ -1316,7 +1316,7 @@ const prepareMessages = Effect.fnUntraced(
                 id,
                 type: "local_shell_call_output",
                 call_id: part.id,
-                output: part.isFailure ? part.result as any : (part.result as any).output,
+                output: getShellOutput(part),
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
               continue
@@ -3162,6 +3162,9 @@ const getStatus = (
 const getEncryptedContent = (
   part: Prompt.ReasoningPart
 ): string | null => part.options.openai?.encryptedContent ?? null
+// Shell tool handlers return `{ output }`, while failures returned via
+// `setFailure` are already in the wire format expected by the Responses API
+const getShellOutput = (part: Prompt.ToolResultPart): any => part.isFailure ? part.result : (part.result as any).output
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 
