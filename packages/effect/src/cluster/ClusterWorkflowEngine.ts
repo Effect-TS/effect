@@ -844,8 +844,7 @@ export const make = Effect.gen(function*() {
           // It was processed after the first read, so its reply is stored now.
           return Option.map(yield* replyForRequestId(requestId.value), deferredReplyExit)
         })),
-        // Exit cleanup reads the interrupt signal uninterruptibly, so that read
-        // keeps a bounded retry and cannot hold up shutdown during an outage.
+        // Uninterruptible exit cleanup reads the interrupt signal, so bound its retries.
         deferred.name === InterruptSignal.name ? retryPersistenceBounded : retryPersistence
       ),
 

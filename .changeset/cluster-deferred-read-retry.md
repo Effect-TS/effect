@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `ClusterWorkflowEngine` permanently failing workflows awaiting durable deferreds after transient storage read errors.
+Fix transient storage read errors permanently failing `ClusterWorkflowEngine` workflows that await a `DurableDeferred`.
