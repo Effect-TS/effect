@@ -1532,19 +1532,21 @@ export const makeStoreSql: (
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
+  // sqlite's CURRENT_TIMESTAMP drops the fraction of the current second, so
+  // visible_at deadlines and the readiness check share this fractional clock
+  const sqliteOffset = (seconds: number) =>
+    sql`strftime('%Y-%m-%d %H:%M:%f', 'now', '${sql.literal(seconds.toString())} seconds')`
   // Deadline for a delayed offer or retry, which must never land before the
   // delay elapses. pg reads clock_timestamp() since NOW() is fixed at
-  // transaction start. mysql stores whole seconds from a clock that drops the
-  // fraction of the current second, so it gets a whole extra second to cover
-  // it. sqlite keeps the fraction, matching the take query's readiness check.
+  // transaction start. mysql stores whole seconds and NOW() drops the current
+  // fraction, so it gets an extra second to cover it.
   const visibleAfter = (delay: Duration.Duration) => {
     const seconds = Math.max(Math.ceil(Duration.toSeconds(delay)), 0)
-    const s = sql.literal(seconds.toString())
     return sql.onDialectOrElse({
-      pg: () => sql`clock_timestamp() + INTERVAL '${s} seconds'`,
+      pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
       mysql: () => secondsOffset(seconds + 1),
       mssql: () => secondsOffset(seconds),
-      orElse: () => sql`strftime('%Y-%m-%d %H:%M:%f', 'now', '${s} seconds')`
+      orElse: () => sqliteOffset(seconds)
     })
   }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
@@ -1823,7 +1825,7 @@ export const makeStoreSql: (
               WHERE queue_name = ${name}
               AND state = 'pending'
               AND attempts < ${maxAttempts}
-              AND visible_at <= strftime('%Y-%m-%d %H:%M:%f', 'now')
+              AND visible_at <= ${sqliteOffset(0)}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY visible_at ASC, sequence ASC
               LIMIT ${sql.literal(size.toString())}
