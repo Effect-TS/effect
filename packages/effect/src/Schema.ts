@@ -6592,15 +6592,9 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
 export function TaggedUnion<const CasesByTag extends Record<string, Struct.Fields>>(
   casesByTag: CasesByTag
 ): TaggedUnion<{ readonly [K in keyof CasesByTag & string]: TaggedStruct<K, CasesByTag[K]> }> {
-  const cases: any = {}
-  const members: any = []
-  for (const key of Object.keys(casesByTag)) {
-    const member = TaggedStruct(key, casesByTag[key])
-    InternalRecord.assignProperty(cases, key, member)
-    members.push(member)
-  }
+  const members: any = Object.keys(casesByTag).map((key) => TaggedStruct(key, casesByTag[key]))
   const union = Union(members)
-  const { tag, discriminants, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  const { tag, cases, discriminants, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
   return make(union.ast, { tag, cases, members, discriminants, isAnyOf, guards, match, matchOrElse })
 }
 /**
