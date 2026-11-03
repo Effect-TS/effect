@@ -336,6 +336,10 @@ describe("SchemaBinary", () => {
     })
     // The name outgrows the output buffer by itself.
     const envelope = { head: payload(20_000), body: { data: payload(300_000, 7), name: "n".repeat(70_000) } }
+    const Message = Schema.Struct({
+      data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
+      n: Schema.Number.pipe(SchemaBinary.fieldId(2))
+    })
 
     it("writes large nested payloads with minimal length prefixes", () => {
       assert.deepStrictEqual(
@@ -370,10 +374,6 @@ describe("SchemaBinary", () => {
     })
 
     it("reads large payloads when the encode call returns", () => {
-      const Message = Schema.Struct({
-        data: Schema.Uint8Array.pipe(SchemaBinary.fieldId(1)),
-        n: Schema.Number.pipe(SchemaBinary.fieldId(2))
-      })
       const data = new Uint8Array(20_000).fill(3)
       // The getter runs after `data` has been visited.
       const mutating = (payload: Uint8Array, value: number) => ({
@@ -390,6 +390,23 @@ describe("SchemaBinary", () => {
       // A later frame of the same call still reaches an earlier frame's payload.
       const batch = SchemaBinary.encoder(Message).encodeMany([{ data, n: 1 }, mutating(new Uint8Array(4), 5)])
       assert.strictEqual(SchemaBinary.parser(Message).feedSync(batch)[0].data[0], 5)
+    })
+
+    it("fails with a schema error when a large payload's buffer shrinks or detaches during the encode", () => {
+      const encodeMessage = Schema.encodeUnknownSync(SchemaBinary.toCodec(Message))
+      // The getter runs after `data` has been visited.
+      const encodeChanging = (change: (buffer: ArrayBuffer) => void) => {
+        const buffer = new ArrayBuffer(20_000, { maxByteLength: 20_000 })
+        return encodeMessage({
+          data: new Uint8Array(buffer),
+          get n() {
+            change(buffer)
+            return 1
+          }
+        })
+      }
+      schemaError(() => encodeChanging((buffer) => buffer.resize(17_000)))
+      schemaError(() => encodeChanging((buffer) => structuredClone(buffer, { transfer: [buffer] })))
     })
   })
 
