@@ -82,41 +82,29 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If an element with the same id already exists in the queue, it will not be
-   * added again, and the `delay` of the duplicate offer is ignored. How long
-   * the id stays reserved depends on `deduplicate`:
+   * added again, and the `delay` of the duplicate offer is ignored.
+   * `deduplicate` sets how long a custom `id` stays reserved:
    *
-   * - `"untilRemoved"` (default): the id stays reserved until the element is
-   *   removed from the store, which `layerCleanup` does after the element
-   *   completes or fails. The id is an idempotency key, so a producer that
-   *   retries after completion does not run the work again.
-   * - `"untilExecuted"`: the id is released once the element completes or
-   *   fails its final attempt. Offers made while it is pending, processing or
-   *   waiting to retry are ignored, since a failed attempt with retries left
-   *   returns the element to pending under the same id. After release, the
-   *   offer enqueues a new element behind the work already queued, with its
-   *   own `delay`. A retry that arrives after completion therefore runs the
-   *   work again, so use this mode only when re-running is safe.
+   * - `"untilRemoved"` (default): until `layerCleanup` removes the completed
+   *   or failed element. The id works as an idempotency key.
+   * - `"untilExecuted"`: until the element completes or fails its final
+   *   attempt. Offers while it is pending, processing or waiting to retry are
+   *   ignored. A later offer enqueues a new element behind queued work, with its
+   *   own `delay`, so a producer that retries after completion runs the work
+   *   again.
    *
-   * `deduplicate` only affects offers with a custom `id`. It is decided per
-   * offer and is not stored with the id or the queue, so nothing enforces that
-   * producers sharing an id agree on it. An `"untilRemoved"` offer is never
-   * enqueued while its id is stored, but an `"untilExecuted"` offer from
-   * another producer can re-open the id of a completed or failed element, and
-   * the work for that id then runs again. Producers that rely on an id as an
-   * idempotency key should not share it with producers that offer it with
-   * `"untilExecuted"`.
+   * The mode is chosen per offer and is not stored with the id. An
+   * `"untilExecuted"` offer can re-open a completed or failed id even when
+   * other producers offer it with `"untilRemoved"`, so don't share an
+   * idempotency key with `"untilExecuted"` producers.
    *
-   * With `"untilExecuted"`, an offer that arrives while the element is
-   * processing is ignored, so handlers should read current state rather than
-   * rely on the offered value. A trigger can still be lost at the completion
-   * boundary, when the handler read state before the producer's change landed
-   * but the offer arrived before the element completed. Check a version or a
-   * dirty flag in the handler when that matters.
+   * With `"untilExecuted"`, handlers should read current state rather than the
+   * offered value. An offer that arrives after the handler read state but before
+   * the element completes is ignored, so check a version or dirty flag when a
+   * missed change matters.
    *
-   * An `"untilExecuted"` re-offer of a failed id does not promise to keep the
-   * earlier failure as a dead-letter record. What each store retains, and the
-   * store-specific limits of `"untilExecuted"`, are described on
-   * `makeStoreSql` and `makeStoreRedis`.
+   * A re-offered failed id may lose its earlier failure record. See
+   * `makeStoreSql` and `makeStoreRedis` for what each store keeps.
    *
    * `delay` postpones the first delivery. Measured by the store's clock, the
    * element is never delivered before the delay elapses, and is typically
@@ -520,11 +508,10 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * An offered `delay` is always finite and positive, and the element must not
  * be taken before it elapses. It is `undefined` for immediate elements.
  *
- * An offer whose id is already stored is ignored. With `deduplicate` set to
- * `"untilExecuted"`, an id whose element has completed or failed its final
- * attempt is instead released and the offer is stored as a new element,
- * ordered after elements offered before it. Releasing and storing must be
- * atomic with respect to concurrent offers of the same id. `undefined` means
+ * An offer whose id is already stored is ignored, unless `deduplicate` is
+ * `"untilExecuted"` and that element has completed or failed its final
+ * attempt. The offer is then stored as a new element after earlier offers,
+ * atomically with respect to concurrent offers of the id. `undefined` means
  * `"untilRemoved"`.
  *
  * Claiming an element counts an attempt, so the `attempts` returned by `take`
@@ -756,12 +743,10 @@ export const layerStoreMemory: Layer.Layer<
  * worker and let its locks expire before starting upgraded workers. Keep the
  * existing Redis data rather than flushing it.
  *
- * Re-offering a failed id with `deduplicate: "untilExecuted"` keeps the
- * earlier failed record, so the failed list holds every failure of the id
- * until `layerCleanup` removes it, which only happens when `failedTimeToLive`
- * is set. Ids that failed before `"untilExecuted"` existed stay reserved, even
- * for `"untilExecuted"` offers, until `layerCleanup` removes their failed
- * records, so set `failedTimeToLive` to release them.
+ * Every failure of an id re-offered with `deduplicate: "untilExecuted"` stays
+ * in the failed list until `layerCleanup` removes it, which requires
+ * `failedTimeToLive`. Ids that failed on an earlier `effect` version stay
+ * reserved until then, even for `"untilExecuted"` offers.
  *
  * @stability unstable
  * @category constructors
@@ -1115,32 +1100,26 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   })
 })
 
-// Scores of the ids sorted set. The sentinels sit above any completion time, so
-// the timeToLive trim never removes them:
-// - inFlightIdScore: the element is pending or processing. trimFailed keeps
-//   these, since a failed record it trims belongs to an earlier element
-// - failedIdScore + failedAt: the element failed at failedAt. trimFailed
-//   removes it only with the failed record carrying that failedAt, so expiring
-//   an earlier failure of the same id keeps a newer failure's entry
-// - +inf: written before the sentinels existed, for both in-flight and failed
-//   elements. Offers treat it as in flight and trimFailed removes it as before
+// ids sorted set scores. The sentinels sit above any completion time, so the
+// timeToLive trim skips them:
+// - inFlightIdScore: pending or processing
+// - failedIdScore + failedAt: failed at failedAt. trimFailed removes it only
+//   with the failed record carrying that failedAt
+// - +inf: legacy in-flight or failed entry. Offers treat it as in flight
 // - otherwise: the completion time
 const inFlightIdScore = 1e15
 const failedIdScore = 2e15
 
-// Lua converts numbers to strings with 14 significant digits, which would
-// round off failedAt, so the score is formatted as an integer
+// formatted as an integer, since Lua's default number formatting keeps only 14
+// significant digits
 const failedScoreLua = `local function failed_score(failed_at)
   return string.format("%.0f", ${failedIdScore} + tonumber(failed_at))
 end
 `
 
-// Reserves the id for a new element, returning whether the offer is stored.
-// An "untilExecuted" offer also releases an id whose element has completed or
-// failed.
+// Reserves the id and returns whether to store the offer. With until_executed,
+// a completed or failed id is reclaimed.
 const claimIdLua = `local function claim_id(key_ids, id, until_executed)
-  -- park the dedupe entry outside the timeToLive trim range until the element
-  -- completes, so unprocessed elements never lose dedupe protection
   if redis.call("ZADD", key_ids, "NX", ${inFlightIdScore}, id) == 1 then
     return true
   end
@@ -1533,8 +1512,7 @@ while removed < ${trimFailedBatchSize} do
     -- failedAt is always the last field of a failed record
     local failed_at = tonumber(string.match(head, ',"failedAt":([^,}]+)%}$'))
     if failed_at ~= nil and failed_at >= cutoff then break end
-    -- only release the id of this failure, so the entry of a newer element
-    -- offered with the same id survives, whether it is in flight or failed
+    -- release the id only if it still belongs to this failure
     local score = redis.call("ZSCORE", key_ids, id)
     if score == "inf" or (failed_at ~= nil and tonumber(score) == ${failedIdScore} + failed_at) then
       redis.call("ZREM", key_ids, id)
@@ -1587,17 +1565,16 @@ export const layerStoreRedis: (
  * Offer and retry delays are measured with the database clock and rounded up
  * to whole seconds.
  *
- * Re-offering a failed id with `deduplicate: "untilExecuted"` replaces its
- * row, so the table keeps only the latest failure of the id.
+ * An id re-offered with `deduplicate: "untilExecuted"` keeps only its latest
+ * failure.
  *
  * **Gotchas**
  *
- * An offer made inside a transaction checks the id through that transaction's
- * snapshot. Outside a transaction this makes no difference. Inside one, under
- * an isolation level that keeps one snapshot for the whole transaction, such
- * as MySQL's default repeatable read, an element that completed or failed
- * after the transaction's first read still looks in flight, so an
- * `"untilExecuted"` offer for its id is ignored.
+ * An `"untilExecuted"` offer inside a transaction checks the id against that
+ * transaction's snapshot. Under an isolation level with one snapshot per
+ * transaction, such as MySQL's default repeatable read, an element that
+ * completed or failed after the first read still looks in flight, so the offer
+ * is ignored.
  *
  * @stability unstable
  * @category constructors
@@ -2051,13 +2028,11 @@ export const makeStoreSql: (
       })
     )
 
-  // Replacing the completed or failed row stores the re-offer as a new row,
-  // with a fresh sequence. The plain read keeps a new id from taking locks:
-  // under MySQL's repeatable read, deleting an absent key takes gap locks that
-  // deadlock concurrent inserts of the same id. A completed or failed row is
-  // deleted by sequence, re-checking its state in case it changed after the
-  // read, and the insert runs in the same transaction. Concurrent offers of the
-  // id wait on the deleted row until that commits, and then see the re-offer.
+  // Stores the re-offer as a new row with a fresh sequence. The plain read keeps
+  // new ids lock-free, since under MySQL's repeatable read deleting an absent
+  // key takes gap locks that deadlock concurrent inserts. The delete re-checks
+  // the state and shares a transaction with the insert, so concurrent offers of
+  // the id wait on the deleted row and then see the re-offer.
   const replaceExecuted = <A, E, R>(id: string, name: string, insert: Effect.Effect<A, E, R>) =>
     Effect.flatMap(
       sql<{ readonly sequence: number | string }>`
