@@ -341,7 +341,6 @@ describe("Arbitrary.commands bank account model", () => {
       const [open, withdraw] = result.shrunkInput.steps
       assert.deepStrictEqual(result.shrunkInput.steps.map((step) => step.command), ["open", "withdraw"])
       assert.deepStrictEqual(withdraw.args, { account: open.reference, amount: 1 })
-      // Reference ids keep the positions of the originally generated sequence.
       const [account, withdrawal] = [open.reference.id, withdraw.reference.id]
       assert.strictEqual(
         String(result.shrunkInput),

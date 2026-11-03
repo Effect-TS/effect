@@ -36,8 +36,7 @@ class ReferenceImpl {
 
 const isReference = (u: unknown): u is ReferenceImpl => hasProperty(u, ReferenceTypeId)
 
-// Whether the arguments hold a reference that is out of scope, for the scope check while shrinking. Values that cannot
-// contain a reference are skipped, and `seen` guards against cycles and shared substructures.
+// `seen` guards against cycles and shared substructures.
 function usesReferenceOutside(scope: ReadonlySet<ReferenceImpl>, value: unknown): boolean {
   const seen = new Set<object>()
   const visit = (value: unknown): boolean => {
@@ -124,9 +123,8 @@ const allowed = <M>(command: AnyCommand<M>, model: M, args: unknown): boolean =>
 const step = <M>(command: AnyCommand<M>, model: M, args: unknown, reference: ReferenceImpl): M =>
   command.next === undefined ? model : command.next(model, args, reference as unknown as Reference<unknown>)
 
-// Replays the model along a candidate sequence and drops every step that is no longer available, whose precondition
-// fails, or whose arguments use a reference that no earlier retained step defines. Dropping a step also removes its
-// reference from scope.
+// Replays the model and drops each step that is unavailable, fails its precondition, or uses a reference no retained
+// earlier step defines.
 function validate<M>(definition: Definition<M>, steps: ReadonlyArray<Planned>): Program<M> {
   const retained: Array<Planned> = []
   const models: Array<M> = []
@@ -159,8 +157,7 @@ function shrinks<M>(
   let index = 0
   let removable: number | undefined
   let argShrinks: Model.ShrinkPull<Model.Retained<unknown> | Model.Discarded> | undefined
-  // Adapt the array shrinker: at each position remove progressively smaller blocks, then shrink the arguments there.
-  // Revalidation drops the steps that the smaller sequence no longer allows.
+  // At each position, remove progressively smaller blocks, then shrink the arguments there.
   const loop = (): Model.ShrinkPull<Model.Attempt<Commands<M, never>>> =>
     Effect.suspend(() => {
       while (index < steps.length) {
@@ -197,7 +194,7 @@ function shrinks<M>(
 
 const noArgs = Model.makeSample(undefined)
 
-// Bounds the candidates drawn for one position before the sequence ends early (documented on `Arbitrary.commands`).
+// Candidates drawn for one position before the sequence ends early.
 const maxCandidates = 100
 
 const generate = Effect.fnUntraced(function*<M>(definition: Definition<M>, state: Model.GenerationState) {
@@ -303,8 +300,7 @@ export const runCommands = <M, R>(
       }
       return exit.value as A
     }
-    // Checks a postcondition or the invariant. A throw, a failed Effect, or anything but `true` fails the run with
-    // `reason`; interruption interrupts it.
+    // A throw, a failed Effect, or anything but `true` fails with `reason`; interruption propagates.
     const check = Effect.fnUntraced(function*(
       reason: CommandsFailure<M>["reason"],
       model: M,

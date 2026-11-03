@@ -793,9 +793,8 @@ export type Resolve = <A>(reference: Reference<A>) => A
  */
 export interface Command<M, Args, A, E, R> {
   readonly name: string
-  // Method signatures are bivariant in their parameters. `Args`, `A` and `E` appear both as inputs and outputs, so
-  // with property signatures a command with `E = never` would not be assignable to `Command<M, any, any, any, R>`.
-  // `CommandOptions` is the strict form that `command` checks.
+  // Method signatures are bivariant, so commands with different `Args`, `A` and `E` fit in one list.
+  // `command` checks callbacks strictly through `CommandOptions`.
   args?(model: M): Arbitrary<Args> | undefined
   precondition?(model: M, args: Args): boolean
   next?(model: M, args: Args, result: Reference<A>): M
@@ -970,7 +969,7 @@ export function command(
     readonly args?: CommandOptions<any, any, any, any, any>["args"] | undefined
   }
 ): Command<any, any, any, any, any> {
-  // `Command` has no key for a callback passed as `undefined`. Fields are read by name to keep inherited callbacks.
+  // Copy fields by name, skipping `undefined`, so inherited callbacks are kept.
   const out: Record<string, unknown> = { name: options.name, run: options.run }
   for (const key of ["args", "precondition", "next", "postcondition"] as const) {
     if (options[key] !== undefined) out[key] = options[key]
