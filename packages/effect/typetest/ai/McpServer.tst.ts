@@ -210,7 +210,7 @@ describe("McpServer", () => {
   })
 
   it("should accept InputRequired as a declared toolkit failure", () => {
-    const toolkit = Toolkit.make(Tool.make("Confirm", { failure: Schema.instanceOf(McpSchema.InputRequired) }))
+    const toolkit = Toolkit.make(Tool.make("Confirm", { failure: McpSchema.InputRequired }))
     const layer = McpServer.toolkit(toolkit).pipe(
       Layer.provide(toolkit.toLayer({
         Confirm: () => Effect.fail(new McpSchema.InputRequired({ requestState: "state" }))
