@@ -448,6 +448,18 @@ describe("overridable", () => {
       strictEqual(yield* wrapped(1, 2), 3)
     }))
 
+  it.effect("wraps a frozen overridable as the default of another", () =>
+    Effect.gen(function*() {
+      const inner = Context.overridable("ContextTest/inner", (n: number) => Effect.succeed(n))
+      const outer = Context.overridable("ContextTest/outer", Object.freeze(inner))
+      strictEqual(outer.reference.key, "ContextTest/outer")
+      strictEqual(yield* outer(1), 1)
+      strictEqual(
+        yield* outer(1).pipe(Effect.provideService(inner.reference, (n) => Effect.succeed(n * 10))),
+        10
+      )
+    }))
+
   it.effect("wraps a callable Effect such as a Reference as an Effect", () =>
     Effect.gen(function*() {
       const Port = Context.Reference<number>("ContextTest/Port", { defaultValue: () => 8080 })
