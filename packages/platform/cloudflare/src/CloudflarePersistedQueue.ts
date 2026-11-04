@@ -38,7 +38,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as PersistedQueue from "effect/persistence/PersistedQueue"
-import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import { encodeName } from "./internal/clusterName.ts"
 import type { QueueItem } from "./internal/queueStorage.ts"
@@ -79,14 +78,6 @@ const attempt = (run: () => Promise<void>) =>
   )
 
 const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie(attempt(run))
-
-// `PersistedQueue.make` fails the take scope with this internal signal when a
-// stored element cannot decode; the element can never succeed, so it is
-// dead-lettered instead of retried.
-const isDeadLetter = (cause: Cause.Cause<unknown>): boolean =>
-  cause.reasons.some((reason) =>
-    Cause.isFailReason(reason) && Predicate.isTagged(reason.error, "~effect/persistence/PersistedQueue/DeadLetter")
-  )
 
 /**
  * Creates the `PersistedQueueStore` backed by the queue Durable Object
@@ -148,7 +139,9 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             onFailure: (cause) =>
               Cause.hasInterruptsOnly(cause)
                 ? finalize(() => stubFor(name).release(item.id, takerId))
-                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), takerId, isDeadLetter(cause))),
+                : finalize(() =>
+                  stubFor(name).fail(item.id, Cause.pretty(cause), takerId, PersistedQueue.isDeadLetterCause(cause))
+                ),
             onSuccess: () => finalize(() => stubFor(name).complete(item.id, takerId))
           }))
           yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis, takerId)).pipe(
