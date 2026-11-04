@@ -6,11 +6,50 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scheduler from "effect/Scheduler"
+import * as Supervisor from "effect/Supervisor"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import { vi } from "vitest"
 
 describe("TestClock", () => {
+  describe("observed by a Supervisor", () => {
+    const recorder = () => {
+      const blocks = new Map<Fiber.Fiber<unknown, unknown>, object | undefined>()
+      const started: Array<Fiber.Fiber<unknown, unknown>> = []
+      const supervisor: Supervisor.Supervisor = {
+        onStart: (fiber) => started.push(fiber),
+        onEnd: () => {},
+        onBlock: (fiber, blockedOn) => blocks.set(fiber, blockedOn),
+        onUnblock: () => {}
+      }
+      return { blocks, started, supervisor }
+    }
+
+    it.effect("stateUnsafe lists the pending sleeps soonest first, with the Latch each sleeper blocks on", () =>
+      Effect.gen(function*() {
+        const { blocks, supervisor } = recorder()
+        const [later, sooner] = yield* Effect.forEach(
+          ["2 minutes", "1 minute"] as const,
+          (duration) => Effect.forkChild(Effect.sleep(duration), { startImmediately: true })
+        ).pipe(Effect.provideService(Supervisor.Supervisor, supervisor))
+        const { sleeps } = yield* TestClock.testClockWith((clock) => Effect.sync(() => clock.stateUnsafe()))
+        assert.deepStrictEqual(sleeps.map(([deadline]) => deadline), [60_000, 120_000])
+        assert.strictEqual(sleeps[0][1], blocks.get(sooner))
+        assert.strictEqual(sleeps[1][1], blocks.get(later))
+      }))
+
+    it.effect("a test's Supervisor never sees the warning timer", () =>
+      Effect.gen(function*() {
+        const { started, supervisor } = recorder()
+        const sleeper = yield* Effect.forkChild(Effect.sleep("1 minute"), { startImmediately: true }).pipe(
+          Effect.provideService(Supervisor.Supervisor, supervisor)
+        )
+        yield* TestClock.adjust("1 minute")
+        yield* Fiber.join(sleeper)
+        assert.deepStrictEqual(started, [sleeper])
+      }))
+  })
+
   describe("warnings", { concurrent: false }, () => {
     for (const warning of ["not advancing the test clock", "still running without suspending"] as const) {
       it.effect(`warnings bypass TestConsole - ${warning}`, () =>
