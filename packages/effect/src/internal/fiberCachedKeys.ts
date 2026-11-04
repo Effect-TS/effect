@@ -36,6 +36,9 @@ export const MinimumLogLevelKey = "effect/References/MinimumLogLevel" as const
 export const FiberRuntimeMetricsKey = "effect/Metric/FiberRuntimeMetrics" as const
 
 /** @internal */
+export const SupervisorKey = "effect/Supervisor" as const
+
+/** @internal */
 export const defaultMaxOpsBeforeYield = 2048
 
 /** @internal */
@@ -65,6 +68,7 @@ const runtimeKeys = [
   MinimumLogLevelKey,
   CurrentStackFrameKey,
   FiberRuntimeMetricsKey,
+  SupervisorKey,
   MaxOpsBeforeYieldKey,
   PreventSchedulerYieldKey
 ] as const

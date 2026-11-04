@@ -85,7 +85,8 @@ describe("Fiber", () => {
         }],
         logLevel: ["effect/References/CurrentLogLevel", "Debug"],
         minimumLogLevel: ["effect/References/MinimumLogLevel", "Debug"],
-        runtimeMetrics: ["effect/Metric/FiberRuntimeMetrics", { recordFiberStart() {}, recordFiberEnd() {} }]
+        runtimeMetrics: ["effect/Metric/FiberRuntimeMetrics", { recordFiberStart() {}, recordFiberEnd() {} }],
+        supervisor: ["effect/Supervisor", { onStart() {}, onEnd() {}, onBlock() {}, onUnblock() {} }]
       }
       for (const [field, [key, value]] of Object.entries(cached)) {
         const read = Effect.withFiber((fiber) => Effect.succeed(fiber.cache[field as keyof typeof cached]))
