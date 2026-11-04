@@ -99,7 +99,9 @@ const settle = () => Effect.promise(() => new Promise((resolve) => setTimeout(re
 
 const objectName = (queueName: string) => encodeName("PersistedQueue", queueName)
 
-// Takes without waiting: undefined when no item is available now.
+// Takes without waiting: undefined when no item is available now. An available
+// item is leased and resolved in microtasks, which all run before the timer
+// fires however late it is, so the timer only decides the empty case.
 const takeNow = (runtime: QueueRuntime, takerId: string) =>
   Effect.promise(async () => {
     const item = await Promise.race([
@@ -311,6 +313,20 @@ describe("CloudflarePersistedQueue", () => {
       const runtime = yield* completedBehindStaleLease(namespace, objectName("stale-fail"))
       yield* Effect.promise(() => runtime.fail("a", "boom", "stale"))
       assert.isUndefined(yield* takeNow(runtime, "next"))
+    })
+  })
+
+  it.effect("a replayed fail counts the attempt once", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(objectName("replayed-fail"))
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      yield* Effect.promise(() => runtime.take("taker", 2, 500))
+      // The finalizer retries a fail whose response was lost.
+      yield* Effect.promise(() => runtime.fail("a", "boom", "taker"))
+      yield* Effect.promise(() => runtime.fail("a", "boom", "taker"))
+      const item = yield* takeNow(runtime, "next")
+      assert.strictEqual(item?.id, "a")
     })
   })
 
