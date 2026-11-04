@@ -20,11 +20,12 @@ import * as Pull from "effect/Pull"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 import * as Rpc from "effect/rpc/Rpc"
+import * as RpcMessage from "effect/rpc/RpcMessage"
 import * as RpcSchema from "effect/rpc/RpcSchema"
+import * as RpcServer from "effect/rpc/RpcServer"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
-import * as Stream from "effect/Stream"
 import type { EntityDeliveryOptions, EntityInvokeResult } from "../CloudflareDurableObjectPrograms.ts"
 import { encodeName } from "./clusterName.ts"
 import type { EntityKeepAlive } from "./entityKeepAlive.ts"
@@ -57,6 +58,26 @@ interface CachedHandlers {
   readonly handlers: Record<string, (request: any) => any>
   readonly context: Context.Context<never>
   readonly scope: Scope.Closeable
+  readonly server: RpcServer.RpcServer<any>
+}
+
+// One request written to the wake's `RpcServer`. A defect retry writes a new
+// server request, so ids are never reused while a previous fiber unwinds.
+interface ServerRequest {
+  readonly envelope: Envelope.Request.Any
+  readonly discard: boolean
+  readonly respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
+  readonly progress: {
+    lastSentChunk: Option.Option<Reply.Chunk<any>>
+    sequence: number
+  }
+  readonly exit: Deferred.Deferred<Exit.Exit<unknown, unknown>>
+  // Completes once the server's request effect, including its request scope,
+  // has finished.
+  readonly finished: Deferred.Deferred<void>
+  started: boolean
+  interrupted: boolean
+  fork: boolean
 }
 
 /** @internal */
@@ -79,6 +100,55 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   // build option; `"unbounded"` leaves handlers unlimited.
   const concurrency = registration.options?.concurrency ?? 1
   const handlerSemaphore = concurrency === "unbounded" ? undefined : Semaphore.makeUnsafe(concurrency)
+
+  const serverRequests = new Map<number, ServerRequest>()
+  let nextServerRequestId = 0
+  // Set while `server.write` runs; a request the server rejects before it
+  // forks a handler is answered with a `Defect` that carries no request id.
+  let writing: ServerRequest | undefined
+
+  const onFromServer = (response: RpcMessage.FromServer<any>): Effect.Effect<void> => {
+    switch (response._tag) {
+      case "Exit": {
+        const request = serverRequests.get(Number(response.requestId))
+        if (request !== undefined) Deferred.doneUnsafe(request.exit, Effect.succeed(response.exit))
+        return Effect.void
+      }
+      case "Chunk": {
+        const request = serverRequests.get(Number(response.requestId))
+        if (request === undefined || request.discard || request.interrupted) return Effect.void
+        const progress = request.progress
+        const reply = new Reply.Chunk({
+          requestId: request.envelope.requestId,
+          id: nextId() as any,
+          sequence: progress.sequence++,
+          values: response.values as any
+        })
+        return request.respond(reply).pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              progress.lastSentChunk = Option.some(reply)
+            })
+          ),
+          // The server ends the request without an exit after a failed chunk
+          // write, so the failure becomes the request's exit here.
+          Effect.onError((cause) =>
+            Effect.sync(() => {
+              if (!Cause.hasInterruptsOnly(cause)) {
+                Deferred.doneUnsafe(request.exit, Effect.succeed(Exit.failCause(cause)))
+              }
+            })
+          )
+        )
+      }
+      case "Defect": {
+        if (writing !== undefined) Deferred.doneUnsafe(writing.exit, Effect.succeed(Exit.die(response.defect)))
+        return Effect.void
+      }
+      case "ClientEnd":
+        return Effect.void
+    }
+  }
 
   const invalidate = Effect.fnUntraced(function*() {
     if (cached === undefined) return
@@ -109,11 +179,44 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     if (replyRegistry !== undefined) {
       context = Context.add(context, CurrentReplyRegistry, replyRegistry)
     }
-    const handlers = yield* Effect.gen(function*() {
+    const { handlers, server } = yield* Effect.gen(function*() {
       if (entitySql !== undefined) {
         context = Context.merge(context, yield* Scope.provide(entitySql.make, scope))
       }
-      return yield* Effect.provideContext(registration.build, context)
+      const handlers = yield* Effect.provideContext(registration.build, context)
+      // The server sees each handler's result before it takes a permit; a
+      // forked result is marked here so its request skips the entity permit.
+      const serverHandlers: Record<string, (payload: any, options: { readonly requestId: any }) => any> = {}
+      for (const tag of Object.keys(handlers)) {
+        const handler = handlers[tag]
+        serverHandlers[tag] = (request, { requestId }) => {
+          const result = handler(request)
+          if (Rpc.isWrapper(result as object) && (result as Rpc.Wrapper<unknown>).fork) {
+            const pending = serverRequests.get(Number(requestId))
+            if (pending !== undefined) pending.fork = true
+          }
+          return result
+        }
+      }
+      const handlersContext: Context.Context<never> = yield* Effect.provideContext(
+        registration.entity.protocol.toHandlers(serverHandlers),
+        context as Context.Context<any>
+      )
+      // The server outlives a defect rebuild: requests already running on the
+      // previous build finish there instead of being interrupted.
+      const serverScope = yield* Scope.make()
+      // Middleware services come from the registration context: `Entity.toLayer`
+      // requires them, and `registerEntity` captures that context.
+      const server = yield* (RpcServer.makeNoSerialization(registration.entity.protocol, {
+        onFromServer,
+        concurrency: "unbounded",
+        disableTracing: true,
+        disableClientAcks: true,
+        disableFatalDefects: true
+      }) as Effect.Effect<RpcServer.RpcServer<any>, never, Scope.Scope>).pipe(
+        Effect.provideContext(Context.add(Context.merge(context, handlersContext), Scope.Scope, serverScope))
+      )
+      return { handlers, server }
     }).pipe(
       Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
     )
@@ -121,7 +224,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     // Any event that builds the entity restores a hold persisted before a
     // restart.
     keepAlive?.restore()
-    return { handlers, context, scope }
+    return { handlers, context, scope, server } satisfies CachedHandlers
   })
 
   const getHandlers = (): Effect.Effect<CachedHandlers> =>
@@ -156,11 +259,61 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     Effect.andThen(Effect.catchCause(getHandlers(), () => Effect.void))
   )
 
+  // Writes one attempt to the server and waits for its exit and for the
+  // request scope to close. Interrupting the caller interrupts the server
+  // request and still waits, so an `Rpc.uninterruptible` handler finishes
+  // before the caller's interruption completes.
+  const runOnServer = (
+    server: RpcServer.RpcServer<any>,
+    request: ServerRequest,
+    permit: HandlerPermit
+  ): Effect.Effect<unknown, unknown> => {
+    const id = nextServerRequestId++
+    const settled = Effect.flatMap(
+      Deferred.await(request.exit),
+      (exit) => request.started ? Effect.as(Deferred.await(request.finished), exit) : Effect.succeed(exit)
+    )
+    const onRequest = <X, E, R>(effect: Effect.Effect<X, E, R>): Effect.Effect<X, E, R> =>
+      Effect.suspend(() => {
+        request.started = true
+        if (request.interrupted) return Effect.interrupt
+        const run = Effect.ensuring(effect, Effect.sync(() => Deferred.doneUnsafe(request.finished, Effect.void)))
+        return request.fork ? run : permit.acquire(run)
+      })
+    return Effect.suspend(() => {
+      serverRequests.set(id, request)
+      writing = request
+      return server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId(id),
+        tag: request.envelope.tag,
+        payload: new Request({ ...request.envelope, lastSentChunk: request.progress.lastSentChunk }),
+        headers: request.envelope.headers
+      }, { onRequest }).pipe(
+        Effect.ensuring(Effect.sync(() => {
+          writing = undefined
+        }))
+      )
+    }).pipe(
+      Effect.andThen(Effect.onInterrupt(settled, () =>
+        Effect.suspend(() => {
+          request.interrupted = true
+          const stop = request.started
+            ? server.write(0, { _tag: "Interrupt", requestId: RpcMessage.RequestId(id), interruptors: [] })
+            : Effect.void
+          return Effect.andThen(stop, settled)
+        }))),
+      Effect.flatten,
+      Effect.ensuring(Effect.sync(() => serverRequests.delete(id)))
+    )
+  }
+
   const run = Effect.fnUntraced(function*(
     envelope: Envelope.Request.Any,
     lastSentChunk: Option.Option<Reply.Chunk<any>>,
     discard: boolean,
-    respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
+    respond: (reply: Reply.Reply<any>) => Effect.Effect<void>,
+    permit: HandlerPermit = makeHandlerPermit(handlerSemaphore)
   ) {
     const entry = yield* getHandlers()
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps | undefined
@@ -180,31 +333,27 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
 
     const streamSchema = RpcSchema.isStreamSchema(rpc.successSchema) ? rpc.successSchema : undefined
-    let currentLastSentChunk = lastSentChunk
-    let sequence = Option.match(lastSentChunk, {
-      onNone: () => 0,
-      onSome: (chunk) => chunk.sequence + 1
-    })
-
-    const execute = Effect.suspend(() => {
-      const request = new Request({ ...envelope, lastSentChunk: currentLastSentChunk })
-      const result = handler(request)
-      const unwrapped = Rpc.isWrapper(result as object) ? result.value : result
-      if (streamSchema === undefined) return unwrapped as Effect.Effect<any, any>
-      return Stream.runForEachArray(unwrapped as Stream.Stream<any, any>, (values) => {
-        if (discard) return Effect.void
-        const reply = new Reply.Chunk({
-          requestId: envelope.requestId,
-          id: nextId() as any,
-          sequence: sequence++,
-          values: values as any
-        })
-        return Effect.tap(respond(reply), () =>
-          Effect.sync(() => {
-            currentLastSentChunk = Option.some(reply)
-          }))
+    const progress = {
+      lastSentChunk,
+      sequence: Option.match(lastSentChunk, {
+        onNone: () => 0,
+        onSome: (chunk) => chunk.sequence + 1
       })
-    }).pipe(
+    }
+
+    const execute = Effect.suspend(() =>
+      runOnServer(entry.server, {
+        envelope,
+        discard,
+        respond,
+        progress,
+        exit: Deferred.makeUnsafe(),
+        finished: Deferred.makeUnsafe(),
+        started: false,
+        interrupted: false,
+        fork: false
+      }, permit)
+    ).pipe(
       Effect.withSpan("CloudflareCluster.handler", {
         attributes: {
           entityType: registration.entity.type,
@@ -545,7 +694,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         pendingRuns.add(requestId)
         yield* startPersisted
       }
-      // No stream acks on this path, so a plain permit is enough.
+      // No stream acks on this path, so the runtime's plain permit is enough.
       const execute = entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
         Effect.gen(function*() {
           const encoded = yield* encodeReplyFor(registration, rpc, reply)
@@ -557,19 +706,17 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           }
         }))
       const fiber = yield* Effect.forkDetach(
-        (entityRuntime.handlerSemaphore === undefined
-          ? execute
-          : Semaphore.withPermit(entityRuntime.handlerSemaphore, execute)).pipe(
-            Effect.onExit((exit) =>
-              !persisted ? Effect.void : Semaphore.withPermit(
-                semaphore,
-                Effect.suspend(() => {
-                  pendingRuns.delete(requestId)
-                  return discard && Exit.isSuccess(exit) ? write(completeTell(sql, requestId)) : Effect.void
-                }).pipe(Effect.ensuring(finishPersisted))
-              )
+        execute.pipe(
+          Effect.onExit((exit) =>
+            !persisted ? Effect.void : Semaphore.withPermit(
+              semaphore,
+              Effect.suspend(() => {
+                pendingRuns.delete(requestId)
+                return discard && Exit.isSuccess(exit) ? write(completeTell(sql, requestId)) : Effect.void
+              }).pipe(Effect.ensuring(finishPersisted))
             )
           )
+        )
       )
       options.waitUntil(Fiber.await(fiber))
       return Effect.as(Fiber.join(fiber), [])
@@ -615,7 +762,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
     })
     session.fiber = yield* Effect.forkDetach(
-      permit.acquire(entityRuntime.run(envelope, lastSentChunk, discard, respond)).pipe(
+      entityRuntime.run(envelope, lastSentChunk, discard, respond, permit).pipe(
         Effect.onExit((exit) => {
           const cleanup = Effect.sync(() => {
             if (Exit.isSuccess(exit)) Queue.endUnsafe(queue)
