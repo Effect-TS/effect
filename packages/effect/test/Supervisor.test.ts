@@ -72,6 +72,16 @@ describe("Supervisor", () => {
         ])
       }))
 
+    it.effect("a wait that completes at once, or a yield, does not block", () =>
+      Effect.gen(function*() {
+        const { supervisor, tagsOf } = recorder()
+        const child = yield* Effect.forkChild(
+          Effect.andThen(Effect.callback<void>((resume) => resume(Effect.void)), Effect.yieldNow)
+        ).pipe(Effect.provideService(Supervisor.Supervisor, supervisor))
+        yield* Fiber.join(child)
+        assert.deepStrictEqual(tagsOf(child), ["start", "end"])
+      }))
+
     it.effect("a blocked fiber unblocks when its wait completes or it is interrupted", () =>
       Effect.gen(function*() {
         const { supervisor, tagsOf } = recorder()
