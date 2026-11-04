@@ -802,6 +802,9 @@ importers:
       glob:
         specifier: ^14.0.3
         version: 14.0.3
+      rolldown:
+        specifier: ^1.2.16
+        version: 1.2.16
       rollup:
         specifier: ^4.67.3
         version: 4.67.3
