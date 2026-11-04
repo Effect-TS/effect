@@ -829,7 +829,6 @@ const walk = Effect.fnUntraced(function*(
   compiled: Compiled,
   options?: {
     readonly root?: string | undefined
-    readonly exclude?: ReadonlyArray<string> | undefined
   },
   filter?: PathFilterEngine.Evaluator
 ): Effect.fn.Return<Array<string>, PlatformError> {
@@ -837,8 +836,6 @@ const walk = Effect.fnUntraced(function*(
     return []
   }
   const root = options?.root ?? ""
-  const excludes = compile(options?.exclude ?? [], true)
-  const excludeNeedsDirectory = excludes.nodes.some((node) => node._tag === "End" && node.directoryOnly)
   const filterNeedsDirectory = filter?.needsDirectory ?? false
 
   const toFsPath = (relative: string): string =>
@@ -911,7 +908,6 @@ const walk = Effect.fnUntraced(function*(
   interface Child {
     readonly relative: string
     readonly accepted: boolean
-    readonly excluded: States
     readonly filtered: PathFilterEngine.State | undefined
     readonly next: States | undefined
   }
@@ -921,7 +917,6 @@ const walk = Effect.fnUntraced(function*(
     { name, type }: FileSystem.DirectoryEntry,
     parent: string,
     states: States,
-    excluded: States,
     filtered: PathFilterEngine.State | undefined
   ): Child | undefined | Effect.Effect<Child | undefined, PlatformError> => {
     const result = step(compiled, states, name)
@@ -930,11 +925,10 @@ const walk = Effect.fnUntraced(function*(
       return undefined
     }
     const relative = join(parent, name)
-    const nextExcluded = union(step(excludes, excluded, name))
     const descend = canDescend(compiled, next)
     const child = (isDirectory: boolean, link: boolean): Child | undefined => {
       let accepted = accepts(compiled, next, isDirectory)
-      if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
+      if (!accepted && (!isDirectory || !descend)) {
         return undefined
       }
       let nextFiltered = filtered
@@ -952,7 +946,6 @@ const walk = Effect.fnUntraced(function*(
       return {
         relative,
         accepted,
-        excluded: nextExcluded,
         filtered: nextFiltered,
         next: !isDirectory || !descend || pruned
           ? undefined
@@ -964,7 +957,7 @@ const walk = Effect.fnUntraced(function*(
           : undefined
       }
     }
-    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory && !filterNeedsDirectory) {
+    if (!descend && !needsDirectory(compiled, next) && !filterNeedsDirectory) {
       return child(false, false)
     }
     if (type !== "Unknown" && type !== "SymbolicLink") {
@@ -1017,7 +1010,6 @@ const walk = Effect.fnUntraced(function*(
   const directory = Effect.fnUntraced(function*(
     relative: string,
     states: States,
-    excluded: States,
     filtered: PathFilterEngine.State | undefined,
     named: boolean
   ): Effect.fn.Return<Array<string>, PlatformError> {
@@ -1025,7 +1017,7 @@ const walk = Effect.fnUntraced(function*(
     const children: Array<Child | undefined> = []
     const pending: Array<Effect.Effect<void, PlatformError>> = []
     for (const entry of listing.entries) {
-      const child = visit(entry, relative, states, excluded, filtered)
+      const child = visit(entry, relative, states, filtered)
       if (Effect.isEffect(child)) {
         const index = children.push(undefined) - 1
         pending.push(Effect.map(child, (child) => {
@@ -1041,7 +1033,7 @@ const walk = Effect.fnUntraced(function*(
     const subtrees: Array<Effect.Effect<Array<string>, PlatformError>> = []
     for (const child of children) {
       if (child?.next !== undefined) {
-        const walk = directory(child.relative, child.next, child.excluded, child.filtered, listing.named)
+        const walk = directory(child.relative, child.next, child.filtered, listing.named)
         if (slots > 0) {
           slots--
           subtrees.push(Fiber.join(yield* fork(walk)))
@@ -1072,7 +1064,7 @@ const walk = Effect.fnUntraced(function*(
   // The losing walk is interrupted along with every fiber it forked
   return yield* Effect.raceFirst(
     Effect.ensuring(
-      directory("", compiled.initial, excludes.initial, filter?.initial, true),
+      directory("", compiled.initial, filter?.initial, true),
       Effect.sync(() => {
         finishing = true
       })
