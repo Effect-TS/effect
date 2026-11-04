@@ -2042,6 +2042,60 @@ export const CreatePayloadRequestText = Schema.String`,
         ]
       ))
 
+    it.effect("inlines components referenced from contentSchema", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/events": {
+              get: {
+                operationId: "getEvent",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Event",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/Event" } } }
+                  }
+                },
+                tags: ["Events"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Payload: {
+                type: "object",
+                properties: { id: { type: "integer" } },
+                required: ["id"]
+              },
+              Event: {
+                type: "object",
+                properties: {
+                  data: {
+                    type: "string",
+                    contentMediaType: "application/json",
+                    contentSchema: { $ref: "#/components/schemas/Payload" }
+                  }
+                },
+                required: ["data"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Events" }]
+        },
+        [
+          `"contentSchema": { "type": "object", "properties": { "id": { "type": "integer" } }, "required": ["id"] }`
+        ],
+        [
+          `#/$defs/Payload`
+        ]
+      ))
+
     it.effect("maps explicit SSE stream responses to HttpApiSchema.StreamSse", () =>
       assertHttpApiIncludes(
         {

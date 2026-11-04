@@ -229,8 +229,47 @@ function addNumberCheck(
   }
 }
 
+function inlineDefinitions(
+  schema: unknown,
+  definitions: JsonSchema.Definitions,
+  inlining: Set<string> = new Set()
+): unknown {
+  if (!isObject(schema) || typeof schema.$id === "string") return schema
+  const inline = (value: unknown) => inlineDefinitions(value, definitions, inlining)
+  const out: Record<string, unknown> = {}
+  for (const [keyword, value] of Object.entries(schema)) {
+    switch (InternalJsonSchema.getSubschemaKind(keyword)) {
+      case "schema":
+        InternalRecord.assignProperty(out, keyword, inline(value))
+        break
+      case "map":
+        if (isObject(value)) {
+          const map: Record<string, unknown> = {}
+          for (const [key, member] of Object.entries(value)) InternalRecord.assignProperty(map, key, inline(member))
+          InternalRecord.assignProperty(out, keyword, map)
+        } else {
+          InternalRecord.assignProperty(out, keyword, value)
+        }
+        break
+      case "array":
+        InternalRecord.assignProperty(out, keyword, Array.isArray(value) ? value.map(inline) : value)
+        break
+      default:
+        InternalRecord.assignProperty(out, keyword, value)
+    }
+  }
+  const key = typeof schema.$ref === "string" ? JsonSchema.getReferenceKey(schema.$ref) : undefined
+  if (key === undefined || !Object.hasOwn(definitions, key) || inlining.has(key)) return out
+  const { $ref: _, ...siblings } = out
+  inlining.add(key)
+  const inlined = inline(definitions[key])
+  inlining.delete(key)
+  return Object.keys(siblings).length === 0 ? inlined : { allOf: [inlined, siblings] }
+}
+
 function jsonSchemaAnnotations(
   schema: JsonSchema.JsonSchema,
+  definitions: JsonSchema.Definitions | undefined,
   options: SchemaRepresentation.FromJsonSchemaOptions | undefined
 ): ImportedAnnotations {
   const annotations: Record<string, Schema.Json> = {}
@@ -243,7 +282,11 @@ function jsonSchemaAnnotations(
   if (typeof schema.format === "string") annotations.format = schema.format
   if (typeof schema.contentEncoding === "string") annotations.contentEncoding = schema.contentEncoding
   if (typeof schema.contentMediaType === "string") annotations.contentMediaType = schema.contentMediaType
-  if (InternalAST.isJson(schema.contentSchema)) annotations.contentSchema = schema.contentSchema
+  if (InternalAST.isJson(schema.contentSchema)) {
+    annotations.contentSchema = definitions === undefined
+      ? schema.contentSchema
+      : inlineDefinitions(schema.contentSchema, definitions) as Schema.Json
+  }
   let customAnnotations: Schema.Annotations.Annotations | undefined
   if (options?.includeAnnotationKey !== undefined) {
     for (const key of Object.keys(schema)) {
@@ -1021,12 +1064,14 @@ export function fromJsonSchemaMultiDocument(
     if (schema === undefined) {
       return unknown
     }
+    const isInNestedResource = inNestedResource || (!isRoot && typeof schema.$id === "string")
+    const definitions = isInNestedResource ? undefined : document.definitions
     if (
       isObject(schema.not) &&
       Object.keys(schema.not).length === 0
-    ) return annotate(never, jsonSchemaAnnotations(schema, options))
+    ) return annotate(never, jsonSchemaAnnotations(schema, definitions, options))
     const wasInNestedResource = inNestedResource
-    inNestedResource ||= !isRoot && typeof schema.$id === "string"
+    inNestedResource = isInNestedResource
     for (const keyword of Object.keys(schema)) {
       if (keyword === "if" && !Object.hasOwn(schema, "then") && !Object.hasOwn(schema, "else")) continue
       switch (keyword) {
@@ -1091,7 +1136,7 @@ export function fromJsonSchemaMultiDocument(
           path
         )
     }
-    representation = annotate(representation, jsonSchemaAnnotations(schema, options))
+    representation = annotate(representation, jsonSchemaAnnotations(schema, definitions, options))
 
     if (Array.isArray(schema.allOf)) {
       for (let index = 0; index < schema.allOf.length; index++) {

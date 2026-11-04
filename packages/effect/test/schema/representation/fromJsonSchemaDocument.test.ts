@@ -1199,6 +1199,73 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
+  it("inlines definitions referenced from contentSchema", () => {
+    assertFromJsonSchema(
+      {
+        schema: {
+          type: "string",
+          contentMediaType: "application/json",
+          contentSchema: { $ref: "#/$defs/Payload", description: "payload" },
+          $defs: {
+            Payload: {
+              type: "object",
+              properties: { id: { $ref: "#/$defs/Id" } },
+              required: ["id"]
+            },
+            Id: { type: "integer" }
+          }
+        }
+      },
+      {
+        codes: makeCode(
+          `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "allOf": [{ "type": "object", "properties": { "id": { "type": "integer" } }, "required": ["id"] }, { "description": "payload" }] } })`,
+          `string`
+        )
+      }
+    )
+  })
+
+  it("keeps recursive references inside contentSchema", () => {
+    assertFromJsonSchema(
+      {
+        schema: {
+          type: "string",
+          contentMediaType: "application/json",
+          contentSchema: { $ref: "#/$defs/Node" },
+          $defs: {
+            Node: {
+              type: "object",
+              properties: { next: { $ref: "#/$defs/Node" } }
+            }
+          }
+        }
+      },
+      {
+        codes: makeCode(
+          `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "type": "object", "properties": { "next": { "$ref": "#/$defs/Node" } } } })`,
+          `string`
+        )
+      }
+    )
+  })
+
+  it("keeps contentSchema references inside nested resources", () => {
+    const content = { type: "string", contentMediaType: "application/json", contentSchema: { $ref: "#/$defs/Payload" } }
+    const nested = { $id: "child", $defs: { Payload: { type: "number" } } }
+    for (const child of [{ ...nested, ...content }, { ...nested, type: "object", properties: { data: content } }]) {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $id: "https://example.com/root",
+        type: "object",
+        properties: { child },
+        $defs: { Payload: { type: "boolean" } }
+      }))
+      assert.include(
+        SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])).codes[0].runtime,
+        `"contentSchema": { "$ref": "#/$defs/Payload" }`
+      )
+    }
+  })
+
   describe("$ref", () => {
     it("rejects local references inside nested resources", () => {
       const reference = { $ref: "#/$defs/X" }
