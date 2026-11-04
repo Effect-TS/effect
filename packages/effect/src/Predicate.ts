@@ -1201,13 +1201,17 @@ export const hasProperty: {
  *   dropped from the true branch even though a runtime value could carry a
  *   `_tag`.
  * - Inside a generic function, `_tag` on the narrowed value is typed as
- *   `string`, not the caller's tags.
+ *   `string` unless the type parameter is constrained to tagged types. With
+ *   `<E>` or `<E extends object>` it is `string`, while `<E extends Size>`
+ *   for an all-tagged union `Size` keeps the tags of `Size`.
  * - `(x) => hasTag(x) && x._tag === "A"` is inferred as a guard only when
  *   at least two tagged members remain after `hasTag`.
  * - Inside combinators without a contextual input type, such as
- *   `Predicate.or(Predicate.hasTag, Predicate.isString)`, the input is
- *   `unknown` and the result is `{ readonly _tag: string }`. Pass the input
- *   type explicitly with `Predicate.hasTag<A>` to keep the full members.
+ *   `Predicate.or(Predicate.hasTag, Predicate.isString)`, the `hasTag` input
+ *   is `unknown`, so its branch contributes `{ readonly _tag: string }` and
+ *   the combined guard narrows to `string | { readonly _tag: string }`. Pass
+ *   the input type explicitly with `Predicate.hasTag<A>` to keep the full
+ *   members.
  *
  * **Example** (Filtering tagged values from a mixed array)
  *
