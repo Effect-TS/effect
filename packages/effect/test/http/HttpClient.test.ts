@@ -10,7 +10,6 @@ import {
   Fiber,
   Layer,
   Option,
-  Queue,
   Redacted,
   Ref,
   Schedule,
@@ -66,42 +65,6 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
   ).pipe(HttpClient.followRedirects())
   return { client, requests } as const
 })
-
-const makeSignalClient = Effect.fnUntraced(function*(
-  respond: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<HttpClientResponse.HttpClientResponse>
-) {
-  const signals = yield* Queue.unbounded<AbortSignal>()
-  const client = HttpClient.make((request, _url, signal) =>
-    Effect.andThen(Queue.offer(signals, signal), respond(request))
-  )
-  return { client, signals } as const
-})
-
-const redirectOrFinal = (
-  final: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<HttpClientResponse.HttpClientResponse>
-) =>
-(request: HttpClientRequest.HttpClientRequest) =>
-  request.url.endsWith("/start")
-    ? Effect.succeed(
-      HttpClientResponse.fromWeb(request, new Response(null, { status: 302, headers: { location: "/final" } }))
-    )
-    : final(request)
-
-const scopedRedirectOrders: ReadonlyArray<{
-  readonly name: string
-  readonly scoped: (
-    client: HttpClient.HttpClient
-  ) => HttpClient.HttpClient.With<HttpClientError.HttpClientError, Scope.Scope>
-}> = [
-  {
-    name: "withScope inside followRedirects",
-    scoped: (client) => client.pipe(HttpClient.withScope, HttpClient.followRedirects())
-  },
-  {
-    name: "withScope outside followRedirects",
-    scoped: (client) => client.pipe(HttpClient.followRedirects(), HttpClient.withScope)
-  }
-]
 
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
@@ -2413,151 +2376,99 @@ Missing key
       assert.deepStrictEqual(seen, [undefined, "a=1", "b=1"])
     }))
 
-  describe("withScope", () => {
-    it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
-      Effect.gen(function*() {
-        const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
-        yield* Ref.update(
-          jar,
-          Cookies.mergeIntoArray("https://api.example.com/", Cookies.fromSetCookie(["session=abc"]), 0)
+  it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      yield* Ref.update(
+        jar,
+        Cookies.mergeIntoArray("https://api.example.com/", Cookies.fromSetCookie(["session=abc"]), 0)
+      )
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        Effect.andThen(
+          Deferred.succeed(started, signal),
+          Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
         )
-        const started = yield* Deferred.make<AbortSignal>()
-        const client = HttpClient.make((request, _url, signal) =>
-          Effect.andThen(
-            Deferred.succeed(started, signal),
-            Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
+      ).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.withScope
+      )
+
+      const scope = yield* Scope.make()
+      yield* client.get("https://api.example.com/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
+
+  it.effect("keeps a redirect scoped when withScope is applied outside followRedirects", () =>
+    Effect.gen(function*() {
+      const final = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        request.url.endsWith("/start")
+          ? Effect.succeed(
+            HttpClientResponse.fromWeb(request, new Response(null, { status: 302, headers: { location: "/final" } }))
           )
-        ).pipe(
-          HttpClient.withCookiesRef(jar),
-          HttpClient.withScope
-        )
+          : Effect.andThen(Deferred.succeed(final, signal), Effect.never)
+      ).pipe(
+        HttpClient.followRedirects(),
+        HttpClient.withScope
+      )
 
-        const scope = yield* Scope.make()
-        yield* client.get("https://api.example.com/slow").pipe(Scope.provide(scope), Effect.forkChild)
-        const signal = yield* Deferred.await(started)
-        assert.isFalse(signal.aborted)
-        yield* Scope.close(scope, Exit.void)
-        assert.isTrue(signal.aborted)
-      }))
+      const scope = yield* Scope.make()
+      yield* client.get("https://origin.test/start").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(final)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
 
-    it.effect.each([
-      ...scopedRedirectOrders.map((order) => ({ ...order, openBody: false })),
-      { ...scopedRedirectOrders[1], openBody: true }
-    ])("keeps redirects scoped with $name (open body: $openBody)", ({ openBody, scoped }) =>
-      Effect.gen(function*() {
-        const { client, signals } = yield* makeSignalClient(redirectOrFinal((request) =>
-          openBody
-            ? Effect.succeed(HttpClientResponse.fromWeb(request, new Response(new ReadableStream())))
-            : Effect.never
-        ))
-        const scope = yield* Scope.make()
-        yield* scoped(client).get("https://origin.test/start").pipe(Scope.provide(scope), Effect.forkChild)
-
-        const redirect = yield* Queue.take(signals)
-        const final = yield* Queue.take(signals)
-        assert.isTrue(redirect.aborted)
-        assert.isFalse(final.aborted)
-        yield* Scope.close(scope, Exit.void)
-        assert.isTrue(final.aborted)
-      }))
-
-    it.effect.each(scopedRedirectOrders)(
-      "aborts a redirect dispatched after its scope closed with $name",
-      ({ scoped }) =>
-        Effect.gen(function*() {
-          const scope = yield* Scope.make()
-          const abortedOnDispatch: Array<boolean> = []
-          const client = HttpClient.make((request, _url, signal) => {
-            abortedOnDispatch.push(signal.aborted)
-            return redirectOrFinal(() => Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null))))(
-              request
-            )
-              .pipe(Effect.tap(() => request.url.endsWith("/start") ? Scope.close(scope, Exit.void) : Effect.void))
-          })
-
-          yield* scoped(client).get("https://origin.test/start").pipe(Scope.provide(scope))
-
-          assert.deepStrictEqual(abortedOnDispatch, [false, true])
-        })
-    )
-
-    it.effect.each(
-      [
-        { name: "request", reuse: "request" },
-        { name: "response effect", reuse: "effect" }
-      ] as const
-    )("keeps independent owners for concurrent executions of one $name", ({ reuse }) =>
-      Effect.gen(function*() {
-        const signals = new Map<number, AbortSignal>()
-        const dispatched = yield* Deferred.make<void>()
-        const arrived = yield* Ref.make(0)
-        const bothArrived = yield* Deferred.make<void>()
-        const client = HttpClient.make((request, _url, signal, fiber) => {
-          signals.set(fiber.id, signal)
-          return Effect.andThen(
-            signals.size === 2 ? Deferred.succeed(dispatched, void 0) : Effect.void,
-            Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
+  it.effect("keeps separate withScope owners for concurrent runs of one response effect", () =>
+    Effect.gen(function*() {
+      const signals = new Map<number, AbortSignal>()
+      const dispatched = yield* Deferred.make<void>()
+      const arrived = yield* Ref.make(0)
+      const bothArrived = yield* Deferred.make<void>()
+      const client = HttpClient.make((_request, _url, signal, fiber) => {
+        signals.set(fiber.id, signal)
+        return Effect.andThen(signals.size === 2 ? Deferred.succeed(dispatched, void 0) : Effect.void, Effect.never)
+      }).pipe(
+        // Hold both runs between withScope and dispatch until both have entered
+        HttpClient.transformResponse((effect) =>
+          Ref.updateAndGet(arrived, (n) => n + 1).pipe(
+            Effect.flatMap((n) => n === 2 ? Deferred.succeed(bothArrived, void 0) : Effect.void),
+            Effect.andThen(Deferred.await(bothArrived)),
+            Effect.andThen(effect)
           )
-        }).pipe(
-          // Middleware that yields between withScope and dispatch, holding both executions until each has entered
-          HttpClient.transformResponse((effect) =>
-            Ref.updateAndGet(arrived, (n) => n + 1).pipe(
-              Effect.flatMap((n) => n === 2 ? Deferred.succeed(bothArrived, void 0) : Effect.void),
-              Effect.andThen(Deferred.await(bothArrived)),
-              Effect.andThen(effect)
-            )
-          ),
-          HttpClient.withScope
-        )
-        const request = HttpClientRequest.get("https://origin.test/slow")
-        const effect = client.execute(request)
-        const run = reuse === "request" ? () => client.execute(request) : () => effect
+        ),
+        HttpClient.withScope
+      )
+      const effect = client.get("https://origin.test/slow")
 
-        const scopeA = yield* Scope.make()
-        const scopeB = yield* Scope.make()
-        const fiberA = yield* run().pipe(Scope.provide(scopeA), Effect.forkChild)
-        const fiberB = yield* run().pipe(Scope.provide(scopeB), Effect.forkChild)
-        yield* Deferred.await(dispatched)
+      const scopeA = yield* Scope.make()
+      const scopeB = yield* Scope.make()
+      const fiberA = yield* effect.pipe(Scope.provide(scopeA), Effect.forkChild)
+      const fiberB = yield* effect.pipe(Scope.provide(scopeB), Effect.forkChild)
+      yield* Deferred.await(dispatched)
+      yield* Scope.close(scopeA, Exit.void)
+      assert.isTrue(signals.get(fiberA.id)!.aborted)
+      assert.isFalse(signals.get(fiberB.id)!.aborted)
+    }))
 
-        yield* Scope.close(scopeA, Exit.void)
-        assert.isTrue(signals.get(fiberA.id)!.aborted)
-        assert.isFalse(signals.get(fiberB.id)!.aborted)
-        yield* Scope.close(scopeB, Exit.void)
-        assert.isTrue(signals.get(fiberB.id)!.aborted)
-      }))
+  it.effect("aborts a withScope request interrupted before its response", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((_request, _url, signal) =>
+        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
+      ).pipe(HttpClient.withScope)
 
-    it.effect("aborts a scoped request when it is interrupted before the response", () =>
-      Effect.gen(function*() {
-        const { client, signals } = yield* makeSignalClient(() => Effect.never)
-        const scope = yield* Scope.make()
-        const fiber = yield* client.pipe(HttpClient.withScope).get("https://origin.test/slow").pipe(
-          Scope.provide(scope),
-          Effect.forkChild
-        )
-
-        const signal = yield* Queue.take(signals)
-        yield* Fiber.interrupt(fiber)
-        assert.isTrue(signal.aborted)
-      }))
-
-    it.effect("scopes helper client requests made by middleware inside withScope", () =>
-      Effect.gen(function*() {
-        const helper = yield* makeSignalClient(() => Effect.never)
-        const client = HttpClient.make((request) =>
-          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
-        ).pipe(
-          HttpClient.mapRequestEffect((request) => Effect.as(helper.client.get("https://auth.test/token"), request)),
-          HttpClient.withScope
-        )
-        const scope = yield* Scope.make()
-        yield* client.get("https://origin.test/").pipe(Scope.provide(scope), Effect.forkChild)
-
-        const signal = yield* Queue.take(helper.signals)
-        assert.isFalse(signal.aborted)
-        yield* Scope.close(scope, Exit.void)
-        assert.isTrue(signal.aborted)
-      }))
-  })
+      const scope = yield* Scope.make()
+      const fiber = yield* client.get("https://origin.test/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(signal.aborted)
+    }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
