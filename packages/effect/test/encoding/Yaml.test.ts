@@ -800,6 +800,11 @@ items:
           "properties split across lines",
           "a: !!str\n  &a 0x10\nb: *a\nc: !!int\n  &c \"7\"\nd: *c\n",
           { a: "0x10", b: "0x10", c: 7, d: 7 }
+        ],
+        [
+          "properties on later lines before an indentless sequence",
+          "a: !!seq\n  &a\n- 1\nb: *a\nc: &c\n  !!seq\n- 2\nd: *c\ne:\n  !!seq &e\n- 3\nf: *e\n",
+          { a: [1], b: [1], c: [2], d: [2], e: [3], f: [3] }
         ]
       ] as const
     )("resolves %s", (_, source, expected) => {
