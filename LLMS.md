@@ -178,6 +178,15 @@ export type DatabaseService = Database["Service"]
   Build focused service layers, then compose them with `Layer.provide` and
   `Layer.provideMerge` based on what services you want to expose.
 - **[Creating Layers from configuration and/or Effects](./ai-docs/src/01_effect/03_services/20_layer-unwrap.ts)**: Build a layer dynamically from an Effect / Config with `Layer.unwrap`.
+- **[Overridable operations](./ai-docs/src/01_effect/03_services/30_overridable.ts)**:
+  Define each operation of a service as a module-level `Context.overridable`
+  with a default implementation, instead of as a property of one service
+  object. Programs import and call the operations they use, and a bundler
+  drops the modules nobody imports. This matters for cold start on platforms
+  like Cloudflare Workers: a bundler cannot remove properties from a service
+  object, but it can remove modules that are never imported. The
+  implementation can still be swapped in tests or at the composition root
+  through `operation.reference`.
 
 ## Error handling
 

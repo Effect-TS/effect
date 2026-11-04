@@ -11,15 +11,16 @@
  * @stability stable
  * @since 4.0.0
  */
+import type * as Channel from "./Channel.ts"
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
 import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { exitSucceed, isEffect, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import * as Option from "./Option.ts"
-import type { Pipeable } from "./Pipeable.ts"
+import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Stream from "./Stream.ts"
 import type * as Types from "./Types.ts"
@@ -1398,8 +1399,24 @@ export const Reference: <Service>(
 ) => Reference<Service> = Service as any
 
 /**
- * The type of a value or function wrapped by {@link overridable}: the
- * original type plus its `Context.Reference`.
+ * The type returned by {@link overridable}: the wrapped `Effect`, `Stream`, or
+ * function itself, plus a `reference` holding the `Context.Reference` that
+ * overrides go through.
+ *
+ * **Example** (Reading the reference of an overridable)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ *
+ * const greet: Context.Overridable<(name: string) => Effect.Effect<string>> = Context.overridable(
+ *   "app/greet",
+ *   (name: string) => Effect.succeed(`Hello, ${name}`)
+ * )
+ *
+ * greet.reference.key // => "app/greet"
+ * ```
+ *
+ * @see {@link overridable} for creating one
  *
  * @stability unstable
  * @category models
@@ -1408,8 +1425,82 @@ export const Reference: <Service>(
 export type Overridable<A> = A & { readonly reference: Reference<A> }
 
 /**
- * Wraps an `Effect`, a `Stream`, or a function returning one of them so its
- * implementation can be replaced through the context via `.reference`.
+ * Wraps an `Effect`, a `Stream`, or a function returning either of them so
+ * that its implementation can be replaced through the context.
+ *
+ * **When to use**
+ *
+ * Use for operations that should be tree-shakeable. A bundler cannot drop a
+ * property from a service object, so a service record keeps every
+ * implementation even when a program calls only a few of them. With
+ * `overridable`, each operation is a module-level value with a default
+ * implementation, and operations a program never imports drop out of the
+ * bundle. The implementation can still be swapped in tests or at the
+ * composition root, through the usual key APIs on `.reference`.
+ *
+ * **Details**
+ *
+ * The result is the original value or function with a `reference` property,
+ * a `Context.Reference` whose default is the original. Overrides are provided
+ * on that reference with `Effect.provideService`, `Layer.succeed`, or any
+ * other key API, and have the same type as the original, so an override cannot
+ * add requirements.
+ *
+ * The lookup happens when the effect or stream runs, not when the wrapper is
+ * called or defined, so an override provided later is used by the next run.
+ * A wrapped function is a plain function, not an `Effect`, so `Effect.andThen`
+ * and similar combinators call it. A wrapped `Effect` or `Stream` keeps its
+ * kind and can be yielded, piped, or run as usual.
+ *
+ * **Gotchas**
+ *
+ * A forgotten override silently runs the default. Nothing about an
+ * overridable shows up in `R`, so the type checker cannot tell you that a
+ * program is still using the default implementation.
+ *
+ * Every overridable needs a default. To choose an implementation per
+ * platform, make the default depend on a service through its own `R` instead
+ * of leaving it unimplemented.
+ *
+ * **Example** (Overriding a function in a test)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ *
+ * const greet = Context.overridable(
+ *   "app/greet",
+ *   (name: string) => Effect.succeed(`Hello, ${name}`)
+ * )
+ *
+ * const program = greet("Effect")
+ *
+ * const greeting = await Effect.runPromise(program)
+ * greeting // => "Hello, Effect"
+ *
+ * const overridden = await Effect.runPromise(
+ *   program.pipe(Effect.provideService(greet.reference, (name) => Effect.succeed(`Hi, ${name}`)))
+ * )
+ * overridden // => "Hi, Effect"
+ * ```
+ *
+ * **Example** (Overriding an effect value)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ *
+ * const loadConfig = Context.overridable("app/loadConfig", Effect.succeed({ port: 8080 }))
+ *
+ * const config = await Effect.runPromise(loadConfig)
+ * config // => { port: 8080 }
+ *
+ * const testConfig = await Effect.runPromise(
+ *   loadConfig.pipe(Effect.provideService(loadConfig.reference, Effect.succeed({ port: 3000 })))
+ * )
+ * testConfig // => { port: 3000 }
+ * ```
+ *
+ * @see {@link Overridable} for the resulting type
+ * @see {@link Reference} for the key that overrides go through
  *
  * @stability unstable
  * @category services
@@ -1420,6 +1511,53 @@ export const overridable: <
     | Effect<any, any, any>
     | Stream.Stream<any, any, any>
     | ((...args: any) => Effect<any, any, any> | Stream.Stream<any, any, any>)
->(key: string, self: A) => Overridable<A> = () => {
-  throw new Error("Context.overridable is not implemented")
+>(key: string, self: A) => Overridable<A> = (key, self) => {
+  const reference = Reference<any>(key, { defaultValue: () => self })
+  let wrapper: any
+  if (typeof self === "function") {
+    wrapper = (...args: Array<any>) => makeHybrid(reference, args)
+  } else if (isEffect(self)) {
+    wrapper = withFiber((fiber) => get(fiber.context, reference))
+  } else {
+    wrapper = makeStream(reference)
+  }
+  wrapper.reference = reference
+  return wrapper
 }
+
+const StreamTypeId: Stream.TypeId = "~effect/Stream"
+const ChannelTypeId: Channel.TypeId = "~effect/Channel"
+
+// A structural Channel whose transform resolves the current implementation's
+// stream from the running fiber's context and delegates to it.
+const makeChannel = (resolve: (context: Context<never>) => any) => ({
+  [ChannelTypeId]: ChannelTypeId,
+  transform: (upstream: unknown, scope: unknown) =>
+    withFiber((fiber) => resolve(fiber.context).channel.transform(upstream, scope)),
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+})
+
+// A structural Stream, built the same way as `Layer.mock`, so this module does
+// not need to import the Stream module at run time.
+const makeStream = (reference: Reference<any>) => ({
+  [StreamTypeId]: StreamTypeId,
+  channel: makeChannel((context) => get(context, reference)),
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+})
+
+// The result of calling a wrapped function. Its kind is not known until the
+// current implementation is called, so it is both an Effect and a Stream: the
+// Effect side runs the implementation, the Stream side delegates to the
+// channel of the stream it returns.
+const makeHybrid = (reference: Reference<any>, args: Array<any>) =>
+  Object.assign(
+    withFiber((fiber) => get(fiber.context, reference)(...args)),
+    {
+      [StreamTypeId]: StreamTypeId,
+      channel: makeChannel((context) => get(context, reference)(...args))
+    }
+  )
