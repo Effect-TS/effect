@@ -63,7 +63,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
-    "@alchemy.run/cloudflare": ">=2.0.0-beta.84 <3",
+    "@alchemy.run/cloudflare": ">=2.0.0-beta.85 <3",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
@@ -76,8 +76,8 @@
     "@effect/sql-sqlite-do": "workspace:^"
   },
   "devDependencies": {
-    "@alchemy.run/cloudflare": "2.0.0-beta.84",
-    "alchemy": "2.0.0-beta.84",
+    "@alchemy.run/cloudflare": "2.0.0-beta.85",
+    "alchemy": "2.0.0-beta.85",
     "effect": "workspace:^",
     "esbuild": "^0.25.12",
     "miniflare": "^4.20260730.0"
