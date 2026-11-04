@@ -61,6 +61,31 @@ describe("Tool", () => {
         strictEqual(results[0]?.result, 1767225600000)
       }))
 
+    it.effect("encodes results to their JSON encoding", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(
+          Tool.make("Schedule", {
+            success: Schema.Struct({ at: Schema.Date, count: Schema.BigInt })
+          }),
+          Tool.make("Reject", {
+            failure: Schema.Struct({ at: Schema.Date }),
+            failureMode: "return"
+          })
+        )
+        const at = new Date("2026-01-01T00:00:00.000Z")
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Schedule: () => Effect.succeed({ at, count: 1n }),
+          Reject: () => Effect.fail({ at })
+        })))
+        const success = yield* handlers.handle("Schedule", {}).pipe(Effect.flatMap(Stream.runCollect))
+        const failure = yield* handlers.handle("Reject", {}).pipe(Effect.flatMap(Stream.runCollect))
+
+        deepStrictEqual(success[0]?.result, { at, count: 1n })
+        deepStrictEqual(success[0]?.encodedResult, { at: "2026-01-01T00:00:00.000Z", count: "1" })
+        deepStrictEqual(failure[0]?.result, { at })
+        deepStrictEqual(failure[0]?.encodedResult, { at: "2026-01-01T00:00:00.000Z" })
+      }))
+
     it.effect("should return tool call handler successes", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)

@@ -1146,9 +1146,9 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly result: Result<Tool>
   /**
-   * The pre-encoded tool call result of executing the handler for a particular
-   * tool as a JSON-serializable value. The encoded result can be incorporated
-   * into subsequent requests to the large language model.
+   * The tool call result encoded with the JSON codec of the tool's success or
+   * failure schema. The encoded result can be incorporated into subsequent
+   * requests to the large language model.
    */
   readonly encodedResult: unknown
   /**
