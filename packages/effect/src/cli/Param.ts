@@ -1493,10 +1493,10 @@ export const withDefault: {
   return transform(
     optional(self),
     (parse): Parse<A | B> => (args) =>
-      Effect.flatMap(parse(args), ([leftover, value]) =>
+      Effect.flatMap(parse(args), ([leftover, value]): ReturnType<Parse<A | B>> =>
         Option.match(value, {
-          onNone: () => Effect.map(defaultValue, (b): readonly [ReadonlyArray<string>, A | B] => [leftover, b]),
-          onSome: (a) => Effect.succeed<readonly [ReadonlyArray<string>, A | B]>([leftover, a])
+          onNone: () => Effect.map(defaultValue, (b) => [leftover, b] as const),
+          onSome: (a) => Effect.succeed([leftover, a] as const)
         })),
     [],
     { _tag: "DefaultEffect" }
@@ -2491,16 +2491,10 @@ export interface ParamMetadata {
   readonly variadicMin: Option.Option<number>
   readonly variadicMax: Option.Option<number>
   /**
-   * Fallbacks in the order the parser consults them when the value is
-   * missing: innermost combinator first.
-   */
-  readonly fallbacks: ReadonlyArray<Fallback>
-  /**
    * Whether parsing fails when the parameter is absent and no fallback
-   * supplies a value. Help, completions and `CommandSpec` share this rule:
-   * an `optional` wrapper or a zero-minimum variadic makes a param not
-   * required. Boolean flags are handled by callers, since a missing boolean
-   * flag parses as `false`.
+   * supplies a value: an `optional` wrapper or a zero-minimum variadic makes
+   * a param not required. Help additionally never displays boolean flags as
+   * required; that is a rendering choice, not a parsing one.
    */
   readonly isRequired: boolean
 }
@@ -2527,16 +2521,10 @@ const collectParamMetadata = <Kind extends ParamKind, A>(
       isOptional: false,
       isVariadic: false,
       variadicMin: Option.none(),
-      variadicMax: Option.none(),
-      fallbacks: []
+      variadicMax: Option.none()
     }),
     Map: (mapped) => collectParamMetadata(mapped.param),
-    Transform: (mapped) => {
-      const inner = collectParamMetadata(mapped.param)
-      return mapped.fallback === undefined
-        ? inner
-        : { ...inner, fallbacks: [...inner.fallbacks, mapped.fallback] }
-    },
+    Transform: (mapped) => collectParamMetadata(mapped.param),
     Optional: (optional) => ({
       ...collectParamMetadata(optional.param),
       isOptional: true

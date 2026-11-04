@@ -331,19 +331,9 @@ export const resolve = (
 
   const args: Array<Argument> = []
   for (const param of impl.config.arguments) {
-    for (const { single, ...metadata } of collectEntries(param)) {
-      if (single.kind !== "argument") continue
-      args.push({
-        name: single.name,
-        description: Option.getOrUndefined(single.description),
-        type: toType(single.primitiveType),
-        typeName: Primitive.getTypeName(single.primitiveType),
-        metavar: single.typeName,
-        required: metadata.required,
-        fallbacks: metadata.fallbacks,
-        variadic: metadata.variadic,
-        annotations: single.annotations
-      })
+    for (const entry of collectEntries(param)) {
+      if (entry.single.kind !== "argument") continue
+      args.push(toArgument(entry))
     }
   }
 
@@ -470,25 +460,28 @@ const collectEntries = (param: Param.Any): Array<Entry> => {
   return entries
 }
 
+const toArgument = ({ single, ...facts }: Entry): Argument => ({
+  name: single.name,
+  description: Option.getOrUndefined(single.description),
+  type: toType(single.primitiveType),
+  typeName: Primitive.getTypeName(single.primitiveType),
+  metavar: single.typeName,
+  annotations: single.annotations,
+  ...facts
+})
+
 const toFlag = (entry: Entry, scope: Scope): Flag => {
   const { single } = entry
   const isBoolean = Primitive.isBoolean(single.primitiveType)
   return {
-    name: single.name,
+    ...toArgument(entry),
     aliases: single.aliases,
-    description: Option.getOrUndefined(single.description),
     hidden: single.hidden,
-    type: toType(single.primitiveType),
-    typeName: Primitive.getTypeName(single.primitiveType),
-    metavar: single.typeName,
     // The runner parses an Action only when it is present on the command line.
     required: entry.required && !(scope._tag === "Global" && scope.kind === "Action"),
-    fallbacks: entry.fallbacks,
-    variadic: entry.variadic,
     optionalValue: single.optionalValue,
     negation: isBoolean && single.negation !== false ? single.negation ?? `no-${single.name}` : undefined,
-    scope,
-    annotations: single.annotations
+    scope
   }
 }
 
