@@ -61,18 +61,6 @@ import { EncodingError } from "./EncodingError.ts"
 
 type YamlRecord = Record<string, unknown>
 
-type Line = {
-  readonly raw: string
-  readonly text: string
-  readonly indent: number
-  readonly number: number
-  readonly tabIndent: boolean
-  // Whether the line holds a comment outside flow collections.
-  readonly comment: boolean
-  // `mappingSeparator(text)`.
-  readonly separator: number
-}
-
 const hasOwn = Object.prototype.hasOwnProperty
 
 // Defines `key` as an own data property, so `__proto__` and keys that name inherited
@@ -187,17 +175,23 @@ const isSeparationOnly = (text: string): boolean => {
   return true
 }
 
+// `indexOf` jumps between quotes and escapes instead of testing every character.
 const closingQuote = (input: string, quote: string, start: number): number => {
-  const quoteCode = quote.charCodeAt(0)
-  const double = quoteCode === 34
-  for (let index = start; index < input.length; index++) {
-    const code = input.charCodeAt(index)
-    if (double && code === 92) {
-      index++
-    } else if (code === quoteCode) {
-      if (!double && input.charCodeAt(index + 1) === quoteCode) index++
-      else return index
-    }
+  if (quote === "'") {
+    // A doubled `'` is an escaped quote.
+    let index = input.indexOf("'", start)
+    while (index !== -1 && input.charCodeAt(index + 1) === 39) index = input.indexOf("'", index + 2)
+    return index
+  }
+  // A backslash escapes the character after it, so a quote is escaped exactly when an odd
+  // run of backslashes since `start` precedes it. Runs between quotes are disjoint, so the
+  // scan stays linear.
+  let index = input.indexOf(quote, start)
+  while (index !== -1) {
+    let backslashes = 0
+    while (index - backslashes > start && input.charCodeAt(index - backslashes - 1) === 92) backslashes++
+    if (backslashes % 2 === 0) return index
+    index = input.indexOf(quote, index + 1)
   }
   return -1
 }
@@ -506,56 +500,62 @@ const foldQuotedLines = (raw: string): string => {
   return output + line
 }
 
+const doubleQuotedDecodes: Record<string, string> = {
+  "0": "\0",
+  a: "\x07",
+  b: "\b",
+  t: "\t",
+  n: "\n",
+  v: "\v",
+  f: "\f",
+  r: "\r",
+  e: "\x1b",
+  // YAML 1.2.2 §5.7: a backslash followed by a literal tab also escapes a tab.
+  "\t": "\t",
+  " ": " ",
+  "\"": "\"",
+  "/": "/",
+  "\\": "\\",
+  N: "\u0085",
+  _: "\u00a0",
+  L: "\u2028",
+  P: "\u2029"
+}
+
+const hexEscapePatterns: Record<number, RegExp> = {
+  2: /^[0-9A-Fa-f]{2}$/,
+  4: /^[0-9A-Fa-f]{4}$/,
+  8: /^[0-9A-Fa-f]{8}$/
+}
+
 const parseDoubleQuoted = (input: string): string => {
   if (!input.endsWith("\"") || input.length < 2) {
     throw new SyntaxError("Unterminated double-quoted YAML string")
   }
+  // Text between escapes is copied in slices rather than one character at a time.
+  const end = input.length - 1
   let output = ""
-  for (let index = 1; index < input.length - 1; index++) {
-    const character = input[index]
-    if (character !== "\\") {
-      output += character
-      continue
-    }
+  let start = 1
+  for (let index = input.indexOf("\\", 1); index !== -1 && index < end; index = input.indexOf("\\", start)) {
+    output += input.slice(start, index)
     const escape = input[++index]
-    const escapes: Record<string, string> = {
-      "0": "\0",
-      a: "\x07",
-      b: "\b",
-      t: "\t",
-      n: "\n",
-      v: "\v",
-      f: "\f",
-      r: "\r",
-      e: "\x1b",
-      // YAML 1.2.2 §5.7: a backslash followed by a literal tab also escapes a tab.
-      "\t": "\t",
-      " ": " ",
-      "\"": "\"",
-      "/": "/",
-      "\\": "\\",
-      N: "\u0085",
-      _: "\u00a0",
-      L: "\u2028",
-      P: "\u2029"
-    }
-    if (hasOwn.call(escapes, escape)) {
-      output += escapes[escape]
-      continue
-    }
-    if (escape === "x" || escape === "u" || escape === "U") {
+    if (hasOwn.call(doubleQuotedDecodes, escape)) {
+      output += doubleQuotedDecodes[escape]
+    } else if (escape === "x" || escape === "u" || escape === "U") {
       const length = escape === "x" ? 2 : escape === "u" ? 4 : 8
       const hex = input.slice(index + 1, index + 1 + length)
-      if (!new RegExp(`^[0-9A-Fa-f]{${length}}$`).test(hex)) {
+      if (!hexEscapePatterns[length].test(hex)) {
         throw new SyntaxError("Invalid unicode escape in YAML string")
       }
       output += String.fromCodePoint(Number.parseInt(hex, 16))
       index += length
-      continue
+    } else {
+      throw new SyntaxError(`Invalid YAML escape '\\${escape}'`)
     }
-    throw new SyntaxError(`Invalid YAML escape '\\${escape}'`)
+    start = index + 1
   }
-  return output
+  // An escape may have consumed the closing quote, leaving nothing to copy.
+  return start < end ? output + input.slice(start, end) : output
 }
 
 const parseScalar = (input: string): unknown => {
@@ -950,27 +950,62 @@ class FlowParser {
   }
 }
 
-const makeLine = (raw: string, number: number): Line => {
-  let indentation = 0
-  while (raw.charCodeAt(indentation) === 32) indentation++
+// A source line. Its text, comment and separator are found when first read, so block
+// scalar content, which is only read raw, is never scanned for them.
+class Line {
+  readonly raw: string
+  readonly indent: number
+  readonly number: number
+  // Rejected where the line is read as structure; block scalar content may hold tabs.
+  readonly tabIndent: boolean
+  private scannedText: string | undefined
+  private hasComment = false
+  private separatorIndex = -1
+
+  constructor(raw: string, number: number) {
+    let indentation = 0
+    while (raw.charCodeAt(indentation) === 32) indentation++
+    this.raw = raw
+    this.indent = indentation
+    this.number = number
+    this.tabIndent = raw.charCodeAt(indentation) === 9
+  }
+
+  // The content after the indentation, without its comment.
+  get text(): string {
+    return this.scannedText ?? this.scan()
+  }
+
+  // Whether the line holds a comment outside flow collections.
+  get comment(): boolean {
+    if (this.scannedText === undefined) this.scan()
+    return this.hasComment
+  }
+
+  // `mappingSeparator(text)`.
+  get separator(): number {
+    if (this.scannedText === undefined) this.scan()
+    return this.separatorIndex
+  }
+
   // Scanning the indentation too finds the same comment and separator, since spaces
   // neither start a token nor end one, and gives indices into `raw`, so the text is sliced
   // once. The separator search stops at the comment, which `text` no longer holds.
-  const found = { separator: -1 }
-  const comment = findIndicator(raw, "#", 0, found)
-  return {
-    raw,
-    text: comment === -1
+  private scan(): string {
+    const raw = this.raw
+    const indentation = this.indent
+    const found = { separator: -1 }
+    const comment = findIndicator(raw, "#", 0, found)
+    this.hasComment = comment !== -1
+    this.separatorIndex = found.separator === -1 ? -1 : found.separator - indentation
+    this.scannedText = comment === -1
       ? raw.slice(indentation)
-      : raw.slice(indentation, Math.max(indentation, whiteEnd(raw, comment))),
-    indent: indentation,
-    number,
-    // Rejected where the line is read as structure; block scalar content may hold tabs.
-    tabIndent: raw.charCodeAt(indentation) === 9,
-    comment: comment !== -1,
-    separator: found.separator === -1 ? -1 : found.separator - indentation
+      : raw.slice(indentation, Math.max(indentation, whiteEnd(raw, comment)))
+    return this.scannedText
   }
 }
+
+const makeLine = (raw: string, number: number): Line => new Line(raw, number)
 
 // Removes the comment from a marker or directive line, keeping characters before
 // it that are not YAML separation so they can be rejected.
