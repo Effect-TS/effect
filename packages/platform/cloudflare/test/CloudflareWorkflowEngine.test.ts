@@ -408,6 +408,34 @@ describe("CloudflareWorkflowEngine", () => {
     }).pipe(Effect.provide(layer))
   })
 
+  it.effect("skips later activities after a safe interrupt during an activity", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const events: Array<string> = []
+      const Running = Workflow.make("SafeInterrupt", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Running.toLayer(Effect.fnUntraced(function*() {
+        yield* Activity.make({ name: "a", execute: started.open.pipe(Effect.andThen(release.await)) })
+        yield* Activity.make({ name: "b", execute: Effect.sync(() => events.push("b")) })
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Running.execute({ id: "one" }, { discard: true })
+        yield* started.await
+        yield* Running.interrupt(executionId)
+        yield* release.open
+        const result = yield* pollUntil(Running, executionId, "Complete")
+
+        assert.deepStrictEqual(events, [])
+        assert(result._tag === "Complete" && Exit.isFailure(result.exit))
+        assert.isTrue(Exit.hasInterrupts(result.exit))
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("keeps a failure-suspended workflow parked when a discarded child completes", () => {
     const namespace = new FakeWorkflowNamespace()
     let failures = 0
