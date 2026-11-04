@@ -122,7 +122,7 @@ export default {
 
 [Alchemy](https://alchemy.run) v2 ("Infrastructure as Effects") is the second
 deployment story, behind the optional `@alchemy.run/cloudflare` peer dependency
-(`>=2.0.0-beta.84 <3`). The Wrangler path above never imports it.
+(`>=2.0.0-beta.85 <3`). The Wrangler path above never imports it.
 
 ```sh
 npm install alchemy@beta @alchemy.run/cloudflare@beta
