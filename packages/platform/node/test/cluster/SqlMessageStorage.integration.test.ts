@@ -697,11 +697,12 @@ describe("SqlMessageStorage", () => {
             .toHaveLength(2)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
-      it.effect("does not store an AckChunk for a request deleteProcessed removed", () =>
+      it.effect("does not store an AckChunk or Interrupt for a request deleteProcessed removed", () =>
         Effect.gen(function*() {
           yield* truncate
           const sql = yield* SqlClient.SqlClient
           const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
           const cutoff = Date.UTC(2026, 0, 1)
           const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
           const chunk = yield* makeChunkReply(request)
@@ -711,8 +712,13 @@ describe("SqlMessageStorage", () => {
           expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
             .toEqual(1)
 
-          // a late acknowledgement, such as one that waited behind the delete
+          // a late acknowledgement and cancellation, such as ones that waited behind the delete
           yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
+          yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+            id: snowflake.nextUnsafe(),
+            requestId: request.envelope.requestId,
+            address: request.envelope.address
+          }))
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
           const requestId = String(request.envelope.requestId)
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])

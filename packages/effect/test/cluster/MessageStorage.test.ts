@@ -220,9 +220,10 @@ describe("MessageStorage", () => {
           .toHaveLength(2)
       }).pipe(Effect.provide(MemoryLayer)))
 
-    it.effect("does not store an AckChunk for a request deleteProcessed removed", () =>
+    it.effect("does not store an AckChunk or Interrupt for a request deleteProcessed removed", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
+        const snowflake = yield* Snowflake.Generator
         const cutoff = Date.UTC(2026, 0, 1)
         const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
         const chunk = yield* makeChunkReply(request)
@@ -231,8 +232,13 @@ describe("MessageStorage", () => {
         yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
         expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 })).toEqual(1)
 
-        // a late acknowledgement for the deleted request
+        // a late acknowledgement and cancellation for the deleted request
         yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
+        yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+          id: snowflake.nextUnsafe(),
+          requestId: request.envelope.requestId,
+          address: request.envelope.address
+        }))
         expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
       }).pipe(Effect.provide(MemoryLayer)))
 
