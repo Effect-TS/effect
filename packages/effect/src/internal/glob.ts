@@ -807,8 +807,9 @@ export const make = (
 ): FileSystem.FileSystem["glob"] =>
 (pattern, options) => {
   const compiled = compile([pattern], options?.dot ?? false)
+  const root = options?.root ?? ""
   if (options?.filter === undefined) {
-    return walk(fs, compiled, options)
+    return walk(fs, compiled, root)
   }
   // Filters match root-relative paths one segment per entry. Check every
   // brace expansion, since compiling drops some branches.
@@ -819,7 +820,7 @@ export const make = (
       )
     )
   }
-  return walk(fs, compiled, options, PathFilterEngine.evaluator(options.filter))
+  return walk(fs, compiled, root, PathFilterEngine.evaluator(options.filter))
 }
 
 // Named directories (the root and those reached only through leading literal
@@ -827,15 +828,12 @@ export const make = (
 const walk = Effect.fnUntraced(function*(
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
-  options?: {
-    readonly root?: string | undefined
-  },
+  root: string,
   filter?: PathFilterEngine.Evaluator
 ): Effect.fn.Return<Array<string>, PlatformError> {
   if (compiled.initial.size === 0) {
     return []
   }
-  const root = options?.root ?? ""
   const filterNeedsDirectory = filter?.needsDirectory ?? false
 
   const toFsPath = (relative: string): string =>
