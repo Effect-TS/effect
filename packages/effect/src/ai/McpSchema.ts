@@ -3032,13 +3032,23 @@ export type ElicitResult = typeof ElicitResult.Type
  * Version-neutral request for additional MCP client input.
  *
  * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const McpInputRequest = Schema.Union([
+  Schema.Struct({ method: Schema.Literal("roots/list"), params: optional(UnknownObject) }),
+  Schema.Struct({ method: Schema.Literal("sampling/createMessage"), params: UnknownObject }),
+  Schema.Struct({ method: Schema.Literal("elicitation/create"), params: UnknownObject })
+]).annotate({ identifier: "McpInputRequest" })
+
+/**
+ * Version-neutral request for additional MCP client input.
+ *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type McpInputRequest =
-  | { readonly method: "roots/list"; readonly params?: Readonly<Record<string, unknown>> | undefined }
-  | { readonly method: "sampling/createMessage"; readonly params: Readonly<Record<string, unknown>> }
-  | { readonly method: "elicitation/create"; readonly params: Readonly<Record<string, unknown>> }
+export type McpInputRequest = typeof McpInputRequest.Type
 
 /**
  * Version-neutral response supplied by an MCP client for a prior input request.
@@ -3062,14 +3072,26 @@ export type McpInputResponse = Readonly<Record<string, unknown>>
  * `requestState` is opaque to the client and is returned unchanged with the
  * keyed input responses.
  *
+ * `InputRequired` is also a schema, so a toolkit tool can declare it as its
+ * `failure`. The constructor validates its fields and throws when they are
+ * invalid.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export class InputRequired extends Data.TaggedClass("InputRequired")<{
-  readonly inputRequests?: Readonly<Record<string, McpInputRequest>> | undefined
-  readonly requestState?: string | undefined
-}> {
+export class InputRequired extends Schema.TaggedClass<InputRequired>("@effect/ai/McpSchema/InputRequired")(
+  "InputRequired",
+  Schema.Struct({
+    inputRequests: optional(Schema.Record(Schema.String, McpInputRequest)),
+    requestState: optional(Schema.String)
+  }).check(
+    Schema.makeFilter(
+      (fields) => fields.inputRequests !== undefined || fields.requestState !== undefined,
+      { message: "InputRequired requires at least one of inputRequests or requestState" }
+    )
+  )
+) {
   // The overload preserves the requirement that at least one of inputRequests or requestState is present.
   // oxlint-disable-next-line no-useless-constructor
   constructor(
@@ -3081,9 +3103,10 @@ export class InputRequired extends Data.TaggedClass("InputRequired")<{
       | {
         readonly inputRequests?: Readonly<Record<string, McpInputRequest>> | undefined
         readonly requestState: string
-      }
+      },
+    options?: Schema.MakeOptions
   ) {
-    super(fields)
+    super(fields, options)
   }
 }
 
