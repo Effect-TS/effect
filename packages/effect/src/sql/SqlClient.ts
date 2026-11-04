@@ -46,7 +46,7 @@ const TypeId = "~effect/sql/SqlClient"
  *
  * @stability unstable
  * @category models
- * @since 4.2.0
+ * @since 4.1.3
  */
 export interface Base extends Constructor {
   /**
