@@ -5,11 +5,21 @@ import { Singleton } from "effect/cluster"
 import { Sharding } from "effect/cluster/Sharding"
 
 // The public `AlchemyCloudflareCluster.make` wires these handles to alchemy's
-// Durable Object declarations. The alchemy runtime tracks the published
-// `effect` release rather than this workspace, so the alchemy-importing glue
-// is covered by the typetest and the examples typecheck instead of executing
-// here.
+// Durable Object declarations. The handle tests below run without alchemy; the
+// example stack test loads the alchemy-importing glue against this workspace's
+// `effect`.
 describe("AlchemyCloudflareCluster", () => {
+  // Loads the full module graph of the example stack (alchemy, the Cloudflare
+  // provider, and this package's alchemy glue) without credentials. It fails
+  // when the pinned alchemy release imports a module this `effect` lacks. The
+  // URL import keeps alchemy's types out of the tests project.
+  it("loads the example alchemy stack", { timeout: 60_000 }, async () => {
+    const stack = await import(
+      /* @vite-ignore */ new URL("../examples/alchemy/alchemy.run.ts", import.meta.url).href
+    )
+    assert.isDefined(stack.default)
+  })
+
   it.effect("builds the cluster context from the namespace bindings", () =>
     Effect.gen(function*() {
       const getByNameCalls: Array<string> = []
