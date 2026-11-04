@@ -5,17 +5,16 @@
  * tracing, metrics, and logging in Node.js. The main `layer` builds the shared
  * OpenTelemetry resource from environment variables and optional service
  * metadata, then enables only the signal types that have processors or readers
- * configured. `layerTracerProvider` creates a scoped Node tracer provider, and
+ * configured. `layerTracerProvider` creates a scoped tracer provider, and
  * `layerEmpty` provides an empty resource.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import type * as Otel from "@opentelemetry/api"
-import type { LoggerProviderConfig, LogRecordProcessor } from "@opentelemetry/sdk-logs"
+import type { LoggerProviderOptions, LogRecordProcessor } from "@opentelemetry/sdk-logs"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
-import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
+import { type SpanProcessor, TracerProvider, type TracerProviderOptions } from "@opentelemetry/sdk-trace"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -36,11 +35,11 @@ import * as Resource from "./Resource.ts"
  */
 export interface Configuration {
   readonly spanProcessor?: SpanProcessor | ReadonlyArray<SpanProcessor> | undefined
-  readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
+  readonly tracerConfig?: Omit<TracerProviderOptions, "resource"> | undefined
   readonly metricReader?: MetricReader | ReadonlyArray<MetricReader> | undefined
   readonly metricTemporality?: Metrics.TemporalityPreference | undefined
   readonly logRecordProcessor?: LogRecordProcessor | ReadonlyArray<LogRecordProcessor> | undefined
-  readonly loggerProviderConfig?: Omit<LoggerProviderConfig, "resource"> | undefined
+  readonly loggerProviderConfig?: Omit<LoggerProviderOptions, "resource"> | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
   readonly resource?: {
     readonly serviceName: string
@@ -59,7 +58,7 @@ export interface Configuration {
  */
 export const layerTracerProvider = (
   processor: SpanProcessor | NonEmptyReadonlyArray<SpanProcessor>,
-  config?: Omit<TracerConfig, "resource"> & {
+  config?: Omit<TracerProviderOptions, "resource"> & {
     readonly shutdownTimeout?: Duration.Input | undefined
   }
 ): Layer.Layer<Tracer.OtelTracerProvider, never, Resource.Resource> =>
@@ -69,7 +68,7 @@ export const layerTracerProvider = (
       const resource = yield* Resource.Resource
       return yield* Effect.acquireRelease(
         Effect.sync(() => {
-          const provider = new NodeTracerProvider({
+          const provider = new TracerProvider({
             ...(config ?? undefined),
             resource,
             spanProcessors: Array.isArray(processor) ? (processor as any) : [processor]

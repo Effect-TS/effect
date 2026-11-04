@@ -4,10 +4,10 @@ import * as OtelTracer from "@effect/opentelemetry/OtelTracer"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
-import { SeverityNumber } from "@opentelemetry/api-logs"
-import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
+import { SeverityNumber } from "@opentelemetry/api"
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
-import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace"
 import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as ConfigProvider from "effect/ConfigProvider"
@@ -169,7 +169,7 @@ describe("Logger", () => {
         resource: {
           serviceName: "test"
         },
-        spanProcessor: [new SimpleSpanProcessor(spanExporter)],
+        spanProcessor: [new SimpleSpanProcessor({ exporter: spanExporter })],
         logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
       })))
 
@@ -201,7 +201,7 @@ describe("Logger", () => {
       const spanExporter = new InMemorySpanExporter()
       const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
         resource: { serviceName: "test" },
-        spanProcessor: [new SimpleSpanProcessor(spanExporter)],
+        spanProcessor: [new SimpleSpanProcessor({ exporter: spanExporter })],
         logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
       })))
 
@@ -245,7 +245,7 @@ describe("Logger", () => {
     })
 
     it("uses ambient context only when there is no Effect parent span", async () => {
-      const contextManager = new AsyncHooksContextManager()
+      const contextManager = new AsyncLocalStorageContextManager()
       OtelApi.context.setGlobalContextManager(contextManager.enable())
       try {
         const logExporter = new InMemoryLogRecordExporter()
