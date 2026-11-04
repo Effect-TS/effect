@@ -1157,8 +1157,10 @@ if limit and next > limit then
 end
 
 if limit then
-  redis.call("SET", key, string.format("%.17g", next), "KEEPTTL")
-  return { string.format("%.17g", next), currentpttl }
+  -- Keep the window's expiry; PX instead of KEEPTTL supports Redis before 6.0.
+  local keptpttl = math.max(1, currentpttl)
+  redis.call("SET", key, string.format("%.17g", next), "PX", keptpttl)
+  return { string.format("%.17g", next), keptpttl }
 end
 
 local nextpttl = math.max(1, math.ceil(currentpttl + (refillms * tokens)))
