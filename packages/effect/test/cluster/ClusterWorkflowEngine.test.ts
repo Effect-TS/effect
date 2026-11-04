@@ -205,6 +205,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         // Crash residue: the losing request is durable, but its Interrupt is absent.
         return yield* sendUnregisteredActivity(workflow._tag, executionId)
       }).pipe(Effect.provide(layer(true)))
+      // Without a shared RunnerStorage, the next owner can repeat the previous
+      // owner's snowflakes on the same TestClock millisecond.
+      yield* TestClock.adjust(1)
       assert.deepStrictEqual(yield* storage.repliesForUnfiltered([requestId]), [])
 
       yield* Effect.gen(function*() {
@@ -439,6 +442,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           storageLayer: unansweredActivityStorage(storage)
         })))
       ))
+      // Without a shared RunnerStorage, the next owner can repeat the previous
+      // owner's snowflakes on the same TestClock millisecond.
+      yield* TestClock.adjust(1)
       assert.deepStrictEqual(yield* storage.repliesForUnfiltered([requestId]), [])
       yield* Effect.gen(function*() {
         yield* workflow.execute({}, { discard: true })
@@ -1062,6 +1068,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         })))
       ))
       activityRequestId = requestId
+      // Without a shared RunnerStorage, the next owner can repeat the previous
+      // owner's snowflakes on the same TestClock millisecond.
+      yield* TestClock.adjust(1)
       yield* Effect.addFinalizer(() => allowStaleReset.open)
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -1214,6 +1223,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* pollUntil(workflow, id, "Suspended")
         return id
       }))
+      // Without a shared RunnerStorage, the next owner can repeat the previous
+      // owner's snowflakes on the same TestClock millisecond.
+      yield* TestClock.adjust(1)
       const result = yield* withOwner(Effect.gen(function*() {
         yield* DurableDeferred.succeed(gate, {
           token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
