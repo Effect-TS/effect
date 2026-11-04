@@ -337,6 +337,46 @@ describe("HttpEffect", () => {
       strictEqual(finalized, true)
     })
 
+    test("a transferred body keeps its first exit when a later transfer succeeds before the request ends", async () => {
+      let release!: () => void
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const failure = new Error("body failed")
+      let scopeExit: Exit.Exit<unknown, unknown> | undefined
+      const handler = HttpEffect.toWebHandler(
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer((exit) =>
+            Effect.sync(() => {
+              scopeExit = exit
+            })
+          )
+          // A helper transfers a failing body, an outer layer recovers it, and the web
+          // handler transfers the recovered response again.
+          const transferred = HttpEffect.scopeTransferToStream(HttpServerResponse.stream(Stream.fail(failure)))
+          const failing = transferred.body._tag === "Stream" ? transferred.body.stream : Stream.empty
+          return HttpServerResponse.stream(
+            Stream.catchCause(failing, () => Stream.make("fallback").pipe(Stream.encodeText))
+          )
+        }),
+        (app) => Effect.tap(app, () => Effect.promise(() => released))
+      )
+
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "fallback")
+      release()
+      await new Promise<void>((resolve) => {
+        const deadline = Date.now() + 1000
+        const poll = () => scopeExit !== undefined || Date.now() > deadline ? resolve() : setImmediate(poll)
+        poll()
+      })
+
+      strictEqual(
+        scopeExit !== undefined && Exit.isFailure(scopeExit) && Cause.squash(scopeExit.cause) === failure,
+        true
+      )
+    })
+
     test("streaming HEAD closes the request scope", async () => {
       let finalized = false
       const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
