@@ -53,9 +53,26 @@ describe("overridable", () => {
     expect(greet).type.not.toBeAssignableTo<Effect.Effect<any, any, any>>()
   })
 
-  it("accepts only functions that return an Effect or a Stream", () => {
+  it("wraps an Effect value as that Effect plus its reference", () => {
+    const loadConfig = Context.overridable("test/loadConfig", Effect.succeed({ port: 1 }))
+
+    expect(loadConfig).type.toBe<
+      Effect.Effect<{ port: number }> & Context.Overridable<Effect.Effect<{ port: number }>>
+    >()
+    expect(loadConfig.reference).type.toBe<Context.Reference<Effect.Effect<{ port: number }>>>()
+    expect(Effect.succeed("a").pipe(Effect.andThen(loadConfig))).type.toBe<Effect.Effect<{ port: number }>>()
+  })
+
+  it("wraps a Stream value as that Stream plus its reference", () => {
+    const events = Context.overridable("test/events", Stream.make(1, 2))
+
+    expect(events).type.toBeAssignableTo<Stream.Stream<number>>()
+    expect(events.reference).type.toBe<Context.Reference<Stream.Stream<number>>>()
+  })
+
+  it("accepts an Effect, a Stream, or a function returning either, and rejects other values", () => {
     expect(Context.overridable("test/stream", (n: number) => Stream.make(n))(1)).type.toBe<Stream.Stream<number>>()
-    expect(Context.overridable).type.not.toBeCallableWith("test/plain", (n: number) => n)
-    expect(Context.overridable).type.not.toBeCallableWith("test/effect", Effect.void)
+    expect(Context.overridable).type.not.toBeCallableWith("test/plain", 1)
+    expect(Context.overridable).type.not.toBeCallableWith("test/plainFunction", (n: number) => n)
   })
 })

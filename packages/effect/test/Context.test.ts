@@ -411,5 +411,30 @@ describe("Context", () => {
       const greet = makeGreet()
       strictEqual(await Effect.runPromise(Effect.succeed("a").pipe(Effect.andThen(greet))), "hello a")
     })
+
+    it("an Effect value runs its default and its override", async () => {
+      const loadConfig = Context.overridable("ContextTest/loadConfig", Effect.succeed("default"))
+      const results = await Effect.runPromise(Effect.all([
+        loadConfig,
+        loadConfig.pipe(Effect.provideService(loadConfig.reference, Effect.succeed("override")))
+      ]))
+      deepStrictEqual(results, ["default", "override"])
+    })
+
+    it("a Stream value runs its default and its override", async () => {
+      const events = Context.overridable("ContextTest/events", Stream.make(1, 2, 3))
+      const results = await Effect.runPromise(Effect.all([
+        Stream.runCollect(events),
+        Stream.runCollect(events).pipe(Effect.provideService(events.reference, Stream.make(9)))
+      ]))
+      deepStrictEqual(results, [[1, 2, 3], [9]])
+    })
+
+    it("looks up a value's implementation when it runs", async () => {
+      const loadConfig = Context.overridable("ContextTest/loadConfigLater", Effect.succeed("default"))
+      const overridden = loadConfig.pipe(Effect.provideService(loadConfig.reference, Effect.succeed("override")))
+      const results = await Effect.runPromise(Effect.all([loadConfig, overridden, loadConfig]))
+      deepStrictEqual(results, ["default", "override", "default"])
+    })
   })
 })
