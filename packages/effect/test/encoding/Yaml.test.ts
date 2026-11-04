@@ -421,6 +421,26 @@ development:
     ])("rejects %s", (_, source) => {
       failureMessage(source)
     })
+
+    // YAML 1.2.2 §7.3.3 (ns-plain-safe-in): a plain flow scalar cannot contain a flow indicator.
+    // `{a:1}` is the key `a:1` in YAML but `{a: 1}` in JSON-like input, so it fails rather than
+    // giving either.
+    it.each([
+      ["an opening bracket in a key without a value", "x: {a[}\n"],
+      ["an opening brace in a key without a value", "x: {a{}\n"],
+      ["an opening bracket in a sequence pair key", "x: [a[: 1]\n"],
+      ["a colon in a key without a value", "x: {a:1}\n"]
+    ])("rejects %s with parse and parseAll", (_, source) => {
+      failureMessage(source)
+      failureMessage(source, Yaml.parseAll)
+    })
+
+    it("keeps flow indicators and colons in quoted keys", () => {
+      const source = "x: {\"a[\", 'b{', \"c:1\", d: 1, http://e: 2}\ny: [\"a[\": 1]\n"
+      const expected = { x: { "a[": null, "b{": null, "c:1": null, d: 1, "http://e": 2 }, y: [{ "a[": 1 }] }
+      assert.deepStrictEqual(parse(source), expected)
+      assert.deepStrictEqual(parseAll(source), [expected])
+    })
   })
 
   // YAML 1.2.2 §7.3.3 (ns-plain-first): a plain scalar may start with `-` only when a
