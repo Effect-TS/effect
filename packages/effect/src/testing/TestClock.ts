@@ -22,6 +22,7 @@ import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Scheduler from "../Scheduler.ts"
+import type * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 
 /**
@@ -274,7 +275,8 @@ const millisToNanos = (millis: number): bigint => {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: TestClock.Options) => Effect.map(makeWithScheduler(options), ([testClock]) => testClock)
+export const make = (options?: TestClock.Options): Effect.Effect<TestClock, never, Scope.Scope> =>
+  Effect.map(makeWithScheduler(options), ([testClock]) => testClock)
 
 interface SleepEntry {
   readonly timestamp: number
