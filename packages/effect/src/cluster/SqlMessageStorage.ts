@@ -1368,17 +1368,9 @@ export const migrations = (options?: {
             IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${retentionIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})
           `,
+        // mysql has no IF NOT EXISTS for indexes; a duplicate is ignored as in 0001
         mysql: () =>
-          sql`
-            SELECT 1 FROM information_schema.statistics
-            WHERE table_schema = DATABASE() AND table_name = ${messagesTable} AND index_name = ${retentionIndex}
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows.length > 0
-                ? Effect.void
-                : sql`CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`.unprepared
-            )
-          ),
+          sql`CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`.unprepared.pipe(Effect.ignore),
         orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`
       })
     })
