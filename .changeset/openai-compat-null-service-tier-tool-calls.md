@@ -1,5 +1,5 @@
 ---
-"@effect/ai-openai-compat": patch
+"@effect/ai-openai-compat": minor
 ---
 
 Accept `null` for `service_tier` and `message.tool_calls` in chat completion responses and stream chunks, treating them like absent fields. Servers that serialize unset fields as `null` (for example vLLM) previously failed `generateText` with a decode error and had their null-tier stream chunks dropped.
