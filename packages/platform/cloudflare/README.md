@@ -255,10 +255,16 @@ handlers, not parallelism.
 - Replayed mailbox rows and alarm-due runs draw from the same budget as live
   requests.
 
-`disableFatalDefects`, `defectRetryPolicy`, and `spanAttributes` also apply
-inside the entity Durable Object. `maxIdleTime` and `mailboxCapacity` are
-accepted for parity and have no effect: hibernation owns idle entities and the
+`defectRetryPolicy` and `spanAttributes` also apply inside the entity Durable
+Object. `disableFatalDefects`, `maxIdleTime`, and `mailboxCapacity` are
+accepted for parity and have no effect. Hibernation owns idle entities, and the
 mailbox capacity is fixed at 4096.
+
+Defects on this path are always request-local, as if `disableFatalDefects`
+were `true`. A handler defect is retried under `defectRetryPolicy` when one is
+set, then the request gets a terminal defect reply and the handlers are
+rebuilt. Other in-flight requests finish on the build they started on and are
+not replayed.
 
 ## Entity SQL storage
 
