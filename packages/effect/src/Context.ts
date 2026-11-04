@@ -1529,8 +1529,10 @@ export const overridable: <
       return makeHybrid(reference, this, args)
     }
     // The wrapper's type is the default's, so it keeps the default's own
-    // properties as well.
-    Object.assign(wrapper, self)
+    // properties as well, including non-enumerable ones such as `length` and
+    // `name`. The wrapper has its own `prototype`.
+    const { prototype: _, ...descriptors } = Object.getOwnPropertyDescriptors(self)
+    Object.defineProperties(wrapper, descriptors)
   }
   wrapper.reference = reference
   return wrapper
