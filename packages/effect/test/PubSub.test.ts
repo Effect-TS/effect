@@ -3,6 +3,13 @@ import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scheduler, Scop
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
+  it.effect("isSubscription accepts a Subscription and rejects its PubSub", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.unbounded<number>()
+      assert.isTrue(PubSub.isSubscription(yield* PubSub.subscribe(pubsub)))
+      assert.isFalse(PubSub.isSubscription(pubsub))
+    }))
+
   it.effect("isPubSub type guard", () =>
     Effect.gen(function*() {
       const pubsub = yield* PubSub.bounded<string>(10)
