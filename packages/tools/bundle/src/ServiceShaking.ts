@@ -14,11 +14,12 @@
  * statement-level shaker drops the helpers that only those properties used.
  *
  * The analysis is conservative. Any use of a service key it does not
- * recognise keeps every method of that service, and any API that hands a
- * whole Context or Fiber to untrusted code disables pruning entirely, since
- * inspecting either prints every service value. Trusted packages (`effect` and
- * the platform packages by default) are assumed to follow that contract
- * internally.
+ * recognise keeps every method of that service. Because inspecting a whole
+ * Context or Fiber prints every service value, untrusted code may only use an
+ * audited list of trusted APIs; anything else disables pruning entirely.
+ * Trusted packages (`effect` and the platform packages by default) are assumed
+ * not to inspect service values or hand out a Context or Fiber internally.
+ * The code of trusted packages is not checked against that assumption.
  *
  * @since 4.0.0
  */
@@ -112,23 +113,37 @@ const sourcesOf = (program: Node): Array<string> => {
   return sources
 }
 
-const packageNameOf = (() => {
-  const cache = new Map<string, string | undefined>()
-  const lookup = (dir: string): string | undefined => {
+interface PackageInfo {
+  readonly name: string
+  readonly root: string
+}
+
+const packageOf = (() => {
+  const cache = new Map<string, PackageInfo | undefined>()
+  const lookup = (dir: string): PackageInfo | undefined => {
     if (cache.has(dir)) return cache.get(dir)
-    let name: string | undefined
+    let info: PackageInfo | undefined
     const file = path.join(dir, "package.json")
     if (fs.existsSync(file)) {
-      name = JSON.parse(fs.readFileSync(file, "utf8")).name
+      info = { name: JSON.parse(fs.readFileSync(file, "utf8")).name, root: dir }
     } else {
       const parent = path.dirname(dir)
-      name = parent === dir ? undefined : lookup(parent)
+      info = parent === dir ? undefined : lookup(parent)
     }
-    cache.set(dir, name)
-    return name
+    cache.set(dir, info)
+    return info
   }
   return (id: string) => path.isAbsolute(id) ? lookup(path.dirname(id)) : undefined
 })()
+
+// How a trusted module's exports are named in the analysis allow-list:
+// `Effect.map` for the effect package, `@effect/platform-node/NodeRuntime.runMain` otherwise.
+const apiPrefixOf = (id: string, info: PackageInfo): string => {
+  const module = path.relative(info.root, id).split(path.sep).join("/")
+    .replace(/^(?:src|dist)\//, "")
+    .replace(/\.[cm]?[jt]sx?$/, "")
+  return info.name === "effect" ? module : `${info.name}/${module}`
+}
 
 const applyEdits = (code: string, edits: ReadonlyArray<Edit>): string => {
   let out = code
@@ -195,13 +210,19 @@ export const bundle = async (options: InputOptions, bundleOptions: BundleOptions
     return first.code
   }
 
+  const trustOf = (id: string) => {
+    const info = packageOf(id)
+    return info !== undefined && trusted.has(info.name)
+      ? { trusted: true, apiPrefix: apiPrefixOf(id, info) }
+      : { trusted: false }
+  }
   const analysis: Analysis = analyze(
     [...collected].map(([id, module]) => ({
       id,
       ...module,
       isEntry: first.facadeModuleId === id,
       rendered: (first.modules[id]?.renderedLength ?? 0) > 0,
-      trusted: trusted.has(packageNameOf(id) ?? "")
+      ...trustOf(id)
     }))
   )
   if (analysis.edits.size === 0) {
@@ -209,25 +230,28 @@ export const bundle = async (options: InputOptions, bundleOptions: BundleOptions
     return first.code
   }
 
-  // Edits are offsets into the code seen in the first build. If any module
-  // transforms differently the second time, the edits cannot be trusted.
+  // Edits are offsets into the code seen in the first build, and demand was
+  // computed from every module of that build. If any module transforms
+  // differently the second time, neither can be trusted.
   let mismatch = false
+  const seen = new Set<string>()
   const prune: Plugin = {
     name: "effect-service-shaking:prune",
     transform: {
       order: "post",
       handler(code, id) {
-        const edits = analysis.edits.get(id)
-        if (edits === undefined) return null
+        seen.add(id)
         if (collected.get(id)?.code !== code) {
           mismatch = true
           return null
         }
-        return { code: applyEdits(code, edits) }
+        const edits = analysis.edits.get(id)
+        return edits === undefined ? null : { code: applyEdits(code, edits) }
       }
     }
   }
   const second = await build(options, prune)
+  if (seen.size !== collected.size) mismatch = true
   report(analysis, !mismatch)
   return mismatch ? first.code : second.code
 }

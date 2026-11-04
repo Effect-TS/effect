@@ -5,9 +5,13 @@
  * syntactic use of a service key must match a recognised consumer, provider
  * or neutral pattern, otherwise the key "bails" and keeps every method. Object
  * literals are only pruned when a bounded syntactic flow proves they reach a
- * Context solely through recognised insertion sites. Any API that hands a
- * whole Context or a Fiber (which carries a Context) to untrusted code bails
- * globally, because inspecting either prints every service value.
+ * Context solely through recognised insertion sites, every callback that sees
+ * them is accounted for, and the Layer or Context holding them stays inside
+ * the bundle.
+ *
+ * Inspecting a whole Context, or a Fiber (which carries one), prints every
+ * service value. Untrusted code may therefore only reference audited trusted
+ * APIs; any other trusted API disables pruning for the whole bundle.
  *
  * @internal
  */
@@ -26,6 +30,8 @@ export interface ModuleInput {
   readonly rendered: boolean
   /** Trusted modules may use Context and Fiber APIs internally (the compiler contract). */
   readonly trusted: boolean
+  /** For trusted modules, the prefix of their exports in `allowedApis`, e.g. `Effect`. */
+  readonly apiPrefix?: string | undefined
 }
 
 /** @internal */
@@ -166,56 +172,130 @@ const memberName = (node: Node): string | undefined => staticName(node.property,
 const retrievalApis = new Set(["Context.get", "Context.getUnsafe", "Context.getOrElse", "Context.getOrUndefined"])
 const effectOps = new Set(["Effect.map", "Effect.flatMap", "Effect.andThen", "Effect.tap"])
 
-// Effect APIs that hand a Context or a Fiber to the caller, found by scanning
-// the declarations of the effect package for Context and Fiber types in output
-// and callback positions. Inspecting either prints every service in the
-// Context, so they are only allowed in the shapes handled below.
-const exposingApis = new Set([
-  "http/HttpClient.make",
-  "ai/EmbeddingModel.make",
-  "rpc/RpcClient.makeNoSerialization",
-  "Effect.withFiber",
-  "Effect.withFiberSucceed",
-  "Effect.context",
-  "Effect.contextWith",
-  "Effect.updateContext",
-  "Effect.forkChild",
-  "Effect.forkIn",
-  "Effect.forkScoped",
-  "Effect.forkDetach",
-  "Effect.fiber",
-  "Effect.runFork",
-  "Effect.runForkWith",
-  "Effect.race",
-  "Effect.raceAll",
-  "Effect.raceAllFirst",
-  "Effect.raceFirst",
-  "Effect.requestUnsafe",
-  "Fiber.getCurrent",
-  "Layer.fromBuild",
-  "Layer.fromBuildMemo",
-  "Layer.build",
-  "Layer.buildWithScope",
-  "Layer.buildWithMemoMap",
-  "Layer.flatMap",
-  "Layer.tap",
-  "Channel.contextWith",
-  "Channel.updateContext",
-  "Stream.updateContext",
-  "Context.make",
-  "Context.add",
-  "Context.addUnsafe",
-  "Context.addOrOmit",
-  "Context.merge",
-  "Context.mergeAll",
-  "Context.pick",
-  "Context.omit",
-  "Context.empty",
-  "Context.makeUnsafe",
-  "Context.getOrUndefinedUnsafe",
-  "Runtime.makeRunMain"
+// Trusted APIs that untrusted code may reference. A Fiber carries its
+// Context, and printing either prints every service, so any API that can hand
+// one to the caller or to a callback must disable pruning. That set cannot be
+// enumerated reliably: Fibers hide inside option and callback types such as
+// `Logger.Options` or `RunOptions.onFiberStart`. Untrusted code is therefore
+// limited to this audited list, and any other trusted API disables pruning.
+// Each entry was checked to take no callback that receives a Fiber or Context
+// and to return neither.
+const allowedApis = new Set([
+  "Effect.gen",
+  "Effect.fn",
+  "Effect.fnUntraced",
+  "Effect.succeed",
+  "Effect.sync",
+  "Effect.fail",
+  "Effect.die",
+  "Effect.promise",
+  "Effect.tryPromise",
+  "Effect.suspend",
+  "Effect.map",
+  "Effect.flatMap",
+  "Effect.andThen",
+  "Effect.tap",
+  "Effect.as",
+  "Effect.asVoid",
+  "Effect.all",
+  "Effect.forEach",
+  "Effect.catchTag",
+  "Effect.catchTags",
+  "Effect.orDie",
+  "Effect.matchEffect",
+  "Effect.match",
+  // Takes a Context or Layer as input only.
+  "Effect.provide",
+  "Effect.provideService",
+  "Effect.provideServiceEffect",
+  "Effect.updateService",
+  "Effect.service",
+  "Effect.serviceOption",
+  "Effect.scoped",
+  "Effect.acquireRelease",
+  "Effect.acquireUseRelease",
+  "Effect.addFinalizer",
+  "Effect.ensuring",
+  "Effect.onExit",
+  "Effect.log",
+  "Effect.logInfo",
+  "Effect.logDebug",
+  "Effect.logWarning",
+  "Effect.logError",
+  "Effect.annotateLogs",
+  "Effect.withLogSpan",
+  "Effect.sleep",
+  "Effect.yieldNow",
+  // The register callback's `this` is the Scheduler, which exposes no Fiber.
+  "Effect.callback",
+  "Effect.exit",
+  "Effect.when",
+  "Effect.zip",
+  "Effect.zipWith",
+  "Effect.flatten",
+  "Effect.isEffect",
+  "Effect.ignore",
+  "Effect.option",
+  "Effect.result",
+  "Effect.timeout",
+  "Effect.delay",
+  "Layer.succeed",
+  "Layer.effect",
+  "Layer.sync",
+  "Layer.merge",
+  "Layer.mergeAll",
+  "Layer.provide",
+  "Layer.provideMerge",
+  "Layer.launch",
+  "Layer.empty",
+  "Layer.effectDiscard",
+  "Context.get",
+  "Context.getUnsafe",
+  "Context.getOrElse",
+  "Context.getOrUndefined",
+  "Context.getOption",
+  "Context.isContext",
+  "FileSystem.make",
+  "FileSystem.makeNoop",
+  "FileSystem.layerNoop",
+  "@effect/platform-node/NodeFileSystem.layer",
+  "@effect/platform-node/NodeServices.layer",
+  // The teardown callback receives an Exit, not a Fiber.
+  "@effect/platform-node/NodeRuntime.runMain"
 ])
-const exposingModules = new Set(["FiberHandle", "FiberMap", "FiberSet", "ManagedRuntime"])
+// Their `RunOptions` argument can install `onFiberStart`, so they are only
+// allowed with the effect as the single argument.
+const runApis = new Set(["Effect.runPromise", "Effect.runPromiseExit", "Effect.runSync", "Effect.runSyncExit"])
+// Data modules whose declarations mention no Fiber, Context or Effect runtime type.
+const allowedModules = new Set([
+  "Option",
+  "Array",
+  "Order",
+  "Equivalence",
+  "Equal",
+  "Hash",
+  "Data",
+  "Predicate",
+  "String",
+  "Number",
+  "BigInt",
+  "Boolean",
+  "Struct",
+  "Record",
+  "Tuple",
+  "Duration",
+  "Chunk",
+  "HashMap",
+  "HashSet",
+  "Result",
+  "Redacted",
+  "Brand",
+  "Function",
+  "Iterable",
+  "Match"
+])
+// Reading one of these on a service observes the whole object.
+const objectMembers = new Set(Object.getOwnPropertyNames(Object.prototype))
 // Members that read a whole Context from Fibers, runtimes or Contexts.
 const exposingMembers = new Set(["context", "mapUnsafe"])
 
@@ -238,6 +318,10 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
   const functions = new Map<Node, FunctionInfo>()
   const flowCalls = new Set<Node>()
   const spreads: Array<SpreadContribution> = []
+  // Keys provided at least once by something other than a tracked literal.
+  const unknownProviders = new Set<string>()
+  // Parameter spreads, and whether every argument for them is a tracked literal.
+  const completeSpreads = new Map<Node, boolean>()
   const escapedNamespaces = new Set<Module>()
   const escapedBindings = new Set<Binding>()
 
@@ -638,7 +722,8 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
 
   const serviceSink = (key: string, module: Module, node: Node): ValueSink => ({
     member: (name) => {
-      demandOf(key).add(name)
+      if (objectMembers.has(name)) bail(key, module, node, `inherited member \`${name}\` read`)
+      else demandOf(key).add(name)
     },
     spread: (spreadModule, literal, spread) => {
       spreads.push({ key, module: spreadModule, literal, spread })
@@ -654,11 +739,38 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
     fail: (reason) => globalBail(module, node, `whole Context escapes: ${reason}`)
   })
 
+  // Uses of provider objects before they reach a Context, e.g. in a release or
+  // tap callback. Static reads add demand, anything else keeps the literal.
+  const literalSink = (targets: ReadonlyArray<LiteralInfo>): ValueSink => ({
+    member: (name) => {
+      for (const literal of targets) {
+        if (objectMembers.has(name)) literal.escaped = true
+        else literal.demand.add(name)
+      }
+    },
+    spread: () => {
+      for (const literal of targets) literal.escaped = true
+    },
+    argument: () => false,
+    fail: () => {
+      for (const literal of targets) literal.escaped = true
+    }
+  })
+
   // == providers
 
-  const returnsOf = (fn: Node): Array<Node> => {
+  // Set whenever a provider flow reaches something other than an object
+  // literal, so callers can tell a complete flow from a partial one.
+  let unknownSource = false
+
+  // Values returned by a function. Async functions return a Promise and
+  // generators an iterator, so their return statements are not the result.
+  const returnsOf = (fn: Node, generator = false): Array<Node> => {
     const node = strip(fn)
-    if (!isFunctionNode(node)) return []
+    if (!isFunctionNode(node) || node.async || node.generator !== generator) {
+      unknownSource = true
+      return []
+    }
     if (node.body.type !== "BlockStatement") return [node.body]
     const out: Array<Node> = []
     const visit = (current: Node) => {
@@ -721,7 +833,10 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
 
   const flowValue = (module: Module, expr: Node, seen = new Set<Node>()): Array<LiteralInfo> => {
     const node = strip(expr)
-    if (seen.has(node)) return []
+    if (seen.has(node)) {
+      unknownSource = true
+      return []
+    }
     seen.add(node)
     switch (node.type) {
       case "ObjectExpression":
@@ -734,101 +849,263 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         return flowValue(module, node.expressions[node.expressions.length - 1], seen)
       case "Identifier": {
         const single = singleUseInit(module, node)
-        return single ? flowValue(single.module, single.init, seen) : []
+        if (single) return flowValue(single.module, single.init, seen)
+        break
       }
       case "CallExpression": {
         const callee = strip(node.callee)
         if (callee.type === "MemberExpression" && memberName(callee) === "of" && keyOf(module, callee.object)) {
-          return node.arguments.length === 1 ? flowValue(module, node.arguments[0], seen) : []
+          if (node.arguments.length === 1) return flowValue(module, node.arguments[0], seen)
+          break
         }
         const fn = functionOf(module, callee)
-        if (fn === undefined) return []
+        if (fn === undefined) break
         flowCalls.add(node)
         fn.calls.push({ module, call: node })
         return returnsOf(fn.node).flatMap((result) => flowValue(fn.module, result, seen))
       }
-      default:
-        return []
     }
+    unknownSource = true
+    return []
+  }
+
+  // Applies a callback that receives the provider objects as its first argument.
+  const consume = (module: Module, fn: Node | undefined, targets: ReadonlyArray<LiteralInfo>) => {
+    if (targets.length > 0) callbackParam(module, fn, literalSink(targets))
   }
 
   const flowEffect = (module: Module, expr: Node, seen = new Set<Node>()): Array<LiteralInfo> => {
     const node = strip(expr)
-    if (seen.has(node)) return []
+    if (seen.has(node)) {
+      unknownSource = true
+      return []
+    }
     seen.add(node)
     if (node.type === "Identifier") {
       const single = singleUseInit(module, node)
-      return single ? flowEffect(single.module, single.init, seen) : []
+      if (single) return flowEffect(single.module, single.init, seen)
     }
-    if (node.type !== "CallExpression") return []
+    if (node.type !== "CallExpression") {
+      unknownSource = true
+      return []
+    }
     const args = node.arguments
     const callee = strip(node.callee)
     if (callee.type === "MemberExpression" && memberName(callee) === "pipe") {
+      // Walks back from the last operation. Taps after the producing operation
+      // receive the provider objects.
+      const taps: Array<Node> = []
+      const tapped = (targets: Array<LiteralInfo>) => {
+        for (const tap of taps) consume(module, tap, targets)
+        return targets
+      }
       for (let i = args.length - 1; i >= 0; i--) {
         const op = strip(args[i])
         const api = op.type === "CallExpression" && op.arguments.length === 1 ? apiOf(module, op.callee) : undefined
-        if (api === "Effect.map") return returnsOf(op.arguments[0]).flatMap((r) => flowValue(module, r, seen))
-        if (api === "Effect.flatMap") return returnsOf(op.arguments[0]).flatMap((r) => flowEffect(module, r, seen))
-        if (api !== "Effect.tap") return []
+        if (api === "Effect.map") {
+          return tapped(returnsOf(op.arguments[0]).flatMap((r) => flowValue(module, r, seen)))
+        }
+        if (api === "Effect.flatMap") {
+          return tapped(returnsOf(op.arguments[0]).flatMap((r) => flowEffect(module, r, seen)))
+        }
+        if (api !== "Effect.tap") {
+          unknownSource = true
+          return []
+        }
+        taps.push(op.arguments[0])
       }
-      return flowEffect(module, callee.object, seen)
+      return tapped(flowEffect(module, callee.object, seen))
     }
     switch (apiOf(module, callee)) {
       case "Effect.succeed":
-        return args.length === 1 ? flowValue(module, args[0], seen) : []
+        if (args.length === 1) return flowValue(module, args[0], seen)
+        break
       case "Effect.sync":
-        return args.length === 1 ? returnsOf(args[0]).flatMap((r) => flowValue(module, r, seen)) : []
+        if (args.length === 1) return returnsOf(args[0]).flatMap((r) => flowValue(module, r, seen))
+        break
       case "Effect.map":
-        return args.length === 2 ? returnsOf(args[1]).flatMap((r) => flowValue(module, r, seen)) : []
+        if (args.length === 2) return returnsOf(args[1]).flatMap((r) => flowValue(module, r, seen))
+        break
       case "Effect.flatMap":
-        return args.length === 2 ? returnsOf(args[1]).flatMap((r) => flowEffect(module, r, seen)) : []
+        if (args.length === 2) return returnsOf(args[1]).flatMap((r) => flowEffect(module, r, seen))
+        break
       case "Effect.acquireRelease":
-      case "Effect.tap":
-        return args.length >= 2 ? flowEffect(module, args[0], seen) : []
+      case "Effect.tap": {
+        if (args.length !== 2) break
+        // The release and tap callbacks receive the acquired value.
+        const targets = flowEffect(module, args[0], seen)
+        consume(module, args[1], targets)
+        return targets
+      }
       case "Effect.gen": {
         const body = args[args.length - 1]
-        return body ? returnsOf(body).flatMap((r) => flowValue(module, r, seen)) : []
+        if (body) return returnsOf(body, true).flatMap((r) => flowValue(module, r, seen))
+        break
       }
-      default:
-        return []
     }
+    unknownSource = true
+    return []
   }
 
-  const insertValue = (key: string, module: Module, expr: Node | undefined) => {
-    if (expr !== undefined) { for (const literal of flowValue(module, expr)) literal.keys.add(key) }
+  const insert = (key: string, flow: () => Array<LiteralInfo>) => {
+    unknownSource = false
+    for (const literal of flow()) literal.keys.add(key)
+    if (unknownSource) unknownProviders.add(key)
   }
-  const insertEffect = (key: string, module: Module, expr: Node | undefined) => {
-    if (expr !== undefined) { for (const literal of flowEffect(module, expr)) literal.keys.add(key) }
-  }
+  const insertValue = (key: string, module: Module, expr: Node | undefined) =>
+    insert(key, () => expr === undefined ? (unknownSource = true, []) : flowValue(module, expr))
+  const insertEffect = (key: string, module: Module, expr: Node | undefined) =>
+    insert(key, () => expr === undefined ? (unknownSource = true, []) : flowEffect(module, expr))
 
-  // Applies `f` to the argument of a curried call `api(key)(arg)`.
-  const curried = (module: Module, call: Node, f: (arg: Node | undefined) => void): boolean => {
+  // Applies `f` to the argument of a curried call `api(key)(arg)` and returns
+  // that outer call.
+  const curried = (module: Module, call: Node, f: (arg: Node | undefined) => void): Node | undefined => {
     const { node, parent } = up(module, call)
-    if (parent?.type !== "CallExpression" || parent.callee !== node) return false
+    if (parent?.type !== "CallExpression" || parent.callee !== node) return undefined
     f(parent.arguments[0])
-    return true
+    return parent
+  }
+
+  const layerCombinators = new Set(["Layer.merge", "Layer.mergeAll", "Layer.provide", "Layer.provideMerge"])
+
+  // A Layer or Context built from a provider must stay inside the bundle:
+  // whoever builds it can read every service it holds. `fail` is called when
+  // it may escape.
+  const containerFlow = (
+    module: Module,
+    expr: Node,
+    fail: (reason: string) => void,
+    seen = new Set<Node>()
+  ): void => {
+    if (seen.has(expr)) return
+    seen.add(expr)
+    const { node, parent } = up(module, expr)
+    if (parent === undefined) return fail("Layer at program level")
+    switch (parent.type) {
+      case "CallExpression": {
+        if (parent.callee === node) return fail("Layer called")
+        const api = apiOf(module, parent.callee)
+        if (api === "Effect.provide" || api === "Layer.launch") return
+        if (api !== undefined && layerCombinators.has(api)) {
+          // Curried combinators produce a function applied to another Layer.
+          const applied = parent.arguments.length === 1 && api !== "Layer.mergeAll"
+            ? appliedTo(module, parent)
+            : parent
+          return applied ? containerFlow(module, applied, fail, seen) : fail("curried Layer combinator escapes")
+        }
+        return fail(`Layer passed to ${api ?? "an unrecognised function"}`)
+      }
+      case "MemberExpression": {
+        // `layer.pipe(...)` with Layer combinators only.
+        const call = up(module, parent)
+        if (
+          parent.object !== node || memberName(parent) !== "pipe" || call.parent?.type !== "CallExpression" ||
+          call.parent.callee !== call.node
+        ) {
+          break
+        }
+        for (const op of call.parent.arguments) {
+          const opNode = strip(op)
+          const api = opNode.type === "CallExpression" ? apiOf(module, opNode.callee) : undefined
+          if (api === "Effect.provide" || api === "Layer.launch") return
+          if (api === undefined || !layerCombinators.has(api)) return fail("Layer piped into an unrecognised function")
+        }
+        return containerFlow(module, call.parent, fail, seen)
+      }
+      case "VariableDeclarator": {
+        if (parent.init !== node || parent.id.type !== "Identifier") break
+        const binding = module.scope.declared.get(parent.id)!
+        if (binding.kind !== "const") return fail("Layer in a mutable binding")
+        if (isEscapedBinding(module, binding)) return fail("Layer exported from the entry module")
+        for (const use of referencesOf(module, binding)) {
+          if (use.module.input.rendered) containerFlow(use.module, use.expr, fail, seen)
+        }
+        return
+      }
+      case "ArrowFunctionExpression":
+      case "ReturnStatement": {
+        // Returned from a function: follow its calls.
+        const fn = parent.type === "ArrowFunctionExpression" ? parent : enclosingFunction(module, parent)
+        if (fn === undefined) break
+        const owner = up(module, fn).parent
+        const binding = owner?.type === "VariableDeclarator" && owner.id.type === "Identifier"
+          ? module.scope.declared.get(owner.id)
+          : fn.type === "FunctionDeclaration" && fn.id
+          ? module.scope.declared.get(fn.id)
+          : undefined
+        if (binding === undefined || binding.scope !== module.scope.scope || binding.kind === "let") break
+        if (isEscapedBinding(module, binding)) return fail("Layer factory exported from the entry module")
+        for (const use of referencesOf(module, binding)) {
+          if (!use.module.input.rendered) continue
+          const call = up(use.module, use.expr)
+          if (call.parent?.type !== "CallExpression" || call.parent.callee !== call.node) {
+            return fail("Layer factory used as a value")
+          }
+          containerFlow(use.module, call.parent, fail, seen)
+        }
+        return
+      }
+    }
+    fail(`Layer used in ${parent.type}`)
+  }
+
+  // For `f(...)` used as a pipe operation or called directly, the expression
+  // holding its result.
+  const appliedTo = (module: Module, call: Node): Node | undefined => {
+    const { node, parent } = up(module, call)
+    if (parent?.type !== "CallExpression") return undefined
+    if (parent.callee === node) return parent
+    const callee = strip(parent.callee)
+    return callee.type === "MemberExpression" && memberName(callee) === "pipe" ? parent : undefined
+  }
+
+  const enclosingFunction = (module: Module, node: Node): Node | undefined => {
+    for (let current = parentOf(module, node); current; current = parentOf(module, current)) {
+      if (isFunctionNode(current)) return current
+    }
+    return undefined
   }
 
   const keyUse = (key: string, module: Module, expr: Node): void => {
     const sink = serviceSink(key, module, expr)
+    // Untrusted code may store or mutate a key it passes around, which can
+    // change what other keys resolve to.
+    const escape = (reason: string) =>
+      module.input.trusted
+        ? bail(key, module, expr, reason)
+        : globalBail(module, expr, `service key escapes: ${reason}`)
+    const contained = (container: Node | undefined) => {
+      if (container) containerFlow(module, container, (reason) => bail(key, module, expr, reason))
+      else bail(key, module, expr, "Layer or Context escapes")
+    }
     const { node, parent } = up(module, expr)
     if (parent?.type === "MemberExpression" && parent.object === node) {
       const name = memberName(parent)
       const call = up(module, parent)
       const isCall = call.parent?.type === "CallExpression" && call.parent.callee === call.node
+      if (isWriteTarget(module, parent)) return globalBail(module, expr, `service key member \`${name}\` written`)
       if (name === "key") return
       if (isCall && name === "of") return
       if (isCall && (name === "use" || name === "useSync")) {
         return callbackParam(module, call.parent!.arguments[0], sink)
       }
-      if (isCall && name === "context") return insertValue(key, module, call.parent!.arguments[0])
+      if (isCall && name === "context") {
+        insertValue(key, module, call.parent!.arguments[0])
+        return contained(call.parent)
+      }
       if (isCall && name === "pipe") return pipeUses(module, call.parent!, call.parent!.arguments, 0, sink)
-      return bail(key, module, expr, `unrecognised member \`${name}\` of the service key`)
+      return escape(`unrecognised member \`${name}\` of the service key`)
     }
     if (parent?.type === "CallExpression" && parent.callee !== node) {
       const index = parent.arguments.indexOf(node)
       const args = parent.arguments
       const api = apiOf(module, parent.callee)
+      const returned = (fn: Node | undefined) =>
+        insert(key, () => returnsOf(fn ?? parent).flatMap((r) => flowValue(module, r)))
+      // Curried providers return a function that must be applied in the bundle.
+      const applied = () => {
+        if (appliedTo(module, parent) === undefined) bail(key, module, expr, "curried provider escapes")
+      }
       switch (api) {
         case "Effect.service":
           return effectUses(module, parent, sink)
@@ -850,45 +1127,71 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         case "Context.omit":
           return
         case "Layer.succeed":
-          if (index === 0 && args.length === 2) return insertValue(key, module, args[1])
-          if (index === 0 && curried(module, parent, (arg) => insertValue(key, module, arg))) return
+          if (index === 0 && args.length === 2) {
+            insertValue(key, module, args[1])
+            return contained(parent)
+          }
+          if (index === 0) return contained(curried(module, parent, (arg) => insertValue(key, module, arg)))
           break
         case "Layer.effect":
-          if (index === 0 && args.length === 2) return insertEffect(key, module, args[1])
-          if (index === 0 && curried(module, parent, (arg) => insertEffect(key, module, arg))) return
+          if (index === 0 && args.length === 2) {
+            insertEffect(key, module, args[1])
+            return contained(parent)
+          }
+          if (index === 0) return contained(curried(module, parent, (arg) => insertEffect(key, module, arg)))
           break
-        case "Layer.sync": {
-          const insert = (fn: Node | undefined) => fn && returnsOf(fn).forEach((r) => insertValue(key, module, r))
-          if (index === 0 && args.length === 2) return void insert(args[1])
-          if (index === 0 && curried(module, parent, insert)) return
+        case "Layer.sync":
+          if (index === 0 && args.length === 2) {
+            returned(args[1])
+            return contained(parent)
+          }
+          if (index === 0) return contained(curried(module, parent, returned))
           break
-        }
         case "Effect.provideService":
           if (index === 1 && args.length === 3) return insertValue(key, module, args[2])
-          if (index === 0 && args.length === 2) return insertValue(key, module, args[1])
+          if (index === 0 && args.length === 2) {
+            insertValue(key, module, args[1])
+            return applied()
+          }
           break
         case "Effect.provideServiceEffect":
           if (index === 1 && args.length === 3) return insertEffect(key, module, args[2])
-          if (index === 0 && args.length === 2) return insertEffect(key, module, args[1])
+          if (index === 0 && args.length === 2) {
+            insertEffect(key, module, args[1])
+            return applied()
+          }
           break
         case "Effect.updateService": {
           const fn = index === 1 && args.length === 3 ? args[2] : index === 0 && args.length === 2 ? args[1] : undefined
           if (fn === undefined) break
           callbackParam(module, fn, sink)
-          for (const result of returnsOf(fn)) insertValue(key, module, result)
+          returned(fn)
+          if (args.length === 2) applied()
           return
         }
         case "Context.make":
-          if (index === 0 && args.length === 2) return insertValue(key, module, args[1])
+          if (index === 0 && args.length === 2) {
+            insertValue(key, module, args[1])
+            return contained(parent)
+          }
           break
         case "Context.add":
-          if (index === 1 && args.length === 3) return insertValue(key, module, args[2])
-          if (index === 0 && args.length === 2) return insertValue(key, module, args[1])
+          if (index === 1 && args.length === 3) {
+            insertValue(key, module, args[2])
+            return contained(parent)
+          }
+          if (index === 0 && args.length === 2) {
+            insertValue(key, module, args[1])
+            return contained(appliedTo(module, parent))
+          }
           break
       }
-      return bail(key, module, expr, `passed to ${api ?? "an unrecognised function"}`)
+      return api === undefined
+        ? escape("passed to an unrecognised function")
+        : bail(key, module, expr, `passed to ${api}`)
     }
-    effectUses(module, expr, sink)
+    if (parent?.type === "YieldExpression" && parent.delegate) return valueUses(module, parent, sink)
+    escape(`used in ${parent?.type}`)
   }
 
   // == classify every use
@@ -914,25 +1217,24 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         }
         continue
       }
-      if (module.input.trusted || api === undefined) continue
-      const effectModule = api.slice(0, api.lastIndexOf("."))
-      if (api === "Effect.context") {
-        const { node, parent } = up(module, expr)
-        if (parent?.type === "CallExpression" && parent.callee === node) {
-          effectUses(module, parent, contextSink(module, expr))
-          continue
-        }
+      if (module.input.trusted || sym?._tag !== "Binding" || !sym.module.input.trusted) continue
+      const name = `${sym.module.input.apiPrefix}.${sym.binding.name}`
+      const { node, parent } = up(module, expr)
+      const call = parent?.type === "CallExpression" && parent.callee === node ? parent : undefined
+      if (name === "Effect.context" && call !== undefined) {
+        effectUses(module, call, contextSink(module, expr))
+        continue
       }
-      if (api === "Effect.runFork") {
-        const { node, parent } = up(module, expr)
-        const statement = parent?.type === "CallExpression" && parent.callee === node
-          ? up(module, parent).parent
-          : undefined
-        if (statement?.type === "ExpressionStatement") continue
+      // `runFork` returns the Fiber, so its result must also be discarded.
+      if (
+        name === "Effect.runFork" && call !== undefined && call.arguments.length === 1 &&
+        up(module, call).parent?.type === "ExpressionStatement"
+      ) {
+        continue
       }
-      if (exposingApis.has(api) || exposingModules.has(effectModule)) {
-        globalBail(module, expr, `${api} exposes a Context or Fiber`)
-      }
+      if (runApis.has(name) && call !== undefined && call.arguments.length === 1) continue
+      if (allowedApis.has(name) || allowedModules.has(sym.module.input.apiPrefix ?? "")) continue
+      globalBail(module, expr, `${name} is not an audited API`)
     }
   }
 
@@ -988,17 +1290,24 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
       }
       // `arguments` aliases every parameter, so their uses cannot be listed.
       if (fn.node.type !== "ArrowFunctionExpression" && usesArguments(fn)) continue
+      let complete = true
       for (const { module, call } of fn.calls) {
         const args: ReadonlyArray<Node> = call.arguments
-        if (args.slice(0, index + 1).some((arg) => arg.type === "SpreadElement")) continue
         const arg = args[index]
-        if (arg === undefined) continue
-        for (const target of flowValue(module, arg)) {
+        if (arg === undefined || args.slice(0, index + 1).some((arg) => arg.type === "SpreadElement")) {
+          complete = false
+          continue
+        }
+        unknownSource = false
+        const targets = flowValue(module, arg)
+        if (unknownSource) complete = false
+        for (const target of targets) {
           if (!target.links.some((link) => link.from === literal && link.spread === property)) {
             target.links.push({ from: literal, spread: property, param })
           }
         }
       }
+      completeSpreads.set(property, complete && (completeSpreads.get(property) ?? true))
     }
   }
 
@@ -1052,27 +1361,114 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
     return out
   }
 
-  // `this` reads inside retained non-arrow functions of a literal.
-  const thisDemand = (literal: LiteralInfo, demand: Demand): boolean => {
+  // Properties read through `this` in a function body, ignoring nested
+  // non-arrow functions.
+  const thisReads = (module: Module, fn: Node, demand: Demand): boolean => {
+    let changed = false
+    const visit = (node: Node) => {
+      for (const child of children(node)) {
+        if (child.type === "FunctionExpression" || child.type === "FunctionDeclaration") continue
+        if (child.type === "ThisExpression") {
+          const { node: self, parent } = up(module, child)
+          const name = parent?.type === "MemberExpression" && parent.object === self ? memberName(parent) : undefined
+          changed = (name === undefined || objectMembers.has(name) || isWriteTarget(module, parent!)
+            ? demand.setAll()
+            : demand.add(name)) || changed
+        }
+        visit(child)
+      }
+    }
+    if (fn.body) visit(fn.body)
+    return changed
+  }
+
+  // Properties a property value may read through its receiver when called as
+  // a method. Values that cannot be resolved may read anything.
+  const receiverReads = (module: Module, expr: Node, demand: Demand, depth = 0): boolean => {
+    const node = strip(expr)
+    if (depth > 8) return demand.setAll()
+    switch (node.type) {
+      case "ArrowFunctionExpression":
+      case "Literal":
+      case "TemplateLiteral":
+        return false
+      case "FunctionExpression":
+      case "FunctionDeclaration":
+        return thisReads(module, node, demand)
+      case "Identifier":
+      case "MemberExpression": {
+        const sym = symbolOf(module, node)
+        if (sym?._tag !== "Binding") return demand.setAll()
+        const declaration = sym.binding.declaration
+        if (declaration.type === "FunctionDeclaration") return thisReads(sym.module, declaration, demand)
+        if (declaration.type === "VariableDeclarator" && sym.binding.kind === "const" && declaration.init) {
+          return receiverReads(sym.module, declaration.init, demand, depth + 1)
+        }
+        return demand.setAll()
+      }
+      case "CallExpression": {
+        // A call whose callee returns only resolvable functions, e.g. an IIFE.
+        const fn = functionOf(module, node.callee)
+        if (fn === undefined) return demand.setAll()
+        unknownSource = false
+        const results = returnsOf(fn.node)
+        if (unknownSource || results.length === 0) return demand.setAll()
+        let changed = false
+        for (const result of results) changed = receiverReads(fn.module, result, demand, depth + 1) || changed
+        return changed
+      }
+      default:
+        return demand.setAll()
+    }
+  }
+
+  // Reads through `this` by the methods a literal holds. Every object holding
+  // a method can be its receiver, so a literal needs the reads of its own
+  // retained methods and of every method spread into it. Only reads by its own
+  // methods are owed by the objects spread into it: spread-in methods arrive
+  // together with the properties they read.
+  const ownReads = new Map<LiteralInfo, Demand>()
+  const spreadInReads = new Map<LiteralInfo, Demand>()
+  const demandIn = (map: Map<LiteralInfo, Demand>, literal: LiteralInfo) => {
+    let demand = map.get(literal)
+    if (demand === undefined) {
+      demand = new Demand()
+      map.set(literal, demand)
+    }
+    return demand
+  }
+  const methodReads = (literal: LiteralInfo): Demand => {
+    const demand = new Demand()
+    demand.addAll(demandIn(ownReads, literal))
+    demand.addAll(demandIn(spreadInReads, literal))
+    return demand
+  }
+  const consumerSpreads = new Map<Node, string>(spreads.map((c) => [c.spread, c.key]))
+
+  const updateMethodReads = (literal: LiteralInfo): boolean => {
+    const own = demandIn(ownReads, literal)
+    const spreadIn = demandIn(spreadInReads, literal)
     let changed = false
     for (const property of literal.node.properties) {
-      if (property.type !== "Property" || !isRetained(literal, property)) continue
-      const value = strip(property.value)
-      if (value.type !== "FunctionExpression") continue
-      const visit = (node: Node) => {
-        for (const child of children(node)) {
-          if (child.type === "FunctionExpression" || child.type === "FunctionDeclaration") continue
-          if (child.type === "ThisExpression") {
-            const parent = parentOf(literal.module, child)
-            const name = parent?.type === "MemberExpression" && parent.object === child ? memberName(parent) : undefined
-            changed = (name === undefined || isWriteTarget(literal.module, parent!) ?
-              demand.setAll() :
-              demand.add(name)) || changed
+      if (property.type === "SpreadElement") {
+        if (completeSpreads.get(property) === true) continue
+        const key = consumerSpreads.get(property)
+        if (key !== undefined && !unknownProviders.has(key)) {
+          for (const source of literals.values()) {
+            if (source.keys.has(key)) changed = spreadIn.addAll(methodReads(source)) || changed
           }
-          visit(child)
+          continue
         }
+        // Methods from an unknown object may read any property.
+        changed = own.setAll() || changed
+      } else if (isRetained(literal, property)) {
+        changed = receiverReads(literal.module, property.value, own) || changed
       }
-      visit(value.body)
+    }
+    for (const source of literals.values()) {
+      if (source.links.some((link) => link.from === literal)) {
+        changed = spreadIn.addAll(methodReads(source)) || changed
+      }
     }
     return changed
   }
@@ -1093,9 +1489,20 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
       }
       const { node, parent } = up(module, ref.node)
       const name = parent?.type === "MemberExpression" && parent.object === node ? memberName(parent) : undefined
-      changed = (name === undefined || isWriteTarget(module, parent!) ? demand.setAll() : demand.add(name)) || changed
+      changed = (name === undefined || objectMembers.has(name) || isWriteTarget(module, parent!)
+        ? demand.setAll()
+        : demand.add(name)) || changed
     }
     return changed
+  }
+
+  // What a literal needs from the service objects spread into it.
+  const owed = (literal: LiteralInfo): Demand => {
+    const demand = new Demand()
+    for (const key of literal.keys) demand.addAll(demandOf(key))
+    for (const link of literal.links) linkDemand(link, demand)
+    demand.addAll(demandIn(ownReads, literal))
+    return demand
   }
 
   let changed = true
@@ -1106,7 +1513,7 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
       const demand = demandOf(contribution.key)
       changed = (literal === undefined || literal.escaped || literal.keys.size === 0
         ? demand.setAll()
-        : demand.addAll(literal.demand, keysAfter(literal.node, contribution.spread))) || changed
+        : demand.addAll(owed(literal), keysAfter(literal.node, contribution.spread))) || changed
     }
     for (const literal of literals.values()) {
       const demand = literal.demand
@@ -1116,7 +1523,8 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
       }
       for (const key of literal.keys) changed = demand.addAll(demandOf(key)) || changed
       for (const link of literal.links) changed = linkDemand(link, demand) || changed
-      changed = thisDemand(literal, demand) || changed
+      changed = updateMethodReads(literal) || changed
+      changed = demand.addAll(methodReads(literal)) || changed
       if (literal.keys.size === 0 && literal.links.length === 0) changed = demand.setAll() || changed
     }
   }
@@ -1131,9 +1539,15 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
       const code = literal.module.input.code
       for (const property of literal.node.properties) {
         if (isRetained(literal, property)) continue
+        // The separator may follow whitespace and comments.
         let end = property.end
         let next = end
-        while (next < code.length && /\s/.test(code[next])) next++
+        for (;;) {
+          while (next < code.length && /\s/.test(code[next])) next++
+          const comment = literal.module.input.comments.find((comment) => comment.start === next)
+          if (comment === undefined) break
+          next = comment.end
+        }
         if (code[next] === ",") end = next + 1
         const id = literal.module.input.id
         let list = edits.get(id)
