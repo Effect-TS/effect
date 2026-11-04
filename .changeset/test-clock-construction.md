@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Speed up constructing a `TestClock` with `TestClock.make` and `TestClock.layer`.
+Construct a `TestClock` faster and with less memory in `TestClock.make` and `TestClock.layer`.
