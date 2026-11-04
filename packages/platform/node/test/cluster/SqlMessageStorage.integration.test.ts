@@ -437,6 +437,25 @@ describe("SqlMessageStorage", () => {
             }).pipe(TestClock.withLive),
           { timeout: 30_000 }
         )
+
+        it.effect("fails the migrations when the retention index cannot be created", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            // A messages table that predates the migrations and lacks the
+            // last_reply_id column. 0001 keeps it, so 0005's CREATE INDEX
+            // fails on a missing column, not a duplicate index name.
+            yield* sql`
+              CREATE TABLE brokenidx_messages (
+                id BIGINT NOT NULL,
+                entity_type VARCHAR(150) NOT NULL,
+                processed BOOLEAN NOT NULL DEFAULT FALSE
+              )
+            `
+            const exit = yield* Effect.exit(
+              SqlMessageStorage.makeEncoded({ prefix: "brokenidx" }).pipe(Effect.provide(NodeCrypto.layer))
+            )
+            expect(Exit.isFailure(exit)).toBe(true)
+          }))
       }
 
       if (label === "mssql") {
