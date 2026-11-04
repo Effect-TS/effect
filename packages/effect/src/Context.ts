@@ -1430,7 +1430,7 @@ export type Overridable<A> = A & { readonly reference: Reference<A> }
  *
  * **When to use**
  *
- * Use for operations that should be tree-shakeable. A bundler cannot drop a
+ * Use when an operation should be tree-shakeable. A bundler cannot drop a
  * property from a service object, so a service record keeps every
  * implementation even when a program calls only a few of them. With
  * `overridable`, each operation is a module-level value with a default
