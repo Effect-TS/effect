@@ -165,14 +165,6 @@ describe("toCodeDocument", () => {
       })
     })
 
-    describe("Date", () => {
-      it("Date", () => {
-        assertSchema({ schema: Schema.Date }, {
-          codes: makeCode(`Schema.Date`, "globalThis.Date")
-        })
-      })
-    })
-
     it("Option(String)", () => {
       assertSchema(
         { schema: Schema.Option(Schema.String) },

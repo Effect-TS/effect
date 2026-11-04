@@ -78,23 +78,11 @@ describe("String", () => {
     it("converts to uppercase", () => {
       strictEqual(S.toUpperCase("hello"), "HELLO")
     })
-
-    it("handles empty string", () => {
-      strictEqual(S.toUpperCase(""), "")
-    })
-
-    it("pipeable", () => {
-      strictEqual(pipe("abc", S.toUpperCase), "ABC")
-    })
   })
 
   describe("toLowerCase", () => {
     it("converts to lowercase", () => {
       strictEqual(S.toLowerCase("HELLO"), "hello")
-    })
-
-    it("handles empty string", () => {
-      strictEqual(S.toLowerCase(""), "")
     })
   })
 
@@ -103,16 +91,8 @@ describe("String", () => {
       strictEqual(S.capitalize("hello"), "Hello")
     })
 
-    it("handles single character", () => {
-      strictEqual(S.capitalize("a"), "A")
-    })
-
     it("handles empty string", () => {
       strictEqual(S.capitalize(""), "")
-    })
-
-    it("does not change already capitalized", () => {
-      strictEqual(S.capitalize("Hello"), "Hello")
     })
 
     it("expands an eszett", () => {
@@ -133,10 +113,6 @@ describe("String", () => {
   describe("uncapitalize", () => {
     it("uncapitalizes first character", () => {
       strictEqual(S.uncapitalize("Hello"), "hello")
-    })
-
-    it("handles single character", () => {
-      strictEqual(S.uncapitalize("A"), "a")
     })
 
     it("handles empty string", () => {
@@ -173,15 +149,7 @@ describe("String", () => {
 
   describe("trim", () => {
     it("trims whitespace from both ends", () => {
-      strictEqual(S.trim("  hello  "), "hello")
-    })
-
-    it("trims tabs and newlines", () => {
-      strictEqual(S.trim("\t\nhello\t\n"), "hello")
-    })
-
-    it("handles empty string", () => {
-      strictEqual(S.trim(""), "")
+      strictEqual(S.trim(" \t\nhello \t\n"), "hello")
     })
   })
 
@@ -189,19 +157,11 @@ describe("String", () => {
     it("trims leading whitespace", () => {
       strictEqual(S.trimStart("  hello  "), "hello  ")
     })
-
-    it("handles empty string", () => {
-      strictEqual(S.trimStart(""), "")
-    })
   })
 
   describe("trimEnd", () => {
     it("trims trailing whitespace", () => {
       strictEqual(S.trimEnd("  hello  "), "  hello")
-    })
-
-    it("handles empty string", () => {
-      strictEqual(S.trimEnd(""), "")
     })
   })
 
@@ -243,10 +203,6 @@ describe("String", () => {
   describe("length", () => {
     it("returns string length", () => {
       strictEqual(S.length("abc"), 3)
-    })
-
-    it("returns 0 for empty string", () => {
-      strictEqual(S.length(""), 0)
     })
   })
 

@@ -1412,7 +1412,7 @@ describe.concurrent("Sharding", () => {
     Effect.gen(function*() {
       const config = ShardingConfig.layer({
         entityMailboxCapacity: 10,
-        entityRegistrationTimeout: 6000,
+        entityRegistrationTimeout: 600,
         entityTerminationTimeout: 0,
         entityMessagePollInterval: 100,
         sendRetryInterval: 100,
@@ -1426,7 +1426,7 @@ describe.concurrent("Sharding", () => {
         Layer.provide(config)
       )
       const delayedEnv = TestEntityNoState.pipe(
-        Layer.provide(Layer.effectDiscard(Effect.sleep(10_000))),
+        Layer.provide(Layer.effectDiscard(Effect.sleep(1000))),
         Layer.provideMerge(Sharding.layer),
         Layer.provide(RunnerStorage.layerMemory),
         Layer.provide(RunnerHealth.layerNoop),
@@ -1457,11 +1457,11 @@ describe.concurrent("Sharding", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      yield* TestClock.adjust(7500)
+      yield* TestClock.adjust(750)
       assert.strictEqual(driver.replyIds.size, 0)
       assert.strictEqual(driver.unprocessed.size, 1)
 
-      yield* TestClock.adjust(2500)
+      yield* TestClock.adjust(250)
       yield* Queue.offer(state.messages, void 0)
       yield* TestClock.adjust(100)
 
@@ -1477,7 +1477,7 @@ describe.concurrent("Sharding", () => {
     Effect.gen(function*() {
       const config = ShardingConfig.layer({
         entityMailboxCapacity: 10,
-        entityRegistrationTimeout: 6000,
+        entityRegistrationTimeout: 600,
         entityTerminationTimeout: 0,
         entityMessagePollInterval: "1 hour",
         sendRetryInterval: 100,
@@ -1600,7 +1600,7 @@ describe.concurrent("Sharding", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      yield* TestClock.adjust(8000)
+      yield* TestClock.adjust(2500)
       assert.isTrue(warnings.some((message) =>
         globalThis.Array.isArray(message) && message.includes("Could not find entity manager for address, retrying")
       ))
