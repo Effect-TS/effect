@@ -187,8 +187,10 @@ export const toHandled = <E, R, EH, RH>(
       return Scope.closeUnsafe(this.scope, this.cause === undefined ? exit : Exit.failCause(this.cause))
     }
     finishBody(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> {
-      this.bodyExit = exit
-      return this.finished ? Scope.close(this.scope, exit) : Effect.void
+      // A body can be transferred more than once. The first exit wins, so a
+      // later transfer cannot replace it before the request finishes.
+      this.bodyExit ??= exit
+      return this.finished ? Scope.close(this.scope, this.bodyExit) : Effect.void
     }
     [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
       const sent = sendResponse(this, response)
