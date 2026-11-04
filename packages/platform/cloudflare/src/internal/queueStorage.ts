@@ -15,9 +15,13 @@
  * Each lease records its taker in `lease_owner` and the taker's
  * `max_attempts`. Settling or extending a lease only applies while that taker
  * still owns the row, so a taker whose lease expired cannot settle work another
- * taker now holds or a row an `"untilExecuted"` offer re-created. An expired
- * lease keeps its owner until another taker leases the row. A recorded failure
- * clears the owner, so a retried `fail` cannot count the same attempt twice.
+ * taker now holds or a row an `"untilExecuted"` offer re-created.
+ *
+ * Leasing a row counts an attempt, so a taker that crashes still consumes one.
+ * An expired lease keeps its owner until another taker leases the row; if it
+ * used the row's last attempt the row moves to the failed state (2). A release
+ * refunds the attempt. A recorded failure or release clears the owner, so a
+ * retried `fail` or `release` cannot settle the same attempt twice.
  *
  * @internal
  */
@@ -92,7 +96,12 @@ export const offerItem = (
   )
 }
 
-/** @internal */
+/**
+ * Leases the next available item and counts the attempt. The returned
+ * `attempts` is the number of earlier attempts, not counting this one.
+ *
+ * @internal
+ */
 export const leaseNextItem = (
   sql: SqlStorage,
   now: number,
@@ -109,7 +118,8 @@ export const leaseNextItem = (
   ).toArray()[0]
   if (row === undefined) return undefined
   sql.exec(
-    "UPDATE queue_items SET lease_until = ?, lease_owner = ?, max_attempts = ? WHERE id = ?",
+    `UPDATE queue_items SET attempts = attempts + 1, lease_until = ?, lease_owner = ?, max_attempts = ?
+     WHERE id = ?`,
     leaseUntil,
     owner,
     maxAttempts,
@@ -124,30 +134,47 @@ export const completeItem = (sql: SqlStorage, id: string, owner: string): void =
 }
 
 /**
- * Records a failed attempt. When the attempt reaches the `max_attempts` stored
- * with the lease the row moves to the failed state (2). A row that is already
+ * Records a failed attempt, which the lease already counted. When the attempt
+ * reaches the `max_attempts` stored with the lease, or the failure is
+ * `terminal`, the row moves to the failed state (2). A row that is already
  * completed is left alone, even when the caller was its last owner.
  * Clearing `lease_owner` makes a replayed call a no-op until the next lease
  * assigns a new owner.
  *
  * @internal
  */
-export const failItem = (sql: SqlStorage, id: string, lastFailure: string, owner: string): void => {
+export const failItem = (
+  sql: SqlStorage,
+  id: string,
+  lastFailure: string,
+  owner: string,
+  terminal: boolean
+): void => {
   sql.exec(
     `UPDATE queue_items
-     SET attempts = attempts + 1, lease_until = NULL, lease_owner = NULL, last_failure = ?,
-         completed = CASE WHEN attempts + 1 >= max_attempts THEN 2 ELSE 0 END,
+     SET lease_until = NULL, lease_owner = NULL, last_failure = ?,
+         completed = CASE WHEN ? OR attempts >= max_attempts THEN 2 ELSE 0 END,
          position = (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items)
      WHERE id = ? AND lease_owner = ? AND completed = 0`,
     lastFailure,
+    terminal ? 1 : 0,
     id,
     owner
   )
 }
 
-/** @internal */
+/**
+ * Returns the item to the queue and refunds the attempt its lease counted.
+ *
+ * @internal
+ */
 export const releaseItem = (sql: SqlStorage, id: string, owner: string): void => {
-  sql.exec("UPDATE queue_items SET lease_until = NULL WHERE id = ? AND lease_owner = ?", id, owner)
+  sql.exec(
+    `UPDATE queue_items SET attempts = attempts - 1, lease_until = NULL, lease_owner = NULL
+     WHERE id = ? AND lease_owner = ? AND completed = 0`,
+    id,
+    owner
+  )
 }
 
 /** @internal */
@@ -160,9 +187,20 @@ export const extendLease = (sql: SqlStorage, id: string, leaseUntil: number, own
   )
 }
 
-/** @internal */
+/**
+ * Expires due leases and initial visibility deadlines. A lease that used the
+ * row's last attempt moves the row to the failed state (2).
+ *
+ * @internal
+ */
 export const expireLeases = (sql: SqlStorage, now: number): void => {
-  sql.exec("UPDATE queue_items SET lease_until = NULL WHERE lease_until IS NOT NULL AND lease_until <= ?", now)
+  sql.exec(
+    `UPDATE queue_items
+     SET lease_until = NULL,
+         completed = CASE WHEN lease_owner IS NOT NULL AND attempts >= max_attempts THEN 2 ELSE 0 END
+     WHERE lease_until IS NOT NULL AND lease_until <= ? AND completed = 0`,
+    now
+  )
 }
 
 /** @internal */

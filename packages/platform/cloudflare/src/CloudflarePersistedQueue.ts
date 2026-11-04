@@ -10,7 +10,9 @@
  *
  * Delivery is at-least-once: a taken item is leased for a bounded time and the
  * lease is refreshed while the handler runs, so an item whose worker died is
- * redelivered once the alarm watchdog expires the lease.
+ * redelivered once the alarm watchdog expires the lease. Leasing an item counts
+ * an attempt, so a worker that dies still consumes one, and an expired lease on
+ * the last attempt marks the item failed.
  * Offer delays use the object's clock and persist an initial visibility
  * deadline; the alarm wakes waiting takers when that deadline expires.
  *
@@ -19,7 +21,8 @@
  *
  * Retries wait for the configured delay after leasing the item and before
  * delivering it to the handler. The lease is refreshed during this wait;
- * interruption releases it without counting another failed attempt.
+ * interruption releases it and refunds the attempt. An element that fails to
+ * decode is marked failed immediately.
  *
  * `PersistedQueue.layerCleanup` is unsupported because the namespace binding
  * cannot enumerate queue objects. Completed and failed rows remain retained for
@@ -35,6 +38,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as PersistedQueue from "effect/persistence/PersistedQueue"
+import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import { encodeName } from "./internal/clusterName.ts"
 import type { QueueItem } from "./internal/queueStorage.ts"
@@ -60,7 +64,7 @@ interface QueueStub {
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string, takerId: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, takerId: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, takerId: string, terminal?: boolean) => Promise<void>
   readonly release: (id: string, takerId: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
 }
@@ -75,6 +79,14 @@ const attempt = (run: () => Promise<void>) =>
   )
 
 const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie(attempt(run))
+
+// `PersistedQueue.make` fails the take scope with this internal signal when a
+// stored element cannot decode; the element can never succeed, so it is
+// dead-lettered instead of retried.
+const isDeadLetter = (cause: Cause.Cause<unknown>): boolean =>
+  cause.reasons.some((reason) =>
+    Cause.isFailReason(reason) && Predicate.isTagged(reason.error, "~effect/persistence/PersistedQueue/DeadLetter")
+  )
 
 /**
  * Creates the `PersistedQueueStore` backed by the queue Durable Object
@@ -136,7 +148,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             onFailure: (cause) =>
               Cause.hasInterruptsOnly(cause)
                 ? finalize(() => stubFor(name).release(item.id, takerId))
-                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), takerId)),
+                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), takerId, isDeadLetter(cause))),
             onSuccess: () => finalize(() => stubFor(name).complete(item.id, takerId))
           }))
           yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis, takerId)).pipe(

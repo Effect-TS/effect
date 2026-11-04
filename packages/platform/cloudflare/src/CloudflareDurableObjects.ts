@@ -302,12 +302,15 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     return Effect.runPromise(this.#program.complete(id, takerId))
   }
 
-  /** @internal Records a failed attempt and requeues the item, or marks it failed after its final attempt. */
-  fail(id: string, lastFailure: string, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.fail(id, lastFailure, takerId))
+  /**
+   * @internal Records a failed attempt and requeues the item, or marks it failed
+   * after its final attempt or a terminal failure.
+   */
+  fail(id: string, lastFailure: string, takerId: string, terminal?: boolean): Promise<void> {
+    return Effect.runPromise(this.#program.fail(id, lastFailure, takerId, terminal))
   }
 
-  /** @internal Requeues the item without counting an attempt. */
+  /** @internal Requeues the item and refunds the attempt its lease counted. */
   release(id: string, takerId: string): Promise<void> {
     return Effect.runPromise(this.#program.release(id, takerId))
   }

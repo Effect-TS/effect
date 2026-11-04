@@ -44,7 +44,7 @@ export interface QueueRuntime {
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string, takerId: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, takerId: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, takerId: string, terminal?: boolean) => Promise<void>
   readonly release: (id: string, takerId: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
   readonly runAlarm: () => Promise<void>
@@ -129,9 +129,9 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
 
     complete: (id, takerId) => Promise.resolve(completeItem(sql, id, takerId)),
 
-    fail: (id, lastFailure, takerId) =>
+    fail: (id, lastFailure, takerId, terminal = false) =>
       mutateAndWake(() => {
-        failItem(sql, id, lastFailure, takerId)
+        failItem(sql, id, lastFailure, takerId, terminal)
       }),
 
     release: (id, takerId) =>
