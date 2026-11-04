@@ -86,11 +86,9 @@ describe("Metrics", () => {
       assert.deepStrictEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
-          "advice": {},
           "name": "rps",
           "description": "",
           "unit": "requests",
-          "type": "OBSERVABLE_GAUGE",
           "valueType": ValueType.DOUBLE
         },
         "aggregationTemporality": 1,
@@ -150,11 +148,9 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 2,
         "descriptor": {
-          "advice": {},
           "name": "rps-bigint",
           "description": "",
           "unit": "requests",
-          "type": "OBSERVABLE_GAUGE",
           "valueType": ValueType.INT
         },
         "aggregationTemporality": 1,
@@ -214,11 +210,9 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
-          "advice": {},
           "name": "counter",
           "description": "Example",
           "unit": "requests",
-          "type": "UP_DOWN_COUNTER",
           "valueType": ValueType.DOUBLE
         },
         "isMonotonic": false,
@@ -282,11 +276,9 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
-          "advice": {},
           "name": "counter-inc",
           "description": "Example",
           "unit": "requests",
-          "type": "COUNTER",
           "valueType": ValueType.DOUBLE
         },
         "isMonotonic": true,
@@ -351,11 +343,9 @@ describe("Metrics", () => {
       assert.deepEqual(metric, {
         "dataPointType": 3,
         "descriptor": {
-          "advice": {},
           "name": "counter-bigint",
           "description": "Example",
           "unit": "requests",
-          "type": "COUNTER",
           "valueType": ValueType.INT
         },
         "isMonotonic": true,
