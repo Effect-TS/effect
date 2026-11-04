@@ -37,8 +37,18 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   "missing-twenty.ts": [
     `Type '"effect/FileSystem/rename" | "effect/FileSystem/stat" | "effect/FileSystem/utimes"' is not assignable to type 'never'`
   ],
-  "wrong-self.ts": [`Self is not the identifier of these operations`],
-  "layer-succeed-operation.ts": [`is not assignable to parameter of type 'Key<`, `is missing the following properties`],
+  "wrong-self.ts": [
+    `"Self differs from the members' identifier at": "effect/FileSystem/writeFile"`,
+    `"Shape differs from the members' shape at": "writeFile"`,
+    `"Annotate the declaration: Context.Operations<Self, Shape>"`,
+    `Annotate the declaration: Context.Operation<Key, Shape>, or pass the shape: Context.Operation<Shape>()(key)`
+  ],
+  "value-shape.ts": [`Expected 0 arguments, but got 1`, `must have a '[Symbol.iterator]()' method`],
+  "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
+  "layer-succeed-operation.ts": [
+    `is not assignable to parameter of type 'Key<`,
+    `is not assignable to parameter of type 'Shape'`
+  ],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,
     `Type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, "effect/FileSystem/readFile">' is not assignable to type 'string'`,
