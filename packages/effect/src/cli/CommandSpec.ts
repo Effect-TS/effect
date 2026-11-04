@@ -147,6 +147,11 @@ export interface Subcommand {
  * flags carry the path of the command that declared them with
  * `withGlobalFlags`, or `undefined` for a built-in.
  *
+ * A nearer `Local` or `Inherited` flag hides an inherited flag of the same
+ * name. A `Global` flag is always listed, even when a local or inherited flag
+ * shares its name, because the parser still routes its other names and
+ * aliases to the global flag.
+ *
  * @stability unstable
  * @category models
  * @since 4.1.3
@@ -290,8 +295,10 @@ export const resolve = (
     for (const param of params) {
       for (const entry of collectEntries(param)) {
         if (entry.single.kind !== "flag") continue
-        // Match help: a name already supplied by a nearer scope wins.
-        if (scope._tag !== "Local" && seen.has(entry.single.name)) continue
+        // Match help: an inherited name already supplied by a nearer scope
+        // wins. Globals are deduplicated by identity only, since the parser
+        // still routes their unshadowed names and aliases to the global flag.
+        if (scope._tag === "Inherited" && seen.has(entry.single.name)) continue
         seen.add(entry.single.name)
         flags.push(toFlag(entry, scope))
       }
