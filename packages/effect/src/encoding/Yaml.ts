@@ -613,9 +613,15 @@ class FlowParser {
       const next = this.line[this.index + 1]
       if (next === undefined || /[ \t,[\]{}]/.test(next)) this.fail(flowDashError)
     }
+    const start = this.offset + this.index
     const text = trimWhite(foldFlowLines(this.readUntil(stop, true)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
     if (isExplicitKey(text)) this.fail(explicitKeyError)
+    // YAML 1.2.2 §7.3.3 (ns-plain-safe-in): a plain scalar in a flow collection cannot contain a
+    // flow indicator. `,`, `]` and `}` end it, and `[` or `{` inside it fails.
+    if (/[[{]/.test(text)) {
+      throw new SyntaxError(`A flow plain scalar cannot contain '[' or '{' at flow offset ${start}`)
+    }
     return text
   }
 
