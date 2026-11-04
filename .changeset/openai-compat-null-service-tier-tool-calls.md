@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Accept `service_tier: null` and `message.tool_calls: null` in chat completion responses. Servers that serialize the OpenAI Python SDK types or vLLM's response models send these nulls, which failed `generateText` with an `InvalidResponseError` and made streamed chunks carrying `service_tier: null` lose their text.
+Accept `null` for `service_tier` and `message.tool_calls` in chat completion responses, and for `service_tier` in streamed chunks. These nulls failed `generateText` with an `InvalidResponseError` (vLLM returns `service_tier: null` on non-streaming responses), and a streamed chunk carrying `service_tier: null` was dropped along with its text.
