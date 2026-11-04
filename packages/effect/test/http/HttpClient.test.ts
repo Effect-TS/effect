@@ -2402,6 +2402,74 @@ Missing key
       assert.isTrue(signal.aborted)
     }))
 
+  it.effect("keeps a redirect scoped when withScope is applied outside followRedirects", () =>
+    Effect.gen(function*() {
+      const final = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        request.url.endsWith("/start")
+          ? Effect.succeed(
+            HttpClientResponse.fromWeb(request, new Response(null, { status: 302, headers: { location: "/final" } }))
+          )
+          : Effect.andThen(Deferred.succeed(final, signal), Effect.never)
+      ).pipe(
+        HttpClient.followRedirects(),
+        HttpClient.withScope
+      )
+
+      const scope = yield* Scope.make()
+      yield* client.get("https://origin.test/start").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(final)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
+
+  it.effect("keeps separate withScope owners for concurrent runs of one response effect", () =>
+    Effect.gen(function*() {
+      const signals = new Map<number, AbortSignal>()
+      const dispatched = yield* Deferred.make<void>()
+      const arrived = yield* Ref.make(0)
+      const bothArrived = yield* Deferred.make<void>()
+      const client = HttpClient.make((_request, _url, signal, fiber) => {
+        signals.set(fiber.id, signal)
+        return Effect.andThen(signals.size === 2 ? Deferred.succeed(dispatched, void 0) : Effect.void, Effect.never)
+      }).pipe(
+        // Hold both runs between withScope and dispatch until both have entered
+        HttpClient.transformResponse((effect) =>
+          Ref.updateAndGet(arrived, (n) => n + 1).pipe(
+            Effect.flatMap((n) => n === 2 ? Deferred.succeed(bothArrived, void 0) : Effect.void),
+            Effect.andThen(Deferred.await(bothArrived)),
+            Effect.andThen(effect)
+          )
+        ),
+        HttpClient.withScope
+      )
+      const effect = client.get("https://origin.test/slow")
+
+      const scopeA = yield* Scope.make()
+      const scopeB = yield* Scope.make()
+      const fiberA = yield* effect.pipe(Scope.provide(scopeA), Effect.forkChild)
+      const fiberB = yield* effect.pipe(Scope.provide(scopeB), Effect.forkChild)
+      yield* Deferred.await(dispatched)
+      yield* Scope.close(scopeA, Exit.void)
+      assert.isTrue(signals.get(fiberA.id)!.aborted)
+      assert.isFalse(signals.get(fiberB.id)!.aborted)
+    }))
+
+  it.effect("aborts a withScope request interrupted before its response", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((_request, _url, signal) =>
+        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
+      ).pipe(HttpClient.withScope)
+
+      const scope = yield* Scope.make()
+      const fiber = yield* client.get("https://origin.test/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(signal.aborted)
+    }))
+
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
     const source = new Response(null, { headers: { "content-type": "text/plain" } })
