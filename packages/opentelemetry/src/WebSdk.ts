@@ -5,16 +5,15 @@
  * tracing, metrics, and logging in browser runtimes. The main `layer` builds
  * the shared OpenTelemetry resource from explicit service metadata, then
  * enables only the signal types that have processors or readers configured.
- * `layerTracerProvider` creates a scoped `WebTracerProvider`.
+ * `layerTracerProvider` creates a scoped `TracerProvider`.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import type * as Otel from "@opentelemetry/api"
-import type { LoggerProviderConfig, LogRecordProcessor } from "@opentelemetry/sdk-logs"
+import type { LoggerProviderOptions, LogRecordProcessor } from "@opentelemetry/sdk-logs"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
-import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
-import { WebTracerProvider } from "@opentelemetry/sdk-trace-web"
+import { type SpanProcessor, TracerProvider, type TracerProviderOptions } from "@opentelemetry/sdk-trace"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
 import { constant, type LazyArg } from "effect/Function"
@@ -34,11 +33,11 @@ import * as Resource from "./Resource.ts"
  */
 export interface Configuration {
   readonly spanProcessor?: SpanProcessor | ReadonlyArray<SpanProcessor> | undefined
-  readonly tracerConfig?: Omit<TracerConfig, "resource">
+  readonly tracerConfig?: Omit<TracerProviderOptions, "resource">
   readonly metricReader?: MetricReader | ReadonlyArray<MetricReader> | undefined
   readonly metricTemporality?: Metrics.TemporalityPreference | undefined
   readonly logRecordProcessor?: LogRecordProcessor | ReadonlyArray<LogRecordProcessor> | undefined
-  readonly loggerProviderConfig?: Omit<LoggerProviderConfig, "resource"> | undefined
+  readonly loggerProviderConfig?: Omit<LoggerProviderOptions, "resource"> | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
   readonly resource: {
     readonly serviceName: string
@@ -56,7 +55,7 @@ export interface Configuration {
  */
 export const layerTracerProvider = (
   processor: SpanProcessor | NonEmptyReadonlyArray<SpanProcessor>,
-  config?: Omit<TracerConfig, "resource">
+  config?: Omit<TracerProviderOptions, "resource">
 ): Layer.Layer<Tracer.OtelTracerProvider, never, Resource.Resource> =>
   Layer.effect(
     Tracer.OtelTracerProvider,
@@ -64,7 +63,7 @@ export const layerTracerProvider = (
       const resource = yield* Resource.Resource
       return yield* Effect.acquireRelease(
         Effect.sync(() => {
-          const provider = new WebTracerProvider({
+          const provider = new TracerProvider({
             ...(config ?? undefined),
             resource,
             spanProcessors: Array.isArray(processor) ? (processor as any) : [processor]
