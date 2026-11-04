@@ -296,24 +296,24 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     return Effect.runPromise(this.#program.cancelTake(takerId))
   }
 
-  /** @internal */
-  complete(id: string): Promise<void> {
-    return Effect.runPromise(this.#program.complete(id))
+  /** @internal Completes the item while the taker still owns its lease. */
+  complete(id: string, takerId: string): Promise<void> {
+    return Effect.runPromise(this.#program.complete(id, takerId))
   }
 
-  /** @internal Records a failed attempt and requeues the item, or marks it failed at `maxAttempts`. */
-  fail(id: string, lastFailure: string, maxAttempts?: number): Promise<void> {
-    return Effect.runPromise(this.#program.fail(id, lastFailure, maxAttempts))
+  /** @internal Records a failed attempt and requeues the item, or marks it failed after its final attempt. */
+  fail(id: string, lastFailure: string, takerId: string): Promise<void> {
+    return Effect.runPromise(this.#program.fail(id, lastFailure, takerId))
   }
 
   /** @internal Requeues the item without counting an attempt. */
-  release(id: string): Promise<void> {
-    return Effect.runPromise(this.#program.release(id))
+  release(id: string, takerId: string): Promise<void> {
+    return Effect.runPromise(this.#program.release(id, takerId))
   }
 
   /** @internal Extends the lease of an item still being processed. */
-  extend(id: string, leaseMillis: number): Promise<void> {
-    return Effect.runPromise(this.#program.extend(id, leaseMillis))
+  extend(id: string, leaseMillis: number, takerId: string): Promise<void> {
+    return Effect.runPromise(this.#program.extend(id, leaseMillis, takerId))
   }
 
   override alarm(): Promise<void> {

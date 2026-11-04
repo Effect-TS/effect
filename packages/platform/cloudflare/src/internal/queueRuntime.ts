@@ -43,10 +43,10 @@ export interface QueueRuntime {
   ) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
-  readonly complete: (id: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, maxAttempts?: number) => Promise<void>
-  readonly release: (id: string) => Promise<void>
-  readonly extend: (id: string, leaseMillis: number) => Promise<void>
+  readonly complete: (id: string, takerId: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, takerId: string) => Promise<void>
+  readonly release: (id: string, takerId: string) => Promise<void>
+  readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
   readonly runAlarm: () => Promise<void>
 }
 
@@ -78,7 +78,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     let index = 0
     while (index < waiters.length) {
       const waiter = waiters[index]
-      const item = leaseNextItem(sql, now, now + waiter.leaseMillis, waiter.maxAttempts)
+      const item = leaseNextItem(sql, now, now + waiter.leaseMillis, waiter.maxAttempts, waiter.takerId)
       if (item === undefined) {
         index++
         continue
@@ -123,23 +123,23 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
       if (itemId === undefined) return Promise.resolve()
       delivered.delete(takerId)
       return mutateAndWake(() => {
-        releaseItem(sql, itemId)
+        releaseItem(sql, itemId, takerId)
       })
     },
 
-    complete: (id) => Promise.resolve(completeItem(sql, id)),
+    complete: (id, takerId) => Promise.resolve(completeItem(sql, id, takerId)),
 
-    fail: (id, lastFailure, maxAttempts) =>
+    fail: (id, lastFailure, takerId) =>
       mutateAndWake(() => {
-        failItem(sql, id, lastFailure, maxAttempts)
+        failItem(sql, id, lastFailure, takerId)
       }),
 
-    release: (id) =>
+    release: (id, takerId) =>
       mutateAndWake(() => {
-        releaseItem(sql, id)
+        releaseItem(sql, id, takerId)
       }),
 
-    extend: (id, leaseMillis) => Promise.resolve(extendLease(sql, id, options.now() + leaseMillis)),
+    extend: (id, leaseMillis, takerId) => Promise.resolve(extendLease(sql, id, options.now() + leaseMillis, takerId)),
 
     runAlarm: () =>
       Effect.runPromise(
