@@ -702,9 +702,9 @@ export const make = (
       Effect.withFiber((fiber) => {
         const scope = fiber.getRef(RequestScope)
         const controller = new AbortController()
-        // The copy stays private to this execution until it reaches the
-        // runner, so reusing the request cannot change the redaction of
-        // errors from earlier executions.
+        // Every execution gets its own copy, which stores this fiber's names.
+        // Reusing the caller's request, or executing the copy again, makes a
+        // new copy, so the redaction of earlier errors cannot change.
         const executed = HttpClientRequest.makeWith(
           request.method,
           request.url,
