@@ -9,9 +9,9 @@
  * them is accounted for, and the Layer or Context holding them stays inside
  * the bundle.
  *
- * Inspecting a whole Context, or a Fiber (which carries one), prints every
- * service value. Untrusted code may therefore only reference audited trusted
- * APIs, may not use reflection that reaches the global object or protocol
+ * A whole Context, or a Fiber through its public `context`, lets code retrieve
+ * any service by its key string, bypassing the key-level demand. Untrusted code
+ * may therefore only reference audited trusted APIs, may not use reflection that reaches the global object or protocol
  * symbols, and the entry module may only export primitive constants. Anything
  * else disables pruning for the whole bundle.
  *
@@ -176,9 +176,11 @@ const memberName = (node: Node): string | undefined => staticName(node.property,
 const retrievalApis = new Set(["Context.get", "Context.getUnsafe", "Context.getOrElse", "Context.getOrUndefined"])
 const effectOps = new Set(["Effect.map", "Effect.flatMap", "Effect.andThen", "Effect.tap"])
 
-// Trusted APIs that untrusted code may reference. A Fiber carries its
-// Context, and printing either prints every service, so any API that can hand
-// one to the caller or to a callback must disable pruning. That set cannot be
+// Trusted APIs that untrusted code may reference. A Fiber exposes its Context
+// as a public property, and a Context hands out any service by key string
+// (`Context.getUnsafe` with a rebuilt key, `mapUnsafe`, or plain traversal with
+// `Object.values`), so any API that can hand either to the caller or to a
+// callback must disable pruning. That set cannot be
 // enumerated reliably: Fibers hide inside option and callback types such as
 // `Logger.Options` or `RunOptions.onFiberStart`. Untrusted code is therefore
 // limited to this audited list, and any other trusted API disables pruning.

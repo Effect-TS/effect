@@ -14,9 +14,10 @@
  * statement-level shaker drops the helpers that only those properties used.
  *
  * The analysis is conservative. Any use of a service key it does not
- * recognise keeps every method of that service. Because inspecting a whole
- * Context or Fiber prints every service value, untrusted code may only use an
- * audited list of trusted APIs; anything else disables pruning entirely.
+ * recognise keeps every method of that service. A Context, or a Fiber through
+ * its public `context`, lets code retrieve any service by its key string, so
+ * untrusted code may only use an audited list of trusted APIs that never hand
+ * either out; anything else disables pruning entirely.
  * Trusted packages (`effect` and the platform packages by default) are assumed
  * not to inspect service values or hand out a Context or Fiber internally.
  * The code of trusted packages is not checked against that assumption.
