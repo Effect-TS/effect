@@ -149,18 +149,6 @@ export const toHandled = <E, R, EH, RH>(
       >
     )
 
-  // Marks the request as finished and closes its scope. A transferred body
-  // owns the close, so the scope closes with the body's exit once both sides
-  // have finished.
-  const finishFrame = (frame: RequestFrame, exit: Exit.Exit<unknown, unknown>) => {
-    frame.frameDone = true
-    if (frame.transferred) {
-      return frame.bodyExit === undefined ? undefined : Scope.closeUnsafe(frame.scope, frame.bodyExit)
-    }
-    if (scopeEjected in frame.scope) return undefined
-    return Scope.closeUnsafe(frame.scope, frame.cause === undefined ? exit : Exit.failCause(frame.cause))
-  }
-
   // Handle untraced requests without middleware in one continuation frame.
   // Effectful writes use `finishAfter` to restore state and close the scope.
   const finishAfter = (
@@ -170,7 +158,7 @@ export const toHandled = <E, R, EH, RH>(
   ) =>
     Effect.onExitPrimitive(effect, (exit) => {
       fiber.setContext(frame.prev)
-      return finishFrame(frame, exit)
+      return frame.finish(exit)
     }, true)
 
   class RequestFrame extends requestState.RequestState implements RequestScopeJoin {
@@ -178,7 +166,7 @@ export const toHandled = <E, R, EH, RH>(
     readonly prev: Context.Context<never>
     readonly request: HttpServerRequest
     cause: Cause.Cause<E | EH | HttpServerError> | undefined
-    frameDone = false
+    finished = false
     transferred = false
     bodyExit: Exit.Exit<unknown, unknown> | undefined = undefined
     constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
@@ -188,12 +176,26 @@ export const toHandled = <E, R, EH, RH>(
       this.request = request
       ;(scope as any)[requestScopeJoin] = this
     }
+    // Marks the request as finished and closes its scope. A transferred body
+    // owns the exit, so the scope closes with the body's exit once both have finished.
+    finish(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> | undefined {
+      this.finished = true
+      if (this.transferred) {
+        return this.bodyExit === undefined ? undefined : Scope.closeUnsafe(this.scope, this.bodyExit)
+      }
+      if (scopeEjected in this.scope) return undefined
+      return Scope.closeUnsafe(this.scope, this.cause === undefined ? exit : Exit.failCause(this.cause))
+    }
+    finishBody(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> {
+      this.bodyExit = exit
+      return this.finished ? Scope.close(this.scope, exit) : Effect.void
+    }
     [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
       const sent = sendResponse(this, response)
       // Most response writes complete synchronously.
       if (effectIsExit(sent) && sent._tag === "Success") {
         fiber.setContext(this.prev)
-        const closed = finishFrame(this, sent)
+        const closed = this.finish(sent)
         return closed === undefined ? sent : Effect.flatMap(closed, () => sent)
       }
       return finishAfter(this, fiber, sent)
@@ -277,12 +279,10 @@ export const scopeTransferToStream = (
   return Response.setBodyKeepHeaders(
     response,
     HttpBody.stream(
-      Stream.onExit(response.body.stream, (exit) => {
-        if (join === undefined) return Scope.close(scope, exit)
-        if (join.bodyExit !== undefined) return Effect.void
-        join.bodyExit = exit
-        return join.frameDone ? Scope.close(scope, exit) : Effect.void
-      }),
+      Stream.onExit(
+        response.body.stream,
+        join === undefined ? (exit) => Scope.close(scope, exit) : (exit) => join.finishBody(exit)
+      ),
       response.body.contentType,
       response.body.contentLength
     )
@@ -294,9 +294,8 @@ const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
 // Close coordination for a request scope created by `toHandled`. A transferred
 // body and the request frame both have to finish before the scope closes.
 interface RequestScopeJoin {
-  frameDone: boolean
   transferred: boolean
-  bodyExit: Exit.Exit<unknown, unknown> | undefined
+  finishBody(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void>
 }
 
 const requestScopeJoin = Symbol.for("effect/http/HttpEffect/requestScopeJoin")
