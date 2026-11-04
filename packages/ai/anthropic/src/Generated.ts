@@ -11828,7 +11828,7 @@ export const BetaResponseContextManagement = Schema.Struct({
 export type BetaContainer = {
   readonly "expires_at": string
   readonly "id": string
-  readonly "skills": ReadonlyArray<BetaContainerSkill> | null
+  readonly "skills"?: ReadonlyArray<BetaContainerSkill> | null
 }
 export const BetaContainer = Schema.Struct({
   "expires_at": Schema.String.annotate({
@@ -11837,11 +11837,13 @@ export const BetaContainer = Schema.Struct({
     "format": "date-time"
   }),
   "id": Schema.String.annotate({ "title": "Id", "description": "Identifier for the container used in this request" }),
-  "skills": Schema.Union([Schema.Array(BetaContainerSkill), Schema.Null]).annotate({
-    "title": "Skills",
-    "description": "Skills loaded in the container",
-    "default": null
-  })
+  "skills": Schema.optionalKey(
+    Schema.Union([Schema.Array(BetaContainerSkill), Schema.Null]).annotate({
+      "title": "Skills",
+      "description": "Skills loaded in the container",
+      "default": null
+    })
+  )
 }).annotate({
   "title": "Container",
   "description": "Information about the container used in the request (for the code execution tool)",

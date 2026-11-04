@@ -1038,6 +1038,47 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(result.isFailure, false)
       }))
 
+    it.effect("decodes a code execution response whose container omits skills", () =>
+      Effect.gen(function*() {
+        const container = { id: "container_1", expires_at: "2026-11-04T12:00:00.000000Z" }
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [
+                  { type: "server_tool_use", id: "srvtoolu_1", name: "code_execution", input: { code: "print(1)" } },
+                  {
+                    type: "code_execution_tool_result",
+                    tool_use_id: "srvtoolu_1",
+                    content: { type: "code_execution_result", stdout: "1\n", stderr: "", return_code: 0, content: [] }
+                  },
+                  { type: "text", text: "It printed 1." }
+                ],
+                container,
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: { input_tokens: 3, output_tokens: 1 }
+              }))
+            )
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({
+          prompt: "Run print(1)",
+          toolkit: Toolkit.make(AnthropicTool.CodeExecution_20250522())
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const finish = response.content.find((part) => part.type === "finish")
+        assert.deepStrictEqual(finish?.type === "finish" ? finish.metadata.anthropic?.container : undefined, container)
+      }))
+
     it.effect("emits response metadata for a fallback block and keeps fallback usage iterations", () =>
       Effect.gen(function*() {
         const fallback = {
