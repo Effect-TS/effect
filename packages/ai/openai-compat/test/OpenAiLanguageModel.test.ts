@@ -1721,6 +1721,7 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(text, "Hello")
         assert.isDefined(finish)
         if (finish?.type === "finish") {
+          assert.strictEqual(finish.reason, "stop")
           assert.strictEqual(finish.metadata["openai-compat"]?.serviceTier, "default")
         }
       }))
