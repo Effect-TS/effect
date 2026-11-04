@@ -447,6 +447,16 @@ describe("hasProperty", () => {
   })
 })
 
+describe("hasTag", () => {
+  it("checks for a string _tag property", () => {
+    assert.equal(Predicate.hasTag({ _tag: "a" }), true)
+    assert.equal(Predicate.hasTag({ _tag: 1 }), false)
+    assert.equal(Predicate.hasTag({}), false)
+    assert.equal(Predicate.hasTag(null), false)
+    assert.equal(Predicate.hasTag("a"), false)
+  })
+})
+
 describe("isTagged", () => {
   it("matches objects with the expected _tag", () => {
     assert.equal(Predicate.isTagged(1, "a"), false)
