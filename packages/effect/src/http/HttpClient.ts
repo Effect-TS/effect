@@ -46,6 +46,7 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
+import * as redactedNames from "./internal/redactedNames.ts"
 import * as tracing from "./internal/tracing.ts"
 import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
@@ -680,7 +681,9 @@ const Proto = {
  *
  * **Details**
  *
- * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
+ * The runner receives a copy of the request, the resolved URL, an abort signal, and the current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
+ *
+ * Each execution makes a new copy of the request, which carries the `UrlParams.CurrentRedactedNames` and `Headers.CurrentRedactedNames` of the executing fiber. `HttpClientError` reasons that reference that copy, directly or through their response, redact their URL with those names when they are created, even in callbacks that run outside the fiber. Rendering an error, or the request's `toJSON`, then adds the names of the rendering fiber. Build responses from the request passed to the runner: errors for a response built from a different request object only use the names active where they are created and rendered.
  *
  * @stability unstable
  * @category constructors
@@ -699,12 +702,28 @@ export const make = (
       Effect.withFiber((fiber) => {
         const scope = fiber.getRef(RequestScope)
         const controller = new AbortController()
-        const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
+        // The copy stays private to this execution until it reaches the
+        // runner, so reusing the request cannot change the redaction of
+        // errors from earlier executions.
+        const executed = HttpClientRequest.makeWith(
+          request.method,
+          request.url,
+          request.urlParams,
+          request.hash,
+          request.headers,
+          request.body
+        )
+        redactedNames.setRequestRedactedNames(
+          executed,
+          fiber.getRef(UrlParams.CurrentRedactedNames),
+          fiber.getRef(Headers.CurrentRedactedNames)
+        )
+        const urlResult = Url.make(executed.url, executed.urlParams, Option.getOrUndefined(executed.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
             new Error.HttpClientError({
               reason: new Error.InvalidUrlError({
-                request,
+                request: executed,
                 cause: urlResult.failure
               })
             })
@@ -742,7 +761,7 @@ export const make = (
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
-          return exchange(request)
+          return exchange(executed)
         }
         return Effect.useSpan(
           fiber.getRef(SpanNameGenerator)(request),
@@ -757,18 +776,21 @@ export const make = (
             )
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
-            request = fiber.getRef(TracerPropagationEnabled)
-              ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
-              : request
+            if (fiber.getRef(TracerPropagationEnabled)) {
+              ;(executed as { headers: Headers.Headers }).headers = Headers.setAll(
+                executed.headers,
+                TraceContext.toHeaders(span)
+              )
+            }
             return Effect.withParentSpan(
-              exchange(request, (response) => {
+              exchange(executed, (response) => {
                 span.attribute("http.response.status_code", response.status)
                 tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
                 // OpenTelemetry marks client spans as failed for 4xx and
                 // 5xx responses, while the response itself still succeeds.
                 if (response.status >= 400 && response.status < 600) {
                   span.attribute("error.type", String(response.status))
-                  endSpanWithStatusError(fiber, span, request, response)
+                  endSpanWithStatusError(fiber, span, executed, response)
                 }
               }),
               span,
