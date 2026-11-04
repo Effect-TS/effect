@@ -429,15 +429,21 @@ development:
       ["an opening bracket in a key without a value", "x: {a[}\n"],
       ["an opening brace in a key without a value", "x: {a{}\n"],
       ["an opening bracket in a sequence pair key", "x: [a[: 1]\n"],
+      ["an opening bracket in a flow sequence value", "x: [a[, b]\n"],
+      ["an opening brace in a flow mapping value", "x: {b: a{}\n"],
       ["a colon in a key without a value", "x: {a:1}\n"]
     ])("rejects %s with parse and parseAll", (_, source) => {
       failureMessage(source)
       failureMessage(source, Yaml.parseAll)
     })
 
-    it("keeps flow indicators and colons in quoted keys", () => {
-      const source = "x: {\"a[\", 'b{', \"c:1\", d: 1, http://e: 2}\ny: [\"a[\": 1]\n"
-      const expected = { x: { "a[": null, "b{": null, "c:1": null, d: 1, "http://e": 2 }, y: [{ "a[": 1 }] }
+    it("keeps flow indicators and colons in quoted keys and values", () => {
+      const source = "x: {\"a[\", 'b{', \"c:1\", d: 1, http://e: 2}\ny: [\"a[\": 1]\nz: [\"a[\", {b: 'c{'}]\n"
+      const expected = {
+        x: { "a[": null, "b{": null, "c:1": null, d: 1, "http://e": 2 },
+        y: [{ "a[": 1 }],
+        z: ["a[", { b: "c{" }]
+      }
       assert.deepStrictEqual(parse(source), expected)
       assert.deepStrictEqual(parseAll(source), [expected])
     })
