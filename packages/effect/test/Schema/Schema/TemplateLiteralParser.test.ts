@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import type * as array_ from "effect/Array"
 import * as Either from "effect/Either"
+import * as fc from "effect/FastCheck"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "../TestUtils.js"
@@ -390,6 +391,87 @@ schema (Union): boolean | symbol`)
 └─ Encoded side transformation failure
    └─ Expected \`<\${\`h\${"1" | "2"}\`}>\`, actual "<h3>"`
       )
+    })
+  })
+
+  describe("captures are equivalent to getTemplateLiteralCapturingRegExp", () => {
+    // decodes `input` the way the parser did when it was implemented with
+    // `getTemplateLiteralCapturingRegExp`, and checks that the parser agrees
+    const expectRegExpCaptures = (
+      schema: S.Schema.AnyNoContext & { readonly params: ReadonlyArray<unknown> },
+      input: string
+    ) => {
+      const ast = schema.ast as AST.Transformation
+      const regex = AST.getTemplateLiteralCapturingRegExp(ast.from as AST.TemplateLiteral)
+      const actual = S.decodeUnknownEither(schema)(input)
+      const match = regex.exec(input)
+      const expected = match === null
+        ? undefined
+        : S.decodeUnknownEither(S.make(ast.to))(match.slice(1, schema.params.length + 1))
+      if (expected !== undefined && Either.isRight(expected)) {
+        deepStrictEqual(actual, expected, `${regex.source} on ${JSON.stringify(input)}`)
+      } else {
+        assertTrue(Either.isLeft(actual), `${regex.source} on ${JSON.stringify(input)}`)
+      }
+    }
+
+    it("ambiguous matches", () => {
+      const cases: ReadonlyArray<
+        readonly [S.Schema.AnyNoContext & { readonly params: ReadonlyArray<unknown> }, string, ReadonlyArray<unknown>]
+      > = [
+        [S.TemplateLiteralParser(S.Number, S.Number), "123", [12, 3]],
+        [S.TemplateLiteralParser(S.String, S.String), "ab", ["", "ab"]],
+        [S.TemplateLiteralParser(S.String, S.Number), "112", ["", 112]],
+        [S.TemplateLiteralParser(S.String, S.Number), "a12", ["a", 12]],
+        [S.TemplateLiteralParser(S.Number, S.String), "12", [12, ""]],
+        [S.TemplateLiteralParser(S.Number, ".", S.Number), "1.2.3", [1.2, ".", 3]],
+        [S.TemplateLiteralParser(S.Union(S.Number, S.String), "e", S.Number), "1e2e3", [100, "e", 3]],
+        [S.TemplateLiteralParser(S.Union(S.Literal("a"), S.String), S.String), "ab", ["a", "b"]],
+        [S.TemplateLiteralParser(S.Union(S.String, S.Literal("a")), S.String), "ab", ["", "ab"]],
+        [S.TemplateLiteralParser(S.String, ":", S.String, ":", S.Number, "X"), "a:b:c:1X", [
+          "a",
+          ":",
+          "b:c",
+          ":",
+          1,
+          "X"
+        ]],
+        [S.TemplateLiteralParser(S.String, S.Number, S.Number, S.Number, "X"), "11Y111X", ["11Y", 1, 1, 1, "X"]]
+      ]
+      for (const [schema, input, expected] of cases) {
+        deepStrictEqual(S.decodeUnknownEither(schema)(input), Either.right(expected), JSON.stringify(input))
+        expectRegExpCaptures(schema, input)
+      }
+    })
+
+    it("short inputs", () => {
+      const schemas: ReadonlyArray<S.Schema.AnyNoContext & { readonly params: ReadonlyArray<unknown> }> = [
+        S.TemplateLiteralParser(S.Number, S.Number),
+        S.TemplateLiteralParser(S.String, S.String),
+        S.TemplateLiteralParser(S.String, S.Number),
+        S.TemplateLiteralParser(S.Number, S.String),
+        S.TemplateLiteralParser("v", S.Number, "-", S.Number),
+        S.TemplateLiteralParser(S.Number, ".", S.Number),
+        S.TemplateLiteralParser(S.Union(S.Number, S.String), "e", S.Number),
+        S.TemplateLiteralParser(S.Union(S.Literal("a"), S.String), S.String),
+        S.TemplateLiteralParser(S.Union(S.String, S.Literal("a")), ":", S.String),
+        S.TemplateLiteralParser(S.Literal("a", "ab"), S.Literal("b", ""), "X"),
+        S.TemplateLiteralParser(S.String, ":", S.String, ":", S.Number, "X"),
+        S.TemplateLiteralParser(S.String, S.Number, S.Number, S.Number, "X"),
+        S.TemplateLiteralParser(S.String, ":", S.TemplateLiteral(S.String, ":", S.String), "X"),
+        S.TemplateLiteralParser("<", S.Union(S.TemplateLiteralParser("h", S.Int), S.String), ">")
+      ]
+      const input = fc.array(
+        fc.constantFrom("a", "b", "h", "v", ":", "<", ">", "X", "Y", "1", "0", ".", "e", "+", "-", "\n"),
+        { maxLength: 10 }
+      ).map((chars) => chars.join(""))
+
+      for (const schema of schemas) {
+        const ast = schema.ast as AST.Transformation
+        const matching = fc.stringMatching(AST.getTemplateLiteralRegExp(ast.from as AST.TemplateLiteral))
+          .filter((s) => s.length <= 20)
+        fc.assert(fc.property(fc.oneof(input, matching), (s) => expectRegExpCaptures(schema, s)), { numRuns: 200 })
+      }
     })
   })
 
