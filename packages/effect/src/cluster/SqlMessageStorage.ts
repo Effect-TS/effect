@@ -715,11 +715,13 @@ export const makeEncodedStorage: (options?: {
         } else {
           const row = envelopeToRow(envelope, null, deliverAt)
           const insertRow = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-          insert = envelope._tag !== "AckChunk" ? insertRow : lockRequest(envelope.requestId).pipe(
+          insert = envelope._tag === "Request" ? insertRow : lockRequest(envelope.requestId).pipe(
             Effect.flatMap((request) =>
-              // the request was deleted, so there is nothing left to acknowledge
+              // the request was deleted, so there is nothing left to acknowledge or interrupt
               request.length === 0 ?
                 Effect.succeed([]) :
+                envelope._tag === "Interrupt" ?
+                insertRow :
                 sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
                   Effect.andThen(markAcksProcessed(envelope.requestId)),
                   Effect.andThen(insertRow)
