@@ -4,6 +4,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as esbuild from "esbuild"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
@@ -34,7 +35,12 @@ const regressions = [
   "inherited-members.ts",
   "async-factory.ts",
   "key-mutation.ts",
-  "separator-comment.ts"
+  "separator-comment.ts",
+  "redactable-option.ts",
+  "global-fiber.ts",
+  "arguments-callbacks.ts",
+  "mutable-receiver.ts",
+  "nested-providers.ts"
 ]
 
 const fixtureArgs: Record<string, ReadonlyArray<string>> = {
@@ -241,6 +247,104 @@ describe("ServiceShaking", () => {
       }
     }
     const code = await ServiceShaking.bundle(inputOptions(fixture, [drift]))
-    assert.oneOf(await run(code, fixture), ["1", "2"])
+    // Demand was computed from the first build, so only its output is safe.
+    assert.strictEqual(await run(code, fixture), "1")
+  })
+
+  it("resolution-drift.ts ignores edits when an import resolves differently in the second build", {
+    timeout
+  }, async () => {
+    const fixture = "resolution-drift.ts"
+    let builds = 0
+    const drift: Plugin = {
+      name: "resolution-drift",
+      buildStart: () => {
+        builds++
+      },
+      resolveId: (source, importer) =>
+        builds === 2 && source === "./resolution-drift-a.ts" && importer?.endsWith(`${path.sep}resolution-drift.ts`)
+          ? path.join(fixturesDir, "resolution-drift-b.ts")
+          : null
+    }
+    const code = await ServiceShaking.bundle(inputOptions(fixture, [drift]))
+    assert.strictEqual(await run(code, fixture), "1")
+  })
+
+  it("external-module.ts keeps methods an external module can observe", { timeout }, async () => {
+    const fixture = "external-module.ts"
+    const external: Plugin = {
+      name: "external-helper",
+      resolveId: (source) =>
+        source === "./external-helper.ts" ? { id: path.join(fixturesDir, "external-helper.ts"), external: true } : null
+    }
+    // The bundle runs from a temporary directory, so the import must stay absolute.
+    const options: InputOptions = { ...inputOptions(fixture, [external]), makeAbsoluteExternalsRelative: false }
+    const expected = await run(await build(options), fixture)
+    const actual = await run(await ServiceShaking.bundle(options), fixture)
+    assert.strictEqual(expected, "function")
+    assert.strictEqual(actual, expected)
+  })
+
+  describe("code importing the bundle can run inside a provider's scope", () => {
+    // Lists the methods of a service, read from the current Context by key.
+    const methodsOf = (key: string) =>
+      Effect.map(
+        Effect.context(),
+        (context) => Object.keys(Context.getOrUndefinedUnsafe<object>(context, key) ?? {}).sort()
+      )
+
+    // Runs `use` against the unoptimized bundle, then the shaken one.
+    const importer = async <A>(fixture: string, use: (module: any) => Promise<A>) => {
+      const expected = await use(await load(await baseline(fixture)))
+      const actual = await use(await load(await shaken(fixture)))
+      return { expected, actual }
+    }
+
+    it("scope-effect-input.ts: an Effect passed to an exported function", { timeout }, async () => {
+      const { expected, actual } = await importer(
+        "scope-effect-input.ts",
+        (module) => module.main(methodsOf("test/ScopeEffectInput"))
+      )
+      assert.deepStrictEqual(expected, ["read", "unused"])
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it("scope-layer-input.ts: a Layer passed to an exported function", { timeout }, async () => {
+      const { expected, actual } = await importer("scope-layer-input.ts", async (module) => {
+        let seen: ReadonlyArray<string> = []
+        const input = Layer.effectDiscard(
+          Effect.map(methodsOf("test/ScopeLayerInput"), (methods) => {
+            seen = methods
+          })
+        )
+        await module.main(input)
+        return seen
+      })
+      assert.deepStrictEqual(expected, ["read", "unused"])
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it("scope-transformer.ts: an exported Effect.provide transformer", { timeout }, async () => {
+      const { expected, actual } = await importer(
+        "scope-transformer.ts",
+        (module) => Effect.runPromise(module.supply(methodsOf("test/ScopeTransformer")))
+      )
+      assert.deepStrictEqual(expected, ["read", "unused"])
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it("scope-exported-effect.ts: an exported Effect run with the importer's logger", { timeout }, async () => {
+      const { expected, actual } = await importer("scope-exported-effect.ts", async (module) => {
+        const seen: Array<string> = []
+        const logger = Logger.make((options) => {
+          const services: ReadonlyMap<string, object> = Reflect.get(Reflect.get(options.fiber, "context"), "mapUnsafe")
+          seen.push(typeof Reflect.get(services.get("test/ScopeExportedEffect")!, "unused"))
+        })
+        await Effect.runPromise(Effect.provide(module.program, Logger.layer([logger])))
+        return seen
+      })
+      assert.deepStrictEqual(expected, ["function"])
+      assert.deepStrictEqual(actual, expected)
+    })
   })
 })
