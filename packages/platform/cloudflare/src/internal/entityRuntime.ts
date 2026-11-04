@@ -58,7 +58,18 @@ interface CachedHandlers {
   readonly handlers: Record<string, (request: any) => any>
   readonly context: Context.Context<never>
   readonly scope: Scope.Closeable
+  readonly server: ServerHandle
+}
+
+// A build's `RpcServer`. It outlives a defect rebuild so requests already
+// running on it finish there; once retired, it closes when the last request
+// holding a lease on it ends.
+interface ServerHandle {
   readonly server: RpcServer.RpcServer<any>
+  readonly scope: Scope.Closeable
+  leases: number
+  retired: boolean
+  closed: boolean
 }
 
 // One request written to the wake's `RpcServer`. A defect retry writes a new
@@ -150,10 +161,22 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
   }
 
+  // Closes a retired server once nothing holds a lease on it. `closed` is set
+  // synchronously, so a lease taken afterwards moves to the current build.
+  const closeIfDrained = (handle: ServerHandle): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (!handle.retired || handle.leases > 0 || handle.closed) return Effect.void
+      handle.closed = true
+      return Scope.close(handle.scope, Exit.void)
+    })
+
   const invalidate = Effect.fnUntraced(function*() {
     if (cached === undefined) return
     const scope = cached.scope
+    const server = cached.server
     cached = undefined
+    server.retired = true
+    yield* closeIfDrained(server)
     // The closing build's holders are gone with it. `EntityResource` skips
     // `keepAlive(false)` while its scope shuts down, so keeping the count
     // would leak a holder into the rebuild.
@@ -202,8 +225,6 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         registration.entity.protocol.toHandlers(serverHandlers),
         context as Context.Context<any>
       )
-      // The server outlives a defect rebuild: requests already running on the
-      // previous build finish there instead of being interrupted.
       const serverScope = yield* Scope.make()
       // Middleware services come from the registration context: `Entity.toLayer`
       // requires them, and `registerEntity` captures that context.
@@ -216,7 +237,8 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       }) as Effect.Effect<RpcServer.RpcServer<any>, never, Scope.Scope>).pipe(
         Effect.provideContext(Context.add(Context.merge(context, handlersContext), Scope.Scope, serverScope))
       )
-      return { handlers, server }
+      const handle: ServerHandle = { server, scope: serverScope, leases: 0, retired: false, closed: false }
+      return { handlers, server: handle }
     }).pipe(
       Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
     )
@@ -255,6 +277,26 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     )
   }
 
+  // Takes a lease on the current build's server for one request, including
+  // its defect retries. Only the build itself stays interruptible. A server
+  // that closed after `getHandlers` returned it is no longer cached, so the
+  // lookup runs again.
+  const leaseHandlers = (
+    restore: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  ): Effect.Effect<CachedHandlers> =>
+    Effect.flatMap(restore(getHandlers()), (entry) =>
+      Effect.suspend(() => {
+        if (entry.server.closed) return leaseHandlers(restore)
+        entry.server.leases++
+        return Effect.succeed(entry)
+      }))
+
+  const releaseLease = (entry: CachedHandlers): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      entry.server.leases--
+      return closeIfDrained(entry.server)
+    })
+
   const rebuildAfterDefect = invalidate().pipe(
     Effect.andThen(Effect.catchCause(getHandlers(), () => Effect.void))
   )
@@ -273,14 +315,20 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       Deferred.await(request.exit),
       (exit) => request.started ? Effect.as(Deferred.await(request.finished), exit) : Effect.succeed(exit)
     )
+    // `finished` completes on every exit of the request effect, including an
+    // interrupt while it waits for the permit or before the handler starts.
+    // `started` is set inside the `ensuring`, so `settled` only waits for
+    // `finished` once the finalizer is registered.
     const onRequest = <X, E, R>(effect: Effect.Effect<X, E, R>): Effect.Effect<X, E, R> =>
-      Effect.suspend(() => {
-        request.started = true
-        if (request.interrupted) return Effect.interrupt
-        const run = Effect.ensuring(effect, Effect.sync(() => Deferred.doneUnsafe(request.finished, Effect.void)))
-        return request.fork ? run : permit.acquire(run)
-      })
-    return Effect.suspend(() => {
+      Effect.ensuring(
+        Effect.suspend(() => {
+          request.started = true
+          if (request.interrupted) return Effect.interrupt
+          return request.fork ? effect : permit.acquire(effect)
+        }),
+        Effect.sync(() => Deferred.doneUnsafe(request.finished, Effect.void))
+      )
+    const write = Effect.suspend(() => {
       serverRequests.set(id, request)
       writing = request
       return server.write(0, {
@@ -294,28 +342,51 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
           writing = undefined
         }))
       )
-    }).pipe(
-      Effect.andThen(Effect.onInterrupt(settled, () =>
-        Effect.suspend(() => {
-          request.interrupted = true
-          const stop = request.started
-            ? server.write(0, { _tag: "Interrupt", requestId: RpcMessage.RequestId(id), interruptors: [] })
-            : Effect.void
-          return Effect.andThen(stop, settled)
-        }))),
+    })
+    // The write and the interrupt hook are installed without an interruptible
+    // gap, so an interrupt that arrives just after the write still reaches
+    // the server request.
+    return Effect.uninterruptibleMask((restore) =>
+      Effect.andThen(
+        write,
+        Effect.onInterrupt(restore(settled), () =>
+          Effect.suspend(() => {
+            request.interrupted = true
+            const stop = request.started
+              ? server.write(0, { _tag: "Interrupt", requestId: RpcMessage.RequestId(id), interruptors: [] })
+              : Effect.void
+            return Effect.andThen(stop, settled)
+          }))
+      )
+    ).pipe(
       Effect.flatten,
       Effect.ensuring(Effect.sync(() => serverRequests.delete(id)))
     )
   }
 
-  const run = Effect.fnUntraced(function*(
+  const run = (
     envelope: Envelope.Request.Any,
     lastSentChunk: Option.Option<Reply.Chunk<any>>,
     discard: boolean,
     respond: (reply: Reply.Reply<any>) => Effect.Effect<void>,
     permit: HandlerPermit = makeHandlerPermit(handlerSemaphore)
+  ): Effect.Effect<void> =>
+    Effect.uninterruptibleMask((restore) =>
+      Effect.flatMap(leaseHandlers(restore), (entry) =>
+        Effect.ensuring(
+          restore(runLeased(entry, envelope, lastSentChunk, discard, respond, permit)),
+          releaseLease(entry)
+        ))
+    )
+
+  const runLeased = Effect.fnUntraced(function*(
+    entry: CachedHandlers,
+    envelope: Envelope.Request.Any,
+    lastSentChunk: Option.Option<Reply.Chunk<any>>,
+    discard: boolean,
+    respond: (reply: Reply.Reply<any>) => Effect.Effect<void>,
+    permit: HandlerPermit
   ) {
-    const entry = yield* getHandlers()
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps | undefined
     const handler = entry.handlers[envelope.tag]
     if (rpc === undefined || handler === undefined) {
@@ -342,7 +413,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
 
     const execute = Effect.suspend(() =>
-      runOnServer(entry.server, {
+      runOnServer(entry.server.server, {
         envelope,
         discard,
         respond,
