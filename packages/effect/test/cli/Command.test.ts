@@ -1216,6 +1216,42 @@ describe("Command", () => {
         ])
         assert.deepStrictEqual(seen, [["after subcommands", ["useApi"]]])
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("passes domain errors through like handler failures, without help", () =>
+      Effect.gen(function*() {
+        class Conflict extends Schema.TaggedError<Conflict>()("Conflict", {
+          flags: Schema.Array(Schema.String)
+        }) {
+          override get [CliError.userMessage]() {
+            return `${this.flags.join(" and ")} are mutually exclusive`
+          }
+        }
+        const command = Command.make("download", {
+          useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
+          useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
+        }, () => Effect.void).pipe(
+          Command.validate(({ useApi, useDocker }) =>
+            useApi && useDocker ? new Conflict({ flags: ["--use-api", "--use-docker"] }) : Effect.void
+          )
+        )
+
+        const rendered = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0" })(["--use-api", "--use-docker"])
+        )
+        assert.instanceOf(rendered, Conflict)
+        assert.isFalse(Runtime.getErrorReported(rendered))
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [
+          "\nERROR\n  --use-api and --use-docker are mutually exclusive"
+        ])
+        assert.isEmpty(yield* TestConsole.logLines)
+
+        const silent = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0", renderErrors: false })(["--use-api", "--use-docker"])
+        )
+        assert.instanceOf(silent, Conflict)
+        assert.isTrue(Runtime.getErrorReported(silent))
+        assert.lengthOf(yield* TestConsole.errorLines, 1)
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withSubcommands", () => {
