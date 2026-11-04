@@ -1165,7 +1165,7 @@ const ChatCompletionMessage = Schema.Struct({
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning_content: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  tool_calls: Schema.optionalKey(Schema.Array(ChatCompletionToolCall))
+  tool_calls: Schema.optionalKey(Schema.NullOr(Schema.Array(ChatCompletionToolCall)))
 })
 
 const ChatCompletionDelta = Schema.Struct({
@@ -1201,7 +1201,7 @@ const ChatCompletionResponse = Schema.Struct({
   created: Schema.Int,
   choices: Schema.Array(ChatCompletionChoice),
   usage: Schema.optionalKey(Schema.NullOr(ChatCompletionUsage)),
-  service_tier: Schema.optionalKey(Schema.String)
+  service_tier: Schema.optionalKey(Schema.NullOr(Schema.String))
 })
 
 const ChatCompletionChunk = Schema.Struct({
@@ -1210,7 +1210,7 @@ const ChatCompletionChunk = Schema.Struct({
   created: Schema.Int,
   choices: Schema.Array(ChatCompletionChoice),
   usage: Schema.optionalKey(Schema.NullOr(ChatCompletionUsage)),
-  service_tier: Schema.optionalKey(Schema.String)
+  service_tier: Schema.optionalKey(Schema.NullOr(Schema.String))
 })
 
 /**
