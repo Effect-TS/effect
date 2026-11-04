@@ -570,7 +570,7 @@ export const make = (
   FileSystem.of({
     ...impl,
     [TypeId]: TypeId,
-    glob: Glob.make(impl),
+    glob: /* @__PURE__ */ Glob.make(impl),
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -592,7 +592,7 @@ export const make = (
               cause
             })
         })),
-    stream: Effect.fnUntraced(function*(path, options) {
+    stream: /* @__PURE__ */ Effect.fnUntraced(function*(path, options) {
       const file = yield* impl.open(path, { flag: "r" })
       const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
       if (offset) {
