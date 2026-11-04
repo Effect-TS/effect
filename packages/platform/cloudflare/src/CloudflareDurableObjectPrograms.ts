@@ -228,6 +228,18 @@ export interface ClusterWorkflowRunOptions {
 }
 
 /**
+ * How a workflow resume was requested. `"explicit"` (the default) always
+ * replays the execution; `"automatic"`, used for a child's completion wake,
+ * leaves an execution suspended by `Workflow.SuspendOnFailure` parked until
+ * an explicit resume.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type ClusterWorkflowWakeMode = "explicit" | "automatic"
+
+/**
  * Effect-valued program for one workflow execution Durable Object.
  *
  * @stability unstable
@@ -237,7 +249,7 @@ export interface ClusterWorkflowRunOptions {
 export type ClusterWorkflowProgram = {
   readonly run: (payload: string, options: ClusterWorkflowRunOptions) => Effect.Effect<string>
   readonly poll: () => Effect.Effect<string | undefined>
-  readonly resume: () => Effect.Effect<void>
+  readonly resume: (mode?: ClusterWorkflowWakeMode) => Effect.Effect<void>
   readonly interrupt: () => Effect.Effect<void>
   readonly interruptUnsafe: () => Effect.Effect<void>
   readonly deferredDone: (name: string, exit: string) => Effect.Effect<void>
@@ -312,7 +324,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
   const program: ClusterWorkflowProgram = {
     run: (payload, options) => Effect.promise(() => getRuntime().run(payload, options)),
     poll: () => Effect.promise(() => getRuntime().poll()),
-    resume: () => Effect.promise(() => getRuntime().resume()),
+    resume: (mode) => Effect.promise(() => getRuntime().resume(mode)),
     interrupt: () => Effect.promise(() => getRuntime().interrupt()),
     interruptUnsafe: () => Effect.promise(() => getRuntime().interruptUnsafe()),
     deferredDone: (deferredName, exit) => Effect.promise(() => getRuntime().deferredDone(deferredName, exit)),

@@ -11,7 +11,7 @@ import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
-import type { ClusterWorkflowRunOptions } from "../CloudflareDurableObjectPrograms.ts"
+import type { ClusterWorkflowRunOptions, ClusterWorkflowWakeMode } from "../CloudflareDurableObjectPrograms.ts"
 import { makeRegistry } from "./registry.ts"
 
 /** @internal */
@@ -47,7 +47,7 @@ export type WorkflowRunOptions = ClusterWorkflowRunOptions
 export interface WorkflowStub {
   readonly run: (payload: string, options: WorkflowRunOptions) => Promise<string>
   readonly poll: () => Promise<string | undefined>
-  readonly resume: () => Promise<void>
+  readonly resume: (mode?: ClusterWorkflowWakeMode) => Promise<void>
   readonly interrupt: () => Promise<void>
   readonly interruptUnsafe: () => Promise<void>
   readonly deferredDone: (name: string, exit: string) => Promise<void>
@@ -60,6 +60,8 @@ export interface WorkflowExecutionHandle extends WorkflowStub {
   readonly loadActivity: (key: string) => string | undefined
   readonly saveActivity: (key: string, exit: string) => void
   readonly loadDeferred: (name: string) => string | undefined
+  /** Completes a deferred of this execution from inside its own run. */
+  readonly completeOwnDeferred: (name: string, exit: string) => Effect.Effect<void>
 }
 
 /**
