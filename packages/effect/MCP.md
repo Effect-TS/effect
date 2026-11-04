@@ -480,7 +480,7 @@ import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 const ArchiveNote = Tool.make("ArchiveNote", {
   parameters: Schema.Struct({ noteId: Schema.String }),
   success: Schema.Struct({ archived: Schema.String }),
-  failure: Schema.instanceOf(McpSchema.InputRequired),
+  failure: McpSchema.InputRequired,
   dependencies: [McpSchema.McpRequestContext]
 })
 
@@ -531,9 +531,10 @@ const NotesLayer = McpServer.toolkit(NotesToolkit).pipe(
 The first call fails with `InputRequired`, which the client receives as an `input_required`
 result. On the retry, the handler reads the answer and the state from `McpRequestContext`.
 
-- `InputRequired` is not an error class, so fail with `Effect.fail(new McpSchema.InputRequired(...))`.
-  It can also be one member of a union failure schema. For a tool you do not own, widen its failure
-  with `tool.setFailure(Schema.Union([...]))` before building the toolkit.
+- `InputRequired` is a schema class, not an error class. Declare it directly as the failure schema and
+  fail with `Effect.fail(new McpSchema.InputRequired(...))`. It can also be one member of a union
+  failure schema. For a tool you do not own, widen its failure with
+  `tool.setFailure(Schema.Union([...]))` before building the toolkit.
 - Protocols before `v2026_07_28` reject the result with an `InvalidParams` error ("Client input is
   not supported by this MCP protocol"), as they do for `addTool`.
 - The client must declare the capability each input request needs, such as `elicitation`.
