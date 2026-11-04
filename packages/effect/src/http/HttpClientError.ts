@@ -101,7 +101,9 @@ interface ReasonProps {
 // request and on the request of its response by `HttpClient.make`, plus the
 // names of the current fiber. The current fiber only adds redaction, since it
 // may be unrelated to the request when a transport callback creates the error.
-const redactedUrlKey = Symbol("effect/http/HttpClientError/redactedUrl")
+// The URL is kept outside the reason, so structural `Equal` and `Hash` don't
+// see it. Each entry is written once, by the constructor of its reason.
+const redactedUrls = new WeakMap<object, string>()
 
 const redactWithRequestNames = (url: string, request: HttpClientRequest.HttpClientRequest | undefined): string => {
   const names = request === undefined ? undefined : requestUrlParamsRedactedNames(request)
@@ -119,7 +121,7 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
   class Base extends Data.TaggedError(tag)<ReasonProps> {
     constructor(props: ReasonProps) {
       super(props)
-      Object.defineProperty(this, redactedUrlKey, { value: makeRedactedUrl(props) })
+      redactedUrls.set(this, makeRedactedUrl(props))
     }
   }
   return Base as any
@@ -128,7 +130,7 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
 // Rendering adds the names of the rendering fiber to the stored URL, so it
 // never redacts less than the names active at either point.
 const redactedUrl = (reason: ReasonProps): string =>
-  UrlParams.redactUrl((reason as any)[redactedUrlKey] ?? makeRedactedUrl(reason))
+  UrlParams.redactUrl(redactedUrls.get(reason) ?? makeRedactedUrl(reason))
 
 const formatMethodAndUrl = (reason: ReasonProps): string => `${reason.request.method} ${redactedUrl(reason)}`
 
