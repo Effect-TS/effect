@@ -10,8 +10,13 @@
  *
  * `completed` holds the row state: 0 while pending, processing, or waiting to
  * retry, 1 once completed, and 2 once its final attempt failed. An
- * `"untilExecuted"` offer replaces a row in state 1 or 2. Rows that exhausted
- * their attempts before state 2 existed stay at 0 and keep their id reserved.
+ * `"untilExecuted"` offer replaces a row in state 1 or 2.
+ *
+ * Each lease records its taker in `lease_owner` and the taker's
+ * `max_attempts`. Settling or extending a lease only applies while that taker
+ * still owns the row, so a taker whose lease expired cannot settle work another
+ * taker now holds or a row an `"untilExecuted"` offer re-created. An expired
+ * lease keeps its owner until another taker leases the row.
  *
  * @internal
  */
@@ -26,6 +31,8 @@ const ddl = [
     attempts INTEGER NOT NULL DEFAULT 0,
     completed INTEGER NOT NULL DEFAULT 0,
     lease_until INTEGER,
+    lease_owner TEXT,
+    max_attempts INTEGER,
     last_failure TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS queue_items_take_idx
@@ -89,7 +96,8 @@ export const leaseNextItem = (
   sql: SqlStorage,
   now: number,
   leaseUntil: number,
-  maxAttempts: number
+  maxAttempts: number,
+  owner: string
 ): QueueItem | undefined => {
   const row = sql.exec<QueueItemRow>(
     `SELECT id, element, attempts FROM queue_items
@@ -99,43 +107,54 @@ export const leaseNextItem = (
     now
   ).toArray()[0]
   if (row === undefined) return undefined
-  sql.exec("UPDATE queue_items SET lease_until = ? WHERE id = ?", leaseUntil, row.id)
+  sql.exec(
+    "UPDATE queue_items SET lease_until = ?, lease_owner = ?, max_attempts = ? WHERE id = ?",
+    leaseUntil,
+    owner,
+    maxAttempts,
+    row.id
+  )
   return row
 }
 
 /** @internal */
-export const completeItem = (sql: SqlStorage, id: string): void => {
-  sql.exec("UPDATE queue_items SET completed = 1, lease_until = NULL WHERE id = ?", id)
+export const completeItem = (sql: SqlStorage, id: string, owner: string): void => {
+  sql.exec("UPDATE queue_items SET completed = 1, lease_until = NULL WHERE id = ? AND lease_owner = ?", id, owner)
 }
 
 /**
- * Records a failed attempt. When the attempt reaches `maxAttempts` the row
- * moves to the failed state (2). Without `maxAttempts`, as sent by an older
- * Worker, the CASE compares against NULL and the row stays pending.
+ * Records a failed attempt. When the attempt reaches the `max_attempts` stored
+ * with the lease the row moves to the failed state (2). A row that is already
+ * completed is left alone, even when the caller was its last owner.
  *
  * @internal
  */
-export const failItem = (sql: SqlStorage, id: string, lastFailure: string, maxAttempts?: number | undefined): void => {
+export const failItem = (sql: SqlStorage, id: string, lastFailure: string, owner: string): void => {
   sql.exec(
     `UPDATE queue_items
      SET attempts = attempts + 1, lease_until = NULL, last_failure = ?,
-         completed = CASE WHEN attempts + 1 >= ? THEN 2 ELSE 0 END,
+         completed = CASE WHEN attempts + 1 >= max_attempts THEN 2 ELSE 0 END,
          position = (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items)
-     WHERE id = ?`,
+     WHERE id = ? AND lease_owner = ? AND completed = 0`,
     lastFailure,
-    maxAttempts ?? null,
-    id
+    id,
+    owner
   )
 }
 
 /** @internal */
-export const releaseItem = (sql: SqlStorage, id: string): void => {
-  sql.exec("UPDATE queue_items SET lease_until = NULL WHERE id = ?", id)
+export const releaseItem = (sql: SqlStorage, id: string, owner: string): void => {
+  sql.exec("UPDATE queue_items SET lease_until = NULL WHERE id = ? AND lease_owner = ?", id, owner)
 }
 
 /** @internal */
-export const extendLease = (sql: SqlStorage, id: string, leaseUntil: number): void => {
-  sql.exec("UPDATE queue_items SET lease_until = ? WHERE id = ? AND lease_until IS NOT NULL", leaseUntil, id)
+export const extendLease = (sql: SqlStorage, id: string, leaseUntil: number, owner: string): void => {
+  sql.exec(
+    "UPDATE queue_items SET lease_until = ? WHERE id = ? AND lease_owner = ? AND lease_until IS NOT NULL",
+    leaseUntil,
+    id,
+    owner
+  )
 }
 
 /** @internal */

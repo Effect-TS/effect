@@ -59,10 +59,10 @@ interface QueueStub {
   ) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
-  readonly complete: (id: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, maxAttempts?: number) => Promise<void>
-  readonly release: (id: string) => Promise<void>
-  readonly extend: (id: string, leaseMillis: number) => Promise<void>
+  readonly complete: (id: string, takerId: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, takerId: string) => Promise<void>
+  readonly release: (id: string, takerId: string) => Promise<void>
+  readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
 }
 
 const leaseMillis = 120_000
@@ -135,11 +135,11 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
           yield* Effect.addFinalizer(Exit.match({
             onFailure: (cause) =>
               Cause.hasInterruptsOnly(cause)
-                ? finalize(() => stubFor(name).release(item.id))
-                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), maxAttempts)),
-            onSuccess: () => finalize(() => stubFor(name).complete(item.id))
+                ? finalize(() => stubFor(name).release(item.id, takerId))
+                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), takerId)),
+            onSuccess: () => finalize(() => stubFor(name).complete(item.id, takerId))
           }))
-          yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis)).pipe(
+          yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis, takerId)).pipe(
             Effect.sandbox,
             Effect.ignore,
             Effect.schedule(Schedule.spaced(leaseRefreshMillis)),
