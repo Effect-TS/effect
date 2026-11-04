@@ -437,6 +437,17 @@ describe("overridable", () => {
       )
     }))
 
+  it.effect("keeps non-enumerable own properties of a callable default, including length and name", () =>
+    Effect.gen(function*() {
+      const add = Object.assign((a: number, b: number) => Effect.succeed(a + b), { label: "demo" })
+      Object.defineProperty(add, "label", { enumerable: false })
+      const wrapped = Context.overridable("ContextTest/add", add)
+      strictEqual(wrapped.length, add.length)
+      strictEqual(wrapped.name, add.name)
+      strictEqual(wrapped.label, "demo")
+      strictEqual(yield* wrapped(1, 2), 3)
+    }))
+
   it.effect("wraps a callable Effect such as a Reference as an Effect", () =>
     Effect.gen(function*() {
       const Port = Context.Reference<number>("ContextTest/Port", { defaultValue: () => 8080 })
