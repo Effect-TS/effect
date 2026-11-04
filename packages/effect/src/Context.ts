@@ -1462,6 +1462,10 @@ export type Overridable<A> = A & { readonly reference: Reference<A> }
  * platform, make the default depend on a service through its own `R` instead
  * of leaving it unimplemented.
  *
+ * A wrapped function keeps the own properties of its default, such as those
+ * added with `Object.assign`. They always come from the default: an override
+ * replaces what a call runs, not those properties.
+ *
  * **Example** (Overriding a function in a test)
  *
  * ```ts import.meta.vitest
@@ -1514,12 +1518,19 @@ export const overridable: <
 >(key: string, self: A) => Overridable<A> = (key, self) => {
   const reference = Reference<any>(key, { defaultValue: () => self })
   let wrapper: any
-  if (typeof self === "function") {
-    wrapper = (...args: Array<any>) => makeHybrid(reference, args)
-  } else if (isEffect(self)) {
+  // A service key is a function that is also an Effect, so the kind checks
+  // come before the callable check.
+  if (isEffect(self)) {
     wrapper = withFiber((fiber) => get(fiber.context, reference))
-  } else {
+  } else if (hasProperty(self, StreamTypeId)) {
     wrapper = makeStream(reference)
+  } else {
+    wrapper = function(this: unknown, ...args: Array<any>) {
+      return makeHybrid(reference, this, args)
+    }
+    // The wrapper's type is the default's, so it keeps the default's own
+    // properties as well.
+    Object.assign(wrapper, self)
   }
   wrapper.reference = reference
   return wrapper
@@ -1553,11 +1564,11 @@ const makeStream = (reference: Reference<any>) => ({
 // current implementation is called, so it is both an Effect and a Stream: the
 // Effect side runs the implementation, the Stream side delegates to the
 // channel of the stream it returns.
-const makeHybrid = (reference: Reference<any>, args: Array<any>) =>
+const makeHybrid = (reference: Reference<any>, receiver: unknown, args: Array<any>) =>
   Object.assign(
-    withFiber((fiber) => get(fiber.context, reference)(...args)),
+    withFiber((fiber) => get(fiber.context, reference).apply(receiver, args)),
     {
       [StreamTypeId]: StreamTypeId,
-      channel: makeChannel((context) => get(context, reference)(...args))
+      channel: makeChannel((context) => get(context, reference).apply(receiver, args))
     }
   )
