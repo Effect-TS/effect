@@ -35,13 +35,11 @@ export const make: (
   shouldQuit?: (input: Terminal.UserInput) => boolean
 ) => Effect.Effect<Terminal.Terminal, never, Scope.Scope> = Effect.fnUntraced(
   function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
-    const stdin = process.stdin
-    const stdout = process.stdout
     const lines = yield* Queue.make<string, Cause.Done>()
 
     // stdin "end" fires once per process, so remember end-of-input for readers
     // created after the event (Bun never sets `readableEnded`).
-    let inputEnded = stdin.readableEnded
+    let inputEnded = false
     let readlineActive = false
     const onStdinEnd = () => {
       inputEnded = true
@@ -49,12 +47,28 @@ export const make: (
         Queue.endUnsafe(lines)
       }
     }
-    stdin.once("end", onStdinEnd)
-    yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("end", onStdinEnd)))
+    let io: { stdin: typeof process.stdin; stdout: typeof process.stdout } | undefined
+    // Accessing Node's stdio getters can set O_NONBLOCK on inherited pipes.
+    // Leave them untouched until a terminal operation actually runs.
+    const getIo = () => {
+      if (io === undefined) {
+        const stdin = process.stdin
+        const stdout = process.stdout
+        inputEnded = stdin.readableEnded
+        stdin.once("end", onStdinEnd)
+        if (inputEnded) {
+          Queue.endUnsafe(lines)
+        }
+        io = { stdin, stdout }
+      }
+      return io
+    }
+    yield* Effect.addFinalizer(() => Effect.sync(() => io?.stdin.off("end", onStdinEnd)))
 
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
         Effect.sync(() => {
+          const { stdin } = getIo()
           const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
           const onLine = (line: string) => Queue.offerUnsafe(lines, line)
           const onClose = () => {
@@ -84,6 +98,7 @@ export const make: (
     // Only key input needs raw mode; `readLine` never requests it.
     const setRawMode = (enabled: boolean) =>
       Effect.sync(() => {
+        const { stdin } = getIo()
         if (stdin.isTTY) stdin.setRawMode(enabled)
       })
     const rawModeRef = yield* RcRef.make({
@@ -91,9 +106,10 @@ export const make: (
       idleTimeToLive: "10 millis"
     })
 
-    const columns = Effect.sync(() => stdout.columns ?? 0)
-    const rows = Effect.sync(() => stdout.rows ?? 0)
+    const columns = Effect.sync(() => getIo().stdout.columns ?? 0)
+    const rows = Effect.sync(() => getIo().stdout.rows ?? 0)
     const size = Effect.gen(function*() {
+      const { stdout } = getIo()
       const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1)
       const onResize = () => Queue.offerUnsafe(queue, { columns: stdout.columns ?? 0, rows: stdout.rows ?? 0 })
       yield* Effect.addFinalizer(() =>
@@ -108,6 +124,7 @@ export const make: (
     })
 
     const readInput = Effect.gen(function*() {
+      const { stdin } = getIo()
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
       const handleKeypress = (s: string | undefined, k: readline.Key) => {
         const userInput = {
@@ -146,19 +163,21 @@ export const make: (
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.suspend(() =>
-      Queue.poll(lines).pipe(
+    const readLine = Effect.suspend(() => {
+      getIo()
+      return Queue.poll(lines).pipe(
         Effect.flatMap(Option.match({
           onNone: () => Effect.scoped(Effect.andThen(RcRef.get(rlRef), Queue.take(lines))),
           onSome: Effect.succeed
         })),
         Effect.mapError(() => new Terminal.QuitError({}))
       )
-    )
+    })
 
     const display = (prompt: string) =>
       Effect.uninterruptible(
         Effect.callback<void, PlatformError>((resume) => {
+          const { stdout } = getIo()
           stdout.write(prompt, (err) =>
             Predicate.isNullish(err)
               ? resume(Effect.void)
