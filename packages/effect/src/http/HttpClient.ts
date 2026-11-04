@@ -720,15 +720,11 @@ export const make = (
               Scope.addFinalizer(scope, Effect.sync(() => controller.abort())),
               () => f(request, url, controller.signal, fiber as any)
             )
-        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
-          fiber.getRef(TracerDisabledWhen)(request)
-        if (tracerDisabled) {
-          return Effect.uninterruptibleMask((restore) =>
+        const exchange = (request: HttpClientRequest.HttpClientRequest) =>
+          Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(send(request)), {
-              onSuccess(response) {
-                return Effect.succeed(trackResponse(response, controller, scope !== undefined))
-              },
-              onFailure(cause) {
+              onSuccess: (response) => Effect.succeed(trackResponse(response, controller, scope !== undefined)),
+              onFailure: (cause) => {
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
@@ -736,6 +732,10 @@ export const make = (
               }
             })
           )
+        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
+          fiber.getRef(TracerDisabledWhen)(request)
+        if (tracerDisabled) {
+          return exchange(request)
         }
         return Effect.useSpan(
           fiber.getRef(SpanNameGenerator)(request),
@@ -753,27 +753,17 @@ export const make = (
             request = fiber.getRef(TracerPropagationEnabled)
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
-            return Effect.uninterruptibleMask((restore) =>
-              restore(send(request)).pipe(
-                Effect.withParentSpan(span, { captureStackTrace: false }),
-                Effect.matchCauseEffect({
-                  onSuccess: (response) => {
-                    span.attribute("http.response.status_code", response.status)
-                    tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
-                    // OpenTelemetry marks client spans as failed for 4xx and
-                    // 5xx responses, while the response itself still succeeds.
-                    if (response.status >= 400 && response.status < 600) {
-                      span.attribute("error.type", String(response.status))
-                      endSpanWithStatusError(fiber, span, request, response)
-                    }
-
-                    return Effect.succeed(trackResponse(response, controller, scope !== undefined))
-                  },
-                  onFailure(cause) {
-                    if (Cause.hasInterrupts(cause)) {
-                      controller.abort()
-                    }
-                    return Effect.failCause(cause)
+            return exchange(request).pipe(
+              Effect.withParentSpan(span, { captureStackTrace: false }),
+              Effect.tap((response) =>
+                Effect.sync(() => {
+                  span.attribute("http.response.status_code", response.status)
+                  tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+                  // OpenTelemetry marks client spans as failed for 4xx and
+                  // 5xx responses, while the response itself still succeeds.
+                  if (response.status >= 400 && response.status < 600) {
+                    span.attribute("error.type", String(response.status))
+                    endSpanWithStatusError(fiber, span, request, response)
                   }
                 })
               )
@@ -2053,10 +2043,7 @@ export const withCookiesRef: {
 export const withScope = <E, R>(
   self: HttpClient.With<E, R>
 ): HttpClient.With<E, R | Scope.Scope> =>
-  transformResponse(
-    self,
-    (effect) => Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestScope, scope))
-  )
+  transformResponse(self, Effect.provideServiceEffect(RequestScope, Effect.scope))
 
 /**
  * Enables following HTTP redirects up to a specified number of times.
