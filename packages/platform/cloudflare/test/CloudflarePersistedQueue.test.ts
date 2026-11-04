@@ -28,6 +28,11 @@ class FakeSql {
 
   exec(query: string, ...bindings: Array<unknown>) {
     if (query.startsWith("CREATE")) return this.rows([])
+    if (query.includes("DELETE FROM queue_items WHERE id = ? AND completed <> 0")) {
+      const item = this.items.get(String(bindings[0]))
+      if (item !== undefined && item.completed !== 0) this.items.delete(item.id)
+      return this.rows([])
+    }
     if (query.includes("INSERT OR IGNORE INTO queue_items")) {
       // A delayed offer stores its initial visibility deadline in lease_until.
       // The old two-binding insert remains immediately visible.
@@ -86,11 +91,13 @@ class FakeSql {
       return this.rows([])
     }
     if (query.includes("SET attempts = attempts + 1")) {
-      const item = this.items.get(String(bindings[1]))
+      const [lastFailure, maxAttempts, id] = bindings as [string, number | null, string]
+      const item = this.items.get(id)
       if (item !== undefined) {
+        item.completed = maxAttempts !== null && item.attempts + 1 >= maxAttempts ? 2 : 0
         item.attempts++
         item.lease_until = null
-        item.last_failure = String(bindings[0])
+        item.last_failure = lastFailure
         item.position = this.#nextPosition()
       }
       return this.rows([])

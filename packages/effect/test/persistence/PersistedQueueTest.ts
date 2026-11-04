@@ -490,44 +490,50 @@ export const suiteWith = <R>(
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 2n })
       }), testOptions)
 
-    it.effect(
-      "untilExecuted keeps an id reserved when cleanup expires an earlier failure",
-      () =>
-        Effect.gen(function*() {
-          const store = yield* PersistedQueue.PersistedQueueStore
-          const queue = yield* PersistedQueue.make({
-            name: "test-queue-until-executed-cleanup",
-            schema: Item,
-            maxAttempts: 1
-          })
-          const id = "until-executed-cleanup-id"
-          const offerOptions = { id, deduplicate: "untilExecuted" } as const
-          const fail = queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
-          const cleanupFailed = store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
+    // relies on cleanup to expire failures
+    if (options?.cleanup !== "unsupported") {
+      it.effect(
+        "untilExecuted keeps an id reserved when cleanup expires an earlier failure",
+        () =>
+          Effect.gen(function*() {
+            const store = yield* PersistedQueue.PersistedQueueStore
+            const queue = yield* PersistedQueue.make({
+              name: "test-queue-until-executed-cleanup",
+              schema: Item,
+              maxAttempts: 1
+            })
+            const id = "until-executed-cleanup-id"
+            const offerOptions = { id, deduplicate: "untilExecuted" } as const
+            const fail = queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+            const cleanupFailed = store.cleanup({
+              timeToLive: Duration.days(30),
+              failedTimeToLive: Duration.seconds(1)
+            })
 
-          // two elements with the same id fail, and cleanup expires only the first
-          yield* queue.offer({ n: 1n }, offerOptions)
-          yield* fail
-          yield* advancePastTtl
-          yield* queue.offer({ n: 2n }, offerOptions)
-          yield* fail
-          yield* cleanupFailed
+            // two elements with the same id fail, and cleanup expires only the first
+            yield* queue.offer({ n: 1n }, offerOptions)
+            yield* fail
+            yield* advancePastTtl
+            yield* queue.offer({ n: 2n }, offerOptions)
+            yield* fail
+            yield* cleanupFailed
 
-          // the second failure is retained, so a default-mode offer is ignored
-          yield* queue.offer({ n: 9n }, { id })
+            // the second failure is retained, so a default-mode offer is ignored
+            yield* queue.offer({ n: 9n }, { id })
 
-          // expiring the second failure must not release the pending element
-          yield* queue.offer({ n: 3n }, offerOptions)
-          yield* advancePastTtl
-          yield* cleanupFailed
-          yield* queue.offer({ n: 4n }, offerOptions)
+            // expiring the second failure must not release the pending element
+            yield* queue.offer({ n: 3n }, offerOptions)
+            yield* advancePastTtl
+            yield* cleanupFailed
+            yield* queue.offer({ n: 4n }, offerOptions)
 
-          assert.deepStrictEqual(yield* queue.take(Effect.succeed), { n: 3n })
-          const duplicate = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-          yield* assertNotDelivered(duplicate)
-        }),
-      testOptions
-    )
+            assert.deepStrictEqual(yield* queue.take(Effect.succeed), { n: 3n })
+            const duplicate = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+            yield* assertNotDelivered(duplicate)
+          }),
+        testOptions
+      )
+    }
 
     it.effect("processes concurrent elements exactly once with retries", () =>
       Effect.gen(function*() {
