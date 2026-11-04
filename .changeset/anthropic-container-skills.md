@@ -2,4 +2,4 @@
 "@effect/ai-anthropic": patch
 ---
 
-Fix code execution responses failing to decode when their `container` has no `skills`.
+Fix Anthropic responses failing to decode when their `container` has no `skills`, which the API omits unless the request loads skills.
