@@ -285,8 +285,11 @@ describe("TestClock", () => {
       const context = yield* Effect.context<never>()
       assert.doesNotThrow(() => JSON.stringify(context))
       const clock = yield* TestClock.testClockWith(Effect.succeed)
-      const copied = yield* Effect.context<never>().pipe(Effect.provideService(Clock.Clock, { ...clock }))
+      const copy = { ...clock }
+      const copied = yield* Effect.context<never>().pipe(Effect.provideService(Clock.Clock, copy))
       assert.doesNotThrow(() => JSON.stringify(copied))
+      yield* copy.adjust("1 second")
+      assert.strictEqual(JSON.parse(JSON.stringify(copy)).currentTimeMillis, 1000)
     }))
 
   it.effect("adjust - waits for woken fibers when the advancing fiber yields on its operation budget", () =>
