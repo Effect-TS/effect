@@ -1770,8 +1770,9 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
 // complete and have its result discarded. The parent still awaits the losers
 // on exit. Runs after `resume`, so a loser's interrupt cannot settle the race.
 const interruptRaceLosers = (fibers: Set<Fiber.Fiber<any, any>>, parent: Fiber.Fiber<any, any>) => {
+  const annotations = fiberStackAnnotations(parent)
   for (const fiber of fibers) {
-    fiber.interruptUnsafe(parent.id)
+    fiber.interruptUnsafe(parent.id, annotations)
   }
 }
 
