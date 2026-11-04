@@ -7,23 +7,23 @@ const program = Effect.service(LibsqlClient.LibsqlClient).pipe(Effect.asVoid)
 const sqlClient = Layer.succeed(SqlClient.SqlClient, {} as SqlClient.SqlClient)
 
 describe("LibsqlClient", () => {
-  it("yields the client shape and requires its identifier", () => {
-    expect(Effect.service(LibsqlClient.LibsqlClient)).type.toBe<
-      Effect.Effect<LibsqlClient.LibsqlClient, never, LibsqlClient.LibsqlClientId>
-    >()
-  })
-
-  it("rejects the client shape as a requirement", () => {
-    expect<Effect.Effect<void, never, LibsqlClient.LibsqlClient>>().type.not.toBeAssignableFrom(program)
-    expect<Effect.Effect<void, never, LibsqlClient.LibsqlClientId>>().type.not.toBeAssignableFrom<
-      Effect.Effect<void, never, LibsqlClient.LibsqlClient>
-    >()
-  })
-
   it("is not provided by a SqlClient layer", () => {
-    expect(Effect.provide(program, sqlClient)).type.toBe<Effect.Effect<void, never, LibsqlClient.LibsqlClientId>>()
+    expect(Effect.provide(program, sqlClient)).type.toBe<Effect.Effect<void, never, LibsqlClient.LibsqlClient>>()
     expect(Layer.provide(Layer.effectDiscard(program), sqlClient)).type.toBe<
-      Layer.Layer<never, never, LibsqlClient.LibsqlClientId>
+      Layer.Layer<never, never, LibsqlClient.LibsqlClient>
     >()
+  })
+
+  it("yields a client that is also a SqlClient", () => {
+    expect(Effect.service(LibsqlClient.LibsqlClient)).type.toBeAssignableTo<
+      Effect.Effect<LibsqlClient.LibsqlClient & SqlClient.SqlClient, never, LibsqlClient.LibsqlClient>
+    >()
+  })
+
+  it("rejects incorrect requirement annotations", () => {
+    expect<Effect.Effect<void, never, SqlClient.SqlClient>>().type.not.toBeAssignableFrom(program)
+    expect<Effect.Effect<void, never, LibsqlClient.LibsqlClient>>().type.not.toBeAssignableFrom(
+      Effect.service(SqlClient.SqlClient).pipe(Effect.asVoid)
+    )
   })
 })
