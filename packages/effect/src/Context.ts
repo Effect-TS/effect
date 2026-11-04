@@ -1530,8 +1530,8 @@ export const overridable: <
     }
     // The wrapper's type is the default's, so it keeps the default's own
     // properties as well, including non-enumerable ones such as `length` and
-    // `name`. The wrapper has its own `prototype`.
-    const { prototype: _, ...descriptors } = Object.getOwnPropertyDescriptors(self)
+    // `name`. The wrapper has its own `prototype` and `reference`.
+    const { prototype: _, reference: __, ...descriptors } = Object.getOwnPropertyDescriptors(self)
     Object.defineProperties(wrapper, descriptors)
   }
   wrapper.reference = reference
