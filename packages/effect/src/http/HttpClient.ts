@@ -1083,8 +1083,8 @@ export const retryTransient: {
  *
  * A timed out request is interrupted and fails with an `HttpClientError` whose
  * reason is a `TransportError` with a `Cause.TimeoutError` cause.
- * `retryTransient` treats it as transient. Interrupting a request aborts the
- * underlying transport.
+ * `retryTransient` treats it as transient. Interrupting a request while it
+ * waits for response headers aborts the underlying transport.
  *
  * The timer starts after request preprocessing and covers everything the
  * wrapped client does to produce a response. For a plain client this ends when
@@ -1101,6 +1101,11 @@ export const retryTransient: {
  * by response middleware applied after `timeout` and by consumers of the
  * `HttpClient` service. Apply a separate timeout to body reads such as
  * `response.json` or `response.stream` when needed.
+ *
+ * For a client wrapped with `withScope`, a timeout that fires after the
+ * response headers arrive, such as during a body read by response middleware,
+ * does not abort the transport. The connection stays open until the scope
+ * closes.
  *
  * **Example** (Timing out each attempt)
  *
@@ -2029,8 +2034,8 @@ export const withCookiesRef: {
  * Closing the scope aborts pending requests and open response bodies. A
  * request sent after the scope has closed is aborted before the transport
  * starts it. Interrupting a request before its response arrives still aborts
- * it, so `timeout` releases the connection. Once a response is returned, its
- * body is released only when the scope closes.
+ * it, so a `timeout` that fires before then releases the connection. Once a
+ * response is returned, its body is released only when the scope closes.
  *
  * **Gotchas**
  *
