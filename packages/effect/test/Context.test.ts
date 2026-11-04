@@ -1,9 +1,12 @@
+import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
-import { describe, it } from "vitest"
+import * as Stream from "effect/Stream"
 
 interface ContextInternals {
   readonly _flat: unknown
@@ -353,4 +356,74 @@ describe("Context", () => {
 
     strictEqual(context.mapUnsafe, map)
   })
+})
+
+describe("overridable", () => {
+  const makeGreet = () => Context.overridable("ContextTest/greet", (name: string) => Effect.succeed(`hello ${name}`))
+  const makeRange = () =>
+    Context.overridable(
+      "ContextTest/range",
+      (n: number) => Stream.fromIterable(Array.from({ length: n }, (_, i) => i))
+    )
+
+  it.effect("runs the default when nothing is provided", () =>
+    Effect.gen(function*() {
+      const greet = makeGreet()
+      strictEqual(yield* greet("effect"), "hello effect")
+    }))
+
+  it.effect("provideService overrides, and the lookup happens at run time", () =>
+    Effect.gen(function*() {
+      const greet = makeGreet()
+      const call = greet("effect")
+      strictEqual(yield* call, "hello effect")
+      strictEqual(
+        yield* Effect.provideService(call, greet.reference, (name) => Effect.succeed(`hi ${name}`)),
+        "hi effect"
+      )
+    }))
+
+  it.effect("Layer.succeed overrides", () =>
+    Effect.gen(function*() {
+      const greet = makeGreet()
+      const layer = Layer.succeed(greet.reference, (name) => Effect.succeed(`hi ${name}`))
+      strictEqual(yield* Effect.provide(greet("effect"), layer), "hi effect")
+    }))
+
+  it.effect("Effect.andThen calls the function", () =>
+    Effect.gen(function*() {
+      const greet = makeGreet()
+      strictEqual(yield* Effect.succeed("effect").pipe(Effect.andThen(greet)), "hello effect")
+    }))
+
+  it.effect("a Stream-returning function runs its default and its override", () =>
+    Effect.gen(function*() {
+      const range = makeRange()
+      const stream = range(3)
+      deepStrictEqual(yield* Stream.runCollect(stream), [0, 1, 2])
+      deepStrictEqual(
+        yield* Stream.runCollect(stream).pipe(Effect.provideService(range.reference, (n) => Stream.make(n))),
+        [3]
+      )
+    }))
+
+  it.effect("an Effect value runs its default and its override", () =>
+    Effect.gen(function*() {
+      const loadConfig = Context.overridable("ContextTest/loadConfig", Effect.succeed({ port: 8080 }))
+      deepStrictEqual(yield* loadConfig, { port: 8080 })
+      deepStrictEqual(
+        yield* Effect.provideService(loadConfig, loadConfig.reference, Effect.succeed({ port: 1 })),
+        { port: 1 }
+      )
+    }))
+
+  it.effect("a Stream value runs its default and its override", () =>
+    Effect.gen(function*() {
+      const events = Context.overridable("ContextTest/events", Stream.fromIterable(["a", "b"]))
+      deepStrictEqual(yield* Stream.runCollect(events), ["a", "b"])
+      deepStrictEqual(
+        yield* Stream.runCollect(events).pipe(Effect.provideService(events.reference, Stream.make("c"))),
+        ["c"]
+      )
+    }))
 })

@@ -21,6 +21,7 @@ import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
+import type * as Stream from "./Stream.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -1395,3 +1396,36 @@ export const Reference: <Service>(
     readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any
+
+/**
+ * The part of an overridable that exposes its `Context.Reference`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Overridable<in out Shape> {
+  readonly reference: Reference<Shape>
+}
+
+/**
+ * Wraps an `Effect`, a `Stream`, or a function returning one of them so its
+ * implementation can be replaced through the context via `.reference`.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const overridable: {
+  <A, E, R>(key: string, defaultValue: Effect<A, E, R>): Effect<A, E, R> & Overridable<Effect<A, E, R>>
+  <A, E, R>(
+    key: string,
+    defaultValue: Stream.Stream<A, E, R>
+  ): Stream.Stream<A, E, R> & Overridable<Stream.Stream<A, E, R>>
+  <F extends (...args: any) => Effect<any, any, any> | Stream.Stream<any, any, any>>(
+    key: string,
+    defaultValue: F
+  ): F & Overridable<F>
+} = () => {
+  throw new Error("Context.overridable is not implemented")
+}
