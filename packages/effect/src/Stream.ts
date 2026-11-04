@@ -1717,6 +1717,45 @@ export const unwrap = <A, E2, R2, E, R>(
 ): Stream<A, E | E2, R2 | Exclude<R, Scope.Scope>> => fromChannel(Channel.unwrap(Effect.map(effect, toChannel)))
 
 /**
+ * Creates an operation whose result is a Stream.
+ *
+ * **Details**
+ *
+ * The Stream counterpart of `Context.Operation`: the same key, the same
+ * service and the same call signature, but a call returns a Stream that looks
+ * the implementation up from the context of the fiber that runs it, through
+ * `Stream.unwrap`. Providing and overriding go through `.service` exactly as
+ * for an Effect operation.
+ *
+ * **Example** (A Stream operation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Stream } from "effect"
+ *
+ * const lines = Stream.Operation<(path: string) => Stream.Stream<string>>()("app/lines")
+ *
+ * const live = Layer.succeed(lines.service, (path) => Stream.make(`${path}:1`, `${path}:2`))
+ *
+ * const program = Stream.runCollect(lines("a.txt"))
+ * Effect.runSync(Effect.provide(program, live)) // => ["a.txt:1", "a.txt:2"]
+ * ```
+ *
+ * @see {@link unwrap} for the primitive this is built on
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Operation =
+  <Shape extends Context.Operation.StreamSignature>() =>
+  <const Key extends string>(key: Context.Operation.KeyFor<Key, Shape>): Context.Operation<Key, Shape> =>
+    Context.makeOperation(
+      key as string,
+      (service, receiver, args) =>
+        unwrap(service.useSync((implementation) => Reflect.apply(implementation, receiver, args)))
+    ) as any
+
+/**
  * Runs a stream that requires `Scope` in a managed scope, ensuring its
  * finalizers are run when the stream completes.
  *

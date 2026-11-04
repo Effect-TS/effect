@@ -1,6 +1,6 @@
-// Only functions returning an Effect or a Stream can be operations.
-import { Operation } from "../../src/Operation.ts"
+// Only functions returning an Effect can be Context operations (Stream.Operation takes functions returning a Stream).
+import * as Context from "effect/Context"
 
-export const sync = Operation<(path: string) => string>()("test/sync")
+export const sync = Context.Operation<(path: string) => string>()("test/sync")
 
-export const value = Operation<{ readonly port: number }>()("test/value")
+export const value = Context.Operation<{ readonly port: number }>()("test/value")
