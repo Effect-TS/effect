@@ -35,11 +35,16 @@ export interface QueueRuntimeOptions {
 
 /** @internal */
 export interface QueueRuntime {
-  readonly offer: (id: string, element: string, delayMillis?: number) => Promise<void>
+  readonly offer: (
+    id: string,
+    element: string,
+    delayMillis?: number,
+    deduplicate?: "untilExecuted" | "untilRemoved"
+  ) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, maxAttempts?: number) => Promise<void>
   readonly release: (id: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number) => Promise<void>
   readonly runAlarm: () => Promise<void>
@@ -94,9 +99,9 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     }))
 
   return {
-    offer: (id, element, delayMillis = 0) =>
+    offer: (id, element, delayMillis = 0, deduplicate) =>
       mutateAndWake(() => {
-        offerItem(sql, id, element, delayMillis > 0 ? options.now() + delayMillis : null)
+        offerItem(sql, id, element, delayMillis > 0 ? options.now() + delayMillis : null, deduplicate)
       }),
 
     // The taker joins the waiter list and the shared wake pass leases to it,
@@ -124,9 +129,9 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
 
     complete: (id) => Promise.resolve(completeItem(sql, id)),
 
-    fail: (id, lastFailure) =>
+    fail: (id, lastFailure, maxAttempts) =>
       mutateAndWake(() => {
-        failItem(sql, id, lastFailure)
+        failItem(sql, id, lastFailure, maxAttempts)
       }),
 
     release: (id) =>
