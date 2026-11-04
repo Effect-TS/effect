@@ -3401,7 +3401,7 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<
         // Toolkit validates raw MCP arguments before invoking the typed handler.
         return yield* built.handle(
           tool.name,
-          (payload ?? {}) as Tool.ParametersEncoded<Tools[typeof tool.name]>,
+          (payload ?? {}) as Schema.Json,
           undefined,
           decodeOptions
         ).pipe(
