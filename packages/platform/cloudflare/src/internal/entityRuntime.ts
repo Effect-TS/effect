@@ -677,12 +677,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       Pull.catchDone(() => Effect.succeed([]))
     )
 
-  const deliverScheduledReply = (
+  // Hands a scheduled reply to the pinned callers waiting in this wake and
+  // returns the reply targets stored now, which include any a duplicate added
+  // while the handler ran. Runs after the reply is saved: once the row is
+  // processed, a later duplicate reads the stored reply instead.
+  const settleScheduledReply = (
     requestId: string,
     reply: string,
     replyTos: ReadonlyArray<string> | undefined
-  ): Effect.Effect<void> =>
-    Effect.suspend(() => {
+  ): Effect.Effect<ReadonlyArray<string> | undefined> =>
+    Effect.map(loadMessage(sql, requestId), (message) => {
       const waiters = workerWaiters.get(requestId)
       if (waiters !== undefined) {
         workerWaiters.delete(requestId)
@@ -690,6 +694,15 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           Deferred.doneUnsafe(waiter.deferred, Effect.succeed(success(requestId, [reply])))
         }
       }
+      return message === undefined ? replyTos : message.replyTos
+    })
+
+  const pushScheduledReply = (
+    requestId: string,
+    reply: string,
+    replyTos: ReadonlyArray<string> | undefined
+  ): Effect.Effect<void> =>
+    Effect.suspend(() => {
       if (replyTos === undefined) return Effect.void
       const namespace = options.getNamespace()
       if (namespace === undefined) {
@@ -715,6 +728,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         { concurrency: "unbounded", discard: true }
       )
     })
+
+  const deliverScheduledReply = (
+    requestId: string,
+    reply: string,
+    replyTos: ReadonlyArray<string> | undefined
+  ): Effect.Effect<void> =>
+    Effect.flatMap(
+      settleScheduledReply(requestId, reply, replyTos),
+      (targets) => pushScheduledReply(requestId, reply, targets)
+    )
 
   // Runs one request under the entry permit up to forking its handler fiber,
   // then returns a continuation that awaits the handler output. Callers run
@@ -769,12 +792,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const execute = entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
         Effect.gen(function*() {
           const encoded = yield* encodeReplyFor(registration, rpc, reply)
-          if (persisted) {
-            yield* Effect.orDie(write(saveReply(sql, encoded)))
-          }
-          if (scheduled && reply._tag === "WithExit") {
-            yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
-          }
+          const save = persisted ? Effect.orDie(write(saveReply(sql, encoded))) : Effect.void
+          if (!scheduled || reply._tag !== "WithExit") return yield* save
+          // Saving the terminal reply, settling the waiters and reading the
+          // targets share the entry permit, so a duplicate entry either finds
+          // the stored reply or is registered in time to receive it.
+          const replyTos = yield* Semaphore.withPermit(
+            semaphore,
+            Effect.andThen(save, settleScheduledReply(requestId, encoded, runOptions?.replyTos))
+          )
+          yield* pushScheduledReply(requestId, encoded, replyTos)
         }))
       const fiber = yield* Effect.forkDetach(
         execute.pipe(
@@ -1073,6 +1100,22 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             delivery?.replyTo,
             String(envelope.requestId)
           )
+        }
+        // A scheduled ask past its deadline replies through its waiters and
+        // reply targets, not a session. The duplicate joins that execution,
+        // starting it if it is not running yet; the waiter is registered
+        // first so a run that settles at once still reaches it.
+        if (original.deliverAt !== undefined && !original.discard) {
+          const outcome = delayedOutcome(
+            persisted.originalId,
+            discard,
+            delivery?.replyTo,
+            String(envelope.requestId)
+          )
+          if (!isRunning(persisted.originalId)) {
+            yield* replayRows(registration, entityRuntime, [original])
+          }
+          return outcome
         }
         const continuation = yield* runStored(
           registration,
