@@ -1398,15 +1398,14 @@ export const Reference: <Service>(
 ) => Reference<Service> = Service as any
 
 /**
- * The part of an overridable that exposes its `Context.Reference`.
+ * The type of a value or function wrapped by {@link overridable}: the
+ * original type plus its `Context.Reference`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface Overridable<in out Shape> {
-  readonly reference: Reference<Shape>
-}
+export type Overridable<A> = A & { readonly reference: Reference<A> }
 
 /**
  * Wraps an `Effect`, a `Stream`, or a function returning one of them so its
@@ -1416,16 +1415,11 @@ export interface Overridable<in out Shape> {
  * @category services
  * @since 4.0.0
  */
-export const overridable: {
-  <A, E, R>(key: string, defaultValue: Effect<A, E, R>): Effect<A, E, R> & Overridable<Effect<A, E, R>>
-  <A, E, R>(
-    key: string,
-    defaultValue: Stream.Stream<A, E, R>
-  ): Stream.Stream<A, E, R> & Overridable<Stream.Stream<A, E, R>>
-  <F extends (...args: any) => Effect<any, any, any> | Stream.Stream<any, any, any>>(
-    key: string,
-    defaultValue: F
-  ): F & Overridable<F>
-} = () => {
+export const overridable: <
+  A extends
+    | Effect<any, any, any>
+    | Stream.Stream<any, any, any>
+    | ((...args: any) => Effect<any, any, any> | Stream.Stream<any, any, any>)
+>(key: string, self: A) => Overridable<A> = () => {
   throw new Error("Context.overridable is not implemented")
 }
