@@ -1351,7 +1351,7 @@ const makeStreamResponse = Effect.fnUntraced(
           }
 
           const content = delta.content
-          if (Predicate.isNotNullish(content)) {
+          if (Predicate.isNotNullish(content) && content.length > 0) {
             // If reasoning was previously active and now we're starting text content,
             // we should end the reasoning first to maintain proper order
             if (reasoningStarted && !textStarted) {
