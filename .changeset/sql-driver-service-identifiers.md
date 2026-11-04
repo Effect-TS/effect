@@ -17,7 +17,7 @@ Fix providing a generic `SqlClient` layer removing a driver service such as `PgC
 
 Each driver service (`PgClient`, `PgliteClient`, `LibsqlClient`, `MysqlClient`, `MssqlClient`, `ClickhouseClient`, `D1Client` and every `SqliteClient`) now has a requirement identifier that is separate from its client interface, such as `PgClient.PgClientId`. The runtime key is unchanged. `yield* PgClient.PgClient` still returns the client, and value annotations like `(pg: PgClient.PgClient) => pg.config` keep working.
 
-Requirement annotations that named the client interface must use the identifier instead. The old form is now a type error:
+Requirement annotations and layer output annotations that named the client interface must use the identifier instead:
 
 ```ts
 import { PgClient } from "@effect/sql-pg"
@@ -32,5 +32,7 @@ type Database = Layer.Layer<PgClient.PgClient | SqlClient.SqlClient>
 type Program = Effect.Effect<void, never, PgClient.PgClientId>
 type Database = Layer.Layer<PgClient.PgClientId | SqlClient.SqlClient>
 ```
+
+The compiler only finds some of these. Assigning a program that needs `PgClientId` to the old `Effect<_, _, PgClient.PgClient>` annotation is a type error. The old `Layer<PgClient.PgClient | SqlClient.SqlClient>` output annotation still compiles, because `Layer` is contravariant in its output, but it hides `PgClientId`. Providing that layer then leaves `PgClientId` in the program's requirements. Search for driver client types in `Layer` output positions and update them by hand.
 
 A driver identifier is no longer a subtype of `SqlClient.SqlClient`. Code that picks between driver layers, such as `cond ? PgClient.layer(...) : MysqlClient.layer(...)`, may need an explicit `Layer.Layer<SqlClient.SqlClient, E>` annotation.
