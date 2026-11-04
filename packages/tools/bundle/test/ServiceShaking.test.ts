@@ -1,6 +1,9 @@
 import * as babel from "@babel/core"
 import * as ServiceShaking from "@effect/bundle/ServiceShaking"
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as esbuild from "esbuild"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
@@ -19,6 +22,20 @@ const prunable = ["generator.ts", "combinators.ts", "context.ts", "overrides.ts"
 
 // Fixtures that can observe any FileSystem method, so nothing may be removed.
 const bailouts = ["bailout-escape.ts", "bailout-inspect.ts", "bailout-unsafe-key.ts"]
+
+// Small programs from the adversarial review where pruning changed behaviour.
+// Bailing out is an acceptable fix for each of them.
+const regressions = [
+  "release-and-tap.ts",
+  "logger-fiber.ts",
+  "on-fiber-start.ts",
+  "run-fork-hook.ts",
+  "receiver-method.ts",
+  "inherited-members.ts",
+  "async-factory.ts",
+  "key-mutation.ts",
+  "separator-comment.ts"
+]
 
 const fixtureArgs: Record<string, ReadonlyArray<string>> = {
   "bailout-escape.ts": ["copy"]
@@ -138,12 +155,16 @@ const getTempDir = () =>
   })
 
 let runs = 0
-const run = async (code: string, fixture: string): Promise<string> => {
+const load = async (code: string) => {
   const dir = await getTempDir()
   const file = path.join(dir, `bundle-${runs++}.mjs`)
   await fs.writeFile(file, code)
-  const module = await import(/* @vite-ignore */ pathToFileURL(file).href)
-  return module.main(path.join(dir, "input.txt"), ...(fixtureArgs[fixture] ?? []))
+  return import(/* @vite-ignore */ pathToFileURL(file).href)
+}
+
+const run = async (code: string, fixture: string): Promise<string> => {
+  const module = await load(code)
+  return module.main(path.join(await getTempDir(), "input.txt"), ...(fixtureArgs[fixture] ?? []))
 }
 
 const size = (code: string) => Buffer.byteLength(code)
@@ -152,7 +173,7 @@ const size = (code: string) => Buffer.byteLength(code)
 const timeout = 60_000
 
 describe("ServiceShaking", () => {
-  for (const fixture of [...prunable, ...bailouts]) {
+  for (const fixture of [...prunable, ...bailouts, ...regressions]) {
     it(`${fixture} behaves like the unoptimized bundle`, { timeout }, async () => {
       const [expected, actual] = await Promise.all([
         baseline(fixture).then((code) => run(code, fixture)),
@@ -193,4 +214,33 @@ describe("ServiceShaking", () => {
       }
     })
   }
+
+  it("exported-layer.ts keeps provider methods reachable from outside the bundle", { timeout }, async () => {
+    const fixture = "exported-layer.ts"
+    // Builds the exported Layer the way an importer of the bundle would.
+    const methods = async (code: string) => {
+      const { layer } = await load(code)
+      const context = await Effect.runPromise(Effect.scoped(Layer.build(layer)))
+      return Object.keys(Context.getOrUndefinedUnsafe<object>(context, "test/Exported") ?? {}).sort()
+    }
+    const [expected, actual] = await Promise.all([baseline(fixture).then(methods), shaken(fixture).then(methods)])
+    assert.deepStrictEqual(expected, ["read", "unused"])
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it("second-pass-drift.ts ignores edits when a consumer transforms differently in the second build", {
+    timeout
+  }, async () => {
+    const fixture = "second-pass-drift.ts"
+    let transforms = 0
+    const drift: Plugin = {
+      name: "second-pass-drift",
+      transform: {
+        filter: { id: /second-pass-drift\.ts$/ },
+        handler: (code) => ++transforms === 1 ? null : code.replace("s.read()", "s.unused()")
+      }
+    }
+    const code = await ServiceShaking.bundle(inputOptions(fixture, [drift]))
+    assert.oneOf(await run(code, fixture), ["1", "2"])
+  })
 })
