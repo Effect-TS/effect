@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "typetest/ok/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noErrorTruncation": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  }
+}
