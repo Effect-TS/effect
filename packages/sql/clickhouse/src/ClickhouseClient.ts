@@ -118,7 +118,7 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
  *
  * @stability unstable
  * @category services
- * @since 4.1.3
+ * @since 4.2.0
  */
 export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId

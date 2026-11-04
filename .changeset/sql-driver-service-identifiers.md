@@ -1,16 +1,16 @@
 ---
-"@effect/sql-clickhouse": patch
-"@effect/sql-d1": patch
-"@effect/sql-libsql": patch
-"@effect/sql-mssql": patch
-"@effect/sql-mysql2": patch
-"@effect/sql-pg": patch
-"@effect/sql-pglite": patch
-"@effect/sql-sqlite-bun": patch
-"@effect/sql-sqlite-do": patch
-"@effect/sql-sqlite-node": patch
-"@effect/sql-sqlite-react-native": patch
-"@effect/sql-sqlite-wasm": patch
+"@effect/sql-clickhouse": minor
+"@effect/sql-d1": minor
+"@effect/sql-libsql": minor
+"@effect/sql-mssql": minor
+"@effect/sql-mysql2": minor
+"@effect/sql-pg": minor
+"@effect/sql-pglite": minor
+"@effect/sql-sqlite-bun": minor
+"@effect/sql-sqlite-do": minor
+"@effect/sql-sqlite-node": minor
+"@effect/sql-sqlite-react-native": minor
+"@effect/sql-sqlite-wasm": minor
 ---
 
 Fix providing a generic `SqlClient` layer removing a driver service such as `PgClient` from an effect's requirements. The program type-checked as runnable but failed at runtime with `Service not found`.
