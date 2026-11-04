@@ -1205,7 +1205,11 @@ describe("fromJsonSchemaDocument", () => {
         schema: {
           type: "string",
           contentMediaType: "application/json",
-          contentSchema: { $ref: "#/$defs/Payload", description: "payload" },
+          contentSchema: {
+            $ref: "#/$defs/Payload",
+            unevaluatedProperties: false,
+            allOf: [{ properties: { tag: { type: "string" } } }]
+          },
           $defs: {
             Payload: {
               type: "object",
@@ -1218,7 +1222,7 @@ describe("fromJsonSchemaDocument", () => {
       },
       {
         codes: makeCode(
-          `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "allOf": [{ "type": "object", "properties": { "id": { "type": "integer" } }, "required": ["id"] }, { "description": "payload" }] } })`,
+          `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "unevaluatedProperties": false, "allOf": [{ "type": "object", "properties": { "id": { "type": "integer" } }, "required": ["id"] }, { "properties": { "tag": { "type": "string" } } }] } })`,
           `string`
         )
       }
