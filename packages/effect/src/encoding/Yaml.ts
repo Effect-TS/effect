@@ -1489,7 +1489,10 @@ const printNumber = (value: number): string => {
 // written as-is: no control characters besides tabs and line breaks, and no
 // leading or trailing whitespace on any line.
 const literalBlock = (text: string): { readonly header: string; readonly lines: Array<string> } | undefined => {
-  const body = text.replace(/\n+$/, "")
+  // A backward scan, since a trailing `\n+` pattern retries from every newline of an interior run.
+  let end = text.length
+  while (end > 0 && text[end - 1] === "\n") end--
+  const body = text.slice(0, end)
   if (body.length === 0 || /\r/.test(body) || nonPrintable.test(body)) return undefined
   const lines = body.split("\n")
   if (lines.some((line) => line.trim() !== line)) return undefined
