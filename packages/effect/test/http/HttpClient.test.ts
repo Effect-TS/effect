@@ -6,17 +6,28 @@ import {
   Deferred,
   Duration,
   Effect,
+  Equal,
   Exit,
   Fiber,
+  Hash,
   Layer,
   Option,
   Redacted,
   Ref,
   Schedule,
   Schema,
+  Scope,
   Stream
 } from "effect"
-import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
+import {
+  Cookies,
+  Headers,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  UrlParams
+} from "effect/http"
 import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -730,6 +741,51 @@ Missing key
         assert.notInclude(json, "token-secret")
         assert.notInclude(json, "key-secret")
       }))
+
+    it.effect("compares errors equal when only the redacted names of their executions differ", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.fail(new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }))
+        )
+        const request = HttpClientRequest.get("http://test/path")
+
+        const a = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["foo"])
+        )
+        const b = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["bar"])
+        )
+
+        strictEqual(a.message, b.message)
+        assert.isTrue(Equal.equals(a, b))
+        strictEqual(Hash.hash(a), Hash.hash(b))
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
+    it.effect("serializes an executed request with the redacted names of its execution", () =>
+      Effect.gen(function*() {
+        let sent: HttpClientRequest.HttpClientRequest | undefined
+        const client = HttpClient.make((request) => {
+          sent = request
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* client.execute(
+          HttpClientRequest.get("http://test/path?token=url-secret").pipe(
+            HttpClientRequest.setUrlParam("token", "param-secret"),
+            HttpClientRequest.setHeader("x-token", "header-secret")
+          )
+        ).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
+          Effect.provideService(Headers.CurrentRedactedNames, ["x-token"])
+        )
+
+        const json = JSON.stringify(sent)
+        for (const secret of ["url-secret", "param-secret", "header-secret"]) {
+          assert.notInclude(json, secret)
+        }
+      }))
   })
 
   describe("followRedirects", () => {
@@ -842,6 +898,11 @@ Missing key
         const { client, requests } = yield* makeRedirectClient(303, "/destination")
         yield* HttpClientRequest.post("https://origin.test/start").pipe(
           HttpClientRequest.bodyText("payload"),
+          HttpClientRequest.setHeaders({
+            "content-encoding": "identity",
+            "content-language": "en",
+            "content-location": "/original"
+          }),
           client.execute
         )
 
@@ -850,6 +911,9 @@ Missing key
         assert.strictEqual(redirected.body._tag, "Empty")
         assert.isUndefined(redirected.headers["content-type"])
         assert.isUndefined(redirected.headers["content-length"])
+        assert.isUndefined(redirected.headers["content-encoding"])
+        assert.isUndefined(redirected.headers["content-language"])
+        assert.isUndefined(redirected.headers["content-location"])
       }))
 
     it.effect.each([301, 302])("switches POST to GET on %s redirects", (status) =>
@@ -877,6 +941,28 @@ Missing key
         assert.strictEqual(redirected.method, "PUT")
         assert.strictEqual(redirected.body._tag, "Uint8Array")
       }))
+  })
+
+  it("classifies transient responses and errors", () => {
+    const request = HttpClientRequest.get("http://test/")
+    const responses = [200, 404, 408, 429, 500, 501, 502, 503, 504].map((status) =>
+      HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    )
+    const statusErrors = responses.map((response) =>
+      new HttpClientError.HttpClientError({ reason: new HttpClientError.StatusCodeError({ request, response }) })
+    )
+    const expected = [false, false, true, true, true, false, true, true, true]
+    assert.deepStrictEqual(responses.map(HttpClient.isTransientResponse), expected)
+    assert.deepStrictEqual(statusErrors.map(HttpClient.isTransientError), expected)
+    assert.deepStrictEqual(
+      [
+        new Cause.TimeoutError(),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.EncodeError({ request }) }),
+        new Error("boom")
+      ].map(HttpClient.isTransientError),
+      [true, true, false, false]
+    )
   })
 
   describe("retryTransient", () => {
@@ -935,6 +1021,73 @@ Missing key
           strictEqual((yield* Fiber.join(fiber)).status, 200)
         })
     )
+  })
+
+  describe("timeout", () => {
+    it.effect("fails with a TransportError and aborts the request", () =>
+      Effect.gen(function*() {
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((_request, _url, requestSignal) => {
+          signal = requestSignal
+          return Effect.never
+        }).pipe(HttpClient.timeout("5 seconds"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("5 seconds")
+        const exit = yield* Fiber.await(fiber)
+
+        assert.isTrue(Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        strictEqual(error.reason._tag, "TransportError")
+        strictEqual(error.request.url, "http://test/")
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+        assert.include(error.message, "timed out")
+        assert.isTrue(signal!.aborted)
+      }))
+
+    it.effect("gives each retryTransient attempt a fresh budget", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.never
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.timeout("1 second"), HttpClient.retryTransient({ times: 1 }))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        strictEqual(yield* Ref.get(attempts), 2)
+        yield* TestClock.adjust("900 millis")
+        strictEqual((yield* Fiber.join(fiber)).status, 200)
+      }))
+
+    it.effect("bounds the whole retry loop when applied after retryTransient", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(Ref.getAndUpdate(attempts, (n) => n + 1), (n) =>
+            n === 0
+              ? Effect.andThen(
+                Effect.sleep("600 millis"),
+                Effect.fail(
+                  new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+                )
+              )
+              : Effect.as(Effect.sleep("900 millis"), HttpClientResponse.fromWeb(request, new Response(null))))
+        ).pipe(HttpClient.retryTransient({ times: 1 }), HttpClient.timeout("1 second"))
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("1 second")
+        const exit = fiber.pollUnsafe()
+
+        strictEqual(yield* Ref.get(attempts), 2)
+        assert.isTrue(exit !== undefined && Exit.isFailure(exit))
+        const error = Cause.squash((exit as Exit.Failure<unknown, unknown>).cause)
+        assert.instanceOf(error, HttpClientError.HttpClientError)
+        assert.isTrue(Cause.isTimeoutError(error.cause))
+      }))
   })
 
   describe("stream", () => {
@@ -2246,6 +2399,197 @@ Missing key
         assert.deepStrictEqual(yield* Ref.get(hosts), ["down.test:8080", "up.test"])
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
+
+  it.effect("sends stored response cookies only to the matching host", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const host = new URL(request.url).hostname
+          const setCookie = host === "api.example.com"
+            ? "session=secret"
+            : "session=attacker"
+          return Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            new Response(null, { status: 200, headers: { "set-cookie": setCookie } })
+          ))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+
+      assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
+    }))
+
+  it.effect("stores cookies using the final response host and default path", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          const source = new Response(null, { headers: { "set-cookie": "session=final" } })
+          Object.defineProperty(source, "url", { value: "https://login.example.com/auth/callback" })
+          return Effect.succeed(HttpClientResponse.fromWeb(request, source))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/start")
+
+      const stored = yield* Ref.get(jar)
+      const now = yield* Clock.currentTimeMillis
+      assert.strictEqual(
+        Cookies.toRequestCookieHeader(stored, "https://login.example.com/auth/next", now),
+        "session=final"
+      )
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://api.example.com/start", now), undefined)
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://login.example.com/other", now), undefined)
+    }))
+
+  it.effect("sends stored cookies when the URL is prepended after withCookiesRef", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.make((request) => {
+        seen.push(request.headers.cookie)
+        return Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response(null, { status: 200, headers: { "set-cookie": "session=abc; Path=/" } })
+        ))
+      }).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.mapRequest(HttpClientRequest.prependUrl("https://api.example.com"))
+      )
+
+      yield* client.post("/login")
+      yield* client.get("/me")
+
+      assert.deepStrictEqual(seen, [undefined, "session=abc"])
+    }))
+
+  it.effect("selects stored cookies for each redirect hop", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      yield* Ref.update(jar, Cookies.mergeIntoArray("https://b.test/", Cookies.fromSetCookie(["b=1"]), 0))
+      const redirects: Record<string, Record<string, string>> = {
+        "https://a.test/start": { location: "https://a.test/next", "set-cookie": "a=1" },
+        "https://a.test/next": { location: "https://b.test/final" }
+      }
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.make((request) => {
+        seen.push(request.headers.cookie)
+        const headers = redirects[request.url]
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: headers ? 302 : 200, headers }))
+        )
+      }).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.followRedirects()
+      )
+
+      yield* client.get("https://a.test/start")
+
+      assert.deepStrictEqual(seen, [undefined, "a=1", "b=1"])
+    }))
+
+  it.effect("keeps withScope aborting a request that withCookiesRef adds cookies to", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      yield* Ref.update(
+        jar,
+        Cookies.mergeIntoArray("https://api.example.com/", Cookies.fromSetCookie(["session=abc"]), 0)
+      )
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        Effect.andThen(
+          Deferred.succeed(started, signal),
+          Effect.never.pipe(Effect.as(HttpClientResponse.fromWeb(request, new Response(null))))
+        )
+      ).pipe(
+        HttpClient.withCookiesRef(jar),
+        HttpClient.withScope
+      )
+
+      const scope = yield* Scope.make()
+      yield* client.get("https://api.example.com/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
+
+  it.effect("keeps a redirect scoped when withScope is applied outside followRedirects", () =>
+    Effect.gen(function*() {
+      const final = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((request, _url, signal) =>
+        request.url.endsWith("/start")
+          ? Effect.succeed(
+            HttpClientResponse.fromWeb(request, new Response(null, { status: 302, headers: { location: "/final" } }))
+          )
+          : Effect.andThen(Deferred.succeed(final, signal), Effect.never)
+      ).pipe(
+        HttpClient.followRedirects(),
+        HttpClient.withScope
+      )
+
+      const scope = yield* Scope.make()
+      yield* client.get("https://origin.test/start").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(final)
+      assert.isFalse(signal.aborted)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(signal.aborted)
+    }))
+
+  it.effect("keeps separate withScope owners for concurrent runs of one response effect", () =>
+    Effect.gen(function*() {
+      const signals = new Map<number, AbortSignal>()
+      const dispatched = yield* Deferred.make<void>()
+      const arrived = yield* Ref.make(0)
+      const bothArrived = yield* Deferred.make<void>()
+      const client = HttpClient.make((_request, _url, signal, fiber) => {
+        signals.set(fiber.id, signal)
+        return Effect.andThen(signals.size === 2 ? Deferred.succeed(dispatched, void 0) : Effect.void, Effect.never)
+      }).pipe(
+        // Hold both runs between withScope and dispatch until both have entered
+        HttpClient.transformResponse((effect) =>
+          Ref.updateAndGet(arrived, (n) => n + 1).pipe(
+            Effect.flatMap((n) => n === 2 ? Deferred.succeed(bothArrived, void 0) : Effect.void),
+            Effect.andThen(Deferred.await(bothArrived)),
+            Effect.andThen(effect)
+          )
+        ),
+        HttpClient.withScope
+      )
+      const effect = client.get("https://origin.test/slow")
+
+      const scopeA = yield* Scope.make()
+      const scopeB = yield* Scope.make()
+      const fiberA = yield* effect.pipe(Scope.provide(scopeA), Effect.forkChild)
+      const fiberB = yield* effect.pipe(Scope.provide(scopeB), Effect.forkChild)
+      yield* Deferred.await(dispatched)
+      yield* Scope.close(scopeA, Exit.void)
+      assert.isTrue(signals.get(fiberA.id)!.aborted)
+      assert.isFalse(signals.get(fiberB.id)!.aborted)
+    }))
+
+  it.effect("aborts a withScope request interrupted before its response", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<AbortSignal>()
+      const client = HttpClient.make((_request, _url, signal) =>
+        Effect.andThen(Deferred.succeed(started, signal), Effect.never)
+      ).pipe(HttpClient.withScope)
+
+      const scope = yield* Scope.make()
+      const fiber = yield* client.get("https://origin.test/slow").pipe(Scope.provide(scope), Effect.forkChild)
+      const signal = yield* Deferred.await(started)
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(signal.aborted)
+    }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
