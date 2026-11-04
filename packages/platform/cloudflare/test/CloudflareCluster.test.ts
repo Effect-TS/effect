@@ -21,6 +21,10 @@ const Counter = Entity.make("Counter", [
   Rpc.make("Increment")
 ])
 
+const Numbers = Entity.make("Numbers", [
+  Rpc.make("Count", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+])
+
 class ScheduledPayload extends Schema.Class<ScheduledPayload>("CloudflareScheduledPayload")({
   deliverAt: Schema.Number,
   id: Schema.String
@@ -65,10 +69,10 @@ class FakeNamespace {
   }
 }
 
-const makeOptions = () => {
-  const entityNamespace = new FakeNamespace()
+const makeOptions = (stub?: object) => {
+  const entityNamespace = new FakeNamespace(stub)
   const options: CloudflareCluster.LayerOptions = {
-    entities: [User],
+    entities: [User, Numbers],
     entityNamespace: entityNamespace as any,
     workflowNamespace: new FakeNamespace() as any,
     queueNamespace: new FakeNamespace() as any,
@@ -77,7 +81,57 @@ const makeOptions = () => {
   return { entityNamespace, options }
 }
 
+// Replies to every request with the encoded replies built from its request id.
+const replyingStub = (replies: (requestId: string) => ReadonlyArray<object>) => ({
+  invoke(envelopeText: string) {
+    const requestId = JSON.parse(envelopeText).requestId
+    return Promise.resolve({
+      _tag: "Success",
+      requestId,
+      replies: replies(requestId).map((reply) => JSON.stringify(reply))
+    })
+  },
+  acknowledge() {
+    return Promise.resolve([])
+  }
+})
+
+const pongStub = () =>
+  replyingStub((requestId) => [{ _tag: "WithExit", requestId, id: "pong", exit: { _tag: "Success", value: "pong" } }])
+
 describe("CloudflareCluster", () => {
+  describe("Entity.client", () => {
+    it("works without a caller Scope", async () => {
+      const { options } = makeOptions(pongStub())
+      const result = await Effect.runPromise(
+        Effect.flatMap(User.client, (makeClient) => makeClient("42").Ping(void 0)).pipe(
+          Effect.provide(CloudflareCluster.layer(options))
+        )
+      )
+      assert.strictEqual(result, "pong")
+    })
+
+    it.effect("keeps working after the scope it was obtained in closes", () =>
+      Effect.gen(function*() {
+        const makeClient = yield* Effect.scoped(User.client)
+        const result = yield* makeClient("42").Ping(void 0)
+        assert.strictEqual(result, "pong")
+      }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions(pongStub()).options))))
+
+    it.effect("returns a Dequeue for a streaming RPC with asQueue: true", () =>
+      Effect.gen(function*() {
+        const makeClient = yield* Numbers.client
+        const queue = yield* makeClient("42").Count(void 0, { asQueue: true })
+        const values = yield* Stream.runCollect(Stream.fromQueue(queue))
+        assert.deepStrictEqual(values, [1, 2])
+      }).pipe(Effect.provide(CloudflareCluster.layer(
+        makeOptions(replyingStub((requestId) => [
+          { _tag: "Chunk", requestId, id: "chunk", sequence: 0, values: [1, 2] },
+          { _tag: "WithExit", requestId, id: "exit", exit: { _tag: "Success", value: null } }
+        ])).options
+      ))))
+  })
+
   describe("layer", () => {
     it.effect("routes generated entity proxy handlers through the encoded Durable Object name", () => {
       const stub = {
