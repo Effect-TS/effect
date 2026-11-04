@@ -1,27 +1,30 @@
 effect/Supervisor#AbstractSupervisor:
-  replacement: "none"
-  note: "The ambient Supervisor abstraction and runtime event hooks were removed."
+  replacement: "Supervisor.Supervisor"
+  note: "Implement the `Supervisor.Supervisor` interface with an object literal or a class; there is no abstract base class."
 effect/Supervisor#addSupervisor:
-  replacement: "none"
-  note: "Layer-installed ambient supervision was removed; use structured concurrency and explicit FiberSet or FiberMap tracking."
+  replacement: "Supervisor.layer"
+  note: "`Supervisor.layer` adds a Supervisor to the one in place, as `addSupervisor` did. Under a built `ManagedRuntime` it observes the root fibers; under `Layer.launch` or a platform `runMain` only forks, so use `Effect.withSupervisor` around `main`."
 effect/Supervisor#fibersIn:
   replacement: "FiberSet"
-  note: "Use a scoped FiberSet and explicitly run or add fibers; it does not ambiently observe every descendant."
+  note: "Use a scoped FiberSet and explicitly run or add fibers. To observe every descendant instead, install a `Supervisor.Supervisor` and keep a set in `onStart`/`onEnd`."
 effect/Supervisor#fromEffect:
   replacement: "none"
   note: "The Supervisor abstraction and its effect-valued observation hook were removed."
 effect/Supervisor#none:
-  replacement: "none"
-  note: "The Supervisor abstraction was removed; normal structured concurrency needs no no-op supervisor."
+  replacement: "undefined"
+  note: "There is no no-op Supervisor: `undefined` means none. Provide `undefined` to `Supervisor.Supervisor` to opt a region's forks out."
 effect/Supervisor#Supervisor:
-  replacement: "none"
-  note: "Ambient fiber supervision was removed; use structured concurrency or explicit FiberSet and FiberMap tracking."
+  replacement: "Supervisor.Supervisor"
+  note: "Now a plain interface with four required methods, `onStart`, `onEnd`, `onBlock` and `onUnblock`, and no `value` or `zip`. `onSuspend`/`onResume` became `onBlock`/`onUnblock`, which fire only when a fiber waits, never when it yields. There is no `onEffect`: use `Tracer.context` for per-operation interposition. `Supervisor.Supervisor` is also the reference that installs one."
 effect/Supervisor#Supervisor.Variance:
   replacement: "none"
   note: "The Supervisor abstraction and its variance marker were removed."
 effect/Supervisor#SupervisorTypeId:
   replacement: "none"
   note: "The Supervisor abstraction and its type identifier were removed."
+effect/Supervisor#track:
+  replacement: "none"
+  note: "There is no built-in tracking Supervisor. Keep a `Set` of fibers in `onStart`/`onEnd` of a `Supervisor.Supervisor` (holding them weakly if they may block forever), or use `FiberSet` for fibers you fork yourself."
 effect/Supervisor#unsafeTrack:
-  replacement: "FiberSet"
-  note: "Use scoped FiberSet.make and explicitly run or add fibers; there is no unsafe unscoped ambient tracker."
+  replacement: "none"
+  note: "There is no built-in tracking Supervisor. Keep a `Set` of fibers in `onStart`/`onEnd` of a `Supervisor.Supervisor`, or use `FiberSet` for fibers you fork yourself."
