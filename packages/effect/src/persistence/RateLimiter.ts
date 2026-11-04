@@ -786,6 +786,7 @@ export const makeMemoryStore: Effect.Effect<
           if (options.limit === undefined) {
             counter.expiresAt += refillRateMillis * options.tokens
           } else if (counter.expiresAt === now && options.tokens > 0) {
+            // A capped window opens on its first positive admission and lasts the full window.
             counter.expiresAt = now + refillRateMillis * options.limit
           }
           return [counter.count, counter.expiresAt - now] as const
@@ -1156,14 +1157,8 @@ if limit and next > limit then
   return { string.format("%.17g", next), currentpttl }
 end
 
-if limit then
-  -- Keep the window's expiry; PX instead of KEEPTTL supports Redis before 6.0.
-  local keptpttl = math.max(1, currentpttl)
-  redis.call("SET", key, string.format("%.17g", next), "PX", keptpttl)
-  return { string.format("%.17g", next), keptpttl }
-end
-
-local nextpttl = math.max(1, math.ceil(currentpttl + (refillms * tokens)))
+-- A capped window keeps its expiry (PX rather than KEEPTTL, which needs Redis 6.0).
+local nextpttl = math.max(1, limit and currentpttl or math.ceil(currentpttl + (refillms * tokens)))
 redis.call("SET", key, next, "PX", nextpttl)
 -- Use 17 significant digits to round-trip fractional token counts.
 return { string.format("%.17g", next), nextpttl }
