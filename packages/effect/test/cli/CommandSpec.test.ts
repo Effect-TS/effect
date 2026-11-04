@@ -117,16 +117,10 @@ describe("CommandSpec", () => {
         [["debug-port", true], ["verbose", false]]
       )
 
-      // An aliased subcommand is listed once, with its alias as data.
+      // Same order as help: ungrouped subcommands first, then groups in
+      // declaration order. An aliased subcommand is listed once, with its
+      // alias as data.
       assert.deepStrictEqual(spec.subcommands, [
-        {
-          name: "deploy",
-          alias: "d",
-          group: "Ops",
-          unlisted: false,
-          shortDescription: "Deploy",
-          description: "Deploy the application"
-        },
         {
           name: "experimental-foo",
           alias: undefined,
@@ -134,6 +128,14 @@ describe("CommandSpec", () => {
           unlisted: true,
           shortDescription: undefined,
           description: undefined
+        },
+        {
+          name: "deploy",
+          alias: "d",
+          group: "Ops",
+          unlisted: false,
+          shortDescription: "Deploy",
+          description: "Deploy the application"
         }
       ])
     })
