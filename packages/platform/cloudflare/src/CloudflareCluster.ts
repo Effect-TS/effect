@@ -34,6 +34,7 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import { type FromClient, RequestId } from "effect/rpc/RpcMessage"
 import * as RpcSchema from "effect/rpc/RpcSchema"
 import * as Schema from "effect/Schema"
+import * as Scope from "effect/Scope"
 import type * as SqlClient from "effect/sql/SqlClient"
 import * as Stream from "effect/Stream"
 import type { WorkflowEngine } from "effect/workflow/WorkflowEngine"
@@ -182,6 +183,7 @@ const isClusterCronEntity = (entity: Entity.Entity<any, any>): boolean => {
 }
 
 const make = Effect.fnUntraced(function*(options: LayerOptions) {
+  const layerScope = yield* Effect.scope
   const entities = new Map<string, Entity.Entity<any, any>>()
   for (const entity of options.entities) {
     entities.set(entity.type, entity)
@@ -197,8 +199,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       )
     )
 
-  const makeClient = Effect.fnUntraced(function*(entity: Entity.Entity<any, any>) {
-    if (!entities.has(entity.type)) return yield* unknownEntity(entity)
+  const buildClient = Effect.fnUntraced(function*(entity: Entity.Entity<any, any>) {
     type ClientEntry = {
       readonly rpc: Rpc.AnyWithProps
       readonly context: Context.Context<never>
@@ -210,10 +211,11 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
 
     // `handleFromClient` is hoisted and only invoked once requests are made,
     // after `client` is constructed.
-    const client = yield* RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError>(entity.protocol, {
+    const client = yield* RpcClient.makeNoSerialization<any, MailboxFull | PersistenceError, true>(entity.protocol, {
       spanPrefix: `${entity.type}.client`,
       supportsAck: true,
       generateRequestId: () => RequestId(uuidV7(clock.currentTimeMillisUnsafe())),
+      flatten: true,
       onFromClient: (options) => handleFromClient(options)
     })
 
@@ -410,6 +412,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       const result: Record<string, unknown> = {}
       for (const tag of entity.protocol.requests.keys()) {
         const rpc = entity.protocol.requests.get(tag)! as Rpc.AnyWithProps
+        const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
         const contextFor = (
           ambient: Context.Context<never>,
           methodOptions?: { readonly context?: Context.Context<never> }
@@ -427,26 +430,43 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
           }
           return requestContext
         }
-        result[tag] = RpcSchema.isStreamSchema(rpc.successSchema)
-          ? (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
-            Stream.unwrap(
-              Effect.map(Effect.context<never>(), (ambient) =>
-                (client.client as any)[tag](payload, {
-                  ...methodOptions,
-                  context: contextFor(ambient, methodOptions)
-                }))
-            )
-          : (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) =>
-            Effect.contextWith((ambient) =>
-              (client.client as any)[tag](payload, {
-                ...methodOptions,
-                context: contextFor(ambient, methodOptions)
-              })
-            )
+        result[tag] = (payload: unknown, methodOptions?: {
+          readonly context?: Context.Context<never>
+          readonly asQueue?: boolean
+        }) => {
+          // The caller's context is read when the request runs, so it carries
+          // the calling entity's reply target. The untyped protocol erases
+          // the stream/queue return shape, hence `any`.
+          const call = (ambient: Context.Context<never>): any =>
+            client.client(tag, payload, { ...methodOptions, context: contextFor(ambient, methodOptions) })
+          // With `asQueue`, a stream RPC yields its Dequeue as an Effect.
+          return isStream && methodOptions?.asQueue !== true
+            ? Stream.unwrap(Effect.map(Effect.context<never>(), call))
+            : Effect.contextWith(call)
+        }
       }
       return result as any
     }
   })
+
+  type ClientFactory = (entityId: string) => any
+  // Like `Sharding`, each entity's base client is built once under the layer
+  // scope, so it needs no caller Scope and outlives the scope it was first
+  // requested in.
+  const clients = new Map<Entity.Entity<any, any>, Deferred.Deferred<ClientFactory>>()
+  const makeClient = (entity: Entity.Entity<any, any>): Effect.Effect<ClientFactory> =>
+    Effect.suspend(() => {
+      if (!entities.has(entity.type)) return unknownEntity(entity)
+      const existing = clients.get(entity)
+      if (existing !== undefined) return Deferred.await(existing)
+      const deferred = Deferred.makeUnsafe<ClientFactory>()
+      clients.set(entity, deferred)
+      return buildClient(entity).pipe(
+        Effect.provideService(Scope.Scope, layerScope),
+        Effect.tap((factory) => Deferred.succeed(deferred, factory)),
+        Effect.uninterruptible
+      )
+    })
 
   const registerEntity = Effect.fnUntraced(function*(
     entity: Entity.Entity<any, any>,
