@@ -1722,17 +1722,18 @@ export const unwrap = <A, E2, R2, E, R>(
  * **Details**
  *
  * The Stream counterpart of `Context.Operation`: the same key, the same
- * service and the same call signature, but a call returns a Stream that looks
- * the implementation up from the context of the fiber that runs it, through
- * `Stream.unwrap`. Providing and overriding go through `.service` exactly as
- * for an Effect operation.
+ * service, the same two call forms and the same call signature, but a call
+ * returns a Stream that looks the implementation up from the context of the
+ * fiber that runs it, through `Stream.unwrap`. Providing and overriding go
+ * through `.service` exactly as for an Effect operation. A shape that is a
+ * Stream rather than a function is called with no arguments.
  *
  * **Example** (A Stream operation)
  *
  * ```ts import.meta.vitest
  * import { Effect, Layer, Stream } from "effect"
  *
- * const lines = Stream.Operation<(path: string) => Stream.Stream<string>>()("app/lines")
+ * const lines: Stream.Operation<"app/lines", (path: string) => Stream.Stream<string>> = Stream.Operation("app/lines")
  *
  * const live = Layer.succeed(lines.service, (path) => Stream.make(`${path}:1`, `${path}:2`))
  *
@@ -1746,14 +1747,38 @@ export const unwrap = <A, E2, R2, E, R>(
  * @category services
  * @since 4.0.0
  */
-export const Operation =
-  <Shape extends Context.Operation.StreamSignature>() =>
-  <const Key extends string>(key: Context.Operation.KeyFor<Key, Shape>): Context.Operation<Key, Shape> =>
-    Context.makeOperation(
-      key as string,
-      (service, receiver, args) =>
-        unwrap(service.useSync((implementation) => Reflect.apply(implementation, receiver, args)))
-    ) as any
+/* @__NO_SIDE_EFFECTS__ */
+export const Operation: {
+  <Shape extends Context.Operation.StreamSignature>(): <const Key extends string>(
+    key: Context.Operation.KeyFor<Key, Shape>
+  ) => Context.Operation<Key, Shape>
+  <const Key extends string, Shape extends Context.Operation.StreamSignature = never>(
+    key: Context.Operation.KeyFor<Key, Shape>
+  ): Context.Operation<Key, Shape>
+} = function() {
+  return arguments.length === 0
+    ? (key: string) => Context.makeOperation(key, streamCall)
+    : Context.makeOperation(arguments[0], streamCall)
+} as any
+
+/**
+ * The type of a Stream operation: `Context.Operation` with a Stream shape.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Operation<Key extends string, Shape extends Context.Operation.StreamSignature> = Context.Operation<
+  Key,
+  Shape
+>
+
+const streamCall = (service: Context.Service<any, any>, receiver: unknown, args: ArrayLike<unknown>) =>
+  unwrap(
+    service.useSync((implementation) =>
+      isStream(implementation) ? implementation : Reflect.apply(implementation, receiver, args)
+    )
+  )
 
 /**
  * Runs a stream that requires `Scope` in a managed scope, ensuring its

@@ -8,14 +8,20 @@
   "scripts": {
     "check": "tsc -p tsconfig.json",
     "check-errors": "node scripts/check-errors.ts",
+    "check-annotations": "node scripts/check-annotations.ts",
     "test": "vitest run",
     "bundle": "node scripts/check-bundle.ts",
-    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle"
+    "bench": "node scripts/bench.ts",
+    "verify": "pnpm check && pnpm check-errors && pnpm check-annotations && pnpm test && pnpm bundle"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.10",
     "@types/node": "^26.6.6",
+    "babel-plugin-annotate-pure-calls": "^0.5.0",
     "effect": "workspace:*",
     "esbuild": "^0.28.2",
+    "rolldown": "^1.2.16",
+    "tinybench": "^6.2.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }
