@@ -33,7 +33,7 @@ import * as Ref from "../Ref.ts"
 import * as References from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type { EqualsWith, ExcludeTag, ExtractTag, NoExcessProperties, NoInfer, Tags } from "../Types.ts"
@@ -680,7 +680,7 @@ const Proto = {
  *
  * **Details**
  *
- * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, and aborting non-scoped requests on interruption.
+ * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
  *
  * @stability unstable
  * @category constructors
@@ -697,8 +697,8 @@ export const make = (
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiber((fiber) => {
-        const scopedController = scopedRequests.get(request)
-        const controller = scopedController ?? new AbortController()
+        const scope = fiber.getRef(RequestScope)
+        const controller = new AbortController()
         const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
@@ -711,15 +711,22 @@ export const make = (
           )
         }
         const url = urlResult.success
+        const send = (request: HttpClientRequest.HttpClientRequest) =>
+          scope === undefined
+            ? f(request, url, controller.signal, fiber as any)
+            // Register the abort before dispatch, so a scope that is already
+            // closed aborts the signal before the transport sees it
+            : Effect.flatMap(
+              Scope.addFinalizer(scope, Effect.sync(() => controller.abort())),
+              () => f(request, url, controller.signal, fiber as any)
+            )
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
-          const effect = f(request, url, controller.signal, fiber as any)
-          if (scopedController) return Effect.map(effect, (response) => trackResponse(response, controller, true))
           return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(effect), {
+            Effect.matchCauseEffect(restore(send(request)), {
               onSuccess(response) {
-                return Effect.succeed(trackResponse(response, controller, false))
+                return Effect.succeed(trackResponse(response, controller, scope !== undefined))
               },
               onFailure(cause) {
                 if (Cause.hasInterrupts(cause)) {
@@ -747,7 +754,7 @@ export const make = (
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
             return Effect.uninterruptibleMask((restore) =>
-              restore(f(request, url, controller.signal, fiber as any)).pipe(
+              restore(send(request)).pipe(
                 Effect.withParentSpan(span, { captureStackTrace: false }),
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {
@@ -760,10 +767,10 @@ export const make = (
                       endSpanWithStatusError(fiber, span, request, response)
                     }
 
-                    return Effect.succeed(trackResponse(response, controller, scopedController !== undefined))
+                    return Effect.succeed(trackResponse(response, controller, scope !== undefined))
                   },
                   onFailure(cause) {
-                    if (!scopedController && Cause.hasInterrupts(cause)) {
+                    if (Cause.hasInterrupts(cause)) {
                       controller.abort()
                     }
                     return Effect.failCause(cause)
@@ -1077,8 +1084,7 @@ export const retryTransient: {
  * A timed out request is interrupted and fails with an `HttpClientError` whose
  * reason is a `TransportError` with a `Cause.TimeoutError` cause.
  * `retryTransient` treats it as transient. Interrupting a request aborts the
- * underlying transport, unless the request is attached to a scope with
- * `withScope`, in which case it stays open until the scope closes.
+ * underlying transport.
  *
  * The timer starts after request preprocessing and covers everything the
  * wrapped client does to produce a response. For a plain client this ends when
@@ -1988,11 +1994,7 @@ export const withCookiesRef: {
       Effect.map(Ref.get(ref), (cookies) => {
         const header = Cookies.toRequestCookieHeader(cookies, request.url, now())
         if (header === undefined) return request
-        const withCookies = HttpClientRequest.setHeader(request, "cookie", header)
-        // setHeader returns a new request, so carry over the withScope controller
-        const controller = scopedRequests.get(request)
-        if (controller !== undefined) scopedRequests.set(withCookies, controller)
-        return withCookies
+        return HttpClientRequest.setHeader(request, "cookie", header)
       })
     return makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
@@ -2006,7 +2008,38 @@ export const withCookiesRef: {
 )
 
 /**
- * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
+ * Attaches every request the client sends to the current `Scope`, and aborts
+ * them when the scope closes.
+ *
+ * **When to use**
+ *
+ * Use when a response body, an upgraded socket or a `toWeb` hand-off must
+ * stay open after the response effect completes, and close it by closing the
+ * scope.
+ *
+ * **Details**
+ *
+ * Ownership follows the execution, not the request value. Each request the
+ * transport sends while this client executes belongs to the scope: every
+ * redirect hop, retry attempt and request rewritten by middleware, whichever
+ * side of `followRedirects`, `withCookiesRef` or `retryTransient` the
+ * `withScope` is on. Reusing one request, or one response effect,
+ * concurrently under different scopes gives each execution its own owner.
+ *
+ * Closing the scope aborts pending requests and open response bodies. A
+ * request sent after the scope has closed is aborted before the transport
+ * starts it. Interrupting a request before its response arrives still aborts
+ * it, so `timeout` releases the connection. Once a response is returned, its
+ * body is released only when the scope closes.
+ *
+ * **Gotchas**
+ *
+ * Requests that middleware sends with another client while this client
+ * executes, such as a token fetch in `mapRequestEffect`, are also attached to
+ * the scope. When `withScope` is nested, the innermost one owns the requests,
+ * so to give a helper request a different lifetime, apply `withScope` to the
+ * helper client and run its request in its own scope, for example with
+ * `Effect.scoped`.
  *
  * @stability unstable
  * @category resource management
@@ -2015,16 +2048,9 @@ export const withCookiesRef: {
 export const withScope = <E, R>(
   self: HttpClient.With<E, R>
 ): HttpClient.With<E, R | Scope.Scope> =>
-  transform(
+  transformResponse(
     self,
-    (effect, request) => {
-      const controller = new AbortController()
-      scopedRequests.set(request, controller)
-      return Effect.andThen(
-        Effect.addFinalizer(() => Effect.sync(() => controller.abort())),
-        effect
-      )
-    }
+    (effect) => Effect.flatMap(Effect.scope, (scope) => Effect.provideService(effect, RequestScope, scope))
   )
 
 /**
@@ -2266,7 +2292,9 @@ const responseRegistry = (() => {
   }
 })()
 
-const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
+const RequestScope = Context.Reference<Scope.Scope | undefined>("effect/http/HttpClient/RequestScope", {
+  defaultValue: () => undefined
+})
 
 const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
 
