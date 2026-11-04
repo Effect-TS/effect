@@ -17,6 +17,7 @@ import type { TransactionMetaInner } from "./Effect.ts"
 import { dual } from "./Function.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import type { Pipeable } from "./Pipeable.ts"
+import { hasProperty } from "./Predicate.ts"
 import type { NoInfer } from "./Types.ts"
 
 const TypeId = "~effect/TxRef"
@@ -68,6 +69,20 @@ export interface TxRef<in out A> extends Pipeable {
   pending: Map<unknown, () => void>
   value: A
 }
+
+/**
+ * Checks whether a value is a `TxRef`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `TxRef` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isTxRef = <A = unknown>(u: unknown): u is TxRef<A> => hasProperty(u, TypeId)
 
 /**
  * Creates a new `TxRef` with the specified initial value.
