@@ -394,6 +394,35 @@ development:
     })
   })
 
+  // YAML 1.2.2 §7.4: a flow sequence entry may be a single `key: value` pair, read as a
+  // one-entry mapping, and a flow mapping key may have no value. In flow context `: ` ends a
+  // plain scalar. Expected values and rejection fixtures were checked with yaml 2.9.1 and js-yaml 4.3.2.
+  describe("flow implicit pairs and keys without values", () => {
+    it.each(
+      [
+        ["single pairs in a flow sequence", "x: [a: 1, b]\n", { x: [{ a: 1 }, "b"] }],
+        ["quoted pair keys followed directly by a colon", "x: [\"a\": 1, 'b':2]\n", { x: [{ a: 1 }, { b: 2 }] }],
+        ["a pair with an empty value", "x: [a: ]\n", { x: [{ a: null }] }],
+        ["a pair with a flow value", "x: [a: [1, 2]]\n", { x: [{ a: [1, 2] }] }],
+        ["colons that do not separate a pair", "x: [a:1, http://x]\n", { x: ["a:1", "http://x"] }],
+        ["flow mapping keys without values", "x: {enabled, debug: true}\n", { x: { enabled: null, debug: true } }],
+        ["a multi-word key without a value", "x: {a b, c: 1}\n", { x: { "a b": null, c: 1 } }],
+        ["a last key without a value", "x: {a: 1, b}\n", { x: { a: 1, b: null } }],
+        ["a key without a value before a continuation line", "x: {a: 1, b\n  , c: 2}\n", { x: { a: 1, b: null, c: 2 } }]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+    })
+
+    it.each([
+      ["a second separator in a sequence pair", "x: [a: b: c]\n"],
+      ["a second separator after a sequence item", "x: [a, b: c: d]\n"],
+      ["a second separator in a flow mapping value", "x: {a: b: c}\n"]
+    ])("rejects %s", (_, source) => {
+      failureMessage(source)
+    })
+  })
+
   // YAML 1.2.2 §7.3.3 (ns-plain-first): a plain scalar may start with `-` only when a
   // non-space character other than a flow indicator follows, so `- ` cannot start a flow node.
   // Expected values and rejection fixtures were checked with yaml 2.9.1 and js-yaml 4.3.2.
@@ -438,6 +467,27 @@ development:
       assert.deepStrictEqual(
         parse("description: 123\nquoted: 'Use when: deploy'\ntrailing: \"Deploy:\"\n"),
         { description: 123, quoted: "Use when: deploy", trailing: "Deploy:" }
+      )
+    })
+    // YAML 1.2.2 §10.3.2: plain scalars resolve with the core schema, the same patterns the core
+    // tags use. Expected values were checked with yaml 2.9.1 and js-yaml 4.3.2.
+    it("resolves plain scalars with the core schema", () => {
+      assert.deepStrictEqual(
+        parse("a: tRuE\nb: nULL\nc: .iNf\nd: 0X1F\ne: 0O17\nf: 1_000\ng: _1\nh: 012\ni: -012\nj: 5.\nk: .5e3\nl: 0.\n"),
+        {
+          a: "tRuE",
+          b: "nULL",
+          c: ".iNf",
+          d: "0X1F",
+          e: "0O17",
+          f: "1_000",
+          g: "_1",
+          h: 12,
+          i: -12,
+          j: 5,
+          k: 500,
+          l: 0
+        }
       )
     })
   })
@@ -692,6 +742,21 @@ items:
 
     it("treats quoted merge keys as ordinary keys", () => {
       assert.deepStrictEqual(parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
+    })
+
+    // Each merge copies its source's keys, so a chain of merges grows the output quadratically.
+    it("rejects a document whose merges copy more than 100,000 keys", () => {
+      const lines = ["a0: &a0 {k0: 0}"]
+      for (let i = 1; i < 600; i++) lines.push(`a${i}: &a${i} {<<: *a${i - 1}, k${i}: ${i}}`)
+      assert.match(failureMessage(`${lines.join("\n")}\n`), /merge/i)
+    })
+
+    it("merges within the budget", () => {
+      const keys = Array.from({ length: 50 }, (_, i) => `k${i}: ${i}`).join(", ")
+      const lines = [`base: &base {${keys}}`]
+      for (let i = 0; i < 500; i++) lines.push(`m${i}: {<<: *base}`)
+      const result = parse(`${lines.join("\n")}\n`) as Record<string, Record<string, number>>
+      assert.strictEqual(Object.keys(result.m499).length, 50)
     })
 
     it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}", "<<: {a: 1}\n<<: {b: 2}\n"])(
@@ -1051,6 +1116,13 @@ nested:
       const output = Result.getOrThrow(Yaml.stringify(value))
       assert.strictEqual(output, `${expected}\n`)
       assert.strictEqual(oracle(output), value)
+    })
+
+    // js-yaml 4.3.2 reads `---x` at the start of a line as a document marker followed by `x`.
+    it("quotes strings and keys that start with a document marker", () => {
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify("---x")), "\"---x\"\n")
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify("...x")), "\"...x\"\n")
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify({ "---a": 1 })), "\"---a\": 1\n")
     })
 
     it("quotes mapping keys that would re-parse as other types", () => {
