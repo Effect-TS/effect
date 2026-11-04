@@ -1,9 +1,24 @@
 import type { EntityRegistration } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { makeEntityRuntime } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Metric, Option, Schedule, Schema, Scope, Stream, Tracer } from "effect"
+import {
+  type Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Metric,
+  Option,
+  Queue,
+  Schedule,
+  Schema,
+  Scope,
+  Stream,
+  Tracer
+} from "effect"
 import { ClusterMetrics, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
-import { Rpc, RpcSchema } from "effect/rpc"
+import { Rpc, RpcMiddleware, RpcSchema } from "effect/rpc"
 
 const address = new EntityAddress.EntityAddress({
   shardId: ShardId.make("default", 1),
@@ -195,6 +210,108 @@ describe("EntityRuntime", () => {
       assert.deepStrictEqual(
         replies.filter((reply) => reply._tag === "Chunk").map((reply) => [reply.sequence, reply.values]),
         [[0, [1]], [1, [2]]]
+      )
+      assert.isTrue(Exit.isSuccess(replies.at(-1).exit))
+    }))
+
+  it.effect("runs server middleware before the handler", () =>
+    Effect.gen(function*() {
+      class Guard extends RpcMiddleware.Service<Guard>()("Guard", { error: Schema.String }) {}
+      const Guarded = Entity.make("User", [
+        Rpc.make("Ping", { success: Schema.String }).middleware(Guard)
+      ])
+      let runs = 0
+      const registration: EntityRegistration = {
+        entity: Guarded,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(Guarded.of({
+          Ping: () =>
+            Effect.sync(() => {
+              runs++
+              return "secret"
+            })
+        })),
+        options: undefined,
+        context: Context.make(Guard, () => Effect.fail("denied"))
+      }
+      const runtime = yield* makeEntityRuntime(registration, address, () => "reply")
+      const replies: Array<any> = []
+
+      yield* runtime.run(request as any, Option.none(), false, (reply) => Effect.sync(() => replies.push(reply)))
+
+      assert.strictEqual(runs, 0)
+      assert.deepStrictEqual(replies.map((reply) => reply.exit), [Exit.fail("denied")])
+    }))
+
+  it.effect("closes the request scope before the request finishes", () =>
+    Effect.gen(function*() {
+      const Scoped = Entity.make("User", [
+        Rpc.make("Ping", { success: Schema.String })
+      ])
+      let released = 0
+      const registration: EntityRegistration = {
+        entity: Scoped,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(Scoped.of({
+          Ping: () =>
+            Effect.as(
+              Effect.acquireRelease(Effect.void, () =>
+                Effect.sync(() => {
+                  released++
+                })),
+              "pong"
+            )
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      const runtime = yield* makeEntityRuntime(registration, address, () => "reply")
+
+      yield* runtime.run(request as any, Option.none(), false, () => Effect.void)
+
+      assert.strictEqual(released, 1)
+    }))
+
+  it.effect("resolves Deferred and Queue handler results", () =>
+    Effect.gen(function*() {
+      const Results = Entity.make("User", [
+        Rpc.make("Ping", { success: Schema.String }),
+        Rpc.make("Values", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+      ])
+      const registration: EntityRegistration = {
+        entity: Results,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(Results.of({
+          Ping: () =>
+            Effect.gen(function*() {
+              const deferred = yield* Deferred.make<string>()
+              yield* Effect.forkDetach(Deferred.succeed(deferred, "later"))
+              return deferred
+            }),
+          Values: () =>
+            Effect.gen(function*() {
+              const queue = yield* Queue.make<number, Cause.Done>()
+              yield* Queue.offerAll(queue, [1, 2])
+              yield* Queue.end(queue)
+              return queue
+            })
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      let replyId = 0
+      const runtime = yield* makeEntityRuntime(registration, address, () => `reply-${replyId++}`)
+      const replies: Array<any> = []
+      const respond = (reply: any) => Effect.sync(() => replies.push(reply))
+
+      yield* runtime.run(request as any, Option.none(), false, respond)
+      assert.deepStrictEqual(replies.map((reply) => reply.exit), [Exit.succeed("later")])
+
+      replies.length = 0
+      yield* runtime.run({ ...request, tag: "Values" } as any, Option.none(), false, respond)
+      assert.deepStrictEqual(
+        replies.flatMap((reply) => reply._tag === "Chunk" ? reply.values : []),
+        [1, 2]
       )
       assert.isTrue(Exit.isSuccess(replies.at(-1).exit))
     }))

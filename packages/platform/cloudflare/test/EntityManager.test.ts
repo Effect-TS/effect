@@ -83,7 +83,7 @@ const makeMailbox = Effect.fnUntraced(function*(entityId: string, entityType = M
       },
       getNamespace: () => undefined
     })
-  const envelope = (tag: "Watch" | "Add" | "Get", payload: unknown = null, requestId = nextRequestId()) =>
+  const envelope = (tag: string, payload: unknown = null, requestId = nextRequestId()) =>
     JSON.stringify({ _tag: "Request", requestId, address, tag, payload, headers: {} })
   const exitOf = (reply: string) => JSON.parse(reply).exit
   return { storage, manager: restart(), restart, envelope, exitOf, waitUntilFibers }
@@ -336,5 +336,83 @@ describe("EntityManager", () => {
 
       assert.isUndefined(first.pollUnsafe(), "Interrupting the duplicate also ended the original waiter")
       yield* manager.interrupt(firstRequestId)
+    }))
+
+  it.effect("runs an Rpc.fork handler while another handler holds the only permit", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const entity = Entity.make("ForkMailbox", [
+        Rpc.make("Hold", { success: Schema.String }),
+        Rpc.make("Forked", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Hold: () => Effect.andThen(Deferred.succeed(started, undefined), Effect.as(Deferred.await(release), "held")),
+          Forked: () => Rpc.fork(Effect.succeed("forked"))
+        })),
+        options: { concurrency: 1 },
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, exitOf, manager } = yield* makeMailbox("fork", entity.type)
+      const hold = yield* Effect.forkChild(manager.invoke(envelope("Hold"), false))
+      yield* Deferred.await(started)
+
+      const forked = yield* manager.invoke(envelope("Forked"), false).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      assert(forked._tag === "Success")
+      assert.deepStrictEqual(exitOf(forked.replies[0]), { _tag: "Success", value: "forked" })
+
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(hold)
+    }))
+
+  it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let completed = false
+      const entity = Entity.make("UninterruptibleMailbox", [
+        Rpc.make("Critical", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Critical: () =>
+            Rpc.uninterruptible(Effect.gen(function*() {
+              yield* Deferred.succeed(started, undefined)
+              yield* Deferred.await(release)
+              completed = true
+              return "done"
+            }))
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, manager } = yield* makeMailbox("uninterruptible", entity.type)
+      const requestId = nextRequestId()
+      const invoke = yield* Effect.forkChild(manager.invoke(envelope("Critical", null, requestId), false))
+      yield* Deferred.await(started)
+
+      const interrupt = yield* Effect.forkChild(manager.interrupt(requestId))
+      yield* settle
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(interrupt)
+      yield* Fiber.join(invoke)
+
+      assert.isTrue(completed)
     }))
 })
