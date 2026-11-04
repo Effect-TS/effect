@@ -54,9 +54,9 @@ export type TypeId = "~@effect/sql-libsql/LibsqlClient"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface LibsqlClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: LibsqlClientConfig
 }
@@ -72,7 +72,7 @@ export interface LibsqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const LibsqlClient = Context.Service<LibsqlClient>("@effect/sql-libsql/LibsqlClient")
+export class LibsqlClient extends Context.Service<LibsqlClient, Service>()("@effect/sql-libsql/LibsqlClient") {}
 
 let clientIdCounter = 0
 
@@ -189,7 +189,7 @@ interface LibsqlConnection extends Connection {
  */
 export const make = (
   options: LibsqlClientConfig
-): Effect.Effect<LibsqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const LibsqlTransaction = Context.Service<readonly [LibsqlConnection, counter: number]>(
       `@effect/sql-libsql/LibsqlClient/LibsqlTransaction/${clientIdCounter++}`

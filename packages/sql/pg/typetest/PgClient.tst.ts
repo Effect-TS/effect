@@ -11,7 +11,7 @@ const onAcquire = Effect.andThen(Effect.service(Reactivity.Reactivity), Effect.s
 describe("PgClient onAcquire", () => {
   it("propagates the hook's requirements, except those the layers supply", () => {
     expect(PgClient.make({ onAcquire })).type.toBe<
-      Effect.Effect<PgClient.PgClient, SqlError.SqlError, Scope.Scope | Reactivity.Reactivity | Prefix>
+      Effect.Effect<PgClient.Service, SqlError.SqlError, Scope.Scope | Reactivity.Reactivity | Prefix>
     >()
     expect(PgClient.layer({ onAcquire })).type.toBe<
       Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, SqlError.SqlError, Prefix>

@@ -58,9 +58,9 @@ export type TypeId = "~@effect/sql-d1/D1Client"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface D1Client extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: D1ClientConfig
 
@@ -105,7 +105,7 @@ export interface D1Client extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const D1Client = Context.Service<D1Client>("@effect/sql-d1/D1Client")
+export class D1Client extends Context.Service<D1Client, Service>()("@effect/sql-d1/D1Client") {}
 
 /**
  * Configuration for a Cloudflare D1 client, including the `D1Database`, prepared statement cache settings, span attributes, and query/result name transforms.
@@ -143,8 +143,8 @@ const makeBatch = (options: {
   readonly db: D1Database
   readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly getClient: () => D1Client
-}): D1Client["batch"] =>
+  readonly getClient: () => Service
+}): Service["batch"] =>
 <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
   statements: Statements
 ) => {
@@ -214,7 +214,7 @@ const makeBatch = (options: {
  */
 export const make = (
   options: D1ClientConfig
-): Effect.Effect<D1Client, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -339,7 +339,7 @@ export const make = (
     const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.die("transactions are not supported in D1")
 
-    let client!: D1Client
+    let client!: Service
     client = Object.assign(
       (yield* Client.make({
         driver: "d1",
@@ -348,7 +348,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes,
         transformRows
-      })) as D1Client,
+      })) as Service,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -370,8 +370,8 @@ export const make = (
         spanAttributes,
         transformRows: undefined
       })
-      let clientWithoutTransforms!: D1Client
-      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as D1Client, {
+      let clientWithoutTransforms!: Service
+      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as Service, {
         [TypeId]: TypeId as TypeId,
         config: options,
         batch: makeBatch({

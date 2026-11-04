@@ -52,9 +52,9 @@ export type TypeId = "~@effect/sql-pg/PgClient"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface PgClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
@@ -85,7 +85,7 @@ export interface PgClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
+export class PgClient extends Context.Service<PgClient, Service>()("@effect/sql-pg/PgClient") {}
 
 /**
  * Connection and query settings for a PostgreSQL client.
@@ -226,7 +226,7 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
  */
 export const make = <R = never>(
   options: PgPoolConfig<R>
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
+): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
@@ -251,7 +251,7 @@ export const makeClient = <R = never>(
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
+): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
       acquirer: Effect.succeed(makeConnection(
@@ -277,7 +277,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     readonly config: PgClientConfig<R>
     readonly poolStats: Effect.Effect<Pool.Stats>
   }
-): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
+): Effect.fn.Return<Service, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
   // The consuming fiber's services take precedence over the captured ones.
   const hook = options.config.onAcquire
   const context = yield* Effect.context<R>()
@@ -455,7 +455,7 @@ const makeConnection = (
  * @since 4.0.0
  */
 export const layerFrom = <E, R>(
-  acquire: Effect.Effect<PgClient, E, R>
+  acquire: Effect.Effect<Service, E, R>
 ): Layer.Layer<PgClient | Client.SqlClient, E, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
   Layer.effectContext(
     Effect.map(acquire, (client) =>

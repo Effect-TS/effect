@@ -67,9 +67,9 @@ export type TypeId = "~@effect/sql-sqlite-react-native/SqliteClient"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface SqliteClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
 
@@ -84,7 +84,9 @@ export interface SqliteClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-react-native/SqliteClient")
+export class SqliteClient
+  extends Context.Service<SqliteClient, Service>()("@effect/sql-sqlite-react-native/SqliteClient")
+{}
 
 /**
  * Configuration for a React Native SQLite client, including the database filename, optional location and encryption key, span attributes, and query/result name transforms.
@@ -140,7 +142,7 @@ interface SqliteConnection extends Connection {}
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const clientOptions: Parameters<typeof open>[0] = {
       name: options.filename
@@ -246,7 +248,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as SqliteClient,
+      })) as Service,
       {
         [TypeId]: TypeId,
         config: options

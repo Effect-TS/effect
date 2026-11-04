@@ -685,12 +685,13 @@ describe("SqlRunnerStorage", () => {
       60_000
     )
   })
-  ;([
+  const backends: ReadonlyArray<readonly [string, Layer.Layer<SqlClient.SqlClient>]> = [
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["vitess", Layer.orDie(MysqlContainer.layerClientVitess)],
     ["sqlite", Layer.orDie(SqliteLayer)]
-  ] as const).flatMap(([label, layer]) =>
+  ]
+  backends.flatMap(([label, layer]) =>
     [
       [label, StorageLayer.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer()))],
       [

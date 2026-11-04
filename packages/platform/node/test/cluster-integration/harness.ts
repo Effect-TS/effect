@@ -1,7 +1,7 @@
 import { NodeClusterSocket, NodeCrypto, NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
-import { Clock, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
+import { Clock, type Config, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
 import {
   ClusterWorkflowEngine,
   type Entity,
@@ -428,9 +428,10 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     shardLockDisableAdvisory: options.lockMode === "row"
   }
   const databases = inject("clusterDatabases")
-  const databaseLayer = options.backend === "pg"
-    ? PgClient.layer({ url: Redacted.make(databases.pg), maxConnections: 32 })
-    : MysqlClient.layer({ url: Redacted.make(databases.mysql), maxConnections: 32 })
+  const databaseLayer: Layer.Layer<SqlClient.SqlClient, Config.ConfigError | SqlError.SqlError> =
+    options.backend === "pg"
+      ? PgClient.layer({ url: Redacted.make(databases.pg), maxConnections: 32 })
+      : MysqlClient.layer({ url: Redacted.make(databases.mysql), maxConnections: 32 })
   const database = yield* Layer.buildWithScope(databaseLayer, parentScope)
   const sql = Context.get(database, SqlClient.SqlClient).withoutTransforms()
   const messageStorage = yield* SqlMessageStorage.layerWith({ prefix }).pipe(

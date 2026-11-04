@@ -168,9 +168,9 @@ export type TypeId = typeof TypeId
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface MssqlClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
 
   readonly config: MssqlClientConfig
@@ -207,7 +207,7 @@ export interface MssqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const MssqlClient = Context.Service<MssqlClient>("@effect/sql-mssql/MssqlClient")
+export class MssqlClient extends Context.Service<MssqlClient, Service>()("@effect/sql-mssql/MssqlClient") {}
 
 /**
  * Configuration for a Microsoft SQL Server client, including connection, authentication, pool, parameter type, span attribute, and query/result name transform options.
@@ -290,7 +290,7 @@ let clientIdCounter = 0
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -656,7 +656,7 @@ export const make = (
       rollbackSavepoint: (conn, id) => conn.rollback(`effect_sql_${id}`)
     })
 
-    return identity<MssqlClient>(Object.assign(
+    return identity<Service>(Object.assign(
       yield* Client.make({
         driver: "mssql",
         acquirer: acquireConnection,

@@ -118,9 +118,9 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface ClickhouseClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: ClickhouseClientConfig
   /**
@@ -165,7 +165,9 @@ export interface ClickhouseClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const ClickhouseClient = Context.Service<ClickhouseClient>("@effect/sql-clickhouse/ClickhouseClient")
+export class ClickhouseClient
+  extends Context.Service<ClickhouseClient, Service>()("@effect/sql-clickhouse/ClickhouseClient")
+{}
 
 /**
  * Configuration for creating a ClickHouse client, combining
@@ -193,7 +195,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  */
 export const make = (
   options: ClickhouseClientConfig
-): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames

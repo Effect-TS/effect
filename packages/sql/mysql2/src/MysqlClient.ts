@@ -170,9 +170,9 @@ export type TypeId = "~@effect/sql-mysql2/MysqlClient"
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface MysqlClient extends Client.SqlClient {
+export interface Service extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: MysqlClientConfig
 }
@@ -188,7 +188,7 @@ export interface MysqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const MysqlClient = Context.Service<MysqlClient>("@effect/sql-mysql2/MysqlClient")
+export class MysqlClient extends Context.Service<MysqlClient, Service>()("@effect/sql-mysql2/MysqlClient") {}
 
 /**
  * Configuration for a mysql2 client, including connection URI or connection fields, pool options, span attributes, and query/result name transforms.
@@ -247,7 +247,7 @@ export interface MysqlClientConfig {
  */
 export const make = (
   options: MysqlClientConfig
-): Effect.Effect<MysqlClient, SqlError, Scope | Reactivity.Reactivity> =>
+): Effect.Effect<Service, SqlError, Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
