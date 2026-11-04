@@ -86,6 +86,28 @@ describe("Tool", () => {
         deepStrictEqual(failure[0]?.encodedResult, { at: "2026-01-01T00:00:00.000Z" })
       }))
 
+    it.effect("encodes a void result to null", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Notify"))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({ Notify: () => Effect.void })))
+        const results = yield* handlers.handle("Notify", {}).pipe(Effect.flatMap(Stream.runCollect))
+
+        strictEqual(results[0]?.result, undefined)
+        strictEqual(results[0]?.encodedResult, null)
+      }))
+
+    it.effect("rejects a non-JSON result for a dynamic tool without a success schema", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.dynamic("Now"))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Now: () => Effect.succeed(new Date("2026-01-01T00:00:00.000Z"))
+        })))
+        const error = yield* handlers.handle("Now", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.flip)
+
+        strictEqual(error._tag, "AiError")
+        strictEqual(error.reason._tag, "ToolResultEncodingError")
+      }))
+
     it.effect("should return tool call handler successes", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
