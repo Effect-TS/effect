@@ -240,7 +240,8 @@ describe("EntityRuntime", () => {
       yield* runtime.run(request as any, Option.none(), false, (reply) => Effect.sync(() => replies.push(reply)))
 
       assert.strictEqual(runs, 0)
-      assert.deepStrictEqual(replies.map((reply) => reply.exit), [Exit.fail("denied")])
+      assert.strictEqual(replies.length, 1)
+      assert.deepStrictEqual(Exit.findErrorOption(replies[0].exit), Option.some("denied"))
     }))
 
   it.effect("closes the request scope before the request finishes", () =>
