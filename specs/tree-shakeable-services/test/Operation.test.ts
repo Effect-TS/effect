@@ -1,11 +1,13 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe, it } from "vitest"
 import * as FileSystem from "../src/FileSystem.ts"
 import * as NodeFileSystem from "../src/node/index.ts"
-import { isOperation, Operation } from "../src/Operation.ts"
+import { layer as nodeLayer } from "../src/node/layer.ts"
+import { backupViaRecord } from "../src/program-record.ts"
 import { backup } from "../src/program.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -31,11 +33,20 @@ const memory = () => {
   return { files, readFile, writeFile, stream, layer: Layer.mergeAll(readFile, writeFile, stream) }
 }
 
+/** A whole-record implementation: every member dies unless overridden, the way a record fake is written today. */
+const record = (members: Partial<FileSystem.Shape>): FileSystem.Shape => {
+  const all: Record<string, unknown> = {}
+  for (const name of Object.keys(FileSystem.FileSystem.operations)) {
+    all[name] = () => Effect.die(`record: ${name} not implemented`)
+  }
+  return { ...all, ...members } as FileSystem.Shape
+}
+
 describe("Operation", () => {
   it("is a function with its key as its name, and neither an Effect nor a key", () => {
     assert.strictEqual(typeof FileSystem.readFile, "function")
     assert.strictEqual(FileSystem.readFile.name, "effect/FileSystem/readFile")
-    assert.isTrue(isOperation(FileSystem.readFile))
+    assert.isTrue(Context.isOperation(FileSystem.readFile))
     assert.isFalse(Effect.isEffect(FileSystem.readFile))
     assert.isFalse(Context.isKey(FileSystem.readFile))
     assert.isTrue(Context.isKey(FileSystem.readFile.service))
@@ -100,27 +111,30 @@ describe("Operation", () => {
     assert.deepStrictEqual(await Effect.runPromise(first), bytes("first"))
   })
 
-  it("returns a Stream for a Stream-returning operation, and overrides it the same way", async () => {
+  it("returns a Stream for a Stream operation, looked up per run, and overrides it the same way", async () => {
     const fs = memory()
     fs.files.set("a.txt", bytes("hello"))
     const chunks = await Effect.runPromise(Stream.runCollect(FileSystem.stream("a.txt")).pipe(Effect.provide(fs.layer)))
     assert.deepStrictEqual(chunks, [bytes("hello")])
 
+    const call = FileSystem.stream("a.txt").pipe(Stream.map((chunk) => chunk.length))
     const overridden = await Effect.runPromise(
-      Stream.runCollect(FileSystem.stream("a.txt").pipe(Stream.map((chunk) => chunk.length))).pipe(
+      Stream.runCollect(call).pipe(
         Effect.provideService(FileSystem.stream.service, () => Stream.make(bytes("a"), bytes("bc")))
       )
     )
     assert.deepStrictEqual(overridden, [1, 2])
+    // The same Stream value, run under the memory layer, runs the memory implementation.
+    assert.deepStrictEqual(await Effect.runPromise(Stream.runCollect(call).pipe(Effect.provide(fs.layer))), [5])
   })
 
-  it("returns a value that is both an Effect and a Stream at run time; the static type says which it is", () => {
+  it("returns exactly one kind of value: an Effect operation returns an Effect, a Stream operation a Stream", () => {
     const effectCall = FileSystem.readFile("a.txt")
     const streamCall = FileSystem.stream("a.txt")
     assert.isTrue(Effect.isEffect(effectCall))
-    assert.isTrue(Stream.isStream(effectCall))
-    assert.isTrue(Effect.isEffect(streamCall))
+    assert.isFalse(Stream.isStream(effectCall))
     assert.isTrue(Stream.isStream(streamCall))
+    assert.isFalse(Effect.isEffect(streamCall))
   })
 
   it("is called by Effect.andThen and Effect.tap, since it is not an Effect", async () => {
@@ -141,7 +155,7 @@ describe("Operation", () => {
   })
 
   it("forwards the call receiver to the implementation", async () => {
-    const op = Operation<(this: { prefix: string }, name: string) => Effect.Effect<string>>()("test/greet")
+    const op = Context.Operation<(this: { prefix: string }, name: string) => Effect.Effect<string>>()("test/greet")
     const holder = { prefix: "hi ", greet: op }
     const result = await Effect.runPromise(
       holder.greet("x").pipe(
@@ -153,59 +167,14 @@ describe("Operation", () => {
     assert.strictEqual(result, "hi x")
   })
 
-  it("does not expose the implementation's own properties; the implementation is reached through the service", async () => {
-    const op = Operation<{ (n: number): Effect.Effect<number>; readonly label: string }>()("test/double")
-    const implementation = Object.assign((n: number) => Effect.succeed(n * 2), { label: "double" })
-    const label = await Effect.runPromise(
-      Effect.map(op.service, (current) => current.label).pipe(Effect.provideService(op.service, implementation))
-    )
-    assert.strictEqual(label, "double")
-    assert.isFalse("label" in op)
-  })
-
   it("keeps a generic signature when the shape names its key", async () => {
-    const parse = Operation<
+    const parse = Context.Operation<
       <A>(decode: (input: string) => A, input: string) => Effect.Effect<A, never, "test/parse">
-    >()(
-      "test/parse"
-    )
+    >()("test/parse")
     const result: number = await Effect.runPromise(
       parse(Number, "42").pipe(Effect.provideService(parse.service, (decode, input) => Effect.succeed(decode(input))))
     )
     assert.strictEqual(result, 42)
-  })
-
-  it("builds a record service from operations, and operations from a record service", async () => {
-    const fs = memory()
-    fs.files.set("a.txt", bytes("hello"))
-
-    // Record from operations: every operation is required, so the record form costs all of them.
-    interface Fs {
-      readonly readFile: (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError>
-      readonly writeFile: (path: string, data: Uint8Array) => Effect.Effect<void, FileSystem.FileSystemError>
-    }
-    const Fs = Context.Service<Fs>("test/Fs")
-    const fsFromOperations = Layer.effect(
-      Fs,
-      Effect.all({ readFile: FileSystem.readFile.service, writeFile: FileSystem.writeFile.service })
-    )
-    const viaRecord = await Effect.runPromise(
-      Fs.use((record) => record.readFile("a.txt")).pipe(Effect.provide(fsFromOperations.pipe(Layer.provide(fs.layer))))
-    )
-    assert.deepStrictEqual(viaRecord, bytes("hello"))
-
-    // Operations from a record: project one member; the record's implementation is bundled, which is the migration case.
-    const readFileFromRecord = Layer.effect(FileSystem.readFile.service, Effect.map(Fs, (record) => record.readFile))
-    const viaOperation = await Effect.runPromise(
-      FileSystem.readFile("a.txt").pipe(
-        Effect.provide(readFileFromRecord),
-        Effect.provide(Layer.succeed(Fs, {
-          readFile: (path) => Effect.succeed(bytes(`record:${path}`)),
-          writeFile: () => Effect.void
-        }))
-      )
-    )
-    assert.deepStrictEqual(viaOperation, bytes("record:a.txt"))
   })
 
   it("accepts an Effect.fn as an implementation", async () => {
@@ -240,5 +209,139 @@ describe("Operation", () => {
       FileSystem.readFileString(`${path}.bak`).pipe(Effect.provide(NodeFileSystem.readFileString))
     )
     assert.strictEqual(copy, "node")
+  })
+})
+
+describe("Operations", () => {
+  it("is a key whose members are the operations", () => {
+    assert.isTrue(Context.isKey(FileSystem.FileSystem))
+    assert.isTrue(Context.isOperations(FileSystem.FileSystem))
+    assert.isFalse(Context.isReference(FileSystem.FileSystem))
+    assert.strictEqual(FileSystem.FileSystem.key, "effect/FileSystem")
+    assert.strictEqual(FileSystem.FileSystem.operations.readFile, FileSystem.readFile)
+    assert.strictEqual(Object.keys(FileSystem.FileSystem.operations).length, 30)
+  })
+
+  it("provides every operation when provided as a record, through Layer.succeed", async () => {
+    const files = new Map<string, Uint8Array>([["a.txt", bytes("record")]])
+    const live = Layer.succeed(
+      FileSystem.FileSystem,
+      record({
+        readFile: (path) => Effect.succeed(files.get(path)!),
+        writeFile: (path, data) =>
+          Effect.sync(() => {
+            files.set(path, data)
+          })
+      })
+    )
+    // The per-operation program runs under the record layer...
+    assert.strictEqual(await Effect.runPromise(backup("a.txt").pipe(Effect.provide(live))), 6)
+    assert.deepStrictEqual(files.get("a.txt.bak"), bytes("record"))
+    // ...and so does the program that yields the record.
+    assert.strictEqual(await Effect.runPromise(backupViaRecord("a.txt").pipe(Effect.provide(live))), 6)
+  })
+
+  it("assembles the record from operation layers, so yield* works under per-operation providers", async () => {
+    const path = await Effect.runPromise(
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const file = yield* fs.makeTempFile()
+        yield* fs.writeFileString(file, "assembled")
+        yield* backupViaRecord(file)
+        return file
+      }).pipe(Effect.provide(nodeLayer))
+    )
+    const copy = await Effect.runPromise(
+      FileSystem.readFileString(`${path}.bak`).pipe(Effect.provide(NodeFileSystem.readFileString))
+    )
+    assert.strictEqual(copy, "assembled")
+  })
+
+  it("dies naming the missing member when the record is read with a member unprovided", async () => {
+    const twentyNine = Object.entries(NodeFileSystem)
+      .filter(([name]) => name !== "stat")
+      .reduce((layer, [, next]) => Layer.merge(layer, next as Layer.Layer<never>), Layer.empty)
+    // The types reject this; the cast shows what the runtime does if they are bypassed.
+    const exit = await Effect.runPromiseExit(
+      FileSystem.FileSystem.pipe(Effect.provide(twentyNine)) as unknown as Effect.Effect<FileSystem.Shape>
+    )
+    assert.isTrue(exit._tag === "Failure")
+    assert.match(String(exit), /Service not found: effect\/FileSystem\/stat/)
+  })
+
+  it("lets a single operation be overridden on top of a record, and the record view sees the override", async () => {
+    const live = Layer.succeed(
+      FileSystem.FileSystem,
+      record({
+        readFile: () => Effect.succeed(bytes("live")),
+        writeFile: () => Effect.void
+      })
+    )
+    const fake = () => Effect.succeed(bytes("fake"))
+    const direct = await Effect.runPromise(
+      FileSystem.readFile("a.txt").pipe(Effect.provideService(FileSystem.readFile.service, fake), Effect.provide(live))
+    )
+    assert.deepStrictEqual(direct, bytes("fake"))
+    const viaRecord = await Effect.runPromise(
+      Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFile("a.txt")).pipe(
+        Effect.provideService(FileSystem.readFile.service, fake),
+        Effect.provide(live)
+      )
+    )
+    assert.deepStrictEqual(viaRecord, bytes("fake"))
+    // Ordinary precedence: with the record provided closer to the program, the record's member wins.
+    const inner = await Effect.runPromise(
+      FileSystem.readFile("a.txt").pipe(Effect.provide(live), Effect.provideService(FileSystem.readFile.service, fake))
+    )
+    assert.deepStrictEqual(inner, bytes("live"))
+  })
+
+  it("supports Layer.mock for a partial record: provided members run, the rest die as unimplemented", async () => {
+    const mocked = Layer.mock(FileSystem.FileSystem, { readFile: () => Effect.succeed(bytes("mock")) })
+    assert.deepStrictEqual(
+      await Effect.runPromise(FileSystem.readFile("a.txt").pipe(Effect.provide(mocked))),
+      bytes("mock")
+    )
+    const exit = await Effect.runPromiseExit(FileSystem.stat("a.txt").pipe(Effect.provide(mocked)))
+    assert.isTrue(exit._tag === "Failure")
+    assert.match(String(exit), /Unimplemented method "stat"/)
+  })
+
+  it("works with Effect.provideService, Effect.updateService and Context directly", async () => {
+    const live = record({ readFile: () => Effect.succeed(bytes("one")), writeFile: () => Effect.void })
+    const direct = await Effect.runPromise(
+      FileSystem.readFile("a.txt").pipe(Effect.provideService(FileSystem.FileSystem, live))
+    )
+    assert.deepStrictEqual(direct, bytes("one"))
+    const updated = await Effect.runPromise(
+      FileSystem.readFile("a.txt").pipe(
+        Effect.updateService(FileSystem.FileSystem, (fs) => ({ ...fs, readFile: () => Effect.succeed(bytes("two")) })),
+        Effect.provideService(FileSystem.FileSystem, live)
+      )
+    )
+    assert.deepStrictEqual(updated, bytes("two"))
+
+    const context = Context.make(FileSystem.FileSystem, live)
+    assert.strictEqual(context.mapUnsafe.size, 30)
+    assert.strictEqual(Context.get(context, FileSystem.readFile.service), live.readFile)
+    assert.strictEqual(Context.get(context, FileSystem.FileSystem).readFile, live.readFile)
+    assert.isTrue(Option.isSome(Context.getOption(context, FileSystem.FileSystem)))
+
+    const one = Context.make(FileSystem.readFile.service, live.readFile)
+    assert.isTrue(Option.isNone(Context.getOption(one, FileSystem.FileSystem)))
+    assert.throws(() => Context.get(one, FileSystem.FileSystem as any), /Service not found: effect\/FileSystem\/access/)
+
+    assert.strictEqual(Context.pick(FileSystem.FileSystem)(context).mapUnsafe.size, 30)
+    assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
+    assert.strictEqual(Context.omit(FileSystem.readFile.service)(context).mapUnsafe.size, 29)
+    assert.strictEqual(Context.pick(FileSystem.readFile.service, FileSystem.stat.service)(context).mapUnsafe.size, 2)
+  })
+
+  it("stores a record under its members' keys and never under its own", () => {
+    const live = record({})
+    const context = Context.add(Context.empty(), FileSystem.FileSystem, live)
+    assert.strictEqual(context.mapUnsafe.size, 30)
+    assert.isTrue(context.mapUnsafe.has("effect/FileSystem/readFile"))
+    assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
   })
 })
