@@ -1252,18 +1252,33 @@ describe("fromJsonSchemaDocument", () => {
   it("keeps contentSchema references inside nested resources", () => {
     const content = { type: "string", contentMediaType: "application/json", contentSchema: { $ref: "#/$defs/Payload" } }
     const nested = { $id: "child", $defs: { Payload: { type: "number" } } }
-    for (const child of [{ ...nested, ...content }, { ...nested, type: "object", properties: { data: content } }]) {
-      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-        $id: "https://example.com/root",
+    const root = (child: JsonSchema.JsonSchema): JsonSchema.JsonSchema => ({
+      $id: "https://example.com/root",
+      type: "object",
+      properties: { child },
+      required: ["child"],
+      additionalProperties: false,
+      $defs: { Payload: { type: "boolean" } }
+    })
+    const annotated =
+      `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "$ref": "#/$defs/Payload" } })`
+    assertFromJsonSchema({ schema: root({ ...nested, ...content }) }, {
+      codes: makeCode(`Schema.Struct({ "child": ${annotated} })`, `{ readonly "child": string }`)
+    })
+    assertFromJsonSchema({
+      schema: root({
+        ...nested,
         type: "object",
-        properties: { child },
-        $defs: { Payload: { type: "boolean" } }
-      }))
-      assert.include(
-        SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])).codes[0].runtime,
-        `"contentSchema": { "$ref": "#/$defs/Payload" }`
+        properties: { data: content },
+        required: ["data"],
+        additionalProperties: false
+      })
+    }, {
+      codes: makeCode(
+        `Schema.Struct({ "child": Schema.Struct({ "data": ${annotated} }) })`,
+        `{ readonly "child": { readonly "data": string } }`
       )
-    }
+    })
   })
 
   describe("$ref", () => {
