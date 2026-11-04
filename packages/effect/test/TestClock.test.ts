@@ -118,6 +118,20 @@ describe("TestClock", () => {
       assert.strictEqual(message, "Hello, World!")
     }))
 
+  it.effect("sleep - waits the full duration each time a sleep effect runs", () =>
+    Effect.gen(function*() {
+      const clock = yield* TestClock.testClockWith(Effect.succeed)
+      const sleep = clock.sleep(Duration.seconds(1))
+      yield* TestClock.adjust("5 seconds")
+      for (let i = 0; i < 2; i++) {
+        const fiber = yield* Effect.forkChild(sleep)
+        yield* TestClock.adjust("999 millis")
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* TestClock.adjust("1 millis")
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
+      }
+    }))
+
   it.effect("setTime - sleep correctly handles new set time", () =>
     Effect.gen(function*() {
       let elapsed = false
@@ -142,6 +156,17 @@ describe("TestClock", () => {
       const timestamp = 1_000_000_000_001
       yield* testClock.setTime(timestamp)
       assert.strictEqual(testClock.currentTimeNanosUnsafe(), BigInt(timestamp) * 1_000_000n)
+    }))
+
+  it.effect("adjust - advances the clock when detached, copied or inherited", () =>
+    Effect.gen(function*() {
+      const clock = yield* TestClock.testClockWith(Effect.succeed)
+      const { adjust } = clock
+      const inherited: TestClock.TestClock = Object.create(clock)
+      yield* adjust("1 second")
+      yield* { ...clock }.adjust("1 second")
+      yield* inherited.adjust("1 second")
+      assert.strictEqual(clock.currentTimeMillisUnsafe(), 3000)
     }))
 
   it.effect("adjust - advances wall and monotonic time", () =>
@@ -254,6 +279,18 @@ describe("TestClock", () => {
       yield* TestClock.adjust("5 seconds")
       assert.isTrue(later)
     }).pipe(Effect.provide(TestClock.layer({ warningDelay: "10 millis" }))))
+
+  it.effect("serializes a context containing a TestClock", () =>
+    Effect.gen(function*() {
+      const context = yield* Effect.context<never>()
+      assert.doesNotThrow(() => JSON.stringify(context))
+      const clock = yield* TestClock.testClockWith(Effect.succeed)
+      const copy = { ...clock }
+      const copied = yield* Effect.context<never>().pipe(Effect.provideService(Clock.Clock, copy))
+      assert.doesNotThrow(() => JSON.stringify(copied))
+      yield* copy.adjust("1 second")
+      assert.strictEqual(JSON.parse(JSON.stringify(copy)).currentTimeMillis, 1000)
+    }))
 
   it.effect("adjust - waits for woken fibers when the advancing fiber yields on its operation budget", () =>
     Effect.gen(function*() {
