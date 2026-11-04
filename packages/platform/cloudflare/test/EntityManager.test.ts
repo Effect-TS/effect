@@ -375,13 +375,55 @@ describe("EntityManager", () => {
       yield* Fiber.join(hold)
     }))
 
+  it.effect("interrupts a request waiting for the only permit", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let queuedRuns = 0
+      const entity = Entity.make("QueuedMailbox", [
+        Rpc.make("Hold", { success: Schema.String }),
+        Rpc.make("Queued", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Hold: () => Effect.andThen(Deferred.succeed(started, undefined), Effect.as(Deferred.await(release), "held")),
+          Queued: () =>
+            Effect.sync(() => {
+              queuedRuns++
+              return "queued"
+            })
+        })),
+        options: { concurrency: 1 },
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, manager } = yield* makeMailbox("queued", entity.type)
+      const hold = yield* Effect.forkChild(manager.invoke(envelope("Hold"), false))
+      yield* Deferred.await(started)
+      const queuedRequestId = nextRequestId()
+      const queued = yield* Effect.forkChild(manager.invoke(envelope("Queued", null, queuedRequestId), false))
+      yield* settle
+
+      yield* manager.interrupt(queuedRequestId).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.join(queued)
+
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(hold)
+      assert.strictEqual(queuedRuns, 0)
+    }))
+
   it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>
     Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
       const release = yield* Deferred.make<void>()
       let completed = false
       const entity = Entity.make("UninterruptibleMailbox", [
-        Rpc.make("Critical", { success: Schema.String })
+        Rpc.make("Critical", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
       ])
       const handlers: EntityRegistration = {
         entity,
@@ -402,7 +444,7 @@ describe("EntityManager", () => {
         Effect.sync(() => registerEntity(entity.type, handlers)),
         () => Effect.sync(() => unregisterEntity(entity.type, handlers))
       )
-      const { envelope, manager } = yield* makeMailbox("uninterruptible", entity.type)
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("uninterruptible", entity.type)
       const requestId = nextRequestId()
       const invoke = yield* Effect.forkChild(manager.invoke(envelope("Critical", null, requestId), false))
       yield* Deferred.await(started)
@@ -414,5 +456,8 @@ describe("EntityManager", () => {
       yield* Fiber.join(invoke)
 
       assert.isTrue(completed)
+      // The handler's late success must not replace the interrupt reply.
+      const reply = yield* loadNextReply(storage.sql, requestId)
+      assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
     }))
 })
