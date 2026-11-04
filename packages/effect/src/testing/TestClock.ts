@@ -19,6 +19,7 @@ import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { NodeInspectSymbol } from "../Inspectable.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Scheduler from "../Scheduler.ts"
@@ -451,6 +452,15 @@ class TestClockImpl implements TestClock {
 
   run(step: (currentTimestamp: number) => number, adjustmentNanos?: bigint): Effect.Effect<void> {
     return this.runSemaphore.withPermits(1)(runBody.call(this, step, adjustmentNanos))
+  }
+
+  // Hides the internal state, which is circular and holds bigints
+  toJSON(): unknown {
+    return { _id: "TestClock", currentTimeMillis: this.currentTimestamp }
+  }
+
+  [NodeInspectSymbol](): unknown {
+    return this.toJSON()
   }
 }
 
