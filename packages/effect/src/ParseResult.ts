@@ -894,8 +894,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           return u.endsWith(literal) && u.length - literal.length >= position
         })
       }
-      const regex = AST.getTemplateLiteralRegExp(ast)
-      return fromRefinement(ast, (u): u is any => Predicate.isString(u) && regex.test(u))
+      const matches = AST.getTemplateLiteralMatcher(ast)
+      return fromRefinement(ast, (u): u is any => Predicate.isString(u) && matches(u))
     }
     case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))

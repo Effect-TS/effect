@@ -2200,6 +2200,245 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp =>
 export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp =>
   new RegExp(`^${getTemplateLiteralPattern(ast, true, true)}$`)
 
+// ---------------------------------------------
+// template literal matcher
+// ---------------------------------------------
+
+// The matcher accepts exactly the strings accepted by `getTemplateLiteralRegExp`,
+// but runs in time linear in the input length: the template literal is compiled
+// into an NFA (Thompson construction) and the NFA is simulated by tracking the
+// set of active states, so there is no backtracking.
+
+const NFA_EPSILON = 0
+const NFA_CODE = 1
+const NFA_ANY = 2
+const NFA_DIGIT = 3
+
+class TemplateLiteralNFA {
+  readonly kinds: Array<number> = []
+  readonly codes: Array<number> = []
+  readonly outs: Array<Array<number>> = []
+
+  state(kind: number, code: number): number {
+    this.kinds.push(kind)
+    this.codes.push(code)
+    this.outs.push([])
+    return this.kinds.length - 1
+  }
+}
+
+interface NFAFragment {
+  readonly start: number
+  readonly end: number
+}
+
+const nfaEmpty = (nfa: TemplateLiteralNFA): NFAFragment => {
+  const s = nfa.state(NFA_EPSILON, 0)
+  return { start: s, end: s }
+}
+
+const nfaConsume = (nfa: TemplateLiteralNFA, kind: number, code: number): NFAFragment => {
+  const end = nfa.state(NFA_EPSILON, 0)
+  const start = nfa.state(kind, code)
+  nfa.outs[start].push(end)
+  return { start, end }
+}
+
+const nfaString = (nfa: TemplateLiteralNFA, s: string): NFAFragment => {
+  const fragments: Array<NFAFragment> = []
+  for (let i = 0; i < s.length; i++) {
+    fragments.push(nfaConsume(nfa, NFA_CODE, s.charCodeAt(i)))
+  }
+  return nfaSequence(nfa, fragments)
+}
+
+const nfaSequence = (nfa: TemplateLiteralNFA, fragments: ReadonlyArray<NFAFragment>): NFAFragment => {
+  if (fragments.length === 0) {
+    return nfaEmpty(nfa)
+  }
+  for (let i = 0; i < fragments.length - 1; i++) {
+    nfa.outs[fragments[i].end].push(fragments[i + 1].start)
+  }
+  return { start: fragments[0].start, end: fragments[fragments.length - 1].end }
+}
+
+const nfaAlternation = (nfa: TemplateLiteralNFA, fragments: ReadonlyArray<NFAFragment>): NFAFragment => {
+  const start = nfa.state(NFA_EPSILON, 0)
+  const end = nfa.state(NFA_EPSILON, 0)
+  for (const fragment of fragments) {
+    nfa.outs[start].push(fragment.start)
+    nfa.outs[fragment.end].push(end)
+  }
+  return { start, end }
+}
+
+const nfaOptional = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment =>
+  nfaAlternation(nfa, [fragment, nfaEmpty(nfa)])
+
+// zero or more repetitions
+const nfaStar = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment => {
+  const start = nfa.state(NFA_EPSILON, 0)
+  const end = nfa.state(NFA_EPSILON, 0)
+  nfa.outs[start].push(fragment.start, end)
+  nfa.outs[fragment.end].push(start)
+  return { start, end }
+}
+
+// one or more repetitions
+const nfaPlus = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment => {
+  const end = nfa.state(NFA_EPSILON, 0)
+  nfa.outs[fragment.end].push(fragment.start, end)
+  return { start: fragment.start, end }
+}
+
+const nfaSign = (nfa: TemplateLiteralNFA): NFAFragment =>
+  nfaOptional(nfa, nfaAlternation(nfa, [nfaString(nfa, "+"), nfaString(nfa, "-")]))
+
+// equivalent to NUMBER_KEYWORD_PATTERN: [+-]?\d*\.?\d+(?:[Ee][+-]?\d+)?
+const nfaNumber = (nfa: TemplateLiteralNFA): NFAFragment =>
+  nfaSequence(nfa, [
+    nfaSign(nfa),
+    nfaStar(nfa, nfaConsume(nfa, NFA_DIGIT, 0)),
+    nfaOptional(nfa, nfaString(nfa, ".")),
+    nfaPlus(nfa, nfaConsume(nfa, NFA_DIGIT, 0)),
+    nfaOptional(
+      nfa,
+      nfaSequence(nfa, [
+        nfaAlternation(nfa, [nfaString(nfa, "E"), nfaString(nfa, "e")]),
+        nfaSign(nfa),
+        nfaPlus(nfa, nfaConsume(nfa, NFA_DIGIT, 0))
+      ])
+    )
+  ])
+
+const nfaSpanType = (nfa: TemplateLiteralNFA, type: TemplateLiteralSpanType): NFAFragment => {
+  switch (type._tag) {
+    case "Literal":
+      return nfaString(nfa, String(type.literal))
+    case "StringKeyword":
+      // equivalent to STRING_KEYWORD_PATTERN: [\s\S]*?
+      return nfaStar(nfa, nfaConsume(nfa, NFA_ANY, 0))
+    case "NumberKeyword":
+      return nfaNumber(nfa)
+    case "TemplateLiteral":
+      return nfaTemplateLiteral(nfa, type)
+    case "Union":
+      return nfaAlternation(nfa, type.types.map((type) => nfaSpanType(nfa, type)))
+  }
+}
+
+const nfaTemplateLiteral = (nfa: TemplateLiteralNFA, ast: TemplateLiteral): NFAFragment => {
+  const fragments: Array<NFAFragment> = [nfaString(nfa, ast.head)]
+  for (const span of ast.spans) {
+    fragments.push(nfaSpanType(nfa, span.type), nfaString(nfa, span.literal))
+  }
+  return nfaSequence(nfa, fragments)
+}
+
+const compileTemplateLiteralMatcher = (ast: TemplateLiteral): (s: string) => boolean => {
+  const nfa = new TemplateLiteralNFA()
+  const { end: accept, start } = nfaTemplateLiteral(nfa, ast)
+  const { codes, kinds, outs } = nfa
+  const size = kinds.length
+
+  // The epsilon closure of a state: the states that consume a character and are
+  // reachable from it through epsilon transitions only. Closures are computed
+  // lazily and cached, together with whether the accepting state is reachable.
+  const closures: Array<ReadonlyArray<number> | undefined> = new Array(size)
+  const accepts: Array<boolean> = new Array(size).fill(false)
+  const visited: Array<number> = new Array(size).fill(-1)
+  const getClosure = (state: number): ReadonlyArray<number> => {
+    let closure = closures[state]
+    if (closure === undefined) {
+      const out: Array<number> = []
+      const stack = [state]
+      while (stack.length > 0) {
+        const s = stack.pop()!
+        if (visited[s] === state) {
+          continue
+        }
+        visited[s] = state
+        if (s === accept) {
+          accepts[state] = true
+        }
+        if (kinds[s] === NFA_EPSILON) {
+          for (const o of outs[s]) {
+            stack.push(o)
+          }
+        } else {
+          out.push(s)
+        }
+      }
+      closures[state] = closure = out
+    }
+    return closure
+  }
+
+  // successor of each consuming state (consuming states have exactly one out)
+  const successors: Array<number> = outs.map((out) => out[0] ?? -1)
+
+  return (input: string): boolean => {
+    // `marks[state] === i` means that `state` is already in the next set
+    const marks = new Int32Array(size).fill(-1)
+    let active: ReadonlyArray<number> = getClosure(start)
+    let accepting = accepts[start]
+    for (let i = 0; i < input.length; i++) {
+      if (active.length === 0) {
+        return false
+      }
+      const code = input.charCodeAt(i)
+      const next: Array<number> = []
+      accepting = false
+      for (let j = 0; j < active.length; j++) {
+        const s = active[j]
+        switch (kinds[s]) {
+          case NFA_ANY:
+            break
+          case NFA_DIGIT:
+            if (code < 48 || code > 57) continue
+            break
+          default:
+            if (codes[s] !== code) continue
+        }
+        const successor = successors[s]
+        const closure = getClosure(successor)
+        if (accepts[successor]) {
+          accepting = true
+        }
+        for (let k = 0; k < closure.length; k++) {
+          const t = closure[k]
+          if (marks[t] !== i) {
+            marks[t] = i
+            next.push(t)
+          }
+        }
+      }
+      active = next
+    }
+    return accepting
+  }
+}
+
+const templateLiteralMatcherCache = globalValue(
+  Symbol.for("effect/SchemaAST/templateLiteralMatcherCache"),
+  () => new WeakMap<TemplateLiteral, (s: string) => boolean>()
+)
+
+/**
+ * Returns a predicate that accepts the same strings as
+ * `getTemplateLiteralRegExp(ast)` and runs in time linear in the input length.
+ *
+ * @internal
+ */
+export const getTemplateLiteralMatcher = (ast: TemplateLiteral): (s: string) => boolean => {
+  let matcher = templateLiteralMatcherCache.get(ast)
+  if (matcher === undefined) {
+    matcher = compileTemplateLiteralMatcher(ast)
+    templateLiteralMatcherCache.set(ast, matcher)
+  }
+  return matcher
+}
+
 /**
  * @since 3.10.0
  */
@@ -2279,8 +2518,7 @@ const getTypeLiteralPropertySignature = (ast: TypeLiteral, name: PropertyKey): P
       const encodedParameter = getEncodedParameter(is.parameter)
       switch (encodedParameter._tag) {
         case "TemplateLiteral": {
-          const regex = getTemplateLiteralRegExp(encodedParameter)
-          if (regex.test(name)) {
+          if (getTemplateLiteralMatcher(encodedParameter)(name)) {
             return new PropertySignature(name, is.type, false, true)
           }
           break
