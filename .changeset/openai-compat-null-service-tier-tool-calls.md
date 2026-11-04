@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Fix responses and streamed chunks with `null` `service_tier` or `tool_calls` failing to decode or being dropped.
+Accept `null` for `service_tier` and `message.tool_calls` in chat completion responses and stream chunks, treating them like absent fields. Servers that serialize unset fields as `null` (for example vLLM) previously failed `generateText` with a decode error and had their null-tier stream chunks dropped.
