@@ -2079,8 +2079,7 @@ export const CreatePayloadRequestText = Schema.String`,
                     contentSchema: { $ref: "#/components/schemas/Payload" }
                   }
                 },
-                required: ["data"],
-                additionalProperties: false
+                required: ["data"]
               }
             },
             securitySchemes: {}

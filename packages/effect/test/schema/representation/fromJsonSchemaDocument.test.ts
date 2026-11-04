@@ -1250,35 +1250,39 @@ describe("fromJsonSchemaDocument", () => {
   })
 
   it("keeps contentSchema references inside nested resources", () => {
-    const content = { type: "string", contentMediaType: "application/json", contentSchema: { $ref: "#/$defs/Payload" } }
-    const nested = { $id: "child", $defs: { Payload: { type: "number" } } }
-    const root = (child: JsonSchema.JsonSchema): JsonSchema.JsonSchema => ({
-      $id: "https://example.com/root",
-      type: "object",
-      properties: { child },
-      required: ["child"],
-      additionalProperties: false,
-      $defs: { Payload: { type: "boolean" } }
-    })
-    const annotated =
-      `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "$ref": "#/$defs/Payload" } })`
-    assertFromJsonSchema({ schema: root({ ...nested, ...content }) }, {
-      codes: makeCode(`Schema.Struct({ "child": ${annotated} })`, `{ readonly "child": string }`)
-    })
-    assertFromJsonSchema({
-      schema: root({
-        ...nested,
-        type: "object",
-        properties: { data: content },
-        required: ["data"],
-        additionalProperties: false
-      })
-    }, {
-      codes: makeCode(
-        `Schema.Struct({ "child": Schema.Struct({ "data": ${annotated} }) })`,
-        `{ readonly "child": { readonly "data": string } }`
-      )
-    })
+    assertFromJsonSchema(
+      {
+        schema: {
+          $id: "https://example.com/root",
+          type: "object",
+          properties: {
+            child: {
+              $id: "child",
+              type: "object",
+              properties: {
+                data: {
+                  type: "string",
+                  contentMediaType: "application/json",
+                  contentSchema: { $ref: "#/$defs/Payload" }
+                }
+              },
+              required: ["data"],
+              additionalProperties: false,
+              $defs: { Payload: { type: "number" } }
+            }
+          },
+          required: ["child"],
+          additionalProperties: false,
+          $defs: { Payload: { type: "boolean" } }
+        }
+      },
+      {
+        codes: makeCode(
+          `Schema.Struct({ "child": Schema.Struct({ "data": Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "$ref": "#/$defs/Payload" } }) }) })`,
+          `{ readonly "child": { readonly "data": string } }`
+        )
+      }
+    )
   })
 
   describe("$ref", () => {
