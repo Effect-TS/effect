@@ -12,7 +12,7 @@ interface Store {
 const Released = Context.Service<Store>("test/Released")
 const Tapped = Context.Service<Store>("test/Tapped")
 
-export const main = () => {
+const main = () => {
   const log: Array<string> = []
   const ReleasedLayer = Layer.effect(
     Released,
@@ -32,3 +32,6 @@ export const main = () => {
     [...reads, ...log].join(",")
   )
 }
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

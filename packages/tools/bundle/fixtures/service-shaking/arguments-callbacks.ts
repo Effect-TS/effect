@@ -12,7 +12,7 @@ interface Store {
 const Consumed = Context.Service<Store>("test/ArgumentsConsumer")
 const Released = Context.Service<Store>("test/ArgumentsRelease")
 
-export const main = () => {
+const main = () => {
   const log: Array<string> = []
   const ReleasedLayer = Layer.effect(
     Released,
@@ -35,3 +35,6 @@ export const main = () => {
   const layers = Layer.mergeAll(Layer.succeed(Consumed, { read: () => 1, unused: () => 2 }), ReleasedLayer)
   return Effect.runPromise(Effect.provide(program, layers)).then((results) => [...results, ...log].join(","))
 }
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

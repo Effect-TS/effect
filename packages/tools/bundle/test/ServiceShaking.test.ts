@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as esbuild from "esbuild"
+import { execFile } from "node:child_process"
 import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -42,6 +43,26 @@ const regressions = [
   "mutable-receiver.ts",
   "nested-providers.ts"
 ]
+
+// Providers built by constructors whose methods are local bindings. The
+// program only calls `readOne`.
+const constructors = ["constructor-gen.ts", "constructor-map.ts"]
+
+// Module-scope code that only `writeOne` reaches, directly or through the
+// services it calls, and code construction must keep running.
+const constructorCode: Record<
+  string,
+  { readonly removed: ReadonlyArray<RegExp>; readonly kept: ReadonlyArray<RegExp> }
+> = {
+  "constructor-gen.ts": {
+    removed: [/\bconstructorWriteHelper\b/, /\bdependencyWrite\b/, /\bauditRecord\b/],
+    kept: [/\bdependencyPrepare\b/, /\bmakeWriteCache\b/]
+  },
+  "constructor-map.ts": {
+    removed: [/\bconstructorWriteHelper\b/, /\bdependencyWrite\b/],
+    kept: [/\bdependencyDescribe\b/]
+  }
+}
 
 const fixtureArgs: Record<string, ReadonlyArray<string>> = {
   "bailout-escape.ts": ["copy"]
@@ -168,9 +189,20 @@ const load = async (code: string) => {
   return import(/* @vite-ignore */ pathToFileURL(file).href)
 }
 
+// Fixtures other than the exported-entry cases are closed programs that print
+// their result, so they run in a separate process.
 const run = async (code: string, fixture: string): Promise<string> => {
-  const module = await load(code)
-  return module.main(path.join(await getTempDir(), "input.txt"), ...(fixtureArgs[fixture] ?? []))
+  const dir = await getTempDir()
+  const file = path.join(dir, `bundle-${runs++}.mjs`)
+  await fs.writeFile(file, code)
+  const args = [file, path.join(dir, "input.txt"), ...(fixtureArgs[fixture] ?? [])]
+  return new Promise((resolve, reject) =>
+    execFile(
+      process.execPath,
+      process.versions.deno === undefined ? args : ["run", "-A", ...args],
+      (error, stdout, stderr) => error ? reject(new Error(`${error.message}\n${stderr}`)) : resolve(stdout.trimEnd())
+    )
+  )
 }
 
 const size = (code: string) => Buffer.byteLength(code)
@@ -179,7 +211,7 @@ const size = (code: string) => Buffer.byteLength(code)
 const timeout = 60_000
 
 describe("ServiceShaking", () => {
-  for (const fixture of [...prunable, ...bailouts, ...regressions]) {
+  for (const fixture of [...prunable, ...bailouts, ...regressions, ...constructors]) {
     it(`${fixture} behaves like the unoptimized bundle`, { timeout }, async () => {
       const [expected, actual] = await Promise.all([
         baseline(fixture).then((code) => run(code, fixture)),
@@ -216,6 +248,22 @@ describe("ServiceShaking", () => {
       assert.notStrictEqual(trimmed, untrimmed, "trimming FileSystem should be observable in this fixture")
       const actual = await shaken(fixture)
       for (const code of unusedMethodCode) {
+        assert.match(actual, code)
+      }
+    })
+  }
+
+  for (const fixture of constructors) {
+    it(`${fixture} drops constructor-created methods and the demand only they had`, { timeout }, async () => {
+      const [base, actual] = await Promise.all([baseline(fixture), shaken(fixture)])
+      const { kept, removed } = constructorCode[fixture]
+      for (const code of [...removed, ...kept]) {
+        assert.match(base, code, "baseline should contain every helper")
+      }
+      for (const code of removed) {
+        assert.notMatch(actual, code)
+      }
+      for (const code of kept) {
         assert.match(actual, code)
       }
     })

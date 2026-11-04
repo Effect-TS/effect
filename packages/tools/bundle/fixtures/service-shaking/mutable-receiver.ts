@@ -20,7 +20,10 @@ read = function(this: Store) {
 
 const Receiver = Context.Service<Store>("test/MutableReceiver")
 
-export const main = () =>
+const main = () =>
   Effect.runPromise(
     Effect.provide(Receiver.useSync((s) => `${s.read()}`), Layer.succeed(Receiver, { read, unused: () => 2 }))
   )
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

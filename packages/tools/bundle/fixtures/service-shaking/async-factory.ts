@@ -15,10 +15,13 @@ async function make(): Promise<Store> {
   return { read: () => 1, unused: () => 2 }
 }
 
-export const main = () =>
+const main = () =>
   Effect.runPromise(
     Effect.provide(
       Async.use((p) => Effect.promise(() => p.then((s) => `${s.read()}`))),
       Layer.succeed(Async, make())
     )
   )
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

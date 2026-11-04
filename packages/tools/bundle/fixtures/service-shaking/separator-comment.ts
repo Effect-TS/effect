@@ -10,7 +10,7 @@ interface Store {
 // A comment sits between the removed property and its comma.
 const Commented = Context.Service<Store>("test/Commented")
 
-export const main = () =>
+const main = () =>
   Effect.runPromise(
     Effect.provide(
       Commented.useSync((s) => `${s.read()}`),
@@ -18,3 +18,6 @@ export const main = () =>
       Layer.succeed(Commented, { unused: () => 2 /* comment */, read: () => 1 })
     )
   )
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

@@ -4,7 +4,8 @@
   "include": ["fixtures"],
   "compilerOptions": {
     "rootDir": "fixtures",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
   "references": [
     { "path": "../../effect" },

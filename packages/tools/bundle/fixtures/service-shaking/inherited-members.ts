@@ -10,7 +10,7 @@ interface Store {
 // Members inherited from Object.prototype observe the whole service.
 const Inherited = Context.Service<Store>("test/Inherited")
 
-export const main = () =>
+const main = () =>
   Effect.runPromise(
     Effect.provide(
       // oxlint-disable-next-line no-prototype-builtins
@@ -18,3 +18,6 @@ export const main = () =>
       Layer.succeed(Inherited, { read: () => 1, unused: () => 2 })
     )
   )
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

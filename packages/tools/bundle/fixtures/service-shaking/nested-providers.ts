@@ -18,4 +18,7 @@ const layer = Layer.succeed(Outer, {
     Effect.runSync(Effect.provide(Inner.useSync((s) => s.a()), Layer.succeed(Inner, { a: () => 3, b: () => 4 })))
 })
 
-export const main = () => Effect.runPromise(Effect.provide(Outer.useSync((s) => `${s.read()}`), layer))
+const main = () => Effect.runPromise(Effect.provide(Outer.useSync((s) => `${s.read()}`), layer))
+
+// A closed program: it exports nothing and prints its result.
+main().then((output) => console.log(output))

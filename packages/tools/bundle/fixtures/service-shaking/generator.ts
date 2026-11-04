@@ -8,5 +8,7 @@ const program = Effect.fnUntraced(function*(path: string) {
   return `${bytes.length}`
 })
 
-export const main = (path: string): Promise<string> =>
-  Effect.runPromise(Effect.provide(program(path), NodeFileSystem.layer))
+const main = (path: string): Promise<string> => Effect.runPromise(Effect.provide(program(path), NodeFileSystem.layer))
+
+// A closed program: it exports nothing and prints its result.
+main(process.argv[2]!).then((output) => console.log(output))
