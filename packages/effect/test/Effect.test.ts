@@ -1589,12 +1589,24 @@ describe("Effect", () => {
           }
         }
         const winner = yield* Deferred.make<string>()
+        const frame: References.StackFrame = { name: "race", stack: () => undefined, parent: undefined }
+        let loserExit: Exit.Exit<string> | undefined
         const [queue, fiber] = yield* Effect.gen(function*() {
           const queue = yield* Queue.unbounded<string>()
           const fiber = yield* Effect.withFiber((fiber) => {
             parent = fiber
-            return race(Queue.take(queue), Deferred.await(winner))
-          }).pipe(Effect.forkChild({ startImmediately: true }))
+            return race(
+              Queue.take(queue).pipe(Effect.onExit((exit) =>
+                Effect.sync(() => {
+                  loserExit = exit
+                })
+              )),
+              Deferred.await(winner)
+            )
+          }).pipe(
+            Effect.provideService(References.CurrentStackFrame, frame),
+            Effect.forkChild({ startImmediately: true })
+          )
           return [queue, fiber] as const
         }).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
         // Wake the loser via a scheduled task, then settle the race while the
@@ -1605,6 +1617,9 @@ describe("Effect", () => {
         while (tasks.length > 0) tasks.shift()!()
         assert.strictEqual(yield* Fiber.join(fiber), "winner")
         assert.strictEqual(yield* Queue.size(queue), 1)
+        if (loserExit?._tag !== "Failure") return assert.fail("expected the loser to be interrupted")
+        const annotations = Cause.reasonAnnotations(loserExit.cause.reasons[0])
+        assert.strictEqual(Context.getOrUndefined(annotations, Cause.InterruptorStackTrace), frame)
       }))
   }
 
