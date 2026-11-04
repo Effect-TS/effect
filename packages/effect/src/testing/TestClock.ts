@@ -461,7 +461,7 @@ class TestClockImpl implements TestClock {
 }
 
 function testClockToJSON(this: TestClockImpl): unknown {
-  return { _id: "TestClock", currentTimeMillis: this.currentTimestamp }
+  return { _id: "TestClock", currentTimeMillis: this.currentTimeMillisUnsafe() }
 }
 
 const runBody = Effect.fnUntraced(function*(
