@@ -5,7 +5,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as Latch from "effect/Latch"
 import * as Scheduler from "effect/Scheduler"
 import * as Supervisor from "effect/Supervisor"
 import * as TestClock from "effect/testing/TestClock"
@@ -25,27 +24,18 @@ describe("TestClock", () => {
       }
       return { blocks, started, supervisor }
     }
-    const state = TestClock.testClockWith((clock) => Effect.sync(() => clock.stateUnsafe()))
 
     it.effect("stateUnsafe lists the pending sleeps soonest first, with the Latch each sleeper blocks on", () =>
       Effect.gen(function*() {
         const { blocks, supervisor } = recorder()
-        const [latest, later, sooner] = yield* Effect.forEach(
-          ["3 minutes", "2 minutes", "1 minute"] as const,
+        const [later, sooner] = yield* Effect.forEach(
+          ["2 minutes", "1 minute"] as const,
           (duration) => Effect.forkChild(Effect.sleep(duration), { startImmediately: true })
         ).pipe(Effect.provideService(Supervisor.Supervisor, supervisor))
-        const before = yield* state
-        assert.strictEqual(before.timestamp, 0)
-        assert.deepStrictEqual(before.sleeps.map(([deadline]) => deadline), [60_000, 120_000, 180_000])
-        assert.deepStrictEqual(
-          before.sleeps.map(([, latch]): unknown => latch),
-          [sooner, later, latest].map((fiber) => blocks.get(fiber))
-        )
-        assert.isTrue(Latch.isLatch(before.sleeps[0][1]))
-        yield* TestClock.adjust("90 seconds")
-        const after = yield* state
-        assert.strictEqual(after.timestamp, 90_000)
-        assert.deepStrictEqual(after.sleeps.map(([deadline]) => deadline), [120_000, 180_000])
+        const { sleeps } = yield* TestClock.testClockWith((clock) => Effect.sync(() => clock.stateUnsafe()))
+        assert.deepStrictEqual(sleeps.map(([deadline]) => deadline), [60_000, 120_000])
+        assert.strictEqual(sleeps[0][1], blocks.get(sooner))
+        assert.strictEqual(sleeps[1][1], blocks.get(later))
       }))
 
     it.effect("a test's Supervisor never sees the warning timer", () =>

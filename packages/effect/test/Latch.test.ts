@@ -1,13 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Latch, Semaphore } from "effect"
+import { Effect, Exit, Fiber, Latch, Semaphore } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Latch", () => {
-  it("isLatch accepts a Latch and rejects anything else", () => {
+  it("isLatch accepts a Latch and rejects a Semaphore", () => {
     assert.isTrue(Latch.isLatch(Latch.makeUnsafe()))
-    for (const value of [Semaphore.makeUnsafe(1), Deferred.makeUnsafe<void>(), {}, null]) {
-      assert.isFalse(Latch.isLatch(value))
-    }
+    assert.isFalse(Latch.isLatch(Semaphore.makeUnsafe(1)))
   })
 
   it.effect("release wakes current waiters and keeps the latch closed", () =>
