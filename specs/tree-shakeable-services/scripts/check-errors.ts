@@ -23,12 +23,22 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type 'string' is not assignable to type 'number'`,
     `Type '{ readonly value: number; }' is not assignable to type 'never'`
   ],
-  "not-an-operation.ts": [`does not satisfy the constraint 'Signature'`],
+  "not-an-operation.ts": [`does not satisfy the constraint 'EffectSignature'`],
   "not-an-effect.ts": [
     `is not assignable to parameter of type 'Effect<unknown, unknown, unknown>'`,
     `must have a '[Symbol.iterator]()' method`
   ],
-  "derived-generic.ts": [`Type 'Effect<unknown, never, "test/parse">' is not assignable to type 'string'`],
+  "generic-unnamed.ts": [`is generic or overloaded: its result must require \\"test/parse\\"`],
+  "overloaded-unnamed.ts": [`is generic or overloaded: its result must require \\"test/format\\"`],
+  "shape-with-properties.ts": [`has properties: an operation is a bare function`],
+  "stream-shape.ts": [`does not satisfy the constraint 'EffectSignature'`],
+  "record-requires-all.ts": [`Type 'FileSystem' is not assignable to type 'never'`],
+  "partial-aggregate.ts": [`is not assignable to type 'Layer<FileSystem, never, never>'`],
+  "missing-twenty.ts": [
+    `Type '"effect/FileSystem/rename" | "effect/FileSystem/stat" | "effect/FileSystem/utimes"' is not assignable to type 'never'`
+  ],
+  "wrong-self.ts": [`Self is not the identifier of these operations`],
+  "layer-succeed-operation.ts": [`is not assignable to parameter of type 'Key<`, `is missing the following properties`],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,
     `Type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, "effect/FileSystem/readFile">' is not assignable to type 'string'`,

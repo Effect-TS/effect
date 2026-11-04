@@ -4,8 +4,14 @@
  * This is the coarse-grained form: providing it is the same as providing a
  * record service today, and it bundles every implementation. A program that
  * only needs two operations provides those two layers instead.
+ *
+ * The annotation is the point: merging the thirty operation layers is a
+ * `Layer<FileSystem>`, the type a record provider has, because the identity
+ * of the record service is the union of its operations' keys. No helper is
+ * needed to go from the per-operation form to the whole-service form.
  */
 import * as Layer from "effect/Layer"
+import type * as FileSystem from "../FileSystem.ts"
 import { access } from "./access.ts"
 import { chmod } from "./chmod.ts"
 import { chown } from "./chown.ts"
@@ -37,7 +43,7 @@ import { watch } from "./watch.ts"
 import { writeFile } from "./writeFile.ts"
 import { writeFileString } from "./writeFileString.ts"
 
-export const layer = Layer.mergeAll(
+export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.mergeAll(
   access,
   chmod,
   chown,
