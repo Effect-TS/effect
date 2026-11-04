@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import type * as array_ from "effect/Array"
+import * as Either from "effect/Either"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "../TestUtils.js"
@@ -390,5 +391,18 @@ schema (Union): boolean | symbol`)
    └─ Expected \`<\${\`h\${"1" | "2"}\`}>\`, actual "<h3>"`
       )
     })
+  })
+
+  it("extracts captures from adversarial inputs in linear time", () => {
+    const schema = S.TemplateLiteralParser(S.String, S.Number, S.Number, S.Number, "X")
+    const decode = S.decodeUnknownEither(schema)
+    const prefix = "1".repeat(45) + "Y"
+    const start = Date.now()
+    const result = decode(prefix + "111X")
+    const elapsed = Date.now() - start
+
+    deepStrictEqual(result, Either.right([prefix, 1, 1, 1, "X"] as const))
+    assertTrue(elapsed < 100, `decoding took ${elapsed}ms`)
+    strictEqual(Either.isLeft(decode(prefix + "111Y")), true)
   })
 })

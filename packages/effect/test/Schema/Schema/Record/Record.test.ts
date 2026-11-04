@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Either from "effect/Either"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
@@ -39,6 +39,20 @@ describe("record", () => {
   })
 
   describe("decoding", () => {
+    it("rejects adversarial template literal keys in linear time", () => {
+      const schema = S.Record({
+        key: S.TemplateLiteral(S.String, ":", S.String, ":", S.Union(S.String, S.Literal("a")), "X"),
+        value: S.Number
+      })
+      const decode = S.decodeUnknownEither(schema, { onExcessProperty: "error" })
+      const start = Date.now()
+      const result = decode({ [":".repeat(1_500)]: 1 })
+      const elapsed = Date.now() - start
+
+      assertTrue(Either.isLeft(result))
+      assertTrue(elapsed < 100, `decoding took ${elapsed}ms`)
+    })
+
     it("Record(enum, number)", async () => {
       enum Abc {
         A = 1,
