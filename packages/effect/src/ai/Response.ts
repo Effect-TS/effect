@@ -162,9 +162,15 @@ const toolPartSchemaCache = new WeakMap<Tool.Any, {
 const toolPartSchemas = (tool: Tool.Any) => {
   let parts = toolPartSchemaCache.get(tool)
   if (parts === undefined) {
+    // Provider-executed tools keep the provider's payload; locally handled
+    // tools carry the JSON encoding of their results, as the Toolkit produces.
+    const hasProviderResults = Tool.isProviderDefined(tool) && !tool.requiresHandler
+    const failure = Tool.failureResultSchema(tool)
     parts = {
       toolCall: ToolCallPart(tool.name, tool.parametersSchema),
-      toolResult: ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
+      toolResult: hasProviderResults
+        ? ToolResultPart(tool.name, tool.successSchema, failure)
+        : ToolResultPart(tool.name, Schema.toCodecJson(tool.successSchema), Schema.toCodecJson(failure))
     }
     toolPartSchemaCache.set(tool, parts)
   }
@@ -1595,7 +1601,9 @@ export interface BaseToolResult<Name extends string> extends BasePart<"tool-resu
    */
   readonly name: Name
   /**
-   * The encoded result for serialization purposes.
+   * The encoded result for serialization purposes. Results of locally handled
+   * tools hold their JSON encoding; provider-executed tools keep the
+   * provider's payload.
    */
   readonly encodedResult: unknown
   /**
