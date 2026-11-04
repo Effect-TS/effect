@@ -1,4 +1,3 @@
-import type { SqlStorage } from "@cloudflare/workers-types"
 import * as CloudflarePersistedQueue from "@effect/platform-cloudflare/CloudflarePersistedQueue"
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
@@ -8,117 +7,14 @@ import { assert, describe, it } from "@effect/vitest"
 import { Clock, Effect, Fiber, Layer, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/persistence"
+import { DatabaseSync } from "node:sqlite"
+import { SqliteStorage } from "./fixtures/sqliteStorage.ts"
 
-interface ItemRow {
-  readonly id: string
-  readonly element: string
-  position: number
-  attempts: number
-  completed: number
-  lease_until: number | null
-  last_failure: string | null
-}
+// Real SQLite, so the fixture never mirrors the queue's SQL statements.
+const makeSql = (): SqliteStorage => new SqliteStorage(new DatabaseSync(":memory:"))
 
-class FakeSql {
-  readonly items = new Map<string, ItemRow>()
-
-  #nextPosition() {
-    return Math.max(0, ...Array.from(this.items.values(), (item) => item.position)) + 1
-  }
-
-  exec(query: string, ...bindings: Array<unknown>) {
-    if (query.startsWith("CREATE")) return this.rows([])
-    if (query.includes("DELETE FROM queue_items WHERE id = ? AND completed <> 0")) {
-      const item = this.items.get(String(bindings[0]))
-      if (item !== undefined && item.completed !== 0) this.items.delete(item.id)
-      return this.rows([])
-    }
-    if (query.includes("INSERT OR IGNORE INTO queue_items")) {
-      // A delayed offer stores its initial visibility deadline in lease_until.
-      // The old two-binding insert remains immediately visible.
-      const [id, element, leaseUntil = null] = bindings as [string, string, (number | null)?]
-      if (!this.items.has(id)) {
-        this.items.set(id, {
-          id,
-          element,
-          position: this.#nextPosition(),
-          attempts: 0,
-          completed: 0,
-          lease_until: leaseUntil,
-          last_failure: null
-        })
-      }
-      return this.rows([])
-    }
-    if (query.includes("SELECT id, element, attempts")) {
-      const [maxAttempts, now] = bindings as [number, number]
-      const row = Array.from(this.items.values())
-        .filter((item) =>
-          item.completed === 0 && item.attempts < maxAttempts &&
-          (item.lease_until === null || item.lease_until <= now)
-        )
-        .sort((left, right) => left.position - right.position)[0]
-      return this.rows(row === undefined ? [] : [{ id: row.id, element: row.element, attempts: row.attempts }])
-    }
-    if (query.includes("SET completed = 1")) {
-      const item = this.items.get(String(bindings[0]))
-      if (item !== undefined) {
-        item.completed = 1
-        item.lease_until = null
-      }
-      return this.rows([])
-    }
-    if (query.includes("SET lease_until = NULL WHERE lease_until")) {
-      const now = Number(bindings[0])
-      for (const item of this.items.values()) {
-        if (item.lease_until !== null && item.lease_until <= now) item.lease_until = null
-      }
-      return this.rows([])
-    }
-    if (query.includes("SET lease_until = NULL WHERE id")) {
-      const item = this.items.get(String(bindings[0]))
-      if (item !== undefined) item.lease_until = null
-      return this.rows([])
-    }
-    if (query.includes("AND lease_until IS NOT NULL")) {
-      const item = this.items.get(String(bindings[1]))
-      if (item !== undefined && item.lease_until !== null) item.lease_until = Number(bindings[0])
-      return this.rows([])
-    }
-    if (query.includes("SET lease_until = ? WHERE id = ?")) {
-      const item = this.items.get(String(bindings[1]))
-      if (item !== undefined) item.lease_until = Number(bindings[0])
-      return this.rows([])
-    }
-    if (query.includes("SET attempts = attempts + 1")) {
-      const [lastFailure, maxAttempts, id] = bindings as [string, number | null, string]
-      const item = this.items.get(id)
-      if (item !== undefined) {
-        item.completed = maxAttempts !== null && item.attempts + 1 >= maxAttempts ? 2 : 0
-        item.attempts++
-        item.lease_until = null
-        item.last_failure = lastFailure
-        item.position = this.#nextPosition()
-      }
-      return this.rows([])
-    }
-    if (query.includes("min(lease_until)")) {
-      const pending = Array.from(this.items.values())
-        .filter((item) => item.lease_until !== null)
-        .map((item) => item.lease_until!)
-      return this.rows([{ lease_until: pending.length === 0 ? null : Math.min(...pending) }])
-    }
-    throw new Error(`Unexpected SQL: ${query}`)
-  }
-
-  private rows(rows: Array<Record<string, unknown>>) {
-    return { toArray: () => rows }
-  }
-
-  get sql(): SqlStorage {
-    return this as unknown as SqlStorage
-  }
-}
+const leaseUntil = (sql: SqliteStorage, id: string): unknown =>
+  sql.sql.exec("SELECT lease_until FROM queue_items WHERE id = ?", id).toArray()[0]?.lease_until
 
 class FakeAlarm {
   current: number | null = null
@@ -140,7 +36,7 @@ class FakeAlarm {
 }
 
 class FakeQueueNamespace {
-  readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
+  readonly stores = new Map<string, { readonly sql: SqliteStorage; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, QueueRuntime>()
   now = 0
 
@@ -152,7 +48,7 @@ class FakeQueueNamespace {
   store(name: string) {
     let store = this.stores.get(name)
     if (store === undefined) {
-      store = { sql: new FakeSql(), alarm: new FakeAlarm((time) => this.onSchedule?.(name, time)) }
+      store = { sql: makeSql(), alarm: new FakeAlarm((time) => this.onSchedule?.(name, time)) }
       this.stores.set(name, store)
     }
     return store
@@ -203,6 +99,31 @@ const settle = () => Effect.promise(() => new Promise((resolve) => setTimeout(re
 
 const objectName = (queueName: string) => encodeName("PersistedQueue", queueName)
 
+// Takes without waiting: undefined when no item is available now.
+const takeNow = (runtime: QueueRuntime, takerId: string) =>
+  Effect.promise(async () => {
+    const item = await Promise.race([
+      runtime.take(takerId, 10, 500),
+      new Promise<undefined>((resolve) => setTimeout(resolve, 1))
+    ])
+    if (item === undefined) await runtime.cancelTake(takerId)
+    return item
+  })
+
+// "stale" leases "a" and stalls past its lease, then "live" leases and
+// completes it. "stale" still believes it holds the item.
+const completedBehindStaleLease = Effect.fnUntraced(function*(namespace: FakeQueueNamespace, name: string) {
+  const runtime = namespace.getByName(name)
+  yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+  yield* Effect.promise(() => runtime.take("stale", 10, 500))
+  namespace.now = 600
+  yield* Effect.promise(() => namespace.fireDueAlarms())
+  const live = yield* Effect.promise(() => runtime.take("live", 10, 500))
+  assert.strictEqual(live.id, "a")
+  yield* Effect.promise(() => runtime.complete("a", "live"))
+  return runtime
+})
+
 describe("CloudflarePersistedQueue", () => {
   it.effect("keeps completed items so a re-offered id stays deduplicated", () => {
     const namespace = new FakeQueueNamespace()
@@ -239,11 +160,11 @@ describe("CloudflarePersistedQueue", () => {
       yield* Effect.promise(() => runtime.offer("a", "\"first\""))
       yield* Effect.promise(() => pending)
       const store = namespace.stores.get(objectName("raced"))!
-      assert.isNotNull(store.sql.items.get("a")!.lease_until)
+      assert.isNotNull(leaseUntil(store.sql, "a"))
       // The taker's fiber was interrupted after the item was leased but
       // before it could register its finalizer; the cancel releases it.
       yield* Effect.promise(() => runtime.cancelTake("taker-1"))
-      assert.isNull(store.sql.items.get("a")!.lease_until)
+      assert.isNull(leaseUntil(store.sql, "a"))
       const replay = yield* Effect.promise(() => runtime.take("taker-2", 10, 500))
       assert.strictEqual(replay.id, "a")
     })
@@ -257,7 +178,7 @@ describe("CloudflarePersistedQueue", () => {
       yield* Effect.promise(() => runtime.offer("b", "\"second\""))
       const item = yield* Effect.promise(() => runtime.take("taker-1", 10, 500))
       assert.strictEqual(item.id, "a")
-      yield* Effect.promise(() => runtime.fail(item.id, "boom"))
+      yield* Effect.promise(() => runtime.fail(item.id, "boom", "taker-1"))
       // The retry sorts after the untouched item, so "a" cannot hot-loop.
       const next = yield* Effect.promise(() => runtime.take("taker-2", 10, 500))
       assert.strictEqual(next.id, "b")
@@ -339,20 +260,57 @@ describe("CloudflarePersistedQueue", () => {
       const store = namespace.stores.get(name)!
       assert.strictEqual(store.alarm.current, 500)
       namespace.now = 400
-      yield* Effect.promise(() => runtime.extend(item.id, 500))
-      assert.strictEqual(store.sql.items.get("a")!.lease_until, 900)
+      yield* Effect.promise(() => runtime.extend(item.id, 500, "taker-1"))
+      assert.strictEqual(leaseUntil(store.sql, "a"), 900)
 
       // The stale alarm fires at the original expiry, finds the lease still
       // live, and re-arms the watchdog at the extended expiry.
       namespace.now = 500
       yield* Effect.promise(() => namespace.fireDueAlarms())
-      assert.isNotNull(store.sql.items.get("a")!.lease_until)
+      assert.isNotNull(leaseUntil(store.sql, "a"))
       assert.strictEqual(store.alarm.current, 900)
 
       namespace.now = 1000
       yield* Effect.promise(() => namespace.fireDueAlarms())
       const replay = yield* Effect.promise(() => runtime.take("taker-2", 10, 500))
       assert.strictEqual(replay.id, "a")
+    })
+  })
+
+  it.effect("an expired lease cannot complete a re-offered element", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = yield* completedBehindStaleLease(namespace, objectName("stale-complete"))
+      yield* Effect.promise(() => runtime.offer("a", "\"second\"", 0, "untilExecuted"))
+      yield* Effect.promise(() => runtime.complete("a", "stale"))
+      const item = yield* takeNow(runtime, "next")
+      assert.strictEqual(item?.element, "\"second\"")
+    })
+  })
+
+  it.effect("an expired lease cannot move the deadline of a delayed re-offer", () => {
+    const namespace = new FakeQueueNamespace()
+    const name = objectName("stale-deadline")
+    return Effect.gen(function*() {
+      const runtime = yield* completedBehindStaleLease(namespace, name)
+      yield* Effect.promise(() => runtime.offer("a", "\"second\"", 1000, "untilExecuted"))
+      yield* Effect.promise(() => runtime.extend("a", 5000, "stale"))
+      yield* Effect.promise(() => runtime.release("a", "stale"))
+      assert.isUndefined(yield* takeNow(runtime, "early"))
+
+      namespace.now = 1600
+      yield* Effect.promise(() => namespace.fireDueAlarms())
+      const item = yield* takeNow(runtime, "due")
+      assert.strictEqual(item?.element, "\"second\"")
+    })
+  })
+
+  it.effect("an expired lease cannot reopen an element another taker completed", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = yield* completedBehindStaleLease(namespace, objectName("stale-fail"))
+      yield* Effect.promise(() => runtime.fail("a", "boom", "stale"))
+      assert.isUndefined(yield* takeNow(runtime, "next"))
     })
   })
 
