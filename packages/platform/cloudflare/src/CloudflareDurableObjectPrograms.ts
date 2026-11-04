@@ -345,11 +345,16 @@ export interface DurableQueueItem {
  * @since 4.0.0
  */
 export type ClusterDurableQueueProgram = {
-  readonly offer: (id: string, element: string, delayMillis?: number) => Effect.Effect<void>
+  readonly offer: (
+    id: string,
+    element: string,
+    delayMillis?: number,
+    deduplicate?: "untilExecuted" | "untilRemoved"
+  ) => Effect.Effect<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Effect.Effect<DurableQueueItem>
   readonly cancelTake: (takerId: string) => Effect.Effect<void>
   readonly complete: (id: string) => Effect.Effect<void>
-  readonly fail: (id: string, lastFailure: string) => Effect.Effect<void>
+  readonly fail: (id: string, lastFailure: string, maxAttempts?: number) => Effect.Effect<void>
   readonly release: (id: string) => Effect.Effect<void>
   readonly extend: (id: string, leaseMillis: number) => Effect.Effect<void>
   readonly alarm: () => Effect.Effect<void>
@@ -389,11 +394,12 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
     yield* armAlarm(state.storage, expiry)
   }
   const program: ClusterDurableQueueProgram = {
-    offer: (id, element, delayMillis) => Effect.promise(() => runtime.offer(id, element, delayMillis)),
+    offer: (id, element, delayMillis, deduplicate) =>
+      Effect.promise(() => runtime.offer(id, element, delayMillis, deduplicate)),
     take: (takerId, maxAttempts, leaseMillis) => Effect.promise(() => runtime.take(takerId, maxAttempts, leaseMillis)),
     cancelTake: (takerId) => Effect.promise(() => runtime.cancelTake(takerId)),
     complete: (id) => Effect.promise(() => runtime.complete(id)),
-    fail: (id, lastFailure) => Effect.promise(() => runtime.fail(id, lastFailure)),
+    fail: (id, lastFailure, maxAttempts) => Effect.promise(() => runtime.fail(id, lastFailure, maxAttempts)),
     release: (id) => Effect.promise(() => runtime.release(id)),
     extend: (id, leaseMillis) => Effect.promise(() => runtime.extend(id, leaseMillis)),
     alarm: () => Effect.promise(() => runtime.runAlarm())

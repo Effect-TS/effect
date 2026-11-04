@@ -22,7 +22,9 @@
  * interruption releases it without counting another failed attempt.
  *
  * `PersistedQueue.layerCleanup` is unsupported because the namespace binding
- * cannot enumerate queue objects. Completed rows remain retained for deduplication.
+ * cannot enumerate queue objects. Completed and failed rows remain retained for
+ * deduplication. A `deduplicate: "untilExecuted"` offer replaces such a row
+ * with a new element, which keeps only the latest failure.
  *
  * @stability unstable
  * @since 4.0.0
@@ -49,11 +51,16 @@ export interface LayerOptions {
 }
 
 interface QueueStub {
-  readonly offer: (id: string, element: string, delayMillis?: number) => Promise<void>
+  readonly offer: (
+    id: string,
+    element: string,
+    delayMillis?: number,
+    deduplicate?: "untilExecuted" | "untilRemoved"
+  ) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string) => Promise<void>
+  readonly fail: (id: string, lastFailure: string, maxAttempts?: number) => Promise<void>
   readonly release: (id: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number) => Promise<void>
 }
@@ -89,9 +96,16 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             "Cloudflare persisted queue cleanup is unsupported: the namespace binding cannot enumerate queue objects"
         })
       ),
-    offer: ({ delay, element, id, name }) =>
+    offer: ({ deduplicate, delay, element, id, isCustomId, name }) =>
       Effect.tryPromise({
-        try: () => stubFor(name).offer(id, JSON.stringify(element), delay === undefined ? 0 : Duration.toMillis(delay)),
+        try: () =>
+          stubFor(name).offer(
+            id,
+            JSON.stringify(element),
+            delay === undefined ? 0 : Duration.toMillis(delay),
+            // generated ids are never offered twice
+            isCustomId ? deduplicate : undefined
+          ),
         catch: (cause) =>
           new PersistedQueue.PersistedQueueError({
             message: "Failed to offer element to persisted queue",
@@ -122,7 +136,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             onFailure: (cause) =>
               Cause.hasInterruptsOnly(cause)
                 ? finalize(() => stubFor(name).release(item.id))
-                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause))),
+                : finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), maxAttempts)),
             onSuccess: () => finalize(() => stubFor(name).complete(item.id))
           }))
           yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis)).pipe(

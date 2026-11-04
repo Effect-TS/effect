@@ -277,8 +277,13 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflarePersistedQueue.layer`. */
-  offer(id: string, element: string, delayMillis?: number): Promise<void> {
-    return Effect.runPromise(this.#program.offer(id, element, delayMillis))
+  offer(
+    id: string,
+    element: string,
+    delayMillis?: number,
+    deduplicate?: "untilExecuted" | "untilRemoved"
+  ): Promise<void> {
+    return Effect.runPromise(this.#program.offer(id, element, delayMillis, deduplicate))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
@@ -296,9 +301,9 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     return Effect.runPromise(this.#program.complete(id))
   }
 
-  /** @internal Records a failed attempt and requeues the item. */
-  fail(id: string, lastFailure: string): Promise<void> {
-    return Effect.runPromise(this.#program.fail(id, lastFailure))
+  /** @internal Records a failed attempt and requeues the item, or marks it failed at `maxAttempts`. */
+  fail(id: string, lastFailure: string, maxAttempts?: number): Promise<void> {
+    return Effect.runPromise(this.#program.fail(id, lastFailure, maxAttempts))
   }
 
   /** @internal Requeues the item without counting an attempt. */

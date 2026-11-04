@@ -8,6 +8,11 @@
  * the back of the queue, so a poisoned item cannot hot-loop the head while
  * still being retried ahead of items offered after its failure.
  *
+ * `completed` holds the row state: 0 while pending, processing, or waiting to
+ * retry, 1 once completed, and 2 once its final attempt failed. An
+ * `"untilExecuted"` offer replaces a row in state 1 or 2. Rows that exhausted
+ * their attempts before state 2 existed stay at 0 and keep their id reserved.
+ *
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
@@ -55,7 +60,19 @@ type LeaseExpiryRow = {
 }
 
 /** @internal */
-export const offerItem = (sql: SqlStorage, id: string, element: string, visibleAt: number | null): void => {
+export const offerItem = (
+  sql: SqlStorage,
+  id: string,
+  element: string,
+  visibleAt: number | null,
+  deduplicate?: "untilExecuted" | "untilRemoved" | undefined
+): void => {
+  if (deduplicate === "untilExecuted") {
+    // A completed or failed row releases the id. Deleting it lets the insert
+    // below store the offer as new work after every existing row. Both
+    // statements run synchronously, so no other offer can interleave.
+    sql.exec("DELETE FROM queue_items WHERE id = ? AND completed <> 0", id)
+  }
   // Reuse lease_until for initial visibility; INSERT OR IGNORE preserves the
   // original deadline and payload when an id is offered again.
   sql.exec(
@@ -91,14 +108,22 @@ export const completeItem = (sql: SqlStorage, id: string): void => {
   sql.exec("UPDATE queue_items SET completed = 1, lease_until = NULL WHERE id = ?", id)
 }
 
-/** @internal */
-export const failItem = (sql: SqlStorage, id: string, lastFailure: string): void => {
+/**
+ * Records a failed attempt. When the attempt reaches `maxAttempts` the row
+ * moves to the failed state (2). Without `maxAttempts`, as sent by an older
+ * Worker, the CASE compares against NULL and the row stays pending.
+ *
+ * @internal
+ */
+export const failItem = (sql: SqlStorage, id: string, lastFailure: string, maxAttempts?: number | undefined): void => {
   sql.exec(
     `UPDATE queue_items
      SET attempts = attempts + 1, lease_until = NULL, last_failure = ?,
+         completed = CASE WHEN attempts + 1 >= ? THEN 2 ELSE 0 END,
          position = (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items)
      WHERE id = ?`,
     lastFailure,
+    maxAttempts ?? null,
     id
   )
 }
