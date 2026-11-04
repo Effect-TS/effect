@@ -58,6 +58,17 @@ const mysqlAuthorizationErrorCodes = new Set([1044, 1142, 1143, 1227])
 const mysqlSyntaxErrorCodes = new Set([1054, 1064, 1146])
 const mysqlConstraintErrorCodes = new Set([1022, 1048, 1169, 1216, 1217, 1451, 1452, 1557])
 
+const setTransaction = /^\s*SET\s+TRANSACTION\b/i
+
+// SET TRANSACTION without SESSION or GLOBAL applies to the next transaction,
+// so it must directly precede its BEGIN
+const begin = (conn: Connection, statement: string | undefined) =>
+  statement === undefined
+    ? conn.executeUnprepared("BEGIN", [], undefined)
+    : setTransaction.test(statement)
+    ? Effect.andThen(conn.executeUnprepared(statement, [], undefined), conn.executeUnprepared("BEGIN", [], undefined))
+    : conn.executeUnprepared(statement, [], undefined)
+
 const UNKNOWN_CONSTRAINT = "unknown"
 
 const normalizeConstraintIdentifier = (identifier: unknown): string => {
@@ -222,6 +233,13 @@ export interface MysqlClientConfig {
 
 /**
  * Creates a scoped MySQL client backed by a managed mysql2 pool, verifying connectivity and supporting streaming queries through mysql2 query streams.
+ *
+ * **Details**
+ *
+ * A `SqlClient.BeginTransaction` starting with `SET TRANSACTION`, such as
+ * `SET TRANSACTION ISOLATION LEVEL READ COMMITTED`, runs just before `BEGIN`,
+ * since `START TRANSACTION` can't set an isolation level. Any other statement
+ * replaces `BEGIN`.
  *
  * @stability unstable
  * @category constructors
@@ -440,6 +458,7 @@ export const make = (
       yield* Client.make({
         driver: "mysql2",
         acquirer,
+        begin,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         compiler,
         spanAttributes,
