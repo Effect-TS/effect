@@ -67,11 +67,22 @@ type Line = {
   readonly indent: number
   readonly number: number
   readonly tabIndent: boolean
+  // Whether the line holds a comment outside flow collections.
+  readonly comment: boolean
+  // `mappingSeparator(text)`.
+  readonly separator: number
 }
 
 const hasOwn = Object.prototype.hasOwnProperty
 
+// Defines `key` as an own data property, so `__proto__` and keys that name inherited
+// accessors stay ordinary keys. A key found nowhere on the prototype chain cannot reach
+// a setter, so plain assignment, which is much cheaper, defines the same property.
 const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
+  if (!(key in record)) {
+    record[key] = value
+    return
+  }
   Object.defineProperty(record, key, {
     configurable: true,
     enumerable: true,
@@ -132,71 +143,110 @@ class MappingBuilder {
 // characters JavaScript treats as white space are content.
 const isWhite = (character: string | undefined): boolean => character === " " || character === "\t"
 
+// Character code variants of the predicates, for hot scans: `charCodeAt` past the end is
+// `NaN`, which matches nothing, like `undefined` above.
+const isWhiteCode = (code: number): boolean => code === 32 || code === 9
+
 // Line breaks also separate tokens inside flow collections.
-const isSeparation = (character: string | undefined): boolean => isWhite(character) || character === "\n"
+const isSeparationCode = (code: number): boolean => code === 32 || code === 9 || code === 10
+
+// `,`, `[`, `]`, `{` and `}`.
+const isFlowIndicatorCode = (code: number): boolean =>
+  code === 44 || code === 91 || code === 93 || code === 123 || code === 125
 
 // Index scans rather than `/[ \t]+$/`, which backtracks quadratically on long runs.
 const whiteEnd = (text: string, end = text.length): number => {
-  while (end > 0 && isWhite(text[end - 1])) end--
+  while (end > 0 && isWhiteCode(text.charCodeAt(end - 1))) end--
   return end
 }
 
 const trimWhiteStart = (text: string): string => {
   let start = 0
-  while (start < text.length && isWhite(text[start])) start++
-  return text.slice(start)
+  while (start < text.length && isWhiteCode(text.charCodeAt(start))) start++
+  return start === 0 ? text : text.slice(start)
 }
 
-const trimWhiteEnd = (text: string): string => text.slice(0, whiteEnd(text))
+const trimWhiteEnd = (text: string): string => {
+  const end = whiteEnd(text)
+  return end === text.length ? text : text.slice(0, end)
+}
 
 const trimWhite = (text: string): string => {
   let start = 0
   let end = text.length
-  while (start < end && isSeparation(text[start])) start++
-  while (end > start && isSeparation(text[end - 1])) end--
-  return text.slice(start, end)
+  while (start < end && isSeparationCode(text.charCodeAt(start))) start++
+  while (end > start && isSeparationCode(text.charCodeAt(end - 1))) end--
+  return start === 0 && end === text.length ? text : text.slice(start, end)
+}
+
+// Whether `trimWhite(text)` is empty, without building it.
+const isSeparationOnly = (text: string): boolean => {
+  for (let index = 0; index < text.length; index++) {
+    if (!isSeparationCode(text.charCodeAt(index))) return false
+  }
+  return true
 }
 
 const closingQuote = (input: string, quote: string, start: number): number => {
+  const quoteCode = quote.charCodeAt(0)
+  const double = quoteCode === 34
   for (let index = start; index < input.length; index++) {
-    const character = input[index]
-    if (quote === "\"" && character === "\\") {
+    const code = input.charCodeAt(index)
+    if (double && code === 92) {
       index++
-    } else if (character === quote) {
-      if (quote === "'" && input[index + 1] === quote) index++
+    } else if (code === quoteCode) {
+      if (!double && input.charCodeAt(index + 1) === quoteCode) index++
       else return index
     }
   }
   return -1
 }
 
-// `depth` is the number of flow collections already open before `input`.
-const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number => {
+// `depth` is the number of flow collections already open before `input`. When searching
+// for `#`, `found` receives the first index the search for `:` would return, or -1.
+const findIndicator = (
+  input: string,
+  indicator: ":" | "#",
+  depth = 0,
+  found?: { separator: number }
+): number => {
   let tokenStart = true
-  for (let index = 0; index < input.length; index++) {
-    const character = input[index]
-    if (tokenStart && (character === "'" || character === "\"")) {
-      index = closingQuote(input, character, index + 1)
+  const length = input.length
+  for (let index = 0; index < length; index++) {
+    const code = input.charCodeAt(index)
+    if (tokenStart && (code === 39 || code === 34)) {
+      // `'` or `"`
+      index = closingQuote(input, code === 39 ? "'" : "\"", index + 1)
       if (index === -1) return -1
       tokenStart = false
-    } else if (tokenStart && (character === "&" || character === "*" || character === "!")) {
-      // Anchor and alias names and tags may contain `:`, and the node after a property still starts a token.
-      while (index + 1 < input.length && !/[ \t,[\]{}]/.test(input[index + 1])) index++
-    } else if (character === "#" && (index === 0 || isWhite(input[index - 1]))) {
+    } else if (tokenStart && (code === 38 || code === 42 || code === 33)) {
+      // `&`, `*` or `!`: anchor and alias names and tags may contain `:`, and the node after
+      // a property still starts a token.
+      while (index + 1 < length) {
+        const next = input.charCodeAt(index + 1)
+        if (isWhiteCode(next) || isFlowIndicatorCode(next)) break
+        index++
+      }
+    } else if (code === 35 && (index === 0 || isWhiteCode(input.charCodeAt(index - 1)))) {
+      // `#`
       return indicator === "#" ? index : -1
-    } else if (tokenStart && (character === "[" || character === "{")) {
+    } else if (tokenStart && (code === 91 || code === 123)) {
       depth++
-    } else if (depth > 0 && (character === "]" || character === "}")) {
+    } else if (depth > 0 && (code === 93 || code === 125)) {
       depth--
       tokenStart = false
-    } else if (depth > 0 && character === ",") {
+    } else if (depth > 0 && code === 44) {
       tokenStart = true
-    } else if (character === ":" && (depth > 0 || input[index + 1] === undefined || isWhite(input[index + 1]))) {
-      if (depth === 0 && indicator === ":") return index
+    } else if (code === 58 && (depth > 0 || index + 1 === length || isWhiteCode(input.charCodeAt(index + 1)))) {
+      // `:`
+      if (depth === 0) {
+        if (indicator === ":") return index
+        if (found !== undefined && found.separator === -1) found.separator = index
+      }
       tokenStart = true
-    } else if (tokenStart && character === "-" && isWhite(input[index + 1])) {
+    } else if (tokenStart && code === 45 && isWhiteCode(input.charCodeAt(index + 1))) {
       continue
-    } else if (!isWhite(character)) {
+    } else if (!isWhiteCode(code)) {
       tokenStart = false
     }
   }
@@ -211,10 +261,13 @@ const stripComment = (input: string, depth = 0): string => {
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
 // YAML 1.2.2 §6.2: a space or a tab separates the `-` indicator from the entry.
-const isSequenceEntry = (text: string): boolean => text === "-" || /^-[ \t]/.test(text)
+const isSequenceEntry = (text: string): boolean =>
+  text.charCodeAt(0) === 45 && (text.length === 1 || isWhiteCode(text.charCodeAt(1)))
 
 // YAML 1.2.2 §9.1: document markers start at column zero and are followed by whitespace.
-const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:[ \t]|$)/.test(line.raw)
+const isDocumentMarker = (line: Line): boolean =>
+  line.indent === 0 && (line.raw.length === 3 || isWhiteCode(line.raw.charCodeAt(3))) &&
+  (line.raw.startsWith("---") || line.raw.startsWith("..."))
 
 const isDocumentStart = (line: Line): boolean => isDocumentMarker(line) && line.raw.startsWith("---")
 
@@ -266,10 +319,33 @@ const coreFloat = (text: string): number | undefined => {
   return undefined
 }
 
+// Whether a scalar starting with `code` may match a `coreSchema` pattern: `~`, the first
+// letters of `null`, `true` and `false` in each case, a sign, `.` or a digit. Other scalars
+// are strings without testing every pattern.
+const mayBeCoreNonString = (code: number): boolean => {
+  switch (code) {
+    case 126: // ~
+    case 110: // n
+    case 78: // N
+    case 116: // t
+    case 84: // T
+    case 102: // f
+    case 70: // F
+    case 43: // +
+    case 45: // -
+    case 46: // .
+      return true
+    default:
+      return code >= 48 && code <= 57
+  }
+}
+
 // YAML 1.2.2 §10.3.2: a plain scalar resolves to the first core type whose pattern matches,
 // and is a string otherwise.
 const resolvePlain = (text: string): unknown => {
-  if (text === "" || coreSchema.null.test(text)) return null
+  if (text === "") return null
+  if (!mayBeCoreNonString(text.charCodeAt(0))) return text
+  if (coreSchema.null.test(text)) return null
   if (coreSchema.true.test(text)) return true
   if (coreSchema.false.test(text)) return false
   return coreInt(text) ?? coreFloat(text) ?? text
@@ -320,7 +396,8 @@ const resolveTag = (
   return resolveScalarTag(tag, plain ?? (typeof value === "string" ? value : ""), fail)
 }
 
-const isExplicitKey = (text: string): boolean => text === "?" || /^\?[ \t]/.test(text)
+const isExplicitKey = (text: string): boolean =>
+  text.charCodeAt(0) === 63 && (text.length === 1 || isWhiteCode(text.charCodeAt(1)))
 
 const explicitKeyError = "YAML explicit keys (`?`) are not supported"
 
@@ -372,8 +449,8 @@ const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "
 // Folds the line breaks of a multiline plain flow scalar. Scans line by line, since
 // a white-space regex would backtrack quadratically on long runs without a break.
 const foldFlowLines = (input: string): string => {
+  if (!input.includes("\n")) return input
   const lines = input.split("\n")
-  if (lines.length === 1) return input
   let output = trimWhiteEnd(lines[0])
   let blankLines = 0
   for (let index = 1; index < lines.length; index++) {
@@ -499,7 +576,16 @@ const parseKey = (input: string): string => {
 }
 
 // Ends an anchor or alias name inside a flow collection.
-const flowNameEnd = /[ \t\n,[\]{}]/
+const isFlowNameEnd = (code: number): boolean => isSeparationCode(code) || isFlowIndicatorCode(code)
+
+// Ends an alias inside a flow collection. A tag must be followed by one of these too.
+const isFlowAliasEnd = (code: number): boolean => isSeparationCode(code) || code === 44 || code === 93 || code === 125
+
+// Ends a plain scalar inside a flow collection: `,`, `]` or `}`.
+const isFlowPlainEnd = (code: number): boolean => code === 44 || code === 93 || code === 125
+
+// Ends a verbatim tag: `>`.
+const isVerbatimTagEnd = (code: number): boolean => code === 62
 
 const flowDashError = "A flow plain scalar cannot start with '-' followed by white space or a flow indicator"
 
@@ -558,14 +644,15 @@ class FlowParser {
     if (character === "\"" || character === "'") return parseScalar(this.readQuoted(character))
     if (character === "*") {
       this.index++
-      const name = this.readUntil(/[,\]} \t\n]/)
+      const name = this.readUntil(isFlowAliasEnd)
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
     }
     if (character === "&") {
       this.index++
-      const name = this.readUntil(flowNameEnd)
-      if (name === "" || /[[{]/.test(this.peek())) this.fail("Invalid anchor")
+      const name = this.readUntil(isFlowNameEnd)
+      const next = this.peek()
+      if (name === "" || next === "[" || next === "{") this.fail("Invalid anchor")
       this.skipWhitespace()
       if (this.peek() === "&") this.fail("Multiple anchors on one node")
       if (this.peek() === "*") this.fail("An alias cannot have an anchor")
@@ -574,7 +661,7 @@ class FlowParser {
       return value
     }
     if (character === "!") return this.parseTaggedValue(false)
-    const text = this.readPlain(/[,\]}]/)
+    const text = this.readPlain(isFlowPlainEnd)
     this.plainText = text
     return parseScalar(text)
   }
@@ -589,7 +676,7 @@ class FlowParser {
     if (this.peek() === "&") {
       if (anchored) this.fail("Multiple anchors on one node")
       this.index++
-      anchor = this.readUntil(flowNameEnd)
+      anchor = this.readUntil(isFlowNameEnd)
       if (anchor === "") this.fail("Invalid anchor")
       this.skipWhitespace()
     }
@@ -605,13 +692,13 @@ class FlowParser {
 
   // Reads a plain scalar up to `stop`, rejecting directive, tag, explicit key and
   // block sequence indicators.
-  private readPlain(stop: RegExp): string {
+  private readPlain(stop: (code: number) => boolean): string {
     // YAML 1.2.2 §7.3.3: `-` starts a plain scalar only before a non-space character other
     // than a flow indicator. Checked in the source, since folding and trimming hide a
     // following space or line break; the end of the line is a line break.
     if (this.peek() === "-") {
-      const next = this.line[this.index + 1]
-      if (next === undefined || /[ \t,[\]{}]/.test(next)) this.fail(flowDashError)
+      const next = this.line.charCodeAt(this.index + 1)
+      if (this.index + 1 >= this.line.length || isWhiteCode(next) || isFlowIndicatorCode(next)) this.fail(flowDashError)
     }
     const start = this.offset + this.index
     const text = trimWhite(foldFlowLines(this.readUntil(stop, true)))
@@ -700,7 +787,7 @@ class FlowParser {
     const { key, merge } = this.parseKey()
     this.skipWhitespace()
     let value: unknown = null
-    if (!/[,\]}]/.test(this.peek())) {
+    if (!isFlowPlainEnd(this.peek().charCodeAt(0))) {
       this.expect(":")
       value = this.parseValue()
     }
@@ -714,7 +801,7 @@ class FlowParser {
     let anchor: string | undefined
     if (this.peek() === "&") {
       this.index++
-      anchor = this.readUntil(flowNameEnd)
+      anchor = this.readUntil(isFlowNameEnd)
       if (anchor === "") this.fail("Invalid anchor")
       this.skipWhitespace()
     }
@@ -724,7 +811,7 @@ class FlowParser {
       this.skipWhitespace()
       if (anchor === undefined && this.peek() === "&") {
         this.index++
-        anchor = this.readUntil(flowNameEnd)
+        anchor = this.readUntil(isFlowNameEnd)
         if (anchor === "") this.fail("Invalid anchor")
         this.skipWhitespace()
       }
@@ -736,13 +823,13 @@ class FlowParser {
       if (anchor !== undefined) this.fail("An alias cannot have an anchor")
       if (tag !== undefined) this.fail("An alias cannot have a tag")
       this.index++
-      return { key: aliasKey(this.anchors, this.readUntil(flowNameEnd), fail), merge: false }
+      return { key: aliasKey(this.anchors, this.readUntil(isFlowNameEnd), fail), merge: false }
     }
     // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
     if (character === "\"" || character === "'") {
       return scalarKey(this.anchors, anchor, tag, this.readQuoted(character), fail)
     }
-    const text = this.readPlain(/[,\]}]/)
+    const text = this.readPlain(isFlowPlainEnd)
     if (this.peek() !== ":") {
       if (text === "") this.expect(":")
       // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
@@ -786,43 +873,46 @@ class FlowParser {
   // flow indicator or at the end of the line.
   private readFlowTag(fail: (message: string) => never): string {
     const tag = readTag(this.readTagToken(), fail)
-    const next = this.line[this.index]
-    if (next !== undefined && !/[ \t\n,\]}]/.test(next)) this.fail(`Expected white space after the YAML tag ${tag}`)
+    if (this.index < this.line.length && !isFlowAliasEnd(this.line.charCodeAt(this.index))) {
+      this.fail(`Expected white space after the YAML tag ${tag}`)
+    }
     return tag
   }
 
   // A verbatim tag (`!<...>`) may contain `,`, so it is read up to its `>`.
   private readTagToken(): string {
-    if (this.line[this.index + 1] !== "<") return this.readUntil(flowNameEnd)
-    const token = this.readUntil(/>/)
+    if (this.line[this.index + 1] !== "<") return this.readUntil(isFlowNameEnd)
+    const token = this.readUntil(isVerbatimTagEnd)
     if (this.peek() !== ">") return token
     this.index++
     return `${token}>`
   }
 
   // `separator` also stops at a `:` that separates a key from its value.
-  private readUntil(stop: RegExp, separator = false): string {
-    const pieces: Array<string> = []
+  private readUntil(stop: (code: number) => boolean, separator = false): string {
+    // Only text spanning lines needs pieces; most tokens are one slice of one line.
+    let pieces: Array<string> | undefined
     let start = this.index
     while (true) {
       if (this.index === this.line.length) {
-        pieces.push(this.line.slice(start))
-        if (this.depth === 0 || !this.nextChunk(false)) return pieces.join("")
+        const piece = this.line.slice(start)
+        if (this.depth === 0 || !this.nextChunk(false)) return pieces === undefined ? piece : pieces.join("") + piece
+        ;(pieces ??= []).push(piece)
         start = 0
       }
-      const character = this.line[this.index]
-      if (stop.test(character) || (separator && character === ":" && this.isValueSeparator())) break
+      const code = this.line.charCodeAt(this.index)
+      if (stop(code) || (separator && code === 58 && this.isValueSeparator())) break
       this.index++
     }
-    pieces.push(this.line.slice(start, this.index))
-    return pieces.join("")
+    const piece = this.line.slice(start, this.index)
+    return pieces === undefined ? piece : pieces.join("") + piece
   }
 
   // YAML 1.2.2 §7.3.3: in flow context, a `:` followed by white space, a line break or a flow
   // indicator separates a key from its value. Any other `:` is part of a plain scalar.
   private isValueSeparator(): boolean {
-    const next = this.line[this.index + 1]
-    return next === undefined || /[ \t,[\]{}]/.test(next)
+    const next = this.line.charCodeAt(this.index + 1)
+    return this.index + 1 >= this.line.length || isWhiteCode(next) || isFlowIndicatorCode(next)
   }
 
   // Moves to the next line of the flow collection, keeping its leading "\n".
@@ -836,7 +926,12 @@ class FlowParser {
   }
 
   private skipWhitespace(): void {
-    while (/[ \t\n]/.test(this.peek())) this.index++
+    while (true) {
+      // As `peek`: inside a collection, the end of the line continues on the next line.
+      if (this.index === this.line.length && (this.depth === 0 || !this.nextChunk(false))) return
+      if (!isSeparationCode(this.line.charCodeAt(this.index))) return
+      this.index++
+    }
   }
 
   private expect(character: string): void {
@@ -856,14 +951,24 @@ class FlowParser {
 }
 
 const makeLine = (raw: string, number: number): Line => {
-  const indentation = /^( *)/.exec(raw)![1].length
+  let indentation = 0
+  while (raw.charCodeAt(indentation) === 32) indentation++
+  // Scanning the indentation too finds the same comment and separator, since spaces
+  // neither start a token nor end one, and gives indices into `raw`, so the text is sliced
+  // once. The separator search stops at the comment, which `text` no longer holds.
+  const found = { separator: -1 }
+  const comment = findIndicator(raw, "#", 0, found)
   return {
     raw,
-    text: stripComment(raw.slice(indentation)),
+    text: comment === -1
+      ? raw.slice(indentation)
+      : raw.slice(indentation, Math.max(indentation, whiteEnd(raw, comment))),
     indent: indentation,
     number,
     // Rejected where the line is read as structure; block scalar content may hold tabs.
-    tabIndent: raw[indentation] === "\t"
+    tabIndent: raw.charCodeAt(indentation) === 9,
+    comment: comment !== -1,
+    separator: found.separator === -1 ? -1 : found.separator - indentation
   }
 }
 
@@ -879,6 +984,9 @@ const nodeProperties = (
   text: string,
   fail: (message: string) => never
 ): { readonly anchor: string | undefined; readonly tag: string | undefined; readonly rest: string } => {
+  // Neither an anchor nor a tag, the common case: the checks below would all fail.
+  const first = text.charCodeAt(0)
+  if (first !== 38 && first !== 33) return { anchor: undefined, tag: undefined, rest: text }
   let anchor: string | undefined
   let tag: string | undefined
   let rest = text
@@ -902,6 +1010,10 @@ const nodeProperties = (
       return { anchor, tag, rest }
     }
   }
+}
+
+const throwSyntaxError = (message: string): never => {
+  throw new SyntaxError(message)
 }
 
 class YamlParser {
@@ -1023,7 +1135,7 @@ class YamlParser {
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
     if (isExplicitKey(line.text)) this.fail(line, explicitKeyError)
     if (isSequenceEntry(line.text)) return this.parseSequence(indent)
-    if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
+    if (line.separator !== -1) return this.parseMapping(indent)
     this.index++
     return this.parseNodeValue(line.text, parentIndent, allowIndentless)
   }
@@ -1042,7 +1154,7 @@ class YamlParser {
       if (line === undefined || line.indent < indent) break
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (isExplicitKey(line.text)) this.fail(line, explicitKeyError)
-      const separator = mappingSeparator(line.text)
+      const separator = line.separator
       if (separator === -1) break
       this.index++
       this.parseMappingEntry(mapping, line.text, separator, indent, line)
@@ -1083,10 +1195,13 @@ class YamlParser {
   }
 
   // `first` is the entry of a compact nested sequence (`- - item`), which starts on its parent entry's line.
-  private parseSequence(indent: number, first?: { readonly text: string; readonly line: Line }): Array<unknown> {
+  private parseSequence(
+    indent: number,
+    first?: { readonly text: string; readonly separator: number; readonly line: Line }
+  ): Array<unknown> {
     this.enterCollection()
     const output: Array<unknown> = []
-    if (first !== undefined) output.push(this.parseSequenceEntry(first.text, indent, first.line))
+    if (first !== undefined) output.push(this.parseSequenceEntry(first.text, first.separator, indent, first.line))
     while (true) {
       this.skipIgnored()
       const line = this.lineAt(this.index)
@@ -1094,26 +1209,29 @@ class YamlParser {
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) break
       this.index++
-      output.push(this.parseSequenceEntry(line.text, indent, line))
+      output.push(this.parseSequenceEntry(line.text, line.separator, indent, line))
     }
     this.depth--
     return output
   }
 
-  // `entry` starts with the `-` indicator, which sits at column `indent` of `line`.
-  private parseSequenceEntry(entry: string, indent: number, line: Line): unknown {
+  // `entry` starts with the `-` indicator, which sits at column `indent` of `line`, and
+  // `separator` is `mappingSeparator(entry)`.
+  private parseSequenceEntry(entry: string, separator: number, indent: number, line: Line): unknown {
     const item = trimWhiteStart(entry.slice(1))
     if (isExplicitKey(item)) this.fail(line, explicitKeyError)
-    const nested = isSequenceEntry(item)
-    const separator = nested ? -1 : mappingSeparator(item)
-    if (!nested && separator === -1) return this.parseNodeValue(item, indent)
     // A compact nested sequence or mapping is indented to its first character,
     // which may sit more than one space after the dash.
     const offset = entry.length - item.length
+    // The `-` indicator and the white space after it leave the separator search where it
+    // was, so the entry's separator is the item's, shifted by the indicator.
+    const itemSeparator = separator === -1 ? -1 : separator - offset
+    const nested = isSequenceEntry(item)
+    if (!nested && itemSeparator === -1) return this.parseNodeValue(item, indent)
     if (entry.slice(1, offset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
     return nested
-      ? this.parseSequence(indent + offset, { text: item, line })
-      : this.parseMapping(indent + offset, { text: item, separator, line })
+      ? this.parseSequence(indent + offset, { text: item, separator: itemSeparator, line })
+      : this.parseMapping(indent + offset, { text: item, separator: itemSeparator, line })
   }
 
   private enterCollection(): void {
@@ -1127,9 +1245,7 @@ class YamlParser {
     allowIndentless = false,
     outer?: { readonly anchor: string | undefined; readonly tag: string | undefined }
   ): unknown {
-    const fail = (message: string): never => {
-      throw new SyntaxError(message)
-    }
+    const fail = throwSyntaxError
     const own = nodeProperties(rawValue, fail)
     if (outer?.anchor !== undefined && own.anchor !== undefined) fail("Multiple anchors on one node")
     if (outer?.tag !== undefined && own.tag !== undefined) fail("Multiple tags on one node")
@@ -1139,7 +1255,7 @@ class YamlParser {
     if (anchor === undefined && tag === undefined) return this.parseValue(rest, parentIndent, allowIndentless)
     // YAML 1.2.2 §7.1: an alias has no properties.
     if (rest.startsWith("*")) fail(tag === undefined ? "An alias cannot have an anchor" : "An alias cannot have a tag")
-    if (trimWhite(rest).length === 0) {
+    if (isSeparationOnly(rest)) {
       // YAML 1.2.2 §6.9: the properties may be followed by the node's scalar content on the
       // next line, where more properties of the same node may appear.
       const next = this.scalarContinuation(parentIndent)
@@ -1166,7 +1282,7 @@ class YamlParser {
     this.skipIgnored()
     const next = this.lineAt(this.index)
     if (next === undefined || next.indent <= parentIndent) return undefined
-    if (isExplicitKey(next.text) || isSequenceEntry(next.text) || mappingSeparator(next.text) !== -1) return undefined
+    if (isExplicitKey(next.text) || isSequenceEntry(next.text) || next.separator !== -1) return undefined
     return next
   }
 
@@ -1188,7 +1304,10 @@ class YamlParser {
     if (isSequenceEntry(text)) {
       throw new SyntaxError("A block sequence cannot start on the same line as a mapping key or anchor")
     }
-    if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
+    const first = text.charCodeAt(0)
+    if ((first === 124 || first === 62) && /^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) {
+      return this.parseBlockScalar(text, parentIndent)
+    }
     // Keep escaped trailing whitespace in quoted values.
     if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
     if (text.startsWith("*")) {
@@ -1207,10 +1326,10 @@ class YamlParser {
       if (next === undefined) return undefined
       if (quoted) {
         // Inside a quote, `#` and brackets are content: every non-blank line is indented past the parent.
-        if (trimWhite(next.raw).length > 0 && next.indent <= parentIndent) return undefined
+        if (!isSeparationOnly(next.raw) && next.indent <= parentIndent) return undefined
       } else {
         // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
-        const content = trimWhite(next.text).length > 0
+        const content = !isSeparationOnly(next.text)
         if (content && next.indent < parentIndent) return undefined
         if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
       }
@@ -1226,7 +1345,7 @@ class YamlParser {
     if (/:(?:[ \t]|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
     if (value.startsWith("%")) this.fail(first, directiveIndicatorError)
     let output = value
-    let terminated = findIndicator(first.raw, "#") !== -1
+    let terminated = first.comment
     while (!terminated) {
       const blankLines = this.skipBlankLines()
       const next = this.lineAt(this.index)
@@ -1255,7 +1374,7 @@ class YamlParser {
       const end = closingQuote(line, quote, 0)
       if (end !== -1) {
         const rest = line.slice(end + 1)
-        if (trimWhite(rest).length > 0 && !/^[ \t]+#/.test(rest)) {
+        if (!isSeparationOnly(rest) && !/^[ \t]+#/.test(rest)) {
           throw new SyntaxError("Unexpected content after quoted YAML scalar")
         }
         return parseScalar(output + line.slice(0, end + 1))
@@ -1270,7 +1389,7 @@ class YamlParser {
       const next = this.lineAt(this.index++)
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
       this.rejectTabIndent(next)
-      if (trimWhite(next.raw).length > 0 && next.indent <= parentIndent) {
+      if (!isSeparationOnly(next.raw) && next.indent <= parentIndent) {
         this.fail(next, "Invalid quoted scalar indentation")
       }
       line = trimWhiteStart(next.raw)
@@ -1357,7 +1476,7 @@ class YamlParser {
   }
 
   private isBlank(line: Line | undefined): boolean {
-    return line !== undefined && trimWhite(line.raw).length === 0
+    return line !== undefined && isSeparationOnly(line.raw)
   }
 
   private skipBlankLines(): number {
@@ -1369,7 +1488,7 @@ class YamlParser {
   private skipIgnored(): void {
     while (this.index < this.documentEnd) {
       const line = this.lines[this.index]
-      if (trimWhite(line.text).length === 0) {
+      if (isSeparationOnly(line.text)) {
         this.index++
       } else {
         this.rejectTabIndent(line)
@@ -1385,7 +1504,9 @@ class YamlParser {
 
 const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A, EncodingError> => {
   try {
-    const lines = input.replace(/\r\n?/g, "\n").split("\n").map((raw, index) => makeLine(raw, index + 1))
+    const raws = (input.includes("\r") ? input.replace(/\r\n?/g, "\n") : input).split("\n")
+    const lines = new Array<Line>(raws.length)
+    for (let index = 0; index < raws.length; index++) lines[index] = makeLine(raws[index], index + 1)
     return Result.succeed(f(new YamlParser(lines)))
   } catch (e) {
     return Result.fail(
