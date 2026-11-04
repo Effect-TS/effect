@@ -31,6 +31,7 @@ import {
   type WorkflowRegistration,
   type WorkflowStub
 } from "./internal/workflowRegistry.ts"
+import { InterruptSignalName } from "./internal/workflowRuntime.ts"
 import { decodeExit, decodeResult, encodeExit, encodePayload } from "./internal/workflowWire.ts"
 
 /**
@@ -132,6 +133,12 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
       const stored = handle.loadActivity(key)
       if (stored !== undefined) {
         return new Workflow.Complete({ exit: yield* decodeExit(stored, Context.empty()) })
+      }
+      // A pending interrupt replays only to rebuild compensations, so it must
+      // not start new activities. Suspending lets the run apply the interrupt.
+      if (!instance.interrupted && handle.loadDeferred(InterruptSignalName) !== undefined) {
+        instance.suspended = true
+        return new Workflow.Suspended({})
       }
       const activityInstance = WorkflowEngine.WorkflowInstance.initial(instance.workflow, instance.executionId)
       activityInstance.interrupted = instance.interrupted
