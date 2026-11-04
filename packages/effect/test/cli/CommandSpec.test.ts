@@ -150,6 +150,7 @@ describe("CommandSpec", () => {
         config: Flag.FileText("config"),
         format: Flag.Literals("format", ["json", "table"]),
         force: Flag.Boolean("force"),
+        dryRun: Flag.Boolean("dry-run").pipe(Flag.withDefault(false)),
         quiet: Flag.Boolean("quiet").pipe(Flag.withoutNegation),
         color: Flag.String("color").pipe(Flag.withOptionalValue("auto"))
       })
@@ -168,10 +169,13 @@ describe("CommandSpec", () => {
       assert.deepStrictEqual(flagOf(spec, "config").type, { _tag: "FileText" })
       assert.deepStrictEqual(flagOf(spec, "format").type, { _tag: "Choice", values: ["json", "table"] })
 
-      // Booleans are never required and expose their effective negated name.
+      // A bare boolean flag fails with MissingOption when omitted, like any
+      // other flag; only a fallback makes it optional. Help's display rule
+      // (booleans never shown as required) is not the parser's rule.
       const force = flagOf(spec, "force")
-      assert.isFalse(force.required)
+      assert.isTrue(force.required)
       assert.strictEqual(force.negation, "no-force")
+      assert.isFalse(flagOf(spec, "dry-run").required)
       assert.strictEqual(flagOf(spec, "quiet").negation, undefined)
 
       assert.strictEqual(flagOf(spec, "color").optionalValue, "auto")
@@ -272,6 +276,87 @@ describe("CommandSpec", () => {
       const names = argumentOf(spec, "names")
       assert.isTrue(names.required)
       assert.deepStrictEqual(names.variadic, { min: 1, max: undefined })
+    })
+
+    it("reports each alternative branch with the wrappers on its own path", () => {
+      const app = Command.make("app", {
+        config: Flag.String("config").pipe(
+          Flag.orElse(() => Flag.String("config-url").pipe(Flag.withDefault("https://example.com/config")))
+        ),
+        output: Flag.String("output").pipe(
+          Flag.withDefault("stdout"),
+          Flag.orElse(() => Flag.String("output-file"))
+        ),
+        format: Flag.String("format").pipe(
+          Flag.orElse(() => Flag.String("format-file")),
+          Flag.withDefault("json")
+        )
+      })
+
+      const spec = specOf(app, ["app"], { builtIns: [] })
+
+      // Metadata is branch-local: a wrapper describes the singles beneath it
+      // and nothing else. `required` therefore says whether this entry fails
+      // when absent with no fallback on its own path; it does not say the
+      // whole parameter fails, since a sibling alternative may satisfy it.
+      const config = flagOf(spec, "config")
+      assert.isTrue(config.required)
+      assert.deepStrictEqual(config.fallbacks, [])
+      const configUrl = flagOf(spec, "config-url")
+      assert.isFalse(configUrl.required)
+      assert.deepStrictEqual(configUrl.fallbacks, [{ _tag: "Default", value: "https://example.com/config" }])
+
+      // A default on the main branch is not copied onto the alternative.
+      assert.deepStrictEqual(flagOf(spec, "output").fallbacks, [{ _tag: "Default", value: "stdout" }])
+      const outputFile = flagOf(spec, "output-file")
+      assert.isTrue(outputFile.required)
+      assert.deepStrictEqual(outputFile.fallbacks, [])
+
+      // A wrapper outside the alternation applies to every branch.
+      for (const name of ["format", "format-file"]) {
+        const flag = flagOf(spec, name)
+        assert.isFalse(flag.required, name)
+        assert.deepStrictEqual(flag.fallbacks, [{ _tag: "Default", value: "json" }])
+      }
+    })
+
+    it("derives omission from wrappers outside a variadic, never from per-item ones", () => {
+      const app = Command.make("app", {
+        files: Argument.String("files").pipe(Argument.withDefault("README.md"), Argument.atLeast(1)),
+        tags: Flag.String("tag").pipe(Flag.withDefault("untagged"), Flag.atLeast(1)),
+        names: Argument.String("names").pipe(Argument.atLeast(1), Argument.withDefault(["anonymous"]))
+      })
+
+      const spec = specOf(app, ["app"], { builtIns: [] })
+
+      // A per-item default inside the variadic does not satisfy the outer
+      // minimum: empty input still fails with MissingArgument/MissingOption.
+      const files = argumentOf(spec, "files")
+      assert.isTrue(files.required)
+      assert.deepStrictEqual(files.fallbacks, [])
+      assert.deepStrictEqual(files.variadic, { min: 1, max: undefined })
+      const tags = flagOf(spec, "tag")
+      assert.isTrue(tags.required)
+      assert.deepStrictEqual(tags.fallbacks, [])
+
+      // A default applied outside the variadic does satisfy omission.
+      const names = argumentOf(spec, "names")
+      assert.isFalse(names.required)
+      assert.deepStrictEqual(names.fallbacks, [{ _tag: "Default", value: ["anonymous"] }])
+      assert.deepStrictEqual(names.variadic, { min: 1, max: undefined })
+    })
+
+    it("never reports an Action global as required", () => {
+      const Print = GlobalFlag.Action({ flag: Flag.String("print"), run: () => Effect.void })
+      const Region = GlobalFlag.Setting("region")({ flag: Flag.String("region") })
+      const app = Command.make("app").pipe(Command.withGlobalFlags([Print, Region]))
+
+      const spec = specOf(app, ["app"], { builtIns: [] })
+
+      // The runner parses an Action only when it is present on the command
+      // line, but parses every Setting on every run.
+      assert.isFalse(flagOf(spec, "print").required)
+      assert.isTrue(flagOf(spec, "region").required)
     })
 
     it("resolves examples for the requested path", () => {
