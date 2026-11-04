@@ -1252,6 +1252,32 @@ describe("Command", () => {
         assert.isTrue(Runtime.getErrorReported(silent))
         assert.lengthOf(yield* TestConsole.errorLines, 1)
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("fails a subcommand run with a parent's domain error, rendering nothing without userMessage", () =>
+      Effect.gen(function*() {
+        class LinkedAndLocal extends Schema.TaggedError<LinkedAndLocal>()("LinkedAndLocal", {}) {}
+        const handled: Array<string> = []
+        const push = Command.make("push", {}, () =>
+          Effect.sync(() => {
+            handled.push("push")
+          }))
+        const db = Command.make("db").pipe(
+          Command.withSharedFlags({
+            linked: Flag.Boolean("linked").pipe(Flag.withDefault(false)),
+            local: Flag.Boolean("local").pipe(Flag.withDefault(false))
+          }),
+          Command.withSubcommands([push]),
+          Command.validate(({ linked, local }) => linked && local ? Effect.fail(new LinkedAndLocal()) : Effect.void)
+        )
+
+        const error = yield* Effect.flip(Command.runWith(db, { version: "1.0.0" })(["--linked", "--local", "push"]))
+
+        assert.instanceOf(error, LinkedAndLocal)
+        assert.isTrue(Runtime.getErrorReported(error))
+        assert.deepStrictEqual(handled, [])
+        assert.isEmpty(yield* TestConsole.errorLines)
+        assert.isEmpty(yield* TestConsole.logLines)
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withSubcommands", () => {

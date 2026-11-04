@@ -38,6 +38,21 @@ describe("Command", () => {
         Command.Command<"download", { readonly useApi: boolean }, {}, "err" | "conflict", never>
       >()
     })
+
+    it("keeps the validation's error type through withHandler and provideSync", () => {
+      class Api extends Context.Service<Api, string>()("Api") {}
+      const command = Command.make("download", {
+        useApi: Flag.Boolean("use-api")
+      }).pipe(
+        Command.validate(() => Effect.void as Effect.Effect<void, "conflict">),
+        Command.withHandler(() => Effect.void as Effect.Effect<void, "err", Api>),
+        Command.provideSync(Api, () => "api")
+      )
+
+      expect(command).type.toBe<
+        Command.Command<"download", { readonly useApi: boolean }, {}, "conflict" | "err", never>
+      >()
+    })
   })
 
   describe("withSubcommands", () => {
