@@ -17,6 +17,7 @@ import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import type * as Option from "./Option.ts"
+import { hasProperty } from "./Predicate.ts"
 import type * as Scope from "./Scope.ts"
 
 /**
@@ -233,6 +234,20 @@ export interface Semaphore {
  */
 export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(permits)
 
+/**
+ * Checks whether a value is a `Semaphore`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `Semaphore` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isSemaphore = (u: unknown): u is Semaphore => hasProperty(u, TypeId)
+
 interface Waiter {
   readonly permits: number
   resume: ((effect: Effect.Effect<void>) => void) | undefined
@@ -273,7 +288,7 @@ const takePermits = <A, E, R>(
       } else {
         waiter.resume = resume
       }
-    }))
+    }, { blockedOn: self }))
     const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
       if (firstAvailableWaiter(self) !== waiter) return loop
       self.taken += n
@@ -283,7 +298,10 @@ const takePermits = <A, E, R>(
     return loop
   })
 
+const TypeId = "~effect/Semaphore"
+
 class SemaphoreImpl implements Semaphore {
+  readonly [TypeId] = TypeId
   public waiters = new Set<Waiter>()
   public taken = 0
   public permits: number
