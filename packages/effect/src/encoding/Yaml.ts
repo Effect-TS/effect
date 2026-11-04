@@ -932,7 +932,9 @@ class YamlParser {
     return this.parseNode(line.indent)
   }
 
-  private parseNode(indent: number, parentIndent = indent - 1): unknown {
+  // `allowIndentless` is set for a mapping value, whose block sequence may sit at the mapping's
+  // indentation (YAML 1.2.2 §8.2.1), also after node properties on their own lines.
+  private parseNode(indent: number, parentIndent = indent - 1, allowIndentless = false): unknown {
     this.skipIgnored()
     const line = this.lineAt(this.index)
     if (line === undefined) return null
@@ -941,7 +943,7 @@ class YamlParser {
     if (isSequenceEntry(line.text)) return this.parseSequence(indent)
     if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
     this.index++
-    return this.parseNodeValue(line.text, parentIndent)
+    return this.parseNodeValue(line.text, parentIndent, allowIndentless)
   }
 
   // `first` is the entry on a sequence item's line, parsed once the mapping counts toward the depth.
@@ -1061,7 +1063,7 @@ class YamlParser {
       const next = this.scalarContinuation(parentIndent)
       if (next !== undefined) {
         this.index++
-        return this.parseNodeValue(next.text, parentIndent, false, { anchor, tag })
+        return this.parseNodeValue(next.text, parentIndent, allowIndentless, { anchor, tag })
       }
     }
     let value: unknown
@@ -1092,7 +1094,7 @@ class YamlParser {
       this.skipIgnored()
       const next = this.lineAt(this.index)
       if (next === undefined) return null
-      if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent)
+      if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent, allowIndentless)
       if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
         return this.parseSequence(parentIndent)
       }
