@@ -4,9 +4,9 @@ import { loadNextReply } from "@effect/platform-cloudflare/internal/entityMailbo
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
 import type { EntityRegistration } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRuntime"
-import type { EntityManagerOptions } from "@effect/platform-cloudflare/internal/entityRuntime"
+import type { EntityManager, EntityManagerOptions } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
-import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
+import { afterAll, assert, beforeAll, describe, it, vi } from "@effect/vitest"
 import { Context, Deferred, Effect, Fiber, Schema, Stream } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { Rpc, RpcSchema } from "effect/rpc"
@@ -95,7 +95,8 @@ const makeMailbox = Effect.fnUntraced(function*(
 })
 
 // A persisted ask whose handler blocks until released, so a duplicate can
-// arrive while its scheduled execution is running.
+// arrive while its scheduled execution is running. `Ping` forks past the
+// handler permit that a blocked `Add` holds.
 const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
   const started = yield* Deferred.make<void>()
   const release = yield* Deferred.make<void>()
@@ -105,7 +106,8 @@ const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
       payload: { operationId: Schema.String },
       primaryKey: ({ operationId }) => operationId,
       success: Schema.Number
-    }).annotate(ClusterSchema.Persisted, true)
+    }).annotate(ClusterSchema.Persisted, true),
+    Rpc.make("Ping", { success: Schema.String })
   ])
   const handlers: EntityRegistration = {
     entity,
@@ -116,7 +118,8 @@ const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
         yield* Deferred.succeed(started, undefined)
         yield* Deferred.await(release)
         return run
-      })
+      }),
+      Ping: () => Rpc.fork(Effect.succeed("pong"))
     })),
     options: undefined,
     context: Context.empty()
@@ -130,6 +133,11 @@ const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
 
 // Waits on the real clock until a just-scheduled deadline has passed.
 const pastDeadline = Effect.sleep("50 millis").pipe(TestClock.withLive)
+
+// The mailbox admits requests one at a time in arrival order, so a later
+// request finishing proves that every earlier one has been admitted.
+const admitted = (manager: EntityManager, envelope: (tag: string) => string) =>
+  manager.invoke(envelope("Ping"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
 describe("EntityManager", () => {
   beforeAll(() => {
@@ -514,8 +522,11 @@ describe("EntityManager", () => {
       yield* Deferred.await(started)
 
       // The client omits delivery options once the deadline has passed.
-      const duplicate = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
-      yield* settle
+      const duplicate = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "same" }), false),
+        { startImmediately: true }
+      )
+      yield* admitted(manager, envelope)
       yield* Deferred.succeed(release, undefined)
       const original = yield* Fiber.join(first)
       const retried = yield* Fiber.join(duplicate)
@@ -551,9 +562,10 @@ describe("EntityManager", () => {
 
       // A pinned caller retrying after the deadline sends only its reply target.
       const duplicate = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }), false, { replyTo: "6:Callertwo" })
+        manager.invoke(envelope("Add", { operationId: "same" }), false, { replyTo: "6:Callertwo" }),
+        { startImmediately: true }
       )
-      yield* settle
+      yield* admitted(manager, envelope)
       yield* Deferred.succeed(release, undefined)
       yield* Fiber.join(duplicate)
       yield* Fiber.join(alarm)
@@ -564,5 +576,39 @@ describe("EntityManager", () => {
         assert.strictEqual(delivery.requestId, requestId)
         assert.deepStrictEqual(exitOf(delivery.reply), { _tag: "Success", value: 1 })
       }
+    }))
+
+  it.effect("runs a scheduled ask once when its deadline passes while a duplicate is admitted", () =>
+    Effect.gen(function*() {
+      const { entity, release, state } = yield* makeGatedAsk("ScheduledDeadlineCrossing")
+      yield* Deferred.succeed(release, undefined)
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("crossing", entity.type)
+      const deliverAt = Date.now() + 60_000
+      const delivery = { deliverAt, primaryKey: `${entity.type}/crossing/Add/same` }
+      const first = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "same" }), false, delivery),
+        { startImmediately: true }
+      )
+      yield* admitted(manager, envelope)
+
+      // The duplicate finds nothing due when it arrives; the deadline passes
+      // while it is being persisted.
+      const transactionSync = storage.transactionSync.bind(storage)
+      storage.transactionSync = (f) => {
+        storage.transactionSync = transactionSync
+        vi.spyOn(Date, "now").mockReturnValue(deliverAt)
+        return transactionSync(f)
+      }
+      yield* Effect.addFinalizer(() => Effect.sync(() => vi.restoreAllMocks()))
+      const retried = yield* manager.invoke(envelope("Add", { operationId: "same" }), false).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      const original = yield* Fiber.join(first).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      assert.strictEqual(state.runs, 1)
+      assert(original._tag === "Success")
+      assert.deepStrictEqual(exitOf(original.replies[0]), { _tag: "Success", value: 1 })
+      assert.deepStrictEqual(retried, original)
     }))
 })
