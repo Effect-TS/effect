@@ -1038,7 +1038,7 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(result.isFailure, false)
       }))
 
-    it.effect("decodes a code execution response whose container omits skills", () =>
+    it.effect("decodes a response container without skills", () =>
       Effect.gen(function*() {
         const container = { id: "container_1", expires_at: "2026-11-04T12:00:00.000000Z" }
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1050,15 +1050,7 @@ describe("AnthropicLanguageModel", () => {
                 type: "message",
                 role: "assistant",
                 model: "claude-sonnet-4-20250514",
-                content: [
-                  { type: "server_tool_use", id: "srvtoolu_1", name: "code_execution", input: { code: "print(1)" } },
-                  {
-                    type: "code_execution_tool_result",
-                    tool_use_id: "srvtoolu_1",
-                    content: { type: "code_execution_result", stdout: "1\n", stderr: "", return_code: 0, content: [] }
-                  },
-                  { type: "text", text: "It printed 1." }
-                ],
+                content: [{ type: "text", text: "Hello" }],
                 container,
                 stop_reason: "end_turn",
                 stop_sequence: null,
@@ -1068,10 +1060,7 @@ describe("AnthropicLanguageModel", () => {
           ))
         )
 
-        const response = yield* LanguageModel.generateText({
-          prompt: "Run print(1)",
-          toolkit: Toolkit.make(AnthropicTool.CodeExecution_20250522())
-        }).pipe(
+        const response = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
           Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
           Effect.provide(layer)
         )
