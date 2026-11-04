@@ -21,9 +21,17 @@
  * not to inspect service values or hand out a Context or Fiber internally.
  * The code of trusted packages is not checked against that assumption.
  *
+ * Only closed programs are optimized. The entry module may export nothing but
+ * primitive constants, every import must be analysed (Node builtins aside),
+ * and untrusted code may not reach the global object, `Reflect`, `Proxy`,
+ * `Symbol.for` or symbol-revealing `Object` APIs, because the running Fiber is
+ * published on the global object and protocol symbols hand out its Context.
+ * The global built-ins are assumed not to be modified by code outside the bundle.
+ *
  * @since 4.0.0
  */
 import * as fs from "node:fs"
+import { builtinModules } from "node:module"
 import * as path from "node:path"
 import { type InputOptions, type OutputChunk, type Plugin, rolldown } from "rolldown"
 import { parseSync } from "rolldown/utils"
@@ -78,6 +86,28 @@ interface Collected {
   readonly program: Node
   readonly comments: ModuleInput["comments"]
   readonly resolved: Map<string, string>
+  readonly externalImports: ReadonlyArray<string>
+  /** Every import and how it resolved, to detect a different second build. */
+  readonly resolution: string
+}
+
+type ResolveContext = {
+  readonly resolve: (source: string, importer: string) => Promise<{ id: string; external: unknown } | null>
+}
+
+const isBuiltin = (source: string) => source.startsWith("node:") || builtinModules.includes(source)
+
+const resolveImports = async (context: ResolveContext, program: Node, id: string) => {
+  const resolved = new Map<string, string>()
+  const externalImports: Array<string> = []
+  const resolution: Array<string> = []
+  for (const source of sourcesOf(program)) {
+    const result = await context.resolve(source, id)
+    resolution.push(`${source}\0${result?.id}\0${result?.external}`)
+    if (result && !result.external) resolved.set(source, result.id)
+    else if (!isBuiltin(result?.id ?? source)) externalImports.push(source)
+  }
+  return { resolved, externalImports, resolution: resolution.join("\n") }
 }
 
 // The module type reflects earlier transforms, e.g. TypeScript already lowered to JavaScript.
@@ -185,16 +215,12 @@ export const bundle = async (options: InputOptions, bundleOptions: BundleOptions
           parseFailures.push(`${id}: ${parsed.errors[0].message}`)
           return null
         }
-        const resolved = new Map<string, string>()
-        for (const source of sourcesOf(parsed.program as unknown as Node)) {
-          const result = await this.resolve(source, id)
-          if (result && !result.external) resolved.set(source, result.id)
-        }
+        const program = parsed.program as unknown as Node
         collected.set(id, {
           code,
-          program: parsed.program as unknown as Node,
+          program,
           comments: parsed.comments,
-          resolved
+          ...(await resolveImports(this, program, id))
         })
         return null
       }
@@ -239,9 +265,14 @@ export const bundle = async (options: InputOptions, bundleOptions: BundleOptions
     name: "effect-service-shaking:prune",
     transform: {
       order: "post",
-      handler(code, id) {
+      async handler(code, id) {
         seen.add(id)
-        if (collected.get(id)?.code !== code) {
+        const first = collected.get(id)
+        if (first === undefined || first.code !== code) {
+          mismatch = true
+          return null
+        }
+        if ((await resolveImports(this, first.program, id)).resolution !== first.resolution) {
           mismatch = true
           return null
         }

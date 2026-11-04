@@ -11,7 +11,9 @@
  *
  * Inspecting a whole Context, or a Fiber (which carries one), prints every
  * service value. Untrusted code may therefore only reference audited trusted
- * APIs; any other trusted API disables pruning for the whole bundle.
+ * APIs, may not use reflection that reaches the global object or protocol
+ * symbols, and the entry module may only export primitive constants. Anything
+ * else disables pruning for the whole bundle.
  *
  * @internal
  */
@@ -32,6 +34,8 @@ export interface ModuleInput {
   readonly trusted: boolean
   /** For trusted modules, the prefix of their exports in `allowedApis`, e.g. `Effect`. */
   readonly apiPrefix?: string | undefined
+  /** Imports left external other than Node builtins, or that did not resolve. */
+  readonly externalImports?: ReadonlyArray<string> | undefined
 }
 
 /** @internal */
@@ -294,6 +298,28 @@ const allowedModules = new Set([
   "Iterable",
   "Match"
 ])
+// Globals that reach the global object or run code that can: the running
+// Fiber, and so its Context, is published on the global object.
+const reflectiveGlobals = new Set([
+  "globalThis",
+  "global",
+  "self",
+  "window",
+  "frames",
+  "parent",
+  "top",
+  "eval",
+  "Function",
+  "Reflect",
+  "Proxy",
+  "require"
+])
+// `Symbol.for` returns protocol symbols such as `~effect/Redactable`, whose
+// methods receive the current Context. Only these members of `Symbol` are allowed.
+const allowedSymbolMembers = new Set(["iterator", "asyncIterator"])
+// `Object` members that cannot reveal symbol-keyed protocol methods.
+const allowedObjectMembers = new Set(["keys", "values", "entries", "fromEntries", "assign", "freeze", "is"])
+
 // Reading one of these on a service observes the whole object.
 const objectMembers = new Set(Object.getOwnPropertyNames(Object.prototype))
 // Members that read a whole Context from Fibers, runtimes or Contexts.
@@ -670,6 +696,10 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
   const callbackParam = (module: Module, fn: Node | undefined, sink: ValueSink): void => {
     const node = fn && strip(fn)
     if (node === undefined || !isFunctionNode(node)) return sink.fail("callback is not an inline function")
+    // `arguments` aliases the value without going through the parameter.
+    if (node.type !== "ArrowFunctionExpression" && referencesArguments(module, node)) {
+      return sink.fail("callback reads `arguments`")
+    }
     const param = node.params[0]
     if (param !== undefined) patternUses(module, param, sink)
   }
@@ -1239,7 +1269,24 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
   }
 
   for (const module of modules.values()) {
-    if (!module.input.rendered || module.input.trusted) continue
+    if (!module.input.rendered) continue
+    // Code outside the analysed graph can do anything with the values it gets.
+    for (const source of module.input.externalImports ?? []) {
+      globalBail(module, module.input.program, `external import \`${source}\``)
+    }
+    if (module.input.trusted) continue
+    for (const node of module.scope.globals) {
+      const { node: self, parent } = up(module, node)
+      const member = parent?.type === "MemberExpression" && parent.object === self ? memberName(parent) : undefined
+      const call = parent?.type === "CallExpression" && parent.callee === self
+      if (reflectiveGlobals.has(node.name)) {
+        globalBail(module, node, `\`${node.name}\` may reach the global object or the running Fiber`)
+      } else if (node.name === "Symbol" && !call && !allowedSymbolMembers.has(member ?? "")) {
+        globalBail(module, node, `\`Symbol${member === undefined ? "" : `.${member}`}\` may reveal protocol symbols`)
+      } else if (node.name === "Object" && !allowedObjectMembers.has(member ?? "")) {
+        globalBail(module, node, `\`Object${member === undefined ? "" : `.${member}`}\` may reveal protocol symbols`)
+      }
+    }
     const visit = (node: Node) => {
       if (
         node.type === "MemberExpression" && exposingMembers.has(memberName(node) ?? "") &&
@@ -1248,9 +1295,32 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         globalBail(module, node, `\`.${memberName(node)}\` may read a whole Context`)
       }
       if (node.type === "ImportExpression") globalBail(module, node, "dynamic import")
+      if (node.type === "MemberExpression" && /^(?:prepare|capture)StackTrace$/.test(memberName(node) ?? "")) {
+        globalBail(module, node, "stack trace hooks expose call frames")
+      }
       for (const child of children(node)) visit(child)
     }
     visit(module.input.program)
+  }
+
+  // == entry exports
+  //
+  // An importer of the bundle can pass objects whose getters or `toString`
+  // run inside a provider's scope, call exported functions with Effects or
+  // Layers, or run exported Effects with its own logger. None of that can be
+  // checked from here, so only primitive constants may be exported.
+  for (const module of modules.values()) {
+    if (!module.input.isEntry) continue
+    for (const star of module.stars) globalBail(module, module.input.program, `entry module re-exports \`${star}\``)
+    for (const [name] of module.exports) {
+      const sym = resolveExport(module, name)
+      const declaration = sym?._tag === "Binding" && sym.binding.kind === "const" ? sym.binding.declaration : undefined
+      const init = declaration?.type === "VariableDeclarator" && declaration.init ? strip(declaration.init) : undefined
+      const primitive = init !== undefined &&
+        ((init.type === "Literal" && init.regex == null) ||
+          (init.type === "TemplateLiteral" && init.expressions.length === 0))
+      if (!primitive) globalBail(module, module.input.program, `entry module exports \`${name}\``)
+    }
   }
 
   // == escapes of provider functions and their literals
@@ -1275,7 +1345,11 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
   }
 
   function usesArguments(fn: FunctionInfo): boolean {
-    return fn.module.scope.globals.some((node) => node.name === "arguments" && within(node, fn.node))
+    return referencesArguments(fn.module, fn.node)
+  }
+
+  function referencesArguments(module: Module, fn: Node): boolean {
+    return module.scope.globals.some((node) => node.name === "arguments" && within(node, fn))
   }
 
   function linkParamSpreads(fn: FunctionInfo, literal: LiteralInfo) {
@@ -1400,6 +1474,8 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         const sym = symbolOf(module, node)
         if (sym?._tag !== "Binding") return demand.setAll()
         const declaration = sym.binding.declaration
+        // A reassigned function may be anything at runtime.
+        if (sym.binding.refs.some((ref) => ref.write)) return demand.setAll()
         if (declaration.type === "FunctionDeclaration") return thisReads(sym.module, declaration, demand)
         if (declaration.type === "VariableDeclarator" && sym.binding.kind === "const" && declaration.init) {
           return receiverReads(sym.module, declaration.init, demand, depth + 1)
@@ -1559,6 +1635,18 @@ export const analyze = (inputs: ReadonlyArray<ModuleInput>): Analysis => {
         removed.push(`${id}:${propertyName(property)}`)
       }
     }
+  }
+
+  // A removed property can contain another removed property. Applying both
+  // would shift the outer range, and removing the outer one covers the inner.
+  for (const [id, list] of edits) {
+    list.sort((a, b) => a.start - b.start || b.end - a.end)
+    const disjoint: Array<Edit> = []
+    for (const edit of list) {
+      const last = disjoint[disjoint.length - 1]
+      if (last === undefined || edit.start >= last.end) disjoint.push(edit)
+    }
+    edits.set(id, disjoint)
   }
 
   return {
