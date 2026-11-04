@@ -439,6 +439,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           storageLayer: unansweredActivityStorage(storage)
         })))
       ))
+      yield* separateRunnerIds
       assert.deepStrictEqual(yield* storage.repliesForUnfiltered([requestId]), [])
       yield* Effect.gen(function*() {
         yield* workflow.execute({}, { discard: true })
@@ -1062,6 +1063,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         })))
       ))
       activityRequestId = requestId
+      yield* separateRunnerIds
       yield* Effect.addFinalizer(() => allowStaleReset.open)
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
@@ -3479,6 +3481,12 @@ const sendUnregisteredActivity = Effect.fnUntraced(function*(workflowName: strin
   assert(Option.isSome(requestId))
   return requestId.value
 })
+
+// Runners on a shared storage do not share a RunnerStorage, so nothing gives
+// them distinct machine ids, and ids minted before registration use a random
+// one. On the same TestClock millisecond, the next runner can mint a request id
+// the previous runner already persisted. Move past that millisecond first.
+const separateRunnerIds = TestClock.adjust(1)
 
 const activityReply = Effect.fnUntraced(
   function*(storage: MessageStorage.MessageStorage["Service"], requestId: Snowflake.Snowflake) {
