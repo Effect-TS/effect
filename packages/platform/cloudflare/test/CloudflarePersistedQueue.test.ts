@@ -4,7 +4,7 @@ import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal
 import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare/internal/queueRuntime"
 import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
-import { Clock, Effect, Fiber, Layer, Schema } from "effect"
+import { Clock, Effect, Fiber, Latch, Layer, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/persistence"
 import { DatabaseSync } from "node:sqlite"
@@ -102,10 +102,10 @@ const objectName = (queueName: string) => encodeName("PersistedQueue", queueName
 // Takes without waiting: undefined when no item is available now. An available
 // item is leased and resolved in microtasks, which all run before the timer
 // fires however late it is, so the timer only decides the empty case.
-const takeNow = (runtime: QueueRuntime, takerId: string) =>
+const takeNow = (runtime: QueueRuntime, takerId: string, maxAttempts = 10) =>
   Effect.promise(async () => {
     const item = await Promise.race([
-      runtime.take(takerId, 10, 500),
+      runtime.take(takerId, maxAttempts, 500),
       new Promise<undefined>((resolve) => setTimeout(resolve, 1))
     ])
     if (item === undefined) await runtime.cancelTake(takerId)
@@ -170,6 +170,21 @@ describe("CloudflarePersistedQueue", () => {
       const replay = yield* Effect.promise(() => runtime.take("taker-2", 10, 500))
       assert.strictEqual(replay.id, "a")
     })
+  })
+
+  it.effect("an interrupted last attempt can be taken again", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const queue = yield* PersistedQueue.make({ name: "refund", schema: Schema.String, maxAttempts: 1 })
+      yield* queue.offer("job", { id: "a" })
+      const latch = Latch.makeUnsafe()
+      const fiber = yield* Effect.forkChild(queue.take(() => Effect.andThen(latch.open, Effect.never)))
+      yield* latch.await
+      yield* Fiber.interrupt(fiber)
+      // The interrupt refunded the claim, so the only attempt is still unused.
+      const item = yield* takeNow(namespace.getByName(objectName("refund")), "next", 1)
+      assert.strictEqual(item?.id, "a")
+    }).pipe(Effect.provide(namespace.layer))
   })
 
   it.effect("requeues a failed item behind later offers", () => {
