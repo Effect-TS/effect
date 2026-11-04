@@ -2835,8 +2835,8 @@ function templateLiteralParts(parts: TemplateLiteral.Parts) {
   return parts.map((part) => isSchema(part) ? part.ast : new SchemaAST.Literal(part as TemplateLiteral.LiteralPart))
 }
 /**
- * Creates a schema that validates strings by matching ordered template literal
- * parts.
+ * Creates a schema that validates strings against a fixed-length tuple of
+ * template literal parts.
  *
  * **When to use**
  *
@@ -2850,6 +2850,9 @@ function templateLiteralParts(parts: TemplateLiteral.Parts) {
  * and bigint schema parts are applied while matching each segment.
  *
  * **Gotchas**
+ *
+ * Use an inline tuple or `as const` for `parts`. Widened arrays and open-ended
+ * tuples are unsupported despite being accepted by the signature.
  *
  * Parts must not contain encodings, including inside unions or nested templates.
  * Construction throws for transformed parts even when their decoded and encoded
@@ -2920,7 +2923,8 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
   readonly parts: Parts
 }
 /**
- * Schema for parsing matched template literal strings into typed tuple parts.
+ * Parses strings into typed tuples using a fixed-length tuple of template
+ * literal parts.
  *
  * **When to use**
  *
@@ -2936,6 +2940,9 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
  * their transformations, checks, and decoding and encoding service requirements.
  *
  * **Gotchas**
+ *
+ * Use an inline tuple or `as const` for `parts`. Widened arrays and open-ended
+ * tuples are unsupported despite being accepted by the signature.
  *
  * Ambiguous templates use greedy segmentation with backtracking. Encoding a
  * tuple and decoding the resulting string can therefore produce a different
@@ -4214,10 +4221,13 @@ export interface StructWithRest<
   readonly records: Records
 }
 /**
- * Extends a struct schema with one or more record (index-signature) schemas,
- * producing a schema whose decoded type intersects the struct and all records.
+ * Extends a struct schema with a fixed-length tuple of record schemas, producing
+ * a schema whose decoded type intersects the struct and all records.
  *
  * **Gotchas**
+ *
+ * Keep `records` as a tuple using an inline literal or `as const`. Widened arrays
+ * and open-ended tuples are unsupported and can lose inferred index signatures.
  *
  * The base schema must have an object-shaped encoded type. Whole-object
  * transformations are not supported, even with an empty rest array. Apply
@@ -4401,7 +4411,8 @@ export interface Tuple<Elements extends Tuple.Elements> extends
   readonly "Iso": Tuple.Iso<Elements>
   readonly elements: Elements
   /**
-   * Returns a new tuple with the elements modified by the provided function.
+   * Returns a new tuple with the elements modified by the provided function,
+   * which must return a fixed-length tuple.
    *
    * **Details**
    *
@@ -4440,7 +4451,12 @@ function makeTuple<Elements extends Tuple.Elements>(ast: SchemaAST.Arrays, eleme
   })
 }
 /**
- * Defines a fixed-length tuple schema from an array of element schemas.
+ * Defines a tuple schema from a fixed-length tuple of element schemas.
+ *
+ * **Gotchas**
+ *
+ * Use an inline tuple or `as const`. Widened arrays and open-ended tuples are
+ * unsupported despite being accepted by the signature.
  *
  * **Example** (Defining a pair of string and number)
  *
@@ -4614,6 +4630,8 @@ export interface TupleWithRest<
  * Extends a fixed-length tuple schema with a variadic rest segment.
  *
  * **Details**
+ *
+ * The `rest` argument must be a non-empty fixed-length tuple of schemas.
  *
  * The resulting tuple starts with the fixed elements from `schema`. The first
  * schema in `rest` is the repeatable element schema, and any additional schemas
@@ -4923,7 +4941,8 @@ export interface Union<Members extends ReadonlyArray<Constraint>> extends
   readonly "Iso": { [K in keyof Members]: Members[K]["Iso"] }[number]
   readonly members: Members
   /**
-   * Returns a new union with the members modified by the provided function.
+   * Returns a new union with the members modified by the provided function,
+   * which must return a fixed-length tuple.
    *
    * **Details**
    *
@@ -4968,14 +4987,20 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
   })
 }
 /**
- * Creates a union schema from an array of member schemas. Members are tested in
- * order; the first match is returned.
+ * Creates a union schema from a fixed-length tuple of member schemas. Members
+ * are tested in order; the first match is returned.
  *
  * **Details**
  *
  * Optionally, specify `mode`:
  * - `"anyOf"` (default) — matches if any member matches.
  * - `"oneOf"` — matches if exactly one member matches.
+ *
+ * **Gotchas**
+ *
+ * Use an inline tuple or `as const`. Widened arrays, such as `Object.values(...)`
+ * or `.map(...)` results, and open-ended tuples are unsupported despite being
+ * accepted by the signature.
  *
  * **Example** (Defining a string or number union)
  *
@@ -5011,18 +5036,32 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
   readonly literals: L
   readonly members: { readonly [K in keyof L]: Literal<L[K]> }
   /**
-   * Map over the members of the union.
+   * Returns a new union with the members modified by the provided function,
+   * which must return a fixed-length tuple.
    */
   mapMembers<To extends ReadonlyArray<Constraint>>(f: (members: this["members"]) => To): Union<Simplify<Readonly<To>>>
 
   pick<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<L2>
 
+  /**
+   * Transforms each literal to the target literal at the same index.
+   *
+   * **Gotchas**
+   *
+   * Source and target literals must be fixed-length tuples of equal length.
+   * Widened arrays lose the length check and positional typing.
+   */
   transform<const L2 extends { readonly [I in keyof L]: SchemaAST.LiteralValue }>(
     to: L2
   ): Union<{ [I in keyof L]: decodeTo<Literal<L2[I]>, Literal<L[I]>> }>
 }
 /**
- * Creates a union schema from an array of literal values.
+ * Creates a union schema from a fixed-length tuple of literal values.
+ *
+ * **Gotchas**
+ *
+ * Use an inline tuple or `as const` to preserve positions for `mapMembers` and
+ * `transform`. Widened arrays and open-ended tuples are unsupported.
  *
  * **Example** (Defining status codes)
  *
@@ -6409,14 +6448,17 @@ export type toTaggedUnion<
   Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>
 > = Union<Members> & TaggedUnionUtils<Tag, Members>
 /**
- * Augments an existing {@link Union} of tagged structs with utility methods and an ordered tuple of discriminant
- * values.
+ * Augments a {@link Union} of tagged structs or nested unions with utility methods
+ * and an ordered tuple of discriminant values.
  *
  * **Gotchas**
  *
- * Throws when multiple members use the same discriminant property key,
- * including members of nested unions. Numeric and string values such as `1`
- * and `"1"` count as duplicates.
+ * - Requires fixed-length member tuples, including in nested unions. Widened arrays
+ *   and open-ended tuples compile but are unsupported and can lose members from
+ *   `discriminants`, `cases`, `guards` and match handler types.
+ * - Throws when multiple members use the same discriminant property key,
+ *   including members of nested unions. Numeric and string values such as `1`
+ *   and `"1"` count as duplicates.
  *
  * **Example** (Adding tagged-union utilities to an existing union)
  *
