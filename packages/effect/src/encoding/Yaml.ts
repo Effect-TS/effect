@@ -1507,19 +1507,42 @@ const lenientNumber = /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|(?:[0-9]+(?:\.[0-9]*)?|\.[0
 const isLenientNonString = (text: string): boolean =>
   lenientNonString.test(text) || lenientNumber.test(text.replace(/_/g, ""))
 
-const isPlainSafe = (text: string): boolean =>
-  text.length > 0 &&
-  text.trim() === text &&
-  !/[\t\n\r]/.test(text) &&
-  !nonPrintable.test(text) &&
-  !/^[,[\]{}#&*!|>'"%@`]/.test(text) &&
-  !/^[-?:](?:\s|$)/.test(text) &&
+// A code unit JavaScript's `\s` matches.
+const isSpaceCode = (code: number): boolean =>
+  code === 0x20 || (code >= 0x09 && code <= 0x0d) || code === 0xa0 || code === 0x1680 ||
+  (code >= 0x2000 && code <= 0x200a) || code === 0x2028 || code === 0x2029 || code === 0x202f ||
+  code === 0x205f || code === 0x3000 || code === 0xfeff
+
+// A code unit the printer never leaves unquoted: line breaks, tabs, and the
+// `nonPrintable` set, with surrogates handled by the caller.
+const isUnquotableCode = (code: number): boolean =>
+  code < 0x20 || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029 || code === 0xfeff ||
+  code === 0xfffe || code === 0xffff
+
+// Only strings starting with one of these can spell a core or lenient non-string.
+const nonStringStart = /^[-+._0-9nNtTfF~]/
+
+const isPlainSafe = (text: string): boolean => {
+  if (text.length === 0 || text.trim() !== text) return false
+  if (/^[,[\]{}#&*!|>'"%@`]/.test(text) || /^[-?:](?:\s|$)/.test(text)) return false
   // Not a document marker under §9.1.3, but js-yaml reads `---x` at the start of a line as one.
-  !/^(?:---|\.\.\.)/.test(text) &&
-  !/:(?:\s|$)/.test(text) &&
-  !/\s#/.test(text) &&
-  !isCoreNonString(text) &&
-  !isLenientNonString(text)
+  if (/^(?:---|\.\.\.)/.test(text)) return false
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index)
+    if (isUnquotableCode(code)) return false
+    if (code >= 0xd800 && code <= 0xdfff) {
+      // A surrogate pair is printable; a lone surrogate is not.
+      const next = text.charCodeAt(index + 1)
+      if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) return false
+      index++
+    } else if (code === 0x3a) {
+      if (index + 1 === text.length || isSpaceCode(text.charCodeAt(index + 1))) return false
+    } else if (code === 0x23 && index > 0 && isSpaceCode(text.charCodeAt(index - 1))) {
+      return false
+    }
+  }
+  return !nonStringStart.test(text) || (!isCoreNonString(text) && !isLenientNonString(text))
+}
 
 const doubleQuoteEscapes: Record<string, string> = {
   "\0": "\\0",
@@ -1538,21 +1561,37 @@ const doubleQuoteEscapes: Record<string, string> = {
   "\u2029": "\\P"
 }
 
+const escapeCode = (code: number): string =>
+  code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
+
 const doubleQuote = (text: string): string => {
-  let output = "\""
-  // Iterating by code point keeps surrogate pairs together, so only lone
-  // surrogates reach the non-printable check.
-  for (const character of text) {
-    if (hasOwn.call(doubleQuoteEscapes, character)) {
-      output += doubleQuoteEscapes[character]
-    } else if (nonPrintable.test(character)) {
-      const code = character.charCodeAt(0)
-      output += code < 0x100 ? `\\x${code.toString(16).padStart(2, "0")}` : `\\u${code.toString(16).padStart(4, "0")}`
-    } else {
-      output += character
+  let output = ""
+  let start = 0
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index)
+    let escape: string | undefined
+    if (code === 0x22 || code === 0x5c || code < 0x20 || (code >= 0x7f && code <= 0x9f) || code >= 0x2028) {
+      if (code >= 0xd800 && code <= 0xdfff) {
+        // A surrogate pair is copied as is; a lone surrogate is escaped.
+        const next = text.charCodeAt(index + 1)
+        if (code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+          index++
+          continue
+        }
+        escape = escapeCode(code)
+      } else if (code === 0x2028 || code === 0x2029 || code === 0xfeff || code === 0xfffe || code === 0xffff) {
+        escape = code === 0x2028 ? "\\L" : code === 0x2029 ? "\\P" : escapeCode(code)
+      } else if (code < 0x2028) {
+        const character = text[index]
+        escape = hasOwn.call(doubleQuoteEscapes, character) ? doubleQuoteEscapes[character] : escapeCode(code)
+      }
+    }
+    if (escape !== undefined) {
+      output += text.slice(start, index) + escape
+      start = index + 1
     }
   }
-  return output + "\""
+  return `"${output}${text.slice(start)}"`
 }
 
 class PrintError extends Error {}
@@ -1563,15 +1602,20 @@ const printSingleLine = (text: string): string => isPlainSafe(text) ? text : dou
 const implicitKeyLimit = 1024
 
 // The unquoted merge key would be processed by `parse`, so it is always quoted.
-const printKey = (key: string, path: string): string => {
+const printKey = (key: string, path: () => string): string => {
   const printed = key === "<<" ? doubleQuote(key) : printSingleLine(key)
   if (printed.length > implicitKeyLimit) {
     throw new PrintError(
-      `Cannot print a mapping key of ${printed.length} characters (implicit keys are limited to ${implicitKeyLimit}) at ${path}`
+      `Cannot print a mapping key of ${printed.length} characters (implicit keys are limited to ${implicitKeyLimit}) at ${path()}`
     )
   }
   return printed
 }
+
+// Indentation strings, built once per width.
+const pads: Array<string> = []
+
+const pad = (width: number): string => pads[width] ?? (pads[width] = " ".repeat(width))
 
 const printNumber = (value: number): string => {
   if (Number.isNaN(value)) return ".nan"
@@ -1604,31 +1648,51 @@ class Printer {
   readonly lines: Array<string> = []
   private readonly ancestors = new Set<object>()
   private readonly step: number
+  // The path of the node being printed, formatted only for error messages.
+  private readonly root: string
+  private readonly trail: Array<string | number> = []
 
-  constructor(step: number) {
+  constructor(step: number, root: string) {
     this.step = step
+    this.root = root
+  }
+
+  private path(): string {
+    let output = this.root
+    for (const segment of this.trail) {
+      output += typeof segment === "number"
+        ? `[${segment}]`
+        : isIdentifier(segment)
+        ? `.${segment}`
+        : `[${JSON.stringify(segment)}]`
+    }
+    return output
+  }
+
+  private fail(message: string): never {
+    throw new PrintError(`${message} at ${this.path()}`)
   }
 
   // Prints `value`, with `toJSON` already applied, after `prefix` (`""` at the
   // root, `-` for a sequence item, or `key:` for a mapping entry) placed at
   // `indentation`.
-  node(value: unknown, path: string, indentation: number, prefix: string): void {
+  node(value: unknown, indentation: number, prefix: string): void {
     switch (typeof value) {
       case "string":
         return this.scalar(value, indentation, prefix)
       case "number":
         return this.line(indentation, prefix, printNumber(value))
       case "boolean":
-        return this.line(indentation, prefix, String(value))
+        return this.line(indentation, prefix, value ? "true" : "false")
       case "undefined":
-        throw new PrintError(`Cannot print undefined at ${path}`)
+        return this.fail("Cannot print undefined")
       case "object":
         break
       default:
-        throw new PrintError(`Cannot print a ${typeof value} at ${path}`)
+        return this.fail(`Cannot print a ${typeof value}`)
     }
     if (value === null) return this.line(indentation, prefix, "null")
-    if (this.ancestors.has(value)) throw new PrintError(`Circular reference at ${path}`)
+    if (this.ancestors.has(value)) this.fail("Circular reference")
     if (Array.isArray(value)) {
       if (value.length === 0) return this.line(indentation, prefix, "[]")
       this.ancestors.add(value)
@@ -1636,7 +1700,9 @@ class Printer {
       if (prefix !== "") this.line(indentation, prefix, "")
       // Index iteration keeps the positions of sparse arrays.
       for (let index = 0; index < value.length; index++) {
-        this.node(applyToJson(value[index], String(index)) ?? null, `${path}[${index}]`, column, "-")
+        this.trail.push(index)
+        this.node(applyToJson(value[index], String(index)) ?? null, column, "-")
+        this.trail.pop()
       }
       this.ancestors.delete(value)
       return
@@ -1646,14 +1712,17 @@ class Printer {
       // Only a string name is safe to interpolate into the diagnostic.
       const name = prototype.constructor?.name
       const label = typeof name === "string" && name.length > 0 ? name : "object"
-      throw new PrintError(`Cannot print a ${label} instance without toJSON at ${path}`)
+      this.fail(`Cannot print a ${label} instance without toJSON`)
     }
-    const entries: Array<[string, unknown]> = []
-    for (const key of Object.keys(value)) {
-      const entry = applyToJson((value as YamlRecord)[key], key)
-      if (entry !== undefined) entries.push([key, entry])
+    const keys = Object.keys(value)
+    const entries: Array<unknown> = []
+    let count = 0
+    for (let index = 0; index < keys.length; index++) {
+      const entry = applyToJson((value as YamlRecord)[keys[index]], keys[index])
+      entries.push(entry)
+      if (entry !== undefined) count++
     }
-    if (entries.length === 0) return this.line(indentation, prefix, "{}")
+    if (count === 0) return this.line(indentation, prefix, "{}")
     this.ancestors.add(value)
     // A mapping starts on the line of its sequence dash and continues two
     // columns in, aligned with its first key.
@@ -1661,11 +1730,17 @@ class Printer {
     const column = prefix === "" ? indentation : item ? indentation + 2 : indentation + this.step
     if (!item && prefix !== "") this.line(indentation, prefix, "")
     const start = this.lines.length
-    for (const [key, entry] of entries) {
-      const entryPath = isIdentifier(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`
-      this.node(entry, entryPath, column, `${printKey(key, path)}:`)
+    const path = () => this.path()
+    for (let index = 0; index < keys.length; index++) {
+      const entry = entries[index]
+      if (entry === undefined) continue
+      const key = keys[index]
+      const printed = printKey(key, path)
+      this.trail.push(key)
+      this.node(entry, column, `${printed}:`)
+      this.trail.pop()
     }
-    if (item) this.lines[start] = `${" ".repeat(indentation)}- ${this.lines[start].slice(column)}`
+    if (item) this.lines[start] = `${pad(indentation)}- ${this.lines[start].slice(column)}`
     this.ancestors.delete(value)
   }
 
@@ -1673,13 +1748,13 @@ class Printer {
     const block = text.includes("\n") ? literalBlock(text) : undefined
     if (block === undefined) return this.line(indentation, prefix, printSingleLine(text))
     this.line(indentation, prefix, block.header)
-    const pad = " ".repeat(indentation + this.step)
-    for (const line of block.lines) this.lines.push(line.length === 0 ? "" : pad + line)
+    const indent = pad(indentation + this.step)
+    for (const line of block.lines) this.lines.push(line.length === 0 ? "" : indent + line)
   }
 
   private line(indentation: number, prefix: string, text: string): void {
     const content = prefix === "" ? text : text === "" ? prefix : `${prefix} ${text}`
-    this.lines.push(" ".repeat(indentation) + content)
+    this.lines.push(indentation === 0 ? content : pad(indentation) + content)
   }
 }
 
@@ -1702,8 +1777,8 @@ const indentStep = (options: { readonly indent?: number | undefined } | undefine
 }
 
 const printDocument = (value: unknown, path: string, step: number): string => {
-  const printer = new Printer(step)
-  printer.node(applyToJson(value, ""), path, 0, "")
+  const printer = new Printer(step, path)
+  printer.node(applyToJson(value, ""), 0, "")
   return `${printer.lines.join("\n")}\n`
 }
 
