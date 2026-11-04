@@ -1,13 +1,11 @@
 /**
  * The `CommandSpec` module projects one command path of an Effect CLI command
- * tree into plain data for documentation tooling: reference pages, JSON
- * schemas, or any generator that needs more than `--help` prints.
- *
- * It is lossless where `Completions.fromCommand` is deliberately not. Hidden
- * flags and unlisted subcommands are included and marked, every effective flag
- * says where it comes from, primitive types are not collapsed, and defaults
- * and fallbacks are reported structurally. Nothing is executed: handlers,
- * prompts, `Config` lookups and effectful defaults are only described.
+ * tree into plain data for documentation tooling such as reference pages or
+ * JSON schemas. It is lossless where `Completions.fromCommand` is deliberately
+ * not: hidden flags and unlisted subcommands are included and marked, every
+ * effective flag says where it comes from, primitive types are not collapsed,
+ * and defaults and fallbacks are reported structurally without running
+ * handlers, prompts, `Config` lookups or effectful defaults.
  *
  * @stability unstable
  * @since 4.1.3
@@ -17,7 +15,7 @@ import * as Option from "../Option.ts"
 import type { Command } from "./Command.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
 import { toImpl } from "./internal/command.ts"
-import * as Param from "./Param.ts"
+import type * as Param from "./Param.ts"
 import * as Primitive from "./Primitive.ts"
 
 /**
@@ -51,7 +49,8 @@ export interface Spec {
 
 /**
  * The input surface of one flag as the user types it. Transformations applied
- * to the parsed value (`map`, `withSchema`, `filter`) are transparent.
+ * to the parsed value (`map`, `withSchema`, `filter`) are transparent, and a
+ * parameter built with `orElse` yields one entry per alternative.
  *
  * @stability unstable
  * @category models
@@ -70,13 +69,23 @@ export interface Flag {
   /** Display name given with `withMetavar`, if any. */
   readonly metavar: string | undefined
   /**
-   * Whether parsing fails when the flag is absent and no fallback supplies a
-   * value. Boolean flags are never required. A `Config` or `Prompt` fallback
-   * does not clear this; pair it with `fallbacks` to render "required unless
-   * `$VAR` is set".
+   * Whether parsing fails when this entry is absent and no fallback on its own
+   * path supplies a value. Bare boolean flags are required like any other
+   * flag; `withDefault(false)` makes them optional. A `Config` or `Prompt`
+   * fallback does not clear this; pair it with `fallbacks` to render
+   * "required unless `$VAR` is set". Global `Action` flags are never required
+   * because the runner parses them only when present. The value is
+   * branch-local, not whole-parameter: for `config` with
+   * `orElse(() => configUrl.pipe(withDefault(...)))`, `config` is required
+   * even though omitting both flags succeeds through the alternative.
    */
   readonly required: boolean
-  /** Fallbacks in the order the parser consults them, innermost combinator first. */
+  /**
+   * Fallbacks on this entry's own path, in the order the parser consults them
+   * when the value is missing: innermost combinator first. Fallbacks applied
+   * to each item of a variadic parameter are not reported, since they do not
+   * satisfy its minimum.
+   */
   readonly fallbacks: ReadonlyArray<Fallback>
   /** Repeat bounds for a variadic flag, `undefined` when the flag is not variadic. */
   readonly variadic: VariadicBounds | undefined
@@ -90,7 +99,8 @@ export interface Flag {
 }
 
 /**
- * The input surface of one positional argument.
+ * The input surface of one positional argument. `required` and `fallbacks`
+ * follow the same branch-local rules as {@link Flag}.
  *
  * @stability unstable
  * @category models
@@ -102,8 +112,9 @@ export interface Argument {
   readonly type: Type
   readonly typeName: string
   readonly metavar: string | undefined
-  /** Whether parsing fails when the argument is absent and no fallback supplies a value. */
+  /** Whether parsing fails when this entry is absent and no fallback on its own path supplies a value. */
   readonly required: boolean
+  /** Fallbacks on this entry's own path, innermost combinator first. */
   readonly fallbacks: ReadonlyArray<Fallback>
   readonly variadic: VariadicBounds | undefined
   readonly annotations: Context.Context<never>
@@ -129,10 +140,12 @@ export interface Subcommand {
 /**
  * Where an effective flag is declared.
  *
- * - `Local`: declared on the resolved command itself.
- * - `Inherited`: declared with `withSharedFlags` on the ancestor at `declaredBy`.
- * - `Global`: a global flag; `declaredBy` is the path of the command that
- *   declared it with `withGlobalFlags`, or `undefined` for a built-in.
+ * **Details**
+ *
+ * `Local` flags are declared on the resolved command itself. `Inherited`
+ * flags come from `withSharedFlags` on the ancestor at `declaredBy`. `Global`
+ * flags carry the path of the command that declared them with
+ * `withGlobalFlags`, or `undefined` for a built-in.
  *
  * @stability unstable
  * @category models
@@ -222,6 +235,13 @@ export interface ResolveOptions {
  * in the path, an unknown segment, a different root name or an empty path all
  * yield `Option.none()` rather than the deepest matching ancestor.
  *
+ * Each flag or argument entry describes one `Single` parameter together with
+ * the combinators on the path from the parameter's root to it, outermost
+ * first. A combinator applied outside an `orElse` applies to every
+ * alternative; one applied inside a branch applies to that branch only.
+ * Combinators beneath a variadic describe each item and do not contribute to
+ * `required` or `fallbacks`.
+ *
  * The call is pure and synchronous. Handlers, prompts, `Config` lookups and
  * effectful defaults are reported as {@link Fallback} values and never run.
  *
@@ -233,7 +253,7 @@ export interface ResolveOptions {
  *
  * const push = Command.make("push", {
  *   dbUrl: Flag.String("db-url"),
- *   dryRun: Flag.Boolean("dry-run")
+ *   dryRun: Flag.Boolean("dry-run").pipe(Flag.withDefault(false))
  * })
  * const cli = Command.make("app").pipe(
  *   Command.withSharedFlags({ profile: Flag.String("profile").pipe(Flag.optional) }),
@@ -268,13 +288,12 @@ export const resolve = (
   const seen = new Set<string>()
   const addFlags = (params: ReadonlyArray<Param.AnyFlag>, scope: Scope): void => {
     for (const param of params) {
-      const metadata = Param.getParamMetadata(param)
-      for (const single of Param.extractSingleParams(param)) {
-        if (single.kind !== "flag") continue
+      for (const entry of collectEntries(param)) {
+        if (entry.single.kind !== "flag") continue
         // Match help: a name already supplied by a nearer scope wins.
-        if (scope._tag !== "Local" && seen.has(single.name)) continue
-        seen.add(single.name)
-        flags.push(toFlag(single, metadata, scope))
+        if (scope._tag !== "Local" && seen.has(entry.single.name)) continue
+        seen.add(entry.single.name)
+        flags.push(toFlag(entry, scope))
       }
     }
   }
@@ -305,8 +324,7 @@ export const resolve = (
 
   const args: Array<Argument> = []
   for (const param of impl.config.arguments) {
-    const metadata = Param.getParamMetadata(param)
-    for (const single of Param.extractSingleParams(param)) {
+    for (const { single, ...metadata } of collectEntries(param)) {
       if (single.kind !== "argument") continue
       args.push({
         name: single.name,
@@ -314,9 +332,9 @@ export const resolve = (
         type: toType(single.primitiveType),
         typeName: Primitive.getTypeName(single.primitiveType),
         metavar: single.typeName,
-        required: metadata.isRequired,
+        required: metadata.required,
         fallbacks: metadata.fallbacks,
-        variadic: toVariadic(metadata),
+        variadic: metadata.variadic,
         annotations: single.annotations
       })
     }
@@ -374,11 +392,79 @@ const resolveLineage = (
   return lineage
 }
 
-const toFlag = (
-  single: Param.Single<Param.ParamKind, unknown>,
-  metadata: Param.ParamMetadata,
-  scope: Scope
-): Flag => {
+/**
+ * One `Single` parameter together with the facts derived from the combinators
+ * on the path from the parameter's root down to it.
+ */
+interface Entry {
+  readonly single: Param.Single<Param.ParamKind, unknown>
+  readonly required: boolean
+  readonly fallbacks: ReadonlyArray<Fallback>
+  readonly variadic: VariadicBounds | undefined
+}
+
+/**
+ * What the combinators above the current node have established, outermost
+ * first. Once a variadic has been entered, the nodes beneath it describe each
+ * item rather than the parameter, so they no longer change omission facts.
+ */
+interface PathState {
+  readonly omittable: boolean
+  /** Outermost first; reversed into consult order when an entry is emitted. */
+  readonly fallbacks: ReadonlyArray<Fallback>
+  readonly variadic: VariadicBounds | undefined
+}
+
+const initialState: PathState = { omittable: false, fallbacks: [], variadic: undefined }
+
+const collectEntries = (param: Param.Any): Array<Entry> => {
+  const entries: Array<Entry> = []
+  const visit = (node: Param.Any, state: PathState): void => {
+    switch (node._tag) {
+      case "Single": {
+        entries.push({
+          single: node as Param.Single<Param.ParamKind, unknown>,
+          required: !state.omittable,
+          fallbacks: [...state.fallbacks].reverse(),
+          variadic: state.variadic
+        })
+        return
+      }
+      case "Map":
+        return visit((node as Param.Map<Param.ParamKind, unknown, unknown>).param, state)
+      case "Transform": {
+        const transform = node as Param.Transform<Param.ParamKind, unknown, unknown>
+        const next = transform.fallback === undefined || state.variadic !== undefined
+          ? state
+          : { ...state, fallbacks: [...state.fallbacks, transform.fallback] }
+        visit(transform.param, next)
+        for (const alternative of transform.alternatives) {
+          visit(alternative(), next)
+        }
+        return
+      }
+      case "Optional": {
+        const optional = node as Param.Optional<Param.ParamKind, unknown>
+        return visit(optional.param, state.variadic !== undefined ? state : { ...state, omittable: true })
+      }
+      case "Variadic": {
+        const variadic = node as Param.Variadic<Param.ParamKind, unknown>
+        if (state.variadic !== undefined) return visit(variadic.param, state)
+        const min = Option.getOrUndefined(variadic.min)
+        return visit(variadic.param, {
+          omittable: state.omittable || min === undefined || min <= 0,
+          fallbacks: state.fallbacks,
+          variadic: { min, max: Option.getOrUndefined(variadic.max) }
+        })
+      }
+    }
+  }
+  visit(param, initialState)
+  return entries
+}
+
+const toFlag = (entry: Entry, scope: Scope): Flag => {
+  const { single } = entry
   const isBoolean = Primitive.isBoolean(single.primitiveType)
   return {
     name: single.name,
@@ -388,23 +474,16 @@ const toFlag = (
     type: toType(single.primitiveType),
     typeName: Primitive.getTypeName(single.primitiveType),
     metavar: single.typeName,
-    required: !isBoolean && metadata.isRequired,
-    fallbacks: metadata.fallbacks,
-    variadic: toVariadic(metadata),
+    // The runner parses an Action only when it is present on the command line.
+    required: entry.required && !(scope._tag === "Global" && scope.kind === "Action"),
+    fallbacks: entry.fallbacks,
+    variadic: entry.variadic,
     optionalValue: single.optionalValue,
     negation: isBoolean && single.negation !== false ? single.negation ?? `no-${single.name}` : undefined,
     scope,
     annotations: single.annotations
   }
 }
-
-const toVariadic = (metadata: Param.ParamMetadata): VariadicBounds | undefined =>
-  metadata.isVariadic
-    ? {
-      min: Option.getOrUndefined(metadata.variadicMin),
-      max: Option.getOrUndefined(metadata.variadicMax)
-    }
-    : undefined
 
 const toType = (primitive: Primitive.Primitive<unknown>): Type => {
   switch (primitive._tag) {
