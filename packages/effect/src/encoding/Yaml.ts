@@ -140,11 +140,8 @@ class MappingBuilder {
 }
 
 // YAML 1.2.2 §5.5: only spaces and tabs are white space. NBSP, U+2028 and other
-// characters JavaScript treats as white space are content.
-const isWhite = (character: string | undefined): boolean => character === " " || character === "\t"
-
-// Character code variants of the predicates, for hot scans: `charCodeAt` past the end is
-// `NaN`, which matches nothing, like `undefined` above.
+// characters JavaScript treats as white space are content. `charCodeAt` past the
+// end is `NaN`, which matches nothing.
 const isWhiteCode = (code: number): boolean => code === 32 || code === 9
 
 // Line breaks also separate tokens inside flow collections.
@@ -302,8 +299,6 @@ const coreSchema = {
   infinity: /^[-+]?\.(?:inf|Inf|INF)$/,
   nan: /^\.(?:nan|NaN|NAN)$/
 }
-
-const isCoreNonString = (text: string): boolean => Object.values(coreSchema).some((pattern) => pattern.test(text))
 
 const coreInt = (text: string): number | undefined => {
   if (coreSchema.int.test(text)) return Number(text)
@@ -999,7 +994,7 @@ const nodeProperties = (
     } else if (tag === undefined && rest.startsWith("!")) {
       tag = readTag(rest, fail)
       rest = rest.slice(tag.length)
-      if (rest.length > 0 && !isWhite(rest[0])) fail(`Expected white space after the YAML tag ${tag}`)
+      if (rest.length > 0 && !isWhiteCode(rest.charCodeAt(0))) fail(`Expected white space after the YAML tag ${tag}`)
       rest = trimWhiteStart(rest)
     } else {
       // A node has at most one anchor and one tag.
@@ -1188,7 +1183,9 @@ class YamlParser {
       if (anchor !== undefined) fail("An alias cannot have an anchor")
       if (tag !== undefined) fail("An alias cannot have a tag")
       // `:` may be part of an alias name, so the separator must follow white space.
-      if (!isWhite(raw[raw.length - 1])) fail("An alias used as a mapping key must be followed by a space before ':'")
+      if (!isWhiteCode(raw.charCodeAt(raw.length - 1))) {
+        fail("An alias used as a mapping key must be followed by a space before ':'")
+      }
       return { key: aliasKey(this.anchors, text.slice(1), fail), merge: false }
     }
     return scalarKey(this.anchors, anchor, tag, text, fail)
@@ -1614,9 +1611,24 @@ export const parseAll = (input: string): Result.Result<Array<unknown>, EncodingE
 // output. Line and paragraph separators are included to stay on the safe side
 // of YAML 1.1 line break handling, and the byte order mark because §5.4
 // excludes it from content characters.
-const nonPrintable =
-  // eslint-disable-next-line no-control-regex
-  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufeff\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
+const isNonPrintableCode = (code: number): boolean =>
+  (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f) ||
+  code === 0x2028 || code === 0x2029 || code === 0xfeff || code === 0xfffe || code === 0xffff
+
+// Whether `text` holds a non-printable code unit or a lone surrogate.
+const hasNonPrintable = (text: string): boolean => {
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index)
+    if (isNonPrintableCode(code)) return true
+    if (code >= 0xd800 && code <= 0xdfff) {
+      // A surrogate pair is printable; a lone surrogate is not.
+      const next = text.charCodeAt(index + 1)
+      if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) return true
+      index++
+    }
+  }
+  return false
+}
 
 // Spellings that the core schema reads as strings but YAML 1.1 and lenient parsers read as other
 // types: any letter case of `null`, `true`, `false`, `.inf` and `.nan`, and numbers with `_`
@@ -1634,35 +1646,25 @@ const isSpaceCode = (code: number): boolean =>
   (code >= 0x2000 && code <= 0x200a) || code === 0x2028 || code === 0x2029 || code === 0x202f ||
   code === 0x205f || code === 0x3000 || code === 0xfeff
 
-// A code unit the printer never leaves unquoted: line breaks, tabs, and the
-// `nonPrintable` set, with surrogates handled by the caller.
-const isUnquotableCode = (code: number): boolean =>
-  code < 0x20 || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029 || code === 0xfeff ||
-  code === 0xfffe || code === 0xffff
-
-// Only strings starting with one of these can spell a core or lenient non-string.
-const nonStringStart = /^[-+._0-9nNtTfF~]/
-
 const isPlainSafe = (text: string): boolean => {
   if (text.length === 0 || text.trim() !== text) return false
   if (/^[,[\]{}#&*!|>'"%@`]/.test(text) || /^[-?:](?:\s|$)/.test(text)) return false
   // Not a document marker under §9.1.3, but js-yaml reads `---x` at the start of a line as one.
-  if (/^(?:---|\.\.\.)/.test(text)) return false
+  if (/^(?:---|\.\.\.)/.test(text) || hasNonPrintable(text)) return false
   for (let index = 0; index < text.length; index++) {
     const code = text.charCodeAt(index)
-    if (isUnquotableCode(code)) return false
-    if (code >= 0xd800 && code <= 0xdfff) {
-      // A surrogate pair is printable; a lone surrogate is not.
-      const next = text.charCodeAt(index + 1)
-      if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) return false
-      index++
-    } else if (code === 0x3a) {
+    if (code === 0x09 || code === 0x0a || code === 0x0d) return false
+    if (code === 0x3a) {
       if (index + 1 === text.length || isSpaceCode(text.charCodeAt(index + 1))) return false
     } else if (code === 0x23 && index > 0 && isSpaceCode(text.charCodeAt(index - 1))) {
       return false
     }
   }
-  return !nonStringStart.test(text) || (!isCoreNonString(text) && !isLenientNonString(text))
+  // Quoted when `parse` or a lenient parser would read the spelling as another type.
+  // `_` can start a lenient number spelling once its separators are removed.
+  const first = text.charCodeAt(0)
+  if (!mayBeCoreNonString(first) && first !== 95) return true
+  return typeof resolvePlain(text) === "string" && !isLenientNonString(text)
 }
 
 const doubleQuoteEscapes: Record<string, string> = {
@@ -1754,7 +1756,7 @@ const literalBlock = (text: string): { readonly header: string; readonly lines: 
   let end = text.length
   while (end > 0 && text[end - 1] === "\n") end--
   const body = text.slice(0, end)
-  if (body.length === 0 || /\r/.test(body) || nonPrintable.test(body)) return undefined
+  if (body.length === 0 || /\r/.test(body) || hasNonPrintable(body)) return undefined
   const lines = body.split("\n")
   if (lines.some((line) => line.trim() !== line)) return undefined
   // Kept line breaks beyond the first become empty lines inside the scalar.
