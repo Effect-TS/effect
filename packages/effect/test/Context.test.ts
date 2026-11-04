@@ -390,6 +390,36 @@ describe("overridable", () => {
       strictEqual(yield* Effect.provide(greet("effect"), layer), "hi effect")
     }))
 
+  it.effect("passes the call receiver to the current implementation", () =>
+    Effect.gen(function*() {
+      const greet = Context.overridable(
+        "ContextTest/greetThis",
+        function(this: { readonly prefix: string }, name: string) {
+          return Effect.sync(() => this.prefix + name)
+        }
+      )
+      const receiver = { prefix: "hello " }
+      strictEqual(yield* greet.call(receiver, "effect"), "hello effect")
+      strictEqual(
+        yield* greet.call(receiver, "effect").pipe(
+          Effect.provideService(greet.reference, function(name) {
+            return Effect.sync(() => this.prefix.toUpperCase() + name)
+          })
+        ),
+        "HELLO effect"
+      )
+    }))
+
+  it.effect("keeps own properties of a callable default", () =>
+    Effect.gen(function*() {
+      const labelled = Context.overridable(
+        "ContextTest/labelled",
+        Object.assign((n: number) => Effect.succeed(n), { label: "demo" })
+      )
+      strictEqual(labelled.label, "demo")
+      strictEqual(yield* labelled(1), 1)
+    }))
+
   it.effect("Effect.andThen calls the function", () =>
     Effect.gen(function*() {
       const greet = makeGreet()
