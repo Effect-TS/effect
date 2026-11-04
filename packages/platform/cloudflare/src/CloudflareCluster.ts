@@ -184,6 +184,7 @@ const isClusterCronEntity = (entity: Entity.Entity<any, any>): boolean => {
 
 const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const layerScope = yield* Effect.scope
+  const layerContext = yield* Effect.context<never>()
   const entities = new Map<string, Entity.Entity<any, any>>()
   for (const entity of options.entities) {
     entities.set(entity.type, entity)
@@ -450,9 +451,11 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
   })
 
   type ClientFactory = (entityId: string) => any
-  // Like `Sharding`, each entity's base client is built once under the layer
-  // scope, so it needs no caller Scope and outlives the scope it was first
-  // requested in.
+  // Like `Sharding`, each entity's base client is built once from the layer
+  // context and scope, so it needs no caller Scope, outlives the scope it was
+  // first requested in, and resolves client middleware from the layer rather
+  // than from whichever caller asked first.
+  const clientContext = Context.add(layerContext, Scope.Scope, layerScope)
   const clients = new Map<Entity.Entity<any, any>, Deferred.Deferred<ClientFactory>>()
   const makeClient = (entity: Entity.Entity<any, any>): Effect.Effect<ClientFactory> =>
     Effect.suspend(() => {
@@ -462,7 +465,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       const deferred = Deferred.makeUnsafe<ClientFactory>()
       clients.set(entity, deferred)
       return buildClient(entity).pipe(
-        Effect.provideService(Scope.Scope, layerScope),
+        Effect.provideContext(clientContext),
         Effect.tap((factory) => Deferred.succeed(deferred, factory)),
         Effect.uninterruptible
       )
