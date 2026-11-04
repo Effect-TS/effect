@@ -726,7 +726,7 @@ describe("OpenRouterLanguageModel", () => {
               object: "chat.completion.chunk",
               model: "deepseek/deepseek-v4-flash",
               created: 1,
-              choices: [{ index: 0, delta: { role: "assistant", content: "", reasoning: "Thinking" } }]
+              choices: [{ index: 0, delta: { content: "", reasoning: "Thinking" } }]
             },
             {
               id: "response-1",
@@ -747,11 +747,9 @@ describe("OpenRouterLanguageModel", () => {
         )
 
         deepStrictEqual(
-          globalThis.Array.from(parts).flatMap((part) =>
-            part.type === "reasoning-delta" || part.type === "text-delta"
-              ? [`${part.type}:${part.delta}`]
-              : part.type.startsWith("reasoning-") || part.type.startsWith("text-")
-              ? [part.type]
+          parts.flatMap((part) =>
+            part.type.startsWith("reasoning-") || part.type.startsWith("text-")
+              ? ["delta" in part ? `${part.type}:${part.delta}` : part.type]
               : []
           ),
           [
