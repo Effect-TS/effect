@@ -1,7 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
-import { Config, Context, Effect, type Layer, type Scope } from "effect"
+import { Config, Context, Effect, Layer, type Scope } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import type { SqlClient, SqlError } from "effect/sql"
+import { SqlClient, type SqlError } from "effect/sql"
 import { describe, expect, it } from "tstyche"
 
 class Prefix extends Context.Service<Prefix, string>()("Prefix") {}
@@ -18,6 +18,17 @@ describe("PgClient onAcquire", () => {
     >()
     expect(PgClient.layerConfig({ onAcquire: Config.succeed(onAcquire) })).type.toBe<
       Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, Config.ConfigError | SqlError.SqlError, Prefix>
+    >()
+  })
+})
+
+describe("PgClient", () => {
+  it("is not provided by a SqlClient layer", () => {
+    const program = Effect.service(PgClient.PgClient).pipe(Effect.asVoid)
+    const sqlClient = Layer.succeed(SqlClient.SqlClient, {} as SqlClient.SqlClient)
+    expect(Effect.provide(program, sqlClient)).type.toBe<Effect.Effect<void, never, PgClient.PgClient>>()
+    expect(Layer.provide(Layer.effectDiscard(program), sqlClient)).type.toBe<
+      Layer.Layer<never, never, PgClient.PgClient>
     >()
   })
 })
