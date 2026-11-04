@@ -744,7 +744,7 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
         state.waiters.delete(waiter)
       }
     })
-  })
+  }, { blockedOn: self })
 
 const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown>, count: number) => {
   const waiters = self.state.waiters
