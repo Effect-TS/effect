@@ -3,8 +3,8 @@ import * as OtelTracer from "@effect/opentelemetry/OtelTracer"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
-import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import { InMemorySpanExporter, SimpleSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base"
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks"
+import { InMemorySpanExporter, SimpleSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -17,12 +17,12 @@ import * as EffectTracer from "effect/Tracer"
 import * as Version from "effect/Version"
 
 const TracingLayer = OtelTracer.layer.pipe(
-  Layer.provide(NodeSdk.layerTracerProvider([new SimpleSpanProcessor(new InMemorySpanExporter())])),
+  Layer.provide(NodeSdk.layerTracerProvider([new SimpleSpanProcessor({ exporter: new InMemorySpanExporter() })])),
   Layer.provide(Resource.layerEmpty)
 )
 
 // needed to test context propagation
-const contextManager = new AsyncHooksContextManager()
+const contextManager = new AsyncLocalStorageContextManager()
 OtelApi.context.setGlobalContextManager(contextManager.enable())
 
 describe("Tracer", () => {
@@ -30,7 +30,7 @@ describe("Tracer", () => {
     const exporter = new InMemorySpanExporter()
     const layer = NodeSdk.layer(Effect.sync(() => ({
       resource: { serviceName: "test", serviceVersion: "service-version" },
-      spanProcessor: [new SimpleSpanProcessor(exporter)]
+      spanProcessor: [new SimpleSpanProcessor({ exporter })]
     })))
     return Effect.gen(function*() {
       yield* Effect.void.pipe(Effect.withSpan("test"))
@@ -53,7 +53,7 @@ describe("Tracer", () => {
       HttpRouter.add("GET", "/", Effect.succeed(HttpServerResponse.text("ok"))).pipe(
         Layer.provideMerge(NodeSdk.layer(() => ({
           resource: { serviceName: "test" },
-          spanProcessor: new SimpleSpanProcessor(exporter)
+          spanProcessor: new SimpleSpanProcessor({ exporter })
         })))
       ),
       { disableLogger: true }
@@ -307,7 +307,7 @@ describe("Tracer", () => {
     it.effect("records every pretty error", () =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()
-        const spanProcessor = new SimpleSpanProcessor(exporter)
+        const spanProcessor = new SimpleSpanProcessor({ exporter })
         const firstFailure = Cause.fail(new Error("first"))
         const secondFailure = Cause.fail(new Error("second"))
         const cause = Cause.combine(firstFailure, secondFailure)
@@ -336,7 +336,7 @@ describe("Tracer", () => {
     it.effect("renders nested error causes in the stacktrace", () =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()
-        const spanProcessor = new SimpleSpanProcessor(exporter)
+        const spanProcessor = new SimpleSpanProcessor({ exporter })
         const error = new Error("outer failure", { cause: new Error("inner cause") })
 
         yield* Effect.die(error).pipe(
@@ -374,13 +374,13 @@ describe("Tracer", () => {
         assert.deepStrictEqual(spans[0].attributes, { "effect.fiber.interrupted": true })
       }).pipe(Effect.provide(NodeSdk.layer(() => ({
         resource: { serviceName: "test" },
-        spanProcessor: [new SimpleSpanProcessor(exporter)]
+        spanProcessor: [new SimpleSpanProcessor({ exporter })]
       }))))
     })
     it.effect("exports homogeneous primitive arrays as array attributes", () =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()
-        const spanProcessor = new SimpleSpanProcessor(exporter)
+        const spanProcessor = new SimpleSpanProcessor({ exporter })
 
         yield* Effect.void.pipe(
           Effect.withSpan("array-span", {
