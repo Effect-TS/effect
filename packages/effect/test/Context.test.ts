@@ -1,8 +1,11 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as Stream from "effect/Stream"
 import { describe, it } from "vitest"
 
 interface ContextInternals {
@@ -352,5 +355,61 @@ describe("Context", () => {
     const context = Context.makeUnsafe(map)
 
     strictEqual(context.mapUnsafe, map)
+  })
+
+  describe("overridable", () => {
+    const makeGreet = () => Context.overridable("ContextTest/greet", (name: string) => Effect.succeed(`hello ${name}`))
+
+    it("runs the default when nothing is provided", async () => {
+      const greet = makeGreet()
+      strictEqual(await Effect.runPromise(greet("a")), "hello a")
+    })
+
+    it("is overridden through Effect.provideService on its reference", async () => {
+      const greet = makeGreet()
+      const result = await Effect.runPromise(
+        greet("a").pipe(Effect.provideService(greet.reference, (name) => Effect.succeed(`hi ${name}`)))
+      )
+      strictEqual(result, "hi a")
+    })
+
+    it("is overridden through Layer.succeed on its reference", async () => {
+      const greet = makeGreet()
+      const layer = Layer.succeed(greet.reference, (name) => Effect.succeed(`hey ${name}`))
+      strictEqual(await Effect.runPromise(Effect.provide(greet("a"), layer)), "hey a")
+    })
+
+    it("looks up the implementation when the result runs, not when the function is called", async () => {
+      const greet = makeGreet()
+      const call = greet("a")
+      const result = await Effect.runPromise(Effect.all([
+        call,
+        call.pipe(Effect.provideService(greet.reference, (name) => Effect.succeed(`later ${name}`)))
+      ]))
+      deepStrictEqual(result, ["hello a", "later a"])
+    })
+
+    it("a Stream-returning function works through its Stream side and its Effect side", async () => {
+      const range = Context.overridable(
+        "ContextTest/range",
+        (n: number) => Stream.fromIterable(Array.from({ length: n }, (_, i) => i + 1))
+      )
+      const override = (n: number) => Stream.make(-n)
+      const viaStream = Stream.runCollect(range(3))
+      // The Effect side of a call resolves to the Stream the implementation returns
+      const viaEffect = Effect.flatMap(range(3) as unknown as Effect.Effect<Stream.Stream<number>>, Stream.runCollect)
+      const results = await Effect.runPromise(Effect.all([
+        viaStream,
+        viaEffect,
+        viaStream.pipe(Effect.provideService(range.reference, override)),
+        viaEffect.pipe(Effect.provideService(range.reference, override))
+      ]))
+      deepStrictEqual(results, [[1, 2, 3], [1, 2, 3], [-3], [-3]])
+    })
+
+    it("Effect.andThen calls the function instead of treating it as an effect", async () => {
+      const greet = makeGreet()
+      strictEqual(await Effect.runPromise(Effect.succeed("a").pipe(Effect.andThen(greet))), "hello a")
+    })
   })
 })
