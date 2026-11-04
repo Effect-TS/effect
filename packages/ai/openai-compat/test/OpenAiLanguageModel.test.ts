@@ -1935,6 +1935,51 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(text, "Hello")
       }))
 
+    it.effect("keeps streamed text and service tier when a chunk has null service_tier", () =>
+      Effect.gen(function*() {
+        const chunk = (serviceTier: string | null, delta: Record<string, unknown>, finishReason: string | null) => ({
+          id: "chatcmpl_nullable_service_tier",
+          object: "chat.completion.chunk",
+          model: "gpt-4o-mini",
+          created: 1,
+          service_tier: serviceTier,
+          choices: [{ index: 0, delta, finish_reason: finishReason }]
+        })
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                chunk("default", { content: "Hel", role: "assistant" }, null),
+                chunk(null, { content: "lo" }, "stop"),
+                "[DONE]"
+              ]))
+            )
+          ))
+        )
+
+        const partsChunk = yield* LanguageModel.streamText({ prompt: "test" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        const parts = Array.from(partsChunk)
+        const text = parts
+          .filter((part) => part.type === "text-delta")
+          .map((part) => part.delta)
+          .join("")
+        const finish = parts.find((part) => part.type === "finish")
+
+        assert.strictEqual(text, "Hello")
+        assert.isDefined(finish)
+        if (finish?.type === "finish") {
+          assert.strictEqual(finish.reason, "stop")
+          assert.strictEqual(finish.metadata["openai-compat"]?.serviceTier, "default")
+        }
+      }))
+
     it.effect("preserves streamed text and tool args with nullable delta fields", () =>
       Effect.gen(function*() {
         const extraContent = { google: { thought_signature: "signature-1" } }
