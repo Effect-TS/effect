@@ -792,6 +792,7 @@ export const withHandler: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -843,6 +844,7 @@ export const withHandler: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -886,12 +888,12 @@ export const withHandler: {
  * @since 4.1.0
  */
 export const validate: {
-  <Input, E2>(
+  <Input, E2 = CliError.CliError>(
     f: (input: Input) => Effect.Effect<void, E2, Environment>
   ): <Name extends string, ContextInput, E, R>(
     self: Command<Name, Input, ContextInput, E, R>
   ) => Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R>
-  <Name extends string, Input, ContextInput, E, R, E2>(
+  <Name extends string, Input, ContextInput, E, R, E2 = CliError.CliError>(
     self: Command<Name, Input, ContextInput, E, R>,
     f: (input: Input) => Effect.Effect<void, E2, Environment>
   ): Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R>
