@@ -4,6 +4,7 @@ import { loadNextReply } from "@effect/platform-cloudflare/internal/entityMailbo
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
 import type { EntityRegistration } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRuntime"
+import type { EntityManagerOptions } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
 import { Context, Deferred, Effect, Fiber, Schema, Stream } from "effect"
@@ -54,7 +55,11 @@ const settle = Effect.promise(() => new Promise((resolve) => setTimeout(resolve,
 let requestCount = 0
 const nextRequestId = () => `0198bd72-6a80-72f1-8d87-${String(requestCount++).padStart(12, "0")}`
 
-const makeMailbox = Effect.fnUntraced(function*(entityId: string, entityType = Mailbox.type) {
+const makeMailbox = Effect.fnUntraced(function*(
+  entityId: string,
+  entityType = Mailbox.type,
+  getNamespace: EntityManagerOptions["getNamespace"] = () => undefined
+) {
   const database = yield* Effect.acquireRelease(
     Effect.sync(() => new DatabaseSync(":memory:")),
     (database) => Effect.sync(() => database.close())
@@ -81,13 +86,50 @@ const makeMailbox = Effect.fnUntraced(function*(entityId: string, entityType = M
       waitUntil: (effect) => {
         waitUntilFibers.push(Effect.runFork(effect))
       },
-      getNamespace: () => undefined
+      getNamespace
     })
   const envelope = (tag: string, payload: unknown = null, requestId = nextRequestId()) =>
     JSON.stringify({ _tag: "Request", requestId, address, tag, payload, headers: {} })
   const exitOf = (reply: string) => JSON.parse(reply).exit
   return { storage, manager: restart(), restart, envelope, exitOf, waitUntilFibers }
 })
+
+// A persisted ask whose handler blocks until released, so a duplicate can
+// arrive while its scheduled execution is running.
+const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
+  const started = yield* Deferred.make<void>()
+  const release = yield* Deferred.make<void>()
+  const state = { runs: 0 }
+  const entity = Entity.make(name, [
+    Rpc.make("Add", {
+      payload: { operationId: Schema.String },
+      primaryKey: ({ operationId }) => operationId,
+      success: Schema.Number
+    }).annotate(ClusterSchema.Persisted, true)
+  ])
+  const handlers: EntityRegistration = {
+    entity,
+    keepAliveHeartbeat: 30_000,
+    build: Effect.succeed(entity.of({
+      Add: Effect.fnUntraced(function*() {
+        const run = ++state.runs
+        yield* Deferred.succeed(started, undefined)
+        yield* Deferred.await(release)
+        return run
+      })
+    })),
+    options: undefined,
+    context: Context.empty()
+  }
+  yield* Effect.acquireRelease(
+    Effect.sync(() => registerEntity(entity.type, handlers)),
+    () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+  )
+  return { entity, started, release, state }
+})
+
+// Waits on the real clock until a just-scheduled deadline has passed.
+const pastDeadline = Effect.sleep("50 millis").pipe(TestClock.withLive)
 
 describe("EntityManager", () => {
   beforeAll(() => {
@@ -459,5 +501,68 @@ describe("EntityManager", () => {
       // The handler's late success must not replace the interrupt reply.
       const reply = yield* loadNextReply(storage.sql, requestId)
       assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
+    }))
+
+  it.effect("resumes a running scheduled ask for a duplicate sent after its deadline", () =>
+    Effect.gen(function*() {
+      const { entity, release, started, state } = yield* makeGatedAsk("ScheduledDuplicate")
+      const { envelope, exitOf, manager } = yield* makeMailbox("late", entity.type)
+      const delivery = { deliverAt: Date.now() + 20, primaryKey: `${entity.type}/late/Add/same` }
+      const first = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false, delivery))
+      yield* pastDeadline
+      const alarm = yield* Effect.forkChild(manager.alarm)
+      yield* Deferred.await(started)
+
+      // The client omits delivery options once the deadline has passed.
+      const duplicate = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
+      yield* settle
+      yield* Deferred.succeed(release, undefined)
+      const original = yield* Fiber.join(first)
+      const retried = yield* Fiber.join(duplicate)
+      yield* Fiber.join(alarm)
+
+      assert.strictEqual(state.runs, 1, "The duplicate started a second execution of the scheduled ask")
+      assert(original._tag === "Success")
+      assert.deepStrictEqual(exitOf(original.replies[0]), { _tag: "Success", value: 1 })
+      assert.deepStrictEqual(retried, original)
+    }))
+
+  it.effect("pushes a running scheduled reply to a reply target added after it started", () =>
+    Effect.gen(function*() {
+      const { entity, release, started } = yield* makeGatedAsk("ScheduledReplyTargets")
+      const pushed: Array<{ readonly replyTo: string; readonly requestId: string; readonly reply: string }> = []
+      const { envelope, exitOf, manager } = yield* makeMailbox("targets", entity.type, () => ({
+        getByName: (replyTo) => ({
+          deliverReply: (requestId, reply) => {
+            pushed.push({ replyTo, requestId, reply })
+            return Promise.resolve(true)
+          }
+        })
+      }))
+      const requestId = nextRequestId()
+      yield* manager.invoke(envelope("Add", { operationId: "same" }, requestId), false, {
+        deliverAt: Date.now() + 20,
+        primaryKey: `${entity.type}/targets/Add/same`,
+        replyTo: "6:Callerone"
+      })
+      yield* pastDeadline
+      const alarm = yield* Effect.forkChild(manager.alarm)
+      yield* Deferred.await(started)
+
+      // A pinned caller retrying after the deadline sends only its reply target.
+      const duplicate = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "same" }), false, { replyTo: "6:Callertwo" })
+      )
+      yield* settle
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(duplicate)
+      yield* Fiber.join(alarm)
+
+      const targets = pushed.map((delivery) => delivery.replyTo).sort()
+      assert.deepStrictEqual(targets, ["6:Callerone", "6:Callertwo"])
+      for (const delivery of pushed) {
+        assert.strictEqual(delivery.requestId, requestId)
+        assert.deepStrictEqual(exitOf(delivery.reply), { _tag: "Success", value: 1 })
+      }
     }))
 })
