@@ -99,14 +99,14 @@ class RootsUnavailable extends Schema.TaggedError<RootsUnavailable>()("RootsUnav
 const InputRequiredTool = Tool.make("input-required", {
   parameters: Tool.EmptyParams,
   success: Schema.String,
-  failure: Schema.instanceOf(McpSchema.InputRequired),
+  failure: McpSchema.InputRequired,
   dependencies: [McpSchema.McpRequestContext]
 })
 
 const InputRequiredReturnTool = Tool.make("input-required-return", {
   parameters: Tool.EmptyParams,
   success: Schema.String,
-  failure: Schema.Union([Schema.instanceOf(McpSchema.InputRequired), RootsUnavailable]),
+  failure: Schema.Union([McpSchema.InputRequired, RootsUnavailable]),
   failureMode: "return",
   dependencies: [McpSchema.McpRequestContext]
 })
