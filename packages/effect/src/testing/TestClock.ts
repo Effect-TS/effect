@@ -454,14 +454,14 @@ class TestClockImpl implements TestClock {
     return this.runSemaphore.withPermits(1)(runBody.call(this, step, adjustmentNanos))
   }
 
-  // Hides the internal state, which is circular and holds bigints
-  toJSON(): unknown {
-    return { _id: "TestClock", currentTimeMillis: this.currentTimestamp }
-  }
+  // Hides the internal state, which is circular and holds bigints. Own fields,
+  // so a spread copy keeps them too.
+  readonly toJSON = testClockToJSON
+  readonly [NodeInspectSymbol] = testClockToJSON
+}
 
-  [NodeInspectSymbol](): unknown {
-    return this.toJSON()
-  }
+function testClockToJSON(this: TestClockImpl): unknown {
+  return { _id: "TestClock", currentTimeMillis: this.currentTimestamp }
 }
 
 const runBody = Effect.fnUntraced(function*(
