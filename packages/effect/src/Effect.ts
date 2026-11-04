@@ -46,6 +46,7 @@ import type * as Result from "./Result.ts"
 import type { Metadata as ScheduleMetadata, Schedule } from "./Schedule.ts"
 import type { Scheduler } from "./Scheduler.ts"
 import type { Scope } from "./Scope.ts"
+import * as Supervisor from "./Supervisor.ts"
 import type {
   AnySpan,
   ParentSpan,
@@ -1254,6 +1255,11 @@ export {
  * the fiber; later calls are ignored. Return an optional cleanup effect from
  * the registration function to run if the fiber is interrupted.
  *
+ * Pass `blockedOn` when only the program itself can complete the wait, as in
+ * a custom synchronization primitive. A `Supervisor` receives it in
+ * `onBlock` while the fiber waits; without it, `onBlock` receives
+ * `undefined`.
+ *
  * **Gotchas**
  *
  * The parameter check reads the registration function's `length` property,
@@ -1290,7 +1296,10 @@ export const callback: <A, E = never, R = never>(
     this: Scheduler,
     resume: (effect: Effect<A, E, R>) => void,
     signal: AbortSignal
-  ) => void | Effect<void, never, R>
+  ) => void | Effect<void, never, R>,
+  options?: {
+    readonly blockedOn?: object | undefined
+  } | undefined
 ) => Effect<A, E, R> = internal.callback
 
 /**
@@ -15184,6 +15193,39 @@ export const withLogger: {
   ))
 
 /**
+ * Runs an effect in a new child fiber whose context adds `supervisor` to the
+ * Supervisor in place, and joins it.
+ *
+ * **Details**
+ *
+ * It forks so that the region's own fiber is observed, as well as everything
+ * it forks: inside, `Fiber.getCurrent()` is the child, and a Supervisor
+ * already in place sees the caller block on that child.
+ *
+ * @stability experimental
+ * @category forking
+ * @since 4.1.2
+ */
+export const withSupervisor: {
+  (supervisor: Supervisor.Supervisor): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, supervisor: Supervisor.Supervisor): Effect<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(self: Effect<A, E, R>, supervisor: Supervisor.Supervisor): Effect<A, E, R> =>
+    core.withFiber((fiber) => {
+      const current = fiber.getRef(Supervisor.Supervisor)
+      return internal.flatMap(
+        internal.provideService(
+          internal.forkChild(self, { startImmediately: true, uninterruptible: "inherit" }),
+          Supervisor.Supervisor,
+          current === undefined ? supervisor : Supervisor.combine(current, supervisor)
+        ),
+        (child) => internal.onInterrupt(internal.fiberJoin(child), () => internal.fiberInterrupt(child))
+      )
+    })
+)
+
+/**
  * Adds an annotation to each log line in this effect.
  *
  * **Example** (Adding log annotations)
@@ -15981,8 +16023,9 @@ const isTransactionConsistent = (state: TransactionMeta) => {
   return true
 }
 
-const awaitPendingTransaction = (state: TransactionMeta) =>
-  callback<void>((resume) => {
+const awaitPendingTransaction = (state: TransactionMeta) => {
+  const refs = Array.from(state.journal.keys())
+  return internal.callback<void>((resume) => {
     // Validate the read set and register the waiter in one synchronous step.
     // A commit that landed after the reads has already signalled its waiters
     // and will not signal this one, so a stale read set reruns immediately.
@@ -15990,7 +16033,6 @@ const awaitPendingTransaction = (state: TransactionMeta) =>
       return resume(void_)
     }
     const key = {}
-    const refs = Array.from(state.journal.keys())
     const clearPending = () => {
       for (const clear of refs) {
         clear.pending.delete(key)
@@ -16004,7 +16046,8 @@ const awaitPendingTransaction = (state: TransactionMeta) =>
       ref.pending.set(key, onCall)
     }
     return sync(clearPending)
-  })
+  }, { blockedOn: refs })
+}
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: TransactionMeta) {
   for (const [ref, { value, written }] of state.journal) {

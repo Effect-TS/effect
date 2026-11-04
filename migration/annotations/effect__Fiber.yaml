@@ -102,7 +102,7 @@ effect/Fiber#pretty:
   note: "Runtime fiber pretty-printing was removed; format the public id and polled Exit explicitly."
 effect/Fiber#roots:
   replacement: "none"
-  note: "The runtime no longer exposes a global root-fiber registry; track application fibers explicitly."
+  note: "The runtime no longer exposes a global root-fiber registry; track application fibers explicitly, or install a `Supervisor.Supervisor` at the runtime with `Supervisor.layer` to discover them."
 effect/Fiber#RuntimeFiber:
   replacement: "Fiber.Fiber"
   note: "RuntimeFiber and Fiber were collapsed into the single v4 Fiber interface."
@@ -126,7 +126,7 @@ effect/Fiber#succeed:
   note: "Synthetic Fiber constructors were removed; run the corresponding Effect when a Fiber handle is required."
 effect/Fiber#unsafeRoots:
   replacement: "none"
-  note: "The runtime no longer exposes a global root-fiber registry; track application fibers explicitly."
+  note: "The runtime no longer exposes a global root-fiber registry; track application fibers explicitly, or install a `Supervisor.Supervisor` at the runtime with `Supervisor.layer` to discover them."
 effect/Fiber#void:
   replacement: "Effect.runFork(Effect.void)"
   note: "Synthetic Fiber constants were removed; run Effect.void when a completed Fiber<void> is required."
