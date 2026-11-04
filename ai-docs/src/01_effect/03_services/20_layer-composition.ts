@@ -11,7 +11,7 @@ import { SqlClient, SqlError } from "effect/sql"
 
 // Define a layer for the SqlClient service
 export const SqlClientLayer: Layer.Layer<
-  PgClient.PgClientId | SqlClient.SqlClient,
+  PgClient.PgClient | SqlClient.SqlClient,
   Config.ConfigError | SqlError.SqlError
 > = PgClient.layerConfig({
   url: Config.Redacted("DATABASE_URL")

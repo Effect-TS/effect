@@ -69,24 +69,12 @@ export type TypeId = "~@effect/sql-sqlite-react-native/SqliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface SqliteClient extends Client.SqlClient {
+export interface SqliteClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
 
   /** Not supported in sqlite */
   readonly updateValues: never
-}
-
-/**
- * Requirement identifier for `SqliteClient`. It is distinct from `SqlClient`, so
- * providing a generic `SqlClient` does not satisfy a `SqliteClient` requirement.
- *
- * @stability unstable
- * @category services
- * @since 4.2.0
- */
-export interface SqliteClientId {
-  readonly _: unique symbol
 }
 
 /**
@@ -96,7 +84,7 @@ export interface SqliteClientId {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClientId, SqliteClient>(
+export const SqliteClient = Context.Service<SqliteClient, SqliteClient & Client.SqlClient>(
   "@effect/sql-sqlite-react-native/SqliteClient"
 )
 
@@ -154,7 +142,7 @@ interface SqliteConnection extends Connection {}
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient & Client.SqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const clientOptions: Parameters<typeof open>[0] = {
       name: options.filename
@@ -260,7 +248,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as SqliteClient,
+      })) as SqliteClient & Client.SqlClient,
       {
         [TypeId]: TypeId,
         config: options
@@ -277,7 +265,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClientId | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -298,7 +286,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClientId | Client.SqlClient> =>
+): Layer.Layer<SqliteClient | Client.SqlClient> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(

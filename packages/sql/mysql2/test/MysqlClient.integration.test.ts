@@ -246,7 +246,7 @@ const mockPool = (
   )
 }
 
-const withMockClient = <A, E>(effect: Effect.Effect<A, E, MysqlClient.MysqlClientId>) =>
+const withMockClient = <A, E>(effect: Effect.Effect<A, E, MysqlClient.MysqlClient>) =>
   effect.pipe(
     Effect.provide(MysqlClient.layer({})),
     Effect.ensuring(Effect.sync(() => vi.mocked(Mysql.createConnection).mockReset()))

@@ -54,7 +54,7 @@ export type TypeId = "~@effect/sql-pg/PgClient"
  * @category services
  * @since 4.0.0
  */
-export interface PgClient extends Client.SqlClient {
+export interface PgClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
@@ -79,25 +79,13 @@ export interface PgClient extends Client.SqlClient {
 }
 
 /**
- * Requirement identifier for `PgClient`. It is distinct from `SqlClient`, so
- * providing a generic `SqlClient` does not satisfy a `PgClient` requirement.
- *
- * @stability unstable
- * @category services
- * @since 4.2.0
- */
-export interface PgClientId {
-  readonly _: unique symbol
-}
-
-/**
  * The service tag for `PgClient`.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export const PgClient = Context.Service<PgClientId, PgClient>("@effect/sql-pg/PgClient")
+export const PgClient = Context.Service<PgClient, PgClient & Client.SqlClient>("@effect/sql-pg/PgClient")
 
 /**
  * Connection and query settings for a PostgreSQL client.
@@ -238,7 +226,7 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
  */
 export const make = <R = never>(
   options: PgPoolConfig<R>
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
+): Effect.Effect<PgClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
@@ -263,7 +251,7 @@ export const makeClient = <R = never>(
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
+): Effect.Effect<PgClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
       acquirer: Effect.succeed(makeConnection(
@@ -289,7 +277,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     readonly config: PgClientConfig<R>
     readonly poolStats: Effect.Effect<Pool.Stats>
   }
-): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
+): Effect.fn.Return<PgClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
   // The consuming fiber's services take precedence over the captured ones.
   const hook = options.config.onAcquire
   const context = yield* Effect.context<R>()
@@ -467,8 +455,8 @@ const makeConnection = (
  * @since 4.0.0
  */
 export const layerFrom = <E, R>(
-  acquire: Effect.Effect<PgClient, E, R>
-): Layer.Layer<PgClientId | Client.SqlClient, E, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
+  acquire: Effect.Effect<PgClient & Client.SqlClient, E, R>
+): Layer.Layer<PgClient | Client.SqlClient, E, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
   Layer.effectContext(
     Effect.map(acquire, (client) =>
       Context.make(PgClient, client).pipe(
@@ -486,7 +474,7 @@ export const layerFrom = <E, R>(
 export const layerConfig = <R = never>(
   config: Config.Wrap<PgPoolConfig<R>>
 ): Layer.Layer<
-  PgClientId | Client.SqlClient,
+  PgClient | Client.SqlClient,
   Config.ConfigError | SqlError,
   Exclude<R, Scope.Scope | Reactivity.Reactivity>
 > =>
@@ -504,7 +492,7 @@ export const layerConfig = <R = never>(
  */
 export const layer = <R = never>(
   config: PgPoolConfig<R>
-): Layer.Layer<PgClientId | Client.SqlClient, SqlError, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
+): Layer.Layer<PgClient | Client.SqlClient, SqlError, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
   layerFrom(make(config))
 
 /**

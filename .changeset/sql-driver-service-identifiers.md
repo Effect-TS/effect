@@ -1,4 +1,5 @@
 ---
+"effect": patch
 "@effect/sql-clickhouse": minor
 "@effect/sql-d1": minor
 "@effect/sql-libsql": minor
@@ -15,24 +16,23 @@
 
 Fix providing a generic `SqlClient` layer removing a driver service such as `PgClient` from an effect's requirements. The program type-checked as runnable but failed at runtime with `Service not found`.
 
-Each driver service (`PgClient`, `PgliteClient`, `LibsqlClient`, `MysqlClient`, `MssqlClient`, `ClickhouseClient`, `D1Client` and every `SqliteClient`) now has a requirement identifier that is separate from its client interface, such as `PgClient.PgClientId`. The runtime key is unchanged. `yield* PgClient.PgClient` still returns the client, and value annotations like `(pg: PgClient.PgClient) => pg.config` keep working.
+Driver clients (`PgClient`, `PgliteClient`, `LibsqlClient`, `MysqlClient`, `MssqlClient`, `ClickhouseClient`, `D1Client` and every `SqliteClient`) no longer inherit the generic `SqlClient` type id. They extend the new `SqlClient.Base` interface instead, which has every `SqlClient` operation without the type id. Requirements still read as `PgClient`, and existing `Effect` and `Layer` annotations keep working. The value from `yield* PgClient.PgClient`, and from `PgClient.make`, is typed `PgClient & SqlClient`, so it can still be passed wherever a `SqlClient` is expected.
 
-Requirement annotations and layer output annotations that named the client interface must use the identifier instead:
+A value annotated as the bare driver client type no longer counts as a `SqlClient`. Annotate it as `SqlClient.SqlClient`, or as `PgClient.PgClient & SqlClient.SqlClient`, or let it be inferred:
 
 ```ts
-import { PgClient } from "@effect/sql-pg"
-import type { Effect, Layer } from "effect"
+import type { PgClient } from "@effect/sql-pg"
 import type { SqlClient } from "effect/sql"
 
-// before
-type Program = Effect.Effect<void, never, PgClient.PgClient>
-type Database = Layer.Layer<PgClient.PgClient | SqlClient.SqlClient>
+declare const runQueries: (sql: SqlClient.SqlClient) => void
+
+// before: compiled, now a type error
+const before = (pg: PgClient.PgClient) => runQueries(pg)
 
 // after
-type Program = Effect.Effect<void, never, PgClient.PgClientId>
-type Database = Layer.Layer<PgClient.PgClientId | SqlClient.SqlClient>
+const after = (pg: PgClient.PgClient & SqlClient.SqlClient) => runQueries(pg)
 ```
 
-The compiler only finds some of these. Assigning a program that needs `PgClientId` to the old `Effect<_, _, PgClient.PgClient>` annotation is a type error. The old `Layer<PgClient.PgClient | SqlClient.SqlClient>` output annotation still compiles, because `Layer` is contravariant in its output, but it hides `PgClientId`. Providing that layer then leaves `PgClientId` in the program's requirements. Search for driver client types in `Layer` output positions and update them by hand.
+If you declare your own client service whose interface extends `SqlClient.SqlClient`, providing a generic `SqlClient` still erases it. Extend `SqlClient.Base` instead, and give the service shape the generic type too: `Context.Service<MyClient, MyClient & SqlClient.SqlClient>(key)`.
 
-A driver identifier is no longer a subtype of `SqlClient.SqlClient`. Code that picks between driver layers, such as `cond ? PgClient.layer(...) : MysqlClient.layer(...)`, may need an explicit `Layer.Layer<SqlClient.SqlClient, E>` annotation.
+A driver client is no longer a subtype of `SqlClient.SqlClient`. Code that picks between driver layers, such as `cond ? PgClient.layer(...) : MysqlClient.layer(...)`, may need an explicit `Layer.Layer<SqlClient.SqlClient, E>` annotation.

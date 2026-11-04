@@ -27,7 +27,7 @@ import * as NodePath from "node:path"
 import * as Tls from "node:tls"
 import { resolveConfig, type ResolvedConfig } from "./internal/config.ts"
 import * as Password from "./internal/password.ts"
-import { PgClient, type PgClientConfig, type PgClientId } from "./PgClient.ts"
+import { PgClient, type PgClientConfig } from "./PgClient.ts"
 
 /**
  * @since 4.0.0
@@ -81,7 +81,7 @@ export const run: <R2 = never>(
   ReadonlyArray<readonly [id: number, name: string]>,
   Migrator.MigrationError | SqlError,
   | SqlClient
-  | PgClientId
+  | PgClient
   | ChildProcessSpawner.ChildProcessSpawner
   | FileSystem.FileSystem
   | Path.Path
@@ -270,7 +270,7 @@ export const layer = <R>(
   never,
   Migrator.MigrationError | SqlError,
   | SqlClient
-  | PgClientId
+  | PgClient
   | ChildProcessSpawner.ChildProcessSpawner
   | FileSystem.FileSystem
   | Path.Path

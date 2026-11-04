@@ -120,7 +120,7 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
  * @category services
  * @since 4.0.0
  */
-export interface ClickhouseClient extends Client.SqlClient {
+export interface ClickhouseClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: ClickhouseClientConfig
   /**
@@ -155,18 +155,6 @@ export interface ClickhouseClient extends Client.SqlClient {
 }
 
 /**
- * Requirement identifier for `ClickhouseClient`. It is distinct from `SqlClient`, so
- * providing a generic `SqlClient` does not satisfy a `ClickhouseClient` requirement.
- *
- * @stability unstable
- * @category services
- * @since 4.2.0
- */
-export interface ClickhouseClientId {
-  readonly _: unique symbol
-}
-
-/**
  * Service tag for the active ClickHouse SQL client.
  *
  * **When to use**
@@ -177,7 +165,7 @@ export interface ClickhouseClientId {
  * @category services
  * @since 4.0.0
  */
-export const ClickhouseClient = Context.Service<ClickhouseClientId, ClickhouseClient>(
+export const ClickhouseClient = Context.Service<ClickhouseClient, ClickhouseClient & Client.SqlClient>(
   "@effect/sql-clickhouse/ClickhouseClient"
 )
 
@@ -207,7 +195,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  */
 export const make = (
   options: ClickhouseClientConfig
-): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<ClickhouseClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames
@@ -508,9 +496,9 @@ export const ClickhouseSettings: Context.Reference<
  */
 export const layerConfig: (
   config: Config.Wrap<ClickhouseClientConfig>
-) => Layer.Layer<ClickhouseClientId | Client.SqlClient, Config.ConfigError | SqlError> = (
+) => Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> = (
   config: Config.Wrap<ClickhouseClientConfig>
-): Layer.Layer<ClickhouseClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -532,7 +520,7 @@ export const layerConfig: (
  */
 export const layer = (
   config: ClickhouseClientConfig
-): Layer.Layer<ClickhouseClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(ClickhouseClient, client).pipe(

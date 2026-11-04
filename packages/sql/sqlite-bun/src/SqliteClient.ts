@@ -64,7 +64,7 @@ export type TypeId = "~@effect/sql-sqlite-bun/SqliteClient"
  * @category services
  * @since 4.0.0
  */
-export interface SqliteClient extends Client.SqlClient {
+export interface SqliteClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
@@ -72,18 +72,6 @@ export interface SqliteClient extends Client.SqlClient {
 
   /** Not supported in sqlite */
   readonly updateValues: never
-}
-
-/**
- * Requirement identifier for `SqliteClient`. It is distinct from `SqlClient`, so
- * providing a generic `SqlClient` does not satisfy a `SqliteClient` requirement.
- *
- * @stability unstable
- * @category services
- * @since 4.2.0
- */
-export interface SqliteClientId {
-  readonly _: unique symbol
 }
 
 /**
@@ -97,7 +85,9 @@ export interface SqliteClientId {
  * @category services
  * @since 4.0.0
  */
-export const SqliteClient = Context.Service<SqliteClientId, SqliteClient>("@effect/sql-sqlite-bun/Client")
+export const SqliteClient = Context.Service<SqliteClient, SqliteClient & Client.SqlClient>(
+  "@effect/sql-sqlite-bun/Client"
+)
 
 /**
  * Configuration for a Bun SQLite client, including filename, open mode flags, WAL and busy timeout behavior, span attributes, and query/result name transforms.
@@ -140,7 +130,7 @@ interface SqliteConnection extends Connection {
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -281,7 +271,7 @@ export const make = (
       isTransaction: (conn) => conn.isTransaction()
     })
 
-    const client: SqliteClient = Object.assign(
+    const client: SqliteClient & Client.SqlClient = Object.assign(
       (yield* Client.make({
         driver: "sqlite-bun",
         acquirer,
@@ -297,7 +287,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as SqliteClient,
+      })) as SqliteClient & Client.SqlClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -321,7 +311,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -342,7 +332,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClientId | Client.SqlClient, SqlError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(
