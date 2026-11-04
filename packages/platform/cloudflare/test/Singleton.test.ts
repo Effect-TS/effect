@@ -128,6 +128,8 @@ describe("Singleton", () => {
       })
       void gated.wake()
       yield* Deferred.await(started)
+      assert.isNotNull(alarm.current, "The wake armed no watchdog")
+      assert.isAbove(alarm.current!, now)
 
       yield* fireAlarm(gated)
       assert.isNotNull(alarm.current, "The alarm fired during the run left no watchdog armed")
