@@ -20,6 +20,7 @@ import { hasProperty } from "./Predicate.ts"
 import type { StackFrame } from "./References.ts"
 import type { Scheduler, SchedulerDispatcher } from "./Scheduler.ts"
 import type { Scope } from "./Scope.ts"
+import type { Supervisor } from "./Supervisor.ts"
 import type { AnySpan, Tracer } from "./Tracer.ts"
 import type { Covariant } from "./Types.ts"
 
@@ -170,7 +171,7 @@ export declare namespace Fiber {
    * @category models
    * @since 4.0.0
    */
-  export interface Cache {
+  export interface Cache extends CacheExperimental {
     readonly scheduler: Scheduler
     readonly tracer: Tracer | undefined
     readonly tracerContext: Tracer["context"] | undefined
@@ -183,6 +184,15 @@ export declare namespace Fiber {
     readonly maxOpsBeforeYield: number
     readonly preventYield: boolean
   }
+}
+
+interface CacheExperimental {
+  /**
+   * The Supervisor installed in the fiber's context, if any.
+   *
+   * @stability experimental
+   */
+  readonly supervisor?: Supervisor | undefined
 }
 
 const await_: <A, E>(self: Fiber<A, E>) => Effect<Exit<A, E>> = effect.fiberAwait
