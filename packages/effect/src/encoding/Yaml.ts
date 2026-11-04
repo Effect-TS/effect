@@ -2,9 +2,11 @@
  * Parses and prints YAML configuration files.
  *
  * Supports YAML 1.2 block and flow collections, compact nested sequences
- * (`- - value`), indentless sequence values, multiline plain and quoted scalars
- * (inside flow collections too), block scalars, anchors, aliases, YAML 1.1
- * merge keys (`<<`), document streams, and the `%YAML 1.2` directive. Parsing
+ * (`- - value`), indentless sequence values, single pairs in flow sequences
+ * (`[a: 1]`), flow mapping keys without values (`{a, b: 1}`), multiline plain
+ * and quoted scalars (inside flow collections too), block scalars, anchors,
+ * aliases, YAML 1.1 merge keys (`<<`), document streams, and the `%YAML 1.2`
+ * directive. Plain scalars resolve with the YAML 1.2 core schema. Parsing
  * returns a `Result` that fails with an `EncodingError`.
  *
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
@@ -18,9 +20,11 @@
  * local tags (`!local`), the non-specific tag (`!`), verbatim tags
  * (`!<tag:yaml.org,2002:str>`, even for core tags) and YAML 1.1 tags such as
  * `!!binary`; explicit keys (`? key`), `%TAG` and other directives, YAML
- * versions other than 1.2, recursive aliases, and collections nested more than
- * 1000 levels deep. A block sequence cannot start on the same line as a
- * mapping key (`key: - value`).
+ * versions other than 1.2, recursive aliases, collections nested more than
+ * 1000 levels deep, and merges that copy more than 100,000 keys in one
+ * document. A block sequence cannot start on the same line as a mapping key
+ * (`key: - value`), and a flow mapping key without a value cannot contain `:`
+ * (`{a:1}`).
  *
  * Mapping keys are JavaScript strings. An alias may be a key when it refers to
  * a scalar. Only spaces and tabs are YAML white space, so characters such as a
@@ -79,11 +83,29 @@ const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
 const isMapping = (value: unknown): value is YamlRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
+const maxMergedKeys = 100_000
+
+// Each merge copies its sources' keys, so a chain of merges grows the output quadratically in
+// the input. Merges in one document may visit at most `maxMergedKeys` source keys.
+class MergeBudget {
+  private remaining = maxMergedKeys
+
+  spend(keys: number, fail: (message: string) => never): void {
+    this.remaining -= keys
+    if (this.remaining < 0) fail(`YAML merge keys copy more than ${maxMergedKeys} keys in one document`)
+  }
+}
+
 // Explicit keys take precedence over merged keys, and earlier merge sources over later ones.
 class MappingBuilder {
   readonly output: YamlRecord = {}
   // Keys added by the merge key, which an explicit key may still override.
   private merged: Set<string> | undefined
+  private readonly budget: MergeBudget
+
+  constructor(budget: MergeBudget) {
+    this.budget = budget
+  }
 
   set(key: string, value: unknown, fail: (message: string) => never): void {
     if (hasOwn.call(this.output, key) && !this.merged?.delete(key)) fail(`Duplicate key '${key}'`)
@@ -95,7 +117,9 @@ class MappingBuilder {
     this.merged = new Set()
     for (const source of Array.isArray(value) ? value : [value]) {
       if (!isMapping(source)) fail("Merge key values must be mappings")
-      for (const key of Object.keys(source)) {
+      const keys = Object.keys(source)
+      this.budget.spend(keys.length, fail)
+      for (const key of keys) {
         if (hasOwn.call(this.output, key)) continue
         setProperty(this.output, key, source[key])
         this.merged.add(key)
@@ -228,6 +252,29 @@ const coreSchema = {
 
 const isCoreNonString = (text: string): boolean => Object.values(coreSchema).some((pattern) => pattern.test(text))
 
+const coreInt = (text: string): number | undefined => {
+  if (coreSchema.int.test(text)) return Number(text)
+  if (coreSchema.octal.test(text)) return Number.parseInt(text.slice(2), 8)
+  if (coreSchema.hex.test(text)) return Number.parseInt(text.slice(2), 16)
+  return undefined
+}
+
+const coreFloat = (text: string): number | undefined => {
+  if (coreSchema.float.test(text)) return Number(text)
+  if (coreSchema.infinity.test(text)) return text.startsWith("-") ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
+  if (coreSchema.nan.test(text)) return Number.NaN
+  return undefined
+}
+
+// YAML 1.2.2 §10.3.2: a plain scalar resolves to the first core type whose pattern matches,
+// and is a string otherwise.
+const resolvePlain = (text: string): unknown => {
+  if (text === "" || coreSchema.null.test(text)) return null
+  if (coreSchema.true.test(text)) return true
+  if (coreSchema.false.test(text)) return false
+  return coreInt(text) ?? coreFloat(text) ?? text
+}
+
 // Resolves a core scalar tag against the scalar's source text, so `!!str 0x10` stays
 // `"0x10"` and `!!int "42"` becomes `42`.
 const resolveScalarTag = (tag: string, text: string, fail: (message: string) => never): unknown => {
@@ -241,20 +288,16 @@ const resolveScalarTag = (tag: string, text: string, fail: (message: string) => 
       if (coreSchema.true.test(text)) return true
       if (coreSchema.false.test(text)) return false
       break
-    case "!!int":
-      if (coreSchema.int.test(text)) return Number(text)
-      if (coreSchema.octal.test(text)) return Number.parseInt(text.slice(2), 8)
-      if (coreSchema.hex.test(text)) return Number.parseInt(text.slice(2), 16)
+    case "!!int": {
+      const value = coreInt(text)
+      if (value !== undefined) return value
       break
-    case "!!float":
-      if (coreSchema.float.test(text)) return Number(text)
-      if (coreSchema.infinity.test(text)) {
-        return text.startsWith("-")
-          ? Number.NEGATIVE_INFINITY
-          : Number.POSITIVE_INFINITY
-      }
-      if (coreSchema.nan.test(text)) return Number.NaN
+    }
+    case "!!float": {
+      const value = coreFloat(text)
+      if (value !== undefined) return value
       break
+    }
   }
   return fail(`Scalar '${text}' does not match the YAML tag ${tag}`)
 }
@@ -447,28 +490,7 @@ const parseScalar = (input: string): unknown => {
   if (value.startsWith("'") && value.endsWith("'")) {
     return value.slice(1, -1).replace(/''/g, "'")
   }
-  if (/^(?:null|~)$/i.test(value)) return null
-  if (/^true$/i.test(value)) return true
-  if (/^false$/i.test(value)) return false
-  if (/^[+-]?\.inf$/i.test(value)) return value[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
-  if (/^\.nan$/i.test(value)) return Number.NaN
-
-  const normalized = value.replace(/_/g, "")
-  if (/^[+-]?0x[0-9a-f]+$/i.test(normalized)) {
-    const sign = normalized[0] === "-" ? -1 : 1
-    return sign * Number.parseInt(normalized.replace(/^[+-]?0x/i, ""), 16)
-  }
-  if (/^[+-]?0o[0-7]+$/i.test(normalized)) {
-    const sign = normalized[0] === "-" ? -1 : 1
-    return sign * Number.parseInt(normalized.replace(/^[+-]?0o/i, ""), 8)
-  }
-  if (
-    /^[+-]?(?:0|[1-9]\d*)$/.test(normalized) ||
-    /^[+-]?(?:(?:0|[1-9]\d*)?\.\d+|(?:0|[1-9]\d*)\.?\d*[eE][+-]?\d+)$/.test(normalized)
-  ) {
-    return Number(normalized)
-  }
-  return value
+  return resolvePlain(value)
 }
 
 const parseKey = (input: string): string => {
@@ -490,6 +512,7 @@ class FlowParser {
   // Length of the lines before `line`, for error offsets.
   private offset = 0
   private readonly anchors: Map<string, unknown>
+  private readonly merges: MergeBudget
   // `quoted` asks for a continuation of an open quoted scalar, returned without
   // comment removal since `#` inside quotes is content.
   private readonly nextLine: (depth: number, quoted: boolean) => string | undefined
@@ -503,11 +526,13 @@ class FlowParser {
   constructor(
     input: string,
     anchors: Map<string, unknown>,
+    merges: MergeBudget,
     nextLine: (depth: number, quoted: boolean) => string | undefined,
     blockDepth: number
   ) {
     this.line = input
     this.anchors = anchors
+    this.merges = merges
     this.nextLine = nextLine
     this.blockDepth = blockDepth
   }
@@ -588,7 +613,7 @@ class FlowParser {
       const next = this.line[this.index + 1]
       if (next === undefined || /[ \t,[\]{}]/.test(next)) this.fail(flowDashError)
     }
-    const text = trimWhite(foldFlowLines(this.readUntil(stop)))
+    const text = trimWhite(foldFlowLines(this.readUntil(stop, true)))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
     if (isExplicitKey(text)) this.fail(explicitKeyError)
     return text
@@ -603,7 +628,7 @@ class FlowParser {
       return output
     }
     while (true) {
-      output.push(this.parseValue())
+      output.push(this.parseSequenceEntry())
       this.skipWhitespace()
       if (this.peek() === "]") {
         this.index++
@@ -618,10 +643,29 @@ class FlowParser {
     }
   }
 
+  // YAML 1.2.2 §7.4.1: a sequence entry followed by `:` is a single `key: value` pair, read as a
+  // one-entry mapping. Like any implicit key, its key is on one line.
+  private parseSequenceEntry(): unknown {
+    const start = this.index
+    const offset = this.offset
+    const collection = this.peek() === "[" || this.peek() === "{"
+    const value = this.parseValue()
+    this.skipWhitespace()
+    if (this.peek() !== ":") return value
+    if (collection) this.fail("A flow collection cannot be a mapping key")
+    if (this.offset !== offset) this.fail("A flow sequence pair must start on the line of its key")
+    // Read again as a key, which converts and anchors differently from a value.
+    this.index = start
+    if (this.blockDepth + ++this.depth > maxDepth) this.fail(depthError)
+    const mapping = new MappingBuilder(this.merges)
+    this.parseMappingEntry(mapping)
+    this.depth--
+    return mapping.output
+  }
+
   private parseMapping(): YamlRecord {
     this.expect("{")
-    const mapping = new MappingBuilder()
-    const fail = (message: string) => this.fail(message)
+    const mapping = new MappingBuilder(this.merges)
     this.skipWhitespace()
     if (this.peek() === "}") {
       this.index++
@@ -629,11 +673,7 @@ class FlowParser {
     }
     while (true) {
       this.skipWhitespace()
-      const { key, merge } = this.parseKey()
-      this.skipWhitespace()
-      this.expect(":")
-      if (merge) mapping.merge(this.parseValue(), fail)
-      else mapping.set(key, this.parseValue(), fail)
+      this.parseMappingEntry(mapping)
       this.skipWhitespace()
       if (this.peek() === "}") {
         this.index++
@@ -646,6 +686,20 @@ class FlowParser {
         return mapping.output
       }
     }
+  }
+
+  // YAML 1.2.2 §7.4: a key followed by `,` or the end of the collection has an empty value.
+  private parseMappingEntry(mapping: MappingBuilder): void {
+    const fail = (message: string) => this.fail(message)
+    const { key, merge } = this.parseKey()
+    this.skipWhitespace()
+    let value: unknown = null
+    if (!/[,\]}]/.test(this.peek())) {
+      this.expect(":")
+      value = this.parseValue()
+    }
+    if (merge) mapping.merge(value, fail)
+    else mapping.set(key, value, fail)
   }
 
   private parseKey(): MappingKey {
@@ -679,7 +733,18 @@ class FlowParser {
       return { key: aliasKey(this.anchors, this.readUntil(flowNameEnd), fail), merge: false }
     }
     // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
-    const text = character === "\"" || character === "'" ? this.readQuoted(character) : this.readPlain(/:/)
+    if (character === "\"" || character === "'") {
+      return scalarKey(this.anchors, anchor, tag, this.readQuoted(character), fail)
+    }
+    const text = this.readPlain(/[,\]}]/)
+    if (this.peek() !== ":") {
+      if (text === "") this.expect(":")
+      // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
+      // JSON-like syntax, so it fails rather than giving either.
+      if (text.includes(":")) {
+        this.fail(`Flow mapping key '${text}' has no value, add a space after ':' or quote the key`)
+      }
+    }
     return scalarKey(this.anchors, anchor, tag, text, fail)
   }
 
@@ -729,7 +794,8 @@ class FlowParser {
     return `${token}>`
   }
 
-  private readUntil(stop: RegExp): string {
+  // `separator` also stops at a `:` that separates a key from its value.
+  private readUntil(stop: RegExp, separator = false): string {
     const pieces: Array<string> = []
     let start = this.index
     while (true) {
@@ -738,11 +804,19 @@ class FlowParser {
         if (this.depth === 0 || !this.nextChunk(false)) return pieces.join("")
         start = 0
       }
-      if (stop.test(this.line[this.index])) break
+      const character = this.line[this.index]
+      if (stop.test(character) || (separator && character === ":" && this.isValueSeparator())) break
       this.index++
     }
     pieces.push(this.line.slice(start, this.index))
     return pieces.join("")
+  }
+
+  // YAML 1.2.2 §7.3.3: in flow context, a `:` followed by white space, a line break or a flow
+  // indicator separates a key from its value. Any other `:` is part of a plain scalar.
+  private isValueSeparator(): boolean {
+    const next = this.line[this.index + 1]
+    return next === undefined || /[ \t,[\]{}]/.test(next)
   }
 
   // Moves to the next line of the flow collection, keeping its leading "\n".
@@ -830,8 +904,9 @@ class YamlParser {
   // Lines from this index on belong to the next document, so document content
   // never reads past a document marker.
   private documentEnd: number
-  // Anchors are scoped to one document.
+  // Anchors and the merge budget are scoped to one document.
   private anchors = new Map<string, unknown>()
+  private merges = new MergeBudget()
   // Block collections currently open.
   private depth = 0
   // Source text of the last plain scalar, which a scalar tag resolves against.
@@ -872,6 +947,7 @@ class YamlParser {
       }
       if (prefix && line.indent === 0 && line.text.startsWith("%")) this.parseDirectives()
       this.anchors = new Map()
+      this.merges = new MergeBudget()
       documents.push(this.parseDocument())
       prefix = false
     }
@@ -952,7 +1028,7 @@ class YamlParser {
     first?: { readonly text: string; readonly separator: number; readonly line: Line }
   ): YamlRecord {
     this.enterCollection()
-    const mapping = new MappingBuilder()
+    const mapping = new MappingBuilder(this.merges)
     if (first !== undefined) this.parseMappingEntry(mapping, first.text, first.separator, indent, first.line)
     while (true) {
       this.skipIgnored()
@@ -1120,7 +1196,7 @@ class YamlParser {
   }
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
-    return new FlowParser(text, this.anchors, (depth, quoted) => {
+    return new FlowParser(text, this.anchors, this.merges, (depth, quoted) => {
       const next = this.lineAt(this.index)
       if (next === undefined) return undefined
       if (quoted) {
@@ -1328,10 +1404,13 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * Input holding more than one document fails; use {@link parseAll} for
  * document streams.
  *
- * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
- * decoded while date-like values remain strings. Numbers use JavaScript number
- * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision; quote
- * such values to keep them exact as strings.
+ * Plain scalars resolve with the YAML 1.2 core schema, so booleans, nulls, and
+ * numbers are decoded while date-like values remain strings. Only the core
+ * spellings count: `true`, `True` and `TRUE` are booleans but `tRuE` is a
+ * string, `012` is the number `12`, and `1_000` and `0X1F` are strings.
+ * Numbers use JavaScript number semantics, so integers beyond
+ * `Number.MAX_SAFE_INTEGER` lose precision; quote such values to keep them
+ * exact as strings.
  *
  * The core schema's shorthand tags resolve against the scalar as written, so
  * `!!str 0x10` is the string `"0x10"` and `!!int "42"` is the number `42`.
@@ -1344,7 +1423,8 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
  * keys take precedence over merged keys, earlier merge sources over later
  * ones, and a mapping may contain only one merge key. Quote the key (`"<<"`)
- * to keep it as an ordinary key.
+ * to keep it as an ordinary key. Merges in one document may copy at most
+ * 100,000 keys, since a chain of merges grows the result quadratically.
  *
  * **Example** (Parsing a YAML document)
  *
@@ -1411,6 +1491,16 @@ const nonPrintable =
   // eslint-disable-next-line no-control-regex
   /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029\ufeff\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/
 
+// Spellings that the core schema reads as strings but YAML 1.1 and lenient parsers read as other
+// types: any letter case of `null`, `true`, `false`, `.inf` and `.nan`, and numbers with `_`
+// separators, an uppercase or signed `0X` or `0O` prefix, or a leading `+`. The printer quotes them.
+const lenientNonString = /^(?:null|~|true|false|[-+]?\.inf|\.nan)$/i
+
+const lenientNumber = /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[-+]?[0-9]+)?)$/i
+
+const isLenientNonString = (text: string): boolean =>
+  lenientNonString.test(text) || lenientNumber.test(text.replace(/_/g, ""))
+
 const isPlainSafe = (text: string): boolean =>
   text.length > 0 &&
   text.trim() === text &&
@@ -1418,12 +1508,12 @@ const isPlainSafe = (text: string): boolean =>
   !nonPrintable.test(text) &&
   !/^[,[\]{}#&*!|>'"%@`]/.test(text) &&
   !/^[-?:](?:\s|$)/.test(text) &&
-  !/^(?:---|\.\.\.)(?:\s|$)/.test(text) &&
+  // Not a document marker under §9.1.3, but js-yaml reads `---x` at the start of a line as one.
+  !/^(?:---|\.\.\.)/.test(text) &&
   !/:(?:\s|$)/.test(text) &&
   !/\s#/.test(text) &&
-  // Quoted when the core schema, or `parseScalar`, would not read it back as the same string.
   !isCoreNonString(text) &&
-  parseScalar(text) === text
+  !isLenientNonString(text)
 
 const doubleQuoteEscapes: Record<string, string> = {
   "\0": "\\0",
@@ -1635,7 +1725,9 @@ const printResult = (input: unknown, print: () => string): Result.Result<string,
  * Collections print in block style with keys in insertion order, empty ones
  * as `{}` and `[]`. Strings print plain when `parse` would read them back
  * unchanged and double-quoted otherwise, so `"true"`, `"1"`, `"a: b"`, and
- * the merge key `"<<"` stay strings. Non-printable characters are escaped.
+ * the merge key `"<<"` stay strings. Strings that other YAML parsers may read
+ * differently are quoted too, such as `"tRuE"`, `"1_000"` and `"---x"`.
+ * Non-printable characters are escaped.
  * Multiline strings print as literal block scalars when their lines have no
  * surrounding whitespace. Non-finite numbers print as `.inf`, `-.inf`, and
  * `.nan`.
