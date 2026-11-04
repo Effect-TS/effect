@@ -261,7 +261,8 @@ function inlineDefinitions(
   const definition = inline(definitions[key])
   inlining.delete(key)
   const { $ref: _, ...siblings } = out
-  return Object.keys(siblings).length === 0 ? definition : { allOf: [definition, siblings] }
+  if (Object.keys(siblings).length === 0) return definition
+  return { ...siblings, allOf: [definition, ...(Array.isArray(siblings.allOf) ? siblings.allOf : [])] }
 }
 
 function jsonSchemaAnnotations(
