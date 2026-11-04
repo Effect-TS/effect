@@ -283,19 +283,17 @@ describe("EntityRuntime", () => {
         entity: Results,
         keepAliveHeartbeat: 30_000,
         build: Effect.succeed(Results.of({
-          Ping: () =>
-            Effect.gen(function*() {
-              const deferred = yield* Deferred.make<string>()
-              yield* Effect.forkDetach(Deferred.succeed(deferred, "later"))
-              return deferred
-            }),
-          Values: () =>
-            Effect.gen(function*() {
-              const queue = yield* Queue.make<number, Cause.Done>()
-              yield* Queue.offerAll(queue, [1, 2])
-              yield* Queue.end(queue)
-              return queue
-            })
+          Ping: Effect.fnUntraced(function*() {
+            const deferred = yield* Deferred.make<string>()
+            yield* Effect.forkDetach(Deferred.succeed(deferred, "later"))
+            return deferred
+          }),
+          Values: Effect.fnUntraced(function*() {
+            const queue = yield* Queue.make<number, Cause.Done>()
+            yield* Queue.offerAll(queue, [1, 2])
+            yield* Queue.end(queue)
+            return queue
+          })
         })),
         options: undefined,
         context: Context.empty()
