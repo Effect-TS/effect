@@ -7,7 +7,8 @@ import {
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
 import { ClusterSchema, DeliverAt, Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/cluster"
-import { Rpc, RpcSchema, RpcTest } from "effect/rpc"
+import { Headers } from "effect/http"
+import { Rpc, RpcMiddleware, RpcSchema, RpcTest } from "effect/rpc"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
@@ -23,6 +24,12 @@ const Counter = Entity.make("Counter", [
 
 const Numbers = Entity.make("Numbers", [
   Rpc.make("Count", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
+])
+
+class Stamp extends RpcMiddleware.Service<Stamp>()("CloudflareClusterTest/Stamp") {}
+
+const Stamped = Entity.make("Stamped", [
+  Rpc.make("Ping", { success: Schema.String }).middleware(Stamp)
 ])
 
 class ScheduledPayload extends Schema.Class<ScheduledPayload>("CloudflareScheduledPayload")({
@@ -72,7 +79,7 @@ class FakeNamespace {
 const makeOptions = (stub?: object) => {
   const entityNamespace = new FakeNamespace(stub)
   const options: CloudflareCluster.LayerOptions = {
-    entities: [User, Numbers],
+    entities: [User, Numbers, Stamped],
     entityNamespace: entityNamespace as any,
     workflowNamespace: new FakeNamespace() as any,
     queueNamespace: new FakeNamespace() as any,
@@ -130,6 +137,25 @@ describe("CloudflareCluster", () => {
           { _tag: "WithExit", requestId, id: "exit", exit: { _tag: "Success", value: null } }
         ])).options
       ))))
+
+    it.effect("runs client middleware provided to the layer", () => {
+      const envelopes: Array<any> = []
+      const stub = pongStub()
+      const invoke = stub.invoke
+      stub.invoke = (envelopeText) => {
+        envelopes.push(JSON.parse(envelopeText))
+        return invoke(envelopeText)
+      }
+      const StampClient = RpcMiddleware.layerClient(
+        Stamp,
+        ({ next, request }) => next({ ...request, headers: Headers.set(request.headers, "x-stamp", "layer") })
+      )
+      return Effect.gen(function*() {
+        const makeClient = yield* Stamped.client
+        assert.strictEqual(yield* makeClient("42").Ping(void 0), "pong")
+        assert.strictEqual(envelopes[0].headers["x-stamp"], "layer")
+      }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions(stub).options).pipe(Layer.provide(StampClient))))
+    })
   })
 
   describe("layer", () => {
