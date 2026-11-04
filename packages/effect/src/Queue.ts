@@ -808,7 +808,7 @@ export const offerAll: {
       return resume(core.exitSucceed(remaining))
     }
     return waitToOffer(self, { _tag: "Array", remaining, offset: 0, resume })
-  }))
+  }, { blockedOn: self }))
 
 /**
  * Adds multiple messages to the queue synchronously. Returns the remaining messages that
@@ -1733,7 +1733,7 @@ const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
         self.state.awaiters.delete(awaiter)
       }
     })
-  })
+  }, { blockedOn: self })
 
 export {
   /**
@@ -2065,11 +2065,12 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(taker)
     })
-  })
+  }, { blockedOn: self })
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
-  internalEffect.callback<boolean>((resume) =>
-    offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume })
+  internalEffect.callback<boolean>(
+    (resume) => offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume }),
+    { blockedOn: self }
   )
 
 const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {

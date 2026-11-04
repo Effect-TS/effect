@@ -190,7 +190,7 @@ const _await = <A, E>(self: Deferred<A, E>): Effect<A, E> =>
       const index = resumes.indexOf(resume)
       if (index >= 0) resumes.splice(index, 1)
     })
-  })
+  }, { blockedOn: self })
 
 export {
   /**
