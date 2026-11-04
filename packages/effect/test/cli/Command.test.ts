@@ -1226,19 +1226,23 @@ describe("Command", () => {
             return `${this.flags.join(" and ")} are mutually exclusive`
           }
         }
+        // A fresh instance per run, because rendering marks the error as reported
+        let raised: Conflict | undefined
         const command = Command.make("download", {
           useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
           useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
         }, () => Effect.void).pipe(
           Command.validate(({ useApi, useDocker }) =>
-            useApi && useDocker ? new Conflict({ flags: ["--use-api", "--use-docker"] }) : Effect.void
+            useApi && useDocker
+              ? Effect.suspend(() => Effect.fail(raised = new Conflict({ flags: ["--use-api", "--use-docker"] })))
+              : Effect.void
           )
         )
 
         const rendered = yield* Effect.flip(
           Command.runWith(command, { version: "1.0.0" })(["--use-api", "--use-docker"])
         )
-        assert.instanceOf(rendered, Conflict)
+        assert.strictEqual(rendered, raised)
         assert.isFalse(Runtime.getErrorReported(rendered))
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
           "\nERROR\n  --use-api and --use-docker are mutually exclusive"
@@ -1248,7 +1252,7 @@ describe("Command", () => {
         const silent = yield* Effect.flip(
           Command.runWith(command, { version: "1.0.0", renderErrors: false })(["--use-api", "--use-docker"])
         )
-        assert.instanceOf(silent, Conflict)
+        assert.strictEqual(silent, raised)
         assert.isTrue(Runtime.getErrorReported(silent))
         assert.lengthOf(yield* TestConsole.errorLines, 1)
       }).pipe(Effect.provide(TestLayer)))

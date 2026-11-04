@@ -39,6 +39,16 @@ describe("Command", () => {
       >()
     })
 
+    it("accepts an explicit input type argument without adding errors", () => {
+      const command = Command.make("download", {
+        useApi: Flag.Boolean("use-api")
+      }, () => Effect.void as Effect.Effect<void, "err">).pipe(
+        Command.validate<{ readonly useApi: boolean }>(() => Effect.void)
+      )
+
+      expect(command).type.toBe<Command.Command<"download", { readonly useApi: boolean }, {}, "err", never>>()
+    })
+
     it("keeps the validation's error type through withHandler and provideSync", () => {
       class Api extends Context.Service<Api, string>()("Api") {}
       const command = Command.make("download", {
