@@ -720,10 +720,17 @@ export const make = (
               Scope.addFinalizer(scope, Effect.sync(() => controller.abort())),
               () => f(request, url, controller.signal, fiber as any)
             )
-        const exchange = (request: HttpClientRequest.HttpClientRequest) =>
+        const exchange = (
+          request: HttpClientRequest.HttpClientRequest,
+          onResponse?: (response: HttpClientResponse.HttpClientResponse) => void
+        ) =>
           Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(send(request)), {
-              onSuccess: (response) => Effect.succeed(trackResponse(response, controller, scope !== undefined)),
+              onSuccess: (response) => {
+                response = trackResponse(response, controller, scope !== undefined)
+                onResponse?.(response)
+                return Effect.succeed(response)
+              },
               onFailure: (cause) => {
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
@@ -753,20 +760,19 @@ export const make = (
             request = fiber.getRef(TracerPropagationEnabled)
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
-            return exchange(request).pipe(
-              Effect.withParentSpan(span, { captureStackTrace: false }),
-              Effect.tap((response) =>
-                Effect.sync(() => {
-                  span.attribute("http.response.status_code", response.status)
-                  tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
-                  // OpenTelemetry marks client spans as failed for 4xx and
-                  // 5xx responses, while the response itself still succeeds.
-                  if (response.status >= 400 && response.status < 600) {
-                    span.attribute("error.type", String(response.status))
-                    endSpanWithStatusError(fiber, span, request, response)
-                  }
-                })
-              )
+            return Effect.withParentSpan(
+              exchange(request, (response) => {
+                span.attribute("http.response.status_code", response.status)
+                tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+                // OpenTelemetry marks client spans as failed for 4xx and
+                // 5xx responses, while the response itself still succeeds.
+                if (response.status >= 400 && response.status < 600) {
+                  span.attribute("error.type", String(response.status))
+                  endSpanWithStatusError(fiber, span, request, response)
+                }
+              }),
+              span,
+              { captureStackTrace: false }
             )
           }
         )
