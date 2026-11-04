@@ -437,6 +437,14 @@ describe("overridable", () => {
       )
     }))
 
+  it.effect("wraps a callable Effect such as a Reference as an Effect", () =>
+    Effect.gen(function*() {
+      const Port = Context.Reference<number>("ContextTest/Port", { defaultValue: () => 8080 })
+      const port = Context.overridable("ContextTest/port", Port)
+      strictEqual(Effect.isEffect(port), true)
+      strictEqual(yield* port, 8080)
+    }))
+
   it.effect("an Effect value runs its default and its override", () =>
     Effect.gen(function*() {
       const loadConfig = Context.overridable("ContextTest/loadConfig", Effect.succeed({ port: 8080 }))
