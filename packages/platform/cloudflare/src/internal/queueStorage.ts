@@ -16,7 +16,8 @@
  * `max_attempts`. Settling or extending a lease only applies while that taker
  * still owns the row, so a taker whose lease expired cannot settle work another
  * taker now holds or a row an `"untilExecuted"` offer re-created. An expired
- * lease keeps its owner until another taker leases the row.
+ * lease keeps its owner until another taker leases the row. A recorded failure
+ * clears the owner, so a retried `fail` cannot count the same attempt twice.
  *
  * @internal
  */
@@ -126,13 +127,15 @@ export const completeItem = (sql: SqlStorage, id: string, owner: string): void =
  * Records a failed attempt. When the attempt reaches the `max_attempts` stored
  * with the lease the row moves to the failed state (2). A row that is already
  * completed is left alone, even when the caller was its last owner.
+ * Clearing `lease_owner` makes a replayed call a no-op until the next lease
+ * assigns a new owner.
  *
  * @internal
  */
 export const failItem = (sql: SqlStorage, id: string, lastFailure: string, owner: string): void => {
   sql.exec(
     `UPDATE queue_items
-     SET attempts = attempts + 1, lease_until = NULL, last_failure = ?,
+     SET attempts = attempts + 1, lease_until = NULL, lease_owner = NULL, last_failure = ?,
          completed = CASE WHEN attempts + 1 >= max_attempts THEN 2 ELSE 0 END,
          position = (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items)
      WHERE id = ? AND lease_owner = ? AND completed = 0`,
