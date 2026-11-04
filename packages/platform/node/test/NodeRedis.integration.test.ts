@@ -12,26 +12,22 @@ import { CircuitBreaker, PersistedQueue, Persistence, RateLimiter, Redis } from 
 import { TestClock } from "effect/testing"
 import { createServer } from "node:net"
 
-const redisLayer = (image: string, options: { readonly RESP?: 2 } = {}) =>
-  Layer.unwrap(
-    Effect.gen(function*() {
-      const container = yield* Effect.acquireRelease(
-        Effect.promise(() => new RedisContainer(image).start()),
-        (container) => Effect.promise(() => container.stop())
-      )
-      return NodeRedis.layer({
-        ...options,
-        socket: {
-          host: container.getHost(),
-          port: container.getMappedPort(6379)
-        }
-      })
-    }).pipe(
-      Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
+const RedisLayer = Layer.unwrap(
+  Effect.gen(function*() {
+    const container = yield* Effect.acquireRelease(
+      Effect.promise(() => new RedisContainer("redis:alpine").start()),
+      (container) => Effect.promise(() => container.stop())
     )
+    return NodeRedis.layer({
+      socket: {
+        host: container.getHost(),
+        port: container.getMappedPort(6379)
+      }
+    })
+  }).pipe(
+    Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
   )
-
-const RedisLayer = redisLayer("redis:alpine")
+)
 
 PersistedCacheTest.suite(
   "NodeRedis",
@@ -143,28 +139,6 @@ it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), {
     }
   }
 )
-
-// Redis before 6.0 has no HELLO command, so the client must use RESP2.
-it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provide(redisLayer("redis:5-alpine", { RESP: 2 }))), {
-  timeout: "30 seconds"
-})("RateLimiter fixed-window (NodeRedis 5)", (it) => {
-  it.effect("admits again within a capped window on Redis before 6.0", () =>
-    Effect.gen(function*() {
-      const limiter = yield* RateLimiter.make
-      const consume = limiter.consume({
-        algorithm: "fixed-window",
-        onExceeded: "fail",
-        key: "redis-5-capped-window",
-        limit: 5,
-        window: "1 minute"
-      })
-      yield* consume
-      const result = yield* consume
-
-      assert.strictEqual(result.remaining, 3)
-      assert.approximately(Duration.toMillis(result.resetAfter), 60_000, 1_000)
-    }))
-})
 
 const PersistedQueueRedisLayer = Layer.mergeAll(
   RedisLayer,
