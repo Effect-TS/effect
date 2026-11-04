@@ -1707,8 +1707,9 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
         const isWinner = !done
         done = true
         resume(exit)
-        if (isWinner && options?.onWinner) {
-          options.onWinner({ fiber, index: i, parentFiber: parent })
+        if (isWinner) {
+          interruptRaceLosers(fibers, parent)
+          options?.onWinner?.({ fiber, index: i, parentFiber: parent })
         }
       }
 
@@ -1755,13 +1756,24 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
           const isWinner = !done
           done = true
           resume(exit)
-          if (isWinner && options?.onWinner) {
-            options.onWinner({ fiber, index, parentFiber: parent })
+          if (isWinner) {
+            interruptRaceLosers(fibers, parent)
+            options?.onWinner?.({ fiber, index, parentFiber: parent })
           }
         })
       }
     })
   })
+
+// Interrupt the losers as soon as the race settles. Waiting for the parent to
+// resume leaves a gap, for example a scheduler yield, where a loser can
+// complete and have its result discarded. The parent still awaits the losers
+// on exit. Runs after `resume`, so a loser's interrupt cannot settle the race.
+const interruptRaceLosers = (fibers: Set<Fiber.Fiber<any, any>>, parent: Fiber.Fiber<any, any>) => {
+  for (const fiber of fibers) {
+    fiber.interruptUnsafe(parent.id)
+  }
+}
 
 /** @internal */
 export const race: {
