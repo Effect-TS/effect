@@ -99,7 +99,9 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
       const context = yield* Effect.context<never>()
       const payload = yield* encodePayload(workflow, opts.payload, context)
       const stub = yield* stubFor(workflow._tag, opts.executionId)
-      const parent = opts.parent === undefined
+      // A detached child keeps no parent, so neither its completion nor a
+      // failed run wakes the parent.
+      const parent = opts.parent === undefined || opts.detached
         ? undefined
         : { workflowName: opts.parent.workflow._tag, executionId: opts.parent.executionId }
       const text = yield* Effect.promise(() => stub.run(payload, { discard: opts.discard, parent }))
@@ -152,6 +154,10 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
 
     deferredDone: Effect.fnUntraced(function*({ deferredName, executionId, exit, workflowName }) {
       const text = yield* encodeExit(exit, Context.empty())
+      const handle = yield* Effect.serviceOption(CurrentExecutionHandle)
+      if (Option.isSome(handle) && handle.value.executionId === executionId) {
+        return yield* handle.value.completeOwnDeferred(deferredName, text)
+      }
       const stub = yield* stubFor(workflowName, executionId)
       yield* Effect.promise(() => stub.deferredDone(deferredName, text))
     }),

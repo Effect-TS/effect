@@ -42,6 +42,15 @@ export const ensureWorkflowStorage = (sql: SqlStorage): void => {
 }
 
 /**
+ * How a replay was requested. An explicit wake (`resume`, `interrupt`) always
+ * replays; an automatic wake (deferred or clock completion, a child's
+ * completion) leaves a failure-suspended execution parked.
+ *
+ * @internal
+ */
+export type WakeMode = "explicit" | "automatic"
+
+/**
  * The stored `(workflowName, executionId)` also serve to recover the object
  * name on an alarm wake, where `ctx.id.name` is undefined.
  *
@@ -53,8 +62,11 @@ export interface ExecutionRow {
   readonly payload: string
   readonly parent: { readonly workflowName: string; readonly executionId: string } | undefined
   readonly result: string | undefined
-  /** Replay this execution, or notify its parent once complete. */
-  readonly resumePending: boolean
+  /**
+   * The pending replay of an incomplete execution. Once complete, any value
+   * means the parent completion wake is still undelivered.
+   */
+  readonly resumePending: WakeMode | undefined
 }
 
 type StoredExecutionRow = {
@@ -80,6 +92,12 @@ type ClockRow = {
   readonly deferred_name: string
 }
 
+// 1 predates wake modes, so a row written before them replays as explicit.
+const encodeWakeMode = (mode: WakeMode | undefined): number => mode === undefined ? 0 : mode === "explicit" ? 1 : 2
+
+const decodeWakeMode = (value: number): WakeMode | undefined =>
+  value === 1 ? "explicit" : value === 2 ? "automatic" : undefined
+
 /** @internal */
 export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
   const row = sql.exec<StoredExecutionRow>(
@@ -95,7 +113,7 @@ export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
       ? { workflowName: row.parent_name, executionId: row.parent_execution_id }
       : undefined,
     result: row.result ?? undefined,
-    resumePending: row.resume_pending === 1
+    resumePending: decodeWakeMode(row.resume_pending)
   }
 }
 
@@ -132,13 +150,22 @@ export const setParent = (
 }
 
 /** @internal */
-export const saveResult = (sql: SqlStorage, result: string, resumePending: boolean): void => {
-  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0", result, resumePending ? 1 : 0)
+export const saveSuspension = (sql: SqlStorage, result: string, pending: WakeMode | undefined): void => {
+  sql.exec(
+    "UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0",
+    result,
+    encodeWakeMode(pending)
+  )
 }
 
 /** @internal */
-export const setResumePending = (sql: SqlStorage, pending: boolean): void => {
-  sql.exec("UPDATE workflow_execution SET resume_pending = ? WHERE id = 0", pending ? 1 : 0)
+export const saveCompletion = (sql: SqlStorage, result: string, wakeParent: boolean): void => {
+  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0", result, wakeParent ? 1 : 0)
+}
+
+/** @internal */
+export const setResumePending = (sql: SqlStorage, pending: WakeMode | undefined): void => {
+  sql.exec("UPDATE workflow_execution SET resume_pending = ? WHERE id = 0", encodeWakeMode(pending))
 }
 
 /** @internal */

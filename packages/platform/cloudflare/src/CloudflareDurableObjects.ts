@@ -18,6 +18,7 @@ import {
   type ClusterSingletonProgram,
   type ClusterWorkflowProgram,
   type ClusterWorkflowRunOptions,
+  type ClusterWorkflowWakeMode,
   type DurableQueueItem,
   type EntityDeliveryOptions,
   type EntityInvokeResult,
@@ -218,8 +219,8 @@ export class ClusterWorkflow extends DurableObject<unknown> {
   }
 
   /** @internal */
-  resume(): Promise<void> {
-    return Effect.runPromise(this.#program.resume())
+  resume(mode?: ClusterWorkflowWakeMode): Promise<void> {
+    return Effect.runPromise(this.#program.resume(mode))
   }
 
   /** @internal */
