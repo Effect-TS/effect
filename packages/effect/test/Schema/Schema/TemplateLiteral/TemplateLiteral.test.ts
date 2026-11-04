@@ -134,6 +134,73 @@ schema (Union): boolean | symbol`)
     assertTrue(elapsed < 1_000, `decoding took ${elapsed}ms`)
   })
 
+  describe("non-StringKeyword spans", () => {
+    const StringOrA = S.Union(S.String, S.Literal("a"))
+
+    it("matcher is equivalent to getTemplateLiteralRegExp", () => {
+      const schemas: ReadonlyArray<S.Schema.AnyNoContext> = [
+        S.TemplateLiteral(S.Number),
+        S.TemplateLiteral("v", S.Number, "-", S.Number),
+        S.TemplateLiteral(S.Number, S.Number),
+        S.TemplateLiteral(S.Number, S.Number, S.Number, "X"),
+        S.TemplateLiteral(S.Number, ".", S.Number),
+        S.TemplateLiteral(S.String, S.Number),
+        S.TemplateLiteral(S.Number, S.String),
+        S.TemplateLiteral(S.String, ":", S.String, ":", S.Number, "X"),
+        S.TemplateLiteral(S.String, ":", S.String, ":", StringOrA, "X"),
+        S.TemplateLiteral(StringOrA, ":", StringOrA),
+        S.TemplateLiteral(S.Literal("a", "ab"), S.Literal("b", ""), "X"),
+        S.TemplateLiteral(S.Union(S.Number, S.Literal("a")), ":", S.String),
+        S.TemplateLiteral(S.Union(S.Number, S.String), "e", S.Number),
+        S.TemplateLiteral(S.String, ":", S.TemplateLiteral(S.String, ":", S.String), "X"),
+        S.TemplateLiteral(S.TemplateLiteral(S.Number, "e"), S.Number),
+        S.TemplateLiteral("a", S.Union(S.TemplateLiteral(S.Number, ":"), S.Literal(":")), S.String)
+      ]
+      const input = fc.array(
+        fc.constantFrom("a", "b", ":", "X", "1", "0", ".", "e", "E", "+", "-", "v", "\n"),
+        { maxLength: 12 }
+      ).map((chars) => chars.join(""))
+
+      for (const schema of schemas) {
+        const ast = schema.ast as AST.TemplateLiteral
+        const regex = AST.getTemplateLiteralRegExp(ast)
+        const is = S.is(schema)
+        fc.assert(
+          fc.property(input, (s) => {
+            strictEqual(is(s), regex.test(s), `${String(ast)} on ${JSON.stringify(s)}`)
+          }),
+          { numRuns: 500 }
+        )
+      }
+    })
+
+    // Input sizes are kept small enough that a super-linear matcher still
+    // finishes in a few seconds, while a linear one stays well under the budget.
+    const cases: ReadonlyArray<readonly [string, S.Schema.AnyNoContext, string]> = [
+      ["String / Number", S.TemplateLiteral(S.String, ":", S.String, ":", S.Number, "X"), ":".repeat(15_000)],
+      ["String / Union(String)", S.TemplateLiteral(S.String, ":", S.String, ":", StringOrA, "X"), ":".repeat(1_500)],
+      ["adjacent String / Number", S.TemplateLiteral(S.String, S.Number, "X"), "1".repeat(1_200)],
+      ["adjacent Number", S.TemplateLiteral(S.Number, S.Number, S.Number, "X"), "1".repeat(70)],
+      [
+        "nested TemplateLiteral",
+        S.TemplateLiteral(S.String, ":", S.TemplateLiteral(S.String, ":", S.String), "X"),
+        ":".repeat(1_500)
+      ]
+    ]
+
+    for (const [name, schema, input] of cases) {
+      it(`decodes adversarial ${name} template literals in linear time`, () => {
+        const decode = S.decodeUnknownEither(schema)
+        const start = Date.now()
+        const result = decode(input)
+        const elapsed = Date.now() - start
+
+        strictEqual(result._tag, "Left")
+        assertTrue(elapsed < 100, `decoding took ${elapsed}ms`)
+      })
+    }
+  })
+
   describe("AST and toString", () => {
     it(`"a"`, () => {
       const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(S.Literal("a").ast, "")])
