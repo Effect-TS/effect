@@ -44,8 +44,8 @@ effect/FiberRef#currentSchedulingPriority:
   replacement: "none"
   note: "The ambient scheduling-priority FiberRef was removed; use explicit scheduler operations where priority is needed."
 effect/FiberRef#currentSupervisor:
-  replacement: "none"
-  note: "The Supervisor and ambient supervisor FiberRef APIs were removed; track fibers explicitly with FiberSet or FiberMap."
+  replacement: "Supervisor.Supervisor"
+  note: "`Supervisor.Supervisor` is the reference. A fiber reads it once, when it is created; providing it directly replaces the Supervisor in place, while `Supervisor.layer` and `Effect.withSupervisor` add to it."
 effect/FiberRef#currentTracerEnabled:
   replacement: "References.TracerEnabled"
   note: "Built-in FiberRefs are now Context.Reference values; yield the reference or provide it with Effect.provideService."

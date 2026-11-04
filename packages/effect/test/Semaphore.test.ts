@@ -4,6 +4,11 @@ import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
 describe("Semaphore", () => {
+  it("isSemaphore accepts a Semaphore and rejects a PartitionedSemaphore", () => {
+    assert.isTrue(Semaphore.isSemaphore(Semaphore.makeUnsafe(1)))
+    assert.isFalse(Semaphore.isSemaphore(PartitionedSemaphore.makeUnsafe({ permits: 1 })))
+  })
+
   it.effect("take admits requests in FIFO order when a holder immediately reacquires", () =>
     Effect.gen(function*() {
       const sem = yield* Semaphore.make(1)
