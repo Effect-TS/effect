@@ -1021,7 +1021,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(Effect.scoped)
     ))
 
-  it("glob honors exclude patterns", () =>
+  it("glob drops paths a filter excludes", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
@@ -1031,7 +1031,10 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* fs.writeFileString(`${root}/src/index.test.ts`, "")
         yield* fs.writeFileString(`${root}/src/readme.md`, "")
 
-        const matches = yield* fs.glob("**/*.ts", { root, exclude: ["**/*.test.ts"] })
+        const matches = yield* fs.glob("**/*.ts", {
+          root,
+          filter: PathFilter.make([PathFilter.exclude("**/*.test.ts")])
+        })
 
         assert.strictEqual(matches.length, 1)
         assert.isTrue(posix(matches[0]).endsWith("src/index.ts"))
@@ -1112,6 +1115,8 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
     { pattern: "*", exclude: ["**/src/", "**/README.md/"], expected: ["README.md", "a", "b", "node_modules"] },
+    // the root entry is never filtered
+    { pattern: ".", exclude: ["."], expected: ["."] },
     // `filter` expectations: BuildKit's walk (tonistiigi/fsutil@ca65610) and `git check-ignore --no-index`
     {
       pattern: "**/*.ts",
@@ -1144,7 +1149,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       expected: ["b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
     { pattern: "*", dot: true, filter: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] },
-    // a filter inclusion does not revive what `exclude` dropped
+    // the later exclusion outranks the inclusion
     {
       pattern: "*",
       exclude: ["**/src/", "**/README.md/"],
@@ -1166,9 +1171,11 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         Effect.gen(function*() {
           const fs = yield* Fs.FileSystem
           const root = yield* globFixture
-          expect(yield* fs.glob(pattern, { root, exclude, dot, filter: filter && makeFilter(filter) })).toEqual(
-            expected
-          )
+          // `exclude` patterns become `PathFilter.exclude` rules after the parsed ones
+          const parsed = filter && makeFilter(filter)
+          const excluded = exclude && PathFilter.make(exclude.map((pattern) => PathFilter.exclude(pattern)))
+          const combined = parsed && excluded ? PathFilter.concat(parsed, excluded) : parsed ?? excluded
+          expect(yield* fs.glob(pattern, { root, dot, filter: combined })).toEqual(expected)
         }).pipe(Effect.scoped)
       )
   )
@@ -1239,6 +1246,8 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         yield* fs.symlink(`${root}/target`, `${root}/link`)
         const filter = IgnoreFile.gitignore("link/\ntarget/\n")
         expect(yield* fs.glob("**", { root, filter })).toEqual(["link"])
+        const pattern = PathFilter.make([PathFilter.exclude("link/")])
+        expect(yield* fs.glob("**", { root, filter: pattern })).toEqual(["link", "target", "target/file.ts"])
         // literal segments are probed with `stat`, which follows the link
         expect(yield* fs.glob("link", { root, filter })).toEqual(["link"])
         expect(yield* fs.glob("link/file.ts", { root, filter })).toEqual(["link/file.ts"])
