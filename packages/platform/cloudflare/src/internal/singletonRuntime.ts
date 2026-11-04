@@ -3,6 +3,10 @@
  * duplicate wakes are ignored while the accepted wake is still running; once
  * it returns, the object has no live work and Cloudflare may hibernate it.
  *
+ * While a wake runs, a watchdog alarm stays armed in the future. If it fires
+ * mid-run it is re-armed, so losing the isolate never leaves the pending wake
+ * without an alarm to resume it.
+ *
  * @internal
  */
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
@@ -14,6 +18,11 @@ import {
   ensureSingletonStorage,
   loadSingletonState
 } from "./singletonStorage.ts"
+
+/**
+ * How far ahead the watchdog alarm is armed while a wake is running.
+ */
+const watchdogMillis = 60_000
 
 /** @internal */
 export interface SingletonRuntimeOptions {
@@ -34,8 +43,10 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
   ensureSingletonStorage(options.sql)
   let inFlight: Promise<void> | undefined
 
-  const runPending = (armAt?: number): Promise<void> => {
-    if (inFlight !== undefined) return Promise.resolve()
+  const armWatchdog = (): Effect.Effect<void> =>
+    Effect.suspend(() => armAlarm(options.alarm, options.now() + watchdogMillis))
+
+  const runPending = (arm: boolean): Promise<void> => {
     const run = options.run.pipe(
       Effect.ensuring(
         Effect.promise(() => options.alarm.deleteAlarm()).pipe(
@@ -43,9 +54,7 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
         )
       )
     )
-    const operation = Effect.runPromise(
-      armAt === undefined ? run : Effect.andThen(armAlarm(options.alarm, armAt), run)
-    )
+    const operation = Effect.runPromise(arm ? Effect.andThen(armWatchdog(), run) : run)
     inFlight = operation
     void operation.then(
       () => {
@@ -62,12 +71,18 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
     wake: () => {
       if (inFlight !== undefined) return Promise.resolve()
       const pending = loadSingletonState(options.sql).wakeAt
-      if (pending !== undefined) return runPending()
+      if (pending !== undefined) return runPending(false)
       const now = options.now()
       if (!beginSingletonWake(options.sql, now)) return Promise.resolve()
-      return runPending(now)
+      return runPending(true)
     },
 
-    runAlarm: () => loadSingletonState(options.sql).wakeAt === undefined ? Promise.resolve() : runPending()
+    // Cloudflare consumes the alarm before invoking this handler, so an alarm
+    // that fires during a run must arm the next watchdog before returning.
+    runAlarm: () => {
+      if (loadSingletonState(options.sql).wakeAt === undefined) return Promise.resolve()
+      if (inFlight !== undefined) return Effect.runPromise(armWatchdog())
+      return runPending(false)
+    }
   }
 }
