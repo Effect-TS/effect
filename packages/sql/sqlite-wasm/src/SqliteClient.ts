@@ -64,9 +64,9 @@ export type TypeId = "~@effect/sql-sqlite-wasm/SqliteClient"
  *
  * @stability unstable
  * @category services
- * @since 4.2.0
+ * @since 4.0.0
  */
-export interface Service extends Client.SqlClient {
+export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientMemoryConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
@@ -77,13 +77,25 @@ export interface Service extends Client.SqlClient {
 }
 
 /**
+ * Requirement identifier for `SqliteClient`. It is distinct from `SqlClient`, so
+ * providing a generic `SqlClient` does not satisfy a `SqliteClient` requirement.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export interface SqliteClientId {
+  readonly _: unique symbol
+}
+
+/**
  * Service tag for the SQLite WASM client.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export class SqliteClient extends Context.Service<SqliteClient, Service>()("@effect/sql-sqlite-wasm/SqliteClient") {}
+export const SqliteClient = Context.Service<SqliteClientId, SqliteClient>("@effect/sql-sqlite-wasm/SqliteClient")
 
 /**
  * Configuration for an in-memory SQLite WASM client, including optional reactivity hooks, span attributes, and query/result name transforms.
@@ -142,7 +154,7 @@ const registered = new Set<string>()
  */
 export const makeMemory = (
   options: SqliteClientMemoryConfig
-): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
@@ -286,7 +298,7 @@ export const makeMemory = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as Service,
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -307,7 +319,7 @@ export const makeMemory = (
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
@@ -459,7 +471,7 @@ export const make = (
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
-      })) as Service,
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -515,7 +527,7 @@ export const withTransferables =
  */
 export const layerMemoryConfig = (
   config: Config.Wrap<SqliteClientMemoryConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<SqliteClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(makeMemory),
@@ -536,7 +548,7 @@ export const layerMemoryConfig = (
  */
 export const layerMemory = (
   config: SqliteClientMemoryConfig
-): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
+): Layer.Layer<SqliteClientId | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(makeMemory(config), (client) =>
       Context.make(SqliteClient, client).pipe(
@@ -553,7 +565,7 @@ export const layerMemory = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
+): Layer.Layer<SqliteClientId | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(
@@ -570,7 +582,7 @@ export const layer = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<SqliteClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),

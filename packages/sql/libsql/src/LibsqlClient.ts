@@ -54,11 +54,23 @@ export type TypeId = "~@effect/sql-libsql/LibsqlClient"
  *
  * @stability unstable
  * @category services
- * @since 4.2.0
+ * @since 4.0.0
  */
-export interface Service extends Client.SqlClient {
+export interface LibsqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: LibsqlClientConfig
+}
+
+/**
+ * Requirement identifier for `LibsqlClient`. It is distinct from `SqlClient`, so
+ * providing a generic `SqlClient` does not satisfy a `LibsqlClient` requirement.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export interface LibsqlClientId {
+  readonly _: unique symbol
 }
 
 /**
@@ -72,7 +84,7 @@ export interface Service extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export class LibsqlClient extends Context.Service<LibsqlClient, Service>()("@effect/sql-libsql/LibsqlClient") {}
+export const LibsqlClient = Context.Service<LibsqlClientId, LibsqlClient>("@effect/sql-libsql/LibsqlClient")
 
 let clientIdCounter = 0
 
@@ -189,7 +201,7 @@ interface LibsqlConnection extends Connection {
  */
 export const make = (
   options: LibsqlClientConfig
-): Effect.Effect<Service, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<LibsqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const LibsqlTransaction = Context.Service<readonly [LibsqlConnection, counter: number]>(
       `@effect/sql-libsql/LibsqlClient/LibsqlTransaction/${clientIdCounter++}`
@@ -370,9 +382,9 @@ export const make = (
  */
 export const layerConfig: (
   config: Config.Wrap<LibsqlClientConfig>
-) => Layer.Layer<LibsqlClient | Client.SqlClient, Config.ConfigError> = (
+) => Layer.Layer<LibsqlClientId | Client.SqlClient, Config.ConfigError> = (
   config: Config.Wrap<LibsqlClientConfig>
-): Layer.Layer<LibsqlClient | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<LibsqlClientId | Client.SqlClient, Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -393,7 +405,7 @@ export const layerConfig: (
  */
 export const layer = (
   config: LibsqlClientConfig
-): Layer.Layer<LibsqlClient | Client.SqlClient> =>
+): Layer.Layer<LibsqlClientId | Client.SqlClient> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(LibsqlClient, client).pipe(

@@ -15,18 +15,22 @@
 
 Fix providing a generic `SqlClient` layer removing a driver service such as `PgClient` from an effect's requirements. The program type-checked as runnable but failed at runtime with `Service not found`.
 
-Each driver service (`PgClient`, `PgliteClient`, `LibsqlClient`, `MysqlClient`, `MssqlClient`, `ClickhouseClient`, `D1Client` and every `SqliteClient`) is now a class-style service whose identifier is distinct from `SqlClient`. The runtime key is unchanged, and `yield* PgClient.PgClient`, `Effect<A, E, PgClient.PgClient>` and `Layer<PgClient.PgClient | SqlClient.SqlClient>` keep working.
+Each driver service (`PgClient`, `PgliteClient`, `LibsqlClient`, `MysqlClient`, `MssqlClient`, `ClickhouseClient`, `D1Client` and every `SqliteClient`) now has a requirement identifier that is separate from its client interface, such as `PgClient.PgClientId`. The runtime key is unchanged. `yield* PgClient.PgClient` still returns the client, and value annotations like `(pg: PgClient.PgClient) => pg.config` keep working.
 
-The client shape moved to a new `Service` interface in each driver module. If you annotated a client value with the driver type, use `Service` instead:
+Requirement annotations that named the client interface must use the identifier instead. The old form is now a type error:
 
 ```ts
 import { PgClient } from "@effect/sql-pg"
+import type { Effect, Layer } from "effect"
+import type { SqlClient } from "effect/sql"
 
 // before
-const useClient = (pg: PgClient.PgClient) => pg.config
+type Program = Effect.Effect<void, never, PgClient.PgClient>
+type Database = Layer.Layer<PgClient.PgClient | SqlClient.SqlClient>
 
 // after
-const useClient = (pg: PgClient.Service) => pg.config
+type Program = Effect.Effect<void, never, PgClient.PgClientId>
+type Database = Layer.Layer<PgClient.PgClientId | SqlClient.SqlClient>
 ```
 
 A driver identifier is no longer a subtype of `SqlClient.SqlClient`. Code that picks between driver layers, such as `cond ? PgClient.layer(...) : MysqlClient.layer(...)`, may need an explicit `Layer.Layer<SqlClient.SqlClient, E>` annotation.

@@ -58,9 +58,9 @@ export type TypeId = "~@effect/sql-d1/D1Client"
  *
  * @stability unstable
  * @category services
- * @since 4.2.0
+ * @since 4.0.0
  */
-export interface Service extends Client.SqlClient {
+export interface D1Client extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: D1ClientConfig
 
@@ -94,6 +94,18 @@ export interface Service extends Client.SqlClient {
 }
 
 /**
+ * Requirement identifier for `D1Client`. It is distinct from `SqlClient`, so
+ * providing a generic `SqlClient` does not satisfy a `D1Client` requirement.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export interface D1ClientId {
+  readonly _: unique symbol
+}
+
+/**
  * Service tag for the Cloudflare D1 SQL client.
  *
  * **When to use**
@@ -105,7 +117,7 @@ export interface Service extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export class D1Client extends Context.Service<D1Client, Service>()("@effect/sql-d1/D1Client") {}
+export const D1Client = Context.Service<D1ClientId, D1Client>("@effect/sql-d1/D1Client")
 
 /**
  * Configuration for a Cloudflare D1 client, including the `D1Database`, prepared statement cache settings, span attributes, and query/result name transforms.
@@ -143,8 +155,8 @@ const makeBatch = (options: {
   readonly db: D1Database
   readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly getClient: () => Service
-}): Service["batch"] =>
+  readonly getClient: () => D1Client
+}): D1Client["batch"] =>
 <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
   statements: Statements
 ) => {
@@ -214,7 +226,7 @@ const makeBatch = (options: {
  */
 export const make = (
   options: D1ClientConfig
-): Effect.Effect<Service, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<D1Client, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -339,7 +351,7 @@ export const make = (
     const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.die("transactions are not supported in D1")
 
-    let client!: Service
+    let client!: D1Client
     client = Object.assign(
       (yield* Client.make({
         driver: "d1",
@@ -348,7 +360,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes,
         transformRows
-      })) as Service,
+      })) as D1Client,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -370,8 +382,8 @@ export const make = (
         spanAttributes,
         transformRows: undefined
       })
-      let clientWithoutTransforms!: Service
-      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as Service, {
+      let clientWithoutTransforms!: D1Client
+      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as D1Client, {
         [TypeId]: TypeId as TypeId,
         config: options,
         batch: makeBatch({
@@ -399,7 +411,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<D1ClientConfig>
-): Layer.Layer<D1Client | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<D1ClientId | Client.SqlClient, Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -420,7 +432,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: D1ClientConfig
-): Layer.Layer<D1Client | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<D1ClientId | Client.SqlClient, Config.ConfigError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(D1Client, client).pipe(

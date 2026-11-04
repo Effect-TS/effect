@@ -170,11 +170,23 @@ export type TypeId = "~@effect/sql-mysql2/MysqlClient"
  *
  * @stability unstable
  * @category services
- * @since 4.2.0
+ * @since 4.0.0
  */
-export interface Service extends Client.SqlClient {
+export interface MysqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: MysqlClientConfig
+}
+
+/**
+ * Requirement identifier for `MysqlClient`. It is distinct from `SqlClient`, so
+ * providing a generic `SqlClient` does not satisfy a `MysqlClient` requirement.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export interface MysqlClientId {
+  readonly _: unique symbol
 }
 
 /**
@@ -188,7 +200,7 @@ export interface Service extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export class MysqlClient extends Context.Service<MysqlClient, Service>()("@effect/sql-mysql2/MysqlClient") {}
+export const MysqlClient = Context.Service<MysqlClientId, MysqlClient>("@effect/sql-mysql2/MysqlClient")
 
 /**
  * Configuration for a mysql2 client, including connection URI or connection fields, pool options, span attributes, and query/result name transforms.
@@ -247,7 +259,7 @@ export interface MysqlClientConfig {
  */
 export const make = (
   options: MysqlClientConfig
-): Effect.Effect<Service, SqlError, Scope | Reactivity.Reactivity> =>
+): Effect.Effect<MysqlClient, SqlError, Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -477,7 +489,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<MysqlClientConfig>
-): Layer.Layer<MysqlClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<MysqlClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -498,7 +510,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: MysqlClientConfig
-): Layer.Layer<MysqlClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<MysqlClientId | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(MysqlClient, client).pipe(

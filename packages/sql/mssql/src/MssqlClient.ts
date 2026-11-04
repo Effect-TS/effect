@@ -168,9 +168,9 @@ export type TypeId = typeof TypeId
  *
  * @stability unstable
  * @category services
- * @since 4.2.0
+ * @since 4.0.0
  */
-export interface Service extends Client.SqlClient {
+export interface MssqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
 
   readonly config: MssqlClientConfig
@@ -196,6 +196,18 @@ export interface Service extends Client.SqlClient {
 }
 
 /**
+ * Requirement identifier for `MssqlClient`. It is distinct from `SqlClient`, so
+ * providing a generic `SqlClient` does not satisfy a `MssqlClient` requirement.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.2.0
+ */
+export interface MssqlClientId {
+  readonly _: unique symbol
+}
+
+/**
  * Service tag for the Microsoft SQL Server client service.
  *
  * **When to use**
@@ -207,7 +219,7 @@ export interface Service extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export class MssqlClient extends Context.Service<MssqlClient, Service>()("@effect/sql-mssql/MssqlClient") {}
+export const MssqlClient = Context.Service<MssqlClientId, MssqlClient>("@effect/sql-mssql/MssqlClient")
 
 /**
  * Configuration for a Microsoft SQL Server client, including connection, authentication, pool, parameter type, span attribute, and query/result name transform options.
@@ -290,7 +302,7 @@ let clientIdCounter = 0
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<Service, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -656,7 +668,7 @@ export const make = (
       rollbackSavepoint: (conn, id) => conn.rollback(`effect_sql_${id}`)
     })
 
-    return identity<Service>(Object.assign(
+    return identity<MssqlClient>(Object.assign(
       yield* Client.make({
         driver: "mssql",
         acquirer: acquireConnection,
@@ -714,9 +726,9 @@ export const make = (
  */
 export const layerConfig: (
   config: Config.Wrap<MssqlClientConfig>
-) => Layer.Layer<Client.SqlClient | MssqlClient, Config.ConfigError | SqlError> = (
+) => Layer.Layer<Client.SqlClient | MssqlClientId, Config.ConfigError | SqlError> = (
   config: Config.Wrap<MssqlClientConfig>
-): Layer.Layer<Client.SqlClient | MssqlClient, Config.ConfigError | SqlError> =>
+): Layer.Layer<Client.SqlClient | MssqlClientId, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -737,7 +749,7 @@ export const layerConfig: (
  */
 export const layer = (
   config: MssqlClientConfig
-): Layer.Layer<Client.SqlClient | MssqlClient, never | SqlError> =>
+): Layer.Layer<Client.SqlClient | MssqlClientId, never | SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(MssqlClient, client).pipe(
