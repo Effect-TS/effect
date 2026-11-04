@@ -653,8 +653,13 @@ export class RateLimiterStore extends Context.Service<
      * Returns the token count *after* taking the specified `tokens` and time to
      * live for the `key`.
      *
+     * Without a `limit`, each admission extends the time to live by
+     * `refillRate` per taken token.
+     *
      * If `limit` is provided, the number of taken tokens will be capped at the
-     * limit.
+     * limit. The first admission of positive tokens into an empty or expired
+     * key opens a window lasting `refillRate * limit`, and later admissions do
+     * not extend it.
      *
      * In the case the limit is exceeded, the returned count will be greater
      * than the limit, but the TTL will not be updated.
@@ -778,7 +783,11 @@ export const makeMemoryStore: Effect.Effect<
             return [counter.count + options.tokens, counter.expiresAt - now] as const
           }
           counter.count += options.tokens
-          counter.expiresAt += refillRateMillis * options.tokens
+          if (options.limit === undefined) {
+            counter.expiresAt += refillRateMillis * options.tokens
+          } else if (counter.expiresAt === now && options.tokens > 0) {
+            counter.expiresAt = now + refillRateMillis * options.limit
+          }
           return [counter.count, counter.expiresAt - now] as const
         })
       ),
@@ -1132,10 +1141,11 @@ local limit = tonumber(ARGV[3])
 local current = tonumber(redis.call("GET", key))
 
 if not current then
-  if limit and tokens > limit then
+  -- A capped window opens on its first positive admission and lasts the full window.
+  if limit and (tokens > limit or tokens <= 0) then
     return { string.format("%.17g", tokens), 0 }
   end
-  local nextpttl = math.max(1, math.ceil(refillms * tokens))
+  local nextpttl = math.max(1, math.ceil(refillms * (limit or tokens)))
   redis.call("SET", key, tokens, "PX", nextpttl)
   return { string.format("%.17g", tokens), nextpttl }
 end
@@ -1143,6 +1153,11 @@ end
 local currentpttl = tonumber(redis.call("PTTL", key) or "0")
 local next = current + tokens
 if limit and next > limit then
+  return { string.format("%.17g", next), currentpttl }
+end
+
+if limit then
+  redis.call("SET", key, string.format("%.17g", next), "KEEPTTL")
   return { string.format("%.17g", next), currentpttl }
 end
 
