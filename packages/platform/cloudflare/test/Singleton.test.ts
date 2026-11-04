@@ -9,7 +9,7 @@ import {
   rememberSingletonName
 } from "@effect/platform-cloudflare/internal/singletonStorage"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Deferred, Effect } from "effect"
 
 class FakeSql {
   readonly statements: Array<string> = []
@@ -104,4 +104,48 @@ describe("Singleton", () => {
       assert.deepStrictEqual(loadSingletonState(sql.sql), { name: "Singleton/recovery", wakeAt: undefined })
     })
   })
+
+  it.effect("keeps the watchdog armed when the alarm fires during a run", () =>
+    Effect.gen(function*() {
+      const sql = new FakeSql()
+      const alarm = new FakeAlarm()
+      let now = 100
+      // Cloudflare consumes an alarm when it fires, then runs the handler.
+      const fireAlarm = (runtime: ReturnType<typeof makeSingletonRuntime>) =>
+        Effect.promise(() => {
+          assert.isNotNull(alarm.current, "No alarm is armed to wake the singleton")
+          now = Math.max(now, alarm.current!)
+          alarm.current = null
+          return runtime.runAlarm()
+        })
+
+      const started = yield* Deferred.make<void>()
+      const gated = makeSingletonRuntime({
+        sql: sql.sql,
+        alarm: alarm.alarm,
+        now: () => now,
+        run: Effect.andThen(Deferred.succeed(started, undefined), Effect.never)
+      })
+      void gated.wake()
+      yield* Deferred.await(started)
+
+      yield* fireAlarm(gated)
+      assert.isNotNull(alarm.current, "The alarm fired during the run left no watchdog armed")
+      assert.isAbove(alarm.current!, now)
+
+      // Isolate loss: the gated run is gone and a fresh runtime handles the alarm.
+      let runs = 0
+      const recovered = makeSingletonRuntime({
+        sql: sql.sql,
+        alarm: alarm.alarm,
+        now: () => now,
+        run: Effect.sync(() => {
+          runs++
+        })
+      })
+      yield* fireAlarm(recovered)
+
+      assert.strictEqual(runs, 1)
+      assert.strictEqual(loadSingletonState(sql.sql).wakeAt, undefined)
+    }))
 })
