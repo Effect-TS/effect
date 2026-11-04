@@ -11,7 +11,7 @@
  * @since 4.0.0
  */
 import * as OtelApi from "@opentelemetry/api"
-import { SeverityNumber } from "@opentelemetry/api-logs"
+import { SeverityNumber } from "@opentelemetry/api"
 import * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Arr from "effect/Array"
@@ -190,7 +190,7 @@ export const layer = (options: {
  */
 export const layerLoggerProvider = (
   processor: Otel.LogRecordProcessor | NonEmptyReadonlyArray<Otel.LogRecordProcessor>,
-  config?: Omit<Otel.LoggerProviderConfig, "resource"> & {
+  config?: Omit<Otel.LoggerProviderOptions, "resource"> & {
     readonly shutdownTimeout?: Duration.Input | undefined
   }
 ): Layer.Layer<OtelLoggerProvider, never, Resource> =>
