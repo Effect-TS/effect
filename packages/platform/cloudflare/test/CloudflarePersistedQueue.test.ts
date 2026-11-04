@@ -213,9 +213,45 @@ describe("CloudflarePersistedQueue", () => {
       const replay = yield* Effect.promise(() => namespace.getByName(name).take("taker-2", 10, 500))
       assert.strictEqual(replay.id, "a")
       assert.strictEqual(replay.element, "\"first\"")
-      // Losing a lease is not a failed attempt.
-      assert.strictEqual(replay.attempts, 0)
+      // The crashed claim still used an attempt.
+      assert.strictEqual(replay.attempts, item.attempts + 1)
     })
+  })
+
+  it.effect("a crash on the last attempt leaves the item failed", () => {
+    const namespace = new FakeQueueNamespace()
+    const name = objectName("crash-last-attempt")
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(name)
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      yield* Effect.promise(() => runtime.take("taker-1", 1, 500))
+
+      namespace.crash()
+      namespace.now = 600
+      yield* Effect.promise(() => namespace.fireDueAlarms())
+
+      // A failed item releases its id, so the re-offer is the next delivery.
+      const restarted = namespace.getByName(name)
+      yield* Effect.promise(() => restarted.offer("a", "\"second\"", 0, "untilExecuted"))
+      const item = yield* takeNow(restarted, "taker-2")
+      assert.strictEqual(item?.element, "\"second\"")
+    })
+  })
+
+  it.effect("a repaired untilExecuted offer replaces an element that failed to decode", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const legacy = yield* PersistedQueue.make({ name: "repaired", schema: Schema.Number })
+      const queue = yield* PersistedQueue.make({ name: "repaired", schema: Schema.String })
+      yield* legacy.offer(1, { id: "job" })
+      yield* queue.offer("next", { id: "other" })
+      // The incompatible payload is skipped.
+      assert.strictEqual(yield* queue.take((value) => Effect.succeed(value)), "next")
+
+      yield* queue.offer("fixed", { id: "job", deduplicate: "untilExecuted" })
+      const item = yield* takeNow(namespace.getByName(objectName("repaired")), "taker")
+      assert.strictEqual(item?.element, "\"fixed\"")
+    }).pipe(Effect.provide(namespace.layer))
   })
 
   it.effect("arms a delayed offer without a taker and restores its deadline after a crash", () => {
