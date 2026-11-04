@@ -20,6 +20,7 @@ import {
   type LogLevel,
   Option,
   Pool,
+  Queue,
   Ref,
   References,
   Result,
@@ -1566,6 +1567,44 @@ describe("Effect", () => {
         ).pipe(Effect.forkChild)
         yield* Fiber.await(fiber)
         assert.isTrue(interrupted)
+      }))
+
+    it.effect(`${name} interrupts a pending loser before the parent resumes`, () =>
+      Effect.gen(function*() {
+        const tasks: Array<() => void> = []
+        let parent: Fiber.Fiber<unknown, unknown> | undefined
+        let yieldParent = false
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield(fiber) {
+            if (!yieldParent || fiber !== parent) return false
+            yieldParent = false
+            return true
+          }
+        }
+        const winner = yield* Deferred.make<string>()
+        const [queue, fiber] = yield* Effect.gen(function*() {
+          const queue = yield* Queue.unbounded<string>()
+          const fiber = yield* Effect.withFiber((fiber) => {
+            parent = fiber
+            return race(Queue.take(queue), Deferred.await(winner))
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          return [queue, fiber] as const
+        }).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+        // Wake the loser via a scheduled task, then settle the race while the
+        // parent yields before it can interrupt the loser.
+        Queue.offerUnsafe(queue, "loser")
+        yieldParent = true
+        Deferred.doneUnsafe(winner, Effect.succeed("winner"))
+        while (tasks.length > 0) tasks.shift()!()
+        assert.strictEqual(yield* Fiber.join(fiber), "winner")
+        assert.strictEqual(yield* Queue.size(queue), 1)
       }))
   }
 
