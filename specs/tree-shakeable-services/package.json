@@ -1,0 +1,22 @@
+{
+  "name": "tree-shakeable-services-spec",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototype for specs/tree-shakeable-services.md: per-operation service keys and the esbuild check",
+  "sideEffects": false,
+  "scripts": {
+    "check": "tsc -p tsconfig.json",
+    "check-errors": "node scripts/check-errors.ts",
+    "test": "vitest run",
+    "bundle": "node scripts/check-bundle.ts",
+    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "effect": "workspace:*",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

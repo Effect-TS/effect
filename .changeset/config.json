@@ -9,7 +9,8 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "scratchpad",
-    "scripts"
+    "scripts",
+    "tree-shakeable-services-spec"
   ],
   "privatePackages": false,
   "fixed": [
