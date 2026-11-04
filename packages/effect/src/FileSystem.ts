@@ -142,17 +142,17 @@ export interface FileSystem {
    * to `root` (or absolute for an absolute pattern), visited depth-first with
    * each directory's entries sorted by name. `**` does not traverse symbolic
    * links to directories, but a link named by another segment is followed.
-   * Paths that match an `exclude` pattern are dropped, and excluded
-   * directories are not read. Entries whose type cannot be determined, such
-   * as broken links, are treated as files.
+   * Entries whose type cannot be determined, such as broken links, are
+   * treated as files.
    *
    * Read failures at the root or a leading literal directory propagate. Missing
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
    * The `filter` option drops results that a `PathFilter` excludes, matched
-   * against paths relative to `root`. It only removes results: an inclusion
-   * never restores a path dropped by the pattern, `exclude`, `dot` or the
+   * against paths relative to `root`. Rules never see the `.` entry, so
+   * `glob(".")` returns `"."` whatever the filter. It only removes results:
+   * an inclusion never restores a path dropped by the pattern, `dot` or the
    * symbolic link rules. A directory excluded by a `barrier` rule is never
    * read. Any other excluded directory is skipped only when its contents
    * inherit an exclusion and no inclusion after that exclusion could match
@@ -163,14 +163,14 @@ export interface FileSystem {
    *
    * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
    * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling. With `filter`, a pattern that is absolute or contains
-   * a `..` segment or an escaped `/` is a defect.
+   * pattern's spelling. With any `filter`, even one without rules, a pattern
+   * that is absolute or contains a `..` segment or an escaped `/` is a
+   * defect.
    */
   readonly glob: (
     pattern: string,
     options?: {
       readonly root?: string | undefined
-      readonly exclude?: ReadonlyArray<string> | undefined
       readonly dot?: boolean | undefined
       readonly filter?: PathFilter | undefined
     }
