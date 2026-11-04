@@ -149,7 +149,7 @@ describe("String", () => {
 
   describe("trim", () => {
     it("trims whitespace from both ends", () => {
-      strictEqual(S.trim("  hello  "), "hello")
+      strictEqual(S.trim(" \t\nhello \t\n"), "hello")
     })
   })
 
