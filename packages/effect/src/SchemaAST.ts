@@ -2208,11 +2208,22 @@ export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp 
 // but runs in time linear in the input length: the template literal is compiled
 // into an NFA (Thompson construction) and the NFA is simulated by tracking the
 // set of active states, so there is no backtracking.
+//
+// The capturer returns the same groups as `getTemplateLiteralCapturingRegExp`.
+// It simulates the same NFA as a Pike VM: the epsilon transitions of every state
+// are ordered by the preference of the corresponding regex construct (lazy
+// `String`, greedy `Number`, union members in declaration order) and threads are
+// kept in priority order, so the first thread that reaches the accepting state
+// at the end of the input carries the captures the backtracking regex would
+// return.
 
+// states that don't consume a character
 const NFA_EPSILON = 0
-const NFA_CODE = 1
-const NFA_ANY = 2
-const NFA_DIGIT = 3
+const NFA_SAVE = 1 // records the current position in a capture slot
+// states that consume a character
+const NFA_CODE = 2
+const NFA_ANY = 3
+const NFA_DIGIT = 4
 
 class TemplateLiteralNFA {
   readonly kinds: Array<number> = []
@@ -2275,16 +2286,20 @@ const nfaAlternation = (nfa: TemplateLiteralNFA, fragments: ReadonlyArray<NFAFra
 const nfaOptional = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment =>
   nfaAlternation(nfa, [fragment, nfaEmpty(nfa)])
 
-// zero or more repetitions
-const nfaStar = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment => {
+// zero or more repetitions, preferring fewer repetitions when `lazy` is `true`
+const nfaStar = (nfa: TemplateLiteralNFA, fragment: NFAFragment, lazy: boolean): NFAFragment => {
   const start = nfa.state(NFA_EPSILON, 0)
   const end = nfa.state(NFA_EPSILON, 0)
-  nfa.outs[start].push(fragment.start, end)
+  if (lazy) {
+    nfa.outs[start].push(end, fragment.start)
+  } else {
+    nfa.outs[start].push(fragment.start, end)
+  }
   nfa.outs[fragment.end].push(start)
   return { start, end }
 }
 
-// one or more repetitions
+// one or more repetitions (greedy)
 const nfaPlus = (nfa: TemplateLiteralNFA, fragment: NFAFragment): NFAFragment => {
   const end = nfa.state(NFA_EPSILON, 0)
   nfa.outs[fragment.end].push(fragment.start, end)
@@ -2298,7 +2313,7 @@ const nfaSign = (nfa: TemplateLiteralNFA): NFAFragment =>
 const nfaNumber = (nfa: TemplateLiteralNFA): NFAFragment =>
   nfaSequence(nfa, [
     nfaSign(nfa),
-    nfaStar(nfa, nfaConsume(nfa, NFA_DIGIT, 0)),
+    nfaStar(nfa, nfaConsume(nfa, NFA_DIGIT, 0), false),
     nfaOptional(nfa, nfaString(nfa, ".")),
     nfaPlus(nfa, nfaConsume(nfa, NFA_DIGIT, 0)),
     nfaOptional(
@@ -2317,27 +2332,59 @@ const nfaSpanType = (nfa: TemplateLiteralNFA, type: TemplateLiteralSpanType): NF
       return nfaString(nfa, String(type.literal))
     case "StringKeyword":
       // equivalent to STRING_KEYWORD_PATTERN: [\s\S]*?
-      return nfaStar(nfa, nfaConsume(nfa, NFA_ANY, 0))
+      return nfaStar(nfa, nfaConsume(nfa, NFA_ANY, 0), true)
     case "NumberKeyword":
       return nfaNumber(nfa)
     case "TemplateLiteral":
-      return nfaTemplateLiteral(nfa, type)
+      return nfaTemplateLiteral(nfa, type, false)
     case "Union":
       return nfaAlternation(nfa, type.types.map((type) => nfaSpanType(nfa, type)))
   }
 }
 
-const nfaTemplateLiteral = (nfa: TemplateLiteralNFA, ast: TemplateLiteral): NFAFragment => {
-  const fragments: Array<NFAFragment> = [nfaString(nfa, ast.head)]
+const nfaSave = (nfa: TemplateLiteralNFA, slot: number): NFAFragment => {
+  const s = nfa.state(NFA_SAVE, slot)
+  return { start: s, end: s }
+}
+
+// When `capture` is `true`, the head (if not empty), every span type and every
+// span literal (if not empty) are captured, like `getTemplateLiteralCapturingRegExp`
+// does: the start and end positions of the `i`-th group are stored in the slots
+// `2 * i` and `2 * i + 1`
+const nfaTemplateLiteral = (nfa: TemplateLiteralNFA, ast: TemplateLiteral, capture: boolean): NFAFragment => {
+  const fragments: Array<NFAFragment> = []
+  let group = 0
+  const push = (fragment: NFAFragment) => {
+    if (capture) {
+      fragments.push(nfaSave(nfa, 2 * group), fragment, nfaSave(nfa, 2 * group + 1))
+      group++
+    } else {
+      fragments.push(fragment)
+    }
+  }
+  if (ast.head !== "") {
+    push(nfaString(nfa, ast.head))
+  }
   for (const span of ast.spans) {
-    fragments.push(nfaSpanType(nfa, span.type), nfaString(nfa, span.literal))
+    push(nfaSpanType(nfa, span.type))
+    if (span.literal !== "") {
+      push(nfaString(nfa, span.literal))
+    }
   }
   return nfaSequence(nfa, fragments)
 }
 
+const getTemplateLiteralGroupCount = (ast: TemplateLiteral): number => {
+  let count = ast.head !== "" ? 1 : 0
+  for (const span of ast.spans) {
+    count += span.literal !== "" ? 2 : 1
+  }
+  return count
+}
+
 const compileTemplateLiteralMatcher = (ast: TemplateLiteral): (s: string) => boolean => {
   const nfa = new TemplateLiteralNFA()
-  const { end: accept, start } = nfaTemplateLiteral(nfa, ast)
+  const { end: accept, start } = nfaTemplateLiteral(nfa, ast, false)
   const { codes, kinds, outs } = nfa
   const size = kinds.length
 
@@ -2361,7 +2408,7 @@ const compileTemplateLiteralMatcher = (ast: TemplateLiteral): (s: string) => boo
         if (s === accept) {
           accepts[state] = true
         }
-        if (kinds[s] === NFA_EPSILON) {
+        if (kinds[s] < NFA_CODE) {
           for (const o of outs[s]) {
             stack.push(o)
           }
@@ -2437,6 +2484,163 @@ export const getTemplateLiteralMatcher = (ast: TemplateLiteral): (s: string) => 
     templateLiteralMatcherCache.set(ast, matcher)
   }
   return matcher
+}
+
+interface ClosureEntry {
+  // a state that consumes a character, or the accepting state
+  readonly state: number
+  // the capture slots recorded on the way to `state`
+  readonly saves: ReadonlyArray<number>
+}
+
+interface Thread {
+  readonly state: number
+  readonly captures: ReadonlyArray<number>
+}
+
+const compileTemplateLiteralCapturer = (
+  ast: TemplateLiteral
+): (s: string) => Array<string> | undefined => {
+  const nfa = new TemplateLiteralNFA()
+  const { end, start } = nfaTemplateLiteral(nfa, ast, true)
+  // a dedicated accepting state, so that the last save state is applied
+  const accept = nfa.state(NFA_EPSILON, 0)
+  nfa.outs[end].push(accept)
+  const { codes, kinds, outs } = nfa
+  const size = kinds.length
+  const groups = getTemplateLiteralGroupCount(ast)
+
+  // The epsilon closure of a state, in priority order: a depth-first visit that
+  // follows the epsilon transitions in the order they were added. A state
+  // reached through more than one path keeps the highest priority path.
+  // Closures are computed lazily and cached.
+  const closures: Array<ReadonlyArray<ClosureEntry> | undefined> = new Array(size)
+  const visited: Array<number> = new Array(size).fill(-1)
+  const getClosure = (state: number): ReadonlyArray<ClosureEntry> => {
+    let closure = closures[state]
+    if (closure === undefined) {
+      const out: Array<ClosureEntry> = []
+      const stack: Array<ClosureEntry> = [{ state, saves: [] }]
+      while (stack.length > 0) {
+        const entry = stack.pop()!
+        const s = entry.state
+        if (visited[s] === state) {
+          continue
+        }
+        visited[s] = state
+        if (s === accept || kinds[s] >= NFA_CODE) {
+          out.push(entry)
+        } else {
+          const saves = kinds[s] === NFA_SAVE ? [...entry.saves, codes[s]] : entry.saves
+          const o = outs[s]
+          // pushed in reverse order so that the first transition is visited first
+          for (let i = o.length - 1; i >= 0; i--) {
+            stack.push({ state: o[i], saves })
+          }
+        }
+      }
+      closures[state] = closure = out
+    }
+    return closure
+  }
+
+  // successor of each consuming state (consuming states have exactly one out)
+  const successors: Array<number> = outs.map((out) => out[0] ?? -1)
+
+  return (input: string): Array<string> | undefined => {
+    const length = input.length
+    // `marks[state] === position` means that `state` already has a thread
+    // (with a higher priority) at `position`
+    const marks = new Int32Array(size).fill(-1)
+    let result: ReadonlyArray<number> | undefined = undefined
+
+    const addThreads = (
+      threads: Array<Thread>,
+      closure: ReadonlyArray<ClosureEntry>,
+      captures: ReadonlyArray<number>,
+      position: number
+    ): void => {
+      for (let i = 0; i < closure.length; i++) {
+        const { saves, state } = closure[i]
+        if (marks[state] === position) {
+          continue
+        }
+        marks[state] = position
+        let c = captures
+        if (saves.length > 0) {
+          const copy = captures.slice()
+          for (let j = 0; j < saves.length; j++) {
+            copy[saves[j]] = position
+          }
+          c = copy
+        }
+        if (state === accept) {
+          // the pattern is anchored at the end of the input
+          if (position === length && result === undefined) {
+            result = c
+          }
+        } else {
+          threads.push({ state, captures: c })
+        }
+      }
+    }
+
+    let threads: Array<Thread> = []
+    addThreads(threads, getClosure(start), new Array(2 * groups).fill(-1), 0)
+    for (let i = 0; i < length; i++) {
+      if (threads.length === 0) {
+        return undefined
+      }
+      const code = input.charCodeAt(i)
+      const next: Array<Thread> = []
+      for (let j = 0; j < threads.length; j++) {
+        const { captures, state } = threads[j]
+        switch (kinds[state]) {
+          case NFA_ANY:
+            break
+          case NFA_DIGIT:
+            if (code < 48 || code > 57) continue
+            break
+          default:
+            if (codes[state] !== code) continue
+        }
+        const successor = successors[state]
+        addThreads(next, getClosure(successor), captures, i + 1)
+      }
+      threads = next
+    }
+
+    if (result === undefined) {
+      return undefined
+    }
+    const captures: ReadonlyArray<number> = result
+    const out: Array<string> = new Array(groups)
+    for (let i = 0; i < groups; i++) {
+      out[i] = input.slice(captures[2 * i], captures[2 * i + 1])
+    }
+    return out
+  }
+}
+
+const templateLiteralCapturerCache = globalValue(
+  Symbol.for("effect/SchemaAST/templateLiteralCapturerCache"),
+  () => new WeakMap<TemplateLiteral, (s: string) => Array<string> | undefined>()
+)
+
+/**
+ * Returns a function that, given a string, returns the same groups as
+ * `getTemplateLiteralCapturingRegExp(ast).exec(s)?.slice(1)` (or `undefined`
+ * if there is no match) and runs in time linear in the input length.
+ *
+ * @internal
+ */
+export const getTemplateLiteralCapturer = (ast: TemplateLiteral): (s: string) => Array<string> | undefined => {
+  let capturer = templateLiteralCapturerCache.get(ast)
+  if (capturer === undefined) {
+    capturer = compileTemplateLiteralCapturer(ast)
+    templateLiteralCapturerCache.set(ast, capturer)
+  }
+  return capturer
 }
 
 /**

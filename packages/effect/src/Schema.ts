@@ -943,6 +943,7 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
   }
   const from = TemplateLiteral(...encodedSchemas as any)
   const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
+  const capture = AST.getTemplateLiteralCapturer(from.ast as AST.TemplateLiteral)
   let to = Tuple(...elements)
   if (coerced) {
     to = to.annotations({ [AST.AutoTitleAnnotationId]: format(Tuple(...schemas)) })
@@ -950,9 +951,9 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
   return class TemplateLiteralParserClass extends transformOrFail(from, to, {
     strict: false,
     decode: (i, _, ast) => {
-      const match = re.exec(i)
+      const match = capture(i)
       return match
-        ? ParseResult.succeed(match.slice(1, params.length + 1))
+        ? ParseResult.succeed(match.slice(0, params.length))
         : ParseResult.fail(new ParseResult.Type(ast, i, `${re.source}: no match for ${JSON.stringify(i)}`))
     },
     encode: (tuple) => ParseResult.succeed(tuple.join(""))
