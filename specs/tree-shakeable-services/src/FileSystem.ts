@@ -4,9 +4,14 @@
  * This module is the "service" from the consumer's point of view: a program
  * writes `FileSystem.readFile(path)` after `import * as FileSystem`. It holds
  * keys only, no implementations, so importing it costs nothing a bundler
- * cannot drop. The `@__PURE__` annotations let a bundler remove the keys of
- * operations a program never references; without them each unused key stays
- * as a few bytes of key object, and the implementations are still absent.
+ * cannot drop.
+ *
+ * Each operation is declared the way `effect` declares every key: the type on
+ * the declaration, the key as the one argument. The `@__PURE__` annotations
+ * are for esbuild, which does not read the `@__NO_SIDE_EFFECTS__` annotation
+ * on the constructors across modules; Rolldown and Rollup drop unused keys
+ * without them, and the published `effect` build adds them. The bundle check
+ * measures all three cases.
  *
  * The operation names and signatures follow `effect/FileSystem` in v4 so the
  * example is representative of a real service (30 operations, three of which
@@ -14,10 +19,11 @@
  * Stream are defined with `Stream.Operation`; the rest with
  * `Context.Operation`.
  *
- * The group at the end, `FileSystem`, is the record service: one key whose
- * members are the operations above, stored one slot each. `yield* FileSystem`
- * gives the record of implementations and `Layer<FileSystem>` provides every
- * operation.
+ * `FileSystem`, at the end, is the record service: one key whose members are
+ * the operations above, stored one slot each. `yield* FileSystem` gives the
+ * record of implementations and `Layer<FileSystem>` provides every operation.
+ * `ReadOnly` is a record over three of the same members: the subset a reader
+ * names as its one requirement.
  */
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -46,145 +52,163 @@ export interface WatchEvent {
   readonly path: string
 }
 
-export const access = /* @__PURE__ */ Context.Operation<
+export const access: Context.Operation<
+  "effect/FileSystem/access",
   (
     path: string,
     options?: { readonly writable?: boolean; readonly readable?: boolean }
   ) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/access")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/access")
 
-export const chmod = /* @__PURE__ */ Context.Operation<
+export const chmod: Context.Operation<
+  "effect/FileSystem/chmod",
   (path: string, mode: number) => Effect.Effect<void, FileSystemError>
->()(
-  "effect/FileSystem/chmod"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/chmod")
 
-export const chown = /* @__PURE__ */ Context.Operation<
+export const chown: Context.Operation<
+  "effect/FileSystem/chown",
   (path: string, uid: number, gid: number) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/chown")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/chown")
 
-export const copy = /* @__PURE__ */ Context.Operation<
+export const copy: Context.Operation<
+  "effect/FileSystem/copy",
   (from: string, to: string, options?: { readonly overwrite?: boolean }) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/copy")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/copy")
 
-export const copyFile = /* @__PURE__ */ Context.Operation<
+export const copyFile: Context.Operation<
+  "effect/FileSystem/copyFile",
   (from: string, to: string) => Effect.Effect<void, FileSystemError>
->()(
-  "effect/FileSystem/copyFile"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/copyFile")
 
-export const exists = /* @__PURE__ */ Context.Operation<(path: string) => Effect.Effect<boolean, FileSystemError>>()(
-  "effect/FileSystem/exists"
-)
+export const exists: Context.Operation<
+  "effect/FileSystem/exists",
+  (path: string) => Effect.Effect<boolean, FileSystemError>
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/exists")
 
-export const glob = /* @__PURE__ */ Stream.Operation<
+export const glob: Stream.Operation<
+  "effect/FileSystem/glob",
   (pattern: string, options?: { readonly cwd?: string }) => Stream.Stream<string, FileSystemError>
->()("effect/FileSystem/glob")
+> = /* @__PURE__ */ Stream.Operation("effect/FileSystem/glob")
 
-export const link = /* @__PURE__ */ Context.Operation<
+export const link: Context.Operation<
+  "effect/FileSystem/link",
   (from: string, to: string) => Effect.Effect<void, FileSystemError>
->()(
-  "effect/FileSystem/link"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/link")
 
-export const lstat = /* @__PURE__ */ Context.Operation<(path: string) => Effect.Effect<Info, FileSystemError>>()(
-  "effect/FileSystem/lstat"
-)
+export const lstat: Context.Operation<
+  "effect/FileSystem/lstat",
+  (path: string) => Effect.Effect<Info, FileSystemError>
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/lstat")
 
-export const makeDirectory = /* @__PURE__ */ Context.Operation<
+export const makeDirectory: Context.Operation<
+  "effect/FileSystem/makeDirectory",
   (path: string, options?: { readonly recursive?: boolean }) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/makeDirectory")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/makeDirectory")
 
-export const makeTempDirectory = /* @__PURE__ */ Context.Operation<
+export const makeTempDirectory: Context.Operation<
+  "effect/FileSystem/makeTempDirectory",
   (options?: { readonly prefix?: string }) => Effect.Effect<string, FileSystemError>
->()("effect/FileSystem/makeTempDirectory")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/makeTempDirectory")
 
-export const makeTempDirectoryScoped = /* @__PURE__ */ Context.Operation<
+export const makeTempDirectoryScoped: Context.Operation<
+  "effect/FileSystem/makeTempDirectoryScoped",
   (options?: { readonly prefix?: string }) => Effect.Effect<string, FileSystemError, Scope.Scope>
->()("effect/FileSystem/makeTempDirectoryScoped")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/makeTempDirectoryScoped")
 
-export const makeTempFile = /* @__PURE__ */ Context.Operation<
+export const makeTempFile: Context.Operation<
+  "effect/FileSystem/makeTempFile",
   (options?: { readonly prefix?: string }) => Effect.Effect<string, FileSystemError>
->()("effect/FileSystem/makeTempFile")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/makeTempFile")
 
-export const makeTempFileScoped = /* @__PURE__ */ Context.Operation<
+export const makeTempFileScoped: Context.Operation<
+  "effect/FileSystem/makeTempFileScoped",
   (options?: { readonly prefix?: string }) => Effect.Effect<string, FileSystemError, Scope.Scope>
->()("effect/FileSystem/makeTempFileScoped")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/makeTempFileScoped")
 
-export const readDirectory = /* @__PURE__ */ Context.Operation<
+export const readDirectory: Context.Operation<
+  "effect/FileSystem/readDirectory",
   (path: string) => Effect.Effect<ReadonlyArray<string>, FileSystemError>
->()("effect/FileSystem/readDirectory")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/readDirectory")
 
-export const readDirectoryEntries = /* @__PURE__ */ Context.Operation<
+export const readDirectoryEntries: Context.Operation<
+  "effect/FileSystem/readDirectoryEntries",
   (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, FileSystemError>
->()("effect/FileSystem/readDirectoryEntries")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/readDirectoryEntries")
 
-export const readFile = /* @__PURE__ */ Context.Operation<
+export const readFile: Context.Operation<
+  "effect/FileSystem/readFile",
   (path: string) => Effect.Effect<Uint8Array, FileSystemError>
->()(
-  "effect/FileSystem/readFile"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/readFile")
 
-export const readFileString = /* @__PURE__ */ Context.Operation<
+export const readFileString: Context.Operation<
+  "effect/FileSystem/readFileString",
   (path: string, encoding?: BufferEncoding) => Effect.Effect<string, FileSystemError>
->()("effect/FileSystem/readFileString")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/readFileString")
 
-export const readLink = /* @__PURE__ */ Context.Operation<(path: string) => Effect.Effect<string, FileSystemError>>()(
-  "effect/FileSystem/readLink"
-)
+export const readLink: Context.Operation<
+  "effect/FileSystem/readLink",
+  (path: string) => Effect.Effect<string, FileSystemError>
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/readLink")
 
-export const realPath = /* @__PURE__ */ Context.Operation<(path: string) => Effect.Effect<string, FileSystemError>>()(
-  "effect/FileSystem/realPath"
-)
+export const realPath: Context.Operation<
+  "effect/FileSystem/realPath",
+  (path: string) => Effect.Effect<string, FileSystemError>
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/realPath")
 
-export const remove = /* @__PURE__ */ Context.Operation<
+export const remove: Context.Operation<
+  "effect/FileSystem/remove",
   (
     path: string,
     options?: { readonly recursive?: boolean; readonly force?: boolean }
   ) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/remove")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/remove")
 
-export const rename = /* @__PURE__ */ Context.Operation<
+export const rename: Context.Operation<
+  "effect/FileSystem/rename",
   (from: string, to: string) => Effect.Effect<void, FileSystemError>
->()(
-  "effect/FileSystem/rename"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/rename")
 
-export const stat = /* @__PURE__ */ Context.Operation<(path: string) => Effect.Effect<Info, FileSystemError>>()(
-  "effect/FileSystem/stat"
-)
+export const stat: Context.Operation<
+  "effect/FileSystem/stat",
+  (path: string) => Effect.Effect<Info, FileSystemError>
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/stat")
 
-export const stream = /* @__PURE__ */ Stream.Operation<
+export const stream: Stream.Operation<
+  "effect/FileSystem/stream",
   (path: string, options?: { readonly chunkSize?: number }) => Stream.Stream<Uint8Array, FileSystemError>
->()("effect/FileSystem/stream")
+> = /* @__PURE__ */ Stream.Operation("effect/FileSystem/stream")
 
-export const symlink = /* @__PURE__ */ Context.Operation<
+export const symlink: Context.Operation<
+  "effect/FileSystem/symlink",
   (target: string, path: string) => Effect.Effect<void, FileSystemError>
->()(
-  "effect/FileSystem/symlink"
-)
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/symlink")
 
-export const truncate = /* @__PURE__ */ Context.Operation<
+export const truncate: Context.Operation<
+  "effect/FileSystem/truncate",
   (path: string, length?: number) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/truncate")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/truncate")
 
-export const utimes = /* @__PURE__ */ Context.Operation<
+export const utimes: Context.Operation<
+  "effect/FileSystem/utimes",
   (path: string, atime: Date, mtime: Date) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/utimes")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/utimes")
 
-export const watch = /* @__PURE__ */ Stream.Operation<(path: string) => Stream.Stream<WatchEvent, FileSystemError>>()(
-  "effect/FileSystem/watch"
-)
+export const watch: Stream.Operation<
+  "effect/FileSystem/watch",
+  (path: string) => Stream.Stream<WatchEvent, FileSystemError>
+> = /* @__PURE__ */ Stream.Operation("effect/FileSystem/watch")
 
-export const writeFile = /* @__PURE__ */ Context.Operation<
+export const writeFile: Context.Operation<
+  "effect/FileSystem/writeFile",
   (path: string, data: Uint8Array, options?: { readonly mode?: number }) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/writeFile")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/writeFile")
 
-export const writeFileString = /* @__PURE__ */ Context.Operation<
+export const writeFileString: Context.Operation<
+  "effect/FileSystem/writeFileString",
   (path: string, data: string) => Effect.Effect<void, FileSystemError>
->()("effect/FileSystem/writeFileString")
+> = /* @__PURE__ */ Context.Operation("effect/FileSystem/writeFileString")
 
-const operations = {
+const members = {
   access,
   chmod,
   chown,
@@ -218,11 +242,18 @@ const operations = {
 }
 
 /**
- * The identity of the whole file system: the union of its operations' keys.
+ * The identity of the whole file system: the union of its members' keys.
  * A program annotated with this requires every operation; a layer typed with
  * it provides every operation.
  */
-export type FileSystem = Context.Operations.Identifier<typeof operations>
+export type FileSystem = Context.Operations.Identifier<typeof members>
+
+/**
+ * The record of implementations, as `yield* FileSystem` returns it and as
+ * `Layer.succeed(FileSystem, record)` takes it. An interface rather than a
+ * type alias so that diagnostics print `Shape` instead of the thirty members.
+ */
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * The file system as one record service. It is an ordinary `Context.Service`
@@ -231,9 +262,31 @@ export type FileSystem = Context.Operations.Identifier<typeof operations>
  * record, and `Effect.provideService(readFile.service, fake)` on top of either
  * replaces one of them.
  */
-export const FileSystem = /* @__PURE__ */ Context.Operations<FileSystem>()("effect/FileSystem", operations)
+export const FileSystem: Context.Operations<FileSystem, Shape> = /* @__PURE__ */ Context.Operations(
+  "effect/FileSystem",
+  members
+)
+
+const readOnlyMembers = { exists, readFile, stat }
 
 /**
- * The record of implementations, as `yield* FileSystem` returns it.
+ * The read-only subset: a record service over three of the members above.
+ * Nothing distinguishes it from `FileSystem` except which members it lists,
+ * so a `Layer<FileSystem>` satisfies it, the three member layers merged
+ * satisfy it, and it satisfies each of its members, all by plain
+ * assignability. A reader annotates its requirement with this one name.
  */
-export type Shape = Context.Service.Shape<typeof FileSystem>
+export type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
+
+/**
+ * The record of a read-only file system's implementations.
+ */
+export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers> {}
+
+/**
+ * The read-only file system as a record service.
+ */
+export const ReadOnly: Context.Operations<ReadOnly, ReadOnlyShape> = /* @__PURE__ */ Context.Operations(
+  "effect/FileSystem/ReadOnly",
+  readOnlyMembers
+)

@@ -17,10 +17,11 @@ import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { exitSucceed, isEffect, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
+import type * as Sink from "./Sink.ts"
 import type * as Stream from "./Stream.ts"
 import type * as Types from "./Types.ts"
 
@@ -1052,13 +1053,11 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    let missing = service
-    const value = read(self, service, (member) => {
-      missing = member
-    })
+    if (isOperations(service)) return readRecord(self, service, true) as any
+    const value = lookup(self, service.key)
     if (value === notFound) {
       if (isReference(service)) return getDefaultValue(service as any)
-      throw serviceNotFoundError(missing)
+      throw serviceNotFoundError(service)
     }
     return value as any
   }
@@ -1441,10 +1440,11 @@ export const OperationTypeId: OperationTypeId = "~effect/Context/Operation"
  *
  * `Operation<Key, Shape>` is the call signature of `Shape` with the
  * operation's key added to the requirements of its result, plus the
- * `Context.Service` the implementation is stored under. Providing and
- * overriding an operation go through `.service` with the existing `Context`,
- * `Layer` and `Effect` APIs. The operation itself is a plain function: it is
- * neither an Effect nor a key.
+ * `Context.Service` the implementation is stored under. A shape that is an
+ * Effect or a Stream rather than a function is called with no arguments.
+ * Providing and overriding an operation go through `.service` with the
+ * existing `Context`, `Layer` and `Effect` APIs. The operation itself is a
+ * plain function: it is neither an Effect nor a key.
  *
  * @see {@link Operation} for creating an operation whose result is an Effect
  * @see {@link Operations} for grouping operations into a record service
@@ -1454,7 +1454,7 @@ export const OperationTypeId: OperationTypeId = "~effect/Context/Operation"
  * @since 4.0.0
  */
 export type Operation<Key extends string, Shape extends Operation.Signature> =
-  & Operation.Call<Key, Shape>
+  & Operation.Call<Key, NoInfer<Shape>>
   & {
     readonly [OperationTypeId]: OperationTypeId
     /**
@@ -1473,21 +1473,33 @@ export type Operation<Key extends string, Shape extends Operation.Signature> =
  */
 export declare namespace Operation {
   /**
-   * A shape whose result is an Effect. This is what `Context.Operation`
-   * accepts.
+   * A shape whose result is an Effect: a function returning an Effect, or an
+   * Effect. This is what `Context.Operation` accepts.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type EffectSignature = (...args: any) => Effect<any, any, any>
+  export type EffectSignature = ((...args: any) => Effect<any, any, any>) | Effect<any, any, any>
 
   /**
-   * A shape whose result is a Stream. This is what `Stream.Operation` accepts.
+   * A shape whose result is a Stream: a function returning a Stream, or a
+   * Stream. This is what `Stream.Operation` accepts.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type StreamSignature = (...args: any) => Stream.Stream<any, any, any>
+  export type StreamSignature = ((...args: any) => Stream.Stream<any, any, any>) | Stream.Stream<any, any, any>
+
+  /**
+   * A shape whose result is a Sink: a function returning a Sink, or a Sink.
+   * This is what `Sink.Operation` accepts.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type SinkSignature =
+    | ((...args: any) => Sink.Sink<any, any, any, any, any>)
+    | Sink.Sink<any, any, any, any, any>
 
   /**
    * Any shape an operation can have.
@@ -1495,17 +1507,19 @@ export declare namespace Operation {
    * @category utility types
    * @since 4.0.0
    */
-  export type Signature = EffectSignature | StreamSignature
+  export type Signature = EffectSignature | StreamSignature | SinkSignature
 
   /**
    * The call signature of an operation.
    *
    * **Details**
    *
-   * If the shape's result already requires the key, the shape is the call
-   * signature. Otherwise the signature is derived from the shape, adding the
-   * key to the result's requirements. `KeyFor` rejects shapes for which the
-   * derived signature would lose information.
+   * For a function shape whose result already requires the key, the shape is
+   * the call signature. For any other function shape the signature is derived
+   * from the shape, adding the key to the result's requirements; `KeyFor`
+   * rejects shapes for which the derived signature would lose information.
+   * A shape that is not a function is called with no arguments and returns
+   * the shape with the key added.
    *
    * @category utility types
    * @since 4.0.0
@@ -1513,7 +1527,7 @@ export declare namespace Operation {
   export type Call<Key extends string, Shape extends Signature> = Shape extends
     (this: infer This, ...args: infer Args) => infer Result ? [Key] extends [Requirements<Result>] ? Shape
     : (this: This, ...args: Args) => Require<Result, Key>
-    : never
+    : () => Require<Shape, Key>
 
   /**
    * The requirements of an operation result.
@@ -1523,6 +1537,7 @@ export declare namespace Operation {
    */
   export type Requirements<Result> = Result extends Effect<infer _A, infer _E, infer R> ? R
     : Result extends Stream.Stream<infer _A, infer _E, infer R> ? R
+    : Result extends Sink.Sink<infer _A, infer _In, infer _L, infer _E, infer R> ? R
     : never
 
   /**
@@ -1533,6 +1548,7 @@ export declare namespace Operation {
    */
   export type Require<Result, Key> = Result extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Key>
     : Result extends Stream.Stream<infer A, infer E, infer R> ? Stream.Stream<A, E, R | Key>
+    : Result extends Sink.Sink<infer A, infer In, infer L, infer E, infer R> ? Sink.Sink<A, In, L, E, R | Key>
     : never
 
   /**
@@ -1558,12 +1574,14 @@ export declare namespace Operation {
    * @category utility types
    * @since 4.0.0
    */
-  export type KeyFor<Key extends string, Shape extends Signature> = [keyof Shape] extends [never] ?
-    Shape extends (...args: any) => infer Result ? [Key] extends [Requirements<Result>] ? Key
-      : Derivable<Shape> extends true ? Key
-      : `The shape of "${Key}" is generic or overloaded: its result must require "${Key}"`
-    : never
-    : "The shape has properties: an operation is a bare function"
+  export type KeyFor<Key extends string, Shape extends Signature> = [Shape] extends [never] ?
+    "Annotate the declaration: Context.Operation<Key, Shape>, or pass the shape: Context.Operation<Shape>()(key)"
+    : Shape extends (...args: any) => infer Result ?
+      [keyof Shape] extends [never] ? [Key] extends [Requirements<Result>] ? Key
+        : Derivable<Shape> extends true ? Key
+        : `The shape of "${Key}" is generic or overloaded: its result must require "${Key}"`
+      : "The shape has properties: an operation is a bare function"
+    : Key
 
   /**
    * Any operation.
@@ -1600,7 +1618,7 @@ export declare namespace Operation {
  *
  * **When to use**
  *
- * Use to define one function of a service as its own `Context.Service`, so a
+ * Use to define one member of a service as its own `Context.Service`, so a
  * program that calls it bundles only its implementation and a test can
  * replace it alone.
  *
@@ -1613,18 +1631,27 @@ export declare namespace Operation {
  * running fiber's context each time that result runs. Operations have no
  * default implementation.
  *
+ * Two call forms, as `Context.Service` has: `Context.Operation(key)` takes the
+ * key and shape from the declaration's type annotation, and
+ * `Context.Operation<Shape>()(key)` takes the shape explicitly and infers the
+ * key. A bundler treats the first form as side-effect free without a
+ * per-call annotation.
+ *
  * **Gotchas**
  *
  * A generic or overloaded shape names its key in its result, otherwise the
  * definition does not compile. A shape returning a Stream is defined with
- * `Stream.Operation`.
+ * `Stream.Operation`. A shape that is an Effect rather than a function is
+ * called with no arguments.
  *
  * **Example** (Defining, calling and providing an operation)
  *
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * const greet = Context.Operation<(name: string) => Effect.Effect<string>>()("app/greet")
+ * const greet: Context.Operation<"app/greet", (name: string) => Effect.Effect<string>> = Context.Operation(
+ *   "app/greet"
+ * )
  *
  * // A call adds the key to R: Effect<string, never, "app/greet">
  * const program = greet("world")
@@ -1641,15 +1668,30 @@ export declare namespace Operation {
  * @category services
  * @since 4.0.0
  */
-export const Operation =
-  <Shape extends Operation.EffectSignature>() =>
-  <const Key extends string>(key: Operation.KeyFor<Key, Shape>): Operation<Key, Shape> =>
-    makeOperation(key as string, effectCall) as any
+/* @__NO_SIDE_EFFECTS__ */
+export const Operation: {
+  <Shape extends Operation.EffectSignature>(): <const Key extends string>(
+    key: Operation.KeyFor<Key, Shape>
+  ) => Operation<Key, Shape>
+  <const Key extends string, Shape extends Operation.EffectSignature = never>(
+    key: Operation.KeyFor<Key, Shape>
+  ): Operation<Key, Shape>
+} = function() {
+  return arguments.length === 0
+    ? (key: string) => makeOperation(key, effectCall)
+    : makeOperation(arguments[0], effectCall)
+} as any
 
+// The implementation is either the result itself (a shape that is an Effect)
+// or a function producing it.
 const effectCall = (service: Service<any, any>, receiver: unknown, args: ArrayLike<unknown>) =>
-  withFiber((fiber) => Reflect.apply(getUnsafe(fiber.context, service), receiver, args))
+  withFiber((fiber) => {
+    const implementation = getUnsafe(fiber.context, service)
+    return isEffect(implementation) ? implementation : Reflect.apply(implementation, receiver, args)
+  })
 
 /** @internal */
+/* @__NO_SIDE_EFFECTS__ */
 export const makeOperation = (
   key: string,
   call: (service: Service<any, any>, receiver: unknown, args: ArrayLike<unknown>) => unknown
@@ -1672,8 +1714,8 @@ export const makeOperation = (
 export const isOperation = (u: unknown): u is Operation.Any => hasProperty(u, OperationTypeId)
 
 /**
- * String literal type used as the runtime type identifier for operation
- * groups.
+ * String literal type used as the runtime type identifier for record
+ * services.
  *
  * @stability unstable
  * @category type IDs
@@ -1682,7 +1724,7 @@ export const isOperation = (u: unknown): u is Operation.Any => hasProperty(u, Op
 export type OperationsTypeId = "~effect/Context/Operations"
 
 /**
- * Runtime type identifier attached to operation groups and used by
+ * Runtime type identifier attached to record services and used by
  * `isOperations` to recognize them.
  *
  * @stability unstable
@@ -1692,16 +1734,17 @@ export type OperationsTypeId = "~effect/Context/Operations"
 export const OperationsTypeId: OperationsTypeId = "~effect/Context/Operations"
 
 /**
- * A record service whose members are operations, stored one slot each.
+ * A record service: a key whose members are operations and services, stored
+ * one slot each.
  *
  * **Details**
  *
  * An `Operations` key is a `Context.Service` whose shape is the record of its
  * members' implementations and whose identifier is the union of its members'
- * keys. It differs from an ordinary key in storage only: providing it writes
- * each member under that member's key, and reading it assembles the record
- * from those slots. Every `Context`, `Layer` and `Effect` API that takes a
- * key accepts it.
+ * identifiers. It differs from an ordinary key in storage only: providing it
+ * writes each member under that member's key, and reading it assembles the
+ * record from those slots. Every `Context`, `Layer` and `Effect` API that
+ * takes a key accepts it.
  *
  * @see {@link Operations} for creating one
  *
@@ -1709,90 +1752,144 @@ export const OperationsTypeId: OperationsTypeId = "~effect/Context/Operations"
  * @category models
  * @since 4.0.0
  */
-export interface Operations<in out Identifier, in out Ops extends Operations.Members>
-  extends Service<Identifier, Operations.Shape<Ops>>
-{
+export interface Operations<in out Identifier, in out Shape> extends Service<Identifier, Shape> {
   readonly [OperationsTypeId]: OperationsTypeId
-  readonly operations: Ops
+  /**
+   * The members, by name: the operation or service each slot of the record is
+   * read from and written to.
+   */
+  readonly members: { readonly [K in keyof Shape]: Operations.Member }
 }
 
 /**
- * Namespace containing utility types for operation groups.
+ * Namespace containing utility types for record services.
  *
  * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Operations {
   /**
-   * The members of a group: a record of operations.
+   * A member of a record service: an operation, or any key. A member whose
+   * shape is an Effect, a Stream or a Sink, or a function returning one, is
+   * an operation; a member whose shape is a plain value or a synchronous
+   * function is a `Context.Service`, and is yielded.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Member = Operation.Any | Key<any, any>
+
+  /**
+   * The members of a record service, by name.
    *
    * @category utility types
    * @since 4.0.0
    */
   export interface Members {
-    readonly [name: string]: Operation.Any
+    readonly [name: string]: Member
   }
 
   /**
-   * The identifier of a group: the union of its members' keys.
+   * The identifier of a member: an operation's key, or a key's identifier.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type Identifier<Ops extends Members> = { [K in keyof Ops]: Operation.Key<Ops[K]> }[keyof Ops]
+  export type MemberIdentifier<M> = M extends Operation.Any ? Operation.Key<M> : M extends Key<infer I, any> ? I : never
 
   /**
-   * The shape of a group: the record of its members' implementations.
+   * The shape of a member: an operation's implementation type, or a key's
+   * shape.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type Shape<Ops extends Members> = { readonly [K in keyof Ops]: Operation.Shape<Ops[K]> }
+  export type MemberShape<M> = M extends Operation.Any ? Operation.Shape<M> : M extends Key<any, infer S> ? S : never
+
+  /**
+   * The identifier of a record service: the union of its members'
+   * identifiers.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Identifier<Ops extends Members> = { [K in keyof Ops]: MemberIdentifier<Ops[K]> }[keyof Ops]
+
+  /**
+   * The shape of a record service: the record of its members' shapes.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Shape<Ops extends Members> = { readonly [K in keyof Ops]: MemberShape<Ops[K]> }
+
+  /**
+   * The names at which two record shapes differ.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type ShapeDifference<A, B> = {
+    [K in keyof A | keyof B]: K extends keyof A ?
+      K extends keyof B ? [A[K]] extends [B[K]] ? [B[K]] extends [A[K]] ? never
+          : K
+        : K
+      : K
+      : K
+  }[keyof A | keyof B]
 
   /**
    * The members parameter of the constructor: the members when `Self` is
-   * exactly their identifier, otherwise an object type naming the identifier
-   * `Self` should have been.
+   * exactly their identifier and `S` exactly their shape, otherwise an object
+   * type naming the difference.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type Validate<Self, Ops extends Members> = [Self] extends [Identifier<Ops>]
-    ? [Identifier<Ops>] extends [Self] ? Ops
-    : { readonly "Self is not the identifier of these operations": Identifier<Ops> }
-    : { readonly "Self is not the identifier of these operations": Identifier<Ops> }
+  export type Validate<Self, S, Ops extends Members> = unknown extends Self ?
+    { readonly "Annotate the declaration: Context.Operations<Self, Shape>": Self }
+    : [Self] extends [Identifier<Ops>] ?
+      [Identifier<Ops>] extends [Self] ? [S] extends [Shape<Ops>] ? [Shape<Ops>] extends [S] ? Ops
+          : { readonly "Shape differs from the members' shape at": ShapeDifference<S, Shape<Ops>> }
+        : { readonly "Shape differs from the members' shape at": ShapeDifference<S, Shape<Ops>> }
+      : { readonly "Self differs from the members' identifier at": Exclude<Identifier<Ops>, Self> }
+    : { readonly "Self differs from the members' identifier at": Exclude<Self, Identifier<Ops>> }
 }
 
 /**
- * Creates an operation group: a record service stored one slot per member.
+ * Creates a record service: a key stored one slot per member.
  *
  * **When to use**
  *
- * Use to give a contract's operations a single identity, so `yield*` returns
- * the record of implementations, `Layer<Group>` provides every member, and a
- * program's requirements can be annotated with one name.
+ * Use to give a contract's members a single identity, so `yield*` returns the
+ * record of implementations, `Layer<Record>` provides every member, and a
+ * program's requirements can be annotated with one name. A record over some
+ * of another record's members is a record service like any other.
  *
  * **Details**
  *
- * `Context.Operations<Self>()("key", members)` takes the identifier as a type
- * parameter so that it has a name in diagnostics: declare
- * `type Self = Context.Operations.Identifier<typeof members>` and pass it.
- * Passing any other type is a compile error naming the expected identifier.
+ * The identifier and the shape are declared by the caller so that they have
+ * names in diagnostics: declare `type Self = Context.Operations.Identifier<typeof members>`
+ * and `type Shape = Context.Operations.Shape<typeof members>`, then either
+ * annotate the declaration (`const Self: Context.Operations<Self, Shape> = Context.Operations(key, members)`)
+ * or pass them (`Context.Operations<Self, Shape>()(key, members)`). Passing
+ * anything else is a compile error naming where it differs.
  *
  * **Example** (A record service from two operations)
  *
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
- * const readFile = Context.Operation<(path: string) => Effect.Effect<string>>()("app/FileSystem/readFile")
- * const writeFile = Context.Operation<(path: string, data: string) => Effect.Effect<void>>()(
- *   "app/FileSystem/writeFile"
- * )
- * const operations = { readFile, writeFile }
- * type FileSystem = Context.Operations.Identifier<typeof operations>
- * const FileSystem = Context.Operations<FileSystem>()("app/FileSystem", operations)
+ * const readFile: Context.Operation<"app/FileSystem/readFile", (path: string) => Effect.Effect<string>> = Context
+ *   .Operation("app/FileSystem/readFile")
+ * const writeFile: Context.Operation<"app/FileSystem/writeFile", (path: string, data: string) => Effect.Effect<void>> =
+ *   Context.Operation("app/FileSystem/writeFile")
+ * const members = { readFile, writeFile }
+ * type FileSystem = Context.Operations.Identifier<typeof members>
+ * type Shape = Context.Operations.Shape<typeof members>
+ * const FileSystem: Context.Operations<FileSystem, Shape> = Context.Operations("app/FileSystem", members)
  *
- * // Providing the group provides every member
+ * // Providing the record provides every member
  * const live = Layer.succeed(FileSystem, {
  *   readFile: (path) => Effect.succeed(`contents of ${path}`),
  *   writeFile: () => Effect.void
@@ -1815,57 +1912,109 @@ export declare namespace Operations {
  * @category services
  * @since 4.0.0
  */
-export const Operations = <Self>() =>
-<const Ops extends Operations.Members>(
-  key: string,
-  operations: Operations.Validate<Self, Ops>
-): Operations<Self, Ops> => {
-  const self = Service<any, any>(key) as Types.Mutable<Operations<any, any>>
+/* @__NO_SIDE_EFFECTS__ */
+export const Operations: {
+  <Self, Shape>(): <const Ops extends Operations.Members>(
+    key: string,
+    members: Operations.Validate<Self, Shape, Ops>
+  ) => Operations<Self, Shape>
+  <Self, Shape, const Ops extends Operations.Members>(
+    key: string,
+    members: Operations.Validate<Self, Shape, Ops>
+  ): Operations<Self, Shape>
+} = function() {
+  return arguments.length === 0 ? makeOperations : makeOperations(arguments[0], arguments[1])
+} as any
+
+// A member's slot, resolved once at construction so that reads and writes do
+// no per-member checks: the key the member is stored under, the nested record
+// service when the member is one, and whether the key carries a default.
+interface Slot {
+  readonly name: string
+  readonly service: Key<any, any>
+  readonly nested: OperationsImpl | undefined
+  readonly reference: boolean
+}
+
+interface OperationsImpl extends Operations<any, any> {
+  readonly slots: ReadonlyArray<Slot>
+  // Assembled records by context. A context is immutable, so the record read
+  // from it is too: assembling a thirty-member record costs microseconds and
+  // a cache hit costs a WeakMap read, and the cache lives exactly as long as
+  // the context does.
+  readonly cache: WeakMap<Context<any>, unknown>
+}
+
+const makeOperations = (key: string, members: Operations.Members): Operations<any, any> => {
+  const self = Service<any, any>(key) as Types.Mutable<OperationsImpl>
   self[OperationsTypeId] = OperationsTypeId
-  self.operations = operations
+  self.members = members
+  self.cache = new WeakMap()
+  self.slots = Object.keys(members).map((name) => {
+    const member = members[name]
+    const service = isOperation(member) ? member.service : member
+    return {
+      name,
+      service,
+      nested: isOperations(service) ? service as OperationsImpl : undefined,
+      reference: isReference(service)
+    }
+  })
   return self
 }
 
 /**
- * Tests whether a key is an operation group.
+ * Tests whether a key is a record service.
  *
  * @stability unstable
  * @category guards
  * @since 4.0.0
  */
-export const isOperations = (u: unknown): u is Operations<any, any> => hasProperty(u, OperationsTypeId)
+export const isOperations = (u: unknown): u is Operations<any, any> =>
+  // A property read rather than `in`: keys are functions whose prototype is
+  // replaced, and `in` takes a slow path on them while a read is cached.
+  (typeof u === "function" || (typeof u === "object" && u !== null)) &&
+  (u as any)[OperationsTypeId] === OperationsTypeId
 
-// Writes each member of a record under the member's own key.
+// Writes each member of a record under the member's own key; a member that is
+// itself a record service is spread the same way.
 const spread = (map: Map<string, any>, group: Operations<any, any>, record: any): void => {
-  for (const name in group.operations) {
-    map.set(group.operations[name].service.key, record[name])
+  const slots = (group as OperationsImpl).slots
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]
+    if (slot.nested) spread(map, slot.nested, record[slot.name])
+    else map.set(slot.service.key, record[slot.name])
   }
 }
 
-// Reads a key from a context: the slot for an ordinary key, or the record
-// assembled from the member slots for a group. Returns `notFound` when the key
-// or any member is absent; `onMissing` names the missing member for errors.
-const read = (
-  self: Context<any>,
-  key: Key<any, any>,
-  onMissing?: (missing: Key<any, any>) => void
-): unknown => {
-  if (!isOperations(key)) return lookup(self, key.key)
+// Assembles a record from its members' slots. A member that is a reference
+// falls back to its default; any other absent member throws when `orThrow` is
+// set and otherwise makes the whole record `notFound`.
+const readRecord = (self: Context<any>, group: Operations<any, any>, orThrow: boolean): unknown => {
+  const impl = group as OperationsImpl
+  const cached = impl.cache.get(self)
+  if (cached !== undefined) return cached
+  const slots = impl.slots
   const record: Record<string, unknown> = {}
-  for (const name in key.operations) {
-    const service = key.operations[name].service
-    const value = lookup(self, service.key)
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]
+    let value = slot.nested ? readRecord(self, slot.nested, orThrow) : lookup(self, slot.service.key)
     if (value === notFound) {
-      onMissing?.(service)
-      return notFound
+      if (slot.reference) value = getDefaultValue(slot.service as Reference<any>)
+      else if (orThrow) throw serviceNotFoundError(slot.service)
+      else return notFound
     }
-    record[name] = value
+    record[slot.name] = value
   }
+  impl.cache.set(self, record)
   return record
 }
 
-// The runtime keys a key occupies: one for an ordinary key, one per member for a group.
+// Reads a key from a context: the slot for an ordinary key, or the record
+// assembled from the member slots for a record service.
+const read = (self: Context<any>, key: Key<any, any>): unknown =>
+  isOperations(key) ? readRecord(self, key, false) : lookup(self, key.key)
+
+// The runtime keys a key occupies: one for an ordinary key, one per member for a record service.
 const keysOf = (key: Key<any, any>): Array<string> =>
-  isOperations(key)
-    ? Object.values(key.operations as Operations.Members).map((operation) => operation.service.key)
-    : [key.key]
+  isOperations(key) ? (key as OperationsImpl).slots.flatMap((slot) => keysOf(slot.service)) : [key.key]

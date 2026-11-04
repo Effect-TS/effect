@@ -1148,15 +1148,27 @@ importers:
 
   specs/tree-shakeable-services:
     devDependencies:
+      '@babel/core':
+        specifier: ^8.0.10
+        version: 8.0.10
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
+      babel-plugin-annotate-pure-calls:
+        specifier: ^0.5.0
+        version: 0.5.0(@babel/core@8.0.10)
       effect:
         specifier: workspace:*
         version: link:../../packages/effect
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      rolldown:
+        specifier: ^1.2.16
+        version: 1.2.16
+      tinybench:
+        specifier: ^6.2.2
+        version: 6.2.2
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

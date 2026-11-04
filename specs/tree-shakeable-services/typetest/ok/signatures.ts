@@ -134,3 +134,119 @@ export const lines = Stream.Operation<(path: string) => Stream.Stream<string, Fi
   "test/lines"
 )
 export const lineStream: Stream.Stream<string, FileSystem.FileSystemError, "test/lines"> = lines("a.txt")
+
+// Subset records. `ReadOnly` is a record over three of FileSystem's members; the facts below hold by assignability
+// of unions, with no rule added for them.
+import type * as Queue from "effect/Queue"
+import * as Sink from "effect/Sink"
+import { exists as nodeExists } from "../../src/node/exists.ts"
+import { readFile as nodeReadFile } from "../../src/node/readFile.ts"
+import { stat as nodeStat } from "../../src/node/stat.ts"
+import { sizeOf } from "../../src/program-readonly.ts"
+import * as Terminal from "../../src/Terminal.ts"
+
+// 1. the full record satisfies the subset
+export const readOnlyFromFull: Layer.Layer<FileSystem.ReadOnly> = nodeLayer
+// 2. the member layers merged satisfy the subset
+export const readOnlyFromMembers: Layer.Layer<FileSystem.ReadOnly> = Layer.mergeAll(nodeExists, nodeReadFile, nodeStat)
+// 3. the subset satisfies each of its members
+declare const readOnlyLayer: Layer.Layer<FileSystem.ReadOnly>
+export const memberFromReadOnly: Effect.Effect<Uint8Array, FileSystem.FileSystemError, never> = FileSystem.readFile("a")
+  .pipe(Effect.provide(readOnlyLayer))
+// 4. a program over three operations is assignable to the subset's name, and runs under either provider
+export const readOnlyProgram: Effect.Effect<number, FileSystem.FileSystemError, FileSystem.ReadOnly> = sizeOf("a")
+export const readOnlyUnderFull: Effect.Effect<number, FileSystem.FileSystemError, never> = sizeOf("a").pipe(
+  Effect.provide(nodeLayer)
+)
+export const readOnlyUnderMembers: Effect.Effect<number, FileSystem.FileSystemError, never> = sizeOf("a").pipe(
+  Effect.provide(readOnlyFromMembers)
+)
+// 5. the subset is a record service like any other
+export const readOnlyRecord: Effect.Effect<FileSystem.ReadOnlyShape, never, FileSystem.ReadOnly> = FileSystem.ReadOnly
+export const readOnlySucceeded: Layer.Layer<FileSystem.ReadOnly> = Layer.succeed(
+  FileSystem.ReadOnly,
+  {} as FileSystem.ReadOnlyShape
+)
+
+// Value shapes: a member that is an Effect is an operation called with no arguments. The record keeps the member as
+// the Effect it is, so an implementation and `(yield* Terminal).columns` are unchanged.
+export const width: Effect.Effect<number, never, "effect/Terminal/columns"> = Terminal.columns()
+export const input: Effect.Effect<
+  Queue.Dequeue<Terminal.UserInput>,
+  never,
+  Scope.Scope | "effect/Terminal/readInput"
+> = Terminal.readInput()
+export const terminalRecord: Effect.Effect<Terminal.Shape, never, Terminal.Terminal> = Terminal.Terminal
+export const columnsMember: Terminal.Shape["columns"] = Effect.succeed(80)
+export const columnsLayer: Layer.Layer<"effect/Terminal/columns"> = Layer.succeed(
+  Terminal.columns.service,
+  Effect.succeed(80)
+)
+export const terminalProgram: Effect.Effect<number, Terminal.TerminalError, Terminal.Terminal> = Effect.gen(
+  function*() {
+    const columns = yield* Terminal.columns()
+    yield* Terminal.display("x")
+    return columns
+  }
+)
+
+// A mixed record: a plain value and a synchronous function are ordinary services, an Effect-returning function is an
+// operation, and the record is over all three. The record's identity and shape are what they would be for any key.
+export const sep: Context.Service<"test/Path/sep", string> = Context.Service("test/Path/sep")
+export const join: Context.Service<"test/Path/join", (...parts: ReadonlyArray<string>) => string> = Context.Service(
+  "test/Path/join"
+)
+export const fromFileUrl: Context.Operation<"test/Path/fromFileUrl", (url: URL) => Effect.Effect<string, Error>> =
+  Context.Operation("test/Path/fromFileUrl")
+const pathMembers = { sep, join, fromFileUrl }
+export type Path = Context.Operations.Identifier<typeof pathMembers>
+export interface PathShape extends Context.Operations.Shape<typeof pathMembers> {}
+export const Path: Context.Operations<Path, PathShape> = Context.Operations("test/Path", pathMembers)
+export const pathIdentity: Path = "test/Path/sep" as "test/Path/sep" | "test/Path/join" | "test/Path/fromFileUrl"
+export const separator: Effect.Effect<string, never, "test/Path/sep"> = sep
+export const joined: Effect.Effect<string, never, "test/Path/join"> = Effect.map(join, (f) => f("a", "b"))
+export const converted: Effect.Effect<string, Error, "test/Path/fromFileUrl"> = fromFileUrl(new URL("file:///a"))
+export const pathRecord: Effect.Effect<
+  {
+    readonly sep: string
+    readonly join: (...parts: ReadonlyArray<string>) => string
+    readonly fromFileUrl: (url: URL) => Effect.Effect<string, Error>
+  },
+  never,
+  Path
+> = Path
+export const pathLayer: Layer.Layer<Path> = Layer.succeed(Path, {
+  sep: "/",
+  join: (...parts) => parts.join("/"),
+  fromFileUrl: (url) => Effect.succeed(url.pathname)
+})
+export const pathFromMembers: Layer.Layer<Path> = Layer.mergeAll(
+  Layer.succeed(sep, "/"),
+  Layer.succeed(join, (...parts) => parts.join("/")),
+  Layer.succeed(fromFileUrl.service, (url) => Effect.succeed(url.pathname))
+)
+
+// A record may be a member of a record: its slots are spread the same way, and the identity is the union.
+const platformMembers = { fs: FileSystem.ReadOnly, terminal: Terminal.Terminal }
+export type Platform = Context.Operations.Identifier<typeof platformMembers>
+export interface PlatformShape extends Context.Operations.Shape<typeof platformMembers> {}
+export const Platform: Context.Operations<Platform, PlatformShape> = Context.Operations(
+  "test/Platform",
+  platformMembers
+)
+export const platformIdentity: Platform = "effect/Terminal/rows" as FileSystem.ReadOnly | Terminal.Terminal
+export const platformUnderParts: Effect.Effect<PlatformShape, never, never> = Platform.pipe(
+  Effect.provide(readOnlyFromMembers),
+  Effect.provide(Layer.succeed(Terminal.Terminal, {} as Terminal.Shape))
+)
+
+// The curried form still infers the key from its argument, for code that does not annotate declarations.
+export const curried = Context.Operation<(x: number) => Effect.Effect<number>>()("test/curried")
+export const curriedCall: Effect.Effect<number, never, "test/curried"> = curried(1)
+export const curriedValue = Context.Operation<Effect.Effect<Date>>()("test/now")
+export const curriedValueCall: Effect.Effect<Date, never, "test/now"> = curriedValue()
+
+// A Sink operation, from Sink.Operation.
+export const collect: Sink.Operation<"test/collect", (label: string) => Sink.Sink<Array<string>, string>> = Sink
+  .Operation("test/collect")
+export const collected: Sink.Sink<Array<string>, string, never, never, "test/collect"> = collect("x")
