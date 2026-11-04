@@ -6,20 +6,16 @@ import type {
   Histogram,
   MetricCollectOptions,
   MetricData,
+  MetricDescriptor,
   MetricProducer
 } from "@opentelemetry/sdk-metrics"
-import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
-import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
+import { AggregationTemporality, DataPointType } from "@opentelemetry/sdk-metrics"
 import * as Context from "effect/Context"
 import * as Metric from "effect/Metric"
 import * as Rec from "effect/Record"
 import type * as Metrics from "../OtelMetrics.ts"
 
 const sdkName = "@effect/opentelemetry/Metrics"
-
-type MetricDataWithInstrumentDescriptor = MetricData & {
-  readonly descriptor: InstrumentDescriptor
-}
 
 interface PreviousHistogramState {
   readonly count: number
@@ -93,7 +89,7 @@ export class MetricProducerImpl implements MetricProducer {
     this.previousSummaryState = new Map()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
-    const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
+    const addMetricData = (data: MetricData) => {
       metricData.push(data)
       metricDataByName.set(data.descriptor.name, data)
     }
@@ -377,9 +373,7 @@ export class MetricProducerImpl implements MetricProducer {
                 name: `${state.id}_count`,
                 description: state.description ?? "",
                 unit: "1",
-                type: InstrumentType.COUNTER,
-                valueType: ValueType.INT,
-                advice: {}
+                valueType: ValueType.INT
               },
               aggregationTemporality,
               isMonotonic: true,
@@ -391,9 +385,7 @@ export class MetricProducerImpl implements MetricProducer {
                 name: `${state.id}_sum`,
                 description: state.description ?? "",
                 unit: "1",
-                type: InstrumentType.COUNTER,
-                valueType: ValueType.DOUBLE,
-                advice: {}
+                valueType: ValueType.DOUBLE
               },
               aggregationTemporality,
               isMonotonic: true,
@@ -460,30 +452,13 @@ const currentHrTime = (): HrTime => {
 const descriptorFromState = (
   state: Metric.Metric.Snapshot,
   attributes: Record<string, string>
-): InstrumentDescriptor => {
+): MetricDescriptor => {
   const unit = attributes.unit ?? attributes.time_unit ?? "1"
   return {
     name: state.id,
     description: state.description ?? "",
     unit,
-    type: instrumentTypeFromSnapshot(state),
-    valueType: determineValueType(state),
-    advice: {}
-  }
-}
-
-const instrumentTypeFromSnapshot = (state: Metric.Metric.Snapshot): InstrumentType => {
-  switch (state.type) {
-    case "Histogram":
-      return InstrumentType.HISTOGRAM
-    case "Gauge":
-      return InstrumentType.OBSERVABLE_GAUGE
-    case "Frequency":
-      return InstrumentType.COUNTER
-    case "Counter":
-      return state.state.incremental ? InstrumentType.COUNTER : InstrumentType.UP_DOWN_COUNTER
-    case "Summary":
-      return InstrumentType.COUNTER
+    valueType: determineValueType(state)
   }
 }
 
