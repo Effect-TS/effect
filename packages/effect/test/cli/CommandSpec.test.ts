@@ -359,6 +359,22 @@ describe("CommandSpec", () => {
       assert.isTrue(flagOf(spec, "region").required)
     })
 
+    it("keeps an active global flag whose name a local flag shadows", () => {
+      const release = Command.make("release", { version: Flag.String("version") })
+      const app = Command.make("app").pipe(Command.withSubcommands([release]))
+
+      const spec = specOf(app, ["app", "release"], { builtIns: [GlobalFlag.Version] })
+
+      // The runner resolves the collision per token: `--version canary` reaches
+      // the local flag while the unshadowed `-v` alias still prints the
+      // version. Globals are deduplicated by identity only, as in help, so
+      // both entries remain and a generator can still document `-v`.
+      assert.deepStrictEqual(
+        spec.flags.map((flag) => [flag.name, flag.scope._tag, flag.aliases] as const),
+        [["version", "Local", []], ["version", "Global", ["v"]]]
+      )
+    })
+
     it("resolves examples for the requested path", () => {
       const deploy = Command.make("deploy").pipe(
         Command.withExamples(({ commandPath }) => [
