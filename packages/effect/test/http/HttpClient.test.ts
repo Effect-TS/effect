@@ -763,6 +763,29 @@ Missing key
         strictEqual(Hash.hash(a), Hash.hash(b))
       }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
 
+    it.effect("compares errors equal when the names of the fiber that renders them redact them the same", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.fail(new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }))
+        )
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+
+        const a = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        const b = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, [])
+        )
+
+        yield* Effect.sync(() => {
+          strictEqual(a.message, b.message)
+          assert.isTrue(Equal.equals(a, b))
+          strictEqual(Hash.hash(a), Hash.hash(b))
+        }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
     it.effect("serializes an executed request with the redacted names of its execution", () =>
       Effect.gen(function*() {
         let sent: HttpClientRequest.HttpClientRequest | undefined
