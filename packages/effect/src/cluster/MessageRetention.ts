@@ -51,8 +51,9 @@ const batchSize = 1000
  *   replies to know what already ran.
  * - Include the layer on every runner that can be assigned `shardGroup`, so it
  *   keeps running when shards move.
- * - SQL storage on MySQL needs `binlog_format` `ROW` or `MIXED`. With
- *   `STATEMENT`, every cleanup fails and is logged.
+ * - SQL storage on MySQL needs MySQL 8.0.1+ or MariaDB 10.6+, and
+ *   `binlog_format` `ROW` or `MIXED`. Otherwise every cleanup fails and is
+ *   logged.
  *
  * **Example** (Forgetting a week-old request)
  *

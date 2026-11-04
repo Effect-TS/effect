@@ -18,11 +18,11 @@
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
- * On MySQL, `deleteProcessed` runs at READ COMMITTED, which needs
- * `binlog_format` `ROW` or `MIXED`. Inside a caller's transaction it keeps
- * that transaction's isolation level, which must also be READ COMMITTED on
- * MySQL before 8.0.20 and on MariaDB, or it can deadlock with a concurrent
- * reply.
+ * On MySQL, `deleteProcessed` needs MySQL 8.0.1+ or MariaDB 10.6+ for
+ * `SKIP LOCKED`. It runs at READ COMMITTED, which needs `binlog_format` `ROW`
+ * or `MIXED`. Inside a caller's transaction it keeps that transaction's
+ * isolation level, which must also be READ COMMITTED on MySQL before 8.0.20
+ * and on MariaDB, or it can deadlock with a concurrent reply.
  *
  * @stability unstable
  * @since 4.0.0
@@ -525,7 +525,8 @@ export const makeEncodedStorage: (options?: {
       orElse: () => identity
     })
   // Locks up to limit eligible requests, skipping locked ones, since waiting
-  // can deadlock on MySQL gap locks
+  // can deadlock on MySQL gap locks. Ordering by last_reply_id keeps the
+  // query on the retention index.
   const lockDeletable: (
     eligible: Fragment,
     limit: number
@@ -536,7 +537,7 @@ export const makeEncodedStorage: (options?: {
     mysql: () => (eligible, limit) =>
       Effect.flatMap(
         sql<{ id: string | bigint }>`
-          SELECT id FROM ${messagesTableSql} WHERE ${eligible} ORDER BY rowid ASC ${limitFragment(limit)}
+          SELECT id FROM ${messagesTableSql} WHERE ${eligible} ORDER BY last_reply_id ASC ${limitFragment(limit)}
         `,
         (candidates) =>
           candidates.length === 0 ? Effect.succeed(candidates) : sql<{ id: string | bigint }>`
@@ -549,7 +550,7 @@ export const makeEncodedStorage: (options?: {
       sql<{ id: string | bigint }>`
         SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
         WHERE ${eligible}
-        ORDER BY rowid ASC
+        ORDER BY last_reply_id ASC
         ${limitFragment(limit)}
         ${forUpdateSkipLocked}
       `
