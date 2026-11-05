@@ -1,8 +1,40 @@
+import type { DurableObjectProgramState } from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
+import { makeClusterSingletonProgram } from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import { inertClusterHandle, makeClusterHandle } from "@effect/platform-cloudflare/internal/alchemyCluster"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect } from "effect"
+import { Context, Effect, Exit, Fiber } from "effect"
 import { Singleton } from "effect/cluster"
 import { Sharding } from "effect/cluster/Sharding"
+import { TestClock } from "effect/testing"
+import { DatabaseSync } from "node:sqlite"
+import { SqliteStorage } from "./fixtures/sqliteStorage.ts"
+
+const retryableError = (message: string) => Object.assign(new Error(message), { retryable: true })
+
+const unusedNamespace = { getByName: () => undefined }
+
+const makeHandle = (layer: Parameters<typeof makeClusterHandle>[0]["layer"], singletonNamespace: object) =>
+  makeClusterHandle({
+    entities: [],
+    layer,
+    env: {
+      ClusterEntity: unusedNamespace,
+      ClusterWorkflow: unusedNamespace,
+      ClusterDurableQueue: unusedNamespace,
+      ClusterSingleton: singletonNamespace
+    }
+  })
+
+// Advances the TestClock until the effect completes, so retry backoff runs
+// without real waiting.
+const withTestClock = Effect.fnUntraced(function*<A, E>(effect: Effect.Effect<A, E>) {
+  const fiber = yield* Effect.forkChild(effect)
+  for (let index = 0; index < 1000 && fiber.pollUnsafe() === undefined; index++) {
+    yield* TestClock.adjust("1 minute")
+    yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+  }
+  return yield* Fiber.join(fiber)
+})
 
 // The public `AlchemyCloudflareCluster.make` wires these handles to alchemy's
 // Durable Object declarations. The handle tests below run without alchemy; the
@@ -66,6 +98,70 @@ describe("AlchemyCloudflareCluster", () => {
       assert.deepStrictEqual(wakeCalls, [])
       yield* wake()
       assert.deepStrictEqual(wakeCalls, ["Singleton/maintenance"])
+    }))
+
+  it.effect("retries a wake that failed in transit on a fresh stub", () =>
+    Effect.gen(function*() {
+      const wokenOn: Array<object> = []
+      const singletonNamespace = {
+        getByName: () => {
+          const stub = {
+            wake: () => {
+              wokenOn.push(stub)
+              return wokenOn.length === 1
+                ? Promise.reject(retryableError("Network connection lost."))
+                : Promise.resolve()
+            }
+          }
+          return stub
+        }
+      }
+      const cluster = yield* makeHandle(Singleton.make("lost-in-transit", Effect.void), singletonNamespace)
+
+      yield* withTestClock(cluster.wake("lost-in-transit")())
+
+      assert.strictEqual(wokenOn.length, 2)
+      assert.notStrictEqual(wokenOn[0], wokenOn[1])
+    }))
+
+  it.effect("does not retry a wake whose singleton failed, even with a retryable-looking error", () =>
+    Effect.gen(function*() {
+      let runs = 0
+      const database = yield* Effect.acquireRelease(
+        Effect.sync(() => new DatabaseSync(":memory:")),
+        (database) => Effect.sync(() => database.close())
+      )
+      const storage = new SqliteStorage(database)
+      // The singleton Durable Object class awaits its program's `wake` the
+      // same way.
+      let program: ReturnType<typeof makeClusterSingletonProgram> extends Effect.Effect<infer P> ? Promise<P>
+        : never
+      const singletonNamespace = {
+        getByName: (name: string) => ({
+          wake: () => {
+            program ??= Effect.runPromise(makeClusterSingletonProgram({
+              id: { name },
+              storage: storage as unknown as DurableObjectProgramState["storage"],
+              exports: {},
+              waitUntil: () => {}
+            }))
+            return program.then((program) => Effect.runPromise(program.wake()))
+          }
+        })
+      }
+      const failing = Singleton.make(
+        "failing",
+        Effect.suspend(() => {
+          runs++
+          return Effect.fail(retryableError("singleton failed"))
+        })
+      )
+      const cluster = yield* makeHandle(failing, singletonNamespace)
+
+      const exit = yield* withTestClock(Effect.exit(cluster.wake("failing")()))
+
+      assert.isTrue(Exit.isFailure(exit))
+      assert.strictEqual(runs, 1)
     }))
 
   for (
