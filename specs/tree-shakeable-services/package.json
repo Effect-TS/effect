@@ -3,16 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Prototype for specs/tree-shakeable-services.md: operations as keys, record services, the bundle check and the benchmark",
+  "description": "Prototype for specs/tree-shakeable-services.md: operations as keys, record services and the bundle check",
   "sideEffects": false,
   "scripts": {
     "check": "tsc -p tsconfig.json",
     "check-errors": "node scripts/check-errors.ts",
     "test": "vitest run",
     "bundle": "node scripts/check-bundle.ts",
-    "bench": "node scripts/bench.ts",
+    "bench": "node ../../packages/effect/benchmark/context/operations.ts",
     "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle && pnpm bench:check",
-    "bench:check": "node scripts/bench.ts --ordinary --check && node scripts/bench.ts --check"
+    "bench:check": "node ../../packages/effect/benchmark/context/operations.ts --ordinary --check && node ../../packages/effect/benchmark/context/operations.ts --check"
   },
   "devDependencies": {
     "@babel/core": "^8.0.10",
