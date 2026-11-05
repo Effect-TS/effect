@@ -707,6 +707,20 @@ export type ExtractTag<R extends Any, Tag extends string> = R extends Rpc<
   never
 
 /**
+ * Indexes the RPCs of a union by their tag.
+ *
+ * **Details**
+ *
+ * Indexing it with a literal tag selects that RPC without testing every RPC in
+ * the union, which keeps tag-based client calls fast for large groups.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ByTag<R extends Any> = { readonly [Current in R as Current["_tag"]]: Current }
+
+/**
  * Extracts the services provided by middleware on the RPC with the specified
  * tag.
  *
