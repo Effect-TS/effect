@@ -71,17 +71,41 @@ describe("Cloudflare cluster integration | initialization readiness", () => {
       )
     }), 60_000)
 
-  it.effect("propagates one cached initialization failure to every cold caller", () =>
+  it.effect("lets the next cold caller take over an initialization that never settles", () =>
     Effect.gen(function*() {
       const cluster = yield* makeCluster
-      yield* cluster.fetchJson("/initialization/fail")
+      yield* cluster.fetchJson("/initialization/hang")
 
-      const results = yield* Effect.promise(() =>
-        Promise.all(kinds.map((kind) => Effect.runPromise(cluster.fetchJson(`/initialization/call?kind=${kind}`))))
+      const abandoned = Effect.runPromise(cluster.fetchJson("/initialization/call?kind=entity")).catch(String)
+      yield* cluster.waitUntil(
+        "The first cold Durable Object did not start application initialization",
+        Effect.map(cluster.fetchJson("/initialization/state"), (state) => state.started)
       )
-      for (const result of results) {
-        assert.isFalse(result.ok)
-        assert.include(result.error, "deliberate Cloudflare application initialization failure")
-      }
+
+      const next = yield* cluster.fetchJson("/initialization/call?kind=workflow")
+      assert.deepStrictEqual(next, { ok: true }, "The next cold caller did not take over the stale initialization")
+      yield* Effect.promise(() => abandoned)
     }), 60_000)
+
+  it.effect(
+    "reports an initialization failure to every cold caller and retries on the next cold call",
+    () =>
+      Effect.gen(function*() {
+        const cluster = yield* makeCluster
+        yield* cluster.fetchJson("/initialization/fail")
+
+        const results = yield* Effect.promise(() =>
+          Promise.all(kinds.map((kind) => Effect.runPromise(cluster.fetchJson(`/initialization/call?kind=${kind}`))))
+        )
+        for (const result of results) {
+          assert.isFalse(result.ok)
+          assert.include(result.error, "deliberate Cloudflare application initialization failure")
+        }
+
+        yield* cluster.fetchJson("/initialization/recover")
+        const retried = yield* cluster.fetchJson("/initialization/call?kind=entity")
+        assert.deepStrictEqual(retried, { ok: true }, "A cold call after the failure reused the cached failure")
+      }),
+    60_000
+  )
 })
