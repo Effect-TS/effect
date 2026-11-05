@@ -212,6 +212,13 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("Redacted JSON codec keeps a format supplied by a check", () => {
+      const uuid = Schema.String.check(Schema.isUUID())
+      const toCodes = (schema: Schema.Top) =>
+        SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])).codes
+      deepStrictEqual(toCodes(Schema.toCodecJson(Schema.Redacted(uuid))), toCodes(uuid))
+    })
+
     it("CauseReason(String, Number)", () => {
       assertSchema({ schema: Schema.CauseReason(Schema.String, Schema.Number) }, {
         codes: makeCode("Schema.CauseReason(Schema.String, Schema.Number)", "Cause.Failure<string, number>"),

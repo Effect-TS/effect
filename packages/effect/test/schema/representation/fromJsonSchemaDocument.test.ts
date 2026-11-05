@@ -1219,6 +1219,37 @@ describe("fromJsonSchemaDocument", () => {
       throws(() => Schema.decodeUnknownSync(schema)("hunter2"))
     })
 
+    it("decodes password-annotated references to Redacted without changing other uses", () => {
+      const schema = importCodec({
+        type: "object",
+        properties: {
+          secret: { $ref: "#/$defs/Text", format: "password" },
+          nullable: { anyOf: [{ $ref: "#/$defs/Text" }, { type: "null" }], format: "password" },
+          plain: { $ref: "#/$defs/Text" }
+        },
+        required: ["secret", "nullable", "plain"],
+        additionalProperties: false,
+        $defs: { Text: { type: "string", minLength: 8 } }
+      })
+      const decoded = Schema.decodeUnknownSync(schema)({
+        secret: "hunter22",
+        nullable: "hunter22",
+        plain: "hunter22"
+      }) as {
+        readonly secret: unknown
+        readonly nullable: unknown
+        readonly plain: unknown
+      }
+      assert.isTrue(Redacted.isRedacted(decoded.secret))
+      assert.isTrue(Redacted.isRedacted(decoded.nullable))
+      assert.strictEqual(decoded.plain, "hunter22")
+      deepStrictEqual(
+        Schema.decodeUnknownSync(schema)({ secret: "hunter22", nullable: null, plain: "hunter22" }),
+        { ...decoded, nullable: null }
+      )
+      throws(() => Schema.decodeUnknownSync(schema)({ secret: "hunter2", nullable: null, plain: "hunter22" }))
+    })
+
     it("keeps password property names as plain string keys", () => {
       const schema = importCodec({ type: "object", propertyNames: { type: "string", format: "password" } })
       deepStrictEqual(Schema.decodeUnknownSync(schema)({ secret: 1 }), { secret: 1 })
